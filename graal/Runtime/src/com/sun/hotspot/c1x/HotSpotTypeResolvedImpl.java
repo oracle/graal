@@ -209,7 +209,6 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
             result = new HotSpotField(compiler, this, name, type, offset, flags);
             fieldCache.put(id, result);
         } else {
-            assert result.type().equals(type);
             assert result.name().equals(name);
             assert result.accessFlags() == flags;
         }
