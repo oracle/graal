@@ -177,7 +177,7 @@ public final class HotSpotMethodResolved extends HotSpotMethod {
     }
 
     @Override
-    public Class<?> accessor() {
+    public RiType accessor() {
         return null;
     }
 
