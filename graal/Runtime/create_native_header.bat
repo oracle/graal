@@ -1,0 +1,1 @@
+javah -classpath c1x4hotspot.jar com.sun.hotspot.c1x.VMEntries
