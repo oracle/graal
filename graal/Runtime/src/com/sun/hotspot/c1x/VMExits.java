@@ -39,7 +39,7 @@ public interface VMExits {
 
     RiSignature createRiSignature(String signature);
 
-    RiField createRiField(RiType holder, String name, RiType type, int offset);
+    RiField createRiField(RiType holder, String name, RiType type, int offset, int flags);
 
     RiType createRiType(long vmId, String name);
 

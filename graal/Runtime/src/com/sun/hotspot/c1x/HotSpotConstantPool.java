@@ -23,6 +23,7 @@ package com.sun.hotspot.c1x;
 import java.io.*;
 import java.util.*;
 
+import com.sun.c1x.debug.*;
 import com.sun.cri.ri.*;
 
 /**

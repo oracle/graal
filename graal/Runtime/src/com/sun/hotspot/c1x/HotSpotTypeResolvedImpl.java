@@ -45,7 +45,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private boolean isInterface;
     private int instanceSize;
     private RiType componentType;
-    private HashMap<Integer, RiField> fieldCache;
+    private HashMap<Long, RiField> fieldCache;
     private RiConstantPool pool;
 
     private HotSpotTypeResolvedImpl() {
@@ -93,7 +93,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
             case ObjectHub:
                 return CiConstant.forObject(this);
             case StaticFields:
-                return CiConstant.forObject(this);
+                return CiConstant.forObject(javaClass());
             case TypeInfo:
                 return CiConstant.forObject(this);
             default:
@@ -193,19 +193,25 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiField createRiField(String name, RiType type, int offset) {
+    public RiField createRiField(String name, RiType type, int offset, int flags) {
         RiField result = null;
+
+        long id = offset + ((long) flags << 32);
 
         // (tw) Must cache the fields, because the local load elimination only works if the objects from two field lookups are equal.
         if (fieldCache == null) {
-            fieldCache = new HashMap<Integer, RiField>(8);
+            fieldCache = new HashMap<Long, RiField>(8);
         } else {
-            result = fieldCache.get(offset);
+            result = fieldCache.get(id);
         }
 
         if (result == null) {
-            result = new HotSpotField(compiler, this, name, type, offset);
-            fieldCache.put(offset, result);
+            result = new HotSpotField(compiler, this, name, type, offset, flags);
+            fieldCache.put(id, result);
+        } else {
+            assert result.type().equals(type);
+            assert result.name().equals(name);
+            assert result.accessFlags() == flags;
         }
 
         return result;

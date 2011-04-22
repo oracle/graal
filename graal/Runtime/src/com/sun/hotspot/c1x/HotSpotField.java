@@ -24,6 +24,7 @@ package com.sun.hotspot.c1x;
 import java.lang.reflect.*;
 
 import com.sun.c1x.*;
+import com.sun.c1x.debug.*;
 import com.sun.cri.ci.CiConstant;
 import com.sun.cri.ci.CiKind;
 import com.sun.cri.ri.RiField;
@@ -40,20 +41,21 @@ public class HotSpotField extends CompilerObject implements RiField {
     private final String name;
     private final RiType type;
     private final int offset;
+    private final int accessFlags;
     private CiConstant constant;
 
-    public HotSpotField(Compiler compiler, RiType holder, String name, RiType type, int offset) {
+    public HotSpotField(Compiler compiler, RiType holder, String name, RiType type, int offset, int accessFlags) {
         super(compiler);
         this.holder = holder;
         this.name = name;
         this.type = type;
         this.offset = offset;
+        this.accessFlags = accessFlags;
     }
 
     @Override
     public int accessFlags() {
-        // TODO Auto-generated method stub
-        return 0;
+        return accessFlags;
     }
 
     @Override

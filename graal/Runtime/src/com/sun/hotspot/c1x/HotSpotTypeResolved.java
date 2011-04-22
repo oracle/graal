@@ -31,6 +31,6 @@ public interface HotSpotTypeResolved extends RiType, Remote {
 
     int instanceSize();
 
-    RiField createRiField(String name, RiType type, int offset);
+    RiField createRiField(String name, RiType type, int offset, int flags);
 
 }

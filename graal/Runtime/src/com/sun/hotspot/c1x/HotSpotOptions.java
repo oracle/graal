@@ -46,8 +46,6 @@ public class HotSpotOptions {
         String fieldName = null;
         String valueString = null;
 
-        System.out.println(option);
-
         char first = option.charAt(0);
         if (first == '+' || first == '-') {
             fieldName = option.substring(1);

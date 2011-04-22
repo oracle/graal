@@ -70,7 +70,6 @@ public class VMExitsNative implements VMExits, Remote {
 
     @Override
     public void compileMethod(long methodVmId, String name, int entryBCI) throws Throwable {
-
         if (!compileMethods) {
             return;
         }
@@ -99,7 +98,6 @@ public class VMExitsNative implements VMExits, Remote {
                         Logger.info(String.format("%-10s %3d %s", type, e.getLineNumber(), current));
                     }
                 }
-                System.out.println("BAILOUT:" + result.bailout().getMessage());
                 String s = result.bailout().getMessage();
                 if (cause != null) {
                     s = cause.getMessage();
@@ -132,12 +130,12 @@ public class VMExitsNative implements VMExits, Remote {
     }
 
     @Override
-    public RiField createRiField(RiType holder, String name, RiType type, int offset) {
+    public RiField createRiField(RiType holder, String name, RiType type, int offset, int flags) {
         if (offset != -1) {
             HotSpotTypeResolved resolved = (HotSpotTypeResolved) holder;
-            return resolved.createRiField(name, type, offset);
+            return resolved.createRiField(name, type, offset, flags);
         }
-        return new HotSpotField(compiler, holder, name, type, offset);
+        return new HotSpotField(compiler, holder, name, type, offset, flags);
     }
 
     @Override
