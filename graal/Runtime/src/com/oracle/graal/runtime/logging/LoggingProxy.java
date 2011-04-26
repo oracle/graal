@@ -28,8 +28,6 @@ import com.oracle.graal.runtime.server.*;
 
 /**
  * A java.lang.reflect proxy that hierarchically logs all method invocations along with their parameters and return values.
- *
- * @author Lukas Stadler
  */
 public class LoggingProxy<T> implements InvocationHandler {
 

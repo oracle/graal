@@ -30,8 +30,6 @@ import com.sun.cri.ci.CiTargetMethod.*;
 
 /**
  * CiTargetMethod augmented with HotSpot-specific information.
- *
- * @author Lukas Stadler
  */
 public final class HotSpotTargetMethod extends CompilerObject {
 

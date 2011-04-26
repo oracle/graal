@@ -28,8 +28,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Exits from the HotSpot VM into Java code.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public interface VMExits {
 

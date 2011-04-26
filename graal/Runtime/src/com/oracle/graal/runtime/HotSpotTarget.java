@@ -26,8 +26,6 @@ import com.sun.cri.ci.*;
 
 /**
  * HotSpot-specific CiTarget that provides the correct stack frame size alignment.
- *
- * @author Lukas Stadler
  */
 public class HotSpotTarget extends CiTarget {
 

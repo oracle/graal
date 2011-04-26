@@ -24,8 +24,6 @@ package com.oracle.graal.runtime;
 
 /**
  * Provides methods to classify the HotSpot-internal identifiers.
- *
- * @author Lukas Stadler
  */
 public final class HotSpotProxy {
 

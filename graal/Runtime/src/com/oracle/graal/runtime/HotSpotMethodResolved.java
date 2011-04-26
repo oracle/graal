@@ -29,8 +29,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiMethod for resolved HotSpot methods.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public final class HotSpotMethodResolved extends HotSpotMethod {
 

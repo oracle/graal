@@ -41,10 +41,6 @@ import com.sun.cri.xir.CiXirAssembler.XirMark;
 import com.sun.cri.xir.CiXirAssembler.XirOperand;
 import com.sun.cri.xir.CiXirAssembler.XirParameter;
 
-/**
- *
- * @author Thomas Wuerthinger, Lukas Stadler
- */
 public class HotSpotXirGenerator implements RiXirGenerator {
 
     // this needs to correspond to c1x_CodeInstaller.hpp

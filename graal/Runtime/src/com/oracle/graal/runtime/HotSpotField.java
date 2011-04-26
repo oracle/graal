@@ -33,8 +33,6 @@ import com.sun.cri.ri.RiType;
 
 /**
  * Represents a field in a HotSpot type.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public class HotSpotField extends CompilerObject implements RiField {
 

@@ -30,8 +30,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiType for resolved non-primitive HotSpot classes.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpotTypeResolved {
 

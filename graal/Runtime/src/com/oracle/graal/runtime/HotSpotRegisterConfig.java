@@ -33,10 +33,6 @@ import com.sun.cri.ci.CiCallingConvention.Type;
 import com.sun.cri.ci.CiRegister.RegisterFlag;
 import com.sun.cri.ri.*;
 
-/**
- * @author Thomas Wuerthinger
- *
- */
 public class HotSpotRegisterConfig implements RiRegisterConfig {
 
     // be careful - the contents of this array are duplicated in c1x_CodeInstaller.cpp

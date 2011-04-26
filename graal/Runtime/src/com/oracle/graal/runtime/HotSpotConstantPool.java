@@ -29,8 +29,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiConstantPool for HotSpot.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public class HotSpotConstantPool extends CompilerObject implements RiConstantPool {
 

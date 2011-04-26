@@ -26,8 +26,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Common interface for all HotSpot RiType-implementations.
- *
- * @author Lukas Stadler
  */
 public abstract class HotSpotType extends CompilerObject implements RiType {
     protected String name;

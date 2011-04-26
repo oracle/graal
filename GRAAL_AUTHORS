@@ -1,0 +1,6 @@
+Lukas Stadler (stadler@ssw.jku.at)
+* July - September 2011: Initial feature-complete implementation, remote compilation
+
+Thomas Wuerthinger (thomas.wuerthinger@oracle.com)
+* June 2011: Initial prototype
+* October 2010 - January 2011: Bug fixes (all DaCapo's pass), better performance on SciMark than C1

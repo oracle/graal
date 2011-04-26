@@ -27,8 +27,6 @@ import java.io.*;
 
 /**
  * Parent class for all HotSpot Ri... types.
- *
- * @author Lukas Stadler
  */
 public abstract class CompilerObject implements Serializable {
     protected final Compiler compiler;

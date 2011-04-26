@@ -27,8 +27,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiType for unresolved HotSpot classes.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public class HotSpotTypeUnresolved extends HotSpotType {
 

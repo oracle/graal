@@ -28,8 +28,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiType for primitive HotSpot types.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public final class HotSpotTypePrimitive extends HotSpotType {
 

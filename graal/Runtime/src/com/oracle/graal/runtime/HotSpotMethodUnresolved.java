@@ -27,8 +27,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiMethod for unresolved HotSpot methods.
- *
- * @author Lukas Stadler
  */
 public final class HotSpotMethodUnresolved extends HotSpotMethod {
     private final RiSignature signature;

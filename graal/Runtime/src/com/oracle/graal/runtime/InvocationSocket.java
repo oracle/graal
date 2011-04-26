@@ -34,8 +34,6 @@ import com.oracle.graal.runtime.logging.*;
  * Calling a method sends the method name and the parameters through the socket. Afterwards this class waits for a
  * result. While waiting for a result three types of objects can arrive through the socket: a method invocation, a
  * method result or an exception. Method invocation can thus be recursive.
- *
- * @author Lukas Stadler
  */
 public class InvocationSocket {
 

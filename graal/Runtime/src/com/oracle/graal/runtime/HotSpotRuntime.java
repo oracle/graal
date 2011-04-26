@@ -36,8 +36,6 @@ import com.sun.max.lang.*;
 
 /**
  * CRI runtime implementation for the HotSpot VM.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public class HotSpotRuntime implements RiRuntime {
 

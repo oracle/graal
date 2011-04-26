@@ -31,8 +31,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Entries into the HotSpot VM from Java code.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public class VMEntriesNative implements VMEntries, Remote {
 

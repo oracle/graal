@@ -28,8 +28,6 @@ import java.util.*;
 
 /**
  * Scoped logging class used to display the call hierarchy of VMEntries/VMExits calls.
- *
- * @author Lukas Stadler
  */
 public class Logger {
 

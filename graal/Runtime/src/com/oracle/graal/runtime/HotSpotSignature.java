@@ -29,8 +29,6 @@ import com.sun.cri.ri.*;
 
 /**
  * Represents a method signature.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public class HotSpotSignature extends CompilerObject implements RiSignature {
 

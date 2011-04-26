@@ -36,8 +36,6 @@ import com.sun.cri.xir.*;
 
 /**
  * Singleton class holding the instance of the C1XCompiler.
- *
- * @author Thomas Wuerthinger, Lukas Stadler
  */
 public final class CompilerImpl implements Compiler, Remote {
 

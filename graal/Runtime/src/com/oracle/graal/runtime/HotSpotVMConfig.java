@@ -26,8 +26,6 @@ import com.sun.cri.ci.*;
 
 /**
  * Used to communicate configuration details, runtime offsets, etc. to c1x upon compileMethod.
- *
- * @author Lukas Stadler
  */
 public final class HotSpotVMConfig extends CompilerObject {
 
