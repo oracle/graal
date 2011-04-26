@@ -1147,7 +1147,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     public XirSnippet genResolveClass(XirSite site, RiType type, Representation rep) {
         assert rep == Representation.ObjectHub || rep == Representation.StaticFields || rep == Representation.JavaClass : "unexpected representation: " + rep;
         if (type.isResolved()) {
-            return new XirSnippet(resolveClassTemplates.get(site), XirArgument.forObject(type));
+            return new XirSnippet(resolveClassTemplates.get(site), XirArgument.forObject(type.getEncoding(rep).asObject()));
         }
         return new XirSnippet(resolveClassTemplates.get(site, UNRESOLVED));
     }
