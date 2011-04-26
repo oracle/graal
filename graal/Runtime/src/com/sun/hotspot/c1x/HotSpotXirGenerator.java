@@ -74,7 +74,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private final RiRegisterConfig registerConfig;
     private final Compiler compiler;
 
-    private CiXirAssembler asm;
+    private CiXirAssembler globalAsm;
 
     public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, RiRegisterConfig registerConfig, Compiler compiler) {
         this.config = config;
@@ -771,7 +771,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     };
 
-    private XirOperand genArrayLength(XirOperand array, boolean implicitNullException) {
+    private XirOperand genArrayLength(CiXirAssembler asm, XirOperand array, boolean implicitNullException) {
         XirOperand length = asm.createTemp("length", CiKind.Int);
         genArrayLength(asm, length, array, implicitNullException);
         return length;
@@ -779,7 +779,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     private void genArrayLength(CiXirAssembler asm, XirOperand length, XirOperand array, boolean implicitNullException) {
         if (implicitNullException) {
-            // asm.nop(1);
+            asm.nop(1);
             asm.mark(MARK_IMPLICIT_NULL);
         }
         asm.pload(CiKind.Int, length, array, asm.i(config.arrayLengthOffset), implicitNullException);
@@ -803,7 +803,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 if (is(GIVEN_LENGTH, flags)) {
                     length = asm.createInputParameter("length", CiKind.Int, true);
                 } else {
-                    length = genArrayLength(array, implicitNullException);
+                    length = genArrayLength(asm, array, implicitNullException);
                 }
                 asm.jugteq(failBoundsCheck, index, length);
                 implicitNullException = false;
@@ -1317,7 +1317,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     @Override
     public List<XirTemplate> buildTemplates(CiXirAssembler asm) {
-        this.asm = asm;
+        this.globalAsm = asm;
         List<XirTemplate> templates = new ArrayList<XirTemplate>();
         return templates;
     }
@@ -1530,7 +1530,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             flags = flags & mask;
             XirTemplate template = templates.get(flags);
             if (template == null) {
-                template = create(HotSpotXirGenerator.this.asm.copy(), flags);
+                template = create(HotSpotXirGenerator.this.globalAsm.copy(), flags);
                 templates.put(flags, template);
             }
             return template;
