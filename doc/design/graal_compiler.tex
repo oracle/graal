@@ -1,0 +1,46 @@
+\documentclass[twocolumn]{svjour3}
+\usepackage[pdftex]{graphicx}
+\usepackage{environ}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc} 
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{color}
+
+\input{graphdrawing}
+
+\renewcommand*\descriptionlabel[1]{\hspace\labelsep\normalfont\bf #1}
+
+\newcommand{\Sa}{{\Large$^*$}}
+\newcommand{\Sb}{{\Large$^\dag$}}
+\newcommand{\Sc}{{\Large$^\S$}}
+
+\smartqed  % flush right qed marks, e.g. at end of proof
+
+\journalname{Graal Compiler Design}
+\def\makeheadbox{{%
+\hbox to0pt{\vbox{\baselineskip=10dd\hrule\hbox
+to\hsize{\vrule\kern3pt\vbox{\kern3pt
+\hbox{\bfseries The Graal Compiler - Design and Strategy}
+\kern3pt}\hfil\kern3pt\vrule}\hrule}%
+\hss}}}
+
+\begin{document}
+
+\author{Thomas Würthinger \Sa, Lukas Stadler \Sc, Gilles Duboscq \Sa}
+\institute{\Sa Oracle, \Sc Johannes Kepler University, Linz}
+
+\date{Created: \today}
+
+\title{The Graal Compiler}
+\subtitle{Design and Strategy \\ \textcolor{red}{work in progress}}
+
+\maketitle
+
+\input{graal_compiler_org}
+\input{graal_compiler_design}
+\input{graal_compiler_aux}
+
+\end{document}

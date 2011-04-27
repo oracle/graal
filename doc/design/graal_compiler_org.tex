@@ -1,0 +1,34 @@
+\abstract{The basic motivation of graal is to show the advantage, both in terms of development effort and runtime speed, a compiler written in Java can deliver to a C++-based virtual machine.
+This document contains information about the proposed structure and design of the Graal Compiler, which is part of the Maxine project.}
+
+\section{Project Source Structure}
+In order to have clear interfaces between the different parts of the compiler, the code will be divided into the following source code projects:
+\begin{description}
+    \item[Graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
+    \item[Nodes] contains the node implementations, ranging from high-level to machine-level nodes.
+    \item[GraphBuilder] contains helpers for building graphs from java bytecodes and other source representations.
+    \item[Assembler] contains the assembler classes that are used to generate the compiled code of methods and stubs.
+    \item[Optimizations] contains all the optimizations, along with different optimization plans.
+    \item[GraalCompiler] contains the compiler, including:
+        \begin{itemize}
+            \item Handling of compilation phases.
+            \item Compilation-related data structures.
+            \item Implementation of the \emph{compiler interface} (CI).
+            \item Register allocation.
+            \item Machine code creation, including debug info.
+            \item Debug output and compilation observation.
+            \item Compiler options management.
+        \end{itemize}
+\end{description}
+
+\section{Initial Steps}
+\begin{itemize}
+    \item Restructuring of the project to include the compiler and the modified HotSpot code within one repository. The CRI project will remain in the Maxine repository, because it will remain mostly unchanged.
+    \item Stripping optimizations from the existing compiler, they will be reimplemented later on using the new infrastructure.
+    \item Creating Node and Graph classes, along with the necessary auxiliary classes.
+    \item Writing documentation on the design of the compiler.
+    \item Use the Node class as the superclass of the existing Value class.
+    \item Identify (and later: remove) extended bytecodes.
+    \item Implement the new frame state concept.
+    \item Remove LIR - in the long run there should only be one IR, which will be continually lowered until only nodes that can be translated into machine code remain.
+\end{itemize}
