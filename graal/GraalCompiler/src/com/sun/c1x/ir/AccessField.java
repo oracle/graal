@@ -24,7 +24,6 @@ package com.sun.c1x.ir;
 
 import java.lang.reflect.*;
 
-import com.sun.c1x.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -36,7 +35,6 @@ public abstract class AccessField extends StateSplit {
 
     private Value object;
     protected final RiField field;
-    private boolean needsPatching;
 
     /**
      * Constructs a new access field object.
@@ -47,17 +45,11 @@ public abstract class AccessField extends StateSplit {
      * @param stateBefore the state before the field access
      * @param isLoaded indicates if the class is loaded
      */
-    public AccessField(CiKind kind, Value object, RiField field, FrameState stateBefore, boolean isLoaded) {
+    public AccessField(CiKind kind, Value object, RiField field, FrameState stateBefore) {
         super(kind, stateBefore);
         this.object = object;
         this.field = field;
-        if (!isLoaded || (C1XOptions.TestPatching && !Modifier.isVolatile(field.accessFlags()))) {
-            // require patching if the field is not loaded (i.e. resolved),
-            // or if patch testing is turned on (but not if the field is volatile)
-            needsPatching = true;
-        }
-        initFlag(Flag.IsLoaded, isLoaded);
-        if (isLoaded && object.isNonNull()) {
+        if (field.isResolved() && object.isNonNull()) {
             eliminateNullCheck();
         }
         assert object != null : "every field access must reference some object";
@@ -93,7 +85,7 @@ public abstract class AccessField extends StateSplit {
      * @return {@code true} if the class is loaded
      */
     public boolean isLoaded() {
-        return checkFlag(Flag.IsLoaded);
+        return field.isResolved();
     }
 
     /**
@@ -112,21 +104,13 @@ public abstract class AccessField extends StateSplit {
     }
 
     /**
-     * Checks whether this field access will require patching.
-     * @return {@code true} if this field access will require patching
-     */
-    public boolean needsPatching() {
-        return needsPatching;
-    }
-
-    /**
      * Checks whether this field access may cause a trap or an exception, which
      * is if it either requires a null check or needs patching.
      * @return {@code true} if this field access can cause a trap
      */
     @Override
     public boolean canTrap() {
-        return needsPatching() || needsNullCheck();
+        return !isLoaded() || needsNullCheck();
     }
 
     @Override

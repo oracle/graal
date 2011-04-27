@@ -46,7 +46,6 @@ public abstract class Value {
 
         NoReadBarrier,      // does not require read barrier
         NoWriteBarrier,     // does not require write barrier
-        IsLoaded,           // field or method is resolved and class is loaded and initialized
         LiveValue,          // live because value is used
         LiveDeopt,          // live for deoptimization
         LiveSideEffect,     // live for possible side-effects only

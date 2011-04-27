@@ -46,8 +46,8 @@ public final class StoreField extends AccessField {
      * @param stateBefore the state before the field access
      * @param isLoaded indicates if the class is loaded
      */
-    public StoreField(Value object, RiField field, Value value, FrameState stateBefore, boolean isLoaded) {
-        super(CiKind.Void, object, field, stateBefore, isLoaded);
+    public StoreField(Value object, RiField field, Value value, FrameState stateBefore) {
+        super(CiKind.Void, object, field, stateBefore);
         this.value = value;
         setFlag(Flag.LiveSideEffect);
         if (value.kind != CiKind.Object) {
