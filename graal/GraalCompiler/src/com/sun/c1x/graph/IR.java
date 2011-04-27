@@ -116,10 +116,6 @@ public class IR {
             new PhiSimplifier(this);
             verifyAndPrint("After phi simplification");
         }
-        if (C1XOptions.OptNullCheckElimination) {
-            new NullCheckEliminator(this);
-            verifyAndPrint("After null check elimination");
-        }
         if (C1XOptions.OptDeadCodeElimination1) {
             new LivenessMarker(this).removeDeadCode();
             verifyAndPrint("After dead code elimination 1");

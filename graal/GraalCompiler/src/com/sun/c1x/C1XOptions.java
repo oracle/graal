@@ -110,7 +110,6 @@ public final class C1XOptions {
     public static boolean OptCEElimination;
     public static boolean OptBlockMerging;
     public static boolean OptBlockSkipping;
-    public static boolean OptNullCheckElimination;
     public static boolean OptIterativeNCE;
     public static boolean OptFlowSensitiveNCE;
     public static boolean OptDeadCodeElimination1;
@@ -183,7 +182,6 @@ public final class C1XOptions {
         PhiLoopStores                   = l;
         OptControlFlow                  = l;
         OptMoveElimination              = l;
-        OptNullCheckElimination         = l;
 
         // Level 2 optimizations
         OptInline                       = ll;
