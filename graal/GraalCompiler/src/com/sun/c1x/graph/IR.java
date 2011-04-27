@@ -132,12 +132,6 @@ public class IR {
             new BlockMerger(this);
             verifyAndPrint("After block merging");
         }
-
-        if (compilation.compiler.extensions != null) {
-            for (C1XCompilerExtension ext : compilation.compiler.extensions) {
-                ext.run(this);
-            }
-        }
     }
 
     private void computeLinearScanOrder() {
