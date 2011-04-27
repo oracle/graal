@@ -32,12 +32,10 @@ import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.graph.ScopeData.ReturnBlock;
 import com.sun.c1x.ir.*;
-import com.sun.c1x.ir.Value.Flag;
 import com.sun.c1x.opt.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
-import com.sun.cri.bytecode.Bytecodes.JniOp;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.ri.RiType.Representation;
@@ -121,9 +119,8 @@ public final class GraphBuilder {
         BlockBegin startBlock = ir.startBlock;
 
         // 2. compute the block map and get the entrypoint(s)
-        BlockMap blockMap = compilation.getBlockMap(scope.method, compilation.osrBCI);
+        BlockMap blockMap = compilation.getBlockMap(scope.method);
         BlockBegin stdEntry = blockMap.get(0);
-        BlockBegin osrEntry = compilation.osrBCI < 0 ? null : blockMap.get(compilation.osrBCI);
         pushRootScope(scope, blockMap, startBlock);
         MutableFrameState initialState = stateAtEntry(rootMethod);
         startBlock.mergeOrClone(initialState);
@@ -140,7 +137,7 @@ public final class GraphBuilder {
             rootMethodSynchronizedObject = synchronizedObject(initialState, compilation.method);
             genMonitorEnter(rootMethodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
             // 4A.2 finish the start block
-            finishStartBlock(startBlock, stdEntry, osrEntry);
+            finishStartBlock(startBlock, stdEntry);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber());
@@ -153,7 +150,7 @@ public final class GraphBuilder {
             scopeData.addExceptionHandler(h);
         } else {
             // 4B.1 simply finish the start block
-            finishStartBlock(startBlock, stdEntry, osrEntry);
+            finishStartBlock(startBlock, stdEntry);
         }
 
         // 5.
@@ -161,7 +158,7 @@ public final class GraphBuilder {
         if (intrinsic != null) {
             lastInstr = stdEntry;
             // 6A.1 the root method is an intrinsic; load the parameters onto the stack and try to inline it
-            if (C1XOptions.OptIntrinsify && osrEntry == null) {
+            if (C1XOptions.OptIntrinsify) {
                 // try to inline an Intrinsic node
                 boolean isStatic = Modifier.isStatic(rootMethod.accessFlags());
                 int argsSize = rootMethod.signature().argumentSlots(!isStatic);
@@ -191,50 +188,20 @@ public final class GraphBuilder {
                 iterateAllBlocks();
             }
         } else {
-            RiType accessor = openAccessorScope(rootMethod);
-
             // 6B.1 do the normal parsing
             scopeData.addToWorkList(stdEntry);
             iterateAllBlocks();
-
-            closeAccessorScope(accessor);
         }
 
         if (syncHandler != null && syncHandler.stateBefore() != null) {
             // generate unlocking code if the exception handler is reachable
             fillSyncHandler(rootMethodSynchronizedObject, syncHandler, false);
         }
-
-        if (compilation.osrBCI >= 0) {
-            BlockBegin osrBlock = blockMap.get(compilation.osrBCI);
-            assert osrBlock.wasVisited();
-            if (!osrBlock.stateBefore().stackEmpty()) {
-                throw new CiBailout("cannot OSR with non-empty stack");
-            }
-        }
     }
 
-    private void closeAccessorScope(RiType accessor) {
-        if (accessor != null) {
-            boundAccessor.set(null);
-        }
-    }
-
-    private RiType openAccessorScope(RiMethod rootMethod) {
-        RiType accessor = rootMethod.accessor();
-        if (accessor != null) {
-            assert boundAccessor.get() == null;
-            boundAccessor.set(accessor);
-
-            // What looks like an object receiver in the bytecode may not be a word value
-            compilation.setNotTypesafe();
-        }
-        return accessor;
-    }
-
-    private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry, BlockBegin osrEntry) {
+    private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
         assert curBlock == startBlock;
-        Base base = new Base(stdEntry, osrEntry);
+        Base base = new Base(stdEntry);
         appendWithoutOptimization(base, 0);
         FrameState stateAfter = curState.immutableCopy(bci());
         base.setStateAfter(stateAfter);
@@ -682,12 +649,6 @@ public final class GraphBuilder {
         }
     }
 
-    void genUnsignedCompareOp(CiKind kind, int opcode, int op) {
-        Value y = pop(kind);
-        Value x = pop(kind);
-        ipush(append(new UnsignedCompareOp(opcode, op, x, y)));
-    }
-
     void genConvert(int opcode, CiKind from, CiKind to) {
         CiKind tt = to.stackKind();
         push(tt, append(new Convert(opcode, pop(from.stackKind()), tt)));
@@ -739,25 +700,6 @@ public final class GraphBuilder {
         FrameState stateBefore = curState.immutableCopy(bci());
         Throw t = new Throw(apop(), stateBefore, !scopeData.noSafepoints());
         appendWithoutOptimization(t, bci);
-    }
-
-    void genUnsafeCast(RiMethod method) {
-        compilation.setNotTypesafe();
-        RiSignature signature = method.signature();
-        int argCount = signature.argumentCount(false);
-        RiType accessingClass = scope().method.holder();
-        RiType fromType;
-        RiType toType = signature.returnType(accessingClass);
-        if (argCount == 1) {
-            fromType = signature.argumentTypeAt(0, accessingClass);
-        } else {
-            assert argCount == 0 : "method with @UNSAFE_CAST must have exactly 1 argument";
-            fromType = method.holder();
-        }
-        CiKind from = fromType.kind();
-        CiKind to = toType.kind();
-        boolean redundant = compilation.archKindsEqual(to, from);
-        curState.push(to, append(new UnsafeCast(toType, curState.pop(from), redundant)));
     }
 
     void genCheckCast() {
@@ -906,33 +848,7 @@ public final class GraphBuilder {
         push(kind.stackKind(), optimized);
     }
 
-    /**
-     * Temporary work-around to support the @ACCESSOR Maxine annotation.
-     */
-    private RiMethod handleInvokeAccessorOrBuiltin(RiMethod target) {
-        target = bindAccessorMethod(target);
-        if (target.intrinsic() != 0) {
-            int intrinsic = target.intrinsic();
-            int opcode = intrinsic & 0xff;
-            switch (opcode) {
-                case PREAD          : genLoadPointer(intrinsic); break;
-                case PGET           : genLoadPointer(intrinsic); break;
-                case PWRITE         : genStorePointer(intrinsic); break;
-                case PSET           : genStorePointer(intrinsic); break;
-                case PCMPSWP        : genCompareAndSwap(intrinsic); break;
-                default:
-                    throw new CiBailout("unknown bytecode " + opcode + " (" + nameOf(opcode) + ")");
-            }
-            return null;
-        }
-        return target;
-    }
-
     void genInvokeStatic(RiMethod target, int cpi, RiConstantPool constantPool) {
-        target = handleInvokeAccessorOrBuiltin(target);
-        if (target == null) {
-            return;
-        }
         RiType holder = target.holder();
         boolean isInitialized = !C1XOptions.TestPatching && target.isResolved() && holder.isInitialized();
         if (!isInitialized && C1XOptions.ResolveClassBeforeStaticInvoke) {
@@ -951,10 +867,6 @@ public final class GraphBuilder {
     }
 
     void genInvokeInterface(RiMethod target, int cpi, RiConstantPool constantPool) {
-        target = handleInvokeAccessorOrBuiltin(target);
-        if (target == null) {
-            return;
-        }
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
         if (!tryRemoveCall(target, args, false)) {
             genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool);
@@ -962,10 +874,6 @@ public final class GraphBuilder {
     }
 
     void genInvokeVirtual(RiMethod target, int cpi, RiConstantPool constantPool) {
-        target = handleInvokeAccessorOrBuiltin(target);
-        if (target == null) {
-            return;
-        }
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
         if (!tryRemoveCall(target, args, false)) {
             genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool);
@@ -973,10 +881,6 @@ public final class GraphBuilder {
     }
 
     void genInvokeSpecial(RiMethod target, RiType knownHolder, int cpi, RiConstantPool constantPool) {
-        target = handleInvokeAccessorOrBuiltin(target);
-        if (target == null) {
-            return;
-        }
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
         if (!tryRemoveCall(target, args, false)) {
             invokeDirect(target, args, knownHolder, cpi, constantPool);
@@ -1013,26 +917,6 @@ public final class GraphBuilder {
             target = newTarget;
         }
         return target;
-    }
-
-    /**
-     * Temporary work-around to support the @ACCESSOR Maxine annotation.
-     */
-    private boolean inlineWithBoundAccessor(RiMethod target, Value[] args, boolean forcedInline) {
-        RiType accessor = target.accessor();
-        if (accessor != null) {
-            assert boundAccessor.get() == null;
-            boundAccessor.set(accessor);
-            try {
-                // What looks like an object receiver in the bytecode may not be a word value
-                compilation.setNotTypesafe();
-                inline(target, args, forcedInline);
-            } finally {
-                boundAccessor.set(null);
-            }
-            return true;
-        }
-        return false;
     }
 
     private void genInvokeIndirect(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
@@ -1542,7 +1426,7 @@ public final class GraphBuilder {
     void pushScope(RiMethod target, BlockBegin continuation) {
         // prepare callee scope
         IRScope calleeScope = new IRScope(scope(), curState.immutableCopy(bci()), target, -1);
-        BlockMap blockMap = compilation.getBlockMap(calleeScope.method, -1);
+        BlockMap blockMap = compilation.getBlockMap(calleeScope.method);
         calleeScope.setStoresInLoops(blockMap.getStoresInLoops());
         // prepare callee state
         curState = curState.pushScope(calleeScope);
@@ -1785,9 +1669,8 @@ public final class GraphBuilder {
                     log.println("|");
                 }
             }
-            if (!inlineWithBoundAccessor(target, args, forcedInline)) {
-                inline(target, args, forcedInline);
-            }
+
+            inline(target, args, forcedInline);
 
             if (C1XOptions.TraceBytecodeParserLevel > 0) {
                 if (C1XOptions.TraceBytecodeParserLevel < TRACELEVEL_STATE) {
@@ -2049,12 +1932,6 @@ public final class GraphBuilder {
         BlockBegin b;
         while ((b = scopeData.removeFromWorkList()) != null) {
             if (!b.wasVisited()) {
-                if (b.isOsrEntry()) {
-                    // this is the OSR entry block, set up edges accordingly
-                    setupOsrEntryBlock();
-                    // this is no longer the OSR entry block
-                    b.setOsrEntry(false);
-                }
                 b.setWasVisited(true);
                 // now parse the block
                 killMemoryMap();
@@ -2076,64 +1953,6 @@ public final class GraphBuilder {
 
     private void popScopeForJsr() {
         scopeData = scopeData.parent;
-    }
-
-    private void setupOsrEntryBlock() {
-        assert compilation.isOsrCompilation();
-
-        int osrBCI = compilation.osrBCI;
-        BytecodeStream s = scopeData.stream;
-        RiOsrFrame frame = compilation.getOsrFrame();
-        s.setBCI(osrBCI);
-        s.next(); // XXX: why go to next bytecode?
-
-        // create a new block to contain the OSR setup code
-        ir.osrEntryBlock = new BlockBegin(osrBCI, ir.nextBlockNumber());
-        ir.osrEntryBlock.setOsrEntry(true);
-        ir.osrEntryBlock.setDepthFirstNumber(0);
-
-        // get the target block of the OSR
-        BlockBegin target = scopeData.blockAt(osrBCI);
-        assert target != null && target.isOsrEntry();
-
-        MutableFrameState state = target.stateBefore().copy();
-        ir.osrEntryBlock.setStateBefore(state);
-
-        killMemoryMap();
-        curBlock = ir.osrEntryBlock;
-        curState = state.copy();
-        lastInstr = ir.osrEntryBlock;
-
-        // create the entry instruction which represents the OSR state buffer
-        // input from interpreter / JIT
-        Instruction e = new OsrEntry();
-        e.setFlag(Value.Flag.NonNull, true);
-
-        for (int i = 0; i < state.localsSize(); i++) {
-            Value local = state.localAt(i);
-            Value get;
-            int offset = frame.getLocalOffset(i);
-            if (local != null) {
-                // this is a live local according to compiler
-                if (local.kind.isObject() && !frame.isLiveObject(i)) {
-                    // the compiler thinks this is live, but not the interpreter
-                    // pretend that it passed null
-                    get = appendConstant(CiConstant.NULL_OBJECT);
-                } else {
-                    Value oc = appendConstant(CiConstant.forInt(offset));
-                    get = append(new UnsafeGetRaw(local.kind, e, oc, 0, true));
-                }
-                state.storeLocal(i, get);
-            }
-        }
-
-        assert state.callerState() == null;
-        state.clearLocals();
-        // ATTN: assumption: state is not used further below, else add .immutableCopy()
-        Goto g = new Goto(target, state, false);
-        append(g);
-        ir.osrEntryBlock.setEnd(g);
-        target.mergeOrClone(ir.osrEntryBlock.end().stateAfter());
     }
 
     private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
@@ -2167,11 +1986,6 @@ public final class GraphBuilder {
             }
             // read the opcode
             int opcode = s.currentBC();
-
-            // check for active JSR during OSR compilation
-            if (compilation.isOsrCompilation() && scope().isTopScope() && scopeData.parsingJsr() && s.currentBCI() == compilation.osrBCI) {
-                throw new CiBailout("OSR not supported while a JSR is active");
-            }
 
             // push an exception object onto the stack if we are parsing an exception handler
             if (pushException) {
@@ -2443,69 +2257,6 @@ public final class GraphBuilder {
             case IFNONNULL      : genIfNull(Condition.NE); break;
             case GOTO_W         : genGoto(s.currentBCI(), s.readFarBranchDest()); break;
             case JSR_W          : genJsr(s.readFarBranchDest()); break;
-            default:
-                processExtendedBytecode(bci, s, opcode);
-        }
-        // Checkstyle: resume
-    }
-
-    private void processExtendedBytecode(int bci, BytecodeStream s, int opcode) {
-        // Checkstyle: stop
-        switch (opcode) {
-            case UNSAFE_CAST    : genUnsafeCast(constantPool().lookupMethod(s.readCPI(), (byte)Bytecodes.UNSAFE_CAST)); break;
-            case WLOAD          : loadLocal(s.readLocalIndex(), CiKind.Word); break;
-            case WLOAD_0        : loadLocal(0, CiKind.Word); break;
-            case WLOAD_1        : loadLocal(1, CiKind.Word); break;
-            case WLOAD_2        : loadLocal(2, CiKind.Word); break;
-            case WLOAD_3        : loadLocal(3, CiKind.Word); break;
-
-            case WSTORE         : storeLocal(CiKind.Word, s.readLocalIndex()); break;
-            case WSTORE_0       : // fall through
-            case WSTORE_1       : // fall through
-            case WSTORE_2       : // fall through
-            case WSTORE_3       : storeLocal(CiKind.Word, opcode - WSTORE_0); break;
-
-            case WCONST_0       : wpush(appendConstant(CiConstant.ZERO)); break;
-            case WDIV           : // fall through
-            case WREM           : genArithmeticOp(CiKind.Word, opcode, curState.immutableCopy(bci())); break;
-            case WDIVI          : genArithmeticOp(CiKind.Word, opcode, CiKind.Word, CiKind.Int, curState.immutableCopy(bci())); break;
-            case WREMI          : genArithmeticOp(CiKind.Int, opcode, CiKind.Word, CiKind.Int, curState.immutableCopy(bci())); break;
-
-            case READREG        : genLoadRegister(s.readCPI()); break;
-            case WRITEREG       : genStoreRegister(s.readCPI()); break;
-            case INCREG         : genIncRegister(s.readCPI()); break;
-
-            case PREAD          : genLoadPointer(PREAD      | (s.readCPI() << 8)); break;
-            case PGET           : genLoadPointer(PGET       | (s.readCPI() << 8)); break;
-            case PWRITE         : genStorePointer(PWRITE    | (s.readCPI() << 8)); break;
-            case PSET           : genStorePointer(PSET      | (s.readCPI() << 8)); break;
-            case PCMPSWP        : genCompareAndSwap(PCMPSWP | (s.readCPI() << 8)); break;
-            case MEMBAR         : genMemoryBarrier(s.readCPI()); break;
-
-            case WRETURN        : genReturn(wpop()); break;
-            case INFOPOINT      : genInfopoint(INFOPOINT | (s.readUByte(bci() + 1) << 16), s.readUByte(bci() + 2) != 0); break;
-            case JNICALL        : genNativeCall(s.readCPI()); break;
-            case JNIOP          : genJniOp(s.readCPI()); break;
-            case ALLOCA         : genStackAllocate(); break;
-
-            case MOV_I2F        : genConvert(opcode, CiKind.Int, CiKind.Float ); break;
-            case MOV_F2I        : genConvert(opcode, CiKind.Float, CiKind.Int ); break;
-            case MOV_L2D        : genConvert(opcode, CiKind.Long, CiKind.Double ); break;
-            case MOV_D2L        : genConvert(opcode, CiKind.Double, CiKind.Long ); break;
-
-            case UCMP           : genUnsignedCompareOp(CiKind.Int, opcode, s.readCPI()); break;
-            case UWCMP          : genUnsignedCompareOp(CiKind.Word, opcode, s.readCPI()); break;
-
-            case STACKHANDLE    : genStackHandle(s.readCPI() == 0); break;
-            case BREAKPOINT_TRAP: genBreakpointTrap(); break;
-            case PAUSE          : genPause(); break;
-            case LSB            : // fall through
-            case MSB            : genSignificantBit(opcode);break;
-
-            case TEMPLATE_CALL  : genTemplateCall(constantPool().lookupMethod(s.readCPI(), (byte)Bytecodes.TEMPLATE_CALL)); break;
-            case ICMP           : genCompareOp(CiKind.Int, opcode, CiKind.Void); break;
-            case WCMP           : genCompareOp(CiKind.Word, opcode, CiKind.Void); break;
-
             case BREAKPOINT:
                 throw new CiBailout("concurrent setting of breakpoint");
             default:
@@ -2528,315 +2279,6 @@ public final class GraphBuilder {
                 sb.append(' ').append(s.readUByte(i));
             }
             log.println(sb.toString());
-        }
-    }
-
-    private void genPause() {
-        append(new Pause());
-    }
-
-    private void genBreakpointTrap() {
-        append(new BreakpointTrap());
-    }
-
-    private void genStackHandle(boolean isCategory1) {
-        Value value = curState.xpop();
-        wpush(append(new StackHandle(value)));
-    }
-
-    private void genStackAllocate() {
-        Value size = pop(CiKind.Int);
-        wpush(append(new StackAllocate(size)));
-    }
-
-    private void genSignificantBit(int opcode) {
-        Value value = pop(CiKind.Word);
-        push(CiKind.Int, append(new SignificantBitOp(value, opcode)));
-    }
-
-    private void appendSnippetCall(RiSnippetCall snippetCall) {
-        Value[] args = new Value[snippetCall.arguments.length];
-        RiMethod snippet = snippetCall.snippet;
-        RiSignature signature = snippet.signature();
-        assert signature.argumentCount(!isStatic(snippet.accessFlags())) == args.length;
-        for (int i = args.length - 1; i >= 0; --i) {
-            CiKind argKind = signature.argumentKindAt(i);
-            if (snippetCall.arguments[i] == null) {
-                args[i] = pop(argKind);
-            } else {
-                args[i] = append(new Constant(snippetCall.arguments[i]));
-            }
-        }
-
-        if (!tryRemoveCall(snippet, args, true)) {
-            if (!tryInline(snippet, args)) {
-                appendInvoke(snippetCall.opcode, snippet, args, true, (char) 0, constantPool());
-            }
-        }
-    }
-
-    private void genJniOp(int operand) {
-        RiSnippets snippets = compilation.runtime.getSnippets();
-        switch (operand) {
-            case JniOp.LINK: {
-                RiMethod nativeMethod = scope().method;
-                RiSnippetCall linkSnippet = snippets.link(nativeMethod);
-                if (linkSnippet.result != null) {
-                    wpush(appendConstant(linkSnippet.result));
-                } else {
-                    appendSnippetCall(linkSnippet);
-                }
-                break;
-            }
-            case JniOp.J2N: {
-                RiMethod nativeMethod = scope().method;
-                appendSnippetCall(snippets.enterNative(nativeMethod));
-                break;
-            }
-            case JniOp.N2J: {
-                RiMethod nativeMethod = scope().method;
-                appendSnippetCall(snippets.enterVM(nativeMethod));
-                break;
-            }
-        }
-    }
-
-    private void genNativeCall(int cpi) {
-        Value nativeFunctionAddress = wpop();
-        RiSignature sig = constantPool().lookupSignature(cpi);
-        Value[] args = curState.popArguments(sig.argumentSlots(false));
-
-        RiMethod nativeMethod = scope().method;
-        CiKind returnKind = sig.returnKind();
-        pushReturn(returnKind, append(new NativeCall(nativeMethod, sig, nativeFunctionAddress, args, null)));
-
-        // Sign extend or zero the upper bits of a return value smaller than an int to
-        // preserve the invariant that all such values are represented by an int
-        // in the VM. We cannot rely on the native C compiler doing this for us.
-        switch (sig.returnKind()) {
-            case Boolean:
-            case Byte: {
-                genConvert(I2B, CiKind.Int, CiKind.Byte);
-                break;
-            }
-            case Short: {
-                genConvert(I2S, CiKind.Int, CiKind.Short);
-                break;
-            }
-            case Char: {
-                genConvert(I2C, CiKind.Int, CiKind.Char);
-                break;
-            }
-        }
-    }
-
-    void genTemplateCall(RiMethod method) {
-        RiSignature sig = method.signature();
-        Value[] args = curState.popArguments(sig.argumentSlots(false));
-        assert args.length <= 2;
-        CiKind returnKind = sig.returnKind();
-        Value address = null;
-        Value receiver = null;
-        if (args.length == 1) {
-            address = args[0];
-            assert address.kind.isWord();
-        } else if (args.length == 2) {
-            address = args[0];
-            assert address.kind.isWord();
-            receiver = args[1];
-            assert receiver.kind.isObject();
-        }
-        pushReturn(returnKind, append(new TemplateCall(returnKind, address, receiver)));
-    }
-
-    private void genInfopoint(int opcode, boolean inclFrame) {
-        // TODO: create slimmer frame state if inclFrame is false
-        FrameState state = curState.immutableCopy(bci());
-        assert opcode != SAFEPOINT || !scopeData.noSafepoints() : "cannot place explicit safepoint in uninterruptible code scope";
-        Value result = append(new Infopoint(opcode, state));
-        if (!result.kind.isVoid()) {
-            push(result.kind, result);
-        }
-    }
-
-    private void genLoadRegister(int registerId) {
-        CiRegister register = compilation.registerConfig.getRegisterForRole(registerId);
-        if (register == null) {
-            throw new CiBailout("Unsupported READREG operand " + registerId);
-        }
-        LoadRegister load = new LoadRegister(CiKind.Word, register);
-        RiRegisterAttributes regAttr = compilation.registerConfig.getAttributesMap()[register.number];
-        if (regAttr.isNonZero) {
-            load.setFlag(Flag.NonNull);
-        }
-        wpush(append(load));
-    }
-
-    private void genStoreRegister(int registerId) {
-        CiRegister register = compilation.registerConfig.getRegisterForRole(registerId);
-        if (register == null) {
-            throw new CiBailout("Unsupported WRITEREG operand " + registerId);
-        }
-        Value value = pop(CiKind.Word);
-        append(new StoreRegister(CiKind.Word, register, value));
-    }
-
-    private void genIncRegister(int registerId) {
-        CiRegister register = compilation.registerConfig.getRegisterForRole(registerId);
-        if (register == null) {
-            throw new CiBailout("Unsupported INCREG operand " + registerId);
-        }
-        Value value = pop(CiKind.Int);
-        append(new IncrementRegister(register, value));
-    }
-
-    /**
-     * Gets the data kind corresponding to a given pointer operation opcode.
-     * The data kind may be more specific than a {@linkplain CiKind#stackKind()}.
-     *
-     * @return the kind of value at the address accessed by the pointer operation denoted by {@code opcode}
-     */
-    private static CiKind dataKindForPointerOp(int opcode) {
-        switch (opcode) {
-            case PGET_BYTE          :
-            case PSET_BYTE          :
-            case PREAD_BYTE         :
-            case PREAD_BYTE_I       :
-            case PWRITE_BYTE        :
-            case PWRITE_BYTE_I      : return CiKind.Byte;
-            case PGET_CHAR          :
-            case PREAD_CHAR         :
-            case PREAD_CHAR_I       : return CiKind.Char;
-            case PGET_SHORT         :
-            case PSET_SHORT         :
-            case PREAD_SHORT        :
-            case PREAD_SHORT_I      :
-            case PWRITE_SHORT       :
-            case PWRITE_SHORT_I     : return CiKind.Short;
-            case PGET_INT           :
-            case PSET_INT           :
-            case PREAD_INT          :
-            case PREAD_INT_I        :
-            case PWRITE_INT         :
-            case PWRITE_INT_I       : return CiKind.Int;
-            case PGET_FLOAT         :
-            case PSET_FLOAT         :
-            case PREAD_FLOAT        :
-            case PREAD_FLOAT_I      :
-            case PWRITE_FLOAT       :
-            case PWRITE_FLOAT_I     : return CiKind.Float;
-            case PGET_LONG          :
-            case PSET_LONG          :
-            case PREAD_LONG         :
-            case PREAD_LONG_I       :
-            case PWRITE_LONG        :
-            case PWRITE_LONG_I      : return CiKind.Long;
-            case PGET_DOUBLE        :
-            case PSET_DOUBLE        :
-            case PREAD_DOUBLE       :
-            case PREAD_DOUBLE_I     :
-            case PWRITE_DOUBLE      :
-            case PWRITE_DOUBLE_I    : return CiKind.Double;
-            case PGET_WORD          :
-            case PSET_WORD          :
-            case PREAD_WORD         :
-            case PREAD_WORD_I       :
-            case PWRITE_WORD        :
-            case PWRITE_WORD_I      : return CiKind.Word;
-            case PGET_REFERENCE     :
-            case PSET_REFERENCE     :
-            case PREAD_REFERENCE    :
-            case PREAD_REFERENCE_I  :
-            case PWRITE_REFERENCE   :
-            case PWRITE_REFERENCE_I : return CiKind.Object;
-            default:
-                throw new CiBailout("Unsupported pointer operation opcode " + opcode + "(" + nameOf(opcode) + ")");
-        }
-    }
-
-    /**
-     * Pops the value producing the scaled-index or the byte offset for a pointer operation.
-     * If compiling for a 64-bit platform and the value is an {@link CiKind#Int} parameter,
-     * then a conversion is inserted to sign extend the int to a word.
-     *
-     * This is required as the value is used as a 64-bit value and so the high 32 bits
-     * need to be correct.
-     *
-     * @param isInt specifies if the value is an {@code int}
-     */
-    private Value popOffsetOrIndexForPointerOp(boolean isInt) {
-        if (isInt) {
-            Value offsetOrIndex = ipop();
-            if (compilation.target.arch.is64bit() && offsetOrIndex instanceof Local) {
-                return append(new Convert(I2L, offsetOrIndex, CiKind.Word));
-            }
-            return offsetOrIndex;
-        }
-        return wpop();
-    }
-
-    private void genLoadPointer(int opcode) {
-        FrameState stateBefore = curState.immutableCopy(bci());
-        CiKind dataKind = dataKindForPointerOp(opcode);
-        Value offsetOrIndex;
-        Value displacement;
-        if ((opcode & 0xff) == PREAD) {
-            offsetOrIndex = popOffsetOrIndexForPointerOp(opcode >= PREAD_BYTE_I && opcode <= PREAD_REFERENCE_I);
-            displacement = null;
-        } else {
-            offsetOrIndex = popOffsetOrIndexForPointerOp(true);
-            displacement = ipop();
-        }
-        Value pointer = wpop();
-        push(dataKind.stackKind(), append(new LoadPointer(dataKind, opcode, pointer, displacement, offsetOrIndex, stateBefore, false)));
-    }
-
-    private void genStorePointer(int opcode) {
-        FrameState stateBefore = curState.immutableCopy(bci());
-        CiKind dataKind = dataKindForPointerOp(opcode);
-        Value value = pop(dataKind.stackKind());
-        Value offsetOrIndex;
-        Value displacement;
-        if ((opcode & 0xff) == PWRITE) {
-            offsetOrIndex = popOffsetOrIndexForPointerOp(opcode >= PWRITE_BYTE_I && opcode <= PWRITE_REFERENCE_I);
-            displacement = null;
-        } else {
-            offsetOrIndex = popOffsetOrIndexForPointerOp(true);
-            displacement = ipop();
-        }
-        Value pointer = wpop();
-        append(new StorePointer(opcode, dataKind, pointer, displacement, offsetOrIndex, value, stateBefore, false));
-    }
-
-    private static CiKind kindForCompareAndSwap(int opcode) {
-        switch (opcode) {
-            case PCMPSWP_INT        :
-            case PCMPSWP_INT_I      : return CiKind.Int;
-            case PCMPSWP_WORD       :
-            case PCMPSWP_WORD_I     : return CiKind.Word;
-            case PCMPSWP_REFERENCE  :
-            case PCMPSWP_REFERENCE_I: return CiKind.Object;
-            default:
-                throw new CiBailout("Unsupported compare-and-swap opcode " + opcode + "(" + nameOf(opcode) + ")");
-        }
-    }
-
-    private void genCompareAndSwap(int opcode) {
-        FrameState stateBefore = curState.immutableCopy(bci());
-        CiKind kind = kindForCompareAndSwap(opcode);
-        Value newValue = pop(kind);
-        Value expectedValue = pop(kind);
-        Value offset;
-        offset = popOffsetOrIndexForPointerOp(opcode >= PCMPSWP_INT_I && opcode <= PCMPSWP_REFERENCE_I);
-        Value pointer = wpop();
-        push(kind, append(new CompareAndSwap(opcode, pointer, offset, expectedValue, newValue, stateBefore, false)));
-    }
-
-
-    private void genMemoryBarrier(int barriers) {
-        int explicitMemoryBarriers = barriers & ~compilation.target.arch.implicitMemoryBarriers;
-        if (explicitMemoryBarriers != 0) {
-            append(new MemoryBarrier(explicitMemoryBarriers));
         }
     }
 

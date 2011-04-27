@@ -422,9 +422,6 @@ public final class LIRList {
         if (x.checkBlockFlag(BlockBegin.BlockFlag.StandardEntry)) {
             TTY.print("std ");
         }
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.OsrEntry)) {
-            TTY.print("osr ");
-        }
         if (x.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
             TTY.print("ex ");
         }

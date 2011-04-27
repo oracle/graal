@@ -34,7 +34,6 @@ import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.value.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -54,7 +53,6 @@ public final class C1XCompilation {
     public final RiMethod method;
     public final RiRegisterConfig registerConfig;
     public final CiStatistics stats;
-    public final int osrBCI;
     public final CiAssumptions assumptions = new CiAssumptions();
     public final FrameState placeholderState;
 
@@ -85,13 +83,15 @@ public final class C1XCompilation {
      * @param stats externally supplied statistics object to be used if not {@code null}
      */
     public C1XCompilation(C1XCompiler compiler, RiMethod method, int osrBCI, CiStatistics stats) {
+        if (osrBCI != -1) {
+            throw new CiBailout("No OSR supported");
+        }
         this.parent = currentCompilation.get();
         currentCompilation.set(this);
         this.compiler = compiler;
         this.target = compiler.target;
         this.runtime = compiler.runtime;
         this.method = method;
-        this.osrBCI = osrBCI;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
         this.placeholderState = method != null && method.minimalDebugInfo() ? new MutableFrameState(new IRScope(null, null, method, -1), 0, 0, 0) : null;
@@ -117,23 +117,6 @@ public final class C1XCompilation {
     }
 
     /**
-     * Records that this compilation encountered an instruction (e.g. {@link Bytecodes#UNSAFE_CAST})
-     * that breaks the type safety invariant of the input bytecode.
-     */
-    public void setNotTypesafe() {
-        typesafe = false;
-    }
-
-    /**
-     * Checks whether this compilation is for an on-stack replacement.
-     *
-     * @return {@code true} if this compilation is for an on-stack replacement
-     */
-    public boolean isOsrCompilation() {
-        return osrBCI >= 0;
-    }
-
-    /**
      * Translates a given kind to a canonical architecture kind.
      * This is an identity function for all but {@link CiKind#Word}
      * which is translated to {@link CiKind#Int} or {@link CiKind#Long}
@@ -155,15 +138,6 @@ public final class C1XCompilation {
     }
 
     /**
-     * Gets the frame which describes the layout of the OSR interpreter frame for this method.
-     *
-     * @return the OSR frame
-     */
-    public RiOsrFrame getOsrFrame() {
-        return runtime.getOsrFrame(method, osrBCI);
-    }
-
-    /**
      * Records an assumption that the specified type has no finalizable subclasses.
      *
      * @param receiverType the type that is assumed to have no finalizable subclasses
@@ -180,9 +154,6 @@ public final class C1XCompilation {
      */
     @Override
     public String toString() {
-        if (isOsrCompilation()) {
-            return "osr-compile @ " + osrBCI + ": " + method;
-        }
         return "compile: " + method;
     }
 
@@ -193,15 +164,10 @@ public final class C1XCompilation {
      * @param osrBCI the OSR bytecode index; {@code -1} if this is not an OSR
      * @return the block map for the specified method
      */
-    public BlockMap getBlockMap(RiMethod method, int osrBCI) {
+    public BlockMap getBlockMap(RiMethod method) {
         // PERF: cache the block map for methods that are compiled or inlined often
         BlockMap map = new BlockMap(method, hir.numberOfBlocks());
-        boolean isOsrCompilation = false;
-        if (osrBCI >= 0) {
-            map.addEntrypoint(osrBCI, BlockBegin.BlockFlag.OsrEntry);
-            isOsrCompilation = true;
-        }
-        if (!map.build(!isOsrCompilation && C1XOptions.PhiLoopStores)) {
+        if (!map.build(C1XOptions.PhiLoopStores)) {
             throw new CiBailout("build of BlockMap failed for " + method);
         } else {
             if (compiler.isObserved()) {
@@ -234,14 +200,6 @@ public final class C1XCompilation {
 
     public boolean hasExceptionHandlers() {
         return hasExceptionHandlers;
-    }
-
-    /**
-     * Determines if this compilation has encountered any instructions (e.g. {@link Bytecodes#UNSAFE_CAST})
-     * that break the type safety invariant of the input bytecode.
-     */
-    public boolean isTypesafe() {
-        return typesafe;
     }
 
     public CiResult compile() {

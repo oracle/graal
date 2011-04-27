@@ -39,7 +39,6 @@ import com.sun.c1x.globalstub.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.ir.Value.Flag;
-import com.sun.c1x.lir.FrameMap.StackBlock;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.opt.*;
 import com.sun.c1x.util.*;
@@ -48,7 +47,6 @@ import com.sun.c1x.value.FrameState.PhiProcedure;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.bytecode.Bytecodes.MemoryBarriers;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiAddress.Scale;
 import com.sun.cri.ri.*;
 import com.sun.cri.xir.CiXirAssembler.XirConstant;
 import com.sun.cri.xir.CiXirAssembler.XirInstruction;
@@ -618,22 +616,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitNativeCall(NativeCall x) {
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
-        CiValue resultOperand = resultOperandFor(x.kind);
-        CiValue callAddress = load(x.address());
-        CiKind[] signature = Util.signatureToKinds(x.signature, null);
-        CiCallingConvention cc = compilation.frameMap().getCallingConvention(signature, NativeCall);
-        List<CiValue> argList = visitInvokeArguments(cc, x.arguments, null);
-        argList.add(callAddress);
-        lir.callNative(x.nativeMethod.jniSymbol(), resultOperand, argList, info, null);
-        if (resultOperand.isLegal()) {
-            CiValue result = createResultVariable(x);
-            lir.move(resultOperand, result);
-        }
-    }
-
-    @Override
     public void visitTemplateCall(TemplateCall x) {
         CiValue resultOperand = resultOperandFor(x.kind);
         List<CiValue> argList;
@@ -656,140 +638,9 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitLoadRegister(LoadRegister x) {
-        x.setOperand(x.register.asValue(x.kind));
-    }
-
-    @Override
-    public void visitPause(Pause i) {
-        lir.pause();
-    }
-
-    @Override
-    public void visitBreakpointTrap(BreakpointTrap i) {
-        lir.breakpoint();
-    }
-
-    protected CiAddress getAddressForPointerOp(PointerOp x, CiKind kind, CiValue pointer) {
-        CiAddress addr;
-        Value offset = x.offset();
-        Value index = x.index();
-        if (x.displacement() == null) {
-            // address is [pointer + offset]
-            if (offset.isConstant() && offset.kind.isInt()) {
-                int displacement = x.offset().asConstant().asInt();
-                addr = new CiAddress(kind, pointer, displacement);
-            } else {
-                addr = new CiAddress(kind, pointer, load(offset));
-            }
-        } else {
-            // address is [pointer + disp + (index * scale)]
-            assert (x.opcode & 0xff) == PGET || (x.opcode & 0xff) == PSET;
-            if (!x.displacement().isConstant()) {
-                CiVariable tmp = newVariable(CiKind.Word);
-                arithmeticOpLong(Bytecodes.LADD, tmp, pointer, load(x.displacement()), null);
-                int kindSize = compilation.target.sizeInBytes(kind);
-                Scale scale = Scale.fromInt(kindSize);
-                if (index.isConstant()) {
-                    addr = new CiAddress(kind, tmp, index.asConstant().asInt() * kindSize);
-                } else {
-                    addr = new CiAddress(kind, tmp, load(index), scale, 0);
-                }
-            } else {
-                int displacement = x.displacement().asConstant().asInt();
-                int kindSize = compilation.target.sizeInBytes(kind);
-                Scale scale = Scale.fromInt(kindSize);
-                if (index.isConstant()) {
-                    displacement += index.asConstant().asInt() * kindSize;
-                    addr = new CiAddress(kind, pointer, displacement);
-                } else {
-                    addr = new CiAddress(kind, pointer, load(index), scale, displacement);
-                }
-            }
-        }
-        return addr;
-    }
-
-    @Override
-    public void visitAllocateStackHandle(StackHandle x) {
-        CiValue value = load(x.value());
-        CiValue src = forceToSpill(value, x.value().kind, true);
-        CiValue dst = createResultVariable(x);
-
-        CiConstant constant = x.value().isConstant() ? x.value().asConstant() : null;
-        if (constant == null) {
-            CiConstant zero = CiConstant.defaultValue(x.value().kind);
-            lir.cmp(Condition.EQ, src, zero);
-        }
-        lir.lea(src, dst);
-        if (constant != null) {
-            if (constant.isDefaultValue()) {
-                lir.move(value, dst);
-            }
-        } else {
-            lir.cmove(Condition.EQ, CiConstant.ZERO, dst, dst);
-        }
-    }
-
-    @Override
-    public void visitLoadPointer(LoadPointer x) {
-        LIRDebugInfo info = maybeStateFor(x);
-        CiValue pointer = load(x.pointer());
-        CiValue dst = createResultVariable(x);
-        CiAddress src = getAddressForPointerOp(x, x.dataKind, pointer);
-        lir.load(src, dst, info);
-    }
-
-    @Override
-    public void visitStorePointer(StorePointer x) {
-        LIRDebugInfo info = maybeStateFor(x);
-        LIRItem value = new LIRItem(x.value(), this);
-        CiValue pointer = load(x.pointer());
-        value.loadItem(x.dataKind);
-        CiAddress dst = getAddressForPointerOp(x, x.dataKind, pointer);
-        lir.store(value.result(), dst, info);
-    }
-
-    @Override
-    public void visitInfopoint(Infopoint x) {
-        LIRDebugInfo info = stateFor(x);
-        if (x.opcode == SAFEPOINT) {
-            emitXir(xir.genSafepoint(site(x)), x, info, null, false);
-            return;
-        }
-        assert x.opcode == HERE || x.opcode == INFO;
-        CiValue result = x.kind.isVoid() ? CiValue.IllegalValue : createResultVariable(x);
-        LIROpcode opcode = x.opcode == HERE ? LIROpcode.Here : LIROpcode.Info;
-        lir.infopoint(opcode, result, info);
-    }
-
-    @Override
-    public void visitStackAllocate(StackAllocate x) {
-        CiValue result = createResultVariable(x);
-        assert x.size().isConstant() : "ALLOCA bytecode 'size' operand is not a constant: " + x.size();
-        StackBlock stackBlock = compilation.frameMap().reserveStackBlock(x.size().asConstant().asInt());
-        lir.alloca(stackBlock, result);
-    }
-
-    @Override
     public void visitMonitorAddress(MonitorAddress x) {
         CiValue result = createResultVariable(x);
         lir.monitorAddress(x.monitor(), result);
-    }
-
-    @Override
-    public void visitMemoryBarrier(MemoryBarrier x) {
-        if (x.barriers != 0) {
-            lir.membar(x.barriers);
-        }
-    }
-
-    @Override
-    public void visitUnsafeCast(UnsafeCast i) {
-        assert !i.redundant : "redundant UnsafeCasts must be eliminated by the front end";
-        CiValue src = load(i.value());
-        CiValue dst = createResultVariable(i);
-        lir.move(src, dst);
     }
 
     /**
@@ -1088,27 +939,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         return operands[resultOperand.index];
-    }
-
-    @Override
-    public void visitIncrementRegister(IncrementRegister x) {
-        CiValue reg = x.register.asValue(CiKind.Word);
-        if (x.delta().isConstant()) {
-            int delta = x.delta().asConstant().asInt();
-            if (delta < 0) {
-                lir.sub(reg, CiConstant.forInt(-delta), reg);
-            } else {
-                lir.add(reg, CiConstant.forInt(delta), reg);
-            }
-        } else {
-            lir.add(reg, makeOperand(x.delta()), reg);
-        }
-    }
-
-    @Override
-    public void visitStoreRegister(StoreRegister x) {
-        CiValue reg = x.register.asValue(x.kind);
-        lir.move(makeOperand(x.value()), reg);
     }
 
     @Override
@@ -1711,7 +1541,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             TTY.println("Operand for " + instr + " = " + instr.operand());
         }
 
-        assert (instr.operand().isLegal()) || !isUsedForValue(instr) || instr.isConstant() || instr instanceof UnsafeCast : "operand was not set for live instruction";
+        assert (instr.operand().isLegal()) || !isUsedForValue(instr) || instr.isConstant() : "operand was not set for live instruction";
     }
 
     private boolean isUsedForValue(Instruction instr) {
@@ -1921,7 +1751,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (value instanceof Phi && !value.isIllegal()) {
                 // phi's are special
                 operandForPhi((Phi) value);
-            } else if (value.operand().isIllegal() && !(value instanceof UnsafeCast)) {
+            } else if (value.operand().isIllegal()) {
                 // instruction doesn't have an operand yet
                 CiValue operand = makeOperand(value);
                 assert operand.isLegal() : "must be evaluated now";

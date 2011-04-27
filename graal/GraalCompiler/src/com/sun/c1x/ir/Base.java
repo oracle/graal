@@ -36,15 +36,10 @@ public final class Base extends BlockEnd {
     /**
      * Constructs a new Base instruction.
      * @param standardEntry the standard entrypoint block
-     * @param osrEntry the OSR entrypoint block
      */
-    public Base(BlockBegin standardEntry, BlockBegin osrEntry) {
+    public Base(BlockBegin standardEntry) {
         super(CiKind.Illegal, null, false);
-        assert osrEntry == null || osrEntry.isOsrEntry();
         assert standardEntry.isStandardEntry();
-        if (osrEntry != null) {
-            successors.add(osrEntry);
-        }
         successors.add(standardEntry);
     }
 
