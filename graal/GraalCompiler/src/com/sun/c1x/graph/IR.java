@@ -112,10 +112,10 @@ public class IR {
 
     private void optimize1() {
         // do basic optimizations
-        if (C1XOptions.PhiSimplify) {
+        /*if (C1XOptions.PhiSimplify) {
             new PhiSimplifier(this);
             verifyAndPrint("After phi simplification");
-        }
+        }*/
         if (C1XOptions.OptDeadCodeElimination1) {
             new LivenessMarker(this).removeDeadCode();
             verifyAndPrint("After dead code elimination 1");
@@ -142,12 +142,6 @@ public class IR {
     }
 
     private void optimize2() {
-        // do more advanced, dominator-based optimizations
-        /*if (C1XOptions.OptGlobalValueNumbering) {
-            makeLinearScanOrder();
-            new GlobalValueNumberer(this);
-            verifyAndPrint("After global value numbering");
-        }*/
         if (C1XOptions.OptDeadCodeElimination2) {
             new LivenessMarker(this).removeDeadCode();
             verifyAndPrint("After dead code elimination 2");

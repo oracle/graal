@@ -119,7 +119,6 @@ public final class C1XOptions {
 
     // state merging settings
     public static boolean AssumeVerifiedBytecode        = ____;
-    public static boolean PhiSimplify                   = true;
     public static boolean PhiLoopStores                 = true;
 
     // miscellaneous settings
