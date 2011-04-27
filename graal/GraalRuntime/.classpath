@@ -5,6 +5,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/Assembler"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Base"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CRI"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Compiler"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/GraalCompiler"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
