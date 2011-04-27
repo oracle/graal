@@ -4,7 +4,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Assembler"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Base"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/C1X"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CRI"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Compiler"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
