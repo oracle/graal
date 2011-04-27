@@ -31,33 +31,17 @@ import com.sun.c1x.debug.*;
 /**
  * This class contains a number of fields that collect metrics about compilation, particularly
  * the number of times certain optimizations are performed.
- *
- * @author Ben L. Titzer
  */
 public class C1XMetrics {
     public static int CompiledMethods;
     public static int TargetMethods;
     public static int LocalValueNumberHits;
-    public static int GlobalValueNumberHits;
     public static int ValueMapResizes;
     public static int InlinedFinalizerChecks;
-    public static int MethodsFolded;
     public static int InlineForcedMethods;
     public static int InlineForbiddenMethods;
     public static int InlinedJsrs;
-    public static int NullCheckIterations;
-    public static int NullCheckEliminations;
-    public static int NullChecksRedundant;
-    public static int NullCheckIdsAssigned;
-    public static int ZeroChecksRedundant;
-    public static int DivideSpecialChecksRedundant;
-    public static int BoundsChecksElminations;
-    public static int ConditionalEliminations;
-    public static int BlocksMerged;
-    public static int BlocksSkipped;
     public static int BlocksDeleted;
-    public static int DeadCodeEliminated;
-    public static int ResolveCPEAttempts;
     public static int BytecodesCompiled;
     public static int CodeBytesEmitted;
     public static int SafepointsEmitted;
@@ -76,7 +60,6 @@ public class C1XMetrics {
     public static int LoadConstantIterations;
     public static int CodeBufferCopies;
     public static int UniqueValueIdsAssigned;
-    public static int RedundantConditionals;
     public static int FrameStatesCreated;
     public static int FrameStateValuesCreated;
 
