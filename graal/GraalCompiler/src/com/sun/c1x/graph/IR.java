@@ -90,7 +90,6 @@ public class IR {
 
         optimize1();
         computeLinearScanOrder();
-        optimize2();
 
         if (C1XOptions.PrintTimers) {
             C1XTimers.HIR_OPTIMIZE.stop();
@@ -111,11 +110,6 @@ public class IR {
     }
 
     private void optimize1() {
-        // do basic optimizations
-        /*if (C1XOptions.PhiSimplify) {
-            new PhiSimplifier(this);
-            verifyAndPrint("After phi simplification");
-        }*/
         if (C1XOptions.OptDeadCodeElimination1) {
             new LivenessMarker(this).removeDeadCode();
             verifyAndPrint("After dead code elimination 1");
@@ -139,14 +133,6 @@ public class IR {
             compilation.stats.loopCount = computeLinearScanOrder.numLoops();
             computeLinearScanOrder.printBlocks();
         }
-    }
-
-    private void optimize2() {
-        if (C1XOptions.OptDeadCodeElimination2) {
-            new LivenessMarker(this).removeDeadCode();
-            verifyAndPrint("After dead code elimination 2");
-        }
-
     }
 
     /**

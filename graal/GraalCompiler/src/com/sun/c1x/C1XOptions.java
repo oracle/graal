@@ -110,7 +110,6 @@ public final class C1XOptions {
     public static boolean OptIterativeNCE;
     public static boolean OptFlowSensitiveNCE;
     public static boolean OptDeadCodeElimination1;
-    public static boolean OptDeadCodeElimination2;
     public static boolean OptControlFlow;
     public static boolean OptMoveElimination;
 
@@ -191,7 +190,6 @@ public final class C1XOptions {
         OptIterativeNCE                 = lll;
         OptFlowSensitiveNCE             = lll;
         OptDeadCodeElimination1         = lll;
-        OptDeadCodeElimination2         = lll;
         OptBlockSkipping                = lll;
     }
 }
