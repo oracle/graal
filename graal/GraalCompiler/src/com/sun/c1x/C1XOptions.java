@@ -107,7 +107,6 @@ public final class C1XOptions {
     public static boolean OptLocalLoadElimination;
     public static boolean OptCSEArrayLength;
     public static boolean OptGlobalValueNumbering;
-    public static boolean OptBlockMerging;
     public static boolean OptBlockSkipping;
     public static boolean OptIterativeNCE;
     public static boolean OptFlowSensitiveNCE;
@@ -184,7 +183,6 @@ public final class C1XOptions {
 
         // Level 2 optimizations
         OptInline                       = ll;
-        OptBlockMerging                 = ll;
 
         // Level 3 optimizations
         OptCSEArrayLength               = lll;
