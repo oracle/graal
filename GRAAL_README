@@ -1,0 +1,8 @@
+For creating a Graal VM JDK, the file jre\lib\jvm.cfg has to be modified such that it includes the line:
+-client KNOWN
+
+Before running the Graal VM, the following environment variables are needed:
+- MAXINE: Pointing to a Maxine VM repository with compiled Java files.
+- GRAAL: Pointing to a Graal VM repository with compiled Java files.
+
+For starting the Graal VM, the two flags "-client -graal" have to be specified.
