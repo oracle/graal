@@ -260,7 +260,7 @@ public final class ComputeLinearScanOrder {
                 assert isBlockInLoop(loopIdx, cur) : "bit in loop map must be set when block is in work list";
 
                 // recursive processing of all predecessors ends when start block of loop is reached
-                if (cur != loopStart && !cur.checkBlockFlag(BlockBegin.BlockFlag.OsrEntry)) {
+                if (cur != loopStart) {
                     for (int j = cur.numberOfPreds() - 1; j >= 0; j--) {
                         BlockBegin pred = cur.predAt(j);
 

@@ -119,9 +119,8 @@ public final class GraphBuilder {
         BlockBegin startBlock = ir.startBlock;
 
         // 2. compute the block map and get the entrypoint(s)
-        BlockMap blockMap = compilation.getBlockMap(scope.method, compilation.osrBCI);
+        BlockMap blockMap = compilation.getBlockMap(scope.method);
         BlockBegin stdEntry = blockMap.get(0);
-        BlockBegin osrEntry = compilation.osrBCI < 0 ? null : blockMap.get(compilation.osrBCI);
         pushRootScope(scope, blockMap, startBlock);
         MutableFrameState initialState = stateAtEntry(rootMethod);
         startBlock.mergeOrClone(initialState);
@@ -138,7 +137,7 @@ public final class GraphBuilder {
             rootMethodSynchronizedObject = synchronizedObject(initialState, compilation.method);
             genMonitorEnter(rootMethodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
             // 4A.2 finish the start block
-            finishStartBlock(startBlock, stdEntry, osrEntry);
+            finishStartBlock(startBlock, stdEntry);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber());
@@ -151,7 +150,7 @@ public final class GraphBuilder {
             scopeData.addExceptionHandler(h);
         } else {
             // 4B.1 simply finish the start block
-            finishStartBlock(startBlock, stdEntry, osrEntry);
+            finishStartBlock(startBlock, stdEntry);
         }
 
         // 5.
@@ -159,7 +158,7 @@ public final class GraphBuilder {
         if (intrinsic != null) {
             lastInstr = stdEntry;
             // 6A.1 the root method is an intrinsic; load the parameters onto the stack and try to inline it
-            if (C1XOptions.OptIntrinsify && osrEntry == null) {
+            if (C1XOptions.OptIntrinsify) {
                 // try to inline an Intrinsic node
                 boolean isStatic = Modifier.isStatic(rootMethod.accessFlags());
                 int argsSize = rootMethod.signature().argumentSlots(!isStatic);
@@ -198,19 +197,11 @@ public final class GraphBuilder {
             // generate unlocking code if the exception handler is reachable
             fillSyncHandler(rootMethodSynchronizedObject, syncHandler, false);
         }
-
-        if (compilation.osrBCI >= 0) {
-            BlockBegin osrBlock = blockMap.get(compilation.osrBCI);
-            assert osrBlock.wasVisited();
-            if (!osrBlock.stateBefore().stackEmpty()) {
-                throw new CiBailout("cannot OSR with non-empty stack");
-            }
-        }
     }
 
-    private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry, BlockBegin osrEntry) {
+    private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
         assert curBlock == startBlock;
-        Base base = new Base(stdEntry, osrEntry);
+        Base base = new Base(stdEntry);
         appendWithoutOptimization(base, 0);
         FrameState stateAfter = curState.immutableCopy(bci());
         base.setStateAfter(stateAfter);
@@ -1435,7 +1426,7 @@ public final class GraphBuilder {
     void pushScope(RiMethod target, BlockBegin continuation) {
         // prepare callee scope
         IRScope calleeScope = new IRScope(scope(), curState.immutableCopy(bci()), target, -1);
-        BlockMap blockMap = compilation.getBlockMap(calleeScope.method, -1);
+        BlockMap blockMap = compilation.getBlockMap(calleeScope.method);
         calleeScope.setStoresInLoops(blockMap.getStoresInLoops());
         // prepare callee state
         curState = curState.pushScope(calleeScope);
@@ -1941,12 +1932,6 @@ public final class GraphBuilder {
         BlockBegin b;
         while ((b = scopeData.removeFromWorkList()) != null) {
             if (!b.wasVisited()) {
-                if (b.isOsrEntry()) {
-                    // this is the OSR entry block, set up edges accordingly
-                    setupOsrEntryBlock();
-                    // this is no longer the OSR entry block
-                    b.setOsrEntry(false);
-                }
                 b.setWasVisited(true);
                 // now parse the block
                 killMemoryMap();
@@ -1968,64 +1953,6 @@ public final class GraphBuilder {
 
     private void popScopeForJsr() {
         scopeData = scopeData.parent;
-    }
-
-    private void setupOsrEntryBlock() {
-        assert compilation.isOsrCompilation();
-
-        int osrBCI = compilation.osrBCI;
-        BytecodeStream s = scopeData.stream;
-        RiOsrFrame frame = compilation.getOsrFrame();
-        s.setBCI(osrBCI);
-        s.next(); // XXX: why go to next bytecode?
-
-        // create a new block to contain the OSR setup code
-        ir.osrEntryBlock = new BlockBegin(osrBCI, ir.nextBlockNumber());
-        ir.osrEntryBlock.setOsrEntry(true);
-        ir.osrEntryBlock.setDepthFirstNumber(0);
-
-        // get the target block of the OSR
-        BlockBegin target = scopeData.blockAt(osrBCI);
-        assert target != null && target.isOsrEntry();
-
-        MutableFrameState state = target.stateBefore().copy();
-        ir.osrEntryBlock.setStateBefore(state);
-
-        killMemoryMap();
-        curBlock = ir.osrEntryBlock;
-        curState = state.copy();
-        lastInstr = ir.osrEntryBlock;
-
-        // create the entry instruction which represents the OSR state buffer
-        // input from interpreter / JIT
-        Instruction e = new OsrEntry();
-        e.setFlag(Value.Flag.NonNull, true);
-
-        for (int i = 0; i < state.localsSize(); i++) {
-            Value local = state.localAt(i);
-            Value get;
-            int offset = frame.getLocalOffset(i);
-            if (local != null) {
-                // this is a live local according to compiler
-                if (local.kind.isObject() && !frame.isLiveObject(i)) {
-                    // the compiler thinks this is live, but not the interpreter
-                    // pretend that it passed null
-                    get = appendConstant(CiConstant.NULL_OBJECT);
-                } else {
-                    Value oc = appendConstant(CiConstant.forInt(offset));
-                    get = append(new UnsafeGetRaw(local.kind, e, oc, 0, true));
-                }
-                state.storeLocal(i, get);
-            }
-        }
-
-        assert state.callerState() == null;
-        state.clearLocals();
-        // ATTN: assumption: state is not used further below, else add .immutableCopy()
-        Goto g = new Goto(target, state, false);
-        append(g);
-        ir.osrEntryBlock.setEnd(g);
-        target.mergeOrClone(ir.osrEntryBlock.end().stateAfter());
     }
 
     private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
@@ -2059,11 +1986,6 @@ public final class GraphBuilder {
             }
             // read the opcode
             int opcode = s.currentBC();
-
-            // check for active JSR during OSR compilation
-            if (compilation.isOsrCompilation() && scope().isTopScope() && scopeData.parsingJsr() && s.currentBCI() == compilation.osrBCI) {
-                throw new CiBailout("OSR not supported while a JSR is active");
-            }
 
             // push an exception object onto the stack if we are parsing an exception handler
             if (pushException) {

@@ -1004,14 +1004,6 @@ public final class LinearScan {
                 // method argument (condition must be equal to handleMethodArguments)
                 return RegisterPriority.None;
 
-            } else if (move.operand().isVariableOrRegister() && move.result().isVariableOrRegister()) {
-                // Move from register to register
-                if (blockForId(op.id).checkBlockFlag(BlockBegin.BlockFlag.OsrEntry)) {
-                    // special handling of phi-function moves inside osr-entry blocks
-                    // input operand must have a register instead of output operand (leads to better register
-                    // allocation)
-                    return RegisterPriority.ShouldHaveRegister;
-                }
             }
         }
 
@@ -1039,14 +1031,6 @@ public final class LinearScan {
                 return RegisterPriority.MustHaveRegister;
 
             } else if (move.operand().isVariableOrRegister() && move.result().isVariableOrRegister()) {
-                // Move from register to register
-                if (blockForId(op.id).checkBlockFlag(BlockBegin.BlockFlag.OsrEntry)) {
-                    // special handling of phi-function moves inside osr-entry blocks
-                    // input operand must have a register instead of output operand (leads to better register
-                    // allocation)
-                    return RegisterPriority.MustHaveRegister;
-                }
-
                 // The input operand is not forced to a register (moves from stack to register are allowed),
                 // but it is faster if the input operand is in a register
                 return RegisterPriority.ShouldHaveRegister;

@@ -47,7 +47,6 @@ public final class BlockBegin extends Instruction {
      */
     public enum BlockFlag {
         StandardEntry,
-        OsrEntry,
         ExceptionEntry,
         SubroutineEntry,
         BackwardBranchTarget,
@@ -497,14 +496,6 @@ public final class BlockBegin extends Instruction {
         setBlockFlag(BlockFlag.StandardEntry);
     }
 
-    public boolean isOsrEntry() {
-        return checkBlockFlag(BlockFlag.OsrEntry);
-    }
-
-    public void setOsrEntry(boolean value) {
-        setBlockFlag(BlockFlag.OsrEntry, value);
-    }
-
     public boolean isBackwardBranchTarget() {
         return checkBlockFlag(BlockFlag.BackwardBranchTarget);
     }
@@ -725,9 +716,6 @@ public final class BlockBegin extends Instruction {
         StringBuilder sb = new StringBuilder(8);
         if (isStandardEntry()) {
             sb.append('S');
-        }
-        if (isOsrEntry()) {
-            sb.append('O');
         }
         if (isExceptionEntry()) {
             sb.append('E');

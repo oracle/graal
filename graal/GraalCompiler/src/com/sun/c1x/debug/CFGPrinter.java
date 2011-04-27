@@ -153,9 +153,6 @@ public class CFGPrinter {
         if (block.isStandardEntry()) {
             out.print("\"std\" ");
         }
-        if (block.isOsrEntry()) {
-            out.print("\"osr\" ");
-        }
         if (block.isExceptionEntry()) {
             out.print("\"ex\" ");
         }
