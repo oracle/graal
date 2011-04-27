@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fileset-config file-format-version="1.2.0" simple-config="true">
+    <local-check-config name="C1X Checkstyle checks" location=".checkstyle_checks.xml" type="project" description="">
+        <additional-data name="protect-config-file" value="false"/>
+    </local-check-config>
+    <fileset name="all" enabled="true" check-config-name="C1X Checkstyle checks" local="true">
+        <file-match-pattern match-pattern="." include-pattern="true"/>
+    </fileset>
+</fileset-config>

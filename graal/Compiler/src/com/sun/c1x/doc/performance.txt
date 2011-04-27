@@ -1,0 +1,85 @@
+Issues that can be addressed for improving performance in C1X
+----------------------------------------------------------------
+
+- indicates not done
+* indicates done
+
+Backend:
+	- better handling of constants, especially immediates
+	- (non XIR) checkcast, instanceof: use nullity
+	- (non XIR) checkcast, instanceof: emit fastpath direct compare
+	- use LEA instruction on x86
+	- recognize pointer arithmetic addressing modes
+	- recognize multiply by 3, 5, 9 and emit lea rk, [rs, rs*2], etc
+	- Maxine XIR: make direct runtime calls instead of through global stub
+	- Maxine XIR: implement inline allocation
+	- Maxine XIR: implement biased locking fastpath
+	- Maxine XIR: faster subtype checks for classes, leaves
+	- Maxine XIR: make use of XirSite nullity, range check information
+	- better handling of tableswitch bytecode
+	- better handling of two operand LIR form
+	- Make the following bytecode implementations inline:
+		- f2i f2l f2d d2i d2l d2f (SSE2)
+		* lrem ldiv (64 bit)
+		- fneg dneg
+	- Make the following bytecode implementations global stubs:
+		- frem drem
+	- Global stubs: use EAX for return value as normal instead of [rsp - 16]
+    - Emit direct call to runtime for new instance, monitorenter, monitorexit
+
+	* XIR: expose nullity, range checkness across XIR interface
+	- XIR: make use of CSE'd array length
+	- XIR: generate special if-instanceof XIR variant with label parameters
+    - Optimize special cases of bytecodes:
+        - (MIN_INT / -1) in IDIV,IREM
+        - (MIN_LONG / -1) in LDIV,LREM
+        - (-infinity, Nan, +infinity) in F2I, F2L, D2I, D2L
+
+
+Frontend:
+    - Remove redundant null check branches in NullCheckEliminator
+	- XIR: implement HIR -> HIR xir translation
+	- Refactor exception edges to allow removal, optimization
+	- Implement typecast elimination
+	- Implement constant propagation
+	- Implement GVN of memory loads / stores
+	- Implement memory reordering
+	- Implement loop invariant code motion
+	- Optimize endianness conversions and endian-writes
+	      (e.g. (x >> 24 & 0xff) | (....)) and a[0] = x >> 24 ...
+	- Finish loop peeling
+	- Implement loop unrolling
+	- Allow value numbering of constant loads
+	- Finish loop peeling
+	- Guarded and multiple inlining
+	- Maxine: speculative leaf class and leaf method assumption
+	- Maxine: adjust static / dynamic inlining heuristics
+		  (e.g. static: trivial methods only in cold spots)
+    - Aggressive optimization of array copy
+
+Compilation speed:
+    - Make special iterators for LIROperand input, temp, output
+    - Add analysisInfo field to Value and use in NullCheckEliminator
+	- Remove RiConstantPool, cpi from unresolved HIR instructions (move to RiField, RiMethod)
+	- Use BlockList instead of ArrayList<Block> where appropriate
+	- Use FrameState instead of ValueStack
+	- Remove exceptionHandlers, make DebugInfo hold FrameState, CiCodePos,
+		exception flags and exception handlers
+	- Clean up and simplify LIRInstruction constructor
+	- Create fewer LIRAddresses
+	- Simplify LIRGenerator logic (forcing of loading, etc)
+	- LIROperand: split into virtual register table?
+	- Cleanup assembler and remove dead code, useless assertions
+	- Chain assembler byte buffers and only assemble at the end
+	- Pick optimal initial assembler byte buffer size
+	- Pick good initial sizes for LinearScan data structures
+	- Remove unnecessary uses of ArrayList and replace with arrays or other list
+	- Use iteration over ArrayList instead of explicit loop
+	- Revisit manual editing / removal of items from ArrayList
+	- Remove non-XIR backend
+	- Pre-assemble XIR for backend
+
+	* Initialize compilation-unique instruction id's lazily with thread local compilation
+	* Remove dead LIROpcodes
+	* Remove dead code in LIRGenerator, X86LIRGenerator, LIRAssembler, X86LIRAssembler
+		(remove commented out code)
