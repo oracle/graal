@@ -26,7 +26,6 @@ import static com.sun.cri.bytecode.Bytecodes.*;
 
 import java.util.*;
 
-import com.sun.c1x.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
@@ -138,7 +137,7 @@ public final class BlockMap {
 
         ExceptionMap(RiMethod method, byte[] code) {
             canTrap = new CiBitMap(code.length);
-            isObjectInit = C1XIntrinsic.getIntrinsic(method) == C1XIntrinsic.java_lang_Object$init;
+            isObjectInit = (method.isConstructor() && method.holder().superType() == null);
             allHandlers = method.exceptionHandlers();
             handlerMap = new ArrayMap<HashSet<BlockBegin>>(firstBlock, firstBlock + code.length / 5);
         }

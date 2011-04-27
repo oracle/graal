@@ -47,6 +47,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private RiType componentType;
     private HashMap<Long, RiField> fieldCache;
     private RiConstantPool pool;
+    private RiType superType;
+    private boolean superTypeSet;
 
     private HotSpotTypeResolvedImpl() {
         super(null);
@@ -74,7 +76,11 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
 
     @Override
     public RiType superType() {
-        return compiler.getVMEntries().RiType_superType(this);
+        if (!superTypeSet) {
+            superType = compiler.getVMEntries().RiType_superType(this);
+            superTypeSet = true;
+        }
+        return superType;
     }
 
     @Override

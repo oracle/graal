@@ -46,7 +46,6 @@ public abstract class ValueVisitor {
     public abstract void visitIf(If i);
     public abstract void visitIfOp(IfOp i);
     public abstract void visitInstanceOf(InstanceOf i);
-    public abstract void visitIntrinsic(Intrinsic i);
     public abstract void visitInvoke(Invoke i);
     public abstract void visitLoadField(LoadField i);
     public abstract void visitLoadIndexed(LoadIndexed i);
@@ -65,6 +64,7 @@ public abstract class ValueVisitor {
     public abstract void visitNullCheck(NullCheck i);
     public abstract void visitOsrEntry(OsrEntry i);
     public abstract void visitPhi(Phi i);
+    public abstract void visitRegisterFinalizer(RegisterFinalizer i);
     public abstract void visitResolveClass(ResolveClass i);
     public abstract void visitReturn(Return i);
     public abstract void visitShiftOp(ShiftOp i);

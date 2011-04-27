@@ -52,9 +52,6 @@ public final class C1XOptions {
     public static int     MaximumDesiredSize                 = 8000;
     public static int     MaximumShortLoopSize               = 5;
 
-    // intrinsification settings
-    public static boolean OptIntrinsify                      = ____;
-
     // debugging settings
     public static boolean VerifyPointerMaps                  = ____;
     public static boolean PinAllInstructions                 = ____;
@@ -196,7 +193,6 @@ public final class C1XOptions {
 
         // Level 3 optimizations
         OptCSEArrayLength               = lll;
-        OptIntrinsify                   = lll;
         OptInlineExcept                 = lll;
         OptInlineSynchronized           = lll;
         UseStackMapTableLiveness        = lll;

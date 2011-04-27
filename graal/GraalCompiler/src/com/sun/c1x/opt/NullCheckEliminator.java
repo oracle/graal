@@ -435,13 +435,6 @@ public class NullCheckEliminator extends DefaultValueVisitor {
     }
 
     @Override
-    public void visitIntrinsic(Intrinsic i) {
-        if (!i.isStatic()) {
-            processUse(i, i.receiver(), true);
-        }
-    }
-
-    @Override
     public void visitIf(If i) {
         if (C1XOptions.OptFlowSensitiveNCE) {
             if (i.trueSuccessor() != i.falseSuccessor()) {

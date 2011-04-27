@@ -472,90 +472,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitIntrinsic(Intrinsic x) {
-        Value[] vals = x.arguments();
-        XirSnippet snippet;
-
-        switch (x.intrinsic()) {
-            case java_lang_Float$intBitsToFloat:
-            case java_lang_Double$doubleToRawLongBits:
-            case java_lang_Double$longBitsToDouble:
-            case java_lang_Float$floatToRawIntBits: {
-                visitFPIntrinsics(x);
-                return;
-            }
-
-            case java_lang_System$currentTimeMillis: {
-                assert x.numberOfArguments() == 0 : "wrong type";
-                CiValue reg = callRuntimeWithResult(CiRuntimeCall.JavaTimeMillis, null, (CiValue[]) null);
-                CiValue result = createResultVariable(x);
-                lir.move(reg, result);
-                return;
-            }
-
-            case java_lang_System$nanoTime: {
-                assert x.numberOfArguments() == 0 : "wrong type";
-                CiValue reg = callRuntimeWithResult(CiRuntimeCall.JavaTimeNanos, null, (CiValue[]) null);
-                CiValue result = createResultVariable(x);
-                lir.move(reg, result);
-                return;
-            }
-
-            case java_lang_Object$init:
-                visitRegisterFinalizer(x);
-                return;
-
-            case java_lang_Math$log:   // fall through
-            case java_lang_Math$log10: // fall through
-            case java_lang_Math$abs:   // fall through
-            case java_lang_Math$sqrt:  // fall through
-            case java_lang_Math$tan:   // fall through
-            case java_lang_Math$sin:   // fall through
-            case java_lang_Math$cos:
-                genMathIntrinsic(x);
-                return;
-
-            case sun_misc_Unsafe$compareAndSwapObject:
-                genCompareAndSwap(x, CiKind.Object);
-                return;
-            case sun_misc_Unsafe$compareAndSwapInt:
-                genCompareAndSwap(x, CiKind.Int);
-                return;
-            case sun_misc_Unsafe$compareAndSwapLong:
-                genCompareAndSwap(x, CiKind.Long);
-                return;
-
-            case java_lang_Thread$currentThread:
-                snippet = xir.genCurrentThread(site(x));
-                if (snippet != null) {
-                    emitXir(snippet, x, null, null, true);
-                    return;
-                }
-                break;
-
-            case java_lang_Object$getClass:
-                snippet = xir.genGetClass(site(x), toXirArgument(vals[0]));
-                if (snippet != null) {
-                    emitXir(snippet, x, stateFor(x), null, true);
-                    return;
-                }
-                break;
-        }
-
-
-        XirArgument[] args = new XirArgument[vals.length];
-        for (int i = 0; i < vals.length; i++) {
-            args[i] = toXirArgument(vals[i]);
-        }
-        snippet = xir.genIntrinsic(site(x), args, x.target());
-        if (snippet != null) {
-            emitXir(snippet, x, x.stateBefore() == null ? null : stateFor(x), null, true);
-            return;
-        }
-        x.setOperand(emitInvokeKnown(x.target(), x.stateBefore(), vals));
-    }
-
-    @Override
     public void visitInvoke(Invoke x) {
         RiMethod target = x.target();
         LIRDebugInfo info = stateFor(x, x.stateBefore());
@@ -1267,17 +1183,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         return operand;
     }
 
-    private void visitFPIntrinsics(Intrinsic x) {
-        assert x.numberOfArguments() == 1 : "wrong type";
-        CiValue reg = createResultVariable(x);
-        CiValue value = load(x.argumentAt(0));
-        CiValue tmp = forceToSpill(value, x.kind, false);
-        lir.move(tmp, reg);
-    }
-
-    private void visitRegisterFinalizer(Intrinsic x) {
-        assert x.numberOfArguments() == 1 : "wrong type";
-        CiValue receiver = load(x.argumentAt(0));
+    @Override
+    public void visitRegisterFinalizer(RegisterFinalizer x) {
+        CiValue receiver = load(x.object());
         LIRDebugInfo info = stateFor(x, x.stateBefore());
         callRuntime(CiRuntimeCall.RegisterFinalizer, info, receiver);
         setNoResult(x);
@@ -1879,10 +1787,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     protected abstract void genGetObjectUnsafe(CiValue dest, CiValue src, CiValue offset, CiKind kind, boolean isVolatile);
 
     protected abstract void genPutObjectUnsafe(CiValue src, CiValue offset, CiValue data, CiKind kind, boolean isVolatile);
-
-    protected abstract void genCompareAndSwap(Intrinsic x, CiKind kind);
-
-    protected abstract void genMathIntrinsic(Intrinsic x);
 
     /**
      * Implements site-specific information for the XIR interface.

@@ -56,7 +56,6 @@ public class DefaultValueVisitor extends ValueVisitor {
     @Override public void visitIf(If i) { visit(i); }
     @Override public void visitIfOp(IfOp i) { visit(i); }
     @Override public void visitInstanceOf(InstanceOf i) { visit(i); }
-    @Override public void visitIntrinsic(Intrinsic i) { visit(i); }
     @Override public void visitInvoke(Invoke i) { visit(i); }
     @Override public void visitLoadField(LoadField i) { visit(i); }
     @Override public void visitLoadIndexed(LoadIndexed i) { visit(i); }
@@ -75,6 +74,7 @@ public class DefaultValueVisitor extends ValueVisitor {
     @Override public void visitNullCheck(NullCheck i) { visit(i); }
     @Override public void visitOsrEntry(OsrEntry i) { visit(i); }
     @Override public void visitPhi(Phi i) { visit(i); }
+    @Override public void visitRegisterFinalizer(RegisterFinalizer i) { visit(i); }
     @Override public void visitResolveClass(ResolveClass i) { visit(i); }
     @Override public void visitReturn(Return i) { visit(i); }
     @Override public void visitShiftOp(ShiftOp i) { visit(i); }

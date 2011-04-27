@@ -153,45 +153,11 @@ public final class GraphBuilder {
             finishStartBlock(startBlock, stdEntry);
         }
 
-        // 5.
-        C1XIntrinsic intrinsic = C1XOptions.OptIntrinsify ? C1XIntrinsic.getIntrinsic(rootMethod) : null;
-        if (intrinsic != null) {
-            lastInstr = stdEntry;
-            // 6A.1 the root method is an intrinsic; load the parameters onto the stack and try to inline it
-            if (C1XOptions.OptIntrinsify) {
-                // try to inline an Intrinsic node
-                boolean isStatic = Modifier.isStatic(rootMethod.accessFlags());
-                int argsSize = rootMethod.signature().argumentSlots(!isStatic);
-                Value[] args = new Value[argsSize];
-                for (int i = 0; i < args.length; i++) {
-                    args[i] = curState.localAt(i);
-                }
-                if (tryInlineIntrinsic(rootMethod, args, isStatic, intrinsic)) {
-                    // intrinsic inlining succeeded, add the return node
-                    CiKind rt = returnKind(rootMethod).stackKind();
-                    Value result = null;
-                    if (rt != CiKind.Void) {
-                        result = pop(rt);
-                    }
-                    genReturn(result);
-                    BlockEnd end = (BlockEnd) lastInstr;
-                    stdEntry.setEnd(end);
-                    end.setStateAfter(curState.immutableCopy(bci()));
-                }  else {
-                    // try intrinsic failed; do the normal parsing
-                    scopeData.addToWorkList(stdEntry);
-                    iterateAllBlocks();
-                }
-            } else {
-                // 6B.1 do the normal parsing
-                scopeData.addToWorkList(stdEntry);
-                iterateAllBlocks();
-            }
-        } else {
-            // 6B.1 do the normal parsing
-            scopeData.addToWorkList(stdEntry);
-            iterateAllBlocks();
-        }
+        // 5. SKIPPED: look for intrinsics
+
+        // 6B.1 do the normal parsing
+        scopeData.addToWorkList(stdEntry);
+        iterateAllBlocks();
 
         if (syncHandler != null && syncHandler.stateBefore() != null) {
             // generate unlocking code if the exception handler is reachable
@@ -1079,17 +1045,14 @@ public final class GraphBuilder {
         }
 
         if (needsCheck) {
-            // append a call to the registration intrinsic
-            loadLocal(0, CiKind.Object);
-            FrameState stateBefore = curState.immutableCopy(bci());
-            append(new Intrinsic(CiKind.Void, C1XIntrinsic.java_lang_Object$init,
-                                 null, curState.popArguments(1), false, stateBefore, true, true));
+            // append a call to the finalizer registration
+            append(new RegisterFinalizer(curState.loadLocal(0), curState.immutableCopy(bci())));
             C1XMetrics.InlinedFinalizerChecks++;
         }
     }
 
     void genReturn(Value x) {
-        if (C1XIntrinsic.getIntrinsic(method()) == C1XIntrinsic.java_lang_Object$init) {
+        if (method().isConstructor() && method().holder().superType() == null) {
             callRegisterFinalizer();
         }
 
@@ -1324,10 +1287,7 @@ public final class GraphBuilder {
         assert x.next() == null : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
         if (lastInstr instanceof Base) {
-            assert x instanceof Intrinsic : "may only happen when inlining intrinsics";
-            Instruction prev = lastInstr.prev(lastInstr.block());
-            prev.setNext(x, bci);
-            x.setNext(lastInstr, bci);
+            assert false : "may only happen when inlining intrinsics";
         } else {
             lastInstr = lastInstr.setNext(x, bci);
         }
@@ -1357,7 +1317,7 @@ public final class GraphBuilder {
     }
 
     private boolean hasUncontrollableSideEffects(Value x) {
-        return x instanceof Invoke || x instanceof Intrinsic && !((Intrinsic) x).preservesState() || x instanceof ResolveClass;
+        return x instanceof Invoke || x instanceof ResolveClass;
     }
 
     private BlockBegin blockAtOrNull(int bci) {
@@ -1466,14 +1426,6 @@ public final class GraphBuilder {
 
     boolean tryRemoveCall(RiMethod target, Value[] args, boolean isStatic) {
         if (target.isResolved()) {
-            if (C1XOptions.OptIntrinsify) {
-                // try to create an intrinsic node instead of a call
-                C1XIntrinsic intrinsic = C1XIntrinsic.getIntrinsic(target);
-                if (intrinsic != null && tryInlineIntrinsic(target, args, isStatic, intrinsic)) {
-                    // this method is not an intrinsic
-                    return true;
-                }
-            }
             if (C1XOptions.CanonicalizeFoldableMethods) {
                 // next try to fold the method call
                 if (tryFoldable(target, args)) {
@@ -1482,104 +1434,6 @@ public final class GraphBuilder {
             }
         }
         return false;
-    }
-
-    private boolean tryInlineIntrinsic(RiMethod target, Value[] args, boolean isStatic, C1XIntrinsic intrinsic) {
-        boolean preservesState = true;
-        boolean canTrap = false;
-
-        Instruction result = null;
-
-        // handle intrinsics differently
-        switch (intrinsic) {
-
-            case java_lang_System$arraycopy:
-                if (compilation.runtime.supportsArrayIntrinsics()) {
-                    break;
-                } else {
-                    return false;
-                }
-            case java_lang_Object$getClass:
-                canTrap = true;
-                break;
-            case java_lang_Thread$currentThread:
-                break;
-            case java_util_Arrays$copyOf:
-                if (args[0].declaredType() != null && args[0].declaredType().isArrayClass() && compilation.runtime.supportsArrayIntrinsics()) {
-                    break;
-                } else {
-                    return false;
-                }
-            case java_lang_Object$init: // fall through
-            case java_lang_String$equals: // fall through
-            case java_lang_String$compareTo: // fall through
-            case java_lang_String$indexOf: // fall through
-            case java_lang_Math$max: // fall through
-            case java_lang_Math$min: // fall through
-            case java_lang_Math$atan2: // fall through
-            case java_lang_Math$pow: // fall through
-            case java_lang_Math$exp: // fall through
-            case java_nio_Buffer$checkIndex: // fall through
-            case java_lang_System$identityHashCode: // fall through
-            case java_lang_System$currentTimeMillis: // fall through
-            case java_lang_System$nanoTime: // fall through
-            case java_lang_Object$hashCode: // fall through
-            case java_lang_Class$isAssignableFrom: // fall through
-            case java_lang_Class$isInstance: // fall through
-            case java_lang_Class$getModifiers: // fall through
-            case java_lang_Class$isInterface: // fall through
-            case java_lang_Class$isArray: // fall through
-            case java_lang_Class$isPrimitive: // fall through
-            case java_lang_Class$getSuperclass: // fall through
-            case java_lang_Class$getComponentType: // fall through
-            case java_lang_reflect_Array$getLength: // fall through
-            case java_lang_reflect_Array$newArray: // fall through
-            case java_lang_Double$doubleToLongBits: // fall through
-            case java_lang_Float$floatToIntBits: // fall through
-            case java_lang_Math$sin: // fall through
-            case java_lang_Math$cos: // fall through
-            case java_lang_Math$tan: // fall through
-            case java_lang_Math$log: // fall through
-            case java_lang_Math$log10: // fall through
-            case java_lang_Integer$bitCount: // fall through
-            case java_lang_Integer$reverseBytes: // fall through
-            case java_lang_Long$bitCount: // fall through
-            case java_lang_Long$reverseBytes: // fall through
-            case java_lang_Object$clone:  return false;
-            // TODO: preservesState and canTrap for complex intrinsics
-        }
-
-
-
-        // get the arguments for the intrinsic
-        CiKind resultType = returnKind(target);
-
-        if (C1XOptions.PrintInlinedIntrinsics) {
-            TTY.println("Inlining intrinsic: " + intrinsic);
-        }
-
-        // Create state before intrinsic.
-        for (int i = 0; i < args.length; ++i) {
-            if (args[i] != null) {
-                curState.push(args[i].kind.stackKind(), args[i]);
-            }
-        }
-
-        // Create the intrinsic node.
-        if (intrinsic == C1XIntrinsic.java_lang_System$arraycopy) {
-            result = genArrayCopy(target, args);
-        } else if (intrinsic == C1XIntrinsic.java_util_Arrays$copyOf) {
-            result = genArrayClone(target, args);
-        } else {
-            result = new Intrinsic(resultType.stackKind(), intrinsic, target, args, isStatic, curState.immutableCopy(bci()), preservesState, canTrap);
-        }
-
-        // Pop arguments.
-        curState.popArguments(args.length);
-
-        pushReturn(resultType, append(result));
-        stats.intrinsicCount++;
-        return true;
     }
 
     private Instruction genArrayClone(RiMethod target, Value[] args) {
