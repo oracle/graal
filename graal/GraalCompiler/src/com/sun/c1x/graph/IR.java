@@ -111,11 +111,6 @@ public class IR {
     }
 
     private void optimize1() {
-        if (!compilation.isTypesafe()) {
-            new UnsafeCastEliminator(this);
-            verifyAndPrint("After unsafe cast elimination");
-        }
-
         // do basic optimizations
         if (C1XOptions.PhiSimplify) {
             new PhiSimplifier(this);

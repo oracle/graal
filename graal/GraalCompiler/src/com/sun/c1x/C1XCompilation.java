@@ -34,7 +34,6 @@ import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.value.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -114,14 +113,6 @@ public final class C1XCompilation {
      */
     public void setHasExceptionHandlers() {
         hasExceptionHandlers = true;
-    }
-
-    /**
-     * Records that this compilation encountered an instruction (e.g. {@link Bytecodes#UNSAFE_CAST})
-     * that breaks the type safety invariant of the input bytecode.
-     */
-    public void setNotTypesafe() {
-        typesafe = false;
     }
 
     /**
@@ -234,14 +225,6 @@ public final class C1XCompilation {
 
     public boolean hasExceptionHandlers() {
         return hasExceptionHandlers;
-    }
-
-    /**
-     * Determines if this compilation has encountered any instructions (e.g. {@link Bytecodes#UNSAFE_CAST})
-     * that break the type safety invariant of the input bytecode.
-     */
-    public boolean isTypesafe() {
-        return typesafe;
     }
 
     public CiResult compile() {

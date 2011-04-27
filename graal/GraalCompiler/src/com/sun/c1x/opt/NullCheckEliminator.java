@@ -374,34 +374,10 @@ public class NullCheckEliminator extends DefaultValueVisitor {
     }
 
     @Override
-    public void visitLoadPointer(LoadPointer i) {
-        Value pointer = i.pointer();
-        if (pointer != null) {
-            processUse(i, pointer, true);
-        }
-    }
-
-    @Override
-    public void visitUnsafeCast(UnsafeCast i) {
-        if (processUse(i, i.value(), false)) {
-            // if the object is non null, the result of the cast is as well
-            i.setFlag(Value.Flag.NonNull);
-        }
-    }
-
-    @Override
     public void visitLoadField(LoadField i) {
         Value object = i.object();
         if (object != null) {
             processUse(i, object, true);
-        }
-    }
-
-    @Override
-    public void visitStorePointer(StorePointer i) {
-        Value pointer = i.pointer();
-        if (pointer != null) {
-            processUse(i, pointer, true);
         }
     }
 
@@ -542,10 +518,6 @@ public class NullCheckEliminator extends DefaultValueVisitor {
         int index = getValueInfo(value).globalIndex;
         bitmap.grow(index + 1);
         bitmap.set(index);
-        if (value instanceof UnsafeCast) {
-            // An unsafe cast is just an alias
-            setValue(((UnsafeCast) value).value(), bitmap);
-        }
     }
 
     private boolean checkValue(Value value, CiBitMap bitmap) {

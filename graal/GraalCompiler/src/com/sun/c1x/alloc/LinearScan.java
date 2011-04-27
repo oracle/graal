@@ -2093,7 +2093,7 @@ public final class LinearScan {
                 assert !hasCall(opId) || operand.isStackSlot() || !isCallerSave(operand) : "cannot have caller-save register operands at calls";
                 return operand;
             } else if (operand.isRegister()) {
-                assert value instanceof LoadRegister;
+                assert false : "must not reach here";
                 return operand;
             } else {
                 assert value instanceof Constant;

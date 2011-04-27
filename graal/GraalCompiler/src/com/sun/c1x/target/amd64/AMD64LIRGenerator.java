@@ -23,8 +23,6 @@
 
 package com.sun.c1x.target.amd64;
 
-import static com.sun.cri.bytecode.Bytecodes.UnsignedComparisons.*;
-
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.OperandPool.VariableFlag;
 import com.sun.c1x.gen.*;
@@ -143,19 +141,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
         lir.negate(value.result(), reg, globalStub);
         setResult(x, reg);
-    }
-
-    @Override
-    public void visitSignificantBit(SignificantBitOp x) {
-        LIRItem value = new LIRItem(x.value(), this);
-        value.setDestroysRegister();
-        value.loadItem();
-        CiValue reg = createResultVariable(x);
-        if (x.op == Bytecodes.LSB) {
-            lir.lsb(value.result(), reg);
-        } else {
-            lir.msb(value.result(), reg);
-        }
     }
 
     public boolean livesLonger(Value x, Value y) {
@@ -460,65 +445,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
             lir.lcmp2int(left.result(), right.result(), reg);
         } else {
             Util.unimplemented();
-        }
-    }
-
-    @Override
-    public void visitUnsignedCompareOp(UnsignedCompareOp x) {
-        LIRItem left = new LIRItem(x.x(), this);
-        LIRItem right = new LIRItem(x.y(), this);
-        left.loadItem();
-        right.loadItem();
-        Condition condition = null;
-        switch (x.op) {
-            case BELOW_THAN  : condition = Condition.BT; break;
-            case ABOVE_THAN  : condition = Condition.AT; break;
-            case BELOW_EQUAL : condition = Condition.BE; break;
-            case ABOVE_EQUAL : condition = Condition.AE; break;
-            default:
-                Util.unimplemented();
-        }
-        CiValue result = createResultVariable(x);
-        lir.cmp(condition, left.result(), right.result());
-        lir.cmove(condition, CiConstant.INT_1, CiConstant.INT_0, result);
-    }
-
-    @Override
-    public void visitCompareAndSwap(CompareAndSwap x) {
-
-        // (tw) TODO: Factor out common code with genCompareAndSwap.
-
-        CiKind dataKind = x.dataKind;
-        CiValue tempPointer = load(x.pointer());
-        CiAddress addr = getAddressForPointerOp(x, dataKind, tempPointer);
-
-        CiValue expectedValue = force(x.expectedValue(), AMD64.rax.asValue(dataKind));
-        CiValue newValue = load(x.newValue());
-        assert Util.archKindsEqual(newValue.kind, dataKind) : "invalid type";
-
-        if (dataKind.isObject()) { // Write-barrier needed for Object fields.
-            // Do the pre-write barrier : if any.
-            preGCWriteBarrier(addr, false, null);
-        }
-
-        CiValue pointer = newVariable(CiKind.Word);
-        lir.lea(addr, pointer);
-        CiValue result = createResultVariable(x);
-        CiValue resultReg = AMD64.rax.asValue(dataKind);
-        if (dataKind.isObject()) {
-            lir.casObj(pointer, expectedValue, newValue);
-        } else if (dataKind.isInt()) {
-            lir.casInt(pointer, expectedValue, newValue);
-        } else {
-            assert dataKind.isLong() || dataKind.isWord();
-            lir.casLong(pointer, expectedValue, newValue);
-        }
-
-        lir.move(resultReg, result);
-
-        if (dataKind.isObject()) { // Write-barrier needed for Object fields.
-            // Seems to be precise
-            postGCWriteBarrier(pointer, newValue);
         }
     }
 
