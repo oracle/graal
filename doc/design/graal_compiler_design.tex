@@ -1,0 +1,57 @@
+\section{Nodes and Graphs}
+The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
+The IR used in the Graal Compiler (simply refered to as \emph{the compiler} in the rest of this document) was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
+
+\subsection{The Node Data Structure}
+\begin{itemize}
+    \item Each node is always associated with a graph.
+    \item Each node has an immutable id which is unique within its associated graph.
+    \item Nodes represent either operations on values or control flow operations.
+    \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
+    \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
+    \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
+    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incurr cycles (like loops) are represented by special nodes (like LoopEnd).
+    \item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers (notably the HotSpot client compiler) always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
+    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
+    \begin{itemize}
+        \item \emph{inputs} are all nodes that this node has data dependencies on.
+        \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
+        \item \emph{successors} are all nodes that have a control dependency on this node.
+        \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
+    \end{itemize}
+    \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
+    \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
+    \item Nodes cannot be reassigned to another graph, they are cloned instead
+\end{itemize}
+
+\subsection{The Graph Data Structure}
+\begin{itemize}
+    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
+    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
+    \item Graphs are 
+\end{itemize}
+
+\section{Frame States}
+Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
+Whenever a safepoint is reached or the a deoptimization is needed a valid frame state needs to be available.
+A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, etc.).
+Thus, frame states need only be generated for bytecodes that can not be reexecuted: putfield, astore, invoke, monitorenter/exit, ...
+
+Within the node graph a frame state is represented as a node that is fixed between the node that caused it to be generated (data dependency) and the node that will invalidate it (control dependency).
+
+Deopmization nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
+At some point during the compilation deoptimization nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that it can not move outside the scope of the associated frame state.
+This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
+
+Frame states should be represented using a delta-encoding.
+This will make them significantly smaller and will make inlining, etc. much easier.
+In later compilation phases unnecessary frame states might be removed, using a mark-and-merge algorithm.
+
+
+
+\section{Graph Building}
+\begin{itemize}
+    \item The graph built by the initial parser (called \emph{GraphBuilder}) should be as close to the source representation (bytecode, ...) as possible.
+    \item All nodes should be able to immediately lower themselves to a machine-level representation. This allows for easier compiler development, and also leads to a compiler that is very flexible in the amount of optimizations it performs (e.g. recompilation of methods with more aggressive optimizations).
+    \item 
+\end{itemize}
