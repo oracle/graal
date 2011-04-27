@@ -20,17 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/**
+ * This package contains the Node base class and the Graph container class of the Graal IR.
+ *
+ * @author Gilles Duboscq
+ * @author Lukas Stadler
+ * @author Thomas Wuerthinger
+ */
 package com.oracle.graal.graph;
-
-public class NullNode extends Node {
-
-	public NullNode(int inputs, int successors, Graph graph) {
-		super(inputs, successors, graph);
-	}
-
-	@Override
-	public NullNode cloneNode(Graph into) {
-		return new NullNode(0, 0, into);
-	}
-
-}
