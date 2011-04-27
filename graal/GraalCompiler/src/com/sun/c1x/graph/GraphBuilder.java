@@ -1436,58 +1436,6 @@ public final class GraphBuilder {
         return false;
     }
 
-    private Instruction genArrayClone(RiMethod target, Value[] args) {
-        FrameState state = curState.immutableCopy(bci());
-        Value array = args[0];
-        RiType type = array.declaredType();
-        assert type != null && type.isResolved() && type.isArrayClass();
-        Value newLength = args[1];
-
-        Value oldLength = append(new ArrayLength(array, state));
-        Value newArray = append(new NewObjectArrayClone(newLength, array, state));
-        Value copyLength = append(new IfOp(newLength, Condition.LT, oldLength, newLength, oldLength));
-        append(new ArrayCopy(array, Constant.forInt(0), newArray, Constant.forInt(0), copyLength, null, null));
-        return (Instruction) newArray;
-    }
-
-    private Instruction genArrayCopy(RiMethod target, Value[] args) {
-        FrameState state = curState.immutableCopy(bci());
-        Instruction result;
-        Value src = args[0];
-        Value srcPos = args[1];
-        Value dest = args[2];
-        Value destPos = args[3];
-        Value length = args[4];
-
-        // Check src start pos.
-        Value srcLength = append(new ArrayLength(src, state));
-
-        // Check dest start pos.
-        Value destLength = srcLength;
-        if (src != dest) {
-            destLength = append(new ArrayLength(dest, state));
-        }
-
-        // Check src end pos.
-        Value srcEndPos = append(new ArithmeticOp(IADD, CiKind.Int, srcPos, length, false, null));
-        append(new BoundsCheck(srcEndPos, srcLength, state, Condition.LE));
-
-        // Check dest end pos.
-        Value destEndPos = srcEndPos;
-        if (destPos != srcPos) {
-            destEndPos = append(new ArithmeticOp(IADD, CiKind.Int, destPos, length, false, null));
-        }
-        append(new BoundsCheck(destEndPos, destLength, state, Condition.LE));
-
-        Value zero = append(Constant.forInt(0));
-        append(new BoundsCheck(length, zero, state, Condition.GE));
-        append(new BoundsCheck(srcPos, zero, state, Condition.GE));
-        append(new BoundsCheck(destPos, zero, state, Condition.GE));
-
-        result = new ArrayCopy(src, srcPos, dest, destPos, length, target, state);
-        return result;
-    }
-
     private boolean tryFoldable(RiMethod target, Value[] args) {
         CiConstant result = Canonicalizer.foldInvocation(compilation.runtime, target, args);
         if (result != null) {

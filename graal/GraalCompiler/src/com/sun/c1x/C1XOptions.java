@@ -85,14 +85,12 @@ public final class C1XOptions {
     public static boolean TraceAssembler                     = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean PrintAssumptions                   = ____;
-    public static boolean PrintInlinedIntrinsics             = ____;
 
     // IR checking
     public static boolean InterpretInvokedMethods            = ____;
     public static boolean PrintStateInInterpreter            = ____;
 
     // canonicalizer settings
-    public static boolean CanonicalizeIntrinsics             = true;
     public static boolean CanonicalizeFloatingPoint          = true;
     public static boolean CanonicalizeNarrowingInStores      = true;
     public static boolean CanonicalizeConstantFields         = true;

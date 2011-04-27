@@ -1022,90 +1022,6 @@ public class Canonicalizer extends DefaultValueVisitor {
         }
     }
 
-    private void visitUnsafeRawOp(UnsafeRawOp i) {
-        if (i.base() instanceof ArithmeticOp) {
-            // if the base is an arithmetic op, try reducing
-            ArithmeticOp root = (ArithmeticOp) i.base();
-            if (!root.isLive() && root.opcode == LADD) {
-                // match unsafe(x + y) if the x + y is not pinned
-                // try reducing (x + y) and (y + x)
-                Value y = root.y();
-                Value x = root.x();
-                if (reduceRawOp(i, x, y) || reduceRawOp(i, y, x)) {
-                    // the operation was reduced
-                    return;
-                }
-                if (y instanceof Convert) {
-                    // match unsafe(x + (long) y)
-                    Convert convert = (Convert) y;
-                    if (convert.opcode == I2L && convert.value().kind.isInt()) {
-                        // the conversion is redundant
-                        setUnsafeRawOp(i, x, convert.value(), 0);
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean reduceRawOp(UnsafeRawOp i, Value base, Value index) {
-        if (index instanceof Convert) {
-            // skip any conversion operations
-            index = ((Convert) index).value();
-        }
-        if (index instanceof ShiftOp) {
-            // try to match the index as a shift by a constant
-            ShiftOp shift = (ShiftOp) index;
-            CiKind st = shift.y().kind;
-            if (shift.y().isConstant() && st.isInt()) {
-                int val = shift.y().asConstant().asInt();
-                switch (val) {
-                    case 0: // fall through
-                    case 1: // fall through
-                    case 2: // fall through
-                    case 3: return setUnsafeRawOp(i, base, shift.x(), val);
-                }
-            }
-        }
-        if (index instanceof ArithmeticOp) {
-            // try to match the index as a multiply by a constant
-            // note that this case will not happen if C1XOptions.CanonicalizeMultipliesToShifts is true
-            ArithmeticOp arith = (ArithmeticOp) index;
-            CiKind st = arith.y().kind;
-            if (arith.opcode == IMUL && arith.y().isConstant() && st.isInt()) {
-                int val = arith.y().asConstant().asInt();
-                switch (val) {
-                    case 1: return setUnsafeRawOp(i, base, arith.x(), 0);
-                    case 2: return setUnsafeRawOp(i, base, arith.x(), 1);
-                    case 4: return setUnsafeRawOp(i, base, arith.x(), 2);
-                    case 8: return setUnsafeRawOp(i, base, arith.x(), 3);
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private boolean setUnsafeRawOp(UnsafeRawOp i, Value base, Value index, int log2scale) {
-        i.setBase(base);
-        i.setIndex(index);
-        i.setLog2Scale(log2scale);
-        return true;
-    }
-
-    @Override
-    public void visitUnsafeGetRaw(UnsafeGetRaw i) {
-        if (C1XOptions.CanonicalizeUnsafes) {
-            visitUnsafeRawOp(i);
-        }
-    }
-
-    @Override
-    public void visitUnsafePutRaw(UnsafePutRaw i) {
-        if (C1XOptions.CanonicalizeUnsafes) {
-            visitUnsafeRawOp(i);
-        }
-    }
-
     private Object argAsObject(Value[] args, int index) {
         CiConstant c = args[index].asConstant();
         if (c != null) {
@@ -1161,28 +1077,6 @@ public class Canonicalizer extends DefaultValueVisitor {
             C1XMetrics.MethodsFolded++;
         }
         return result;
-    }
-
-    @Override
-    public void visitTypeEqualityCheck(TypeEqualityCheck i) {
-        if (i.condition == Condition.EQ && i.left() == i.right()) {
-            setCanonical(null);
-        }
-    }
-
-    @Override
-    public void visitBoundsCheck(BoundsCheck b) {
-        Value index = b.index();
-        Value length = b.length();
-
-        if (index.isConstant() && length.isConstant()) {
-            int i = index.asConstant().asInt();
-            int l = index.asConstant().asInt();
-            Condition c = b.condition;
-            if (c.check(i, l)) {
-                setCanonical(null);
-            }
-        }
     }
 
     private RiType getTypeOf(Value x) {

@@ -32,10 +32,8 @@ package com.sun.c1x.ir;
 public abstract class ValueVisitor {
     // Checkstyle: stop
     public abstract void visitArithmeticOp(ArithmeticOp i);
-    public abstract void visitArrayCopy(ArrayCopy arrayCopy);
     public abstract void visitArrayLength(ArrayLength i);
     public abstract void visitBase(Base i);
-    public abstract void visitBoundsCheck(BoundsCheck boundsCheck);
     public abstract void visitBlockBegin(BlockBegin i);
     public abstract void visitCheckCast(CheckCast i);
     public abstract void visitCompareOp(CompareOp i);
@@ -62,7 +60,6 @@ public abstract class ValueVisitor {
     public abstract void visitNewObjectArrayClone(NewObjectArrayClone newObjectArrayClone);
     public abstract void visitNewTypeArray(NewTypeArray i);
     public abstract void visitNullCheck(NullCheck i);
-    public abstract void visitOsrEntry(OsrEntry i);
     public abstract void visitPhi(Phi i);
     public abstract void visitRegisterFinalizer(RegisterFinalizer i);
     public abstract void visitResolveClass(ResolveClass i);
@@ -73,11 +70,4 @@ public abstract class ValueVisitor {
     public abstract void visitTableSwitch(TableSwitch i);
     public abstract void visitTemplateCall(TemplateCall templateCall);
     public abstract void visitThrow(Throw i);
-    public abstract void visitTypeEqualityCheck(TypeEqualityCheck typeEqualityCheck);
-    public abstract void visitUnsafeGetObject(UnsafeGetObject i);
-    public abstract void visitUnsafeGetRaw(UnsafeGetRaw i);
-    public abstract void visitUnsafePrefetchRead(UnsafePrefetchRead i);
-    public abstract void visitUnsafePrefetchWrite(UnsafePrefetchWrite i);
-    public abstract void visitUnsafePutObject(UnsafePutObject i);
-    public abstract void visitUnsafePutRaw(UnsafePutRaw i);
 }
