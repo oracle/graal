@@ -84,17 +84,12 @@ public final class C1XOptions {
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean PrintAssumptions                   = ____;
 
-    // IR checking
-    public static boolean InterpretInvokedMethods            = ____;
-    public static boolean PrintStateInInterpreter            = ____;
-
     // all optimization settings
     public static boolean OptLocalValueNumbering;
     public static boolean OptLocalLoadElimination;
     public static boolean OptCSEArrayLength;
     public static boolean OptBlockSkipping;
     public static boolean OptControlFlow;
-    public static boolean OptMoveElimination;
 
     // optimistic optimization settings
     public static boolean UseAssumptions                = true;
@@ -158,7 +153,6 @@ public final class C1XOptions {
         OptLocalLoadElimination         = l;
         PhiLoopStores                   = l;
         OptControlFlow                  = l;
-        OptMoveElimination              = l;
 
         // Level 2 optimizations
         OptInline                       = ll;
