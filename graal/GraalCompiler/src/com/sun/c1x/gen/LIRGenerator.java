@@ -1597,7 +1597,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         public boolean requiresNullCheck() {
-            return current == null || current instanceof InstanceOf || current instanceof CheckCast;//current.canTrap();
+            return current == null || current.canTrap();
         }
 
         public boolean requiresBoundsCheck() {
@@ -1605,11 +1605,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         public boolean requiresReadBarrier() {
-            return current == null || current.kind == CiKind.Object;
+            return current == null || true;
         }
 
         public boolean requiresWriteBarrier() {
-            return current == null || current.kind == CiKind.Object;
+            return current == null || true;
         }
 
         public boolean requiresArrayStoreCheck() {
