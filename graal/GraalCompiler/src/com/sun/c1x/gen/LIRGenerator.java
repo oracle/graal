@@ -204,6 +204,8 @@ public abstract class LIRGenerator extends ValueVisitor {
 
         this.operands = new OperandPool(compilation.target);
 
+        new PhiSimplifier(ir);
+
         // mark the liveness of all instructions if it hasn't already been done by the optimizer
         LivenessMarker livenessMarker = new LivenessMarker(ir);
         C1XMetrics.LiveHIRInstructions += livenessMarker.liveCount();
@@ -1275,7 +1277,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (suxVal instanceof Phi) {
             Phi phi = (Phi) suxVal;
             // curVal can be null without phi being null in conjunction with inlining
-            if (phi.isLive() && curVal != null && curVal != phi) {
+            if (phi.isLive() && !phi.isDeadPhi() && curVal != null && curVal != phi) {
                 assert curVal.isLive() : "value not live: " + curVal + ", suxVal=" + suxVal;
                 assert !phi.isIllegal() : "illegal phi cannot be marked as live";
                 if (curVal instanceof Phi) {
@@ -1349,6 +1351,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private CiValue operandForPhi(Phi phi) {
+        assert !phi.isDeadPhi();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
             CiVariable operand = newVariable(phi.kind);
