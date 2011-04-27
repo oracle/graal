@@ -45,11 +45,6 @@ public final class MonitorExit extends AccessMonitor {
     }
 
     @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    @Override
     public void accept(ValueVisitor v) {
         v.visitMonitorExit(this);
     }

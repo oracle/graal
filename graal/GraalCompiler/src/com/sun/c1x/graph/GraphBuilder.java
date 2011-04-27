@@ -1272,7 +1272,7 @@ public final class GraphBuilder {
 
         if (x instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) x;
-            if (!stateSplit.isStateCleared() && stateSplit.stateBefore() == null) {
+            if (stateSplit.stateBefore() == null) {
                 stateSplit.setStateBefore(curState.immutableCopy(bci));
             }
         }

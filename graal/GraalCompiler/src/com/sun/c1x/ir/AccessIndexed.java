@@ -77,15 +77,6 @@ public abstract class AccessIndexed extends AccessArray {
         return elementType;
     }
 
-    /**
-     * Checks whether this instruction can cause a trap.
-     * @return {@code true} if this instruction can cause a trap
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
     @Override
     public void inputValuesDo(ValueClosure closure) {
         super.inputValuesDo(closure);

@@ -61,15 +61,6 @@ public final class NewInstance extends StateSplit {
     }
 
     /**
-     * Checks whether this instruction can trap.
-     * @return {@code true}, assuming that allocation can cause OutOfMemory or other exceptions
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    /**
      * Gets the exact type produced by this instruction. For allocations of instance classes, this is
      * always the class allocated.
      * @return the exact type produced by this instruction

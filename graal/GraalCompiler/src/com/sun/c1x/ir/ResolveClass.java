@@ -52,11 +52,6 @@ public final class ResolveClass extends StateSplit {
     }
 
     @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    @Override
     public int valueNumber() {
         return 0x50000000 | type.hashCode();
     }

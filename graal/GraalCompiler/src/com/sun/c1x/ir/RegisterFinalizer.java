@@ -51,11 +51,6 @@ public class RegisterFinalizer extends StateSplit {
     }
 
     @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    @Override
     public void print(LogStream out) {
         out.print("register finalizer ").print(object);
     }

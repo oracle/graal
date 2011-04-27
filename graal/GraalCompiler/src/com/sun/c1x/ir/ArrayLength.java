@@ -44,15 +44,6 @@ public final class ArrayLength extends AccessArray {
         super(CiKind.Int, array, newFrameState);
     }
 
-    /**
-     * Checks whether this instruction can cause a trap.
-     * @return {@code true} if this instruction can cause a trap
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitArrayLength(this);

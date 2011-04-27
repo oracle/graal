@@ -93,16 +93,6 @@ public abstract class AccessField extends StateSplit {
         return isLoaded() && Modifier.isVolatile(field.accessFlags());
     }
 
-    /**
-     * Checks whether this field access may cause a trap or an exception, which
-     * is if it either requires a null check or needs patching.
-     * @return {@code true} if this field access can cause a trap
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
     @Override
     public void inputValuesDo(ValueClosure closure) {
         object = closure.apply(object);

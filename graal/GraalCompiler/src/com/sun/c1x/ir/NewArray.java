@@ -54,16 +54,6 @@ public abstract class NewArray extends StateSplit {
     }
 
     /**
-     * Checks whether this instruction can trap.
-     * @return <code>true</code>, conservatively assuming that this instruction can throw such
-     * exceptions as {@code OutOfMemoryError}
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    /**
      * Applies the specified closure to all input values of this instruction.
      * @param closure the closure to apply
      */

@@ -1597,7 +1597,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         public boolean requiresNullCheck() {
-            return current == null || current.canTrap();
+            return current == null || current instanceof InstanceOf || current instanceof CheckCast;//current.canTrap();
         }
 
         public boolean requiresBoundsCheck() {

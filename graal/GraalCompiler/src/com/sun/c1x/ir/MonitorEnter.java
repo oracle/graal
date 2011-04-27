@@ -46,15 +46,6 @@ public final class MonitorEnter extends AccessMonitor {
         super(object, lockAddress, stateBefore, lockNumber);
     }
 
-    /**
-     * Checks whether this instruction can trap.
-     * @return {@code true} if this instruction may raise a {@link NullPointerException}
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitMonitorEnter(this);

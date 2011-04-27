@@ -84,15 +84,6 @@ public abstract class TypeCheck extends StateSplit {
     }
 
     /**
-     * Checks whether this instruction can trap.
-     * @return {@code true}, conservatively assuming the cast may fail
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    /**
      * Iterates over the input values to this instruction.
      * @param closure the closure to apply
      */

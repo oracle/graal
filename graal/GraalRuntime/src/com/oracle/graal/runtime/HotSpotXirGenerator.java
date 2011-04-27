@@ -1056,6 +1056,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 valueHub = asm.createTemp("valueHub", CiKind.Object);
                 compHub = asm.createTemp("compHub", CiKind.Object);
                 if (implicitNullException) {
+                    asm.nop(1);
                     asm.mark(MARK_IMPLICIT_NULL);
                 }
                 asm.pload(CiKind.Object, compHub, array, asm.i(config.hubOffset), implicitNullException);
@@ -1069,6 +1070,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             int elemSize = target.sizeInBytes(kind);
 
             if (implicitNullException) {
+                asm.nop(1);
                 asm.mark(MARK_IMPLICIT_NULL);
             }
             int disp = config.getArrayOffset(kind);
