@@ -107,7 +107,6 @@ public final class C1XOptions {
     public static boolean OptLocalLoadElimination;
     public static boolean OptCSEArrayLength;
     public static boolean OptGlobalValueNumbering;
-    public static boolean OptCEElimination;
     public static boolean OptBlockMerging;
     public static boolean OptBlockSkipping;
     public static boolean OptIterativeNCE;
@@ -198,7 +197,6 @@ public final class C1XOptions {
         OptDeadCodeElimination1         = lll;
         OptDeadCodeElimination2         = lll;
         OptGlobalValueNumbering         = lll;
-        OptCEElimination                = lll;
         OptBlockSkipping                = lll;
     }
 }

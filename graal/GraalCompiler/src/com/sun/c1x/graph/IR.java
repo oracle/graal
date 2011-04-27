@@ -120,10 +120,6 @@ public class IR {
             new LivenessMarker(this).removeDeadCode();
             verifyAndPrint("After dead code elimination 1");
         }
-        if (C1XOptions.OptCEElimination) {
-            new CEEliminator(this);
-            verifyAndPrint("After CEE elimination");
-        }
         if (C1XOptions.OptBlockMerging) {
             new BlockMerger(this);
             verifyAndPrint("After block merging");
