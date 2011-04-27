@@ -90,19 +90,7 @@ public final class C1XOptions {
     public static boolean InterpretInvokedMethods            = ____;
     public static boolean PrintStateInInterpreter            = ____;
 
-    // canonicalizer settings
-    public static boolean CanonicalizeFloatingPoint          = true;
-    public static boolean CanonicalizeNarrowingInStores      = true;
-    public static boolean CanonicalizeConstantFields         = true;
-    public static boolean CanonicalizeUnsafes                = true;
-    public static boolean CanonicalizeMultipliesToShifts     = true;
-    public static boolean CanonicalizeObjectCheckCast        = true;
-    public static boolean CanonicalizeObjectInstanceOf       = true;
-    public static boolean CanonicalizeFoldableMethods        = true;
-    public static boolean CanonicalizeArrayStoreChecks       = true;
-
     // all optimization settings
-    public static boolean OptCanonicalize;
     public static boolean OptLocalValueNumbering;
     public static boolean OptLocalLoadElimination;
     public static boolean OptCSEArrayLength;
@@ -171,7 +159,6 @@ public final class C1XOptions {
         final boolean lll = (level >= 3);
 
         // Level 1 optimizations
-        OptCanonicalize                 = l;
         OptLocalValueNumbering          = l;
         OptLocalLoadElimination         = l;
         PhiLoopStores                   = l;

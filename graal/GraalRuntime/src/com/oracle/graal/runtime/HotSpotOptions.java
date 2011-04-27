@@ -38,7 +38,6 @@ public class HotSpotOptions {
         C1XOptions.CommentedAssembly = false;
         C1XOptions.MethodEndBreakpointGuards = 2;
         C1XOptions.ResolveClassBeforeStaticInvoke = false;
-        C1XOptions.OptCanonicalize = false;
     }
 
     public static boolean setOption(String option) {

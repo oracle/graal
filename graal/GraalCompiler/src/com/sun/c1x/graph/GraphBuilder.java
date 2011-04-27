@@ -76,7 +76,6 @@ public final class GraphBuilder {
      */
     final MemoryMap memoryMap;
 
-    final Canonicalizer canonicalizer;     // canonicalizer which does strength reduction + constant folding
     ScopeData scopeData;                   // Per-scope data; used for inlining
     BlockBegin curBlock;                   // the current block
     MutableFrameState curState;            // the current execution state
@@ -98,7 +97,6 @@ public final class GraphBuilder {
         this.stats = compilation.stats;
         this.memoryMap = C1XOptions.OptLocalLoadElimination ? new MemoryMap() : null;
         this.localValueMap = C1XOptions.OptLocalValueNumbering ? new ValueMap() : null;
-        this.canonicalizer = C1XOptions.OptCanonicalize ? new Canonicalizer(compilation.runtime, compilation.method, compilation.target) : null;
         log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
     }
 
@@ -754,7 +752,7 @@ public final class GraphBuilder {
         RiType holder = field.holder();
         boolean isInitialized = !C1XOptions.TestPatching && field.isResolved() && holder.isResolved() && holder.isInitialized();
         CiConstant constantValue = null;
-        if (isInitialized && C1XOptions.CanonicalizeConstantFields) {
+        if (isInitialized) {
             constantValue = field.constantValue(null);
         }
         if (constantValue != null) {
@@ -825,32 +823,28 @@ public final class GraphBuilder {
         }
 
         Value[] args = curState.popArguments(target.signature().argumentSlots(false));
-        if (!tryRemoveCall(target, args, true)) {
-            if (!tryInline(target, args)) {
-                appendInvoke(INVOKESTATIC, target, args, true, cpi, constantPool);
-            }
+        if (!tryInline(target, args)) {
+            appendInvoke(INVOKESTATIC, target, args, true, cpi, constantPool);
         }
     }
 
     void genInvokeInterface(RiMethod target, int cpi, RiConstantPool constantPool) {
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
-        if (!tryRemoveCall(target, args, false)) {
-            genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool);
-        }
+
+        genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool);
+
     }
 
     void genInvokeVirtual(RiMethod target, int cpi, RiConstantPool constantPool) {
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
-        if (!tryRemoveCall(target, args, false)) {
-            genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool);
-        }
+        genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool);
+
     }
 
     void genInvokeSpecial(RiMethod target, RiType knownHolder, int cpi, RiConstantPool constantPool) {
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
-        if (!tryRemoveCall(target, args, false)) {
-            invokeDirect(target, args, knownHolder, cpi, constantPool);
-        }
+        invokeDirect(target, args, knownHolder, cpi, constantPool);
+
     }
 
     /**
@@ -1238,36 +1232,18 @@ public final class GraphBuilder {
     }
 
     private Value appendConstant(CiConstant type) {
-        return appendWithBCI(new Constant(type), bci(), false);
+        return appendWithBCI(new Constant(type), bci());
     }
 
     private Value append(Instruction x) {
-        return appendWithBCI(x, bci(), C1XOptions.OptCanonicalize);
+        return appendWithBCI(x, bci());
     }
 
     private Value appendWithoutOptimization(Instruction x, int bci) {
-        return appendWithBCI(x, bci, false);
+        return appendWithBCI(x, bci);
     }
 
-    private Value appendWithBCI(Instruction x, int bci, boolean canonicalize) {
-        if (canonicalize) {
-            // attempt simple constant folding and strength reduction
-            Value r = canonicalizer.canonicalize(x);
-            List<Instruction> extra = canonicalizer.extra();
-            if (extra != null) {
-                // the canonicalization introduced instructions that should be added before this
-                for (Instruction i : extra) {
-                    appendWithBCI(i, bci, false); // don't try to canonicalize the new instructions
-                }
-            }
-            if (r instanceof Instruction) {
-                // the result is an instruction that may need to be appended
-                x = (Instruction) r;
-            } else {
-                // the result is not an instruction (and thus cannot be appended)
-                return r;
-            }
-        }
+    private Value appendWithBCI(Instruction x, int bci) {
         if (x.isAppended()) {
             // the instruction has already been added
             return x;
@@ -1422,33 +1398,6 @@ public final class GraphBuilder {
             index += kind.sizeInSlots();
         }
         return state;
-    }
-
-    boolean tryRemoveCall(RiMethod target, Value[] args, boolean isStatic) {
-        if (target.isResolved()) {
-            if (C1XOptions.CanonicalizeFoldableMethods) {
-                // next try to fold the method call
-                if (tryFoldable(target, args)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean tryFoldable(RiMethod target, Value[] args) {
-        CiConstant result = Canonicalizer.foldInvocation(compilation.runtime, target, args);
-        if (result != null) {
-            if (C1XOptions.TraceBytecodeParserLevel > 0) {
-                log.println("|");
-                log.println("|   [folded " + target + " --> " + result + "]");
-                log.println("|");
-            }
-
-            pushReturn(returnKind(target), append(new Constant(result)));
-            return true;
-        }
-        return false;
     }
 
     private boolean tryInline(RiMethod target, Value[] args) {
