@@ -39,13 +39,9 @@ import com.sun.cri.ci.*;
  *
  * Instruction nodes are chained together in a basic block through the embedded
  * {@link Instruction#next} field. An Instruction may also have a list of {@link ExceptionHandler}s.
- *
- *
- * @author Ben L. Titzer
  */
 public abstract class Instruction extends Value {
 
-    public static final int INVOCATION_ENTRY_BCI = -1;  // XXX: not currently used
     public static final int SYNCHRONIZATION_ENTRY_BCI = -1;
 
     /**
@@ -217,17 +213,6 @@ public abstract class Instruction extends Value {
      */
     public final String name() {
         return getClass().getSimpleName();
-    }
-
-    /**
-     * Tests whether this instruction can trap. This is conservative; it does not take
-     * into account analysis results that may eliminate the possibility of this
-     * instruction from trapping.
-     *
-     * @return {@code true} if this instruction can cause a trap.
-     */
-    public boolean canTrap() {
-        return false;
     }
 
     /**

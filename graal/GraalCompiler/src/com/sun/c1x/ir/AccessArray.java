@@ -43,9 +43,6 @@ public abstract class AccessArray extends StateSplit {
     public AccessArray(CiKind kind, Value array, FrameState stateBefore) {
         super(kind, stateBefore);
         this.array = array;
-        if (array.isNonNull()) {
-            eliminateNullCheck();
-        }
     }
 
     /**
@@ -54,16 +51,6 @@ public abstract class AccessArray extends StateSplit {
      */
     public Value array() {
         return array;
-    }
-
-    /**
-     * Clears the state if this instruction can (no longer) trap.
-     */
-    @Override
-    public void runtimeCheckCleared() {
-        if (!canTrap()) {
-            clearState();
-        }
     }
 
     @Override

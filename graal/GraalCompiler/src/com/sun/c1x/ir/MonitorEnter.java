@@ -44,9 +44,6 @@ public final class MonitorEnter extends AccessMonitor {
      */
     public MonitorEnter(Value object, Value lockAddress, int lockNumber, FrameState stateBefore) {
         super(object, lockAddress, stateBefore, lockNumber);
-        if (object.isNonNull()) {
-            eliminateNullCheck();
-        }
     }
 
     /**
@@ -55,7 +52,7 @@ public final class MonitorEnter extends AccessMonitor {
      */
     @Override
     public boolean canTrap() {
-        return needsNullCheck();
+        return true;
     }
 
     @Override

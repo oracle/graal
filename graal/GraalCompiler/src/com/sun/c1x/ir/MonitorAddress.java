@@ -38,7 +38,6 @@ public final class MonitorAddress extends Instruction {
         super(CiKind.Word);
         this.monitor = monitor;
         setFlag(Flag.NonNull);
-        eliminateNullCheck();
     }
 
     @Override

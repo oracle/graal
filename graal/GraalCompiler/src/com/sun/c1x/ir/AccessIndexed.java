@@ -22,8 +22,6 @@
  */
 package com.sun.c1x.ir;
 
-import static com.sun.c1x.ir.Value.Flag.*;
-
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
@@ -80,24 +78,12 @@ public abstract class AccessIndexed extends AccessArray {
     }
 
     /**
-     * Checks whether this instruction needs a bounds check.
-     * @return {@code true} if a bounds check is needed
-     */
-    public boolean needsBoundsCheck() {
-        return !checkFlag(NoBoundsCheck);
-    }
-
-    public void eliminateBoundsCheck() {
-        clearRuntimeCheck(NoBoundsCheck);
-    }
-
-    /**
      * Checks whether this instruction can cause a trap.
      * @return {@code true} if this instruction can cause a trap
      */
     @Override
     public boolean canTrap() {
-        return needsNullCheck() || needsBoundsCheck();
+        return true;
     }
 
     @Override

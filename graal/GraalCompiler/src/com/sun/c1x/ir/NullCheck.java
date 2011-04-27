@@ -30,8 +30,6 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code NullCheck} class represents an explicit null check instruction.
- *
- * @author Ben L. Titzer
  */
 public final class NullCheck extends StateSplit {
 
@@ -46,9 +44,6 @@ public final class NullCheck extends StateSplit {
         super(obj.kind, stateBefore);
         this.object = obj;
         setFlag(Flag.NonNull);
-        if (object.isNonNull()) {
-            eliminateNullCheck();
-        }
     }
 
     /**
@@ -65,7 +60,7 @@ public final class NullCheck extends StateSplit {
      */
     @Override
     public boolean canTrap() {
-        return needsNullCheck();
+        return true;
     }
 
     @Override
@@ -102,11 +97,6 @@ public final class NullCheck extends StateSplit {
     public RiType exactType() {
         // null check does not alter the type of the object
         return object.exactType();
-    }
-
-    @Override
-    public void runtimeCheckCleared() {
-        clearState();
     }
 
     @Override

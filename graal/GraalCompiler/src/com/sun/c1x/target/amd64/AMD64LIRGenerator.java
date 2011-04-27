@@ -197,7 +197,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         int opcode = x.opcode;
         if (opcode == Bytecodes.LDIV || opcode == Bytecodes.LREM) {
             // emit inline 64-bit code
-            LIRDebugInfo info = x.needsZeroCheck() ? stateFor(x) : null;
+            LIRDebugInfo info = stateFor(x);
             CiValue dividend = force(x.x(), RAX_L); // dividend must be in RAX
             CiValue divisor = load(x.y());            // divisor can be in any (other) register
 
@@ -245,7 +245,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             // force the evaluation of other instructions that are needed for
             // correct debug info.  Otherwise the live range of the fixed
             // register might be too long.
-            LIRDebugInfo info = x.needsZeroCheck() ? stateFor(x) : null;
+            LIRDebugInfo info = stateFor(x);
 
             CiValue dividend = force(x.x(), RAX_I); // dividend must be in RAX
             CiValue divisor = load(x.y());          // divisor can be in any (other) register
@@ -319,7 +319,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         if (opcode == Bytecodes.WDIV || opcode == Bytecodes.WREM || opcode == Bytecodes.WDIVI || opcode == Bytecodes.WREMI) {
             // emit code for long division or modulus
                 // emit inline 64-bit code
-                LIRDebugInfo info = x.needsZeroCheck() ? stateFor(x) : null;
+                LIRDebugInfo info = stateFor(x);
                 CiValue dividend = force(x.x(), RAX_L); // dividend must be in RAX
                 CiValue divisor = load(x.y());            // divisor can be in any (other) register
 

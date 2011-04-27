@@ -42,19 +42,6 @@ public final class ArrayLength extends AccessArray {
      */
     public ArrayLength(Value array, FrameState newFrameState) {
         super(CiKind.Int, array, newFrameState);
-        if (array.isNonNull()) {
-            eliminateNullCheck();
-        }
-    }
-
-    /**
-     * Clears the state associated with a null check.
-     */
-    @Override
-    public void runtimeCheckCleared() {
-        if (!needsNullCheck()) {
-            clearState();
-        }
     }
 
     /**
@@ -63,7 +50,7 @@ public final class ArrayLength extends AccessArray {
      */
     @Override
     public boolean canTrap() {
-        return needsNullCheck();
+        return true;
     }
 
     @Override

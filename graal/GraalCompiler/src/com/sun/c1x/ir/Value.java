@@ -22,8 +22,6 @@
  */
 package com.sun.c1x.ir;
 
-import static com.sun.c1x.ir.Value.Flag.*;
-
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.opt.*;
@@ -39,16 +37,10 @@ public abstract class Value {
     public enum Flag {
         NonNull,            // this value is non-null
 
-        NoNullCheck,        // does not require null check
-        NoStoreCheck,       // does not require store check
-        NoBoundsCheck,      // does not require bounds check
-        NoZeroCheck,        // divide or modulus cannot cause exception
-
-        NoReadBarrier,      // does not require read barrier
-        NoWriteBarrier,     // does not require write barrier
         LiveValue,          // live because value is used
         LiveDeopt,          // live for deoptimization
         LiveSideEffect,     // live for possible side-effects only
+
         PhiDead,            // phi is illegal because local is dead
         PhiCannotSimplify,  // phi cannot be simplified
         PhiVisited;         // phi has been visited during simplification
@@ -135,44 +127,6 @@ public abstract class Value {
     }
 
     /**
-     * Eliminates a given runtime check for this instruction.
-     *
-     * @param flag the flag representing the (elimination of the) runtime check
-     */
-    public final void clearRuntimeCheck(Flag flag) {
-        if (!checkFlag(flag)) {
-            setFlag(flag);
-            runtimeCheckCleared();
-            if (flag == NoNullCheck) {
-                C1XMetrics.NullCheckEliminations++;
-            } else if (flag == NoBoundsCheck) {
-                C1XMetrics.BoundsChecksElminations++;
-            } else if (flag == NoStoreCheck) {
-                C1XMetrics.StoreCheckEliminations++;
-            } else if (flag != NoZeroCheck) {
-                throw new InternalError("Unknown runtime check: " + flag);
-            }
-        }
-    }
-
-
-    /**
-     * Clear any internal state related to null checks, because a null check
-     * for this instruction is redundant. The state cleared may depend
-     * on the type of this instruction
-     */
-    public final void eliminateNullCheck() {
-        clearRuntimeCheck(NoNullCheck);
-    }
-
-    /**
-     * Notifies this instruction that a runtime check has been
-     * eliminated or made redundant.
-     */
-    protected void runtimeCheckCleared() {
-    }
-
-    /**
      * Check whether this instruction has the specified flag set.
      * @param flag the flag to test
      * @return {@code true} if this instruction has the flag
@@ -231,19 +185,22 @@ public abstract class Value {
     }
 
     /**
-     * Checks whether this instruction needs a null check.
-     * @return {@code true} if this instruction needs a null check
-     */
-    public final boolean needsNullCheck() {
-        return !checkFlag(Flag.NoNullCheck);
-    }
-
-    /**
      * Checks whether this value is a constant (i.e. it is of type {@link Constant}.
      * @return {@code true} if this value is a constant
      */
     public final boolean isConstant() {
         return this instanceof Constant;
+    }
+
+    /**
+     * Tests whether this instruction can trap. This is conservative; it does not take
+     * into account analysis results that may eliminate the possibility of this
+     * instruction from trapping.
+     *
+     * @return {@code true} if this instruction can cause a trap.
+     */
+    public boolean canTrap() {
+        return false;
     }
 
     /**
