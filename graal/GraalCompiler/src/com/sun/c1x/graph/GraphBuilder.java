@@ -636,7 +636,7 @@ public final class GraphBuilder {
         BlockBegin fsucc = blockAt(stream().nextBCI());
         int bci = stream().currentBCI();
         boolean isSafepoint = !scopeData.noSafepoints() && tsucc.bci() <= bci || fsucc.bci() <= bci;
-        append(new If(x, cond, false, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint));
+        append(new If(x, cond, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint));
     }
 
     void genIfZero(Condition cond) {

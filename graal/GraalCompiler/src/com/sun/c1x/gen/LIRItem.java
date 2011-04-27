@@ -75,32 +75,11 @@ public class LIRItem {
      */
     private CiValue intermediateOperand;
 
-    public LIRItem(Value value, LIRGenerator gen) {
+    public LIRItem(Value instruction, LIRGenerator gen) {
         this.gen = gen;
-        setInstruction(value);
-    }
-
-    public void setInstruction(Value instruction) {
         this.instruction = instruction;
-        if (instruction != null) {
-            resultOperand = gen.makeOperand(instruction);
-        } else {
-            resultOperand = CiValue.IllegalValue;
-        }
+        resultOperand = gen.makeOperand(instruction);
         intermediateOperand = CiValue.IllegalValue;
-    }
-
-    public LIRItem(LIRGenerator gen) {
-        this.gen = gen;
-        setInstruction(null);
-    }
-
-    public void loadItem(CiKind kind) {
-        if (kind == CiKind.Byte || kind == CiKind.Boolean) {
-            loadByteItem();
-        } else {
-            loadItem();
-        }
     }
 
     public void loadForStore(CiKind kind) {
@@ -168,25 +147,12 @@ public class LIRItem {
     }
 
     public void loadNonconstant() {
-        if (gen.compilation.target.arch.isX86()) {
-            CiValue r = instruction.operand();
-            if (r.isConstant()) {
-                resultOperand = r;
-            } else {
-                loadItem();
-            }
-        } else if (gen.compilation.target.arch.isSPARC()) {
-            CiValue r = instruction.operand();
-            if (gen.canInlineAsConstant(instruction)) {
-                if (!r.isConstant()) {
-                    r = instruction.asConstant();
-                }
-                resultOperand = r;
-            } else {
-                loadItem();
-            }
+        assert gen.compilation.target.arch.isX86();
+        CiValue r = instruction.operand();
+        if (r.isConstant()) {
+            resultOperand = r;
         } else {
-            Util.shouldNotReachHere();
+            loadItem();
         }
     }
 

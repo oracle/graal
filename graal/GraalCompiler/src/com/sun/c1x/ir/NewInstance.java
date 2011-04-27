@@ -50,7 +50,6 @@ public final class NewInstance extends StateSplit {
         this.cpi = cpi;
         this.constantPool = constantPool;
         setFlag(Flag.NonNull);
-        setFlag(Flag.ResultIsUnique);
     }
 
     /**

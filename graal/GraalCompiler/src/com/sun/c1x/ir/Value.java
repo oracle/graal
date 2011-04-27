@@ -66,9 +66,7 @@ public abstract class Value {
         LiveStore,          // instruction is a store
         PhiDead,            // phi is illegal because local is dead
         PhiCannotSimplify,  // phi cannot be simplified
-        PhiVisited,         // phi has been visited during simplification
-
-        ResultIsUnique;     // the result of this instruction is guaranteed to be unique (e.g. a new object)
+        PhiVisited;         // phi has been visited during simplification
 
         public final int mask = 1 << ordinal();
     }

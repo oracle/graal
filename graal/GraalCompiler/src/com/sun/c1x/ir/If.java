@@ -38,6 +38,7 @@ public final class If extends BlockEnd {
     Value x;
     Value y;
     Condition condition;
+    boolean unorderedIsTrue;
 
     /**
      * Constructs a new If instruction.
@@ -50,14 +51,13 @@ public final class If extends BlockEnd {
      * @param stateAfter the state before the branch but after the input values have been popped
      * @param isSafepoint {@code true} if this branch should be considered a safepoint
      */
-    public If(Value x, Condition cond, boolean unorderedIsTrue, Value y,
+    public If(Value x, Condition cond, Value y,
               BlockBegin trueSucc, BlockBegin falseSucc, FrameState stateAfter, boolean isSafepoint) {
         super(CiKind.Illegal, stateAfter, isSafepoint);
         this.x = x;
         this.y = y;
         condition = cond;
         assert Util.archKindsEqual(x, y);
-        initFlag(Flag.UnorderedIsTrue, unorderedIsTrue);
         successors.add(trueSucc);
         successors.add(falseSucc);
     }
@@ -91,7 +91,7 @@ public final class If extends BlockEnd {
      * @return {@code true} if unordered inputs produce true
      */
     public boolean unorderedIsTrue() {
-        return checkFlag(Flag.UnorderedIsTrue);
+        return unorderedIsTrue;
     }
 
     /**
@@ -143,7 +143,7 @@ public final class If extends BlockEnd {
      * @see Condition#negate()
      */
     public void swapSuccessors() {
-        setFlag(Flag.UnorderedIsTrue, !unorderedIsTrue());
+        unorderedIsTrue = !unorderedIsTrue;
         condition = condition.negate();
         BlockBegin t = successors.get(0);
         BlockBegin f = successors.get(1);

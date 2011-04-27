@@ -667,7 +667,12 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (canBeConstant) {
                 return item.instruction.operand();
             } else {
-                item.loadItem(var.kind);
+                CiKind kind = var.kind;
+                if (kind == CiKind.Byte || kind == CiKind.Boolean) {
+                    item.loadByteItem();
+                } else {
+                    item.loadItem();
+                }
                 return item.result();
             }
         }
@@ -1516,6 +1521,9 @@ public abstract class LIRGenerator extends ValueVisitor {
      * @param instruction an instruction that produces a result value
      */
     protected CiValue makeOperand(Value instruction) {
+        if (instruction == null) {
+            return CiValue.IllegalValue;
+        }
         assert instruction.isLive();
         CiValue operand = instruction.operand();
         if (operand.isIllegal()) {
