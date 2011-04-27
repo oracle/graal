@@ -29,8 +29,6 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code LoadField} instruction represents a read of a static or instance field.
- *
- * @author Ben L. Titzer
  */
 public final class LoadField extends AccessField {
 
@@ -42,8 +40,8 @@ public final class LoadField extends AccessField {
      * @param stateBefore the state before the field access
      * @param isLoaded indicates if the class is loaded
      */
-    public LoadField(Value object, RiField field, boolean isStatic, FrameState stateBefore, boolean isLoaded) {
-        super(field.kind().stackKind(), object, field, isStatic, stateBefore, isLoaded);
+    public LoadField(Value object, RiField field, FrameState stateBefore, boolean isLoaded) {
+        super(field.kind().stackKind(), object, field, stateBefore, isLoaded);
     }
 
     /**

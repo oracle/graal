@@ -31,8 +31,6 @@ import com.sun.cri.ri.*;
 
 /**
  * The base class of all instructions that access fields.
- *
- * @author Ben L. Titzer
  */
 public abstract class AccessField extends StateSplit {
 
@@ -48,7 +46,7 @@ public abstract class AccessField extends StateSplit {
      * @param stateBefore the state before the field access
      * @param isLoaded indicates if the class is loaded
      */
-    public AccessField(CiKind kind, Value object, RiField field, boolean isStatic, FrameState stateBefore, boolean isLoaded) {
+    public AccessField(CiKind kind, Value object, RiField field, FrameState stateBefore, boolean isLoaded) {
         super(kind, stateBefore);
         this.object = object;
         this.field = field;
@@ -58,7 +56,6 @@ public abstract class AccessField extends StateSplit {
             setFlag(Flag.NeedsPatching);
         }
         initFlag(Flag.IsLoaded, isLoaded);
-        initFlag(Flag.IsStatic, isStatic);
         if (isLoaded && object.isNonNull()) {
             eliminateNullCheck();
         }
@@ -87,7 +84,7 @@ public abstract class AccessField extends StateSplit {
      * @return {@code true} if this field access is to a static field
      */
     public boolean isStatic() {
-        return checkFlag(Flag.IsStatic);
+        return Modifier.isStatic(field.accessFlags());
     }
 
     /**

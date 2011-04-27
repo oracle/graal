@@ -101,19 +101,4 @@ public abstract class TypeCheck extends StateSplit {
         object = closure.apply(object);
         targetClassInstruction = closure.apply(targetClassInstruction);
     }
-
-    /**
-     * Sets this type check operation to be a direct compare.
-     */
-    public void setDirectCompare() {
-        setFlag(Flag.DirectCompare);
-    }
-
-    /**
-     * Checks where this comparison is a direct compare, because the class compared to is a leaf class.
-     * @return {@code true} if this typecheck is a direct compare
-     */
-    public boolean isDirectCompare() {
-        return checkFlag(Flag.DirectCompare);
-    }
 }

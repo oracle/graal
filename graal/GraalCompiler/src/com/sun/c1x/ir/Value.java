@@ -33,13 +33,9 @@ import com.sun.cri.ri.*;
 /**
  * This class represents a value within the HIR graph, including local variables, phis, and
  * all other instructions.
- *
- * @author Ben L. Titzer
  */
 public abstract class Value {
-    /**
-     * An enumeration of flags on values.
-     */
+
     public enum Flag {
         NonNull,            // this value is non-null
 
@@ -50,14 +46,7 @@ public abstract class Value {
 
         NoReadBarrier,      // does not require read barrier
         NoWriteBarrier,     // does not require write barrier
-        NoDivSpecialCase,   // divide or modulus cannot be special case of MIN_INT / -1
-        DirectCompare,
         IsLoaded,           // field or method is resolved and class is loaded and initialized
-        IsStatic,           // field or method access is static
-        IsSafepoint,        // branch is backward (safepoint)
-        IsStrictFP,
-        PreservesState,     // intrinsic preserves state
-        UnorderedIsTrue,
         NeedsPatching,
         LiveValue,          // live because value is used
         LiveDeopt,          // live for deoptimization
@@ -92,11 +81,6 @@ public abstract class Value {
     private int flags;
 
     protected CiValue operand = CiValue.IllegalValue;
-
-    /**
-     * A cache for analysis information. Every optimization must reset this field to {@code null} once it has completed.
-     */
-    public Object optInfo;
 
     /**
      * Used by {@link InstructionSubstituter}.

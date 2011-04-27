@@ -26,8 +26,6 @@ package com.sun.c1x.ir;
  * The {@link ValueVisitor} implements one half of the visitor
  * pattern for {@linkplain Value IR values}, allowing clients to implement functionality
  * depending on the type of an value without doing type tests.
- *
- * @author Ben L. Titzer
  */
 public abstract class ValueVisitor {
     // Checkstyle: stop

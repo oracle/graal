@@ -39,6 +39,7 @@ public abstract class BlockEnd extends Instruction {
     BlockBegin begin;
     final List<BlockBegin> successors;
     FrameState stateAfter;
+    boolean isSafepoint;
 
     /**
      * Constructs a new block end with the specified value type.
@@ -51,9 +52,7 @@ public abstract class BlockEnd extends Instruction {
         super(kind);
         this.successors = successors == null ? new ArrayList<BlockBegin>(2) : successors;
         setStateAfter(stateAfter);
-        if (isSafepoint) {
-            setFlag(Value.Flag.IsSafepoint);
-        }
+        this.isSafepoint = isSafepoint;
     }
 
     public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint) {
@@ -77,7 +76,7 @@ public abstract class BlockEnd extends Instruction {
      * @return {@code true} if this instruction is a safepoint
      */
     public boolean isSafepoint() {
-        return checkFlag(Value.Flag.IsSafepoint);
+        return isSafepoint;
     }
 
     /**

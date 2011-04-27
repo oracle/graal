@@ -29,8 +29,6 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code StoreField} instruction represents a write to a static or instance field.
- *
- * @author Ben L. Titzer
  */
 public final class StoreField extends AccessField {
 
@@ -48,8 +46,8 @@ public final class StoreField extends AccessField {
      * @param stateBefore the state before the field access
      * @param isLoaded indicates if the class is loaded
      */
-    public StoreField(Value object, RiField field, Value value, boolean isStatic, FrameState stateBefore, boolean isLoaded) {
-        super(CiKind.Void, object, field, isStatic, stateBefore, isLoaded);
+    public StoreField(Value object, RiField field, Value value, FrameState stateBefore, boolean isLoaded) {
+        super(CiKind.Void, object, field, stateBefore, isLoaded);
         this.value = value;
         setFlag(Flag.LiveStore);
         if (value.kind != CiKind.Object) {

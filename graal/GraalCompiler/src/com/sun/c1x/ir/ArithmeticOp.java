@@ -36,6 +36,7 @@ import com.sun.cri.ci.*;
 public final class ArithmeticOp extends Op2 {
 
     private FrameState stateBefore;
+    private boolean isStrictFP;
 
     /**
      * Creates a new arithmetic operation.
@@ -48,7 +49,7 @@ public final class ArithmeticOp extends Op2 {
      */
     public ArithmeticOp(int opcode, CiKind kind, Value x, Value y, boolean isStrictFP, FrameState stateBefore) {
         super(kind, opcode, x, y);
-        initFlag(Flag.IsStrictFP, isStrictFP);
+        this.isStrictFP = isStrictFP;
         if (stateBefore != null) {
             // state before is only used in the case of a division or remainder,
             // and isn't needed if the zero check is redundant
@@ -59,10 +60,6 @@ public final class ArithmeticOp extends Op2 {
                     setFlag(Flag.NoZeroCheck);
                 } else {
                     this.stateBefore = stateBefore;
-                }
-                if (divisor != -1) {
-                    C1XMetrics.DivideSpecialChecksRedundant++;
-                    setFlag(Flag.NoDivSpecialCase);
                 }
             } else {
                 this.stateBefore = stateBefore;
@@ -80,7 +77,7 @@ public final class ArithmeticOp extends Op2 {
      * @return {@code true} if this instruction has strict fp semantics
      */
     public boolean isStrictFP() {
-        return checkFlag(Flag.IsStrictFP);
+        return isStrictFP;
     }
 
     /**
@@ -112,10 +109,6 @@ public final class ArithmeticOp extends Op2 {
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).
-             print(' ').
-             print(Bytecodes.operator(opcode)).
-             print(' ').
-             print(y());
+        out.print(x()).print(' ').print(Bytecodes.operator(opcode)).print(' ').print(y());
     }
 }

@@ -22,16 +22,17 @@
  */
 package com.sun.c1x.ir;
 
+import java.lang.reflect.*;
+
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
 /**
  * The {@code Invoke} instruction represents all kinds of method calls.
- *
- * @author Ben L. Titzer
  */
 public final class Invoke extends StateSplit {
 
@@ -50,16 +51,13 @@ public final class Invoke extends StateSplit {
      * @param target the target method being called
      * @param stateBefore the state before executing the invocation
      */
-    public Invoke(int opcode, CiKind result, Value[] args, boolean isStatic, RiMethod target, RiType returnType, FrameState stateBefore) {
+    public Invoke(int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, FrameState stateBefore) {
         super(result, stateBefore);
         this.opcode = opcode;
         this.arguments = args;
         this.target = target;
         this.returnType = returnType;
-        if (isStatic) {
-            setFlag(Flag.IsStatic);
-            eliminateNullCheck();
-        } else if (args[0].isNonNull() || args[0].kind.isWord()) {
+        if (isStatic() || args[0].isNonNull() || args[0].kind.isWord()) {
             eliminateNullCheck();
         }
     }
@@ -77,7 +75,7 @@ public final class Invoke extends StateSplit {
      * @return {@code true} if the invocation is a static invocation
      */
     public boolean isStatic() {
-        return checkFlag(Flag.IsStatic);
+        return opcode == Bytecodes.INVOKESTATIC;
     }
 
     @Override
