@@ -57,7 +57,6 @@ public abstract class ValueVisitor {
     public abstract void visitNewInstance(NewInstance i);
     public abstract void visitNewMultiArray(NewMultiArray i);
     public abstract void visitNewObjectArray(NewObjectArray i);
-    public abstract void visitNewObjectArrayClone(NewObjectArrayClone newObjectArrayClone);
     public abstract void visitNewTypeArray(NewTypeArray i);
     public abstract void visitNullCheck(NullCheck i);
     public abstract void visitPhi(Phi i);
@@ -68,6 +67,5 @@ public abstract class ValueVisitor {
     public abstract void visitStoreField(StoreField i);
     public abstract void visitStoreIndexed(StoreIndexed i);
     public abstract void visitTableSwitch(TableSwitch i);
-    public abstract void visitTemplateCall(TemplateCall templateCall);
     public abstract void visitThrow(Throw i);
 }

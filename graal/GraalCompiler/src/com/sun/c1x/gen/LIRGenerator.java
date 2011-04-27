@@ -350,14 +350,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitNewObjectArrayClone(NewObjectArrayClone x) {
-        XirArgument length = toXirArgument(x.length());
-        XirArgument referenceArray = toXirArgument(x.referenceArray());
-        XirSnippet snippet = xir.genNewObjectArrayClone(site(x), length, referenceArray);
-        emitXir(snippet, x, stateFor(x), null, true);
-    }
-
-    @Override
     public void visitNewMultiArray(NewMultiArray x) {
         XirArgument[] dims = new XirArgument[x.dimensions().length];
 
@@ -501,28 +493,6 @@ public abstract class LIRGenerator extends ValueVisitor {
             lir.callIndirect(target, resultOperand, argList, info, snippet.marks, pointerSlots);
         }
 
-        if (resultOperand.isLegal()) {
-            CiValue result = createResultVariable(x);
-            lir.move(resultOperand, result);
-        }
-    }
-
-    @Override
-    public void visitTemplateCall(TemplateCall x) {
-        CiValue resultOperand = resultOperandFor(x.kind);
-        List<CiValue> argList;
-        if (x.receiver() != null) {
-            CiCallingConvention cc = compilation.frameMap().getCallingConvention(new CiKind[] {CiKind.Object}, JavaCall);
-            argList = visitInvokeArguments(cc, new Value[] {x.receiver()}, null);
-        } else {
-            argList = new ArrayList<CiValue>();
-        }
-
-        if (x.address() != null) {
-            CiValue callAddress = load(x.address());
-            argList.add(callAddress);
-        }
-        lir.templateCall(resultOperand, argList);
         if (resultOperand.isLegal()) {
             CiValue result = createResultVariable(x);
             lir.move(resultOperand, result);

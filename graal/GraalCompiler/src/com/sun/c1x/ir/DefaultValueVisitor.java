@@ -67,7 +67,6 @@ public class DefaultValueVisitor extends ValueVisitor {
     @Override public void visitNewInstance(NewInstance i) { visit(i); }
     @Override public void visitNewMultiArray(NewMultiArray i) { visit(i); }
     @Override public void visitNewObjectArray(NewObjectArray i) { visit(i); }
-    @Override public void visitNewObjectArrayClone(NewObjectArrayClone i) { visit(i); }
     @Override public void visitNewTypeArray(NewTypeArray i) { visit(i); }
     @Override public void visitNullCheck(NullCheck i) { visit(i); }
     @Override public void visitPhi(Phi i) { visit(i); }
@@ -78,6 +77,5 @@ public class DefaultValueVisitor extends ValueVisitor {
     @Override public void visitStoreField(StoreField i) { visit(i); }
     @Override public void visitStoreIndexed(StoreIndexed i) { visit(i); }
     @Override public void visitTableSwitch(TableSwitch i) { visit(i); }
-    @Override public void visitTemplateCall(TemplateCall i) { visit(i); }
     @Override public void visitThrow(Throw i) { visit(i); }
 }
