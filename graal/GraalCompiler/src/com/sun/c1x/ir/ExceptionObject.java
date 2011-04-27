@@ -28,8 +28,6 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
- *
- * @author Ben L. Titzer
  */
 public final class ExceptionObject extends Instruction {
 
@@ -45,7 +43,6 @@ public final class ExceptionObject extends Instruction {
     public ExceptionObject(FrameState stateBefore) {
         super(CiKind.Object);
         setFlag(Flag.NonNull);
-        setFlag(Flag.LiveSideEffect);
         this.stateBefore = stateBefore;
     }
 

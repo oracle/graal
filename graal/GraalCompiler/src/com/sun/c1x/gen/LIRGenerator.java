@@ -205,10 +205,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.operands = new OperandPool(compilation.target);
 
         new PhiSimplifier(ir);
-
-        // mark the liveness of all instructions if it hasn't already been done by the optimizer
-        LivenessMarker livenessMarker = new LivenessMarker(ir);
-        C1XMetrics.LiveHIRInstructions += livenessMarker.liveCount();
     }
 
     public ArrayList<DeoptimizationStub> deoptimizationStubs() {
@@ -229,7 +225,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.currentBlock = block;
 
         for (Instruction instr = block; instr != null; instr = instr.next()) {
-            if (instr.isLive()) {
+            if (!(instr instanceof BlockBegin)) {
                 walkState(instr, instr.stateBefore());
                 doRoot(instr);
             }
@@ -277,9 +273,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             Local local = ((Local) instr);
             CiKind kind = src.kind.stackKind();
             assert kind == local.kind.stackKind() : "local type check failed";
-            if (local.isLive()) {
-                setResult(local, dest);
-            }
+            setResult(local, dest);
             javaIndex += kind.jvmSlots;
         }
     }
@@ -365,21 +359,14 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitConstant(Constant x) {
-        if (canInlineAsConstant(x)) {
-            //setResult(x, loadConstant(x));
-        } else {
+        if (!canInlineAsConstant(x)) {
             CiValue res = x.operand();
             if (!(res.isLegal())) {
                 res = x.asConstant();
             }
             if (res.isConstant()) {
-                if (isUsedForValue(x)) {
-                    CiVariable reg = createResultVariable(x);
-                    lir.move(res, reg);
-                } else {
-                    assert x.checkFlag(Value.Flag.LiveDeopt);
-                    x.setOperand(res);
-                }
+                CiVariable reg = createResultVariable(x);
+                lir.move(res, reg);
             } else {
                 setResult(x, (CiVariable) res);
             }
@@ -1220,7 +1207,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     void doRoot(Instruction instr) {
         currentInstruction = instr;
-        assert instr.isLive() : "use only with roots";
         assert !instr.hasSubst() : "shouldn't have missed substitution";
 
         if (C1XOptions.TraceLIRVisit) {
@@ -1230,12 +1216,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (C1XOptions.TraceLIRVisit) {
             TTY.println("Operand for " + instr + " = " + instr.operand());
         }
-
-        assert (instr.operand().isLegal()) || !isUsedForValue(instr) || instr.isConstant() : "operand was not set for live instruction";
-    }
-
-    private boolean isUsedForValue(Instruction instr) {
-        return instr.checkFlag(Value.Flag.LiveValue);
     }
 
     protected void logicOp(int code, CiValue resultOp, CiValue leftOp, CiValue rightOp) {
@@ -1271,8 +1251,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (suxVal instanceof Phi) {
             Phi phi = (Phi) suxVal;
             // curVal can be null without phi being null in conjunction with inlining
-            if (phi.isLive() && !phi.isDeadPhi() && curVal != null && curVal != phi) {
-                assert curVal.isLive() : "value not live: " + curVal + ", suxVal=" + suxVal;
+            if (!phi.isDeadPhi() && curVal != null && curVal != phi) {
                 assert !phi.isIllegal() : "illegal phi cannot be marked as live";
                 if (curVal instanceof Phi) {
                     operandForPhi((Phi) curVal);
@@ -1365,7 +1344,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected void setNoResult(Instruction x) {
-        assert !isUsedForValue(x) : "can't have use";
         x.clearOperand();
     }
 
@@ -1419,7 +1397,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 assert x instanceof ExceptionObject ||
                        x instanceof Throw ||
                        x instanceof MonitorEnter ||
-                       x instanceof MonitorExit;
+                       x instanceof MonitorExit : x + ", " + x.getClass();
             }
 
             for (int index = 0; index < s.localsSize(); index++) {
@@ -1438,7 +1416,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     private void walkStateValue(Value value) {
         if (value != null) {
             assert !value.hasSubst() : "missed substitution";
-            assert value.isLive() : "value must be marked live in frame state";
             if (value instanceof Phi && !value.isIllegal()) {
                 // phi's are special
                 operandForPhi((Phi) value);
@@ -1513,7 +1490,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (instruction == null) {
             return CiValue.IllegalValue;
         }
-        assert instruction.isLive();
         CiValue operand = instruction.operand();
         if (operand.isIllegal()) {
             if (instruction instanceof Phi) {

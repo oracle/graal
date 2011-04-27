@@ -2045,13 +2045,6 @@ public final class LinearScan {
 
             assert con == null || operand.isVariable() || operand.isConstant() || operand.isIllegal() : "Constant instructions have only constant operands (or illegal if constant is optimized away)";
 
-            if (con != null && !con.isLive() && !operand.isConstant()) {
-                // Unpinned constants may have a variable operand for a part of the lifetime
-                // or may be illegal when it was optimized away,
-                // so always use a constant operand
-                operand = con.asConstant();
-            }
-
             if (operand.isVariable()) {
                 OperandMode mode = OperandMode.Input;
                 BlockBegin block = blockForId(opId);

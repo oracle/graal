@@ -29,19 +29,15 @@ import com.sun.c1x.value.*;
 
 /**
  * Prints a listing for a {@linkplain BlockBegin block}.
- *
- * @author Doug Simon
  */
 public class BlockPrinter implements BlockClosure {
 
     private final InstructionPrinter ip;
     private final boolean cfgOnly;
-    private final boolean liveOnly;
 
-    public BlockPrinter(IR ir, InstructionPrinter ip, boolean cfgOnly, boolean liveOnly) {
+    public BlockPrinter(IR ir, InstructionPrinter ip, boolean cfgOnly) {
         this.ip = ip;
         this.cfgOnly = cfgOnly;
-        this.liveOnly = liveOnly;
     }
 
     public void apply(BlockBegin block) {
@@ -49,11 +45,11 @@ public class BlockPrinter implements BlockClosure {
             ip.printInstruction(block);
             ip.out().println();
         } else {
-            printBlock(block, liveOnly);
+            printBlock(block);
         }
     }
 
-    public void printBlock(BlockBegin block, boolean liveOnly) {
+    public void printBlock(BlockBegin block) {
         ip.printInstruction(block);
         LogStream out = ip.out();
         out.println();
@@ -65,9 +61,7 @@ public class BlockPrinter implements BlockClosure {
         ip.printInstructionListingHeader();
 
         for (Instruction i = block.next(); i != null; i = i.next()) {
-            if (!liveOnly || i.isLive()) {
-                ip.printInstructionListing(i);
-            }
+            ip.printInstructionListing(i);
         }
         out.println();
 

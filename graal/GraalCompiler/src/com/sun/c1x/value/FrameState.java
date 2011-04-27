@@ -486,7 +486,7 @@ public abstract class FrameState {
         int max = this.valuesSize();
         for (int i = 0; i < max; i++) {
             Value instr = values[i];
-            if (instr instanceof Phi && instr.isLive() && !instr.isDeadPhi()) {
+            if (instr instanceof Phi && !instr.isDeadPhi()) {
                 Phi phi = (Phi) instr;
                 if (block == null || phi.block() == block) {
                     if (!proc.doPhi(phi)) {
@@ -563,7 +563,7 @@ public abstract class FrameState {
             final int max = state.valuesSize();
             for (int i = 0; i < max; i++) {
                 Value value = state.values[i];
-                if (value != null && value.isLive()) {
+                if (value != null) {
                     proc.doValue(value);
                 }
             }

@@ -28,8 +28,6 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
- *
- * @author Ben L. Titzer
  */
 public final class CompareOp extends Op2 {
 
@@ -42,10 +40,6 @@ public final class CompareOp extends Op2 {
      */
     public CompareOp(int opcode, CiKind kind, Value x, Value y) {
         super(kind, opcode, x, y);
-        if (kind.isVoid()) {
-            // A compare that does not produce a value exists soley for it's side effect (i.e. setting condition codes)
-            setFlag(Flag.LiveSideEffect);
-        }
     }
 
     @Override

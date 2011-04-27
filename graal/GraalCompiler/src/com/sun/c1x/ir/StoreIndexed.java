@@ -50,7 +50,6 @@ public final class StoreIndexed extends AccessIndexed {
     public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, FrameState stateBefore) {
         super(CiKind.Void, array, index, length, elementType, stateBefore);
         this.value = value;
-        setFlag(Flag.LiveSideEffect);
     }
 
     /**

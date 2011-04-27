@@ -49,7 +49,6 @@ public final class StoreField extends AccessField {
     public StoreField(Value object, RiField field, Value value, FrameState stateBefore) {
         super(CiKind.Void, object, field, stateBefore);
         this.value = value;
-        setFlag(Flag.LiveSideEffect);
     }
 
     /**

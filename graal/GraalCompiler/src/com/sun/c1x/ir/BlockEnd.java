@@ -31,8 +31,6 @@ import com.sun.cri.ci.*;
 /**
  * The {@code BlockEnd} instruction is a base class for all instructions that end a basic
  * block, including branches, switches, throws, and goto's.
- *
- * @author Ben L. Titzer
  */
 public abstract class BlockEnd extends Instruction {
 
@@ -53,7 +51,6 @@ public abstract class BlockEnd extends Instruction {
         this.successors = successors == null ? new ArrayList<BlockBegin>(2) : successors;
         setStateAfter(stateAfter);
         this.isSafepoint = isSafepoint;
-        setFlag(Flag.LiveSideEffect);
     }
 
     public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint) {

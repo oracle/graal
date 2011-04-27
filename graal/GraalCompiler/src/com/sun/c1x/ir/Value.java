@@ -37,10 +37,6 @@ public abstract class Value {
     public enum Flag {
         NonNull,            // this value is non-null
 
-        LiveValue,          // live because value is used
-        LiveDeopt,          // live for deoptimization
-        LiveSideEffect,     // live for possible side-effects only
-
         PhiDead,            // phi is illegal because local is dead
         PhiCannotSimplify,  // phi cannot be simplified
         PhiVisited;         // phi has been visited during simplification
@@ -48,9 +44,6 @@ public abstract class Value {
         public final int mask = 1 << ordinal();
     }
 
-    private static final int LIVE_FLAGS = Flag.LiveValue.mask |
-                                          Flag.LiveDeopt.mask |
-                                          Flag.LiveSideEffect.mask;
     /**
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain CiKind#stackKind() stack kind}.
@@ -83,25 +76,6 @@ public abstract class Value {
     public Value(CiKind kind) {
         assert kind == kind.stackKind() : kind + " != " + kind.stackKind();
         this.kind = kind;
-    }
-
-    /**
-     * Checks whether this instruction is live (i.e. code should be generated for it).
-     * This is computed in a dedicated pass by {@link LivenessMarker}.
-     * An instruction is live because its value is needed by another live instruction,
-     * because its value is needed for deoptimization, or the program is control dependent
-     * upon it.
-     * @return {@code true} if this instruction should be considered live
-     */
-    public final boolean isLive() {
-        return C1XOptions.PinAllInstructions || (flags & LIVE_FLAGS) != 0;
-    }
-
-    /**
-     * Clears all liveness flags.
-     */
-    public final void clearLive() {
-        flags = flags & ~LIVE_FLAGS;
     }
 
     /**

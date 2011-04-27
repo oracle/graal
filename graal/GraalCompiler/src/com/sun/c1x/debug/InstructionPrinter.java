@@ -129,10 +129,6 @@ public class InstructionPrinter {
      * @param instruction the instruction to print
      */
     public void printInstructionListing(Value instruction) {
-        if (instruction.isLive()) {
-            out.print('.');
-        }
-
         int indentation = out.indentationLevel();
         out.fillTo(BCI.position + indentation, ' ').
              print(instruction instanceof Instruction ? ((Instruction) instruction).bci() : 0).
