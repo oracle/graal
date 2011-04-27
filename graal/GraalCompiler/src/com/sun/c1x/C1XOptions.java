@@ -106,7 +106,6 @@ public final class C1XOptions {
     public static boolean OptLocalValueNumbering;
     public static boolean OptLocalLoadElimination;
     public static boolean OptCSEArrayLength;
-    public static boolean OptGlobalValueNumbering;
     public static boolean OptBlockSkipping;
     public static boolean OptIterativeNCE;
     public static boolean OptFlowSensitiveNCE;
@@ -194,7 +193,6 @@ public final class C1XOptions {
         OptFlowSensitiveNCE             = lll;
         OptDeadCodeElimination1         = lll;
         OptDeadCodeElimination2         = lll;
-        OptGlobalValueNumbering         = lll;
         OptBlockSkipping                = lll;
     }
 }

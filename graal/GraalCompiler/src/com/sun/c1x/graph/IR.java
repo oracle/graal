@@ -143,11 +143,11 @@ public class IR {
 
     private void optimize2() {
         // do more advanced, dominator-based optimizations
-        if (C1XOptions.OptGlobalValueNumbering) {
+        /*if (C1XOptions.OptGlobalValueNumbering) {
             makeLinearScanOrder();
             new GlobalValueNumberer(this);
             verifyAndPrint("After global value numbering");
-        }
+        }*/
         if (C1XOptions.OptDeadCodeElimination2) {
             new LivenessMarker(this).removeDeadCode();
             verifyAndPrint("After dead code elimination 2");
