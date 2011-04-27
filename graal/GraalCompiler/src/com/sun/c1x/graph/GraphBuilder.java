@@ -1055,7 +1055,6 @@ public final class GraphBuilder {
             if (isSynchronized(method().accessFlags())) {
                 // if the inlined method is synchronized, then the monitor
                 // must be released before jumping to the continuation point
-                assert C1XOptions.OptInlineSynchronized;
                 Value object = curState.lockAt(0);
                 if (object instanceof Instruction) {
                     Instruction obj = (Instruction) object;
@@ -1469,10 +1468,10 @@ public final class GraphBuilder {
         if (compilation.runtime.mustNotCompile(target)) {
             return cannotInline(target, "compile excluded by runtime");
         }
-        if (isSynchronized(target.accessFlags()) && !C1XOptions.OptInlineSynchronized) {
+        if (isSynchronized(target.accessFlags())) {
             return cannotInline(target, "is synchronized");
         }
-        if (target.exceptionHandlers().length != 0 && !C1XOptions.OptInlineExcept) {
+        if (target.exceptionHandlers().length != 0) {
             return cannotInline(target, "has exception handlers");
         }
         if (!target.hasBalancedMonitors()) {

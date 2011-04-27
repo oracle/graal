@@ -32,8 +32,6 @@ public class HotSpotOptions {
 
     public static void setDefaultOptions() {
         C1XOptions.setOptimizationLevel(3);
-        C1XOptions.OptInlineExcept = false;
-        C1XOptions.OptInlineSynchronized = false;
         C1XOptions.DetailedAsserts = false;
         C1XOptions.CommentedAssembly = false;
         C1XOptions.MethodEndBreakpointGuards = 2;

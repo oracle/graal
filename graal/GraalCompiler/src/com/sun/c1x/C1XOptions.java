@@ -40,8 +40,6 @@ public final class C1XOptions {
 
     // inlining settings
     public static boolean OptInline                          = ____;
-    public static boolean OptInlineExcept                    = ____;
-    public static boolean OptInlineSynchronized              = ____;
 
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;
@@ -95,9 +93,6 @@ public final class C1XOptions {
     public static boolean OptLocalLoadElimination;
     public static boolean OptCSEArrayLength;
     public static boolean OptBlockSkipping;
-    public static boolean OptIterativeNCE;
-    public static boolean OptFlowSensitiveNCE;
-    public static boolean OptDeadCodeElimination1;
     public static boolean OptControlFlow;
     public static boolean OptMoveElimination;
 
@@ -170,13 +165,8 @@ public final class C1XOptions {
 
         // Level 3 optimizations
         OptCSEArrayLength               = lll;
-        OptInlineExcept                 = lll;
-        OptInlineSynchronized           = lll;
         UseStackMapTableLiveness        = lll;
         UseAssumptions                  = lll;
-        OptIterativeNCE                 = lll;
-        OptFlowSensitiveNCE             = lll;
-        OptDeadCodeElimination1         = lll;
         OptBlockSkipping                = lll;
     }
 }
