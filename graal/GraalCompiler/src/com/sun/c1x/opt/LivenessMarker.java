@@ -24,7 +24,6 @@ package com.sun.c1x.opt;
 
 import static com.sun.c1x.ir.Value.Flag.*;
 
-import com.sun.c1x.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.value.*;
@@ -77,28 +76,6 @@ public final class LivenessMarker {
 
     public int liveCount() {
         return count;
-    }
-
-    public void removeDeadCode() {
-        // second pass: remove dead instructions from blocks
-        ir.startBlock.iteratePreOrder(new BlockClosure() {
-            public void apply(BlockBegin block) {
-                Instruction prev = block;
-                Instruction i = block.next();
-                while (i != null) {
-                    if (i.isLive()) {
-                        prev.resetNext(i); // skip any previous dead instructions
-                        prev = i;
-                    } else {
-                        C1XMetrics.DeadCodeEliminated++;
-                    }
-                    i = i.next();
-                }
-            }
-        });
-        // clear all marks on all instructions
-        valueMarker.clearAll();
-        deoptMarker.clearAll();
     }
 
     private static class Link {

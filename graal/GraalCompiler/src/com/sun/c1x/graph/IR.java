@@ -28,7 +28,6 @@ import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.observer.*;
-import com.sun.c1x.opt.*;
 import com.sun.c1x.value.*;
 
 /**
@@ -88,7 +87,6 @@ public class IR {
             C1XTimers.HIR_OPTIMIZE.start();
         }
 
-        optimize1();
         computeLinearScanOrder();
 
         if (C1XOptions.PrintTimers) {
@@ -106,13 +104,6 @@ public class IR {
 
         if (C1XOptions.PrintCompilation) {
             TTY.print(String.format("%3d blocks | ", this.numberOfBlocks()));
-        }
-    }
-
-    private void optimize1() {
-        if (C1XOptions.OptDeadCodeElimination1) {
-            new LivenessMarker(this).removeDeadCode();
-            verifyAndPrint("After dead code elimination 1");
         }
     }
 
