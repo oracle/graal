@@ -47,12 +47,9 @@ public abstract class Value {
         NoReadBarrier,      // does not require read barrier
         NoWriteBarrier,     // does not require write barrier
         IsLoaded,           // field or method is resolved and class is loaded and initialized
-        NeedsPatching,
         LiveValue,          // live because value is used
         LiveDeopt,          // live for deoptimization
-        LiveControl,        // live for control dependencies
         LiveSideEffect,     // live for possible side-effects only
-        LiveStore,          // instruction is a store
         PhiDead,            // phi is illegal because local is dead
         PhiCannotSimplify,  // phi cannot be simplified
         PhiVisited;         // phi has been visited during simplification
@@ -62,7 +59,6 @@ public abstract class Value {
 
     private static final int LIVE_FLAGS = Flag.LiveValue.mask |
                                           Flag.LiveDeopt.mask |
-                                          Flag.LiveControl.mask |
                                           Flag.LiveSideEffect.mask;
     /**
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.

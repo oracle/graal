@@ -148,18 +148,9 @@ public final class LivenessMarker {
             stateBefore.valuesDo(deoptMarker);
             i.inputValuesDo(valueMarker);
             setFlag(i, LiveSideEffect);
-        } else if (i.checkFlag(LiveStore)) {
-            // instruction is a store that cannot be eliminated
-            i.inputValuesDo(valueMarker);
-            setFlag(i, LiveSideEffect);
         } else if (i.checkFlag(LiveSideEffect)) {
             // instruction has a side effect
             i.inputValuesDo(valueMarker);
-        }
-        if (i instanceof BlockEnd) {
-            // input values to block ends are control dependencies
-            i.inputValuesDo(valueMarker);
-            setFlag(i, LiveControl);
         }
         FrameState stateAfter = i.stateAfter();
         if (stateAfter != null) {

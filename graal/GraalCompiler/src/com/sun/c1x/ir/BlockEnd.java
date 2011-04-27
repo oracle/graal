@@ -53,6 +53,7 @@ public abstract class BlockEnd extends Instruction {
         this.successors = successors == null ? new ArrayList<BlockBegin>(2) : successors;
         setStateAfter(stateAfter);
         this.isSafepoint = isSafepoint;
+        setFlag(Flag.LiveSideEffect);
     }
 
     public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint) {
