@@ -48,10 +48,10 @@ public abstract class Node {
         this.successors = new NodeArray(successors);
         this.predecessors = new ArrayList<Node>();
         this.usages = new ArrayList<Node>();
-        for(Node input : inputs) {
+        for (Node input : inputs) {
             input.usages.add(this);
         }
-        for(Node successor : successors) {
+        for (Node successor : successors) {
             successor.predecessors.add(this);
         }
     }
@@ -116,7 +116,7 @@ public abstract class Node {
             System.arraycopy(nodes, 0, copy, 0, nodes.length);
             return copy;
         }
-        
+
         public int size() {
             return nodes.length;
         }
@@ -154,7 +154,7 @@ public abstract class Node {
         for (int i = 0; i < myInputs.length; i++) {
             other.inputs.set(i, myInputs[i]);
         }
-        while(!usages.isEmpty()) {
+        while (!usages.isEmpty()) {
             Node usage = usages.get(0);
             usage.inputs.replace(this, other);
         }
@@ -167,11 +167,11 @@ public abstract class Node {
             predecessor.successors.replace(this, other);
         }
     }
-    
+
     protected Node setInput(int index, Node in) {
         return this.getInputs().set(index, in);
     }
-    
+
     protected Node setSuccessor(int index, Node sux) {
         return this.getSuccessors().set(index, sux);
     }
