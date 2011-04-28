@@ -77,15 +77,17 @@ public abstract class Node implements Cloneable {
 
     public void replace(Node other) {
         assert !isDeleted() && !other.isDeleted();
-        assert other.graph == graph;
+        assert other == null || other.graph == graph;
         for (Node usage : usages) {
             usage.inputs.replaceFirstOccurrence(this, other);
         }
         for (Node predecessor : predecessors) {
             predecessor.successors.replaceFirstOccurrence(this, other);
         }
-        other.usages.addAll(usages);
-        other.predecessors.addAll(predecessors);
+        if (other != null) {
+            other.usages.addAll(usages);
+            other.predecessors.addAll(predecessors);
+        }
         usages.clear();
         predecessors.clear();
         delete();
@@ -97,12 +99,14 @@ public abstract class Node implements Cloneable {
 
     public void delete() {
         assert !isDeleted();
+        assert usages.size() == 0 && predecessors.size() == 0;
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);
         }
         for (int i = 0; i < successors.size(); ++i) {
             successors.set(i, Null);
         }
+        // make sure its not connected. pred usages
         graph.unregister(this);
         id = DeletedID;
         assert isDeleted();
