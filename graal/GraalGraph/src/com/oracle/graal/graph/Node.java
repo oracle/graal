@@ -48,6 +48,12 @@ public abstract class Node {
         this.successors = new NodeArray(successors);
         this.predecessors = new ArrayList<Node>();
         this.usages = new ArrayList<Node>();
+        for(Node input : inputs) {
+            input.usages.add(this);
+        }
+        for(Node successor : successors) {
+            successor.predecessors.add(this);
+        }
     }
 
     public Node(int inputs, int successors, Graph graph) {
@@ -69,7 +75,8 @@ public abstract class Node {
 
         public Node set(int index, Node node) {
             if (node.graph != Node.this.graph) {
-                // fail ?
+                // fail
+                System.err.println("node.graph != Node.this.graph");
             }
             Node old = nodes[index];
             nodes[index] = node;
@@ -109,6 +116,10 @@ public abstract class Node {
             System.arraycopy(nodes, 0, copy, 0, nodes.length);
             return copy;
         }
+        
+        public int size() {
+            return nodes.length;
+        }
     }
 
     public Collection<Node> getPredecessors() {
@@ -127,11 +138,11 @@ public abstract class Node {
         return successors;
     }
 
-    public int getId() {
+    public int id() {
         return id;
     }
 
-    public Graph getGraph() {
+    public Graph graph() {
         return graph;
     }
 
@@ -143,7 +154,8 @@ public abstract class Node {
         for (int i = 0; i < myInputs.length; i++) {
             other.inputs.set(i, myInputs[i]);
         }
-        for (Node usage : usages) {
+        while(!usages.isEmpty()) {
+            Node usage = usages.get(0);
             usage.inputs.replace(this, other);
         }
 
@@ -155,22 +167,16 @@ public abstract class Node {
             predecessor.successors.replace(this, other);
         }
     }
+    
+    protected Node setInput(int index, Node in) {
+        return this.getInputs().set(index, in);
+    }
+    
+    protected Node setSuccessor(int index, Node sux) {
+        return this.getSuccessors().set(index, sux);
+    }
 
     public abstract Node cloneNode(Graph into);
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj.getClass() == this.getClass()) {
-            Node other = (Node) obj;
-            if (other.id == this.id && other.graph == this.graph) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     protected Node getInput(int index) {
         return this.inputs.nodes[index];

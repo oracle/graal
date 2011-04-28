@@ -27,6 +27,10 @@ public class NullNode extends Node {
     public NullNode(int inputs, int successors, Graph graph) {
         super(inputs, successors, graph);
     }
+    
+    public NullNode(Graph graph) {
+        super(0, 0, graph);
+    }
 
     @Override
     public NullNode cloneNode(Graph into) {

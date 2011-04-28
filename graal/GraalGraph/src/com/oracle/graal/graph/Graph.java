@@ -46,7 +46,7 @@ public class Graph {
     }
 
     public Node local(Node node) {
-        if (node.getGraph() == this) {
+        if (node.graph() == this) {
             return node;
         }
         return node.cloneNode(this);
