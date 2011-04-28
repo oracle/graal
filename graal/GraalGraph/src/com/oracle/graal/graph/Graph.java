@@ -35,20 +35,17 @@ public class Graph {
         nodes = new ArrayList<Node>();
     }
 
-    public synchronized int nextId(Node node) {
+    public Collection<Node> getNodes() {
+        return Collections.unmodifiableCollection(nodes);
+    }
+
+    int register(Node node) {
         int id = nextId++;
         nodes.add(id, node);
         return id;
     }
 
-    public Collection<Node> getNodes() {
-        return Collections.unmodifiableCollection(nodes);
-    }
-
-    public Node local(Node node) {
-        if (node.graph() == this) {
-            return node;
-        }
-        return node.cloneNode(this);
+    void unregister(Node node) {
+        nodes.set(node.id(), Node.Null);
     }
 }

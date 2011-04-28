@@ -30,95 +30,112 @@ public class NodeTest {
 
     @Test
     public void testBasics() {
-        DummyNode n1 = new DummyNode(2, 1, null);
 
         Graph g1 = new Graph();
 
+        DummyNode n1 = new DummyNode(2, 1, g1);
         DummyNode n2 = new DummyNode(1, 1, g1);
-        NullNode null1 = new NullNode(g1);
         DummyNode n3 = new DummyNode(0, 0, g1);
-        n2.dummySetInput(0, null1);
+        n2.dummySetInput(0, Node.Null);
         n2.dummySetSuccessor(0, n3);
 
-        assertSame(null1, n2.getInput(0));
-        assertSame(n3, n2.getSuccessor(0));
-
-        for (Node in : n1.getInputs()) {
-            assertNotNull(in);
-        }
-        for (Node sux : n1.getSuccessors()) {
-            assertNotNull(sux);
-        }
-        assertEquals(n1.getInputs().size(), 2);
-        assertEquals(n1.getSuccessors().size(), 1);
+        assertSame(Node.Null, n2.inputs().get(0));
+        assertSame(n3, n2.successors().get(0));
+        assertEquals(n1.inputs().size(), 2);
+        assertEquals(n1.successors().size(), 1);
     }
 
     @Test
     public void testReplace() {
         Graph g2 = new Graph();
 
-        NullNode null2 = new NullNode(g2);
-        NullNode null3 = new NullNode(g2);
-        NullNode null4 = new NullNode(g2);
-        NullNode null5 = new NullNode(g2);
-
-        DummyOp2 o1 = new DummyOp2(null2, null3, g2);
-        DummyOp2 o2 = new DummyOp2(o1, null4, g2);
-        DummyOp2 o3 = new DummyOp2(o2, null4, g2);
-        DummyOp2 o4 = new DummyOp2(null5, null5, g2);
+        DummyOp2 o1 = new DummyOp2(Node.Null, Node.Null, g2);
+        DummyOp2 o2 = new DummyOp2(o1, Node.Null, g2);
+        DummyOp2 o3 = new DummyOp2(o2, Node.Null, g2);
+        DummyOp2 o4 = new DummyOp2(Node.Null, Node.Null, g2);
 
         o2.replace(o4);
 
-        assertTrue(o1.getUsages().contains(o4));
-        assertTrue(null4.getUsages().contains(o4));
-        assertFalse(o3.getInputs().contains(o2));
-        assertTrue(o3.getInputs().contains(o4));
+        assertFalse(o3.inputs().contains(o2));
+        assertTrue(o3.inputs().contains(o4));
     }
 
     private static class DummyNode extends Node {
 
-        public DummyNode(int inputs, int successors, Graph graph) {
-            super(inputs, successors, graph);
-        }
+        private final int inputCount;
+        private final int successorCount;
 
-        public DummyNode(Node[] inputs, Node[] successors, Graph graph) {
-            super(inputs, successors, graph);
-        }
-
-        public void dummySetInput(int idx, Node n) {
-            this.setInput(idx, n);
-        }
-
-        public void dummySetSuccessor(int idx, Node n) {
-            this.setSuccessor(idx, n);
+        public DummyNode(int inputCount, int successorCount, Graph graph) {
+            super(inputCount, successorCount, graph);
+            this.inputCount = inputCount;
+            this.successorCount = successorCount;
         }
 
         @Override
-        public Node cloneNode(Graph into) {
-            return new DummyNode(this.getInputs().asArray(), this.getSuccessors().asArray(), into);
+        protected int inputCount() {
+            return super.inputCount() + inputCount;
+        }
+
+        @Override
+        protected int successorCount() {
+            return super.inputCount() + successorCount;
+        }
+
+        public void dummySetInput(int idx, Node n) {
+            inputs().set(idx, n);
+        }
+
+        public void dummySetSuccessor(int idx, Node n) {
+            successors().set(idx, n);
+        }
+
+        @Override
+        public Node copy(Graph into) {
+            return new DummyNode(inputCount, successorCount, into);
         }
 
     }
 
-    private static class DummyOp2 extends Node {
+    public static class DummyOp2 extends Node {
+
+        public static final int SUCCESSOR_COUNT = 0;
+        public static final int INPUT_COUNT = 2;
+        public static final int INPUT_X = 0;
+        public static final int INPUT_Y = 1;
 
         public DummyOp2(Node x, Node y, Graph graph) {
-            super(new Node[] {x, y}, new Node[] {}, graph);
+            this(graph);
+            setX(x);
+            setY(y);
         }
-
-        public Node x() {
-            return this.getInput(0);
-        }
-
-        public Node y() {
-            return this.getInput(1);
+        public DummyOp2(Graph graph) {
+            super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
         }
 
         @Override
-        public Node cloneNode(Graph into) {
-            return new DummyOp2(x(), y(), into); // this may create a Node which has inputs which do not belong to its
-                                                 // graph
+        protected int inputCount() {
+            return super.inputCount() + INPUT_COUNT;
         }
 
+        public Node x() {
+            return inputs().get(super.inputCount() + INPUT_X);
+        }
+
+        public Node y() {
+            return inputs().get(super.inputCount() + INPUT_Y);
+        }
+
+        public Node setX(Node n) {
+            return inputs().set(super.inputCount() + INPUT_X, n);
+        }
+
+        public Node setY(Node n) {
+            return inputs().set(super.inputCount() + INPUT_Y, n);
+        }
+
+        @Override
+        public Node copy(Graph into) {
+            return new DummyOp2(into);
+        }
     }
 }
