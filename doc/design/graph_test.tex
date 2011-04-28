@@ -1,0 +1,160 @@
+\documentclass[twocolumn]{svjour3}
+\usepackage[pdftex]{graphicx}
+\usepackage{environ}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc} 
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{color}
+
+\input{graphdrawing}
+
+\renewcommand*\descriptionlabel[1]{\hspace\labelsep\normalfont\bf #1}
+
+\newcommand{\Sa}{{\Large$^*$}}
+\newcommand{\Sb}{{\Large$^\dag$}}
+\newcommand{\Sc}{{\Large$^\S$}}
+
+\smartqed  % flush right qed marks, e.g. at end of proof
+
+\journalname{Test}
+\def\makeheadbox{{%
+\hbox to0pt{\vbox{\baselineskip=10dd\hrule\hbox
+to\hsize{\vrule\kern3pt\vbox{\kern3pt
+\hbox{\bfseries Test}
+\kern3pt}\hfil\kern3pt\vrule}\hrule}%
+\hss}}}
+
+\begin{document}
+
+\author{}
+\institute{}
+
+\date{Created: \today}
+
+\title{Test}
+\subtitle{}
+
+\maketitle
+
+\begin{digraphenv}{scale=0.5}{layout1}
+    \nodestart
+    \nodeend
+    \data{a}{start}
+    \data{b}{start}
+    \node{a}{a}
+    \node{b}{b}
+    \nodesplit{if}{if}
+    \node{nop}{nop}
+    \nodebi{add}{+}
+    \controllabel{if:succ1}{nop}
+    \controllabel{if:succ2}{add}
+    \datalabel{add:in1}{a}
+    \datalabel{add:in2}{b}
+    \control{nop}{end}
+\end{digraphenv}
+
+\begin{digraphenv}{scale=0.5}{layout2}
+    \node{node1}{nop}
+    \nodebi{node2}{+}
+    \nodetri{node3}{phi}
+    \nodesplit{node4}{if}
+\end{digraphenv}
+
+\begin{digraphenv}{scale=0.5}{layout3}
+    \node{a}{a}
+    \node{b}{b}
+    \nodesplit{if}{if}
+    \node{nop}{nop}
+    \nodebi{add}{+}
+    \controllabel{if:succ1}{nop}
+    \controllabel{if:succ2}{add}
+    \datalabel{add:in1}{a}
+    \datalabel{add:in2}{b}
+\end{digraphenv}
+
+\begin{digraphenv}{scale=0.5}{layout4}
+    \node{arr}{arr}
+    \node{i}{i}
+    \node{j}{j}
+    \node{v}{v}
+    \nodetri{astore1}{astore}
+    \datalabel{astore1:in1}{arr}
+    \datalabel{astore1:in2}{i}
+    \datalabel{astore1:in3}{v}
+    \nodebi{add}{+}
+    \datalabel{add:in1}{i}
+    \datalabel{add:in2}{j}
+    \nodetri{astore2}{astore}
+    \datalabel{astore2:in1}{arr}
+    \datalabel{astore2:in2}{add}
+    \datalabel{astore2:in3}{v}
+    \cnode{fs}{framestate}{lightblue}
+    \control{fs}{astore2}
+    \data{fs}{astore1}
+%    \data{fs}{arr}
+%    \data{fs}{i}
+%    \data{fs}{j}
+%    \data{fs}{v}
+    \control{astore1}{astore2}
+\end{digraphenv}
+
+\begin{digraphenv}{scale=0.5}{layout5}
+    \nodestart
+    \nodeend
+    % input projections
+    \node{a}{proj:a}
+    \node{b}{proj:b}
+    \data{a}{start}
+    \data{b}{start}
+    % if
+    \nodebi{cmp1}{&lt;}
+    \datalabel{cmp1:in1}{a}
+    \datalabel{cmp1:in2}{b}
+    \nodesplit{if}{if}
+    \data{if}{cmp1}
+    \control{start}{if}
+    % branches
+    \nodebi{add1}{+}
+    \datalabel{add1:in1}{a}
+    \datalabel{add1:in2}{b}
+    \nodebi{sub1}{-}
+    \datalabel{sub1:in1}{a}
+    \datalabel{sub1:in2}{b}
+    \controllabel{if:succ1}{add1}
+    \controllabel{if:succ2}{sub1}
+    % merge
+    \nodebi{merge}{merge}
+    \control{add1}{merge}
+    \control{sub1}{merge}
+    % phi
+    \nodebi{phi1}{phi}
+    \datalabel{phi1:in1}{add1}
+    \datalabel{phi1:in2}{sub1}
+    % ret
+    \node{ret}{ret}
+    \data{ret}{phi1}
+    \control{merge}{ret}
+    \control{ret}{end}
+\end{digraphenv}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
