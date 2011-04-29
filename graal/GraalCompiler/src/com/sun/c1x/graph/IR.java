@@ -54,10 +54,7 @@ public class IR {
      */
     public BlockBegin osrEntryBlock;
 
-    /**
-     * The top IRScope.
-     */
-    public IRScope topScope;
+    private int maxLocks;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -95,10 +92,8 @@ public class IR {
     }
 
     private void buildGraph() {
-        topScope = new IRScope(null, null, compilation.method, -1);
-
         // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilder(compilation, this).build(topScope);
+        new GraphBuilder(compilation, this).build();
         assert startBlock != null;
         verifyAndPrint("After graph building");
 
@@ -258,5 +253,24 @@ public class IR {
 
     public int numLoops() {
         return compilation.stats.loopCount;
+    }
+
+    /**
+     * Updates the maximum number of locks held at any one time.
+     *
+     * @param locks a lock count that will replace the current {@linkplain #maxLocks() max locks} if it is greater
+     */
+    public void updateMaxLocks(int locks) {
+        if (locks > maxLocks) {
+            maxLocks = locks;
+        }
+    }
+
+    /**
+     * Gets the number of locks
+     * @return the number of locks
+     */
+    public final int maxLocks() {
+        return maxLocks;
     }
 }

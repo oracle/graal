@@ -1283,17 +1283,9 @@ public abstract class LIRGenerator extends ValueVisitor {
                     moveToPhi(resolver, curState.stackAt(index), suxState.stackAt(index));
                 }
 
-                // walk up the inlined scopes until locals match
-                while (curState.scope() != suxState.scope()) {
-                    curState = curState.callerState();
-                    assert curState != null : "scopes don't match up";
-                }
-
                 for (int index = 0; index < suxState.localsSize(); index++) {
                     moveToPhi(resolver, curState.localAt(index), suxState.localAt(index));
                 }
-
-                assert curState.scope().callerState == suxState.scope().callerState : "caller states must be equal";
                 resolver.dispose();
             }
         }
@@ -1390,26 +1382,20 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
         FrameState s = state;
         int bci = x.bci();
+        if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
+            assert x instanceof ExceptionObject ||
+                   x instanceof Throw ||
+                   x instanceof MonitorEnter ||
+                   x instanceof MonitorExit : x + ", " + x.getClass();
+        }
 
-        while (s != null) {
-            IRScope scope = s.scope();
-            if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
-                assert x instanceof ExceptionObject ||
-                       x instanceof Throw ||
-                       x instanceof MonitorEnter ||
-                       x instanceof MonitorExit : x + ", " + x.getClass();
-            }
-
-            for (int index = 0; index < s.localsSize(); index++) {
-                final Value value = s.localAt(index);
-                if (value != null) {
-                    if (!value.isIllegal()) {
-                        walkStateValue(value);
-                    }
+        for (int index = 0; index < s.localsSize(); index++) {
+            final Value value = s.localAt(index);
+            if (value != null) {
+                if (!value.isIllegal()) {
+                    walkStateValue(value);
                 }
             }
-            bci = scope.callerBCI();
-            s = s.callerState();
         }
     }
 

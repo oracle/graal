@@ -62,7 +62,9 @@ public abstract class FrameState {
      */
     protected final int maxLocals;
 
-    protected final IRScope scope;
+    //XXX temporary while removing IRScope
+    @Deprecated
+    public final RiMethod method;
 
     /**
      * The bytecode index to which this frame state applies. This will be {@code -1}
@@ -92,8 +94,8 @@ public abstract class FrameState {
      * @param maxLocals maximum number of locals
      * @param maxStack maximum size of the stack
      */
-    public FrameState(IRScope irScope, int bci, int maxLocals, int maxStack) {
-        this.scope = irScope;
+    public FrameState(RiMethod method, int bci, int maxLocals, int maxStack) {
+        this.method = method;
         this.bci = bci;
         this.values = new Value[maxLocals + Math.max(maxStack, MINIMUM_STACK_SLOTS)];
         this.maxLocals = maxLocals;
@@ -111,7 +113,7 @@ public abstract class FrameState {
      * @return a new frame state with the specified components
      */
     public MutableFrameState copy(int bci, boolean withLocals, boolean withStack, boolean withLocks) {
-        final MutableFrameState other = new MutableFrameState(scope, bci, localsSize(), maxStackSize());
+        final MutableFrameState other = new MutableFrameState(method, bci, localsSize(), maxStackSize());
         if (withLocals && withStack) {
             // fast path: use array copy
             int valuesSize = valuesSize();
@@ -176,15 +178,6 @@ public abstract class FrameState {
     }
 
     /**
-     * Returns the inlining context associated with this frame state.
-     *
-     * @return the inlining context
-     */
-    public IRScope scope() {
-        return scope;
-    }
-
-    /**
      * Returns the size of the local variables.
      *
      * @return the size of the local variables
@@ -200,8 +193,9 @@ public abstract class FrameState {
         return locks == null ? 0 : locks.size();
     }
 
+    @Deprecated
     public int totalLocksSize() {
-        return locksSize() + ((callerState() == null) ? 0 : callerState().totalLocksSize());
+        return locksSize();
     }
 
     /**
@@ -373,11 +367,6 @@ public abstract class FrameState {
         return maxLocals + stackIndex;
     }
 
-    public final int callerStackSize() {
-        FrameState callerState = scope().callerState;
-        return callerState == null ? 0 : callerState.stackSize();
-    }
-
     public void checkPhis(BlockBegin block, FrameState other) {
         checkSize(other);
         final int max = valuesSize();
@@ -525,24 +514,21 @@ public abstract class FrameState {
      * @param closure the closure to apply to each value
      */
     public static void valuesDo(FrameState state, ValueClosure closure) {
-        do {
-            final int max = state.valuesSize();
-            for (int i = 0; i < max; i++) {
-                if (state.values[i] != null) {
-                    Value newValue = closure.apply(state.values[i]);
-                    state.values[i] = newValue;
+        final int max = state.valuesSize();
+        for (int i = 0; i < max; i++) {
+            if (state.values[i] != null) {
+                Value newValue = closure.apply(state.values[i]);
+                state.values[i] = newValue;
+            }
+        }
+        if (state.locks != null) {
+            for (int i = 0; i < state.locks.size(); i++) {
+                Value instr = state.locks.get(i);
+                if (instr != null) {
+                    state.locks.set(i, closure.apply(instr));
                 }
             }
-            if (state.locks != null) {
-                for (int i = 0; i < state.locks.size(); i++) {
-                    Value instr = state.locks.get(i);
-                    if (instr != null) {
-                        state.locks.set(i, closure.apply(instr));
-                    }
-                }
-            }
-            state = state.callerState();
-        } while (state != null);
+        }
     }
 
     /**
@@ -558,95 +544,36 @@ public abstract class FrameState {
      * @param proc the call back called to process each live value traversed
      */
     public final void forEachLiveStateValue(ValueProcedure proc) {
-        FrameState state = this;
-        while (state != null) {
-            final int max = state.valuesSize();
-            for (int i = 0; i < max; i++) {
-                Value value = state.values[i];
-                if (value != null) {
-                    proc.doValue(value);
-                }
-            }
-            state = state.callerState();
-        }
-    }
-
-    public static String toString(FrameState fs) {
-        StringBuilder sb = new StringBuilder();
-        String nl = String.format("%n");
-        while (fs != null) {
-            if (fs.scope == null) {
-                sb.append("<no method>").append(" [bci: ").append(fs.bci).append(']');
-                break;
-            } else {
-                CiUtil.appendLocation(sb, fs.scope.method, fs.bci).append(nl);
-                for (int i = 0; i < fs.localsSize(); ++i) {
-                    Value value = fs.localAt(i);
-                    sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
-                }
-                for (int i = 0; i < fs.stackSize(); ++i) {
-                    Value value = fs.stackAt(i);
-                    sb.append(String.format("  stack[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
-                }
-                for (int i = 0; i < fs.locksSize(); ++i) {
-                    Value value = fs.lockAt(i);
-                    sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
-                }
-                fs = fs.callerState();
+        final int max = this.valuesSize();
+        for (int i = 0; i < max; i++) {
+            Value value = this.values[i];
+            if (value != null) {
+                proc.doValue(value);
             }
         }
-        return sb.toString();
     }
 
     @Override
     public String toString() {
-        return toString(this);
+        StringBuilder sb = new StringBuilder();
+        String nl = String.format("%n");
+        CiUtil.appendLocation(sb, this.method, this.bci).append(nl);
+        for (int i = 0; i < this.localsSize(); ++i) {
+            Value value = this.localAt(i);
+            sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
+        }
+        for (int i = 0; i < this.stackSize(); ++i) {
+            Value value = this.stackAt(i);
+            sb.append(String.format("  stack[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
+        }
+        for (int i = 0; i < this.locksSize(); ++i) {
+            Value value = this.lockAt(i);
+            sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
+        }
+        return sb.toString();
     }
 
     public CiCodePos toCodePos() {
-        FrameState caller = callerState();
-        CiCodePos callerCodePos = null;
-        if (caller != null) {
-            callerCodePos = caller.toCodePos();
-        }
-        return new CiCodePos(callerCodePos, scope.method, bci);
-    }
-
-    /**
-     * Creates a new {@code MutableFrameState} corresponding to inlining the specified method into this point in this frame state.
-     * @param scope the IRScope representing the inlined method
-     * @return a new frame state representing the state at the beginning of inlining the specified method into this one
-     */
-    public MutableFrameState pushScope(IRScope scope) {
-        assert scope.caller == this.scope;
-        RiMethod method = scope.method;
-        return new MutableFrameState(scope, -1, method.maxLocals(), method.maxStackSize());
-    }
-
-    /**
-     * Creates a new {@code MutableFrameState} corresponding to the state upon returning from this inlined method into the outer
-     * IRScope.
-     * @return a new frame state representing the state at exit from this frame state
-     */
-    public MutableFrameState popScope() {
-        IRScope callingScope = scope.caller;
-        assert callingScope != null;
-        FrameState callerState = scope.callerState;
-        MutableFrameState res = new MutableFrameState(callingScope, bci, callerState.maxLocals, callerState.maxStackSize() + stackIndex);
-        System.arraycopy(callerState.values, 0, res.values, 0, callerState.values.length);
-        System.arraycopy(values, maxLocals, res.values, res.maxLocals + callerState.stackIndex, stackIndex);
-        res.stackIndex = callerState.stackIndex + stackIndex;
-        assert res.stackIndex >= 0;
-        res.replaceLocks(callerState);
-        return res;
-    }
-
-    /**
-     * Gets the caller frame state.
-     *
-     * @return the caller frame state or {@code null} if this is a top-level state
-     */
-    public FrameState callerState() {
-        return scope.callerState;
+        return new CiCodePos(null, method, bci);
     }
 }

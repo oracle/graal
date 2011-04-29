@@ -94,7 +94,7 @@ public final class C1XCompilation {
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
-        this.placeholderState = method != null && method.minimalDebugInfo() ? new MutableFrameState(new IRScope(null, null, method, -1), 0, 0, 0) : null;
+        this.placeholderState = method != null && method.minimalDebugInfo() ? new MutableFrameState(method, 0, 0, 0) : null;
 
         if (compiler.isObserved()) {
             compiler.fireCompilationStarted(new CompilationEvent(this));
@@ -241,7 +241,7 @@ public final class C1XCompilation {
                 C1XTimers.LIR_CREATE.start();
             }
 
-            initFrameMap(hir.topScope.maxLocks());
+            initFrameMap(hir.maxLocks());
 
             lirGenerator = compiler.backend.newLIRGenerator(this);
             for (BlockBegin begin : hir.linearScanOrder()) {

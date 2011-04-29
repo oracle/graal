@@ -409,7 +409,7 @@ public final class BlockBegin extends Instruction {
 
             if (C1XOptions.UseStackMapTableLiveness) {
                 // if a liveness map is available, use it to invalidate dead locals
-                CiBitMap[] livenessMap = newState.scope().method.livenessMap();
+                CiBitMap[] livenessMap = newState.method.livenessMap();
                 if (livenessMap != null && bci() >= 0) {
                     assert bci() < livenessMap.length;
                     CiBitMap liveness = livenessMap[bci()];
@@ -430,14 +430,6 @@ public final class BlockBegin extends Instruction {
                 // stacks or locks do not match--bytecodes would not verify
                 throw new CiBailout("stack or locks do not match");
             }
-
-            // while (existingState.scope() != newState.scope()) {
-            //     // XXX: original code is not sure if this is necessary
-            //     newState = newState.scope().callerState();
-            //     assert newState != null : "could not match scopes";
-            // }
-            // above code replaced with assert for the moment
-            assert existingState.scope() == newState.scope();
 
             assert existingState.localsSize() == newState.localsSize();
             assert existingState.stackSize() == newState.stackSize();
@@ -471,19 +463,10 @@ public final class BlockBegin extends Instruction {
             newState.setupPhiForStack(this, i);
         }
         int localsSize = newState.localsSize();
-        CiBitMap requiresPhi = newState.scope().getStoresInLoops();
         for (int i = 0; i < localsSize; i++) {
             Value x = newState.localAt(i);
             if (x != null) {
-                if (requiresPhi != null) {
-                    if (requiresPhi.get(i) || x.kind.isDoubleWord() && requiresPhi.get(i + 1)) {
-                        // selectively do a phi
-                        newState.setupPhiForLocal(this, i);
-                    }
-                } else {
-                    // always setup a phi
-                    newState.setupPhiForLocal(this, i);
-                }
+                newState.setupPhiForLocal(this, i);
             }
         }
     }
@@ -792,19 +775,16 @@ public final class BlockBegin extends Instruction {
                 }
             }
 
-            do {
-                for (i = 0; !hasPhisInLocals && i < state.localsSize();) {
-                    Value value = state.localAt(i);
-                    hasPhisInLocals = isPhiAtBlock(value);
-                    // also ignore illegal HiWords
-                    if (value != null && !value.isIllegal()) {
-                        i += value.kind.sizeInSlots();
-                    } else {
-                        i++;
-                    }
+            for (i = 0; !hasPhisInLocals && i < state.localsSize();) {
+                Value value = state.localAt(i);
+                hasPhisInLocals = isPhiAtBlock(value);
+                // also ignore illegal HiWords
+                if (value != null && !value.isIllegal()) {
+                    i += value.kind.sizeInSlots();
+                } else {
+                    i++;
                 }
-                state = state.callerState();
-            } while (state != null);
+            }
         }
 
         // print values in locals
@@ -813,21 +793,18 @@ public final class BlockBegin extends Instruction {
             out.println("Locals:");
 
             FrameState state = stateBefore();
-            do {
-                int i = 0;
-                while (i < state.localsSize()) {
-                    Value value = state.localAt(i);
-                    if (value != null) {
-                        out.println(stateString(i, value));
-                        // also ignore illegal HiWords
-                        i += value.isIllegal() ? 1 : value.kind.sizeInSlots();
-                    } else {
-                        i++;
-                    }
+            int i = 0;
+            while (i < state.localsSize()) {
+                Value value = state.localAt(i);
+                if (value != null) {
+                    out.println(stateString(i, value));
+                    // also ignore illegal HiWords
+                    i += value.isIllegal() ? 1 : value.kind.sizeInSlots();
+                } else {
+                    i++;
                 }
-                out.println();
-                state = state.callerState();
-            } while (state != null);
+            }
+            out.println();
         }
 
         // print values on stack

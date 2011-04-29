@@ -63,8 +63,8 @@ public class ScopeData {
 
 
     final ScopeData parent;
-    // the IR scope
-    final IRScope scope;
+    //
+    final RiMethod method;
     // bci-to-block mapping
     final BlockMap blockMap;
     // the bytecode stream
@@ -132,9 +132,9 @@ public class ScopeData {
      * @param stream the bytecode stream
      * @param constantPool the constant pool
      */
-    public ScopeData(ScopeData parent, IRScope scope, BlockMap blockMap, BytecodeStream stream, RiConstantPool constantPool) {
+    public ScopeData(ScopeData parent, RiMethod method, BlockMap blockMap, BytecodeStream stream, RiConstantPool constantPool) {
         this.parent = parent;
-        this.scope = scope;
+        this.method = method;
         this.blockMap = blockMap;
         this.stream = stream;
         this.constantPool = constantPool;
@@ -148,16 +148,16 @@ public class ScopeData {
             if (parent.hasHandler()) {
                 flags |= HasHandler.mask;
             }
-            if (parent.noSafepoints() || scope.method.noSafepoints()) {
+            if (parent.noSafepoints() || method.noSafepoints()) {
                 flags |= NoSafepoints.mask;
             }
         } else {
             maxInlineSize = C1XOptions.MaximumInlineSize;
-            if (scope.method.noSafepoints()) {
+            if (method.noSafepoints()) {
                 flags |= NoSafepoints.mask;
             }
         }
-        RiExceptionHandler[] handlers = scope.method.exceptionHandlers();
+        RiExceptionHandler[] handlers = method.exceptionHandlers();
         if (handlers != null && handlers.length > 0) {
             exceptionHandlers = new ArrayList<ExceptionHandler>(handlers.length);
             for (RiExceptionHandler ch : handlers) {
@@ -179,16 +179,16 @@ public class ScopeData {
      * @param constantPool the constant pool
      * @param jsrEntryBci the bytecode index of the entrypoint of the JSR
      */
-    public ScopeData(ScopeData parent, IRScope scope, BlockMap blockMap, BytecodeStream stream, RiConstantPool constantPool, int jsrEntryBci) {
+    public ScopeData(ScopeData parent, RiMethod method, BlockMap blockMap, BytecodeStream stream, RiConstantPool constantPool, int jsrEntryBci) {
         this.parent = parent;
-        this.scope = scope;
+        this.method = method;
         this.blockMap = blockMap;
         this.stream = stream;
         this.constantPool = constantPool;
         assert jsrEntryBci > 0 : "jsr cannot jump to BCI 0";
         assert parent != null : "jsr must have parent scope";
         this.jsrEntryBci = jsrEntryBci;
-        this.jsrDuplicatedBlocks = new BlockBegin[scope.method.code().length];
+        this.jsrDuplicatedBlocks = new BlockBegin[method.code().length];
         this.jsrRetAddrLocal = -1;
 
         maxInlineSize = (int) (C1XOptions.MaximumInlineRatio * parent.maxInlineSize());
@@ -268,15 +268,6 @@ public class ScopeData {
      */
     public int maxInlineSize() {
         return maxInlineSize;
-    }
-
-    /**
-     * Gets the size of the stack at the caller.
-     * @return the size of the stack
-     */
-    public int callerStackSize() {
-        FrameState state = scope.callerState;
-        return state == null ? 0 : state.stackSize();
     }
 
     /**
@@ -502,9 +493,9 @@ public class ScopeData {
     @Override
     public String toString() {
         if (parsingJsr()) {
-            return "jsr@" + jsrEntryBci + " data for " + scope.toString();
+            return "jsr@" + jsrEntryBci + " data for " + method.toString();
         } else {
-            return "data for " + scope.toString();
+            return "data for " + method.toString();
         }
 
     }

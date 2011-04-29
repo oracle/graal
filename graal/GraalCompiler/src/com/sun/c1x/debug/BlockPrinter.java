@@ -56,8 +56,6 @@ public class BlockPrinter implements BlockClosure {
         printFrameState(block.stateBefore(), out);
         out.println();
 
-        out.println("inlining depth " + block.stateBefore().scope().level);
-
         ip.printInstructionListingHeader();
 
         for (Instruction i = block.next(); i != null; i = i.next()) {

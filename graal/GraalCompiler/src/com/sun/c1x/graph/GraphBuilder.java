@@ -103,7 +103,7 @@ public final class GraphBuilder {
      * Builds the graph for a the specified {@code IRScope}.
      * @param scope the top IRScope
      */
-    public void build(IRScope scope) {
+    public void build() {
         RiMethod rootMethod = compilation.method;
 
         if (log != null) {
@@ -116,9 +116,9 @@ public final class GraphBuilder {
         BlockBegin startBlock = ir.startBlock;
 
         // 2. compute the block map and get the entrypoint(s)
-        BlockMap blockMap = compilation.getBlockMap(scope.method);
+        BlockMap blockMap = compilation.getBlockMap(rootMethod);
         BlockBegin stdEntry = blockMap.get(0);
-        pushRootScope(scope, blockMap, startBlock);
+        pushRootScope(rootMethod, blockMap, startBlock);
         MutableFrameState initialState = stateAtEntry(rootMethod);
         startBlock.mergeOrClone(initialState);
         BlockBegin syncHandler = null;
@@ -173,10 +173,10 @@ public final class GraphBuilder {
         stdEntry.mergeOrClone(stateAfter);
     }
 
-    void pushRootScope(IRScope scope, BlockMap blockMap, BlockBegin start) {
-        BytecodeStream stream = new BytecodeStream(scope.method.code());
-        RiConstantPool constantPool = compilation.runtime.getConstantPool(scope.method);
-        scopeData = new ScopeData(null, scope, blockMap, stream, constantPool);
+    void pushRootScope(RiMethod method, BlockMap blockMap, BlockBegin start) {
+        BytecodeStream stream = new BytecodeStream(method.code());
+        RiConstantPool constantPool = compilation.runtime.getConstantPool(method);
+        scopeData = new ScopeData(null, method, blockMap, stream, constantPool);
         curBlock = start;
     }
 
@@ -184,20 +184,8 @@ public final class GraphBuilder {
         return scopeData.hasHandler();
     }
 
-    public IRScope scope() {
-        return scopeData.scope;
-    }
-
-    public IRScope rootScope() {
-        IRScope root = scope();
-        while (root.caller != null) {
-            root = root.caller;
-        }
-        return root;
-    }
-
     public RiMethod method() {
-        return scopeData.scope.method;
+        return compilation.method;
     }
 
     public BytecodeStream stream() {
@@ -328,7 +316,7 @@ public final class GraphBuilder {
         // Also check parent jsrs (if any) at this time to see whether
         // they are using this local. We don't handle skipping over a
         // ret.
-        for (ScopeData cur = scopeData.parent; cur != null && cur.parsingJsr() && cur.scope == scope(); cur = cur.parent) {
+        for (ScopeData cur = scopeData.parent; cur != null && cur.parsingJsr(); cur = cur.parent) {
             if (cur.jsrEntryReturnAddressLocal() == index) {
                 throw new CiBailout("subroutine overwrites return address from previous subroutine");
             }
@@ -347,40 +335,21 @@ public final class GraphBuilder {
 
         assert stateBefore != null : "exception handler state must be available for " + x;
         FrameState state = stateBefore;
-        do {
-            assert curScopeData.scope == state.scope() : "scopes do not match";
-            assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == curScopeData.stream.currentBCI() : "invalid bci";
+        assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == curScopeData.stream.currentBCI() : "invalid bci";
 
-            // join with all potential exception handlers
-            List<ExceptionHandler> handlers = curScopeData.exceptionHandlers();
-            if (handlers != null) {
-                for (ExceptionHandler handler : handlers) {
-                    if (handler.covers(bci)) {
-                        // if the handler covers this bytecode index, add it to the list
-                        if (addExceptionHandler(exceptionHandlers, handler, curScopeData, state, scopeCount)) {
-                            // if the handler was a default handler, we are done
-                            return exceptionHandlers;
-                        }
+        // join with all potential exception handlers
+        List<ExceptionHandler> handlers = curScopeData.exceptionHandlers();
+        if (handlers != null) {
+            for (ExceptionHandler handler : handlers) {
+                if (handler.covers(bci)) {
+                    // if the handler covers this bytecode index, add it to the list
+                    if (addExceptionHandler(exceptionHandlers, handler, curScopeData, state, scopeCount)) {
+                        // if the handler was a default handler, we are done
+                        return exceptionHandlers;
                     }
                 }
             }
-            // pop the scope to the next IRScope level
-            // if parsing a JSR, skip scopes until the next IRScope level
-            IRScope curScope = curScopeData.scope;
-            while (curScopeData.parent != null && curScopeData.parent.scope == curScope) {
-                curScopeData = curScopeData.parent;
-            }
-            if (curScopeData.parent == null) {
-                // no more levels, done
-                break;
-            }
-            // there is another level, pop
-            state = state.callerState();
-            bci = curScopeData.scope.callerBCI();
-            curScopeData = curScopeData.parent;
-            scopeCount++;
-
-        } while (true);
+        }
 
         return exceptionHandlers;
     }
@@ -1108,7 +1077,7 @@ public final class GraphBuilder {
         }
         MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null);
         appendWithoutOptimization(monitorEnter, bci);
-        curState.lock(scope(), x, lockNumber + 1);
+        curState.lock(ir, x, lockNumber + 1);
         monitorEnter.setStateAfter(curState.immutableCopy(bci));
         killMemoryMap(); // prevent any optimizations across synchronization
     }
@@ -1129,7 +1098,7 @@ public final class GraphBuilder {
     }
 
     void genJsr(int dest) {
-        for (ScopeData cur = scopeData; cur != null && cur.parsingJsr() && cur.scope == scope(); cur = cur.parent) {
+        for (ScopeData cur = scopeData; cur != null && cur.parsingJsr(); cur = cur.parent) {
             if (cur.jsrEntryBCI() == dest) {
                 // the jsr/ret pattern includes a recursive invocation
                 throw new CiBailout("recursive jsr/ret structure");
@@ -1333,9 +1302,9 @@ public final class GraphBuilder {
     }
 
     void pushScopeForJsr(BlockBegin jsrCont, int jsrStart) {
-        BytecodeStream stream = new BytecodeStream(scope().method.code());
+        BytecodeStream stream = new BytecodeStream(compilation.method.code());
         RiConstantPool constantPool = scopeData.constantPool;
-        ScopeData data = new ScopeData(scopeData, scope(), scopeData.blockMap, stream, constantPool, jsrStart);
+        ScopeData data = new ScopeData(scopeData, compilation.method, scopeData.blockMap, stream, constantPool, jsrStart);
         BlockBegin continuation = scopeData.continuation();
         data.setContinuation(continuation);
         if (continuation != null) {
@@ -1347,7 +1316,7 @@ public final class GraphBuilder {
     }
 
     MutableFrameState stateAtEntry(RiMethod method) {
-        MutableFrameState state = new MutableFrameState(scope(), -1, method.maxLocals(), method.maxStackSize());
+        MutableFrameState state = new MutableFrameState(method, -1, method.maxLocals(), method.maxStackSize());
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
@@ -1521,7 +1490,7 @@ public final class GraphBuilder {
 
     private void traceState() {
         if (C1XOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
-            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", curState.localsSize(), curState.stackSize(), curState.scope().method));
+            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", curState.localsSize(), curState.stackSize(), method()));
             for (int i = 0; i < curState.localsSize(); ++i) {
                 Value value = curState.localAt(i);
                 log.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));

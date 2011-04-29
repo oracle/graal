@@ -24,9 +24,11 @@ package com.sun.c1x.value;
 
 import java.util.*;
 
+import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 
 /**
@@ -43,8 +45,8 @@ import com.sun.cri.ci.*;
  */
 public final class MutableFrameState extends FrameState {
 
-    public MutableFrameState(IRScope irScope, int bci, int maxLocals, int maxStack) {
-        super(irScope, bci, maxLocals, maxStack);
+    public MutableFrameState(RiMethod method, int bci, int maxLocals, int maxStack) {
+        super(method, bci, maxLocals, maxStack);
     }
 
     /**
@@ -328,12 +330,12 @@ public final class MutableFrameState extends FrameState {
      * @param scope the IRScope in which this locking operation occurs
      * @param obj the object being locked
      */
-    public void lock(IRScope scope, Value obj, int totalNumberOfLocks) {
+    public void lock(IR ir, Value obj, int totalNumberOfLocks) {
         if (locks == null) {
             locks = new ArrayList<Value>(4);
         }
         locks.add(obj);
-        scope.updateMaxLocks(totalNumberOfLocks);
+        ir.updateMaxLocks(totalNumberOfLocks);
     }
 
     /**
