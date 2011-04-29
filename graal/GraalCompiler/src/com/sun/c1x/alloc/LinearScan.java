@@ -2109,7 +2109,7 @@ public final class LinearScan {
             }
         }
 
-        return new CiFrame(null, state.method, state.bci, values, state.localsSize(), state.stackSize(), state.locksSize());
+        return new CiFrame(null, ir.compilation.method, state.bci, values, state.localsSize(), state.stackSize(), state.locksSize());
     }
 
     private void computeDebugInfo(IntervalWalker iw, LIRInstruction op) {

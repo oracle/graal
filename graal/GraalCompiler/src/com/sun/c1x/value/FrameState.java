@@ -28,7 +28,6 @@ import com.sun.c1x.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
@@ -62,10 +61,6 @@ public abstract class FrameState {
      */
     protected final int maxLocals;
 
-    //XXX temporary while removing IRScope
-    @Deprecated
-    public final RiMethod method;
-
     /**
      * The bytecode index to which this frame state applies. This will be {@code -1}
      * iff this state is mutable.
@@ -94,8 +89,7 @@ public abstract class FrameState {
      * @param maxLocals maximum number of locals
      * @param maxStack maximum size of the stack
      */
-    public FrameState(RiMethod method, int bci, int maxLocals, int maxStack) {
-        this.method = method;
+    public FrameState(int bci, int maxLocals, int maxStack) {
         this.bci = bci;
         this.values = new Value[maxLocals + Math.max(maxStack, MINIMUM_STACK_SLOTS)];
         this.maxLocals = maxLocals;
@@ -113,7 +107,7 @@ public abstract class FrameState {
      * @return a new frame state with the specified components
      */
     public MutableFrameState copy(int bci, boolean withLocals, boolean withStack, boolean withLocks) {
-        final MutableFrameState other = new MutableFrameState(method, bci, localsSize(), maxStackSize());
+        final MutableFrameState other = new MutableFrameState(bci, localsSize(), maxStackSize());
         if (withLocals && withStack) {
             // fast path: use array copy
             int valuesSize = valuesSize();
@@ -156,7 +150,7 @@ public abstract class FrameState {
         return copy(bci, false, false, false);
     }
 
-    public boolean isSameAcrossScopes(FrameState other) {
+    public boolean isSame(FrameState other) {
         assert stackSize() == other.stackSize();
         assert localsSize() == other.localsSize();
         assert locksSize() == other.locksSize();
@@ -191,11 +185,6 @@ public abstract class FrameState {
      */
     public int locksSize() {
         return locks == null ? 0 : locks.size();
-    }
-
-    @Deprecated
-    public int totalLocksSize() {
-        return locksSize();
     }
 
     /**
@@ -557,7 +546,7 @@ public abstract class FrameState {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         String nl = String.format("%n");
-        CiUtil.appendLocation(sb, this.method, this.bci).append(nl);
+        sb.append("[bci: ").append(this.bci).append("]").append(nl);
         for (int i = 0; i < this.localsSize(); ++i) {
             Value value = this.localAt(i);
             sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
@@ -571,9 +560,5 @@ public abstract class FrameState {
             sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
         return sb.toString();
-    }
-
-    public CiCodePos toCodePos() {
-        return new CiCodePos(null, method, bci);
     }
 }

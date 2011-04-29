@@ -120,7 +120,7 @@ public final class GraphBuilder {
         BlockBegin stdEntry = blockMap.get(0);
         pushRootScope(rootMethod, blockMap, startBlock);
         MutableFrameState initialState = stateAtEntry(rootMethod);
-        startBlock.mergeOrClone(initialState);
+        startBlock.mergeOrClone(initialState, rootMethod);
         BlockBegin syncHandler = null;
 
         // 3. setup internal state for appending instructions
@@ -170,7 +170,7 @@ public final class GraphBuilder {
         base.setStateAfter(stateAfter);
         startBlock.setEnd(base);
         assert stdEntry.stateBefore() == null;
-        stdEntry.mergeOrClone(stateAfter);
+        stdEntry.mergeOrClone(stateAfter, method());
     }
 
     void pushRootScope(RiMethod method, BlockMap blockMap, BlockBegin start) {
@@ -378,7 +378,7 @@ public final class GraphBuilder {
         // exception handler starts with an empty expression stack
         curState = curState.immutableCopyWithEmptyStack();
 
-        entry.mergeOrClone(curState);
+        entry.mergeOrClone(curState, method());
 
         // add current state for correct handling of phi functions
         int phiOperand = entry.addExceptionState(curState);
@@ -1049,7 +1049,7 @@ public final class GraphBuilder {
         if (Modifier.isSynchronized(method().accessFlags())) {
             FrameState stateBefore = curState.immutableCopy(bci());
             // unlock before exiting the method
-            int lockNumber = curState.totalLocksSize() - 1;
+            int lockNumber = curState.locksSize() - 1;
             MonitorAddress lockAddress = null;
             if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
                 lockAddress = new MonitorAddress(lockNumber);
@@ -1083,7 +1083,7 @@ public final class GraphBuilder {
     }
 
     void genMonitorExit(Value x, int bci) {
-        int lockNumber = curState.totalLocksSize() - 1;
+        int lockNumber = curState.locksSize() - 1;
         if (lockNumber < 0) {
             throw new CiBailout("monitor stack underflow");
         }
@@ -1104,6 +1104,7 @@ public final class GraphBuilder {
                 throw new CiBailout("recursive jsr/ret structure");
             }
         }
+        System.err.println("> JSR!");
         push(CiKind.Jsr, append(Constant.forJsr(nextBCI())));
         tryInlineJsr(dest);
     }
@@ -1316,7 +1317,7 @@ public final class GraphBuilder {
     }
 
     MutableFrameState stateAtEntry(RiMethod method) {
-        MutableFrameState state = new MutableFrameState(method, -1, method.maxLocals(), method.maxStackSize());
+        MutableFrameState state = new MutableFrameState(-1, method.maxLocals(), method.maxStackSize());
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
@@ -1482,7 +1483,7 @@ public final class GraphBuilder {
         // propagate the state
         for (BlockBegin succ : end.successors()) {
             assert succ.predecessors().contains(curBlock);
-            succ.mergeOrClone(end.stateAfter());
+            succ.mergeOrClone(end.stateAfter(), method());
             scopeData.addToWorkList(succ);
         }
         return end;

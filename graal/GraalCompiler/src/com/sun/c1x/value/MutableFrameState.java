@@ -28,7 +28,6 @@ import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 
 /**
@@ -45,8 +44,8 @@ import com.sun.cri.ri.*;
  */
 public final class MutableFrameState extends FrameState {
 
-    public MutableFrameState(RiMethod method, int bci, int maxLocals, int maxStack) {
-        super(method, bci, maxLocals, maxStack);
+    public MutableFrameState(int bci, int maxLocals, int maxStack) {
+        super(bci, maxLocals, maxStack);
     }
 
     /**
