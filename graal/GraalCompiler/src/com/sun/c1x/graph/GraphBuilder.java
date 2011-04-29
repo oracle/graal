@@ -30,7 +30,6 @@ import java.util.*;
 
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.graph.ScopeData.ReturnBlock;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.opt.*;
 import com.sun.c1x.util.*;
@@ -817,9 +816,7 @@ public final class GraphBuilder {
         }
 
         Value[] args = curState.popArguments(target.signature().argumentSlots(false));
-        if (!tryInline(target, args)) {
-            appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
-        }
+        appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
     }
 
     void genInvokeInterface(RiMethod target, int cpi, RiConstantPool constantPool) {
@@ -926,10 +923,7 @@ public final class GraphBuilder {
     }
 
     private void invokeDirect(RiMethod target, Value[] args, RiType knownHolder, int cpi, RiConstantPool constantPool) {
-        if (!tryInline(target, args)) {
-            // could not optimize or inline the method call
-            appendInvoke(INVOKESPECIAL, target, args, cpi, constantPool);
-        }
+        appendInvoke(INVOKESPECIAL, target, args, cpi, constantPool);
     }
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
@@ -1352,20 +1346,6 @@ public final class GraphBuilder {
         scopeData = data;
     }
 
-    void pushScope(RiMethod target, BlockBegin continuation) {
-        // prepare callee scope
-        IRScope calleeScope = new IRScope(scope(), curState.immutableCopy(bci()), target, -1);
-        BlockMap blockMap = compilation.getBlockMap(calleeScope.method);
-        calleeScope.setStoresInLoops(blockMap.getStoresInLoops());
-        // prepare callee state
-        curState = curState.pushScope(calleeScope);
-        BytecodeStream stream = new BytecodeStream(target.code());
-        RiConstantPool constantPool = compilation.runtime.getConstantPool(target);
-        ScopeData data = new ScopeData(scopeData, calleeScope, blockMap, stream, constantPool);
-        data.setContinuation(continuation);
-        scopeData = data;
-    }
-
     MutableFrameState stateAtEntry(RiMethod method) {
         MutableFrameState state = new MutableFrameState(scope(), -1, method.maxLocals(), method.maxStackSize());
         int index = 0;
@@ -1393,223 +1373,6 @@ public final class GraphBuilder {
         return state;
     }
 
-    private boolean tryInline(RiMethod target, Value[] args) {
-        boolean forcedInline = compilation.runtime.mustInline(target);
-        if (forcedInline) {
-            for (IRScope scope = scope().caller; scope != null; scope = scope.caller) {
-                if (scope.method.equals(target)) {
-                    throw new CiBailout("Cannot recursively inline method that is force-inlined: " + target);
-                }
-            }
-            C1XMetrics.InlineForcedMethods++;
-        }
-        if (forcedInline || checkInliningConditions(target)) {
-            if (C1XOptions.TraceBytecodeParserLevel > 0) {
-                log.adjustIndentation(1);
-                log.println("\\");
-                log.adjustIndentation(1);
-                if (C1XOptions.TraceBytecodeParserLevel < TRACELEVEL_STATE) {
-                    log.println("|   [inlining " + target + "]");
-                    log.println("|");
-                }
-            }
-
-            inline(target, args, forcedInline);
-
-            if (C1XOptions.TraceBytecodeParserLevel > 0) {
-                if (C1XOptions.TraceBytecodeParserLevel < TRACELEVEL_STATE) {
-                    log.println("|");
-                    log.println("|   [return to " + curState.scope().method + "]");
-                }
-                log.adjustIndentation(-1);
-                log.println("/");
-                log.adjustIndentation(-1);
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private boolean checkInliningConditions(RiMethod target) {
-        if (!C1XOptions.OptInline) {
-            return false; // all inlining is turned off
-        }
-        if (!target.isResolved()) {
-            return cannotInline(target, "unresolved method");
-        }
-        if (target.code() == null) {
-            return cannotInline(target, "method has no code");
-        }
-        if (!target.holder().isInitialized()) {
-            return cannotInline(target, "holder is not initialized");
-        }
-        if (recursiveInlineLevel(target) > C1XOptions.MaximumRecursiveInlineLevel) {
-            return cannotInline(target, "recursive inlining too deep");
-        }
-        if (target.code().length > scopeData.maxInlineSize()) {
-            return cannotInline(target, "inlinee too large for this level");
-        }
-        if (scopeData.scope.level + 1 > C1XOptions.MaximumInlineLevel) {
-            return cannotInline(target, "inlining too deep");
-        }
-        if (stats.nodeCount > C1XOptions.MaximumDesiredSize) {
-            return cannotInline(target, "compilation already too big " + "(" + compilation.stats.nodeCount + " nodes)");
-        }
-        if (compilation.runtime.mustNotInline(target)) {
-            C1XMetrics.InlineForbiddenMethods++;
-            return cannotInline(target, "inlining excluded by runtime");
-        }
-        if (compilation.runtime.mustNotCompile(target)) {
-            return cannotInline(target, "compile excluded by runtime");
-        }
-        if (isSynchronized(target.accessFlags())) {
-            return cannotInline(target, "is synchronized");
-        }
-        if (target.exceptionHandlers().length != 0) {
-            return cannotInline(target, "has exception handlers");
-        }
-        if (!target.hasBalancedMonitors()) {
-            return cannotInline(target, "has unbalanced monitors");
-        }
-        if (target.isConstructor()) {
-            if (compilation.runtime.isExceptionType(target.holder())) {
-                // don't inline constructors of throwable classes unless the inlining tree is
-                // rooted in a throwable class
-                if (!compilation.runtime.isExceptionType(rootScope().method.holder())) {
-                    return cannotInline(target, "don't inline Throwable constructors");
-                }
-            }
-        }
-        return true;
-    }
-
-    private boolean cannotInline(RiMethod target, String reason) {
-        if (C1XOptions.PrintInliningFailures) {
-            TTY.println("Cannot inline " + target.toString() + " into " + compilation.method.toString() + " because of " + reason);
-        }
-        return false;
-    }
-
-    private void inline(RiMethod target, Value[] args, boolean forcedInline) {
-        BlockBegin orig = curBlock;
-        if (!forcedInline && !isStatic(target.accessFlags())) {
-            // the receiver object must be null-checked for instance methods
-            Value receiver = args[0];
-            if (!receiver.isNonNull() && !receiver.kind.isWord()) {
-                NullCheck check = new NullCheck(receiver, null);
-                args[0] = append(check);
-            }
-        }
-
-        // Introduce a new callee continuation point. All return instructions
-        // in the callee will be transformed to Goto's to the continuation
-        BlockBegin continuationBlock = blockAtOrNull(nextBCI());
-        boolean continuationExisted = true;
-        if (continuationBlock == null) {
-            // there was not already a block starting at the next BCI
-            continuationBlock = new BlockBegin(nextBCI(), ir.nextBlockNumber());
-            continuationBlock.setDepthFirstNumber(0);
-            continuationExisted = false;
-        }
-        // record the number of predecessors before inlining, to determine
-        // whether the inlined method has added edges to the continuation
-        int continuationPredecessors = continuationBlock.predecessors().size();
-
-        // push the target scope
-        pushScope(target, continuationBlock);
-
-        // pass parameters into the callee state
-        FrameState calleeState = curState;
-        for (int i = 0; i < args.length; i++) {
-            Value arg = args[i];
-            if (arg != null) {
-                calleeState.storeLocal(i, arg);
-            }
-        }
-
-        // setup state that is used at returns from the inlined method.
-        // this is essentially the state of the continuation block,
-        // but without the return value on the stack.
-        scopeData.setContinuationState(scope().callerState);
-
-        Value lock = null;
-        BlockBegin syncHandler = null;
-        // inline the locking code if the target method is synchronized
-        if (Modifier.isSynchronized(target.accessFlags())) {
-            // lock the receiver object if it is an instance method, the class object otherwise
-            lock = synchronizedObject(curState, target);
-            syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber());
-            syncHandler.setNext(null, -1);
-            inlineSyncEntry(lock, syncHandler);
-        }
-
-        BlockBegin calleeStartBlock = blockAt(0);
-        if (calleeStartBlock.isParserLoopHeader()) {
-            // the block is a loop header, so we have to insert a goto
-            Goto gotoCallee = new Goto(calleeStartBlock, null, false);
-            gotoCallee.setStateAfter(curState.immutableCopy(bci()));
-            appendWithoutOptimization(gotoCallee, 0);
-            curBlock.setEnd(gotoCallee);
-            calleeStartBlock.mergeOrClone(calleeState);
-            lastInstr = curBlock = calleeStartBlock;
-            scopeData.addToWorkList(calleeStartBlock);
-            // now iterate over all the blocks
-            iterateAllBlocks();
-        } else {
-            // ready to resume parsing inlined method into this block
-            iterateBytecodesForBlock(0, true);
-            // now iterate over the rest of the blocks
-            iterateAllBlocks();
-        }
-
-        assert continuationExisted || !continuationBlock.wasVisited() : "continuation should not have been parsed if we created it";
-
-        ReturnBlock simpleInlineInfo = scopeData.simpleInlineInfo();
-        if (simpleInlineInfo != null && curBlock == orig) {
-            // Optimization: during parsing of the callee we
-            // generated at least one Goto to the continuation block. If we
-            // generated exactly one, and if the inlined method spanned exactly
-            // one block (and we didn't have to Goto its entry), then we snip
-            // off the Goto to the continuation, allowing control to fall
-            // through back into the caller block and effectively performing
-            // block merging. This allows local load elimination and local value numbering
-            // to take place across multiple callee scopes if they are relatively simple, and
-            // is currently essential to making inlining profitable. It also reduces the
-            // number of blocks in the CFG
-            lastInstr = simpleInlineInfo.returnPredecessor;
-            curState = simpleInlineInfo.returnState.popScope();
-            lastInstr.setNext(null, -1);
-        } else if (continuationPredecessors == continuationBlock.predecessors().size()) {
-            // Inlining caused the instructions after the invoke in the
-            // caller to not reachable any more (i.e. no control flow path
-            // in the callee was terminated by a return instruction).
-            // So skip filling this block with instructions!
-            assert continuationBlock == scopeData.continuation();
-            assert lastInstr instanceof BlockEnd;
-            skipBlock = true;
-        } else {
-            // Resume parsing in continuation block unless it was already parsed.
-            // Note that if we don't change lastInstr here, iteration in
-            // iterateBytecodesForBlock will stop when we return.
-            if (!scopeData.continuation().wasVisited()) {
-                // add continuation to work list instead of parsing it immediately
-                assert lastInstr instanceof BlockEnd;
-                scopeData.parent.addToWorkList(scopeData.continuation());
-                skipBlock = true;
-            }
-        }
-
-        // fill the exception handler for synchronized methods with instructions
-        if (syncHandler != null && syncHandler.stateBefore() != null) {
-            // generate unlocking code if the exception handler is reachable
-            fillSyncHandler(lock, syncHandler, true);
-        } else {
-            popScope();
-        }
-
-        stats.inlineCount++;
-    }
-
     private Value synchronizedObject(FrameState curState2, RiMethod target) {
         if (isStatic(target.accessFlags())) {
             Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass));
@@ -1617,15 +1380,6 @@ public final class GraphBuilder {
         } else {
             return curState2.localAt(0);
         }
-    }
-
-    private void inlineSyncEntry(Value lock, BlockBegin syncHandler) {
-        genMonitorEnter(lock, Instruction.SYNCHRONIZATION_ENTRY_BCI);
-        syncHandler.setExceptionEntry();
-        syncHandler.setBlockFlag(BlockBegin.BlockFlag.IsOnWorkList);
-        ExceptionHandler handler = new ExceptionHandler(new CiExceptionHandler(0, method().code().length, -1, 0, null));
-        handler.setEntryBlock(syncHandler);
-        scopeData.addExceptionHandler(handler);
     }
 
     private void fillSyncHandler(Value lock, BlockBegin syncHandler, boolean inlinedMethod) {
@@ -1654,13 +1408,6 @@ public final class GraphBuilder {
         // exit the monitor
         genMonitorExit(lock, Instruction.SYNCHRONIZATION_ENTRY_BCI);
 
-        // exit the context of the synchronized method
-        if (inlinedMethod) {
-            popScope();
-            bci = curState.scope().callerBCI();
-            curState = curState.popScope();
-        }
-
         apush(exception);
         genThrow(bci);
         BlockEnd end = (BlockEnd) lastInstr;
@@ -1687,12 +1434,6 @@ public final class GraphBuilder {
                 iterateBytecodesForBlock(b.bci(), false);
             }
         }
-    }
-
-    private void popScope() {
-        int maxLocks = scope().maxLocks();
-        scopeData = scopeData.parent;
-        scope().updateMaxLocks(maxLocks);
     }
 
     private void popScopeForJsr() {
@@ -2082,19 +1823,6 @@ public final class GraphBuilder {
             }
         }
         return null;
-    }
-
-    private int recursiveInlineLevel(RiMethod target) {
-        int rec = 0;
-        IRScope scope = scope();
-        while (scope != null) {
-            if (scope.method != target) {
-                break;
-            }
-            scope = scope.caller;
-            rec++;
-        }
-        return rec;
     }
 
     private RiConstantPool constantPool() {
