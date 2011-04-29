@@ -1,0 +1,13 @@
+#TeXlipse project settings
+#Fri Apr 29 14:13:11 CEST 2011
+builderNum=2
+outputDir=
+makeIndSty=
+bibrefDir=
+outputFormat=pdf
+tempDir=tmp
+mainTexFile=graal_compiler.tex
+outputFile=graal_compiler.pdf
+langSpell=en
+markDer=true
+srcDir=
