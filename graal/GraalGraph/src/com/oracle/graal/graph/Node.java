@@ -139,6 +139,11 @@ public abstract class Node implements Cloneable {
         return 0;
     }
 
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "-" + this.id();
+    }
+
     public class NodeArray extends AbstractList<Node> {
 
         private final Node[] nodes;
@@ -156,7 +161,7 @@ public abstract class Node implements Cloneable {
         }
 
         public Node set(int index, Node node) {
-            assert node.graph == self().graph;
+            assert node == Null || node.graph == self().graph;
             Node old = nodes[index];
 
             if (old != node) {

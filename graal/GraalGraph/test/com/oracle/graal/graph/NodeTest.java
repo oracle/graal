@@ -58,6 +58,7 @@ public class NodeTest {
 
         assertFalse(o3.inputs().contains(o2));
         assertTrue(o3.inputs().contains(o4));
+        assertTrue(o4.usages().contains(o3));
     }
 
     private static class DummyNode extends Node {
