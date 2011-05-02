@@ -192,7 +192,7 @@ The IR used in the Graal Compiler (simply referred to as \emph{the compiler} in 
 
 \subsection{Frame States}
 Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
-Whenever a safepoint is reached or \cwi{why is that an ``or'', both is basically the same} a deoptimization is needed a valid frame state needs to be available.
+Whenever a safepoint is reached or \cw{why is that an ``or'', both is basically the same} a deoptimization is needed a valid frame state needs to be available.
 A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, etc.).
 Thus, frame states need only be generated for bytecodes that cannot be reexecuted: putfield, astore, invoke, monitorenter/exit, ...
 
