@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.runtime.logging.*;
 import com.oracle.graal.runtime.server.*;
+import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -83,19 +84,21 @@ public class VMExitsNative implements VMExits, Remote {
             }
 
             if (result.bailout() != null) {
-                StringWriter out = new StringWriter();
-                result.bailout().printStackTrace(new PrintWriter(out));
                 Throwable cause = result.bailout().getCause();
-                TTY.println("Bailout:\n" + out.toString());
-                if (cause != null) {
-                    Logger.info("Trace for cause: ");
-                    for (StackTraceElement e : cause.getStackTrace()) {
-                        String current = e.getClassName() + "::" + e.getMethodName();
-                        String type = "";
-                        if (compiledMethods.contains(current)) {
-                            type = "compiled";
+                if(!C1XOptions.QuietBailout) {
+                    StringWriter out = new StringWriter();
+                    result.bailout().printStackTrace(new PrintWriter(out));
+                    TTY.println("Bailout:\n" + out.toString());
+                    if (cause != null) {
+                        Logger.info("Trace for cause: ");
+                        for (StackTraceElement e : cause.getStackTrace()) {
+                            String current = e.getClassName() + "::" + e.getMethodName();
+                            String type = "";
+                            if (compiledMethods.contains(current)) {
+                                type = "compiled";
+                            }
+                            Logger.info(String.format("%-10s %3d %s", type, e.getLineNumber(), current));
                         }
-                        Logger.info(String.format("%-10s %3d %s", type, e.getLineNumber(), current));
                     }
                 }
                 String s = result.bailout().getMessage();

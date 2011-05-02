@@ -83,6 +83,7 @@ public final class C1XOptions {
     public static boolean TraceAssembler                     = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean PrintAssumptions                   = ____;
+    public static boolean QuietBailout                       = ____;
 
     // all optimization settings
     public static boolean OptLocalValueNumbering;
