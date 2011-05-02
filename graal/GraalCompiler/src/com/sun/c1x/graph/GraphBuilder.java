@@ -61,6 +61,25 @@ public final class GraphBuilder {
      */
     public static final int TRACELEVEL_STATE = 2;
 
+    /**
+     * An enumeration of flags describing scope attributes.
+     */
+    public enum Flag {
+        /**
+         * Scope is protected by an exception handler.
+         * This attribute is inherited by nested scopes.
+         */
+        HasHandler,
+
+        /**
+         * Code in scope cannot contain safepoints.
+         * This attribute is inherited by nested scopes.
+         */
+        NoSafepoints;
+
+        public final int mask = 1 << ordinal();
+    }
+
     final IR ir;
     final C1XCompilation compilation;
     final CiStatistics stats;
@@ -75,7 +94,27 @@ public final class GraphBuilder {
      */
     final MemoryMap memoryMap;
 
-    ScopeData scopeData;                   // Per-scope data; used for inlining
+    final BytecodeStream stream;           // the bytecode stream
+    // bci-to-block mapping
+    BlockMap blockMap;
+
+    // the constant pool
+    final RiConstantPool constantPool;
+
+    // the worklist of blocks, managed like a sorted list
+    BlockBegin[] workList;
+
+    // the current position in the worklist
+    int workListIndex;
+
+    /**
+     * Mask of {@link Flag} values.
+     */
+    int flags;
+
+    // Exception handler list
+    List<ExceptionHandler> exceptionHandlers;
+
     BlockBegin curBlock;                   // the current block
     MutableFrameState curState;            // the current execution state
     Instruction lastInstr;                 // the last instruction added
@@ -83,7 +122,6 @@ public final class GraphBuilder {
 
     boolean skipBlock;                     // skip processing of the rest of this block
     private Value rootMethodSynchronizedObject;
-
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
      *
@@ -97,6 +135,8 @@ public final class GraphBuilder {
         this.memoryMap = C1XOptions.OptLocalLoadElimination ? new MemoryMap() : null;
         this.localValueMap = C1XOptions.OptLocalValueNumbering ? new ValueMap() : null;
         log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
+        stream = new BytecodeStream(compilation.method.code());
+        constantPool = compilation.runtime.getConstantPool(compilation.method);
     }
 
     /**
@@ -111,14 +151,30 @@ public final class GraphBuilder {
             log.println("Compiling " + compilation.method);
         }
 
+        if (rootMethod.noSafepoints()) {
+            flags |= Flag.NoSafepoints.mask;
+        }
+
         // 1. create the start block
         ir.startBlock = new BlockBegin(0, ir.nextBlockNumber());
         BlockBegin startBlock = ir.startBlock;
 
-        // 2. compute the block map and get the entrypoint(s)
-        BlockMap blockMap = compilation.getBlockMap(rootMethod);
+        // 2. compute the block map, setup exception handlers and get the entrypoint(s)
+        blockMap = compilation.getBlockMap(rootMethod);
         BlockBegin stdEntry = blockMap.get(0);
-        pushRootScope(rootMethod, blockMap, startBlock);
+        curBlock = startBlock;
+
+        RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
+        if (handlers != null && handlers.length > 0) {
+            exceptionHandlers = new ArrayList<ExceptionHandler>(handlers.length);
+            for (RiExceptionHandler ch : handlers) {
+                ExceptionHandler h = new ExceptionHandler(ch);
+                h.setEntryBlock(blockAt(h.handler.handlerBCI()));
+                exceptionHandlers.add(h);
+            }
+            flags |= Flag.HasHandler.mask;
+        }
+
         MutableFrameState initialState = stateAtEntry(rootMethod);
         startBlock.mergeOrClone(initialState, rootMethod);
         BlockBegin syncHandler = null;
@@ -144,7 +200,7 @@ public final class GraphBuilder {
 
             ExceptionHandler h = new ExceptionHandler(new CiExceptionHandler(0, rootMethod.code().length, -1, 0, null));
             h.setEntryBlock(syncHandler);
-            scopeData.addExceptionHandler(h);
+            addExceptionHandler(h);
         } else {
             // 4B.1 simply finish the start block
             finishStartBlock(startBlock, stdEntry);
@@ -153,7 +209,7 @@ public final class GraphBuilder {
         // 5. SKIPPED: look for intrinsics
 
         // 6B.1 do the normal parsing
-        scopeData.addToWorkList(stdEntry);
+        addToWorkList(stdEntry);
         iterateAllBlocks();
 
         if (syncHandler != null && syncHandler.stateBefore() != null) {
@@ -173,31 +229,20 @@ public final class GraphBuilder {
         stdEntry.mergeOrClone(stateAfter, method());
     }
 
-    void pushRootScope(RiMethod method, BlockMap blockMap, BlockBegin start) {
-        BytecodeStream stream = new BytecodeStream(method.code());
-        RiConstantPool constantPool = compilation.runtime.getConstantPool(method);
-        scopeData = new ScopeData(null, method, blockMap, stream, constantPool);
-        curBlock = start;
-    }
-
-    public boolean hasHandler() {
-        return scopeData.hasHandler();
-    }
-
     public RiMethod method() {
         return compilation.method;
     }
 
     public BytecodeStream stream() {
-        return scopeData.stream;
+        return stream;
     }
 
     public int bci() {
-        return scopeData.stream.currentBCI();
+        return stream.currentBCI();
     }
 
     public int nextBCI() {
-        return scopeData.stream.nextBCI();
+        return stream.nextBCI();
     }
 
     private void ipush(Value x) {
@@ -277,50 +322,7 @@ public final class GraphBuilder {
     }
 
     private void storeLocal(CiKind kind, int index) {
-        if (scopeData.parsingJsr()) {
-            // We need to do additional tracking of the location of the return
-            // address for jsrs since we don't handle arbitrary jsr/ret
-            // constructs. Here we are figuring out in which circumstances we
-            // need to bail out.
-            if (kind == CiKind.Object) {
-                // might be storing the JSR return address
-                Value x = curState.xpop();
-                if (x.kind.isJsr()) {
-                    setJsrReturnAddressLocal(index);
-                    curState.storeLocal(index, x);
-                } else {
-                    // nope, not storing the JSR return address
-                    assert x.kind.isObject();
-                    curState.storeLocal(index, x);
-                    overwriteJsrReturnAddressLocal(index);
-                }
-                return;
-            } else {
-                // not storing the JSR return address local, but might overwrite it
-                overwriteJsrReturnAddressLocal(index);
-            }
-        }
-
         curState.storeLocal(index, pop(kind));
-    }
-
-    private void overwriteJsrReturnAddressLocal(int index) {
-        if (index == scopeData.jsrEntryReturnAddressLocal()) {
-            scopeData.setJsrEntryReturnAddressLocal(-1);
-        }
-    }
-
-    private void setJsrReturnAddressLocal(int index) {
-        scopeData.setJsrEntryReturnAddressLocal(index);
-
-        // Also check parent jsrs (if any) at this time to see whether
-        // they are using this local. We don't handle skipping over a
-        // ret.
-        for (ScopeData cur = scopeData.parent; cur != null && cur.parsingJsr(); cur = cur.parent) {
-            if (cur.jsrEntryReturnAddressLocal() == index) {
-                throw new CiBailout("subroutine overwrites return address from previous subroutine");
-            }
-        }
     }
 
     List<ExceptionHandler> handleException(Instruction x, int bci) {
@@ -329,21 +331,19 @@ public final class GraphBuilder {
         }
 
         ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>();
-        ScopeData curScopeData = scopeData;
         FrameState stateBefore = x.stateBefore();
         int scopeCount = 0;
 
         assert stateBefore != null : "exception handler state must be available for " + x;
         FrameState state = stateBefore;
-        assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == curScopeData.stream.currentBCI() : "invalid bci";
+        assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         // join with all potential exception handlers
-        List<ExceptionHandler> handlers = curScopeData.exceptionHandlers();
-        if (handlers != null) {
-            for (ExceptionHandler handler : handlers) {
+        if (this.exceptionHandlers != null) {
+            for (ExceptionHandler handler : this.exceptionHandlers) {
                 if (handler.covers(bci)) {
                     // if the handler covers this bytecode index, add it to the list
-                    if (addExceptionHandler(exceptionHandlers, handler, curScopeData, state, scopeCount)) {
+                    if (addExceptionHandler(exceptionHandlers, handler, state, scopeCount)) {
                         // if the handler was a default handler, we are done
                         return exceptionHandlers;
                     }
@@ -365,15 +365,14 @@ public final class GraphBuilder {
      * @param scopeCount
      * @return {@code true} if handler catches all exceptions (i.e. {@code handler.isCatchAll() == true})
      */
-    private boolean addExceptionHandler(ArrayList<ExceptionHandler> exceptionHandlers, ExceptionHandler handler, ScopeData curScopeData, FrameState curState, int scopeCount) {
+    private boolean addExceptionHandler(ArrayList<ExceptionHandler> exceptionHandlers, ExceptionHandler handler, FrameState curState, int scopeCount) {
         compilation.setHasExceptionHandlers();
 
         BlockBegin entry = handler.entryBlock();
         FrameState entryState = entry.stateBefore();
 
         assert entry.bci() == handler.handler.handlerBCI();
-        assert entry.bci() == -1 || entry == curScopeData.blockAt(entry.bci()) : "blocks must correspond";
-        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match";
+        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:"+curState.locksSize()+" entry:"+entryState.locksSize();
 
         // exception handler starts with an empty expression stack
         curState = curState.immutableCopyWithEmptyStack();
@@ -399,7 +398,7 @@ public final class GraphBuilder {
 
         // fill in exception handler subgraph lazily
         if (!entry.wasVisited()) {
-            curScopeData.addToWorkList(entry);
+            addToWorkList(entry);
         } else {
             // This will occur for exception handlers that cover themselves. This code
             // pattern is generated by javac for synchronized blocks. See the following
@@ -595,7 +594,7 @@ public final class GraphBuilder {
     }
 
     void genGoto(int fromBCI, int toBCI) {
-        boolean isSafepoint = !scopeData.noSafepoints() && toBCI <= fromBCI;
+        boolean isSafepoint = !noSafepoints() && toBCI <= fromBCI;
         append(new Goto(blockAt(toBCI), null, isSafepoint));
     }
 
@@ -603,7 +602,7 @@ public final class GraphBuilder {
         BlockBegin tsucc = blockAt(stream().readBranchDest());
         BlockBegin fsucc = blockAt(stream().nextBCI());
         int bci = stream().currentBCI();
-        boolean isSafepoint = !scopeData.noSafepoints() && tsucc.bci() <= bci || fsucc.bci() <= bci;
+        boolean isSafepoint = !noSafepoints() && tsucc.bci() <= bci || fsucc.bci() <= bci;
         append(new If(x, cond, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint));
     }
 
@@ -630,7 +629,7 @@ public final class GraphBuilder {
 
     void genThrow(int bci) {
         FrameState stateBefore = curState.immutableCopy(bci());
-        Throw t = new Throw(apop(), stateBefore, !scopeData.noSafepoints());
+        Throw t = new Throw(apop(), stateBefore, !noSafepoints());
         appendWithoutOptimization(t, bci);
     }
 
@@ -1007,44 +1006,6 @@ public final class GraphBuilder {
             callRegisterFinalizer();
         }
 
-        // If inlining, then returns become gotos to the continuation point.
-        if (scopeData.continuation() != null) {
-            if (isSynchronized(method().accessFlags())) {
-                // if the inlined method is synchronized, then the monitor
-                // must be released before jumping to the continuation point
-                Value object = curState.lockAt(0);
-                if (object instanceof Instruction) {
-                    Instruction obj = (Instruction) object;
-                    if (!obj.isAppended()) {
-                        appendWithoutOptimization(obj, Instruction.SYNCHRONIZATION_ENTRY_BCI);
-                    }
-                }
-                genMonitorExit(object, Instruction.SYNCHRONIZATION_ENTRY_BCI);
-            }
-
-            // empty stack for return value
-            curState.truncateStack(0);
-            if (x != null) {
-                curState.push(x.kind, x);
-            }
-            Goto gotoCallee = new Goto(scopeData.continuation(), null, false);
-
-            // ATTN: assumption: curState is not used further down, else add .immutableCopy()
-            scopeData.updateSimpleInlineInfo(curBlock, lastInstr, curState);
-
-            // State at end of inlined method is the state of the caller
-            // without the method parameters on stack, including the
-            // return value, if any, of the inlined method on operand stack.
-            curState = scopeData.continuationState().copy();
-            if (x != null) {
-                curState.push(x.kind, x);
-            }
-
-            // The current bci is in the wrong scope, so use the bci of the continuation point.
-            appendWithoutOptimization(gotoCallee, scopeData.continuation().bci());
-            return;
-        }
-
         curState.truncateStack(0);
         if (Modifier.isSynchronized(method().accessFlags())) {
             FrameState stateBefore = curState.immutableCopy(bci());
@@ -1058,7 +1019,7 @@ public final class GraphBuilder {
             append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, stateBefore));
             curState.unlock();
         }
-        append(new Return(x, !scopeData.noSafepoints()));
+        append(new Return(x, !noSafepoints()));
     }
 
     /**
@@ -1098,27 +1059,11 @@ public final class GraphBuilder {
     }
 
     void genJsr(int dest) {
-        for (ScopeData cur = scopeData; cur != null && cur.parsingJsr(); cur = cur.parent) {
-            if (cur.jsrEntryBCI() == dest) {
-                // the jsr/ret pattern includes a recursive invocation
-                throw new CiBailout("recursive jsr/ret structure");
-            }
-        }
-        System.err.println("> JSR!");
-        push(CiKind.Jsr, append(Constant.forJsr(nextBCI())));
-        tryInlineJsr(dest);
+        throw new CiBailout("jsr/ret not supported");
     }
 
     void genRet(int localIndex) {
-        if (!scopeData.parsingJsr()) {
-            throw new CiBailout("ret encountered when not parsing subroutine");
-        }
-
-        if (localIndex != scopeData.jsrEntryReturnAddressLocal()) {
-            throw new CiBailout("jsr/ret structure is too complicated");
-        }
-        // rets become non-safepoint gotos
-        append(new Goto(scopeData.jsrContinuation(), null, false));
+        throw new CiBailout("jsr/ret not supported");
     }
 
     void genTableswitch() {
@@ -1136,7 +1081,7 @@ public final class GraphBuilder {
         int offset = ts.defaultOffset();
         isBackwards |= offset < 0; // if the default successor is backwards
         list.add(blockAt(bci + offset));
-        boolean isSafepoint = isBackwards && !scopeData.noSafepoints();
+        boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? curState.immutableCopy(bci()) : null;
         append(new TableSwitch(ipop(), list, ts.lowKey(), stateBefore, isSafepoint));
     }
@@ -1158,7 +1103,7 @@ public final class GraphBuilder {
         int offset = ls.defaultOffset();
         isBackwards |= offset < 0; // if the default successor is backwards
         list.add(blockAt(bci + offset));
-        boolean isSafepoint = isBackwards && !scopeData.noSafepoints();
+        boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? curState.immutableCopy(bci()) : null;
         append(new LookupSwitch(ipop(), list, keys, stateBefore, isSafepoint));
     }
@@ -1254,66 +1199,13 @@ public final class GraphBuilder {
     }
 
     private BlockBegin blockAtOrNull(int bci) {
-        return scopeData.blockAt(bci);
+        return blockMap.get(bci);
     }
 
     private BlockBegin blockAt(int bci) {
         BlockBegin result = blockAtOrNull(bci);
         assert result != null : "Expected a block to begin at " + bci;
         return result;
-    }
-
-    boolean tryInlineJsr(int jsrStart) {
-        // start a new continuation point.
-        // all ret instructions will be replaced with gotos to this point
-        BlockBegin cont = blockAt(nextBCI());
-
-        // push callee scope
-        pushScopeForJsr(cont, jsrStart);
-
-        BlockBegin jsrStartBlock = blockAt(jsrStart);
-        assert !jsrStartBlock.wasVisited();
-        Goto gotoSub = new Goto(jsrStartBlock, null, false);
-        gotoSub.setStateAfter(curState.immutableCopy(bci()));
-        assert jsrStartBlock.stateBefore() == null;
-        jsrStartBlock.setStateBefore(curState.immutableCopy(bci()));
-        append(gotoSub);
-        curBlock.setEnd(gotoSub);
-        lastInstr = curBlock = jsrStartBlock;
-
-        scopeData.addToWorkList(jsrStartBlock);
-
-        iterateAllBlocks();
-
-        if (cont.stateBefore() != null) {
-            if (!cont.wasVisited()) {
-                scopeData.parent.addToWorkList(cont);
-            }
-        }
-
-        BlockBegin jsrCont = scopeData.jsrContinuation();
-        assert jsrCont == cont && (!jsrCont.wasVisited() || jsrCont.isParserLoopHeader());
-        assert lastInstr != null && lastInstr instanceof BlockEnd;
-
-        // continuation is in work list, so end iteration of current block
-        skipBlock = true;
-        popScopeForJsr();
-        C1XMetrics.InlinedJsrs++;
-        return true;
-    }
-
-    void pushScopeForJsr(BlockBegin jsrCont, int jsrStart) {
-        BytecodeStream stream = new BytecodeStream(compilation.method.code());
-        RiConstantPool constantPool = scopeData.constantPool;
-        ScopeData data = new ScopeData(scopeData, compilation.method, scopeData.blockMap, stream, constantPool, jsrStart);
-        BlockBegin continuation = scopeData.continuation();
-        data.setContinuation(continuation);
-        if (continuation != null) {
-            assert scopeData.continuationState() != null;
-            data.setContinuationState(scopeData.continuationState().copy());
-        }
-        data.setJsrContinuation(jsrCont);
-        scopeData = data;
     }
 
     MutableFrameState stateAtEntry(RiMethod method) {
@@ -1391,7 +1283,7 @@ public final class GraphBuilder {
 
     private void iterateAllBlocks() {
         BlockBegin b;
-        while ((b = scopeData.removeFromWorkList()) != null) {
+        while ((b = removeFromWorkList()) != null) {
             if (!b.wasVisited()) {
                 b.setWasVisited(true);
                 // now parse the block
@@ -1406,21 +1298,16 @@ public final class GraphBuilder {
         }
     }
 
-    private void popScopeForJsr() {
-        scopeData = scopeData.parent;
-    }
-
     private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
         skipBlock = false;
         assert curState != null;
-        BytecodeStream s = scopeData.stream;
-        s.setBCI(bci);
+        stream.setBCI(bci);
 
         BlockBegin block = curBlock;
         BlockEnd end = null;
         boolean pushException = block.isExceptionEntry() && block.next() == null;
         int prevBCI = bci;
-        int endBCI = s.endBCI();
+        int endBCI = stream.endBCI();
         boolean blockStart = true;
 
         while (bci < endBCI) {
@@ -1440,7 +1327,7 @@ public final class GraphBuilder {
                 break;
             }
             // read the opcode
-            int opcode = s.currentBC();
+            int opcode = stream.currentBC();
 
             // push an exception object onto the stack if we are parsing an exception handler
             if (pushException) {
@@ -1450,8 +1337,8 @@ public final class GraphBuilder {
             }
 
             traceState();
-            traceInstruction(bci, s, opcode, blockStart);
-            processBytecode(bci, s, opcode);
+            traceInstruction(bci, stream, opcode, blockStart);
+            processBytecode(bci, stream, opcode);
 
             prevBCI = bci;
 
@@ -1459,8 +1346,8 @@ public final class GraphBuilder {
                 end = (BlockEnd) lastInstr;
                 break;
             }
-            s.next();
-            bci = s.currentBCI();
+            stream.next();
+            bci = stream.currentBCI();
             blockStart = false;
         }
 
@@ -1484,7 +1371,7 @@ public final class GraphBuilder {
         for (BlockBegin succ : end.successors()) {
             assert succ.predecessors().contains(curBlock);
             succ.mergeOrClone(end.stateAfter(), method());
-            scopeData.addToWorkList(succ);
+            addToWorkList(succ);
         }
         return end;
     }
@@ -1796,6 +1683,88 @@ public final class GraphBuilder {
     }
 
     private RiConstantPool constantPool() {
-        return scopeData.constantPool;
+        return constantPool;
+    }
+
+    /**
+     * Adds an exception handler
+     * @param handler the handler to add
+     */
+    private void addExceptionHandler(ExceptionHandler handler) {
+        if (exceptionHandlers == null) {
+            exceptionHandlers = new ArrayList<ExceptionHandler>();
+        }
+        exceptionHandlers.add(handler);
+        flags |= Flag.HasHandler.mask;
+    }
+
+    /**
+     * Adds a block to the worklist, if it is not already in the worklist.
+     * This method will keep the worklist topologically stored (i.e. the lower
+     * DFNs are earlier in the list).
+     * @param block the block to add to the work list
+     */
+    private void addToWorkList(BlockBegin block) {
+        if (!block.isOnWorkList()) {
+            block.setOnWorkList(true);
+            sortIntoWorkList(block);
+        }
+    }
+
+    private void sortIntoWorkList(BlockBegin top) {
+        // XXX: this is O(n), since the whole list is sorted; a heap could achieve O(nlogn), but
+        //      would only pay off for large worklists
+        if (workList == null) {
+            // need to allocate the worklist
+            workList = new BlockBegin[5];
+        } else if (workListIndex == workList.length) {
+            // need to grow the worklist
+            BlockBegin[] nworkList = new BlockBegin[workList.length * 3];
+            System.arraycopy(workList, 0, nworkList, 0, workList.length);
+            workList = nworkList;
+        }
+        // put the block at the end of the array
+        workList[workListIndex++] = top;
+        int dfn = top.depthFirstNumber();
+        assert dfn >= 0 : top + " does not have a depth first number";
+        int i = workListIndex - 2;
+        // push top towards the beginning of the array
+        for (; i >= 0; i--) {
+            BlockBegin b = workList[i];
+            if (b.depthFirstNumber() >= dfn) {
+                break; // already in the right position
+            }
+            workList[i + 1] = b; // bubble b down by one
+            workList[i] = top;   // and overwrite it with top
+        }
+    }
+
+    /**
+     * Removes the next block from the worklist. The list is sorted topologically, so the
+     * block with the lowest depth first number in the list will be removed and returned.
+     * @return the next block from the worklist; {@code null} if there are no blocks
+     * in the worklist
+     */
+    private BlockBegin removeFromWorkList() {
+        if (workListIndex == 0) {
+            return null;
+        }
+        // pop the last item off the end
+        return workList[--workListIndex];
+    }
+
+    /**
+     * Checks whether this graph has any handlers.
+     * @return {@code true} if there are any exception handlers
+     */
+    private boolean hasHandler() {
+        return (flags & Flag.HasHandler.mask) != 0;
+    }
+
+    /**
+     * Checks whether this graph can contain safepoints.
+     */
+    private boolean noSafepoints() {
+        return (flags & Flag.NoSafepoints.mask) != 0;
     }
 }
