@@ -214,7 +214,7 @@ public final class GraphBuilder {
 
         if (syncHandler != null && syncHandler.stateBefore() != null) {
             // generate unlocking code if the exception handler is reachable
-            fillSyncHandler(rootMethodSynchronizedObject, syncHandler, false);
+            fillSyncHandler(rootMethodSynchronizedObject, syncHandler);
         }
     }
 
@@ -332,7 +332,6 @@ public final class GraphBuilder {
 
         ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>();
         FrameState stateBefore = x.stateBefore();
-        int scopeCount = 0;
 
         assert stateBefore != null : "exception handler state must be available for " + x;
         FrameState state = stateBefore;
@@ -343,7 +342,7 @@ public final class GraphBuilder {
             for (ExceptionHandler handler : this.exceptionHandlers) {
                 if (handler.covers(bci)) {
                     // if the handler covers this bytecode index, add it to the list
-                    if (addExceptionHandler(exceptionHandlers, handler, state, scopeCount)) {
+                    if (addExceptionHandler(exceptionHandlers, handler, state)) {
                         // if the handler was a default handler, we are done
                         return exceptionHandlers;
                     }
@@ -365,7 +364,7 @@ public final class GraphBuilder {
      * @param scopeCount
      * @return {@code true} if handler catches all exceptions (i.e. {@code handler.isCatchAll() == true})
      */
-    private boolean addExceptionHandler(ArrayList<ExceptionHandler> exceptionHandlers, ExceptionHandler handler, FrameState curState, int scopeCount) {
+    private boolean addExceptionHandler(ArrayList<ExceptionHandler> exceptionHandlers, ExceptionHandler handler, FrameState curState) {
         compilation.setHasExceptionHandlers();
 
         BlockBegin entry = handler.entryBlock();
@@ -393,7 +392,6 @@ public final class GraphBuilder {
         // clone exception handler
         ExceptionHandler newHandler = new ExceptionHandler(handler);
         newHandler.setPhiOperand(phiOperand);
-        newHandler.setScopeCount(scopeCount);
         exceptionHandlers.add(newHandler);
 
         // fill in exception handler subgraph lazily
@@ -1244,7 +1242,7 @@ public final class GraphBuilder {
         }
     }
 
-    private void fillSyncHandler(Value lock, BlockBegin syncHandler, boolean inlinedMethod) {
+    private void fillSyncHandler(Value lock, BlockBegin syncHandler) {
         BlockBegin origBlock = curBlock;
         MutableFrameState origState = curState;
         Instruction origLast = lastInstr;
