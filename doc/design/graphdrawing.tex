@@ -21,7 +21,7 @@
   } 
 }
 
-\NewEnviron{digraphenv}[2]{\digraph[#1]{#2}{  \BODY }}
+\NewEnviron{digraphenv}[2]{\digraph[#1]{#2}{ nodesep="0.1"; \BODY }}
 
 \newcommand{\control}[2]{#1:successors:s -> #2:predecessors:n [color=red];}
 \newcommand{\controllabel}[2]{#1:s -> #2:predecessors:n [color=red];}
@@ -49,6 +49,7 @@
 \newcommand{\nodequad}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \portinput{in4} \genericnodelabel{#2}{white} \portsuccessor{successors} \portempty \portempty \portempty \genericnodeend }
 \newcommand{\nodesplit}[2]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \genericnodeend }
 \newcommand{\nodequadsplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \portinput{in4} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \portempty \genericnodeend }
+\newcommand{\nodetrisplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \genericnodeend }
 
 \newcommand{\nodetrap}[2]{\cnodebi{#1}{#2}{rosybrown1}}
 

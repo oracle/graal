@@ -198,18 +198,16 @@ Thus, frame states need only be generated for bytecodes that cannot be reexecute
     \item Field stores: {\tt PUTSTATIC, PUTFIELD}
     \item Method calls: {\tt INVOKEVIRTUAL, INVOKESPECIAL, \\INVOKESTATIC, INVOKEINTERFACE}
     \item Memory allocations: {\tt NEW, NEWARRAY, ANEWARRAY, \\MULTIANEWARRAY}
-    \item Exception throw: {\tt ATHROW}
     \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
 \end{itemize}
 
 Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated (control dependency).
 
 \begin{digraphenv}{scale=0.5}{fs1}
-nodesep="0.02";
-    \nodequadsplit{store1}{ArrayStore}
-    \nodetri{load1}{ArrayLoad}
+    \nodetrisplit{store1}{ArrayStore}
+    \nodebi{load1}{ArrayLoad}
     \controllabel{store1:succ1}{load1}
-    \nodequadsplit{store2}{ArrayStore}
+    \nodetrisplit{store2}{ArrayStore}
     \control{load1}{store2}
     end [shape=plaintext, label="...", width="2.0"]
     store2:succ1:s -> end:n [color=red];
@@ -227,26 +225,21 @@ Uncommon trap nodes are not fixed to a certain frame state node, they can move a
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
 \begin{digraphenv}{scale=0.5}{trap1}
-nodesep="0.02";
-    start [shape=plaintext, label="..."]
-    \control{start}{if}
     \nodesplit{if}{If}
-    \node{split1}{ControlSplit}
+    \node{split1}{Split}
     \controllabel{if:succ1}{split1}
     nop [shape=plaintext, label="..."]
     \control{split1}{nop}
     %
-    \node{split2}{ControlSplit}
+    \node{split2}{Split}
     \controllabel{if:succ2}{split2}
-    \nodebi{load1}{FieldLoad}
+    \nodebi{load1}{MemLoad}
     \control{split2}{load1}
-    \nodebi{load2}{FieldLoad}
+    \nodebi{load2}{MemLoad}
     \control{load1}{load2}
     \control{load2}{merge}
     \node{merge}{Merge}
     \control{nop}{merge}
-    nop2 [shape=plaintext, label="..."]
-    \control{merge}{nop2}
     %
     \nodeconst{o1}{obj1}
     \nodeconst{o2}{obj2}
@@ -260,24 +253,21 @@ nodesep="0.02";
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
 
-\emph{\small In this example, the second field load is guarded by an uncommon trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
-The trap is anchored to the control split, because as soon as this node is executed the field load must be executed as well.
+\emph{\small In this example, the second load is guarded by an uncommon trap, because its receiver might be null (the receiver of the load is assumed to be non-null).
+The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
 In the final scheduling the trap can be placed before or after the first load.}
 
 Another type of uncommon trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
 
 \begin{digraphenv}{scale=0.5}{trap2}
-nodesep="0.02";
     start [shape=plaintext, label="..."]
     start2 [shape=plaintext, label=""]
     start3 [shape=plaintext, label=""]
     \control{start}{guard}
     \node{guard}{Guard}
-    \nodebi{load1}{FieldLoad}
+    \nodebi{load1}{MemLoad}
     \control{guard}{load1}
-    \nodebi{load2}{FieldLoad}
-    \control{load1}{load2}
-    \control{load2}{nop}
+    \control{load1}{nop}
     nop [shape=plaintext, label="..."]
     %
     \nodetrap{trap}{Trap}
@@ -289,12 +279,45 @@ nodesep="0.02";
 
 \emph{\small In this example the If from the previous example was replaced by a guard and an uncommon trap.
 The guard takes the place of the If in the control flow, and is connected to the trap node.
-The uncommon trap is again anchored to the most distant node of which the If was a postdominator.}
+The uncommon trap is now anchored to the most distant node of which the If was a postdominator.}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
 A simple algorithm for this removal of FrameStates would be to move all traps as far upwards as possible.
 
+
+Multiple Traps with the same condition and anchor can be merged:
+
+\begin{digraphenv}{scale=0.5}{trap3}
+    \nodesplit{if}{If}
+    \node{split1}{Split}
+    \controllabel{if:succ1}{split1}
+    nop [shape=plaintext, label="..."]
+    \control{split1}{nop}
+    %
+    \node{split2}{Split}
+    \controllabel{if:succ2}{split2}
+    \nodebi{load1}{MemLoad}
+    \control{split2}{load1}
+    \nodebi{load2}{MemLoad}
+    \control{load1}{load2}
+    \control{load2}{merge}
+    \node{merge}{Merge}
+    \control{nop}{merge}
+    %
+    \nodeconst{o}{obj}
+    \datalabel{load1:in2}{o}
+    \datalabel{load2:in2}{o}
+    \nodetrap{trap}{Trap}
+    \node{cmpnull}{IsNull}
+    \data{cmpnull}{o}
+    \datalabel{trap:in2}{cmpnull}
+    \datalabel{load2:in1}{trap}    
+    \datalabel{load1:in1}{trap}    
+    \datalabel{trap:in1}{split2}
+\end{digraphenv}
+
+Also, if two Traps that are anchored to the true and false branch of the same If have the same condition, they can be merged, so that the resulting Trap is anchored at the most distant node of which the If is a postdominator.
 
 %Frame states should be represented using a delta-encoding.
 %This will make them significantly smaller and will make inlining, etc. much easier.
