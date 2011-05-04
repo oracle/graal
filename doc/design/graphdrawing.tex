@@ -40,7 +40,7 @@
 \newcommand{\nodeend}[0]{\genericnodestart{end} \portempty \portinput{inputs} \genericnodelabel{end}{lightyellow} <TD></TD></TR></TABLE></TD><TD></TD></TR></TABLE>>]}
 
 \newcommand{\nodeconst}[2]{#1 [margin="0.05, 0.05", shape=plaintext, label=< <TABLE BORDER="0" CELLSPACING="0"><TR><TD BORDER="1" BGCOLOR="white"><FONT POINT-SIZE="12">#2</FONT></TD></TR><TR><TD WIDTH="15" HEIGHT="5" PORT="usages" BGCOLOR="lightgrey"></TD></TR></TABLE>>]}
-\newcommand{\nodeframestate}[2]{#1 [margin="0.05, 0.05", shape=plaintext, label=< <TABLE BORDER="0" CELLSPACING="0"><TR><TD WIDTH="15" HEIGHT="5" PORT="predecessors" BGCOLOR="rosybrown1"></TD></TR><TR><TD BORDER="1" BGCOLOR="lightblue"><FONT POINT-SIZE="12">#2</FONT></TD></TR></TABLE>>]}
+\newcommand{\nodeframestate}[2]{#1 [margin="0.05, 0.05", shape=plaintext, label=< <TABLE BORDER="0" CELLSPACING="0"><TR><TD WIDTH="15" HEIGHT="5" PORT="predecessors" BGCOLOR="rosybrown1"></TD><TD WIDTH="15" HEIGHT="5"></TD><TD HEIGHT="5" PORT="inputs" BGCOLOR="lightgrey"></TD></TR><TR><TD BORDER="1" COLSPAN="3" BGCOLOR="lightblue"><FONT POINT-SIZE="12">#2</FONT></TD></TR></TABLE>>]}
 
 
 \newcommand{\node}[2]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{white} \portsuccessor{successors} \portempty \genericnodeend }

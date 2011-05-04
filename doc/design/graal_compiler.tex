@@ -25,6 +25,7 @@
 
 \newcommand\TODO[1]{\mynote{TODO}{#1}}
 \newcommand\cw[1]{\mynote{CW}{#1}}
+\newcommand\ls[1]{\mynote{LS}{#1}}
 
 
 
@@ -188,21 +189,116 @@ The IR used in the Graal Compiler (simply referred to as \emph{the compiler} in 
 
 \subsection{Frame States}
 Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
-Whenever a safepoint is reached or \cwi{why is that an ``or'', both is basically the same} a deoptimization is needed a valid frame state needs to be available.
-A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, etc.).
-Thus, frame states need only be generated for bytecodes that cannot be reexecuted: putfield, astore, invoke, monitorenter/exit, ...
+Whenever a safepoint is reached or \cw{why is that an ``or'', both is basically the same} \ls{uncommon traps can be introduced at other points, e.g., at an if branch that isn't compiled} a deoptimization is needed a valid frame state needs to be available.
+A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, loads, etc.).
+Thus, frame states need only be generated for bytecodes that cannot be reexecuted:
 
-Within the node graph a frame state is represented as a node that is fixed between the node that caused it to be generated (data dependency) and the node that invalidates it (control dependency).
+\begin{itemize}
+    \item Array stores: {\tt IASTORE, LASTORE, FASTORE, \\DASTORE, AASTORE, BASTORE, CASTORE, SASTORE}
+    \item Field stores: {\tt PUTSTATIC, PUTFIELD}
+    \item Method calls: {\tt INVOKEVIRTUAL, INVOKESPECIAL, \\INVOKESTATIC, INVOKEINTERFACE}
+    \item Memory allocations: {\tt NEW, NEWARRAY, ANEWARRAY, \\MULTIANEWARRAY}
+    \item Exception throw: {\tt ATHROW}
+    \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
+\end{itemize}
 
-Deopmization nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
-At some point during the compilation, deoptimization nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that it can not move outside the scope of the associated frame state.
+Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated (control dependency).
+
+\begin{digraphenv}{scale=0.5}{fs1}
+nodesep="0.02";
+    \nodequadsplit{store1}{ArrayStore}
+    \nodetri{load1}{ArrayLoad}
+    \controllabel{store1:succ1}{load1}
+    \nodequadsplit{store2}{ArrayStore}
+    \control{load1}{store2}
+    end [shape=plaintext, label="...", width="2.0"]
+    store2:succ1:s -> end:n [color=red];
+    %
+    \nodeframestate{fs1}{FrameState}
+    \controllabel{store1:succ2}{fs1}
+    \nodeframestate{fs2}{FrameState}
+    \controllabel{store2:succ2}{fs2}
+\end{digraphenv}
+
+FrameStates also have data dependencies on the contents of the state: the local variables and the expression stack.
+
+\subsection{Deoptimization and Uncommon Traps}
+Uncommon trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
+The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
+
+\begin{digraphenv}{scale=0.5}{trap1}
+nodesep="0.02";
+    start [shape=plaintext, label="..."]
+    \control{start}{if}
+    \nodesplit{if}{If}
+    \node{split1}{ControlSplit}
+    \controllabel{if:succ1}{split1}
+    nop [shape=plaintext, label="..."]
+    \control{split1}{nop}
+    %
+    \node{split2}{ControlSplit}
+    \controllabel{if:succ2}{split2}
+    \nodebi{load1}{FieldLoad}
+    \control{split2}{load1}
+    \nodebi{load2}{FieldLoad}
+    \control{load1}{load2}
+    \control{load2}{merge}
+    \node{merge}{Merge}
+    \control{nop}{merge}
+    nop2 [shape=plaintext, label="..."]
+    \control{merge}{nop2}
+    %
+    \nodeconst{o1}{obj1}
+    \nodeconst{o2}{obj2}
+    \datalabel{load1:in2}{o1}
+    \datalabel{load2:in2}{o2}
+    \nodetrap{trap}{Trap}
+    \node{cmpnull}{IsNull}
+    \data{cmpnull}{o2}
+    \datalabel{trap:in2}{cmpnull}
+    \datalabel{load2:in1}{trap}    
+    \datalabel{trap:in1}{split2}
+\end{digraphenv}
+
+\emph{\small In this example, the second field load is guarded by an uncommon trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
+The trap is anchored to the control split, because as soon as this node is executed the field load must be executed as well.
+In the final scheduling the trap can be placed before or after the first load.}
+
+Another type of uncommon trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
+
+\begin{digraphenv}{scale=0.5}{trap2}
+nodesep="0.02";
+    start [shape=plaintext, label="..."]
+    start2 [shape=plaintext, label=""]
+    start3 [shape=plaintext, label=""]
+    \control{start}{guard}
+    \node{guard}{Guard}
+    \nodebi{load1}{FieldLoad}
+    \control{guard}{load1}
+    \nodebi{load2}{FieldLoad}
+    \control{load1}{load2}
+    \control{load2}{nop}
+    nop [shape=plaintext, label="..."]
+    %
+    \nodetrap{trap}{Trap}
+    \datalabel{trap:in1}{start2}
+    \datalabel{trap:in2}{start3}
+    \data{guard}{trap}    
+\end{digraphenv}
+
+
+\emph{\small In this example the If from the previous example was replaced by a guard and an uncommon trap.
+The guard takes the place of the If in the control flow, and is connected to the trap node.
+The uncommon trap is again anchored to the most distant node of which the If was a postdominator.}
+
+At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
-
-Frame states should be represented using a delta-encoding.
-This will make them significantly smaller and will make inlining, etc. much easier.
-In later compilation phases unnecessary frame states might be removed, using a mark-and-merge algorithm.
+A simple algorithm for this removal of FrameStates would be to move all traps as far upwards as possible.
 
 
+%Frame states should be represented using a delta-encoding.
+%This will make them significantly smaller and will make inlining, etc. much easier.
+%In later compilation phases unnecessary frame states might be removed, using a mark-and-merge algorithm.
 
 \subsection{Graph Building}
 \begin{itemize}
@@ -222,6 +318,7 @@ The graphs in this document use the following node layout:
 \end{digraphenv}
 
 \cw{That doesn't compile with my latex.  What do I have to do to get it working?}
+\ls{graphviz needs to be installed, and pdflatex needs to be started with -shell-escape}
 
 Red arrows always represents control dependencies, while black arrows represent data dependencies:
 
