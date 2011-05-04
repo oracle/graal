@@ -26,6 +26,7 @@
 \newcommand\TODO[1]{\mynote{TODO}{#1}}
 \newcommand\cw[1]{\mynote{CW}{#1}}
 \newcommand\ls[1]{\mynote{LS}{#1}}
+\newcommand\nodename[1]{\texttt{#1}}
 
 
 
@@ -118,6 +119,178 @@ After those four milestones, we see three different possible further development
 
 \section{Implementation}
 
+\subsection{Loops}
+Loops form a first-class construct in the IR that is expressed in specialized IR nodes during all optimization phases.
+We only compile methods with a control flow where every loop has only one single entry point.
+This entry point is a \nodename{LoopBegin} node.
+This node is connected to a \nodename{LoopEnd} node that merges all control flow paths that do not exit the loop.
+The edge between the \nodename{LoopBegin} and the \nodename{LoopEnd} is the backedge of the loop.
+It goes from the beginning to the end in order to make the graph acyclic.
+An algorithm that traverses the control flow has to explicitely decide whether it wants to incorporate backedges (i.e., special case the treatment of \nodename{LoopEnd}) or ignore them.
+Figure \ref{fig:loop1} shows a simple example with a loop with a single entry and two exits.
+
+\begin{figure}[h]
+  \label{fig:loop1}
+  \centering
+\begin{digraphenv}{scale=0.5}{layout1}
+\textnode{BeforeLoop}{Loop entry}
+\textnode{Exit1}{First loop exit}
+\textnode{Exit2}{Second loop exit}
+\nodesplit{LoopBegin}{LoopBegin}
+\node{LoopEnd}{LoopEnd}
+\nodesplit{If1}{If}
+\nodesplit{If2}{If}
+\controllabel{LoopBegin:succ1}{LoopEnd}
+\controllabel{LoopBegin:succ2}{If1}
+\controllabel{If1:succ1}{If2}
+\controllabel{If2:succ1}{LoopEnd}
+\controllabel{BeforeLoop}{LoopBegin}
+\controllabel{If1:succ2}{Exit1}
+\controllabel{If2:succ2}{Exit2}
+\end{digraphenv}
+  \caption{A simple loop with two exits.}
+\end{figure}
+
+\subsection{Loop Phis}
+Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
+The \nodename{LoopEnd} node merges every value that is flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
+A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
+Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph.
+
+\begin{figure}[h]
+  \label{fig:loop2}
+  \centering
+\begin{digraphenv}{scale=0.5}{layout2}
+\textnode{BeforeLoop}{Loop entry}
+\textnode{Exit}{Loop exit}
+\textnode{n}{n}
+\textnode{Constant0}{0}
+\textnode{Constant1}{1}
+\nodesplit{LoopBegin}{LoopBegin}
+\node{LoopEnd}{LoopEnd}
+\nodesplit{If1}{If}
+\controllabel{LoopBegin:succ1}{LoopEnd}
+\controllabel{LoopBegin:succ2}{If1}
+\nodebi{Compare}{&lt;}
+\nodebi{LoopBeginPhi}{LoopBeginPhi}
+\nodebi{Add}{+}
+\datalabel{Add:in1}{LoopBeginPhi}
+\datalabel{Add:in2}{Constant1}
+\nodebi{LoopEndPhi}{LoopEndPhi}
+\control{LoopBeginPhi}{LoopEndPhi}
+\data{LoopEndPhi:in1}{LoopEnd}
+\data{LoopEndPhi:in2}{Add}
+\datalabel{LoopBeginPhi:in1}{LoopBegin}
+\datalabel{LoopBeginPhi:in2}{Constant0}
+\datalabel{Compare:in1}{LoopBeginPhi}
+\datalabel{Compare:in2}{n}
+\data{If1}{Compare}
+\controllabel{If1:succ1}{LoopEnd}
+\controllabel{BeforeLoop}{LoopBegin}
+\controllabel{If1:succ2}{Exit}
+\end{digraphenv}
+  \caption{Graal compiler graph for a loop counting from 0 to n-1.}
+\end{figure}
+
+\subsection{Loop Counters}
+The compiler is capable of recognizing variables that are only increased within a loop.
+A potential overflow of such a variable is guarded with a trap before the loop.
+Figure \ref{fig:loop3} shows the compiler graph of the example loop after the loop counter transformation.
+
+
+\begin{figure}[h]
+  \label{fig:loop3}
+  \centering
+\begin{digraphenv}{scale=0.5}{layout3}
+\textnode{BeforeLoop}{Loop entry}
+\textnode{Exit}{Loop exit}
+\textnode{n}{n}
+\textnode{Constant0}{0}
+\textnode{Constant1}{1}
+\nodesplit{LoopBegin}{LoopBegin}
+\node{LoopEnd}{LoopEnd}
+\nodesplit{If1}{If}
+\controllabel{LoopBegin:succ1}{LoopEnd}
+\controllabel{LoopBegin:succ2}{If1}
+\nodebi{Compare}{&lt;}
+\nodetri{LoopCounter}{LoopCounter}
+\datalabel{LoopCounter:in1}{LoopBegin}
+\datalabeltext{LoopCounter:in2}{Constant0}{init}
+\datalabeltext{LoopCounter:in3}{Constant1}{stride}
+\datalabel{Compare:in1}{LoopCounter}
+\datalabel{Compare:in2}{n}
+\data{If1}{Compare}
+\controllabel{If1:succ1}{LoopEnd}
+\controllabel{BeforeLoop}{LoopBegin}
+\controllabel{If1:succ2}{Exit}
+\end{digraphenv}
+  \caption{Graal compiler graph after loop counter transformation.}
+\end{figure}
+
+\subsection{Bounded Loops}
+
+If the total maximum number of iterations of a loop is fixed, then the loop is converted into a bounded loop.
+The total number of iterations always denotes the number of full iterations of the loop with the control flowing from the loop begin to the loop end.
+If the totel number of iterations is reached, the loop is exited directly from the loop header.
+In the example, we can infer from the loop exit with the comparison on the loop counter that the total number of iterations of the loop is limited to n.
+Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bounded loop transformation.
+
+\begin{figure}[h]
+  \label{fig:loop4}
+  \centering
+\begin{digraphenv}{scale=0.5}{layout4}
+\textnode{BeforeLoop}{Loop entry}
+\textnode{Exit}{Loop exit}
+\textnode{n}{n}
+\textnode{Constant0}{0}
+\textnode{Constant1}{1}
+\nodesplittri{LoopBegin}{BoundedLoopBegin}
+\node{LoopEnd}{LoopEnd}
+\controllabel{LoopBegin:succ1}{LoopEnd}
+\controllabel{LoopBegin:succ2}{LoopEnd}
+\controllabel{LoopBegin:succ3}{Exit}
+\nodetri{LoopCounter}{LoopCounter}
+\datalabel{LoopCounter:in1}{LoopBegin}
+\datalabeltext{LoopCounter:in2}{Constant0}{init}
+\datalabeltext{LoopCounter:in3}{Constant1}{stride}
+\data{LoopBegin}{n}
+\controllabel{BeforeLoop}{LoopBegin}
+\end{digraphenv}
+  \caption{Graal compiler graph after bounded loop transformation.}
+\end{figure}
+
+\subsection{Vectorization}
+
+If we have now a bounded loop with no additional loop exit and no associated phi nodes (only associated loop counters), we can vectorize the loop.
+We replace the loop header with a normal instruction that produces a vector of values from 0 to the number of loop iterations minus 1.
+The loop counters are replaced with \texttt{VectorAdd} and \texttt{VectorMul} nodes.
+The vectorization is only possible if every node of the loop can be replaced with a corresponding vector node.
+Figure \ref{fig:loop5} shows the compiler graph of the example loop after vectorization.
+The vector nodes all work on an ordered list of integer values and are subject to canonicalization like any other node.
+
+
+\begin{figure}[h]
+  \label{fig:loop5}
+  \centering
+\begin{digraphenv}{scale=0.5}{layout5}
+\textnode{Entry}{Entry}
+\textnode{Exit}{Exit}
+\textnode{n}{n}
+\textnode{Constant0}{0}
+\textnode{Constant1}{1}
+\node{Vector}{Vector}
+\nodebi{VectorAdd}{VectorAdd}
+\nodebi{VectorMul}{VectorMul}
+\control{Entry}{Vector}
+\control{Vector}{Exit}
+\datalabel{VectorAdd:in1}{Vector}
+\datalabel{VectorAdd:in2}{Constant0}
+\datalabel{VectorMul:in1}{VectorAdd}
+\datalabel{VectorMul:in2}{Constant1}
+\data{Vector}{n}
+\end{digraphenv}
+  \caption{Graal compiler graph after bounded loop transformation.}
+\end{figure}
 
 \subsection{Project Source Structure}
 In order to have clear interfaces between the different parts of the compiler, the code will be divided into the following source code projects:
@@ -157,6 +330,12 @@ In order to have clear interfaces between the different parts of the compiler, t
 The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
 The IR used in the Graal Compiler (simply referred to as \emph{the compiler} in the rest of this document) was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
 
+\subsubsection{The Graph Data Structure}
+\begin{itemize}
+    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
+    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
+\end{itemize}
+
 \subsubsection{The Node Data Structure}
 \begin{itemize}
     \item Each node is always associated with a graph.
@@ -180,13 +359,6 @@ The IR used in the Graal Compiler (simply referred to as \emph{the compiler} in 
     \item Nodes cannot be reassigned to another graph, they are cloned instead \cw{Why should there be the need for more than one graph when compiling a method?}
 \end{itemize}
 
-\subsubsection{The Graph Data Structure}
-\begin{itemize}
-    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
-    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
-    \item Graphs are 
-\end{itemize}
-
 \subsection{Frame States}
 Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
 Whenever a safepoint is reached or \cw{why is that an ``or'', both is basically the same} \ls{uncommon traps can be introduced at other points, e.g., at an if branch that isn't compiled} a deoptimization is needed a valid frame state needs to be available.
@@ -203,6 +375,10 @@ Thus, frame states need only be generated for bytecodes that cannot be reexecute
 
 Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated (control dependency).
 
+
+\begin{figure}[h]
+  \label{fig:fs1}
+  \centering
 \begin{digraphenv}{scale=0.5}{fs1}
     \nodetrisplit{store1}{ArrayStore}
     \nodebi{load1}{ArrayLoad}
@@ -217,6 +393,8 @@ Within the node graph a frame state is represented as a node that is fixed to th
     \nodeframestate{fs2}{FrameState}
     \controllabel{store2:succ2}{fs2}
 \end{digraphenv}
+  \caption{Simple example using two frame states.}
+\end{figure}
 
 FrameStates also have data dependencies on the contents of the state: the local variables and the expression stack.
 
@@ -224,6 +402,9 @@ FrameStates also have data dependencies on the contents of the state: the local 
 Uncommon trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
+\begin{figure}[h]
+  \label{fig:trap1}
+  \centering
 \begin{digraphenv}{scale=0.5}{trap1}
     \nodesplit{if}{If}
     \node{split1}{Split}
@@ -252,13 +433,16 @@ The node that is guarded by the deoptimization has a data dependency on the trap
     \datalabel{load2:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
-
-\emph{\small In this example, the second load is guarded by an uncommon trap, because its receiver might be null (the receiver of the load is assumed to be non-null).
+  \caption{In this example, the second load is guarded by an uncommon trap, because its receiver might be null (the receiver of the load is assumed to be non-null).
 The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
 In the final scheduling the trap can be placed before or after the first load.}
+\end{figure}
 
 Another type of uncommon trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
 
+\begin{figure}[h]
+  \label{fig:trap2}
+  \centering
 \begin{digraphenv}{scale=0.5}{trap2}
     start [shape=plaintext, label="..."]
     start2 [shape=plaintext, label=""]
@@ -275,11 +459,10 @@ Another type of uncommon trap is a guard, which is used to remove branches that 
     \datalabel{trap:in2}{start3}
     \data{guard}{trap}    
 \end{digraphenv}
-
-
-\emph{\small In this example the If from the previous example was replaced by a guard and an uncommon trap.
+  \caption{In this example the If from the previous example was replaced by a guard and an uncommon trap.
 The guard takes the place of the If in the control flow, and is connected to the trap node.
 The uncommon trap is now anchored to the most distant node of which the If was a postdominator.}
+\end{figure}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
@@ -288,6 +471,9 @@ A simple algorithm for this removal of FrameStates would be to move all traps as
 
 Multiple Traps with the same condition and anchor can be merged:
 
+\begin{figure}[h]
+  \label{fig:trap3}
+  \centering
 \begin{digraphenv}{scale=0.5}{trap3}
     \nodesplit{if}{If}
     \node{split1}{Split}
@@ -316,6 +502,8 @@ Multiple Traps with the same condition and anchor can be merged:
     \datalabel{load1:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
+  \caption{Two loads guarded by the same Trap.}
+\end{figure}
 
 Also, if two Traps that are anchored to the true and false branch of the same If have the same condition, they can be merged, so that the resulting Trap is anchored at the most distant node of which the If is a postdominator.
 
@@ -327,13 +515,12 @@ Also, if two Traps that are anchored to the true and false branch of the same If
 \begin{itemize}
     \item The graph built by the initial parser (called \emph{GraphBuilder}) should be as close to the source representation (bytecode, ...) as possible.
     \item All nodes should be able to immediately lower themselves to a machine-level representation. \cw{What is that?  You mean every node has x86 specific code that spits out machine code?  Hope you are joking...} This allows for easier compiler development, and also leads to a compiler that is very flexible in the amount of optimizations it performs (e.g. recompilation of methods with more aggressive optimizations).
-    \item 
 \end{itemize}
 
 \subsection{Graphical Representation}
 The graphs in this document use the following node layout:
 
-\begin{digraphenv}{scale=0.5}{layout01}
+\begin{digraphenv}{scale=0.5}{graphrep1}
 \node{node1}{nop}
 \nodebi{node2}{+}
 \nodetri{node3}{phi}
@@ -345,7 +532,7 @@ The graphs in this document use the following node layout:
 
 Red arrows always represents control dependencies, while black arrows represent data dependencies:
 
-\begin{digraphenv}{scale=0.5}{layout1}
+\begin{digraphenv}{scale=0.5}{graphrep2}
 \node{a}{a}
 \node{b}{b}
 \nodesplit{if}{if}

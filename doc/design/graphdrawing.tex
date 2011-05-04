@@ -27,7 +27,9 @@
 \newcommand{\controllabel}[2]{#1:s -> #2:predecessors:n [color=red];}
 \newcommand{\data}[2]{#2:usages:s -> #1:inputs [color=black,dir=back];}
 \newcommand{\datalabel}[2]{#2:usages:s -> #1:n [color=black,dir=back];}
+\newcommand{\datalabeltext}[3]{#2:usages:s -> #1:n [color=black,dir=back,label="#3"];}
 
+\newcommand{\textnode}[2]{#1 [shape=plaintext, label="#2"]}
 \newcommand{\genericnodestart}[1]{#1 [shape=plaintext, label=< <TABLE BORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="0"><TABLE BORDER="0" CELLSPACING="2" CELLPADDING="0"><TR><TD WIDTH="15" HEIGHT="5" PORT="predecessors" BGCOLOR="rosybrown1"></TD></TR></TABLE></TD><TD COLSPAN="2" CELLPADDING="0" ALIGN="RIGHT"><TABLE BORDER="0" CELLSPACING="2" CELLPADDING="0"><TR>}
 \newcommand{\genericnodeend}[0]{</TR></TABLE></TD><TD CELLPADDING="0"><TABLE BORDER="0" CELLSPACING="2" CELLPADDING="0"><TR><TD WIDTH="15" HEIGHT="5" PORT="usages" BGCOLOR="lightgrey"></TD></TR></TABLE></TD></TR></TABLE>>]}
 \newcommand{\portinput}[1]{<TD WIDTH="15" HEIGHT="5" PORT="#1" BGCOLOR="lightgrey"></TD>}
@@ -50,6 +52,7 @@
 \newcommand{\nodesplit}[2]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \genericnodeend }
 \newcommand{\nodequadsplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \portinput{in4} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \portempty \genericnodeend }
 \newcommand{\nodetrisplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \genericnodeend }
+\newcommand{\nodesplittri}[2]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portsuccessor{succ3} \genericnodeend }
 
 \newcommand{\nodetrap}[2]{\cnodebi{#1}{#2}{rosybrown1}}
 
@@ -57,6 +60,9 @@
 \newcommand{\cnodebi}[3]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \genericnodelabel{#2}{#3} \portsuccessor{successors} \portempty \genericnodeend }
 \newcommand{\cnodetri}[3]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \genericnodelabel{#2}{#3} \portsuccessor{successors} \portempty \portempty \genericnodeend }
 \newcommand{\cnodesplit}[3]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{#3} \portsuccessor{succ1} \portsuccessor{succ2} \genericnodeend }
+
+% this doesn't work:
+%\newenvironment{graphfigure}[2]{\begin{figure}[h] \label{fig:#1} \centering \begin{digraphenv}{scale=0.5}{#1}}{\end{digraphenv} \caption{#2} \end{figure}}
 
 %%%%%%%%%%%%%% example:
 
