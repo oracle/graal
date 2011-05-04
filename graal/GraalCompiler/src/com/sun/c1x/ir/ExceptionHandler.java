@@ -47,14 +47,12 @@ public final class ExceptionHandler {
     private LIRList entryCode;
     private int entryCodeOffset;
     private int phiOperand;
-    private int scopeCount;
     private int lirOpId;
 
     public ExceptionHandler(RiExceptionHandler handler) {
         this.handler = handler;
         this.entryCodeOffset = -1;
         this.phiOperand = -1;
-        this.scopeCount = -1;
         this.lirOpId = -1;
     }
 
@@ -64,7 +62,6 @@ public final class ExceptionHandler {
         this.entryCode = other.entryCode;
         this.entryCodeOffset = other.entryCodeOffset;
         this.phiOperand = other.phiOperand;
-        this.scopeCount = other.scopeCount;
         this.lirOpId = other.lirOpId;
     }
 
@@ -120,10 +117,6 @@ public final class ExceptionHandler {
         return phiOperand;
     }
 
-    public int scopeCount() {
-        return scopeCount;
-    }
-
     public void setEntryBlock(BlockBegin entry) {
         entryBlock = entry;
     }
@@ -134,10 +127,6 @@ public final class ExceptionHandler {
 
     public void setPhiOperand(int phi) {
         phiOperand = phi;
-    }
-
-    public void setScopeCount(int count) {
-        scopeCount = count;
     }
 
     public boolean isCatchAll() {
