@@ -100,6 +100,7 @@ Also, there is no dependency on a specific back-end, but the output of the compi
 \end{description}
 
 \section{Milestones}
+\label{sec:mile}
 The compiler is developed starting from the current C1X source code base.
 This helps us testing the compiler at every intermediate development step on a variety of Java benchmarks.
 We define the following development milestones and when they are considered achieved:
@@ -117,29 +118,22 @@ After those four milestones, we see three different possible further development
   \item Implementation of a prototype front-end for different languages, e.g., JavaScript.
 \end{itemize}
 
-\section{Implementation}
+\section{Graph}
 
-\subsection{Nodes and Graphs}
-The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
-The IR used in the compiler was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
+The \emph{intermediate representation}~(IR) of the compiler is designed as a directed graph.
+A graph deals out ids for new nodes and can be queried for the node corresponding to a given id as well as for an unordered list of nodes of the graph.
+Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
 
-\subsubsection{The Graph Data Structure}
+The nodes of the graph have the following properties:
 \begin{itemize}
-    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
-    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
-\end{itemize}
-
-\subsubsection{The Node Data Structure}
-\begin{itemize}
-    \item Each node is always associated with a graph.
-    \item Each node has an immutable id which is unique within its associated graph.
-    \item Nodes represent either operations on values or control flow operations.
+    \item Each node is always associated with a single graph and this association is immutable.
+    \item Each node has an immutable id that is unique within its associated graph.
     \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
-    \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
+    \item Nodes can have a control flow dependency, which means that the execution of one node will be followed by the execution of another node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
     \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
-    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (like LoopEnd).
-	\item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
-    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
+    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (see Section~\ref{sec:loops}).
+	\item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. This gives the compiler flexibility for the possible scheduling of a node and therefore wriggle room for optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
+    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions (see Figure~\ref{fig:directions}):
     \begin{itemize}
         \item \emph{inputs} are all nodes that this node has data dependencies on.
         \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
@@ -147,15 +141,58 @@ The IR used in the compiler was designed in such a way as to allow for extensive
         \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
     \end{itemize}
     \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
-    \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
-    \item Inlining should always be performed as a combination of two graphs.
+    \item Every node must be able to support cloning and serialization.
+    \item Inlining should always be performed as embedding one graph into another graph.
     \item Nodes cannot be reassigned to another graph, they are cloned instead.
+    \item The edges of a node also define \textit{happens-before} and \textit{happens-after} relationships as shown in Figure~\ref{fig:directions}.
 \end{itemize}
 
-\subsection{Loops}
+\begin{figure}[h]
+  \label{fig:directions}
+  \centering
+\begin{digraphenv}{scale=0.5}{graphdirections}
+\node{node1}{Node}
+\textnode{inputs}{inputs}
+\textnode{usages}{usages}
+\textnode{successors}{successors}
+\textnode{predecessors}{predecessors}
+\data{node1}{inputs}
+\control{node1}{successors}
+\data{usages}{node1}
+\control{predecessors}{node1}
+\node{node2}{Node}
+\textnode{before}{happens before}
+\textnode{after}{happens after}
+\data{node2}{before}
+\control{node2}{after}
+\data{after}{node2}
+\control{before}{node2}
+\end{digraphenv}
+  \caption{A node and its edges.}
+\end{figure}
+
+\subsection{Project Source Structure}
+In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.graal}).
+
+\begin{description}
+    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
+    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
+ 				 Additional node classes should go into seperate projects and be specializations of the known basic nodes.]
+    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
+    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
+    \item[compiler] contains the compiler, including:
+        \begin{itemize}
+            \item Schedules the compilation phases.
+            \item Implementation of the \emph{compiler interface} (CI).
+            \item Implements the final compilation phase that produces the low-level representation.
+            \item Machine code creation, including debug info.
+        \end{itemize}
+\end{description}
+
+\section{Loops}
 \label{sec:loops}
 Loops form a first-class construct in the IR that is expressed in specialized IR nodes during all optimization phases.
-We only compile methods with a control flow where every loop has only one single entry point.
+We only compile methods with a control flow where every loop has one single entry point.
 This entry point is a \nodename{LoopBegin} node.
 This node is connected to a \nodename{LoopEnd} node that merges all control flow paths that do not exit the loop.
 The edge between the \nodename{LoopBegin} and the \nodename{LoopEnd} is the backedge of the loop.
@@ -323,29 +360,11 @@ The vector nodes all work on an ordered list of integer values and are subject t
 \datalabel{VectorMul:in2}{Constant1}
 \data{Vector}{n}
 \end{digraphenv}
-  \caption{Graph after bounded loop transformation.}
+  \caption{Graph after vectorization.}
 \end{figure}
 
-\subsection{Project Source Structure}
-In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.graal}).
 
-\begin{description}
-    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
-    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
- 				 Additional node classes should go into seperate projects and be specializations of the known basic nodes.]
-    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
-    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
-    \item[compiler] contains the compiler, including:
-        \begin{itemize}
-            \item Schedules the compilation phases.
-            \item Implementation of the \emph{compiler interface} (CI).
-            \item Implements the final compilation phase that produces the low-level representation.
-            \item Machine code creation, including debug info.
-        \end{itemize}
-\end{description}
-
-
-\subsection{Frame States}
+\section{Frame States}
 A frame state captures the state of the program in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
 Every deoptimization point needs a valid frame state.
 A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, loads, etc.).
@@ -358,7 +377,8 @@ Thus, frame states need only be generated for bytecodes that cannot be reexecute
     \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
 \end{itemize}
 
-Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated (control dependency).
+Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
+Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 
 \begin{figure}[h]
@@ -381,12 +401,15 @@ Within the node graph a frame state is represented as a node that is fixed to th
   \caption{Simple example using two frame states.}
 \end{figure}
 
-FrameStates also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 \subsection{Traps}
 A trap node is a node that deoptimizes based on a conditional expression.
 Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
+
+In the example of Figure~\ref{fig:trap1}, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
+The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
+In the final scheduling the trap can be placed before or after the first load.
 
 \begin{figure}[h]
   \label{fig:trap1}
@@ -419,12 +442,14 @@ The node that is guarded by the deoptimization has a data dependency on the trap
     \datalabel{load2:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
-  \caption{In this example, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
-The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
-In the final scheduling the trap can be placed before or after the first load.}
+  \caption{A load guarded by a null check trap.}
 \end{figure}
 
 Another type of trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
+
+In the example of Figure~\ref{fig:trap2}, an \texttt{If} node was replaced by a guard and a trap.
+The guard takes the place of the \texttt{If} node in the control flow, and is connected to the trap node.
+The trap is now anchored to the most distant node of which the \texttt{If} node was a postdominator.
 
 \begin{figure}[h]
   \label{fig:trap2}
@@ -445,17 +470,13 @@ Another type of trap is a guard, which is used to remove branches that have a ve
     \datalabel{trap:in2}{start3}
     \data{guard}{trap}    
 \end{digraphenv}
-  \caption{In this example an If was replaced by a guard and a trap.
-The guard takes the place of the If in the control flow, and is connected to the trap node.
-The trap is now anchored to the most distant node of which the If was a postdominator.}
+  \caption{A trap that is fixed to the control flow using a guard instruction.}
 \end{figure}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
-A simple algorithm for this removal of FrameStates would be to move all traps as far upwards as possible.
-
-
-Multiple Traps with the same condition and anchor can be merged:
+A simple algorithm for this removal of frame states would be to move all traps as far upwards as possible.
+Multiple traps with the same condition and anchor can be merged (see Figure~\ref{fig:trap3}).
 
 \begin{figure}[h]
   \label{fig:trap3}
@@ -488,33 +509,19 @@ Multiple Traps with the same condition and anchor can be merged:
     \datalabel{load1:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
-  \caption{Two loads guarded by the same Trap.}
+  \caption{Two loads guarded by the same trap.}
 \end{figure}
 
-Also, if two Traps that are anchored to the true and false branch of the same If have the same condition, they can be merged, so that the resulting Trap is anchored at the most distant node of which the If is a postdominator.
+Also, if two traps that are anchored to the true and false branch of the same \texttt{If} node have the same condition, they can be merged, so that the resulting trap is anchored at the most distant node of which the \texttt{If} node is a postdominator.
 
-\subsection{Graphical Representation}
-The graphs in this document use the following node layout:
-
-\begin{digraphenv}{scale=0.5}{graphrep1}
-\node{node1}{nop}
-\nodebi{node2}{+}
-\nodetri{node3}{phi}
-\nodesplit{node4}{if}
-\end{digraphenv}
-
-Red arrows always represents control dependencies, while black arrows represent data dependencies:
-
-\begin{digraphenv}{scale=0.5}{graphrep2}
-\node{a}{a}
-\node{b}{b}
-\nodesplit{if}{if}
-\node{nop}{nop}
-\nodebi{add}{+}
-\controllabel{if:succ1}{nop}
-\controllabel{if:succ2}{add}
-\datalabel{add:in1}{a}
-\datalabel{add:in2}{b}
-\end{digraphenv}
+\section{Conclusions}
+This document sketched the strategy for the Graph compiler.
+We already reached M1 (as defined in Section~\ref{sec:mile}) and have the following plans for M2 to M4:
+\begin{description}
+\item[M2:] June 30th, 2011
+\item[M3:] August 15th, 2011
+\item[M4:] September 30th, 2011
+\end{description}
+After we reached M4, we want to create a new project road map that further improves the Graal compiler with respect to its two main goals: Modularity and peak performance.
 
 \end{document}

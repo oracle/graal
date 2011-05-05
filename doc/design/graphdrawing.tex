@@ -21,7 +21,7 @@
   } 
 }
 
-\NewEnviron{digraphenv}[2]{\digraph[#1]{#2}{ nodesep="0.1"; \BODY }}
+\NewEnviron{digraphenv}[2]{\digraph[#1]{#2}{ nodesep="0.1"; ranksep="0.2"; \BODY }}
 
 \newcommand{\control}[2]{#1:successors:s -> #2:predecessors:n [color=red];}
 \newcommand{\controllabel}[2]{#1:s -> #2:predecessors:n [color=red];}
