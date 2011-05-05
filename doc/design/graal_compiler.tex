@@ -192,7 +192,7 @@ In order to support the goal of a modular compiler, the code will be divided int
 \section{Loops}
 \label{sec:loops}
 Loops form a first-class construct in the IR that is expressed in specialized IR nodes during all optimization phases.
-We only compile methods with a control flow where every loop has only one single entry point.
+We only compile methods with a control flow where every loop has one single entry point.
 This entry point is a \nodename{LoopBegin} node.
 This node is connected to a \nodename{LoopEnd} node that merges all control flow paths that do not exit the loop.
 The edge between the \nodename{LoopBegin} and the \nodename{LoopEnd} is the backedge of the loop.
@@ -360,7 +360,7 @@ The vector nodes all work on an ordered list of integer values and are subject t
 \datalabel{VectorMul:in2}{Constant1}
 \data{Vector}{n}
 \end{digraphenv}
-  \caption{Graph after bounded loop transformation.}
+  \caption{Graph after vectorization.}
 \end{figure}
 
 
@@ -377,7 +377,8 @@ Thus, frame states need only be generated for bytecodes that cannot be reexecute
     \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
 \end{itemize}
 
-Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated (control dependency).
+Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
+Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 
 \begin{figure}[h]
@@ -400,12 +401,15 @@ Within the node graph a frame state is represented as a node that is fixed to th
   \caption{Simple example using two frame states.}
 \end{figure}
 
-Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 \subsection{Traps}
 A trap node is a node that deoptimizes based on a conditional expression.
 Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
+
+In the example of Figure~\ref{fig:trap1}, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
+The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
+In the final scheduling the trap can be placed before or after the first load.
 
 \begin{figure}[h]
   \label{fig:trap1}
@@ -438,12 +442,14 @@ The node that is guarded by the deoptimization has a data dependency on the trap
     \datalabel{load2:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
-  \caption{In this example, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
-The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
-In the final scheduling the trap can be placed before or after the first load.}
+  \caption{A load guarded by a null check trap.}
 \end{figure}
 
 Another type of trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
+
+In the example of Figure~\ref{fig:trap2}, an \texttt{If} node was replaced by a guard and a trap.
+The guard takes the place of the \texttt{If} node in the control flow, and is connected to the trap node.
+The trap is now anchored to the most distant node of which the \texttt{If} node was a postdominator.
 
 \begin{figure}[h]
   \label{fig:trap2}
@@ -464,16 +470,13 @@ Another type of trap is a guard, which is used to remove branches that have a ve
     \datalabel{trap:in2}{start3}
     \data{guard}{trap}    
 \end{digraphenv}
-  \caption{In this example an If was replaced by a guard and a trap.
-The guard takes the place of the If in the control flow, and is connected to the trap node.
-The trap is now anchored to the most distant node of which the If was a postdominator.}
+  \caption{A trap that is fixed to the control flow using a guard instruction.}
 \end{figure}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
 A simple algorithm for this removal of frame states would be to move all traps as far upwards as possible.
-
-Multiple traps with the same condition and anchor can be merged:
+Multiple traps with the same condition and anchor can be merged (see Figure~\ref{fig:trap3}).
 
 \begin{figure}[h]
   \label{fig:trap3}
