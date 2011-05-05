@@ -30,8 +30,6 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code LoadIndexed} instruction represents a read from an element of an array.
- *
- * @author Ben L. Titzer
  */
 public final class LoadIndexed extends AccessIndexed {
 

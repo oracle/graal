@@ -28,8 +28,6 @@ import com.sun.cri.bytecode.*;
 
 /**
  * The {@code LogicOp} class definition.
- *
- * @author Ben L. Titzer
  */
 public final class LogicOp extends Op2 {
 

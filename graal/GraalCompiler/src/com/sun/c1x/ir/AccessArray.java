@@ -28,8 +28,6 @@ import com.sun.cri.ci.*;
 
 /**
  * This the base class of all array operations.
- *
- * @author Ben L. Titzer
  */
 public abstract class AccessArray extends StateSplit {
 
@@ -58,7 +56,6 @@ public abstract class AccessArray extends StateSplit {
     public Value setArray(Value n) {
         return (Value) inputs().set(super.inputCount() + INPUT_ARRAY, n);
     }
-
 
     /**
      * Creates a new AccessArray instruction.

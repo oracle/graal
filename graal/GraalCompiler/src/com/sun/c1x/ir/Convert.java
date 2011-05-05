@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
@@ -29,41 +30,51 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code Convert} class represents a conversion between primitive types.
- *
- * @author Ben L. Titzer
  */
 public final class Convert extends Instruction {
+
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_VALUE = 0;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction which produces the input value to this instruction.
+     */
+     public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+    }
+
+    public Value setValue(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+    }
 
     /**
      * The opcode for this conversion operation.
      */
     public final int opcode;
 
-    Value value;
-
     /**
      * Constructs a new Convert instance.
      * @param opcode the bytecode representing the operation
      * @param value the instruction producing the input value
      * @param kind the result type of this instruction
+     * @param graph
      */
-    public Convert(int opcode, Value value, CiKind kind) {
-        super(kind);
+    public Convert(int opcode, Value value, CiKind kind, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
-        this.value = value;
-    }
-
-    /**
-     * Gets the instruction which produces the input value to this instruction.
-     * @return the input value instruction
-     */
-    public Value value() {
-        return value;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        value = closure.apply(value);
+        setValue(value);
     }
 
     @Override
@@ -73,14 +84,14 @@ public final class Convert extends Instruction {
 
     @Override
     public int valueNumber() {
-        return Util.hash1(opcode, value);
+        return Util.hash1(opcode, value());
     }
 
     @Override
     public boolean valueEqual(Instruction i) {
         if (i instanceof Convert) {
             Convert o = (Convert) i;
-            return opcode == o.opcode && value == o.value;
+            return opcode == o.opcode && value() == o.value();
         }
         return false;
     }

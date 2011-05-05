@@ -425,7 +425,7 @@ public final class GraphBuilder {
             if (!riType.isResolved() || C1XOptions.TestPatching) {
                 push(CiKind.Object, append(new ResolveClass(riType, RiType.Representation.JavaClass, null)));
             } else {
-                push(CiKind.Object, append(new Constant(riType.getEncoding(Representation.JavaClass))));
+                push(CiKind.Object, append(new Constant(riType.getEncoding(Representation.JavaClass), graph)));
             }
         } else if (con instanceof CiConstant) {
             CiConstant constant = (CiConstant) con;
@@ -587,14 +587,14 @@ public final class GraphBuilder {
 
     void genConvert(int opcode, CiKind from, CiKind to) {
         CiKind tt = to.stackKind();
-        push(tt, append(new Convert(opcode, pop(from.stackKind()), tt)));
+        push(tt, append(new Convert(opcode, pop(from.stackKind()), tt, graph)));
     }
 
     void genIncrement() {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
         Value x = curState.localAt(index);
-        Value y = append(Constant.forInt(delta));
+        Value y = append(Constant.forInt(delta, graph));
         curState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null, graph)));
     }
 
@@ -1139,7 +1139,7 @@ public final class GraphBuilder {
     }
 
     private Value appendConstant(CiConstant type) {
-        return appendWithBCI(new Constant(type), bci());
+        return appendWithBCI(new Constant(type, graph), bci());
     }
 
     private Value append(Instruction x) {
@@ -1242,7 +1242,7 @@ public final class GraphBuilder {
 
     private Value synchronizedObject(FrameState curState2, RiMethod target) {
         if (isStatic(target.accessFlags())) {
-            Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass));
+            Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass), graph);
             return appendWithoutOptimization(classConstant, Instruction.SYNCHRONIZATION_ENTRY_BCI);
         } else {
             return curState2.localAt(0);

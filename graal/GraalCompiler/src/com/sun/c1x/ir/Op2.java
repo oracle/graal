@@ -29,8 +29,6 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
- *
- * @author Ben L. Titzer
  */
 public abstract class Op2 extends Instruction {
 

@@ -29,18 +29,34 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code StoreIndexed} instruction represents a write to an array element.
- *
- * @author Ben L. Titzer
  */
 public final class StoreIndexed extends AccessIndexed {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_VALUE = 0;
+
     private static final int SUCCESSOR_COUNT = 0;
 
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
     /**
-     * The value to store.
+     * The instruction that produces the value that is to be stored into the array.
      */
-    Value value;
+     public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+    }
+
+    public Value setValue(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+    }
 
     /**
      * Creates a new StoreIndexed instruction.
@@ -54,21 +70,7 @@ public final class StoreIndexed extends AccessIndexed {
      */
     public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, FrameState stateBefore, Graph graph) {
         super(CiKind.Void, array, index, length, elementType, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.value = value;
-    }
-
-    /**
-     * Gets the instruction that produces the value that is to be stored into the array.
-     * @return the value to write into the array
-     */
-    public Value value() {
-        return value;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        super.inputValuesDo(closure);
-        value = closure.apply(value);
+        setValue(value);
     }
 
     @Override
