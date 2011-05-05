@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
@@ -35,24 +36,62 @@ import com.sun.cri.bytecode.*;
  */
 public final class IfOp extends Op2 {
 
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_TRUE_VALUE = 0;
+    private static final int INPUT_FALSE_VALUE = 1;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+
+    /**
+     * The instruction that produces the value if the comparison is true.
+     */
+    public Value trueValue() {
+        return (Value) inputs().get(super.inputCount() + INPUT_TRUE_VALUE);
+    }
+
+    public Value setTrueValue(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_TRUE_VALUE, n);
+    }
+
+    /**
+     * The instruction that produces the value if the comparison is false.
+     */
+    public Value falseValue() {
+        return (Value) inputs().get(super.inputCount() + INPUT_FALSE_VALUE);
+    }
+
+    public Value setFalseValue(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_FALSE_VALUE, n);
+    }
+
+
     Condition cond;
-    Value trueVal;
-    Value falseVal;
 
     /**
      * Constructs a new IfOp.
      * @param x the instruction producing the first value to be compared
      * @param cond the condition of the comparison
      * @param y the instruction producing the second value to be compared
-     * @param tval the value produced if the condition is true
-     * @param fval the value produced if the condition is false
+     * @param trueValue the value produced if the condition is true
+     * @param falseValue the value produced if the condition is false
      */
-    public IfOp(Value x, Condition cond, Value y, Value tval, Value fval) {
+    public IfOp(Value x, Condition cond, Value y, Value trueValue, Value falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
-        super(tval.kind.meet(fval.kind), Bytecodes.ILLEGAL, x, y);
+        super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, graph);
         this.cond = cond;
-        this.trueVal = tval;
-        falseVal = fval;
+        setTrueValue(trueValue);
+        setFalseValue(falseValue);
     }
 
     /**
@@ -61,22 +100,6 @@ public final class IfOp extends Op2 {
      */
     public Condition condition() {
         return cond;
-    }
-
-    /**
-     * Gets the instruction that produces the value if the comparison is true.
-     * @return the instruction producing the value upon true
-     */
-    public Value trueValue() {
-        return trueVal;
-    }
-
-    /**
-     * Gets the instruction that produces the value if the comparison is false.
-     * @return the instruction producing the value upon false
-     */
-    public Value falseValue() {
-        return falseVal;
     }
 
     /**
@@ -90,8 +113,8 @@ public final class IfOp extends Op2 {
     @Override
     public void inputValuesDo(ValueClosure closure) {
         super.inputValuesDo(closure);
-        trueVal = closure.apply(trueVal);
-        falseVal = closure.apply(falseVal);
+        setTrueValue(closure.apply(trueValue()));
+        setFalseValue(closure.apply(falseValue()));
     }
 
     @Override
@@ -101,14 +124,14 @@ public final class IfOp extends Op2 {
 
     @Override
     public int valueNumber() {
-        return Util.hash4(cond.hashCode(), x, y, trueVal, falseVal);
+        return Util.hash4(cond.hashCode(), x(), y(), trueValue(), falseValue());
     }
 
     @Override
     public boolean valueEqual(Instruction i) {
         if (i instanceof IfOp) {
             IfOp o = (IfOp) i;
-            return opcode == o.opcode && x == o.x && y == o.y && trueVal == o.trueVal && falseVal == o.falseVal;
+            return opcode == o.opcode && x() == o.x() && y() == o.y() && trueValue() == o.trueValue() && falseValue() == o.falseValue();
         }
         return false;
     }

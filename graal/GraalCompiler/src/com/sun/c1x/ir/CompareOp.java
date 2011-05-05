@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -38,8 +39,8 @@ public final class CompareOp extends Op2 {
      * @param x the first input
      * @param y the second input
      */
-    public CompareOp(int opcode, CiKind kind, Value x, Value y) {
-        super(kind, opcode, x, y);
+    public CompareOp(int opcode, CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, opcode, x, y, graph);
     }
 
     @Override

@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -83,8 +84,8 @@ public abstract class Op2 extends Instruction {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public Op2(CiKind kind, int opcode, Value x, Value y) {
-        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, null);
+    public Op2(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
         setX(x);
         setY(y);
