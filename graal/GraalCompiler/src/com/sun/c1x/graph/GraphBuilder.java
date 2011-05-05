@@ -704,7 +704,7 @@ public final class GraphBuilder {
     void genGetField(int cpi, RiField field) {
         // Must copy the state here, because the field holder must still be on the stack.
         FrameState stateBefore = curState.immutableCopy(bci());
-        LoadField load = new LoadField(apop(), field, stateBefore);
+        LoadField load = new LoadField(apop(), field, stateBefore, graph);
         appendOptimizedLoadField(field.kind(), load);
     }
 
@@ -712,7 +712,7 @@ public final class GraphBuilder {
         // Must copy the state here, because the field holder must still be on the stack.
         FrameState stateBefore = curState.immutableCopy(bci());
         Value value = pop(field.kind().stackKind());
-        appendOptimizedStoreField(new StoreField(apop(), field, value, stateBefore));
+        appendOptimizedStoreField(new StoreField(apop(), field, value, stateBefore, graph));
     }
 
     void genGetStatic(int cpi, RiField field) {
@@ -726,7 +726,7 @@ public final class GraphBuilder {
             push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
             Value container = genResolveClass(RiType.Representation.StaticFields, holder, field.isResolved(), cpi);
-            LoadField load = new LoadField(container, field, null);
+            LoadField load = new LoadField(container, field, null, graph);
             appendOptimizedLoadField(field.kind(), load);
         }
     }
@@ -735,7 +735,7 @@ public final class GraphBuilder {
         RiType holder = field.holder();
         Value container = genResolveClass(RiType.Representation.StaticFields, holder, field.isResolved(), cpi);
         Value value = pop(field.kind().stackKind());
-        StoreField store = new StoreField(container, field, value, null);
+        StoreField store = new StoreField(container, field, value, null, graph);
         appendOptimizedStoreField(store);
     }
 
