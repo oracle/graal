@@ -103,7 +103,7 @@ public final class Phi extends Value {
         if (block.isExceptionEntry()) {
             state = block.exceptionHandlerStates().get(i);
         } else {
-            state = block.predecessors().get(i).end().stateAfter();
+            state = block.blockPredecessors().get(i).end().stateAfter();
         }
         return inputIn(state);
     }
@@ -125,11 +125,12 @@ public final class Phi extends Value {
      * Get the number of inputs to this phi (i.e. the number of predecessors to the join block).
      * @return the number of inputs in this phi
      */
+    @Override
     public int inputCount() {
         if (block.isExceptionEntry()) {
             return block.exceptionHandlerStates().size();
         } else {
-            return block.predecessors().size();
+            return block.blockPredecessors().size();
         }
     }
 

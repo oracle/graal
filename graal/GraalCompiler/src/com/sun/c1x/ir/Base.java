@@ -67,7 +67,7 @@ public final class Base extends BlockEnd {
     @Override
     public void print(LogStream out) {
         out.print("std entry B").print(standardEntry().blockID);
-        if (successors().size() > 1) {
+        if (blockSuccessors().size() > 1) {
             out.print(" osr entry B").print(osrEntry().blockID);
         }
     }

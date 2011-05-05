@@ -118,7 +118,7 @@ public final class BlockBegin extends Instruction {
      * Gets the list of predecessors of this block.
      * @return the predecessor list
      */
-    public List<BlockBegin> predecessors() {
+    public List<BlockBegin> blockPredecessors() {
         return predecessors;
     }
 
@@ -240,13 +240,13 @@ public final class BlockBegin extends Instruction {
                 // disconnect this block from the old end
                 old.setBegin(null);
                 // disconnect this block from its current successors
-                for (BlockBegin s : old.successors()) {
-                    s.predecessors().remove(this);
+                for (BlockBegin s : old.blockSuccessors()) {
+                    s.blockPredecessors().remove(this);
                 }
             }
             this.end = end;
             end.setBegin(this);
-            for (BlockBegin s : end.successors()) {
+            for (BlockBegin s : end.blockSuccessors()) {
                 s.addPredecessor(this);
             }
         }
@@ -304,7 +304,7 @@ public final class BlockBegin extends Instruction {
         while ((block = queue.poll()) != null) {
             closure.apply(block);
             queueBlocks(queue, block.exceptionHandlerBlocks(), mark);
-            queueBlocks(queue, block.end.successors(), mark);
+            queueBlocks(queue, block.end.blockSuccessors(), mark);
             queueBlocks(queue, predecessors ? block.predecessors : null, mark);
         }
     }
@@ -329,7 +329,7 @@ public final class BlockBegin extends Instruction {
                 iterateReverse(mark, closure, exceptionHandlerBlocks);
             }
             assert e != null : "block must have block end";
-            iterateReverse(mark, closure, e.successors());
+            iterateReverse(mark, closure, e.blockSuccessors());
         }
     }
 
@@ -427,7 +427,7 @@ public final class BlockBegin extends Instruction {
 
             stateBefore = newState;
         } else {
-            if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isSame(newState)) {
+            if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
                 // stacks or locks do not match--bytecodes would not verify
                 throw new CiBailout("stack or locks do not match");
             }
@@ -592,7 +592,7 @@ public final class BlockBegin extends Instruction {
         if (end != null) {
             builder.append(" -> ");
             boolean hasSucc = false;
-            for (BlockBegin s : end.successors()) {
+            for (BlockBegin s : end.blockSuccessors()) {
                 if (hasSucc) {
                     builder.append(", ");
                 }
@@ -724,9 +724,9 @@ public final class BlockBegin extends Instruction {
         out.print('[').print(bci()).print(", ").print(end == null ? -1 : end.bci()).print(']');
 
         // print block successors
-        if (end != null && end.successors().size() > 0) {
+        if (end != null && end.blockSuccessors().size() > 0) {
             out.print(" .");
-            for (BlockBegin successor : end.successors()) {
+            for (BlockBegin successor : end.blockSuccessors()) {
                 out.print(" B").print(successor.blockID);
             }
         }
@@ -745,9 +745,9 @@ public final class BlockBegin extends Instruction {
         }
 
         // print predecessors
-        if (!predecessors().isEmpty()) {
+        if (!blockPredecessors().isEmpty()) {
             out.print(" pred:");
-            for (BlockBegin pred : predecessors()) {
+            for (BlockBegin pred : blockPredecessors()) {
                 out.print(" B").print(pred.blockID);
             }
         }

@@ -696,7 +696,7 @@ public final class ComputeLinearScanOrder {
             assert cur.linearScanNumber() == i : "incorrect linearScanNumber";
             assert cur.linearScanNumber() >= 0 && cur.linearScanNumber() == linearScanOrder.indexOf(cur) : "incorrect linearScanNumber";
 
-            for (BlockBegin sux : cur.end().successors()) {
+            for (BlockBegin sux : cur.end().blockSuccessors()) {
                 assert sux.linearScanNumber() >= 0 && sux.linearScanNumber() == linearScanOrder.indexOf(sux) : "incorrect linearScanNumber";
                 if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd)) {
                     assert cur.linearScanNumber() < sux.linearScanNumber() : "invalid order";
@@ -706,7 +706,7 @@ public final class ComputeLinearScanOrder {
                 }
             }
 
-            for (BlockBegin pred : cur.predecessors()) {
+            for (BlockBegin pred : cur.blockPredecessors()) {
                 assert pred.linearScanNumber() >= 0 && pred.linearScanNumber() == linearScanOrder.indexOf(pred) : "incorrect linearScanNumber";
                 if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
                     assert cur.linearScanNumber() > pred.linearScanNumber() : "invalid order";

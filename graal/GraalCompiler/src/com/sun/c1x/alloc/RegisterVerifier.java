@@ -129,7 +129,7 @@ final class RegisterVerifier {
         processOperations(block.lir(), inputState);
 
         // iterate all successors
-        for (BlockBegin succ : block.end().successors()) {
+        for (BlockBegin succ : block.end().blockSuccessors()) {
             processSuccessor(succ, inputState);
         }
     }

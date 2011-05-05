@@ -385,7 +385,7 @@ public final class GraphBuilder {
         curBlock.addExceptionHandler(entry);
 
         // add back-edge from exception handler entry to this block
-        if (!entry.predecessors().contains(curBlock)) {
+        if (!entry.blockPredecessors().contains(curBlock)) {
             entry.addPredecessor(curBlock);
         }
 
@@ -1366,8 +1366,8 @@ public final class GraphBuilder {
         end.setStateAfter(curState.immutableCopy(bci()));
         curBlock.setEnd(end);
         // propagate the state
-        for (BlockBegin succ : end.successors()) {
-            assert succ.predecessors().contains(curBlock);
+        for (BlockBegin succ : end.blockSuccessors()) {
+            assert succ.blockPredecessors().contains(curBlock);
             succ.mergeOrClone(end.stateAfter(), method());
             addToWorkList(succ);
         }
