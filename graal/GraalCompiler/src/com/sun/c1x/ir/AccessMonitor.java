@@ -22,31 +22,57 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code AccessMonitor} instruction is the base class of both monitor acquisition and release.
- *
- * @author Ben L. Titzer
  */
 public abstract class AccessMonitor extends StateSplit {
 
-    /**
-     * The object locked or unlocked by this instruction.
-     */
-    private Value object;
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_OBJECT = 0;
+    private static final int INPUT_LOCK_ADDRESS = 1;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
 
     /**
-     * The address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack.
+     * The instruction producing the object locked or unlocked by this instruction.
      */
-    private Value lockAddress;
+     public Value object() {
+        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    }
+
+    public Value setObject(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    }
+
+    /**
+     * The instruction producing the address of the lock object.
+     */
+    public Value lockAddress() {
+        return (Value) inputs().get(super.inputCount() + INPUT_LOCK_ADDRESS);
+    }
+
+    public Value setLockAddress(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_LOCK_ADDRESS, n);
+    }
 
     /**
      * The lock number of this monitor access.
      */
     public final int lockNumber;
-
 
     /**
      * Creates a new AccessMonitor instruction.
@@ -55,33 +81,14 @@ public abstract class AccessMonitor extends StateSplit {
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param stateBefore the state before executing the monitor operation
      * @param lockNumber the number of the lock being acquired
+     * @param inputCount
+     * @param successorCount
+     * @param graph
      */
-    public AccessMonitor(Value object, Value lockAddress, FrameState stateBefore, int lockNumber) {
-        super(CiKind.Illegal, stateBefore);
-        this.object = object;
-        this.lockAddress = lockAddress;
+    public AccessMonitor(Value object, Value lockAddress, FrameState stateBefore, int lockNumber, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Illegal, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.lockNumber = lockNumber;
-    }
-
-    /**
-     * Gets the instruction producing the object locked or unlocked by this instruction.
-     */
-    public Value object() {
-        return object;
-    }
-
-    /**
-     * Gets the instruction producing the address of the lock object.
-     */
-    public Value lockAddress() {
-        return lockAddress;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        object = closure.apply(object);
-        if (lockAddress != null) {
-            lockAddress = closure.apply(lockAddress);
-        }
+        setObject(object);
+        setLockAddress(lockAddress);
     }
 }

@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
@@ -34,8 +35,38 @@ import com.sun.cri.ri.*;
  */
 public final class Invoke extends StateSplit {
 
+    private final int argumentCount;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + argumentCount;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The list of instructions that produce input for this instruction.
+     */
+    public Value argument(int index) {
+        assert index >= 0 && index < argumentCount;
+        return (Value) inputs().get(super.inputCount() + index);
+    }
+
+    public Value setArgument(int index, Value n) {
+        assert index >= 0 && index < argumentCount;
+        return (Value) inputs().set(super.inputCount() + index, n);
+    }
+
+    public int argumentCount() {
+        return argumentCount;
+    }
+
     public final int opcode;
-    public final Value[] arguments;
     public final RiMethod target;
     public final RiType returnType;
 
@@ -49,12 +80,16 @@ public final class Invoke extends StateSplit {
      * @param target the target method being called
      * @param stateBefore the state before executing the invocation
      */
-    public Invoke(int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, FrameState stateBefore) {
-        super(result, stateBefore);
+    public Invoke(int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, FrameState stateBefore, Graph graph) {
+        super(result, stateBefore, args.length, SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
-        this.arguments = args;
         this.target = target;
         this.returnType = returnType;
+
+        this.argumentCount = args.length;
+        for (int i = 0; i < args.length; i++) {
+            setArgument(i, args[i]);
+        }
     }
 
     /**
@@ -85,7 +120,7 @@ public final class Invoke extends StateSplit {
      */
     public Value receiver() {
         assert !isStatic();
-        return arguments[0];
+        return argument(0);
     }
 
     /**
@@ -97,31 +132,12 @@ public final class Invoke extends StateSplit {
     }
 
     /**
-     * Gets the list of instructions that produce input for this instruction.
-     * @return the list of instructions that produce input
-     */
-    public Value[] arguments() {
-        return arguments;
-    }
-
-    /**
      * Checks whether this invocation has a receiver object.
      * @return {@code true} if this invocation has a receiver object; {@code false} otherwise, if this is a
      *         static call
      */
     public boolean hasReceiver() {
         return !isStatic();
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        for (int i = 0; i < arguments.length; i++) {
-            Value arg = arguments[i];
-            if (arg != null) {
-                arguments[i] = closure.apply(arg);
-                assert arguments[i] != null;
-            }
-        }
     }
 
     @Override
@@ -144,12 +160,11 @@ public final class Invoke extends StateSplit {
 
         RiMethod target = target();
         out.print(target.name()).print('(');
-        Value[] arguments = arguments();
-        for (int i = argStart; i < arguments.length; i++) {
+        for (int i = argStart; i < argumentCount; i++) {
             if (i > argStart) {
                 out.print(", ");
             }
-            out.print(arguments[i]);
+            out.print(argument(i));
         }
         out.print(CiUtil.format(") [method: %H.%n(%p):%r]", target, false));
     }

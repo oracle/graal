@@ -22,15 +22,17 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 
 /**
  * The {@code MonitorExit} instruction represents a monitor release.
- *
- * @author Ben L. Titzer
  */
 public final class MonitorExit extends AccessMonitor {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     /**
      * Creates a new MonitorExit instruction.
@@ -39,9 +41,10 @@ public final class MonitorExit extends AccessMonitor {
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param lockNumber the number of the lock
      * @param stateBefore the state before executing this instruction
+     * @param graph
      */
-    public MonitorExit(Value object, Value lockAddress, int lockNumber, FrameState stateBefore) {
-        super(object, lockAddress, stateBefore, lockNumber);
+    public MonitorExit(Value object, Value lockAddress, int lockNumber, FrameState stateBefore, Graph graph) {
+        super(object, lockAddress, stateBefore, lockNumber, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
