@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -29,10 +30,11 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code NewObjectArray} instruction represents an allocation of an object array.
- *
- * @author Ben L. Titzer
  */
 public final class NewObjectArray extends NewArray {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     final RiType elementClass;
 
@@ -41,9 +43,10 @@ public final class NewObjectArray extends NewArray {
      * @param elementClass the class of elements in this array
      * @param length the instruction producing the length of the array
      * @param stateBefore the state before the allocation
+     * @param graph
      */
-    public NewObjectArray(RiType elementClass, Value length, FrameState stateBefore) {
-        super(length, stateBefore);
+    public NewObjectArray(RiType elementClass, Value length, FrameState stateBefore, Graph graph) {
+        super(length, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.elementClass = elementClass;
     }
 

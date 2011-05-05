@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -29,10 +30,11 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
- *
- * @author Ben L. Titzer
  */
 public final class NewInstance extends StateSplit {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     final RiType instanceClass;
     public final int cpi;
@@ -43,9 +45,10 @@ public final class NewInstance extends StateSplit {
      * @param type the class being allocated
      * @param cpi the constant pool index
      * @param stateBefore the state before executing this instruction
+     * @param graph
      */
-    public NewInstance(RiType type, int cpi, RiConstantPool constantPool, FrameState stateBefore) {
-        super(CiKind.Object, stateBefore);
+    public NewInstance(RiType type, int cpi, RiConstantPool constantPool, FrameState stateBefore, Graph graph) {
+        super(CiKind.Object, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.instanceClass = type;
         this.cpi = cpi;
         this.constantPool = constantPool;

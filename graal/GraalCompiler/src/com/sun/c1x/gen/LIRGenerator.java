@@ -288,14 +288,14 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitCheckCast(CheckCast x) {
         XirArgument obj = toXirArgument(x.object());
-        XirSnippet snippet = xir.genCheckCast(site(x), obj, toXirArgument(x.targetClassInstruction), x.targetClass());
+        XirSnippet snippet = xir.genCheckCast(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
     public void visitInstanceOf(InstanceOf x) {
         XirArgument obj = toXirArgument(x.object());
-        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction), x.targetClass());
+        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
         emitXir(snippet, x, maybeStateFor(x), null, true);
     }
 
@@ -347,10 +347,10 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitNewMultiArray(NewMultiArray x) {
-        XirArgument[] dims = new XirArgument[x.dimensions().length];
+        XirArgument[] dims = new XirArgument[x.dimensionCount()];
 
         for (int i = 0; i < dims.length; i++) {
-            dims[i] = toXirArgument(x.dimensions()[i]);
+            dims[i] = toXirArgument(x.dimension(i));
         }
 
         XirSnippet snippet = xir.genNewMultiArray(site(x), dims, x.elementKind);
