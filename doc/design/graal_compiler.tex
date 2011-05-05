@@ -132,14 +132,13 @@ The IR used in the compiler was designed in such a way as to allow for extensive
 \subsubsection{The Node Data Structure}
 \begin{itemize}
     \item Each node is always associated with a graph.
-    \item Each node has an immutable id which is unique within its associated graph. \cw{The server compiler supports ``renumbering'' of nodes to make the ids dense again after large graph manipulations that deleted many nodes.}
+    \item Each node has an immutable id which is unique within its associated graph.
     \item Nodes represent either operations on values or control flow operations.
     \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
     \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
     \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
     \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (like LoopEnd).
-		\cw{I don't like that item.  Cycles are a normal thing for control flow and for phi functions.  I would phrase it as something like that: Nodes can only have data and control dependencies to nodes that are dominators.  The only exception of that are control loop headers and phi functions}
-    \item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers (notably the HotSpot client compiler \cw{Wrong: the client compiler only has a fixed order of pinned instructions, most instructions are not pinned and can be moved around freely}) always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
+	\item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
     \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
     \begin{itemize}
         \item \emph{inputs} are all nodes that this node has data dependencies on.
@@ -149,7 +148,8 @@ The IR used in the compiler was designed in such a way as to allow for extensive
     \end{itemize}
     \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
     \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
-    \item Nodes cannot be reassigned to another graph, they are cloned instead \cw{Why should there be the need for more than one graph when compiling a method?}
+    \item Inlining should always be performed as a combination of two graphs.
+    \item Nodes cannot be reassigned to another graph, they are cloned instead.
 \end{itemize}
 
 \subsection{Loops}
@@ -187,7 +187,7 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 
 \subsection{Loop Phis}
 Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
-The \nodename{LoopEnd} node merges every value that is flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
+The \nodename{LoopEnd} node merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
 Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph.
 
@@ -342,13 +342,12 @@ In order to support the goal of a modular compiler, the code will be divided int
             \item Implements the final compilation phase that produces the low-level representation.
             \item Machine code creation, including debug info.
         \end{itemize}
-		\cw{So you want to keep the backend as part of the ``main compiler'' at first.  Seems OK for me.}
 \end{description}
 
 
 \subsection{Frame States}
-Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
-Whenever a safepoint is reached or \cw{why is that an ``or'', both is basically the same} \ls{uncommon traps can be introduced at other points, e.g., at an if branch that isn't compiled} a deoptimization is needed a valid frame state needs to be available.
+A frame state captures the state of the program in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
+Every deoptimization point needs a valid frame state.
 A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, loads, etc.).
 Thus, frame states need only be generated for bytecodes that cannot be reexecuted:
 
@@ -384,8 +383,9 @@ Within the node graph a frame state is represented as a node that is fixed to th
 
 FrameStates also have data dependencies on the contents of the state: the local variables and the expression stack.
 
-\subsection{Deoptimization and Uncommon Traps}
-Uncommon trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
+\subsection{Traps}
+A trap node is a node that deoptimizes based on a conditional expression.
+Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
 \begin{figure}[h]
@@ -419,12 +419,12 @@ The node that is guarded by the deoptimization has a data dependency on the trap
     \datalabel{load2:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
-  \caption{In this example, the second load is guarded by an uncommon trap, because its receiver might be null (the receiver of the load is assumed to be non-null).
+  \caption{In this example, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
 The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
 In the final scheduling the trap can be placed before or after the first load.}
 \end{figure}
 
-Another type of uncommon trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
+Another type of trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
 
 \begin{figure}[h]
   \label{fig:trap2}
@@ -445,9 +445,9 @@ Another type of uncommon trap is a guard, which is used to remove branches that 
     \datalabel{trap:in2}{start3}
     \data{guard}{trap}    
 \end{digraphenv}
-  \caption{In this example the If from the previous example was replaced by a guard and an uncommon trap.
+  \caption{In this example an If was replaced by a guard and a trap.
 The guard takes the place of the If in the control flow, and is connected to the trap node.
-The uncommon trap is now anchored to the most distant node of which the If was a postdominator.}
+The trap is now anchored to the most distant node of which the If was a postdominator.}
 \end{figure}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
@@ -493,16 +493,6 @@ Multiple Traps with the same condition and anchor can be merged:
 
 Also, if two Traps that are anchored to the true and false branch of the same If have the same condition, they can be merged, so that the resulting Trap is anchored at the most distant node of which the If is a postdominator.
 
-%Frame states should be represented using a delta-encoding.
-%This will make them significantly smaller and will make inlining, etc. much easier.
-%In later compilation phases unnecessary frame states might be removed, using a mark-and-merge algorithm.
-
-\subsection{Graph Building}
-\begin{itemize}
-    \item The graph built by the initial parser (called \emph{GraphBuilder}) should be as close to the source representation (bytecode, ...) as possible.
-    \item All nodes should be able to immediately lower themselves to a machine-level representation. \cw{What is that?  You mean every node has x86 specific code that spits out machine code?  Hope you are joking...} This allows for easier compiler development, and also leads to a compiler that is very flexible in the amount of optimizations it performs (e.g. recompilation of methods with more aggressive optimizations).
-\end{itemize}
-
 \subsection{Graphical Representation}
 The graphs in this document use the following node layout:
 
@@ -512,9 +502,6 @@ The graphs in this document use the following node layout:
 \nodetri{node3}{phi}
 \nodesplit{node4}{if}
 \end{digraphenv}
-
-\cw{That doesn't compile with my latex.  What do I have to do to get it working?}
-\ls{graphviz needs to be installed, and pdflatex needs to be started with -shell-escape}
 
 Red arrows always represents control dependencies, while black arrows represent data dependencies:
 
@@ -529,7 +516,5 @@ Red arrows always represents control dependencies, while black arrows represent 
 \datalabel{add:in1}{a}
 \datalabel{add:in2}{b}
 \end{digraphenv}
-
-
 
 \end{document}
