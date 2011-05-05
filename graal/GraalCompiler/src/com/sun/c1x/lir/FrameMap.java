@@ -326,7 +326,7 @@ public final class FrameMap {
     }
 
     private int offsetForMonitorBase(int index) {
-        assert index >= 0 && index < monitorCount : "invalid monitor index : " + index+ " (monitorCount=" + monitorCount + ")";
+        assert index >= 0 && index < monitorCount : "invalid monitor index : " + index + " (monitorCount=" + monitorCount + ")";
         int size = compilation.runtime.sizeOfBasicObjectLock();
         assert size != 0 : "monitors are not on the stack in this VM";
         int offset = offsetToMonitors() + index * size;

@@ -267,7 +267,7 @@ public class IR {
     }
 
     /**
-     * Gets the number of locks
+     * Gets the number of locks.
      * @return the number of locks
      */
     public final int maxLocks() {

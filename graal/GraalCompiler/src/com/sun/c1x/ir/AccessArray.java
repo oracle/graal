@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
@@ -32,29 +33,45 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessArray extends StateSplit {
 
-    protected Value array;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_ARRAY = 0;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that produces the array object.
+     */
+     public Value array() {
+        return (Value) inputs().get(super.inputCount() + INPUT_ARRAY);
+    }
+
+    public Value setArray(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_ARRAY, n);
+    }
+
 
     /**
      * Creates a new AccessArray instruction.
      * @param kind the type of the result of this instruction
      * @param array the instruction that produces the array object value
      * @param stateBefore the frame state before the instruction
+     * @param inputCount
+     * @param successorCount
+     * @param graph
      */
-    public AccessArray(CiKind kind, Value array, FrameState stateBefore) {
-        super(kind, stateBefore);
-        this.array = array;
+    public AccessArray(CiKind kind, Value array, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
+        super(kind, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+        setArray(array);
     }
 
-    /**
-     * Gets the instruction that produces the array object.
-     * @return the instruction that produces the array object
-     */
-    public Value array() {
-        return array;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        array = closure.apply(array);
-    }
 }

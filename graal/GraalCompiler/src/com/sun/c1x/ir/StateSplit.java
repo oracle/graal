@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
@@ -43,10 +44,17 @@ public abstract class StateSplit extends Instruction {
     /**
      * Creates a new state split with the specified value type.
      * @param kind the type of the value that this instruction produces
+     * @param inputCount
+     * @param successorCount
+     * @param graph
      */
-    public StateSplit(CiKind kind, FrameState stateBefore) {
-        super(kind);
+    public StateSplit(CiKind kind, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount, successorCount, graph);
         this.stateBefore = stateBefore;
+    }
+
+    public StateSplit(CiKind kind, FrameState stateBefore) {
+        this(kind, stateBefore, 0, 0, null);
     }
 
     @Override

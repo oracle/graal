@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -32,6 +33,9 @@ import com.sun.cri.ci.*;
  * @author Ben L. Titzer
  */
 public final class StoreIndexed extends AccessIndexed {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     /**
      * The value to store.
@@ -46,9 +50,10 @@ public final class StoreIndexed extends AccessIndexed {
      * @param elementType the element type
      * @param value the value to store into the array
      * @param stateBefore the state before executing this instruction
+     * @param graph
      */
-    public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, FrameState stateBefore) {
-        super(CiKind.Void, array, index, length, elementType, stateBefore);
+    public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, FrameState stateBefore, Graph graph) {
+        super(CiKind.Void, array, index, length, elementType, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.value = value;
     }
 

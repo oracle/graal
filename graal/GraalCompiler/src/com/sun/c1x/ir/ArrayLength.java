@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
@@ -35,13 +36,16 @@ import com.sun.cri.ci.*;
  */
 public final class ArrayLength extends AccessArray {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     /**
      * Constructs a new ArrayLength instruction.
      * @param array the instruction producing the array
      * @param newFrameState the state before executing this instruction
      */
-    public ArrayLength(Value array, FrameState newFrameState) {
-        super(CiKind.Int, array, newFrameState);
+    public ArrayLength(Value array, FrameState newFrameState, Graph graph) {
+        super(CiKind.Int, array, newFrameState, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -51,20 +55,20 @@ public final class ArrayLength extends AccessArray {
 
     @Override
     public int valueNumber() {
-        return Util.hash1(Bytecodes.ARRAYLENGTH, array);
+        return Util.hash1(Bytecodes.ARRAYLENGTH, array());
     }
 
     @Override
     public boolean valueEqual(Instruction i) {
         if (i instanceof ArrayLength) {
             ArrayLength o = (ArrayLength) i;
-            return array == o.array;
+            return array() == o.array();
         }
         return false;
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(array).print(".length");
+        out.print(array()).print(".length");
     }
 }

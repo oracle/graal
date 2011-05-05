@@ -378,7 +378,7 @@ public final class GraphBuilder {
         FrameState entryState = entry.stateBefore();
 
         assert entry.bci() == handler.handler.handlerBCI();
-        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:"+curState.locksSize()+" entry:"+entryState.locksSize();
+        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:" + curState.locksSize() + " entry:" + entryState.locksSize();
 
         // exception handler starts with an empty expression stack
         curState = curState.immutableCopyWithEmptyStack();
@@ -441,9 +441,9 @@ public final class GraphBuilder {
         Value array = apop();
         Value length = null;
         if (cseArrayLength(array)) {
-            length = append(new ArrayLength(array, stateBefore));
+            length = append(new ArrayLength(array, stateBefore, graph));
         }
-        Value v = append(new LoadIndexed(array, index, length, kind, stateBefore));
+        Value v = append(new LoadIndexed(array, index, length, kind, stateBefore, graph));
         push(kind.stackKind(), v);
     }
 
@@ -454,9 +454,9 @@ public final class GraphBuilder {
         Value array = apop();
         Value length = null;
         if (cseArrayLength(array)) {
-            length = append(new ArrayLength(array, stateBefore));
+            length = append(new ArrayLength(array, stateBefore, graph));
         }
-        StoreIndexed result = new StoreIndexed(array, index, length, kind, value, stateBefore);
+        StoreIndexed result = new StoreIndexed(array, index, length, kind, value, stateBefore, graph);
         append(result);
         if (memoryMap != null) {
             memoryMap.storeValue(value);
@@ -1631,7 +1631,7 @@ public final class GraphBuilder {
 
     private void genArrayLength() {
         FrameState stateBefore = curState.immutableCopy(bci());
-        ipush(append(new ArrayLength(apop(), stateBefore)));
+        ipush(append(new ArrayLength(apop(), stateBefore, graph)));
     }
 
     void killMemoryMap() {
@@ -1692,7 +1692,7 @@ public final class GraphBuilder {
     }
 
     /**
-     * Adds an exception handler
+     * Adds an exception handler.
      * @param handler the handler to add
      */
     private void addExceptionHandler(ExceptionHandler handler) {
