@@ -5,6 +5,9 @@ Lukas Stadler (stadler@ssw.jku.at)
 Gilles Duboscq (gilles.duboscq@oracle.com)
 * Since April 2011: New IR design
 
+Peter Hofer (hofer@ssw.jku.at)
+* Since May 2011: Graphviz visualization
+
 Thomas Wuerthinger (thomas.wuerthinger@oracle.com)
 * June 2011: Initial prototype
 * October 2010 - January 2011: Bug fixes (all DaCapo's pass), better performance on SciMark than C1
