@@ -33,6 +33,9 @@ import com.sun.cri.bytecode.*;
  */
 public final class LogicOp extends Op2 {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     /**
      * Constructs a new logic operation instruction.
      * @param opcode the opcode of the logic operation
@@ -40,7 +43,7 @@ public final class LogicOp extends Op2 {
      * @param y the second input into this instruction
      */
     public LogicOp(int opcode, Value x, Value y, Graph graph) {
-        super(x.kind, opcode, x, y, graph);
+        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

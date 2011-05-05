@@ -88,7 +88,7 @@ public final class IfOp extends Op2 {
      */
     public IfOp(Value x, Condition cond, Value y, Value trueValue, Value falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
-        super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, graph);
+        super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.cond = cond;
         setTrueValue(trueValue);
         setFalseValue(falseValue);
@@ -108,13 +108,6 @@ public final class IfOp extends Op2 {
      */
     public boolean isCommutative() {
         return cond == Condition.EQ || cond == Condition.NE;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        super.inputValuesDo(closure);
-        setTrueValue(closure.apply(trueValue()));
-        setFalseValue(closure.apply(falseValue()));
     }
 
     @Override

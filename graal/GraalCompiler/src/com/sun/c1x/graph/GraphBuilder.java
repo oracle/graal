@@ -560,7 +560,7 @@ public final class GraphBuilder {
     }
 
     void genNegateOp(CiKind kind) {
-        push(kind, append(new NegateOp(pop(kind))));
+        push(kind, append(new NegateOp(pop(kind), graph)));
     }
 
     void genShiftOp(CiKind kind, int opcode) {

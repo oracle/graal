@@ -33,6 +33,9 @@ import com.sun.cri.ci.*;
  */
 public final class ArithmeticOp extends Op2 {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     private final FrameState stateBefore;
     private final boolean isStrictFP;
 
@@ -46,7 +49,7 @@ public final class ArithmeticOp extends Op2 {
      * @param stateBefore the state for instructions that may trap
      */
     public ArithmeticOp(int opcode, CiKind kind, Value x, Value y, boolean isStrictFP, FrameState stateBefore, Graph graph) {
-        super(kind, opcode, x, y, graph);
+        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.isStrictFP = isStrictFP;
         this.stateBefore = stateBefore;
     }

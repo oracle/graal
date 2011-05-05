@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
@@ -33,28 +34,40 @@ import com.sun.cri.bytecode.*;
  */
 public final class NegateOp extends Instruction {
 
-    Value x;
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_X = 0;
+    private static final int INPUT_Y = 1;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction producing input to this instruction.
+     */
+     public Value x() {
+        return (Value) inputs().get(super.inputCount() + INPUT_X);
+    }
+
+    public Value setX(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_X, n);
+    }
 
     /**
      * Creates new NegateOp instance.
      * @param x the instruction producing the value that is input to this instruction
      */
-    public NegateOp(Value x) {
-        super(x.kind);
-        this.x = x;
-    }
-
-    /**
-     * Gets the instruction producing input to this instruction.
-     * @return the instruction that produces this instruction's input
-     */
-    public Value x() {
-        return x;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        x = closure.apply(x);
+    public NegateOp(Value x, Graph graph) {
+        super(x.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setX(x);
     }
 
     @Override
@@ -64,14 +77,14 @@ public final class NegateOp extends Instruction {
 
     @Override
     public int valueNumber() {
-        return Util.hash1(Bytecodes.INEG, x);
+        return Util.hash1(Bytecodes.INEG, x());
     }
 
     @Override
     public boolean valueEqual(Instruction i) {
         if (i instanceof NegateOp) {
             NegateOp o = (NegateOp) i;
-            return x == o.x;
+            return x() == o.x();
         }
         return false;
     }

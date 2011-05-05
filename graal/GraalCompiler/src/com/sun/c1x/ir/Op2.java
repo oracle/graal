@@ -84,8 +84,8 @@ public abstract class Op2 extends Instruction {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public Op2(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Op2(CiKind kind, int opcode, Value x, Value y, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
         setX(x);
         setY(y);
@@ -99,16 +99,6 @@ public abstract class Op2 extends Instruction {
         Value t = x();
         setX(y());
         setY(t);
-    }
-
-    /**
-     * Iterates over the inputs to this instruction.
-     * @param closure the closure to apply to each input value
-     */
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        setX(closure.apply(x()));
-        setY(closure.apply(y()));
     }
 
     @Override

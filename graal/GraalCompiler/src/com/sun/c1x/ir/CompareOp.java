@@ -32,6 +32,9 @@ import com.sun.cri.ci.*;
  */
 public final class CompareOp extends Op2 {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     /**
      * Creates a new compare operation.
      * @param opcode the bytecode opcode
@@ -40,7 +43,7 @@ public final class CompareOp extends Op2 {
      * @param y the second input
      */
     public CompareOp(int opcode, CiKind kind, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, graph);
+        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

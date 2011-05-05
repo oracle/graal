@@ -271,7 +271,9 @@ public abstract class Value extends Node {
      * @param closure the closure to apply
      */
     public void inputValuesDo(ValueClosure closure) {
-        // default: do nothing.
+        for (int i = 0; i < inputs().size(); i++) {
+            inputs().set(i, closure.apply((Value) inputs().get(i)));
+        }
     }
 
     @Override
