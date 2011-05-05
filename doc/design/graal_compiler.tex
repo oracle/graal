@@ -53,9 +53,9 @@ to\hsize{\vrule\kern3pt\vbox{\kern3pt
 \maketitle
 
 \abstract{
-The Graal compiler aims at improving C1X, the Java port of the HotSpot client compiler, both in terms of modularity and peak performance.
+The Graal compiler (simply referred to as \emph{the compiler} in the rest of this document) aims at improving C1X, the Java port of the HotSpot client compiler, both in terms of modularity and peak performance.
 The compiler should work with the Maxine VM and the HotSpot VM.
-This document contains information about the proposed design and strategy for developing the Graal compiler.}
+This document contains information about the proposed design and strategy for developing the compiler.}
 
 \section{Context}
 
@@ -65,14 +65,14 @@ In June 2010, we started integrating C1X into the HotSpot VM and we called the r
 Currently, the Graal~VM is fully functional and runs benchmarks (SciMark, DaCapo) at a similar speed to the HotSpot client compiler.
 
 \section{Goals}
-The Graal compiler effort aims at rewriting the high-level intermediate representation of C1X with two main goals:
+The compiler effort aims at rewriting the high-level intermediate representation of C1X with two main goals:
 \begin{description}
 \item[Modularity:] A modular design of the compiler should simplify the implementation of new languages, new back-ends, and new optimizations.
 \item[Peak Performance:] A more powerful intermediate representation should enable the implementation of heavy-weight optimizations that impact the peak performance of the resulting machine code.
 \end{description}
 
 \section{Design}
-For the implementation of the Graal compiler, we rely on the following design decisions:
+For the implementation of the compiler, we rely on the following design decisions:
 \begin{description}
 \item[Graph Representation:]
 The compiler's intermediate representation is modeled as a graph with nodes that are connected with directed edges.
@@ -100,24 +100,57 @@ Also, there is no dependency on a specific back-end, but the output of the compi
 \end{description}
 
 \section{Milestones}
-The Graal compiler is developed starting from the current C1X source code base.
+The compiler is developed starting from the current C1X source code base.
 This helps us testing the compiler at every intermediate development step on a variety of Java benchmarks.
 We define the following development milestones and when they are considered achieved:
 \begin{description}
-\item[M1:] We have a fully working Graal VM version with a stripped down C1X compiler that does not perform any optimizations.
-\item[M2:] We modified the high-level intermediate representation to be based on the Graal compiler graph data structure.
-\item[M3:] We have reimplemented and reenabled compiler optimizations in the Graal compiler that previously existed in C1X.
-\item[M4:] We have reintegrated the new Graal compiler into the Maxine VM and can use it as a Maxine VM bootstrapping compiler.
+\item[M1:] We have a fully working Graal~VM version with a stripped down C1X compiler that does not perform any optimizations.
+\item[M2:] We modified the high-level intermediate representation to be based on the compiler graph data structure.
+\item[M3:] We have reimplemented and reenabled compiler optimizations in the compiler that previously existed in C1X.
+\item[M4:] We have reintegrated the new compiler into the Maxine VM and can use it as a Maxine VM bootstrapping compiler.
 \end{description}
 
 After those four milestones, we see three different possible further development directions that can be followed in parallel:
 \begin{itemize}
-  \item Removal of the XIR template mechanism and replacement with a snippet mechanism that works with the Graal compiler graph.
-  \item Improvements for Graal peak performance (loop optimizations, escape analysis, bounds check elimination, processing additional interpreter runtime feedback).
+  \item Removal of the XIR template mechanism and replacement with a snippet mechanism that works with the compiler graph.
+  \item Improvements for peak performance (loop optimizations, escape analysis, bounds check elimination, processing additional interpreter runtime feedback).
   \item Implementation of a prototype front-end for different languages, e.g., JavaScript.
 \end{itemize}
 
 \section{Implementation}
+
+\subsection{Nodes and Graphs}
+The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
+The IR used in the compiler was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
+
+\subsubsection{The Graph Data Structure}
+\begin{itemize}
+    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
+    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
+\end{itemize}
+
+\subsubsection{The Node Data Structure}
+\begin{itemize}
+    \item Each node is always associated with a graph.
+    \item Each node has an immutable id which is unique within its associated graph. \cw{The server compiler supports ``renumbering'' of nodes to make the ids dense again after large graph manipulations that deleted many nodes.}
+    \item Nodes represent either operations on values or control flow operations.
+    \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
+    \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
+    \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
+    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (like LoopEnd).
+		\cw{I don't like that item.  Cycles are a normal thing for control flow and for phi functions.  I would phrase it as something like that: Nodes can only have data and control dependencies to nodes that are dominators.  The only exception of that are control loop headers and phi functions}
+    \item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers (notably the HotSpot client compiler \cw{Wrong: the client compiler only has a fixed order of pinned instructions, most instructions are not pinned and can be moved around freely}) always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
+    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
+    \begin{itemize}
+        \item \emph{inputs} are all nodes that this node has data dependencies on.
+        \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
+        \item \emph{successors} are all nodes that have a control dependency on this node.
+        \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
+    \end{itemize}
+    \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
+    \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
+    \item Nodes cannot be reassigned to another graph, they are cloned instead \cw{Why should there be the need for more than one graph when compiling a method?}
+\end{itemize}
 
 \subsection{Loops}
 \label{sec:loops}
@@ -190,7 +223,7 @@ Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
-  \caption{Graal compiler graph for a loop counting from 0 to n-1.}
+  \caption{Graph for a loop counting from 0 to n-1.}
 \end{figure}
 
 \subsection{Loop Counters}
@@ -225,7 +258,7 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
-  \caption{Graal compiler graph after loop counter transformation.}
+  \caption{Graph after loop counter transformation.}
 \end{figure}
 
 \subsection{Bounded Loops}
@@ -257,7 +290,7 @@ Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bo
 \data{LoopBegin}{n}
 \controllabel{BeforeLoop}{LoopBegin}
 \end{digraphenv}
-  \caption{Graal compiler graph after bounded loop transformation.}
+  \caption{Graph after bounded loop transformation.}
 \end{figure}
 
 \subsection{Vectorization}
@@ -290,7 +323,7 @@ The vector nodes all work on an ordered list of integer values and are subject t
 \datalabel{VectorMul:in2}{Constant1}
 \data{Vector}{n}
 \end{digraphenv}
-  \caption{Graal compiler graph after bounded loop transformation.}
+  \caption{Graph after bounded loop transformation.}
 \end{figure}
 
 \subsection{Project Source Structure}
@@ -312,38 +345,6 @@ In order to support the goal of a modular compiler, the code will be divided int
 		\cw{So you want to keep the backend as part of the ``main compiler'' at first.  Seems OK for me.}
 \end{description}
 
-\subsection{Nodes and Graphs}
-The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
-The IR used in the Graal Compiler (simply referred to as \emph{the compiler} in the rest of this document) was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
-
-\subsubsection{The Graph Data Structure}
-\begin{itemize}
-    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
-    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
-\end{itemize}
-
-\subsubsection{The Node Data Structure}
-\begin{itemize}
-    \item Each node is always associated with a graph.
-    \item Each node has an immutable id which is unique within its associated graph. \cw{The server compiler supports ``renumbering'' of nodes to make the ids dense again after large graph manipulations that deleted many nodes.}
-    \item Nodes represent either operations on values or control flow operations.
-    \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
-    \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
-    \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
-    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (like LoopEnd).
-		\cw{I don't like that item.  Cycles are a normal thing for control flow and for phi functions.  I would phrase it as something like that: Nodes can only have data and control dependencies to nodes that are dominators.  The only exception of that are control loop headers and phi functions}
-    \item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers (notably the HotSpot client compiler \cw{Wrong: the client compiler only has a fixed order of pinned instructions, most instructions are not pinned and can be moved around freely}) always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
-    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
-    \begin{itemize}
-        \item \emph{inputs} are all nodes that this node has data dependencies on.
-        \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
-        \item \emph{successors} are all nodes that have a control dependency on this node.
-        \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
-    \end{itemize}
-    \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
-    \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
-    \item Nodes cannot be reassigned to another graph, they are cloned instead \cw{Why should there be the need for more than one graph when compiling a method?}
-\end{itemize}
 
 \subsection{Frame States}
 Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
