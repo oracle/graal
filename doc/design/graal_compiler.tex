@@ -53,9 +53,9 @@ to\hsize{\vrule\kern3pt\vbox{\kern3pt
 \maketitle
 
 \abstract{
-The Graal compiler aims at improving C1X, the Java port of the HotSpot client compiler, both in terms of modularity and peak performance.
+The Graal compiler (simply referred to as \emph{the compiler} in the rest of this document) aims at improving C1X, the Java port of the HotSpot client compiler, both in terms of modularity and peak performance.
 The compiler should work with the Maxine VM and the HotSpot VM.
-This document contains information about the proposed design and strategy for developing the Graal compiler.}
+This document contains information about the proposed design and strategy for developing the compiler.}
 
 \section{Context}
 
@@ -65,61 +65,95 @@ In June 2010, we started integrating C1X into the HotSpot VM and we called the r
 Currently, the Graal~VM is fully functional and runs benchmarks (SciMark, DaCapo) at a similar speed to the HotSpot client compiler.
 
 \section{Goals}
-The Graal compiler effort aims at rewriting the high-level intermediate representation of C1X with two main goals:
+The compiler effort aims at rewriting the high-level intermediate representation of C1X with two main goals:
 \begin{description}
 \item[Modularity:] A modular design of the compiler should simplify the implementation of new languages, new back-ends, and new optimizations.
 \item[Peak Performance:] A more powerful intermediate representation should enable the implementation of heavy-weight optimizations that impact the peak performance of the resulting machine code.
 \end{description}
 
 \section{Design}
-For the implementation of the Graal compiler, we rely on the following design decisions:
+For the implementation of the compiler, we rely on the following design decisions:
 \begin{description}
 \item[Graph Representation:]
 The compiler's intermediate representation is modeled as a graph with nodes that are connected with directed edges.
 There is only a single node base class and every node has an associated graph object that does not change during the node's lifetime.
 Every node is serializable and has an id that is unique within its graph.
 Every edge is classified as either a control flow edge (anti-dependency) or a data flow edge (dependency) and represented as a simple pointer from the source node to the target node.
-There is no cycle in the graph that contains only control flow edges or only data flow edges. \cw{What does that sentence mean?  I can certainly think of a loop that has a control-flow cycle, but no data-flow cycle.}
 It is possible to replace a node with another node without traversing the full graph.
+The graph does not allow data flow edge cycles or control flow edge cycles.
+We achieve this by explicitely modelling loops (see Section~\ref{sec:loops}). 
 \item[Extensibility:]
 The compiler is extensible by adding new compiler phases and new node subclasses without modifying the compiler's sources.
 A node has an abstract way of expressing its effect and new compiler phases can ask compiler nodes for their properties and capabilities.
-\cw{Add: We use the ``everything is an extension'' concept. Even standard compiler optimizations are internally modeled as extensions, to show that the extension mechanism exposes all necessary functionality.}
+We use the ``everything is an extension'' concept.
+Even standard compiler optimizations are internally modeled as extensions, to show that the extension mechanism exposes all necessary functionality.
 \item[Detailing:]
 The compilation starts with a graph that contains nodes that represent the operations of the source language (e.g., one node for an array store to an object array).
 During the compilation, the nodes are replaced with more detailed nodes (e.g., the array store node is split into a null check, a bounds check, a store check, and a memory access).
 Compiler phases can choose whether they want to work on the earlier versions of the graph (e.g., escape analysis) or on later versions (e.g., null check elimination).
-\cw{In general, I agree that the lowering should happen without changing the style of IR.  However, I don't agree that optimizations such as null check elimination should work on a lower level graph.  Isn't it bette to model ``needs null check'' as a capability of high-level instructions?  Then the eliminator just sets a property that no null check is necessary.  But that is a good discussion point: How much optimization do we want to do by augmenting a high-level IR, and how much do we want to do by rewriting a low-level IR.}
 \item[Generality:]
 The compiler does not require Java as its input.
 This is achieved by having a graph as the starting point of the compilation and not a Java bytecodes array.
 Building the graph from the Java bytecodes must happen before giving a method to the compiler.
 This enables front-ends for different languages (e.g., Ruby) to provide their own graph.
 Also, there is no dependency on a specific back-end, but the output of the compiler is a graph that can then be converted to a different representation in a final compiler phase.
-\cw{Here we are getting into the nits of terminology.  I think the term ``compiler'' should always refer to the whole system that goes from bytecodes to machine code.  Yes, there will be additional parsers for different bytecode formats.  But still, the compiler doesn't have graphs as input and outputs, but still bytecodes and machine code, respectively.}
 \end{description}
 
 \section{Milestones}
-The Graal compiler is developed starting from the current C1X source code base.
+The compiler is developed starting from the current C1X source code base.
 This helps us testing the compiler at every intermediate development step on a variety of Java benchmarks.
 We define the following development milestones and when they are considered achieved:
 \begin{description}
-\item[M1:] We have a fully working Graal VM version with a stripped down C1X compiler that does not perform any optimizations.
-\item[M2:] We modified the high-level intermediate representation to be based on the Graal compiler graph data structure.
-\item[M3:] We have reimplemented and reenabled compiler optimizations in the Graal compiler that previously existed in C1X.
-\item[M4:] We have reintegrated the new Graal compiler into the Maxine VM and can use it as a Maxine VM bootstrapping compiler.
+\item[M1:] We have a fully working Graal~VM version with a stripped down C1X compiler that does not perform any optimizations.
+\item[M2:] We modified the high-level intermediate representation to be based on the compiler graph data structure.
+\item[M3:] We have reimplemented and reenabled compiler optimizations in the compiler that previously existed in C1X.
+\item[M4:] We have reintegrated the new compiler into the Maxine VM and can use it as a Maxine VM bootstrapping compiler.
 \end{description}
 
 After those four milestones, we see three different possible further development directions that can be followed in parallel:
 \begin{itemize}
-  \item Removal of the XIR template mechanism and replacement with a snippet mechanism that works with the Graal compiler graph.
-  \item Improvements for Graal peak performance (loop optimizations, escape analysis, bounds check elimination, processing additional interpreter runtime feedback).
+  \item Removal of the XIR template mechanism and replacement with a snippet mechanism that works with the compiler graph.
+  \item Improvements for peak performance (loop optimizations, escape analysis, bounds check elimination, processing additional interpreter runtime feedback).
   \item Implementation of a prototype front-end for different languages, e.g., JavaScript.
 \end{itemize}
 
 \section{Implementation}
 
+\subsection{Nodes and Graphs}
+The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
+The IR used in the compiler was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
+
+\subsubsection{The Graph Data Structure}
+\begin{itemize}
+    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
+    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
+\end{itemize}
+
+\subsubsection{The Node Data Structure}
+\begin{itemize}
+    \item Each node is always associated with a graph.
+    \item Each node has an immutable id which is unique within its associated graph.
+    \item Nodes represent either operations on values or control flow operations.
+    \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
+    \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
+    \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
+    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (like LoopEnd).
+	\item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
+    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
+    \begin{itemize}
+        \item \emph{inputs} are all nodes that this node has data dependencies on.
+        \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
+        \item \emph{successors} are all nodes that have a control dependency on this node.
+        \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
+    \end{itemize}
+    \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
+    \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
+    \item Inlining should always be performed as a combination of two graphs.
+    \item Nodes cannot be reassigned to another graph, they are cloned instead.
+\end{itemize}
+
 \subsection{Loops}
+\label{sec:loops}
 Loops form a first-class construct in the IR that is expressed in specialized IR nodes during all optimization phases.
 We only compile methods with a control flow where every loop has only one single entry point.
 This entry point is a \nodename{LoopBegin} node.
@@ -153,7 +187,7 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 
 \subsection{Loop Phis}
 Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
-The \nodename{LoopEnd} node merges every value that is flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
+The \nodename{LoopEnd} node merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
 Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph.
 
@@ -189,7 +223,7 @@ Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
-  \caption{Graal compiler graph for a loop counting from 0 to n-1.}
+  \caption{Graph for a loop counting from 0 to n-1.}
 \end{figure}
 
 \subsection{Loop Counters}
@@ -224,7 +258,7 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
-  \caption{Graal compiler graph after loop counter transformation.}
+  \caption{Graph after loop counter transformation.}
 \end{figure}
 
 \subsection{Bounded Loops}
@@ -256,7 +290,7 @@ Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bo
 \data{LoopBegin}{n}
 \controllabel{BeforeLoop}{LoopBegin}
 \end{digraphenv}
-  \caption{Graal compiler graph after bounded loop transformation.}
+  \caption{Graph after bounded loop transformation.}
 \end{figure}
 
 \subsection{Vectorization}
@@ -289,79 +323,31 @@ The vector nodes all work on an ordered list of integer values and are subject t
 \datalabel{VectorMul:in2}{Constant1}
 \data{Vector}{n}
 \end{digraphenv}
-  \caption{Graal compiler graph after bounded loop transformation.}
+  \caption{Graph after bounded loop transformation.}
 \end{figure}
 
 \subsection{Project Source Structure}
-In order to have clear interfaces between the different parts of the compiler, the code will be divided into the following source code projects:
-\cw{Use new naming scheme com.oracle.graal...}
+In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.graal}).
+
 \begin{description}
-    \item[Graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
-    \item[Nodes] contains the node implementations, ranging from high-level to machine-level nodes. \cw{Can't we just stay with the name ``instruction'', which everyone understands, instead of ``Node''?  I strongly vote for that.}
-    \item[GraphBuilder] contains helpers for building graphs from Java bytecodes and other source representations.
-    \item[Assembler] contains the assembler classes that are used to generate the compiled code of methods and stubs.
-    \item[Optimizations] contains all the optimizations, along with different optimization plans.
-    \item[GraalCompiler] contains the compiler, including:
+    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
+    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
+ 				 Additional node classes should go into seperate projects and be specializations of the known basic nodes.]
+    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
+    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
+    \item[compiler] contains the compiler, including:
         \begin{itemize}
-            \item Handling of compilation phases.
-            \item Compilation-related data structures.
+            \item Schedules the compilation phases.
             \item Implementation of the \emph{compiler interface} (CI).
-            \item Register allocation.
+            \item Implements the final compilation phase that produces the low-level representation.
             \item Machine code creation, including debug info.
-            \item Debug output and compilation observation.
-            \item Compiler options management.
         \end{itemize}
-		\cw{So you want to keep the backend as part of the ``main compiler'' at first.  Seems OK for me.}
 \end{description}
 
-\subsection{Initial Steps}
-\begin{itemize}
-    \item Restructuring of the project to include the compiler and the modified HotSpot code within one repository. The CRI project will remain in the Maxine repository, because it will remain mostly unchanged.
-    \item Stripping optimizations from the existing compiler, they will be reimplemented later on using the new infrastructure.
-    \item Creating Node and Graph classes, along with the necessary auxiliary classes.
-    \item Writing documentation on the design of the compiler.
-    \item Use the Node class as the superclass of the existing Value class.
-    \item Identify (and later: remove) extended bytecodes.
-    \item Implement the new frame state concept.
-    \item Remove LIR - in the long run there should only be one IR, which will be continually lowered until only nodes that can be translated into machine code remain. \cw{That cannot be an initial step, because you have nothing yet that could replace the LIR.}
-\end{itemize}
-
-\subsection{Nodes and Graphs}
-The most important aspect of a compiler is the data structure that holds information about an executable piece of code, called \emph{intermediate representation}~(IR).
-The IR used in the Graal Compiler (simply referred to as \emph{the compiler} in the rest of this document) was designed in such a way as to allow for extensive optimizations, easy traversal, compact storage and efficient processing.
-
-\subsubsection{The Graph Data Structure}
-\begin{itemize}
-    \item A graph deals out ids for new nodes and can be queried for the node corresponding to a given id.
-    \item Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
-\end{itemize}
-
-\subsubsection{The Node Data Structure}
-\begin{itemize}
-    \item Each node is always associated with a graph.
-    \item Each node has an immutable id which is unique within its associated graph. \cw{The server compiler supports ``renumbering'' of nodes to make the ids dense again after large graph manipulations that deleted many nodes.}
-    \item Nodes represent either operations on values or control flow operations.
-    \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
-    \item Nodes can have a control flow dependency, which means that the execution of one node depends on some other node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
-    \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
-    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (like LoopEnd).
-		\cw{I don't like that item.  Cycles are a normal thing for control flow and for phi functions.  I would phrase it as something like that: Nodes can only have data and control dependencies to nodes that are dominators.  The only exception of that are control loop headers and phi functions}
-    \item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. Some compilers (notably the HotSpot client compiler \cw{Wrong: the client compiler only has a fixed order of pinned instructions, most instructions are not pinned and can be moved around freely}) always maintain a complete order for all nodes (called \emph{scheduling}), which impedes advanced optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
-    \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions:
-    \begin{itemize}
-        \item \emph{inputs} are all nodes that this node has data dependencies on.
-        \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
-        \item \emph{successors} are all nodes that have a control dependency on this node.
-        \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
-    \end{itemize}
-    \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
-    \item The Node class needs to provide facilities for subclasses to perform actions upon cloning, dependency changes, etc.
-    \item Nodes cannot be reassigned to another graph, they are cloned instead \cw{Why should there be the need for more than one graph when compiling a method?}
-\end{itemize}
 
 \subsection{Frame States}
-Frame states capture the state of the program, in terms of the source representation (e.g., Java state: local variables, expressions, ...).
-Whenever a safepoint is reached or \cw{why is that an ``or'', both is basically the same} \ls{uncommon traps can be introduced at other points, e.g., at an if branch that isn't compiled} a deoptimization is needed a valid frame state needs to be available.
+A frame state captures the state of the program in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
+Every deoptimization point needs a valid frame state.
 A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, loads, etc.).
 Thus, frame states need only be generated for bytecodes that cannot be reexecuted:
 
@@ -397,8 +383,9 @@ Within the node graph a frame state is represented as a node that is fixed to th
 
 FrameStates also have data dependencies on the contents of the state: the local variables and the expression stack.
 
-\subsection{Deoptimization and Uncommon Traps}
-Uncommon trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
+\subsection{Traps}
+A trap node is a node that deoptimizes based on a conditional expression.
+Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
 \begin{figure}[h]
@@ -432,12 +419,12 @@ The node that is guarded by the deoptimization has a data dependency on the trap
     \datalabel{load2:in1}{trap}    
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
-  \caption{In this example, the second load is guarded by an uncommon trap, because its receiver might be null (the receiver of the load is assumed to be non-null).
+  \caption{In this example, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
 The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
 In the final scheduling the trap can be placed before or after the first load.}
 \end{figure}
 
-Another type of uncommon trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
+Another type of trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
 
 \begin{figure}[h]
   \label{fig:trap2}
@@ -458,9 +445,9 @@ Another type of uncommon trap is a guard, which is used to remove branches that 
     \datalabel{trap:in2}{start3}
     \data{guard}{trap}    
 \end{digraphenv}
-  \caption{In this example the If from the previous example was replaced by a guard and an uncommon trap.
+  \caption{In this example an If was replaced by a guard and a trap.
 The guard takes the place of the If in the control flow, and is connected to the trap node.
-The uncommon trap is now anchored to the most distant node of which the If was a postdominator.}
+The trap is now anchored to the most distant node of which the If was a postdominator.}
 \end{figure}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
@@ -506,16 +493,6 @@ Multiple Traps with the same condition and anchor can be merged:
 
 Also, if two Traps that are anchored to the true and false branch of the same If have the same condition, they can be merged, so that the resulting Trap is anchored at the most distant node of which the If is a postdominator.
 
-%Frame states should be represented using a delta-encoding.
-%This will make them significantly smaller and will make inlining, etc. much easier.
-%In later compilation phases unnecessary frame states might be removed, using a mark-and-merge algorithm.
-
-\subsection{Graph Building}
-\begin{itemize}
-    \item The graph built by the initial parser (called \emph{GraphBuilder}) should be as close to the source representation (bytecode, ...) as possible.
-    \item All nodes should be able to immediately lower themselves to a machine-level representation. \cw{What is that?  You mean every node has x86 specific code that spits out machine code?  Hope you are joking...} This allows for easier compiler development, and also leads to a compiler that is very flexible in the amount of optimizations it performs (e.g. recompilation of methods with more aggressive optimizations).
-\end{itemize}
-
 \subsection{Graphical Representation}
 The graphs in this document use the following node layout:
 
@@ -525,9 +502,6 @@ The graphs in this document use the following node layout:
 \nodetri{node3}{phi}
 \nodesplit{node4}{if}
 \end{digraphenv}
-
-\cw{That doesn't compile with my latex.  What do I have to do to get it working?}
-\ls{graphviz needs to be installed, and pdflatex needs to be started with -shell-escape}
 
 Red arrows always represents control dependencies, while black arrows represent data dependencies:
 
@@ -542,7 +516,5 @@ Red arrows always represents control dependencies, while black arrows represent 
 \datalabel{add:in1}{a}
 \datalabel{add:in2}{b}
 \end{digraphenv}
-
-
 
 \end{document}
