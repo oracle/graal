@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -33,13 +34,48 @@ import com.sun.cri.ci.*;
  */
 public abstract class Op2 extends Instruction {
 
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_X = 0;
+    private static final int INPUT_Y = 1;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The first input to this instruction
+     */
+     public Value x() {
+        return (Value) inputs().get(super.inputCount() + INPUT_X);
+    }
+
+    public Value setX(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_X, n);
+    }
+
+    /**
+     * The second input to this instruction
+     */
+    public Value y() {
+        return (Value) inputs().get(super.inputCount() + INPUT_Y);
+    }
+
+    public Value setY(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_Y, n);
+    }
+
     /**
      * The opcode of this instruction.
      */
     public final int opcode;
-
-    Value x;
-    Value y;
 
     /**
      * Creates a new Op2 instance.
@@ -48,27 +84,11 @@ public abstract class Op2 extends Instruction {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public Op2(CiKind kind, int opcode, Value x, Value y) {
-        super(kind);
+    public Op2(CiKind kind, int opcode, Value x, Value y, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
-        this.x = x;
-        this.y = y;
-    }
-
-    /**
-     * Gets the first input to this instruction.
-     * @return the first input to this instruction
-     */
-    public final Value x() {
-        return x;
-    }
-
-    /**
-     * Gets the second input to this instruction.
-     * @return the second input to this instruction
-     */
-    public final Value y() {
-        return y;
+        setX(x);
+        setY(y);
     }
 
     /**
@@ -76,31 +96,21 @@ public abstract class Op2 extends Instruction {
      */
     public void swapOperands() {
         assert Bytecodes.isCommutative(opcode);
-        Value t = x;
-        x = y;
-        y = t;
-    }
-
-    /**
-     * Iterates over the inputs to this instruction.
-     * @param closure the closure to apply to each input value
-     */
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        x = closure.apply(x);
-        y = closure.apply(y);
+        Value t = x();
+        setX(y());
+        setY(t);
     }
 
     @Override
     public int valueNumber() {
-        return Util.hash2(opcode, x, y);
+        return Util.hash2(opcode, x(), y());
     }
 
     @Override
     public boolean valueEqual(Instruction i) {
         if (i instanceof Op2) {
             Op2 o = (Op2) i;
-            return opcode == o.opcode && x == o.x && y == o.y;
+            return opcode == o.opcode && x() == o.x() && y() == o.y();
         }
         return false;
     }

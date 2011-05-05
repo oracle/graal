@@ -134,7 +134,7 @@ public abstract class BlockEnd extends Instruction {
      * Gets this block end's list of successors.
      * @return the successor list
      */
-    public List<BlockBegin> successors() {
+    public List<BlockBegin> blockSuccessors() {
         return successors;
     }
 

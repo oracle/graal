@@ -22,9 +22,9 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code LogicOp} class definition.
@@ -33,18 +33,17 @@ import com.sun.cri.ci.*;
  */
 public final class LogicOp extends Op2 {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     /**
      * Constructs a new logic operation instruction.
      * @param opcode the opcode of the logic operation
      * @param x the first input into this instruction
-     * @param s the second input into this instruction
+     * @param y the second input into this instruction
      */
-    public LogicOp(int opcode, Value x, Value s) {
-        super(x.kind, opcode, x, s);
-    }
-
-    public LogicOp(CiKind kind, int opcode, Value x, Value s) {
-        super(kind, opcode, x, s);
+    public LogicOp(int opcode, Value x, Value y, Graph graph) {
+        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

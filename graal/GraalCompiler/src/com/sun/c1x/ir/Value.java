@@ -22,7 +22,7 @@
  */
 package com.sun.c1x.ir;
 
-import com.sun.c1x.*;
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.opt.*;
 import com.sun.cri.ci.*;
@@ -32,7 +32,7 @@ import com.sun.cri.ri.*;
  * This class represents a value within the HIR graph, including local variables, phis, and
  * all other instructions.
  */
-public abstract class Value {
+public abstract class Value extends Node {
 
     public enum Flag {
         NonNull,            // this value is non-null
@@ -51,11 +51,6 @@ public abstract class Value {
     public final CiKind kind;
 
     /**
-     * Unique identifier for this value. This field's value is lazily initialized by {@link #id()}.
-     */
-    private int id;
-
-    /**
      * A mask of {@linkplain Flag flags} denoting extra properties of this value.
      */
     private int flags;
@@ -72,11 +67,34 @@ public abstract class Value {
     /**
      * Creates a new value with the specified kind.
      * @param kind the type of this value
+     * @param inputCount
+     * @param successorCount
+     * @param graph
      */
-    public Value(CiKind kind) {
+    public Value(CiKind kind, int inputCount, int successorCount, Graph graph) {
+        super(inputCount, successorCount, graph == null ? new Graph() : graph);
         assert kind == kind.stackKind() : kind + " != " + kind.stackKind();
         this.kind = kind;
     }
+
+    ///////////////
+    // TODO: remove when Value class changes are completed
+
+    public Value(CiKind kind) {
+        this(kind, 0, 0, null);
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        throw new CloneNotSupportedException();
+    }
+
+    /////////////////
 
     /**
      * Gets the instruction that should be substituted for this one. Note that this
@@ -253,7 +271,9 @@ public abstract class Value {
      * @param closure the closure to apply
      */
     public void inputValuesDo(ValueClosure closure) {
-        // default: do nothing.
+        for (int i = 0; i < inputs().size(); i++) {
+            inputs().set(i, closure.apply((Value) inputs().get(i)));
+        }
     }
 
     @Override
@@ -297,19 +317,4 @@ public abstract class Value {
 
     public abstract void print(LogStream out);
 
-    /**
-     * This method returns a unique identification number for this value. The number returned is unique
-     * only to the compilation that produced this node and is computed lazily by using the current compilation
-     * for the current thread. Thus the first access is a hash lookup using {@link java.lang.ThreadLocal} and
-     * should not be considered fast. Because of the potentially slow first access, use of this ID should be
-     * restricted to debugging output.
-     * @return a unique ID for this value
-     */
-    public int id() {
-        if (id == 0) {
-            C1XMetrics.UniqueValueIdsAssigned++;
-            id = C1XCompilation.compilation().nextID();
-        }
-        return id;
-    }
 }

@@ -834,7 +834,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (rangeDensity >= C1XOptions.RangeTestsSwitchDensity) {
                 visitSwitchRanges(switchRanges, tag, x.defaultSuccessor());
             } else {
-                List<BlockBegin> nonDefaultSuccessors = x.successors().subList(0, x.numberOfCases());
+                List<BlockBegin> nonDefaultSuccessors = x.blockSuccessors().subList(0, x.numberOfCases());
                 BlockBegin[] targets = nonDefaultSuccessors.toArray(new BlockBegin[nonDefaultSuccessors.size()]);
                 lir.tableswitch(tag, x.lowKey(), x.defaultSuccessor(), targets);
             }

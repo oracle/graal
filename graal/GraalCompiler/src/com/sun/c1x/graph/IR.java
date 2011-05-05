@@ -166,7 +166,7 @@ public class IR {
      */
     public BlockBegin splitEdge(BlockBegin source, BlockBegin target) {
         int bci;
-        if (target.predecessors().size() == 1) {
+        if (target.blockPredecessors().size() == 1) {
             bci = target.bci();
         } else {
             bci = source.end().bci();
@@ -179,7 +179,7 @@ public class IR {
 
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, false);
-        newSucc.setNext(e, bci);
+        newSucc.appendNext(e, bci);
         newSucc.setEnd(e);
         // setup states
         FrameState s = source.end().stateAfter();
@@ -199,7 +199,7 @@ public class IR {
         // the successor could be the target of a switch so it might have
         // multiple copies of this predecessor, so substitute the new_sux
         // for the first and delete the rest.
-        List<BlockBegin> list = target.predecessors();
+        List<BlockBegin> list = target.blockPredecessors();
         int x = list.indexOf(source);
         assert x >= 0;
         list.set(x, newSucc);
@@ -216,18 +216,18 @@ public class IR {
 
     public void replaceBlock(BlockBegin oldBlock, BlockBegin newBlock) {
         assert !oldBlock.isExceptionEntry() : "cannot replace exception handler blocks (yet)";
-        for (BlockBegin succ : oldBlock.end().successors()) {
+        for (BlockBegin succ : oldBlock.end().blockSuccessors()) {
             succ.removePredecessor(oldBlock);
         }
-        for (BlockBegin pred : oldBlock.predecessors()) {
+        for (BlockBegin pred : oldBlock.blockPredecessors()) {
             // substitute the new successor for this block in each predecessor
             pred.end().substituteSuccessor(oldBlock, newBlock);
             // and add each predecessor to the successor
             newBlock.addPredecessor(pred);
         }
         // this block is now disconnected; remove all its incoming and outgoing edges
-        oldBlock.predecessors().clear();
-        oldBlock.end().successors().clear();
+        oldBlock.blockPredecessors().clear();
+        oldBlock.end().blockSuccessors().clear();
     }
 
     /**
@@ -235,11 +235,11 @@ public class IR {
      * @param block the block to remove from the graph
      */
     public void disconnectFromGraph(BlockBegin block) {
-        for (BlockBegin p : block.predecessors()) {
-            p.end().successors().remove(block);
+        for (BlockBegin p : block.blockPredecessors()) {
+            p.end().blockSuccessors().remove(block);
         }
-        for (BlockBegin s : block.end().successors()) {
-            s.predecessors().remove(block);
+        for (BlockBegin s : block.end().blockSuccessors()) {
+            s.blockPredecessors().remove(block);
         }
     }
 

@@ -171,9 +171,9 @@ public final class If extends BlockEnd {
         print(' ').
         print(y()).
         print(" then B").
-        print(successors().get(0).blockID).
+        print(blockSuccessors().get(0).blockID).
         print(" else B").
-        print(successors().get(1).blockID);
+        print(blockSuccessors().get(1).blockID);
         if (isSafepoint()) {
             out.print(" (safepoint)");
         }

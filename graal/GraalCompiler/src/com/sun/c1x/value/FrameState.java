@@ -110,10 +110,7 @@ public abstract class FrameState {
         final MutableFrameState other = new MutableFrameState(bci, localsSize(), maxStackSize());
         if (withLocals && withStack) {
             // fast path: use array copy
-            int valuesSize = valuesSize();
-            assert other.values.length >= valuesSize : "array size: " + other.values.length + ", valuesSize: " + valuesSize + ", maxStackSize: " + maxStackSize() + ", localsSize: " + localsSize();
-            assert values.length >= valuesSize : "array size: " + values.length + ", valuesSize: " + valuesSize + ", maxStackSize: " + maxStackSize() + ", localsSize: " + localsSize();
-            System.arraycopy(values, 0, other.values, 0, valuesSize);
+            System.arraycopy(values, 0, other.values, 0, valuesSize());
             other.stackIndex = stackIndex;
         } else {
             if (withLocals) {
@@ -150,10 +147,10 @@ public abstract class FrameState {
         return copy(bci, false, false, false);
     }
 
-    public boolean isSame(FrameState other) {
-        assert stackSize() == other.stackSize();
-        assert localsSize() == other.localsSize();
-        assert locksSize() == other.locksSize();
+    public boolean isCompatibleWith(FrameState other) {
+        if (stackSize() != other.stackSize() || localsSize() != other.localsSize() || locksSize() != other.locksSize()) {
+            return false;
+        }
         for (int i = 0; i < stackIndex; i++) {
             Value x = stackAt(i);
             Value y = other.stackAt(i);
@@ -366,7 +363,7 @@ public abstract class FrameState {
                 if (x instanceof Phi) {
                     Phi phi = (Phi) x;
                     if (phi.block() == block) {
-                        for (int j = 0; j < phi.inputCount(); j++) {
+                        for (int j = 0; j < phi.phiInputCount(); j++) {
                             if (phi.inputIn(other) == null) {
                                 throw new CiBailout("phi " + phi + " has null operand at new predecessor");
                             }

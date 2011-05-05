@@ -148,7 +148,7 @@ final class ControlFlowOptimizer {
                 }
 
                 // update the block references in any branching LIR instructions
-                for (BlockBegin pred : block.predecessors()) {
+                for (BlockBegin pred : block.blockPredecessors()) {
                     for (LIRInstruction instr : pred.lir().instructionsList()) {
                         if (instr instanceof LIRBranch) {
                             ((LIRBranch) instr).substitute(block, newTarget);
@@ -269,11 +269,11 @@ final class ControlFlowOptimizer {
                 }
             }
 
-            for (BlockBegin sux : block.end().successors()) {
+            for (BlockBegin sux : block.end().blockSuccessors()) {
                 assert code.contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
 
-            for (BlockBegin pred : block.predecessors()) {
+            for (BlockBegin pred : block.blockPredecessors()) {
                 assert code.contains(pred) : "missing predecessor from: " + block + "to: " + pred;
             }
         }

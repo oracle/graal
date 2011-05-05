@@ -132,7 +132,7 @@ public class CFGPrinter {
         out.print("to_bci ").println(block.end() == null ? -1 : block.end().bci());
 
         out.print("predecessors ");
-        for (BlockBegin pred : block.predecessors()) {
+        for (BlockBegin pred : block.blockPredecessors()) {
             out.print("\"B").print(pred.blockID).print("\" ");
         }
         out.println();
@@ -590,7 +590,7 @@ public class CFGPrinter {
         out.print("name \"").print(label).println('"');
         startBlock.iteratePreOrder(new BlockClosure() {
             public void apply(BlockBegin block) {
-                List<BlockBegin> successors = block.end() != null ? block.end().successors() : new ArrayList<BlockBegin>(0);
+                List<BlockBegin> successors = block.end() != null ? block.end().blockSuccessors() : new ArrayList<BlockBegin>(0);
                 printBlock(block, successors, block.exceptionHandlerBlocks(), printHIR, printLIR);
             }
         });

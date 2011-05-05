@@ -161,7 +161,8 @@ public abstract class Node implements Cloneable {
         }
 
         public Node set(int index, Node node) {
-            assert node == Null || node.graph == self().graph;
+            // TODO: re-enable after Value class layout changes
+//            assert node == Null || node.graph == self().graph;
             Node old = nodes[index];
 
             if (old != node) {

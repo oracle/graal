@@ -28,6 +28,7 @@ import static java.lang.reflect.Modifier.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
@@ -122,6 +123,12 @@ public final class GraphBuilder {
 
     boolean skipBlock;                     // skip processing of the rest of this block
     private Value rootMethodSynchronizedObject;
+
+
+
+    private Graph graph = new Graph();
+
+
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
      *
@@ -182,7 +189,7 @@ public final class GraphBuilder {
         // 3. setup internal state for appending instructions
         curBlock = startBlock;
         lastInstr = startBlock;
-        lastInstr.setNext(null, -1);
+        lastInstr.appendNext(null, -1);
         curState = initialState;
 
         if (isSynchronized(rootMethod.accessFlags())) {
@@ -385,7 +392,7 @@ public final class GraphBuilder {
         curBlock.addExceptionHandler(entry);
 
         // add back-edge from exception handler entry to this block
-        if (!entry.predecessors().contains(curBlock)) {
+        if (!entry.blockPredecessors().contains(curBlock)) {
             entry.addPredecessor(curBlock);
         }
 
@@ -548,31 +555,31 @@ public final class GraphBuilder {
     void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, FrameState state) {
         Value yValue = pop(y);
         Value xValue = pop(x);
-        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method().accessFlags()), state));
+        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method().accessFlags()), state, graph));
         push(result, result1);
     }
 
     void genNegateOp(CiKind kind) {
-        push(kind, append(new NegateOp(pop(kind))));
+        push(kind, append(new NegateOp(pop(kind), graph)));
     }
 
     void genShiftOp(CiKind kind, int opcode) {
         Value s = ipop();
         Value x = pop(kind);
         // note that strength reduction of e << K >>> K is correctly handled in canonicalizer now
-        push(kind, append(new ShiftOp(opcode, x, s)));
+        push(kind, append(new ShiftOp(opcode, x, s, graph)));
     }
 
     void genLogicOp(CiKind kind, int opcode) {
         Value y = pop(kind);
         Value x = pop(kind);
-        push(kind, append(new LogicOp(opcode, x, y)));
+        push(kind, append(new LogicOp(opcode, x, y, graph)));
     }
 
     void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
         Value y = pop(kind);
         Value x = pop(kind);
-        Value value = append(new CompareOp(opcode, resultKind, x, y));
+        Value value = append(new CompareOp(opcode, resultKind, x, y, graph));
         if (!resultKind.isVoid()) {
             ipush(value);
         }
@@ -588,7 +595,7 @@ public final class GraphBuilder {
         int delta = stream().readIncrement();
         Value x = curState.localAt(index);
         Value y = append(Constant.forInt(delta));
-        curState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null)));
+        curState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null, graph)));
     }
 
     void genGoto(int fromBCI, int toBCI) {
@@ -1165,7 +1172,7 @@ public final class GraphBuilder {
         if (lastInstr instanceof Base) {
             assert false : "may only happen when inlining intrinsics";
         } else {
-            lastInstr = lastInstr.setNext(x, bci);
+            lastInstr = lastInstr.appendNext(x, bci);
         }
         if (++stats.nodeCount >= C1XOptions.MaximumInstructionCount) {
             // bailout if we've exceeded the maximum inlining size
@@ -1289,7 +1296,7 @@ public final class GraphBuilder {
                 curBlock = b;
                 curState = b.stateBefore().copy();
                 lastInstr = b;
-                b.setNext(null, -1);
+                b.appendNext(null, -1);
 
                 iterateBytecodesForBlock(b.bci(), false);
             }
@@ -1321,7 +1328,7 @@ public final class GraphBuilder {
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 end = new Goto(nextBlock, null, false);
-                lastInstr = lastInstr.setNext(end, prevBCI);
+                lastInstr = lastInstr.appendNext(end, prevBCI);
                 break;
             }
             // read the opcode
@@ -1366,8 +1373,8 @@ public final class GraphBuilder {
         end.setStateAfter(curState.immutableCopy(bci()));
         curBlock.setEnd(end);
         // propagate the state
-        for (BlockBegin succ : end.successors()) {
-            assert succ.predecessors().contains(curBlock);
+        for (BlockBegin succ : end.blockSuccessors()) {
+            assert succ.blockPredecessors().contains(curBlock);
             succ.mergeOrClone(end.stateAfter(), method());
             addToWorkList(succ);
         }

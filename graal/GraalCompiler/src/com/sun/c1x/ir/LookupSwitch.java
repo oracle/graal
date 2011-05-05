@@ -80,7 +80,7 @@ public final class LookupSwitch extends Switch {
         int l = numberOfCases();
         for (int i = 0; i < l; i++) {
             INSTRUCTION.advance(out);
-            out.printf("case %5d: B%d%n", keyAt(i), successors().get(i).blockID);
+            out.printf("case %5d: B%d%n", keyAt(i), blockSuccessors().get(i).blockID);
         }
         INSTRUCTION.advance(out);
         out.print("default   : B").print(defaultSuccessor().blockID);
