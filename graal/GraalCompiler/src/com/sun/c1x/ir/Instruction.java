@@ -43,10 +43,10 @@ import com.sun.cri.ci.*;
  */
 public abstract class Instruction extends Value {
 
-    public static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 0;
 
-    public static final int SUCCESSOR_COUNT = 1;
-    public static final int SUCCESSOR_NEXT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_NEXT = 0;
 
     @Override
     protected int inputCount() {
@@ -83,7 +83,6 @@ public abstract class Instruction extends Value {
      * List of associated exception handlers.
      */
     private List<ExceptionHandler> exceptionHandlers = ExceptionHandler.ZERO_HANDLERS;
-
 
     private boolean isAppended = false;
 
