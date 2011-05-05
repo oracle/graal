@@ -22,15 +22,17 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 
 /**
  * The {@code MonitorEnter} instruction represents the acquisition of a monitor.
- *
- * @author Ben L. Titzer
  */
 public final class MonitorEnter extends AccessMonitor {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     private FrameState stateAfter;
 
@@ -41,9 +43,10 @@ public final class MonitorEnter extends AccessMonitor {
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param lockNumber the number of the lock
      * @param stateBefore the state before
+     * @param graph
      */
-    public MonitorEnter(Value object, Value lockAddress, int lockNumber, FrameState stateBefore) {
-        super(object, lockAddress, stateBefore, lockNumber);
+    public MonitorEnter(Value object, Value lockAddress, int lockNumber, FrameState stateBefore, Graph graph) {
+        super(object, lockAddress, stateBefore, lockNumber, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

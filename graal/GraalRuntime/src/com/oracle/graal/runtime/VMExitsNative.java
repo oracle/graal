@@ -85,7 +85,7 @@ public class VMExitsNative implements VMExits, Remote {
 
             if (result.bailout() != null) {
                 Throwable cause = result.bailout().getCause();
-                if(!C1XOptions.QuietBailout) {
+                if (!C1XOptions.QuietBailout) {
                     StringWriter out = new StringWriter();
                     result.bailout().printStackTrace(new PrintWriter(out));
                     TTY.println("Bailout:\n" + out.toString());

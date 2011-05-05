@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -32,37 +33,43 @@ import com.sun.cri.ri.*;
  */
 public final class StoreField extends AccessField {
 
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_VALUE = 0;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
     /**
-     * The value to store.
+     * The value that is written to the field.
      */
-    Value value;
+     public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+    }
+
+    public Value setValue(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+    }
 
     /**
      * Creates a new LoadField instance.
      * @param object the receiver object
      * @param field the compiler interface field
      * @param value the instruction representing the value to store to the field
-     * @param isStatic indicates if the field is static
      * @param stateBefore the state before the field access
-     * @param isLoaded indicates if the class is loaded
+     * @param graph
      */
-    public StoreField(Value object, RiField field, Value value, FrameState stateBefore) {
-        super(CiKind.Void, object, field, stateBefore);
-        this.value = value;
-    }
-
-    /**
-     * Gets the value that is written to the field.
-     * @return the value
-     */
-    public Value value() {
-        return value;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        super.inputValuesDo(closure);
-        value = closure.apply(value);
+    public StoreField(Value object, RiField field, Value value, FrameState stateBefore, Graph graph) {
+        super(CiKind.Void, object, field, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setValue(value);
     }
 
     @Override

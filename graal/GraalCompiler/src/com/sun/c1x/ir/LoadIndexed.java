@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -29,10 +30,11 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code LoadIndexed} instruction represents a read from an element of an array.
- *
- * @author Ben L. Titzer
  */
 public final class LoadIndexed extends AccessIndexed {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     /**
      * Creates a new LoadIndexed instruction.
@@ -41,9 +43,10 @@ public final class LoadIndexed extends AccessIndexed {
      * @param length the instruction producing the length
      * @param elementType the element type
      * @param stateBefore the state before executing this instruction
+     * @param graph
      */
-    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, FrameState stateBefore) {
-        super(elementType.stackKind(), array, index, length, elementType, stateBefore);
+    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, FrameState stateBefore, Graph graph) {
+        super(elementType.stackKind(), array, index, length, elementType, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**

@@ -22,16 +22,18 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code StateSplit} class is the abstract base class of all instructions
  * that store an immutable copy of the frame state.
- *
- * @author Ben L. Titzer
  */
 public abstract class StateSplit extends Instruction {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     /**
      * Sentinel denoting an explicitly cleared state.
@@ -43,10 +45,17 @@ public abstract class StateSplit extends Instruction {
     /**
      * Creates a new state split with the specified value type.
      * @param kind the type of the value that this instruction produces
+     * @param inputCount
+     * @param successorCount
+     * @param graph
      */
-    public StateSplit(CiKind kind, FrameState stateBefore) {
-        super(kind);
+    public StateSplit(CiKind kind, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.stateBefore = stateBefore;
+    }
+
+    public StateSplit(CiKind kind, FrameState stateBefore) {
+        this(kind, stateBefore, 0, 0, null);
     }
 
     @Override

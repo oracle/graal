@@ -378,7 +378,7 @@ public final class GraphBuilder {
         FrameState entryState = entry.stateBefore();
 
         assert entry.bci() == handler.handler.handlerBCI();
-        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:"+curState.locksSize()+" entry:"+entryState.locksSize();
+        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:" + curState.locksSize() + " entry:" + entryState.locksSize();
 
         // exception handler starts with an empty expression stack
         curState = curState.immutableCopyWithEmptyStack();
@@ -425,7 +425,7 @@ public final class GraphBuilder {
             if (!riType.isResolved() || C1XOptions.TestPatching) {
                 push(CiKind.Object, append(new ResolveClass(riType, RiType.Representation.JavaClass, null)));
             } else {
-                push(CiKind.Object, append(new Constant(riType.getEncoding(Representation.JavaClass))));
+                push(CiKind.Object, append(new Constant(riType.getEncoding(Representation.JavaClass), graph)));
             }
         } else if (con instanceof CiConstant) {
             CiConstant constant = (CiConstant) con;
@@ -441,9 +441,9 @@ public final class GraphBuilder {
         Value array = apop();
         Value length = null;
         if (cseArrayLength(array)) {
-            length = append(new ArrayLength(array, stateBefore));
+            length = append(new ArrayLength(array, stateBefore, graph));
         }
-        Value v = append(new LoadIndexed(array, index, length, kind, stateBefore));
+        Value v = append(new LoadIndexed(array, index, length, kind, stateBefore, graph));
         push(kind.stackKind(), v);
     }
 
@@ -454,9 +454,9 @@ public final class GraphBuilder {
         Value array = apop();
         Value length = null;
         if (cseArrayLength(array)) {
-            length = append(new ArrayLength(array, stateBefore));
+            length = append(new ArrayLength(array, stateBefore, graph));
         }
-        StoreIndexed result = new StoreIndexed(array, index, length, kind, value, stateBefore);
+        StoreIndexed result = new StoreIndexed(array, index, length, kind, value, stateBefore, graph);
         append(result);
         if (memoryMap != null) {
             memoryMap.storeValue(value);
@@ -587,14 +587,14 @@ public final class GraphBuilder {
 
     void genConvert(int opcode, CiKind from, CiKind to) {
         CiKind tt = to.stackKind();
-        push(tt, append(new Convert(opcode, pop(from.stackKind()), tt)));
+        push(tt, append(new Convert(opcode, pop(from.stackKind()), tt, graph)));
     }
 
     void genIncrement() {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
         Value x = curState.localAt(index);
-        Value y = append(Constant.forInt(delta));
+        Value y = append(Constant.forInt(delta, graph));
         curState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null, graph)));
     }
 
@@ -704,7 +704,7 @@ public final class GraphBuilder {
     void genGetField(int cpi, RiField field) {
         // Must copy the state here, because the field holder must still be on the stack.
         FrameState stateBefore = curState.immutableCopy(bci());
-        LoadField load = new LoadField(apop(), field, stateBefore);
+        LoadField load = new LoadField(apop(), field, stateBefore, graph);
         appendOptimizedLoadField(field.kind(), load);
     }
 
@@ -712,7 +712,7 @@ public final class GraphBuilder {
         // Must copy the state here, because the field holder must still be on the stack.
         FrameState stateBefore = curState.immutableCopy(bci());
         Value value = pop(field.kind().stackKind());
-        appendOptimizedStoreField(new StoreField(apop(), field, value, stateBefore));
+        appendOptimizedStoreField(new StoreField(apop(), field, value, stateBefore, graph));
     }
 
     void genGetStatic(int cpi, RiField field) {
@@ -726,7 +726,7 @@ public final class GraphBuilder {
             push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
             Value container = genResolveClass(RiType.Representation.StaticFields, holder, field.isResolved(), cpi);
-            LoadField load = new LoadField(container, field, null);
+            LoadField load = new LoadField(container, field, null, graph);
             appendOptimizedLoadField(field.kind(), load);
         }
     }
@@ -735,7 +735,7 @@ public final class GraphBuilder {
         RiType holder = field.holder();
         Value container = genResolveClass(RiType.Representation.StaticFields, holder, field.isResolved(), cpi);
         Value value = pop(field.kind().stackKind());
-        StoreField store = new StoreField(container, field, value, null);
+        StoreField store = new StoreField(container, field, value, null, graph);
         appendOptimizedStoreField(store);
     }
 
@@ -901,7 +901,7 @@ public final class GraphBuilder {
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
-        Value result = append(new Invoke(opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), null));
+        Value result = append(new Invoke(opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), null, graph));
         pushReturn(resultType, result);
     }
 
@@ -1021,7 +1021,7 @@ public final class GraphBuilder {
                 lockAddress = new MonitorAddress(lockNumber);
                 append(lockAddress);
             }
-            append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, stateBefore));
+            append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, stateBefore, graph));
             curState.unlock();
         }
         append(new Return(x, !noSafepoints()));
@@ -1041,7 +1041,7 @@ public final class GraphBuilder {
             lockAddress = new MonitorAddress(lockNumber);
             append(lockAddress);
         }
-        MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null);
+        MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null, graph);
         appendWithoutOptimization(monitorEnter, bci);
         curState.lock(ir, x, lockNumber + 1);
         monitorEnter.setStateAfter(curState.immutableCopy(bci));
@@ -1058,7 +1058,7 @@ public final class GraphBuilder {
             lockAddress = new MonitorAddress(lockNumber);
             append(lockAddress);
         }
-        appendWithoutOptimization(new MonitorExit(x, lockAddress, lockNumber, null), bci);
+        appendWithoutOptimization(new MonitorExit(x, lockAddress, lockNumber, null, graph), bci);
         curState.unlock();
         killMemoryMap(); // prevent any optimizations across synchronization
     }
@@ -1139,7 +1139,7 @@ public final class GraphBuilder {
     }
 
     private Value appendConstant(CiConstant type) {
-        return appendWithBCI(new Constant(type), bci());
+        return appendWithBCI(new Constant(type, graph), bci());
     }
 
     private Value append(Instruction x) {
@@ -1242,7 +1242,7 @@ public final class GraphBuilder {
 
     private Value synchronizedObject(FrameState curState2, RiMethod target) {
         if (isStatic(target.accessFlags())) {
-            Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass));
+            Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass), graph);
             return appendWithoutOptimization(classConstant, Instruction.SYNCHRONIZATION_ENTRY_BCI);
         } else {
             return curState2.localAt(0);
@@ -1631,7 +1631,7 @@ public final class GraphBuilder {
 
     private void genArrayLength() {
         FrameState stateBefore = curState.immutableCopy(bci());
-        ipush(append(new ArrayLength(apop(), stateBefore)));
+        ipush(append(new ArrayLength(apop(), stateBefore, graph)));
     }
 
     void killMemoryMap() {
@@ -1692,7 +1692,7 @@ public final class GraphBuilder {
     }
 
     /**
-     * Adds an exception handler
+     * Adds an exception handler.
      * @param handler the handler to add
      */
     private void addExceptionHandler(ExceptionHandler handler) {

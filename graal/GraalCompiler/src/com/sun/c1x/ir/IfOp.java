@@ -31,8 +31,6 @@ import com.sun.cri.bytecode.*;
  * The {@code IfOp} class represents a comparison that yields one of two values.
  * Note that these nodes are not built directly from the bytecode but are introduced
  * by conditional expression elimination.
- *
- * @author Ben L. Titzer
  */
 public final class IfOp extends Op2 {
 

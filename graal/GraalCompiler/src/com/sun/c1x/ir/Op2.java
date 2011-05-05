@@ -29,8 +29,6 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
- *
- * @author Ben L. Titzer
  */
 public abstract class Op2 extends Instruction {
 
@@ -51,7 +49,7 @@ public abstract class Op2 extends Instruction {
     }
 
     /**
-     * The first input to this instruction
+     * The first input to this instruction.
      */
      public Value x() {
         return (Value) inputs().get(super.inputCount() + INPUT_X);
@@ -62,7 +60,7 @@ public abstract class Op2 extends Instruction {
     }
 
     /**
-     * The second input to this instruction
+     * The second input to this instruction.
      */
     public Value y() {
         return (Value) inputs().get(super.inputCount() + INPUT_Y);

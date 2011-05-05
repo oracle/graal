@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -32,16 +33,20 @@ import com.sun.cri.ri.*;
  */
 public final class LoadField extends AccessField {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     /**
      * Creates a new LoadField instance.
      * @param object the receiver object
      * @param field the compiler interface field
      * @param isStatic indicates if the field is static
      * @param stateBefore the state before the field access
+     * @param graph
      * @param isLoaded indicates if the class is loaded
      */
-    public LoadField(Value object, RiField field, FrameState stateBefore) {
-        super(field.kind().stackKind(), object, field, stateBefore);
+    public LoadField(Value object, RiField field, FrameState stateBefore, Graph graph) {
+        super(field.kind().stackKind(), object, field, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**
