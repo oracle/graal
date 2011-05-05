@@ -125,8 +125,7 @@ public final class Phi extends Value {
      * Get the number of inputs to this phi (i.e. the number of predecessors to the join block).
      * @return the number of inputs in this phi
      */
-    @Override
-    public int inputCount() {
+    public int phiInputCount() {
         if (block.isExceptionEntry()) {
             return block.exceptionHandlerStates().size();
         } else {

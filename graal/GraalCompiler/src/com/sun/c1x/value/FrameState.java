@@ -363,7 +363,7 @@ public abstract class FrameState {
                 if (x instanceof Phi) {
                     Phi phi = (Phi) x;
                     if (phi.block() == block) {
-                        for (int j = 0; j < phi.inputCount(); j++) {
+                        for (int j = 0; j < phi.phiInputCount(); j++) {
                             if (phi.inputIn(other) == null) {
                                 throw new CiBailout("phi " + phi + " has null operand at new predecessor");
                             }

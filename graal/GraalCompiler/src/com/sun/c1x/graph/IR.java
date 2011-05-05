@@ -179,7 +179,7 @@ public class IR {
 
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, false);
-        newSucc.setNext(e, bci);
+        newSucc.appendNext(e, bci);
         newSucc.setEnd(e);
         // setup states
         FrameState s = source.end().stateAfter();

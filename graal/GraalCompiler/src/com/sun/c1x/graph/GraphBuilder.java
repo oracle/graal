@@ -182,7 +182,7 @@ public final class GraphBuilder {
         // 3. setup internal state for appending instructions
         curBlock = startBlock;
         lastInstr = startBlock;
-        lastInstr.setNext(null, -1);
+        lastInstr.appendNext(null, -1);
         curState = initialState;
 
         if (isSynchronized(rootMethod.accessFlags())) {
@@ -1165,7 +1165,7 @@ public final class GraphBuilder {
         if (lastInstr instanceof Base) {
             assert false : "may only happen when inlining intrinsics";
         } else {
-            lastInstr = lastInstr.setNext(x, bci);
+            lastInstr = lastInstr.appendNext(x, bci);
         }
         if (++stats.nodeCount >= C1XOptions.MaximumInstructionCount) {
             // bailout if we've exceeded the maximum inlining size
@@ -1289,7 +1289,7 @@ public final class GraphBuilder {
                 curBlock = b;
                 curState = b.stateBefore().copy();
                 lastInstr = b;
-                b.setNext(null, -1);
+                b.appendNext(null, -1);
 
                 iterateBytecodesForBlock(b.bci(), false);
             }
@@ -1321,7 +1321,7 @@ public final class GraphBuilder {
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 end = new Goto(nextBlock, null, false);
-                lastInstr = lastInstr.setNext(end, prevBCI);
+                lastInstr = lastInstr.appendNext(end, prevBCI);
                 break;
             }
             // read the opcode

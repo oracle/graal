@@ -78,7 +78,7 @@ public final class PhiSimplifier implements BlockClosure {
             // attempt to simplify the phi by recursively simplifying its operands
             phi.setFlag(Value.Flag.PhiVisited);
             Value phiSubst = null;
-            int max = phi.inputCount();
+            int max = phi.phiInputCount();
             boolean cannotSimplify = false;
             for (int i = 0; i < max; i++) {
                 Value oldInstr = phi.inputAt(i);
