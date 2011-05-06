@@ -26,6 +26,7 @@ import static com.sun.cri.bytecode.Bytecodes.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
@@ -115,8 +116,6 @@ import com.sun.cri.ri.*;
  *
  * If the {@code computeStoresInLoops} argument to {@code build} is true, the {@code loopBlocks} list is processed to
  * mark all local variables that are stored in the blocks in the list.
- *
- * @author Ben L. Titzer
  */
 public final class BlockMap {
 
@@ -222,12 +221,16 @@ public final class BlockMap {
      */
     private int blockNum;
 
+    private final Graph graph;
+
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      * @param firstBlockNum the first block number to use when creating {@link BlockBegin} nodes
+     * @param graph
      */
-    public BlockMap(RiMethod method, int firstBlockNum) {
+    public BlockMap(RiMethod method, int firstBlockNum, Graph graph) {
+        this.graph = graph;
         byte[] code = method.code();
         this.code = code;
         firstBlock = firstBlockNum;
@@ -265,7 +268,7 @@ public final class BlockMap {
     BlockBegin make(int bci) {
         BlockBegin block = blockMap[bci];
         if (block == null) {
-            block = new BlockBegin(bci, blockNum++);
+            block = new BlockBegin(bci, blockNum++, graph);
             blockMap[bci] = block;
         }
         return block;

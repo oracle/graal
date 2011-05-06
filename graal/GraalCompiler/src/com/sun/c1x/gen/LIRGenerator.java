@@ -560,7 +560,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
                 lir.cmp(Condition.EQ, tag, x.keyAt(i));
-                lir.branch(Condition.EQ, CiKind.Int, x.suxAt(i));
+                lir.branch(Condition.EQ, CiKind.Int, x.blockSuccessor(i));
             }
             lir.jump(x.defaultSuccessor());
         } else {
@@ -825,7 +825,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
                 lir.cmp(Condition.EQ, tag, i + loKey);
-                lir.branch(Condition.EQ, CiKind.Int, x.suxAt(i));
+                lir.branch(Condition.EQ, CiKind.Int, x.blockSuccessor(i));
             }
             lir.jump(x.defaultSuccessor());
         } else {
@@ -1150,11 +1150,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (len > 0) {
             BlockBegin defaultSux = x.defaultSuccessor();
             int key = x.keyAt(0);
-            BlockBegin sux = x.suxAt(0);
+            BlockBegin sux = x.blockSuccessor(0);
             SwitchRange range = new SwitchRange(key, sux);
             for (int i = 1; i < len; i++) {
                 int newKey = x.keyAt(i);
-                BlockBegin newSux = x.suxAt(i);
+                BlockBegin newSux = x.blockSuccessor(i);
                 if (key + 1 == newKey && sux == newSux) {
                     // still in same range
                     range.highKey = newKey;
@@ -1180,12 +1180,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
         int len = x.numberOfCases();
         if (len > 0) {
-            BlockBegin sux = x.suxAt(0);
+            BlockBegin sux = x.blockSuccessor(0);
             int key = x.lowKey();
             BlockBegin defaultSux = x.defaultSuccessor();
             SwitchRange range = new SwitchRange(key, sux);
             for (int i = 0; i < len; i++, key++) {
-                BlockBegin newSux = x.suxAt(i);
+                BlockBegin newSux = x.blockSuccessor(i);
                 if (sux == newSux) {
                     // still in same range
                     range.highKey = key;

@@ -26,15 +26,17 @@ import static com.sun.c1x.debug.InstructionPrinter.InstructionLineColumn.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 
 /**
  * The {@code TableSwitch} instruction represents a table switch.
- *
- * @author Ben L. Titzer
  */
 public final class TableSwitch extends Switch {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     final int lowKey;
 
@@ -45,9 +47,10 @@ public final class TableSwitch extends Switch {
      * @param lowKey the lowest integer key in the table
      * @param stateBefore the state before the switch
      * @param isSafepoint {@code true} if this instruction is a safepoint
+     * @param graph
      */
-    public TableSwitch(Value value, List<BlockBegin> successors, int lowKey, FrameState stateBefore, boolean isSafepoint) {
-        super(value, successors, stateBefore, isSafepoint);
+    public TableSwitch(Value value, List<BlockBegin> successors, int lowKey, FrameState stateBefore, boolean isSafepoint, Graph graph) {
+        super(value, successors, stateBefore, isSafepoint, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.lowKey = lowKey;
     }
 

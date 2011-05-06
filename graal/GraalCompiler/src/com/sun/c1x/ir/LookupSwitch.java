@@ -26,16 +26,18 @@ import static com.sun.c1x.debug.InstructionPrinter.InstructionLineColumn.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 
 /**
  * The {@code LookupSwitch} instruction represents a lookup switch bytecode, which has a sorted
  * array of key values.
- *
- * @author Ben L. Titzer
  */
 public final class LookupSwitch extends Switch {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     final int[] keys;
 
@@ -46,9 +48,10 @@ public final class LookupSwitch extends Switch {
      * @param keys the list of keys, sorted
      * @param stateBefore the state before the switch
      * @param isSafepoint {@code true} if this instruction is a safepoint
+     * @param graph
      */
-    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateBefore, boolean isSafepoint) {
-        super(value, successors, stateBefore, isSafepoint);
+    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateBefore, boolean isSafepoint, Graph graph) {
+        super(value, successors, stateBefore, isSafepoint, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.keys = keys;
     }
 

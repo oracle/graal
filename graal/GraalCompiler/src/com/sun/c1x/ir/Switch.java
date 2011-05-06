@@ -24,17 +24,40 @@ package com.sun.c1x.ir;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code Switch} class is the base of both lookup and table switches.
- *
- * @author Ben L. Titzer
  */
 public abstract class Switch extends BlockEnd {
 
-    Value value;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_VALUE = 0;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that provides the input value to this switch.
+     */
+     public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+    }
+
+    public Value setValue(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+    }
 
     /**
      * Constructs a new Switch.
@@ -42,18 +65,11 @@ public abstract class Switch extends BlockEnd {
      * @param successors the list of successors of this switch
      * @param stateBefore the state before the switch
      * @param isSafepoint {@code true} if this switch is a safepoint
+     * @param graph
      */
-    public Switch(Value value, List<BlockBegin> successors, FrameState stateBefore, boolean isSafepoint) {
-        super(CiKind.Illegal, stateBefore, isSafepoint, successors);
-        this.value = value;
-    }
-
-    /**
-     * Gets the instruction that provides the input value to this switch.
-     * @return the instruction producing the input value
-     */
-    public Value value() {
-        return value;
+    public Switch(Value value, List<BlockBegin> successors, FrameState stateBefore, boolean isSafepoint, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Illegal, stateBefore, isSafepoint, successors, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+        setValue(value);
     }
 
     /**
@@ -61,15 +77,7 @@ public abstract class Switch extends BlockEnd {
      * @return the number of cases
      */
     public int numberOfCases() {
-        return successors.size() - 1;
+        return blockSuccessorCount() - 1;
     }
 
-    /**
-     * Iterates over the inputs to this instruction.
-     * @param closure the closure to apply
-     */
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        value = closure.apply(value);
-    }
 }

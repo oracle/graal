@@ -129,6 +129,9 @@ public class GraphvizPrinter {
             out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"in" + i + "\" BGCOLOR=\"lightgrey\"></TD>");
         }
 
+        label = label.replace("&", "&amp;");
+        label = label.replace("<", "&lt;");
+        label = label.replace(">", "&gt;");
         out.println("    </TR></TABLE></TD></TR><TR><TD BORDER=\"1\" COLSPAN=\"3\" BGCOLOR=\"" + NODE_BGCOLOR_STRING + "\">" + label + "</TD></TR>");
         out.println("    <TR><TD COLSPAN=\"2\" CELLPADDING=\"0\" ALIGN=\"RIGHT\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
 

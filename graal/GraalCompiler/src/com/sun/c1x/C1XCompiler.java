@@ -22,8 +22,12 @@
  */
 package com.sun.c1x;
 
+import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.vis.*;
+import com.oracle.graal.graph.vis.GraphvizTest.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.globalstub.*;
 import com.sun.c1x.observer.*;
@@ -124,6 +128,45 @@ public class C1XCompiler extends ObservableCompiler {
 
         if (C1XOptions.PrintCFGToFile) {
             addCompilationObserver(new CFGPrinterObserver());
+        }
+        String dot = System.getProperty("c1x.dot");
+        if (dot != null && !dot.isEmpty()) {
+            if (!dot.endsWith("$")) {
+                dot = dot + ".*";
+            }
+            if (!dot.startsWith("^")) {
+                dot = ".*" + dot;
+            }
+            final String dotPattern = dot;
+            addCompilationObserver(new CompilationObserver() {
+                private Graph graph;
+                public void compilationStarted(CompilationEvent event) {
+                }
+                public void compilationFinished(CompilationEvent event) {
+                    String name = event.getMethod().holder().name();
+                    name = name.substring(1, name.length() - 1).replace('/', '.');
+                    name = name + "." + event.getMethod().name();
+                    if (name.matches(dotPattern)) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        GraphvizPrinter printer = new GraphvizPrinter(out);
+                        printer.begin("Simple test");
+                        printer.print(graph);
+                        printer.end();
+
+                        try {
+                            GraphvizRunner.process(GraphvizRunner.DOT_COMMAND, new ByteArrayInputStream(out.toByteArray()),
+                                            new FileOutputStream(name + ".pdf"), "pdf");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                public void compilationEvent(CompilationEvent event) {
+                    if (event.getStartBlock() != null) {
+                        graph = event.getStartBlock().graph();
+                    }
+                }
+            });
         }
     }
 
