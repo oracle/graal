@@ -24,6 +24,7 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
@@ -61,6 +62,8 @@ public class IR {
      */
     private List<BlockBegin> orderedBlocks;
 
+    private final Graph graph = new Graph();
+
     /**
      * Creates a new IR instance for the specified compilation.
      * @param compilation the compilation
@@ -93,7 +96,7 @@ public class IR {
 
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilder(compilation, this).build();
+        new GraphBuilder(compilation, this, graph).build();
         assert startBlock != null;
         verifyAndPrint("After graph building");
 
@@ -173,12 +176,12 @@ public class IR {
         }
 
         // create new successor and mark it for special block order treatment
-        BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber());
+        BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), graph);
 
         newSucc.setCriticalEdgeSplit(true);
 
         // This goto is not a safepoint.
-        Goto e = new Goto(target, null, false);
+        Goto e = new Goto(target, null, false, graph);
         newSucc.appendNext(e, bci);
         newSucc.setEnd(e);
         // setup states
@@ -226,8 +229,8 @@ public class IR {
             newBlock.addPredecessor(pred);
         }
         // this block is now disconnected; remove all its incoming and outgoing edges
-        oldBlock.blockPredecessors().clear();
-        oldBlock.end().blockSuccessors().clear();
+//        oldBlock.blockPredecessors().clear();
+//        oldBlock.end().blockSuccessors().clear();
     }
 
     /**
@@ -272,5 +275,9 @@ public class IR {
      */
     public final int maxLocks() {
         return maxLocks;
+    }
+
+    public Graph graph() {
+        return graph;
     }
 }

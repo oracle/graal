@@ -54,10 +54,6 @@ public abstract class StateSplit extends Instruction {
         this.stateBefore = stateBefore;
     }
 
-    public StateSplit(CiKind kind, FrameState stateBefore) {
-        this(kind, stateBefore, 0, 0, null);
-    }
-
     @Override
     public boolean canTrap() {
         return stateBefore != null;

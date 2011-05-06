@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
@@ -30,13 +31,47 @@ import com.sun.cri.ci.*;
 /**
  * The {@code If} instruction represents a branch that can go one of two directions
  * depending on the outcome of a comparison.
- *
- * @author Ben L. Titzer
  */
 public final class If extends BlockEnd {
 
-    Value x;
-    Value y;
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_X = 0;
+    private static final int INPUT_Y = 1;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that produces the first input to this comparison.
+     */
+     public Value x() {
+        return (Value) inputs().get(super.inputCount() + INPUT_X);
+    }
+
+    public Value setX(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_X, n);
+    }
+
+    /**
+     * The instruction that produces the second input to this comparison.
+     */
+    public Value y() {
+        return (Value) inputs().get(super.inputCount() + INPUT_Y);
+    }
+
+    public Value setY(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_Y, n);
+    }
+
     Condition condition;
     boolean unorderedIsTrue;
 
@@ -44,38 +79,22 @@ public final class If extends BlockEnd {
      * Constructs a new If instruction.
      * @param x the instruction producing the first input to the instruction
      * @param cond the condition (comparison operation)
-     * @param unorderedIsTrue {@code true} if unordered is treated as true (floating point operations)
      * @param y the instruction that produces the second input to this instruction
      * @param trueSucc the block representing the true successor
      * @param falseSucc the block representing the false successor
      * @param stateAfter the state before the branch but after the input values have been popped
      * @param isSafepoint {@code true} if this branch should be considered a safepoint
+     * @param graph
      */
     public If(Value x, Condition cond, Value y,
-              BlockBegin trueSucc, BlockBegin falseSucc, FrameState stateAfter, boolean isSafepoint) {
-        super(CiKind.Illegal, stateAfter, isSafepoint);
-        this.x = x;
-        this.y = y;
-        condition = cond;
+              BlockBegin trueSucc, BlockBegin falseSucc, FrameState stateAfter, boolean isSafepoint, Graph graph) {
+        super(CiKind.Illegal, stateAfter, isSafepoint, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert Util.archKindsEqual(x, y);
-        successors.add(trueSucc);
-        successors.add(falseSucc);
-    }
-
-    /**
-     * Gets the instruction that produces the first input to this comparison.
-     * @return the instruction producing the first input
-     */
-    public Value x() {
-        return x;
-    }
-
-    /**
-     * Gets the instruction that produces the second input to this comparison.
-     * @return the instruction producing the second input
-     */
-    public Value y() {
-        return y;
+        condition = cond;
+        setX(x);
+        setY(y);
+        setBlockSuccessor(0, trueSucc);
+        setBlockSuccessor(1, falseSucc);
     }
 
     /**
@@ -99,7 +118,7 @@ public final class If extends BlockEnd {
      * @return the true successor
      */
     public BlockBegin trueSuccessor() {
-        return successors.get(0);
+        return blockSuccessor(0);
     }
 
     /**
@@ -107,7 +126,7 @@ public final class If extends BlockEnd {
      * @return the false successor
      */
     public BlockBegin falseSuccessor() {
-        return successors.get(1);
+        return blockSuccessor(1);
     }
 
     /**
@@ -116,7 +135,7 @@ public final class If extends BlockEnd {
      * @return the corresponding successor
      */
     public BlockBegin successor(boolean istrue) {
-        return successors.get(istrue ? 0 : 1);
+        return blockSuccessor(istrue ? 0 : 1);
     }
 
     /**
@@ -133,9 +152,9 @@ public final class If extends BlockEnd {
      */
     public void swapOperands() {
         condition = condition.mirror();
-        Value t = x;
-        x = y;
-        y = t;
+        Value t = x();
+        setX(y());
+        setY(t);
     }
 
     /**
@@ -145,16 +164,10 @@ public final class If extends BlockEnd {
     public void swapSuccessors() {
         unorderedIsTrue = !unorderedIsTrue;
         condition = condition.negate();
-        BlockBegin t = successors.get(0);
-        BlockBegin f = successors.get(1);
-        successors.set(0, f);
-        successors.set(1, t);
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        x = closure.apply(x);
-        y = closure.apply(y);
+        BlockBegin t = blockSuccessor(0);
+        BlockBegin f = blockSuccessor(1);
+        setBlockSuccessor(0, f);
+        setBlockSuccessor(1, t);
     }
 
     @Override

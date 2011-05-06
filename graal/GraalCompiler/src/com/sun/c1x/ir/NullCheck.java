@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
@@ -33,30 +34,42 @@ import com.sun.cri.ri.*;
  */
 public final class NullCheck extends StateSplit {
 
-    Value object;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_OBJECT = 0;
 
-    /**
-     * Constructs a new NullCheck instruction.
-     * @param obj the instruction producing the object to check against null
-     * @param stateBefore the state before executing the null check
-     */
-    public NullCheck(Value obj, FrameState stateBefore) {
-        super(obj.kind, stateBefore);
-        this.object = obj;
-        setFlag(Flag.NonNull);
-    }
+    private static final int SUCCESSOR_COUNT = 0;
 
-    /**
-     * Gets the instruction that produces the object tested against null.
-     * @return the instruction producing the object
-     */
-    public Value object() {
-        return object;
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
     }
 
     @Override
-    public void inputValuesDo(ValueClosure closure) {
-        object = closure.apply(object);
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that produces the object tested against null.
+     */
+     public Value object() {
+        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    }
+
+    public Value setObject(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    }
+
+    /**
+     * Constructs a new NullCheck instruction.
+     * @param object the instruction producing the object to check against null
+     * @param stateBefore the state before executing the null check
+     * @param graph
+     */
+    public NullCheck(Value object, FrameState stateBefore, Graph graph) {
+        super(object.kind, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setFlag(Flag.NonNull);
+        setObject(object);
     }
 
     @Override
@@ -66,14 +79,14 @@ public final class NullCheck extends StateSplit {
 
     @Override
     public int valueNumber() {
-        return Util.hash1(Bytecodes.IFNONNULL, object);
+        return Util.hash1(Bytecodes.IFNONNULL, object());
     }
 
     @Override
     public boolean valueEqual(Instruction i) {
         if (i instanceof NullCheck) {
             NullCheck o = (NullCheck) i;
-            return object == o.object;
+            return object() == o.object();
         }
         return false;
     }
@@ -81,13 +94,13 @@ public final class NullCheck extends StateSplit {
     @Override
     public RiType declaredType() {
         // null check does not alter the type of the object
-        return object.declaredType();
+        return object().declaredType();
     }
 
     @Override
     public RiType exactType() {
         // null check does not alter the type of the object
-        return object.exactType();
+        return object().exactType();
     }
 
     @Override

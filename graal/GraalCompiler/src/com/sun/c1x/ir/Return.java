@@ -22,42 +22,51 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code Return} class definition.
- *
- * @author Ben L. Titzer
  */
 public final class Return extends BlockEnd {
 
-    Value result;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_RESULT = 0;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that produces the result for the return.
+     */
+     public Value result() {
+        return (Value) inputs().get(super.inputCount() + INPUT_RESULT);
+    }
+
+    public Value setResult(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_RESULT, n);
+    }
 
     /**
      * Constructs a new Return instruction.
      * @param result the instruction producing the result for this return; {@code null} if this
      * is a void return
      * @param isSafepoint {@code true} if this instruction is a safepoint instruction
+     * @param graph
      */
-    public Return(Value result, boolean isSafepoint) {
-        super(result == null ? CiKind.Void : result.kind, null, isSafepoint);
-        this.result = result;
-    }
-
-    /**
-     * Gets the instruction that produces the result for the return.
-     * @return the instruction producing the result
-     */
-    public Value result() {
-        return result;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        if (result != null) {
-            result = closure.apply(result);
-        }
+    public Return(Value result, boolean isSafepoint, Graph graph) {
+        super(result == null ? CiKind.Void : result.kind, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setResult(result);
     }
 
     @Override
@@ -67,10 +76,10 @@ public final class Return extends BlockEnd {
 
     @Override
     public void print(LogStream out) {
-        if (result == null) {
+        if (result() == null) {
             out.print("return");
         } else {
-            out.print(kind.typeChar).print("return ").print(result);
+            out.print(kind.typeChar).print("return ").print(result());
         }
     }
 }

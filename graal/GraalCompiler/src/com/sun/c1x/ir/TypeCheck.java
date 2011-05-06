@@ -22,20 +22,55 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
 /**
  * The {@code TypeCheck} instruction is the base class of casts and instanceof tests.
- *
- * @author Ben L. Titzer
  */
 public abstract class TypeCheck extends StateSplit {
 
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_OBJECT = 0;
+    private static final int INPUT_TARGET_CLASS_INSTRUCTION = 1;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction which produces the object input.
+     */
+     public Value object() {
+        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    }
+
+    public Value setObject(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    }
+
+    /**
+     * The instruction that loads the target class object that is used by this checkcast.
+     */
+     public Value targetClassInstruction() {
+        return (Value) inputs().get(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION);
+    }
+
+    public Value setTargetClassInstruction(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION, n);
+    }
+
     final RiType targetClass;
-    public Value targetClassInstruction;
-    Value object;
 
     /**
      * Creates a new TypeCheck instruction.
@@ -43,20 +78,15 @@ public abstract class TypeCheck extends StateSplit {
      * @param object the instruction which produces the object
      * @param kind the result type of this instruction
      * @param stateBefore the state before this instruction is executed
+     * @param inputCount
+     * @param successorCount
+     * @param graph
      */
-    public TypeCheck(RiType targetClass, Value targetClassInstruction, Value object, CiKind kind, FrameState stateBefore) {
-        super(kind, stateBefore);
+    public TypeCheck(RiType targetClass, Value targetClassInstruction, Value object, CiKind kind, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
+        super(kind, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.targetClass = targetClass;
-        this.targetClassInstruction = targetClassInstruction;
-        this.object = object;
-    }
-
-    /**
-     * Gets the instruction that loads the target class object that is used by this checkcast.
-     * @return the target class instruction
-     */
-    public Value targetClassInstruction() {
-        return targetClassInstruction;
+        setObject(object);
+        setTargetClassInstruction(targetClassInstruction);
     }
 
     /**
@@ -68,14 +98,6 @@ public abstract class TypeCheck extends StateSplit {
     }
 
     /**
-     * Gets the instruction which produces the object input.
-     * @return the instruction producing the object
-     */
-    public Value object() {
-        return object;
-    }
-
-    /**
      * Checks whether the target class of this instruction is loaded.
      * @return {@code true} if the target class is loaded
      */
@@ -83,13 +105,4 @@ public abstract class TypeCheck extends StateSplit {
         return targetClass != null;
     }
 
-    /**
-     * Iterates over the input values to this instruction.
-     * @param closure the closure to apply
-     */
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        object = closure.apply(object);
-        targetClassInstruction = closure.apply(targetClassInstruction);
-    }
 }

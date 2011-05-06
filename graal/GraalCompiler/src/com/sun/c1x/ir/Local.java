@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -29,16 +30,17 @@ import com.sun.cri.ri.*;
 /**
  * The {@code Local} instruction is a placeholder for an incoming argument
  * to a function call.
- *
- * @author Ben L. Titzer
  */
 public final class Local extends Value {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     private final int javaIndex;
     private RiType declaredType;
 
-    public Local(CiKind kind, int javaIndex) {
-        super(kind);
+    public Local(CiKind kind, int javaIndex, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.javaIndex = javaIndex;
     }
 

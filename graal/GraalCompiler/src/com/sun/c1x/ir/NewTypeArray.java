@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -29,15 +30,16 @@ import com.sun.cri.ri.*;
 
 /**
  * The {@code NewTypeArray} class definition.
- *
- * @author Ben L. Titzer
  */
 public final class NewTypeArray extends NewArray {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     final RiType elementType;
 
-    public NewTypeArray(Value length, RiType elementType, FrameState stateBefore) {
-        super(length, stateBefore);
+    public NewTypeArray(Value length, RiType elementType, FrameState stateBefore, Graph graph) {
+        super(length, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.elementType = elementType;
     }
 

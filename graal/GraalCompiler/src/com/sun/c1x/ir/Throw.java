@@ -22,18 +22,41 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code Throw} instruction represents a throw of an exception.
- *
- * @author Ben L. Titzer
  */
 public final class Throw extends BlockEnd {
 
-    Value exception;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_EXCEPTION = 0;
+
+    private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction which produces the exception to throw.
+     */
+     public Value exception() {
+        return (Value) inputs().get(super.inputCount() + INPUT_EXCEPTION);
+    }
+
+    public Value setException(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_EXCEPTION, n);
+    }
 
     FrameState stateBefore;
 
@@ -42,19 +65,12 @@ public final class Throw extends BlockEnd {
      * @param exception the instruction that generates the exception to throw
      * @param stateAfter the state before the exception is thrown but after the exception object has been popped
      * @param isSafepoint {@code true} if this instruction is a safepoint instruction
+     * @param graph
      */
-    public Throw(Value exception, FrameState stateAfter, boolean isSafepoint) {
-        super(CiKind.Illegal, null, isSafepoint);
+    public Throw(Value exception, FrameState stateAfter, boolean isSafepoint, Graph graph) {
+        super(CiKind.Illegal, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.stateBefore = stateAfter;
-        this.exception = exception;
-    }
-
-    /**
-     * Gets the instruction which produces the exception to throw.
-     * @return the instruction producing the exception
-     */
-    public Value exception() {
-        return exception;
+        setException(exception);
     }
 
     /**
@@ -73,11 +89,6 @@ public final class Throw extends BlockEnd {
     @Override
     public boolean canTrap() {
         return true;
-    }
-
-    @Override
-    public void inputValuesDo(ValueClosure closure) {
-        exception = closure.apply(exception);
     }
 
     @Override

@@ -124,18 +124,16 @@ public final class GraphBuilder {
     boolean skipBlock;                     // skip processing of the rest of this block
     private Value rootMethodSynchronizedObject;
 
-
-
-    private Graph graph = new Graph();
-
+    private final Graph graph;
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
      *
      * @param compilation the compilation
      * @param ir the IR to build the graph into
+     * @param graph
      */
-    public GraphBuilder(C1XCompilation compilation, IR ir) {
+    public GraphBuilder(C1XCompilation compilation, IR ir, Graph graph) {
         this.compilation = compilation;
         this.ir = ir;
         this.stats = compilation.stats;
@@ -144,6 +142,7 @@ public final class GraphBuilder {
         log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
         stream = new BytecodeStream(compilation.method.code());
         constantPool = compilation.runtime.getConstantPool(compilation.method);
+        this.graph = graph;
     }
 
     /**
@@ -163,7 +162,7 @@ public final class GraphBuilder {
         }
 
         // 1. create the start block
-        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber());
+        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
         BlockBegin startBlock = ir.startBlock;
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
@@ -200,7 +199,7 @@ public final class GraphBuilder {
             finishStartBlock(startBlock, stdEntry);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
-            syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber());
+            syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber(), graph);
             syncHandler.setExceptionEntry();
             syncHandler.setBlockFlag(BlockBegin.BlockFlag.IsOnWorkList);
             syncHandler.setBlockFlag(BlockBegin.BlockFlag.DefaultExceptionHandler);
@@ -227,7 +226,7 @@ public final class GraphBuilder {
 
     private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
         assert curBlock == startBlock;
-        Base base = new Base(stdEntry);
+        Base base = new Base(stdEntry, graph);
         appendWithoutOptimization(base, 0);
         FrameState stateAfter = curState.immutableCopy(bci());
         base.setStateAfter(stateAfter);
@@ -423,7 +422,7 @@ public final class GraphBuilder {
             // this is a load of class constant which might be unresolved
             RiType riType = (RiType) con;
             if (!riType.isResolved() || C1XOptions.TestPatching) {
-                push(CiKind.Object, append(new ResolveClass(riType, RiType.Representation.JavaClass, null)));
+                push(CiKind.Object, append(new ResolveClass(riType, RiType.Representation.JavaClass, null, graph)));
             } else {
                 push(CiKind.Object, append(new Constant(riType.getEncoding(Representation.JavaClass), graph)));
             }
@@ -600,7 +599,7 @@ public final class GraphBuilder {
 
     void genGoto(int fromBCI, int toBCI) {
         boolean isSafepoint = !noSafepoints() && toBCI <= fromBCI;
-        append(new Goto(blockAt(toBCI), null, isSafepoint));
+        append(new Goto(blockAt(toBCI), null, isSafepoint, graph));
     }
 
     void ifNode(Value x, Condition cond, Value y, FrameState stateBefore) {
@@ -608,7 +607,7 @@ public final class GraphBuilder {
         BlockBegin fsucc = blockAt(stream().nextBCI());
         int bci = stream().currentBCI();
         boolean isSafepoint = !noSafepoints() && tsucc.bci() <= bci || fsucc.bci() <= bci;
-        append(new If(x, cond, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint));
+        append(new If(x, cond, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint, graph));
     }
 
     void genIfZero(Condition cond) {
@@ -634,7 +633,7 @@ public final class GraphBuilder {
 
     void genThrow(int bci) {
         FrameState stateBefore = curState.immutableCopy(bci());
-        Throw t = new Throw(apop(), stateBefore, !noSafepoints());
+        Throw t = new Throw(apop(), stateBefore, !noSafepoints(), graph);
         appendWithoutOptimization(t, bci);
     }
 
@@ -643,7 +642,7 @@ public final class GraphBuilder {
         RiType type = constantPool().lookupType(cpi, CHECKCAST);
         boolean isInitialized = !C1XOptions.TestPatching && type.isResolved() && type.isInitialized();
         Value typeInstruction = genResolveClass(RiType.Representation.ObjectHub, type, isInitialized, cpi);
-        CheckCast c = new CheckCast(type, typeInstruction, apop(), null);
+        CheckCast c = new CheckCast(type, typeInstruction, apop(), null, graph);
         apush(append(c));
         checkForDirectCompare(c);
     }
@@ -653,7 +652,7 @@ public final class GraphBuilder {
         RiType type = constantPool().lookupType(cpi, INSTANCEOF);
         boolean isInitialized = !C1XOptions.TestPatching && type.isResolved() && type.isInitialized();
         Value typeInstruction = genResolveClass(RiType.Representation.ObjectHub, type, isInitialized, cpi);
-        InstanceOf i = new InstanceOf(type, typeInstruction, apop(), null);
+        InstanceOf i = new InstanceOf(type, typeInstruction, apop(), null, graph);
         ipush(append(i));
         checkForDirectCompare(i);
     }
@@ -668,7 +667,7 @@ public final class GraphBuilder {
     void genNewInstance(int cpi) {
         FrameState stateBefore = curState.immutableCopy(bci());
         RiType type = constantPool().lookupType(cpi, NEW);
-        NewInstance n = new NewInstance(type, cpi, constantPool(), stateBefore);
+        NewInstance n = new NewInstance(type, cpi, constantPool(), stateBefore, graph);
         if (memoryMap != null) {
             memoryMap.newInstance(n);
         }
@@ -679,13 +678,13 @@ public final class GraphBuilder {
         FrameState stateBefore = curState.immutableCopy(bci());
         CiKind kind = CiKind.fromArrayTypeCode(typeCode);
         RiType elementType = compilation.runtime.asRiType(kind);
-        apush(append(new NewTypeArray(ipop(), elementType, stateBefore)));
+        apush(append(new NewTypeArray(ipop(), elementType, stateBefore, graph)));
     }
 
     void genNewObjectArray(int cpi) {
         RiType type = constantPool().lookupType(cpi, ANEWARRAY);
         FrameState stateBefore = curState.immutableCopy(bci());
-        NewArray n = new NewObjectArray(type, ipop(), stateBefore);
+        NewArray n = new NewObjectArray(type, ipop(), stateBefore, graph);
         apush(append(n));
     }
 
@@ -697,7 +696,7 @@ public final class GraphBuilder {
         for (int i = rank - 1; i >= 0; i--) {
             dims[i] = ipop();
         }
-        NewArray n = new NewMultiArray(type, dims, stateBefore, cpi, constantPool());
+        NewArray n = new NewMultiArray(type, dims, stateBefore, cpi, constantPool(), graph);
         apush(append(n));
     }
 
@@ -744,7 +743,7 @@ public final class GraphBuilder {
         if (initialized) {
             holderInstr = appendConstant(holder.getEncoding(representation));
         } else {
-            holderInstr = append(new ResolveClass(holder, representation, null));
+            holderInstr = append(new ResolveClass(holder, representation, null, graph));
         }
         return holderInstr;
     }
@@ -1001,7 +1000,7 @@ public final class GraphBuilder {
 
         if (needsCheck) {
             // append a call to the finalizer registration
-            append(new RegisterFinalizer(curState.loadLocal(0), curState.immutableCopy(bci())));
+            append(new RegisterFinalizer(curState.loadLocal(0), curState.immutableCopy(bci()), graph));
             C1XMetrics.InlinedFinalizerChecks++;
         }
     }
@@ -1018,13 +1017,13 @@ public final class GraphBuilder {
             int lockNumber = curState.locksSize() - 1;
             MonitorAddress lockAddress = null;
             if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-                lockAddress = new MonitorAddress(lockNumber);
+                lockAddress = new MonitorAddress(lockNumber, graph);
                 append(lockAddress);
             }
             append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, stateBefore, graph));
             curState.unlock();
         }
-        append(new Return(x, !noSafepoints()));
+        append(new Return(x, !noSafepoints(), graph));
     }
 
     /**
@@ -1038,7 +1037,7 @@ public final class GraphBuilder {
         int lockNumber = locksSize();
         MonitorAddress lockAddress = null;
         if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-            lockAddress = new MonitorAddress(lockNumber);
+            lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
         MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null, graph);
@@ -1055,7 +1054,7 @@ public final class GraphBuilder {
         }
         MonitorAddress lockAddress = null;
         if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-            lockAddress = new MonitorAddress(lockNumber);
+            lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
         appendWithoutOptimization(new MonitorExit(x, lockAddress, lockNumber, null, graph), bci);
@@ -1088,7 +1087,7 @@ public final class GraphBuilder {
         list.add(blockAt(bci + offset));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? curState.immutableCopy(bci()) : null;
-        append(new TableSwitch(ipop(), list, ts.lowKey(), stateBefore, isSafepoint));
+        append(new TableSwitch(ipop(), list, ts.lowKey(), stateBefore, isSafepoint, graph));
     }
 
     void genLookupswitch() {
@@ -1110,7 +1109,7 @@ public final class GraphBuilder {
         list.add(blockAt(bci + offset));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? curState.immutableCopy(bci()) : null;
-        append(new LookupSwitch(ipop(), list, keys, stateBefore, isSafepoint));
+        append(new LookupSwitch(ipop(), list, keys, stateBefore, isSafepoint, graph));
     }
 
     /**
@@ -1218,7 +1217,7 @@ public final class GraphBuilder {
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
-            Local local = new Local(method.holder().kind(), index);
+            Local local = new Local(method.holder().kind(), index, graph);
             local.setFlag(Value.Flag.NonNull, true);
             local.setDeclaredType(method.holder());
             state.storeLocal(index, local);
@@ -1230,7 +1229,7 @@ public final class GraphBuilder {
         for (int i = 0; i < max; i++) {
             RiType type = sig.argumentTypeAt(i, accessingClass);
             CiKind kind = type.kind().stackKind();
-            Local local = new Local(kind, index);
+            Local local = new Local(kind, index, graph);
             if (type.isResolved()) {
                 local.setDeclaredType(type);
             }
@@ -1262,7 +1261,7 @@ public final class GraphBuilder {
         curState = syncHandler.stateBefore().copy();
 
         int bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
-        Value exception = appendWithoutOptimization(new ExceptionObject(curState.immutableCopy(bci)), bci);
+        Value exception = appendWithoutOptimization(new ExceptionObject(curState.immutableCopy(bci), graph), bci);
 
         assert lock != null;
         assert curState.locksSize() > 0 && curState.lockAt(locksSize() - 1) == lock;
@@ -1327,7 +1326,7 @@ public final class GraphBuilder {
             }
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
-                end = new Goto(nextBlock, null, false);
+                end = new Goto(nextBlock, null, false, graph);
                 lastInstr = lastInstr.appendNext(end, prevBCI);
                 break;
             }
@@ -1337,7 +1336,7 @@ public final class GraphBuilder {
             // push an exception object onto the stack if we are parsing an exception handler
             if (pushException) {
                 FrameState stateBefore = curState.immutableCopy(bci());
-                apush(append(new ExceptionObject(stateBefore)));
+                apush(append(new ExceptionObject(stateBefore, graph)));
                 pushException = false;
             }
 

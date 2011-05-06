@@ -22,27 +22,45 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
+/**
+ * This instruction is used to perform the finalizer registration at the end of the java.lang.Object constructor.
+ */
 public class RegisterFinalizer extends StateSplit {
 
-    private Value object;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_OBJECT = 0;
 
-    public RegisterFinalizer(Value object, FrameState stateBefore) {
-        super(CiKind.Void, stateBefore);
-        this.object = object;
-    }
+    private static final int SUCCESSOR_COUNT = 0;
 
-    public Value object() {
-        return object;
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
     }
 
     @Override
-    public void inputValuesDo(ValueClosure closure) {
-        object = closure.apply(object);
-        super.inputValuesDo(closure);
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that produces the object whose finalizer should be registered.
+     */
+     public Value object() {
+        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    }
+
+    public Value setObject(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    }
+
+    public RegisterFinalizer(Value object, FrameState stateBefore, Graph graph) {
+        super(CiKind.Void, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setObject(object);
     }
 
     @Override
@@ -52,6 +70,6 @@ public class RegisterFinalizer extends StateSplit {
 
     @Override
     public void print(LogStream out) {
-        out.print("register finalizer ").print(object);
+        out.print("register finalizer ").print(object());
     }
 }

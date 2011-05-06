@@ -24,6 +24,7 @@ package com.sun.c1x.ir;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.asm.*;
 import com.sun.c1x.debug.*;
@@ -37,10 +38,12 @@ import com.sun.cri.ri.*;
  * Denotes the beginning of a basic block, and holds information
  * about the basic block, including the successor and
  * predecessor blocks, exception handlers, liveness information, etc.
- *
- * @author Ben L. Titzer
  */
 public final class BlockBegin extends Instruction {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     private static final List<BlockBegin> NO_HANDLERS = Collections.emptyList();
 
     /**
@@ -103,9 +106,10 @@ public final class BlockBegin extends Instruction {
      * Constructs a new BlockBegin at the specified bytecode index.
      * @param bci the bytecode index of the start
      * @param blockID the ID of the block
+     * @param graph
      */
-    public BlockBegin(int bci, int blockID) {
-        super(CiKind.Illegal);
+    public BlockBegin(int bci, int blockID, Graph graph) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.blockID = blockID;
         depthFirstNumber = -1;
         linearScanNumber = -1;
@@ -439,7 +443,7 @@ public final class BlockBegin extends Instruction {
                 throw new CiBailout("jsr/ret too complicated");
             }
 
-            existingState.merge(this, newState);
+            existingState.merge(this, newState, graph());
         }
     }
 
@@ -461,13 +465,13 @@ public final class BlockBegin extends Instruction {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
-            newState.setupPhiForStack(this, i);
+            newState.setupPhiForStack(this, i, graph());
         }
         int localsSize = newState.localsSize();
         for (int i = 0; i < localsSize; i++) {
             Value x = newState.localAt(i);
             if (x != null) {
-                newState.setupPhiForLocal(this, i);
+                newState.setupPhiForLocal(this, i, graph());
             }
         }
     }
@@ -609,7 +613,7 @@ public final class BlockBegin extends Instruction {
      * @return the number of successors
      */
     public int numberOfSux() {
-        return end.successors.size();
+        return end.blockSuccessorCount();
     }
 
     /**
@@ -618,7 +622,7 @@ public final class BlockBegin extends Instruction {
      * @return the successor
      */
     public BlockBegin suxAt(int i) {
-        return end.successors.get(i);
+        return end.blockSuccessor(i);
     }
 
     /**

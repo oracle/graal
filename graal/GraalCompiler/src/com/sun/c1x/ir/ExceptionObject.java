@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -31,6 +32,9 @@ import com.sun.cri.ci.*;
  */
 public final class ExceptionObject extends Instruction {
 
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
+
     /**
      * Debug info is required if safepoints are placed at exception handlers.
      */
@@ -39,9 +43,10 @@ public final class ExceptionObject extends Instruction {
     /**
      * Constructs a new ExceptionObject instruction.
      * @param stateBefore TODO
+     * @param graph
      */
-    public ExceptionObject(FrameState stateBefore) {
-        super(CiKind.Object);
+    public ExceptionObject(FrameState stateBefore, Graph graph) {
+        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setFlag(Flag.NonNull);
         this.stateBefore = stateBefore;
     }

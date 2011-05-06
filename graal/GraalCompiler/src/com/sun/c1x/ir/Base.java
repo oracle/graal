@@ -22,25 +22,28 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code Base} instruction represents the end of the entry block of the procedure that has
  * both the standard entry and the OSR entry as successors.
- *
- * @author Ben L. Titzer
  */
 public final class Base extends BlockEnd {
+
+    private static final int INPUT_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     /**
      * Constructs a new Base instruction.
      * @param standardEntry the standard entrypoint block
+     * @param graph
      */
-    public Base(BlockBegin standardEntry) {
-        super(CiKind.Illegal, null, false);
+    public Base(BlockBegin standardEntry, Graph graph) {
+        super(CiKind.Illegal, null, false, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert standardEntry.isStandardEntry();
-        successors.add(standardEntry);
+        setBlockSuccessor(0, standardEntry);
     }
 
     /**
@@ -56,7 +59,7 @@ public final class Base extends BlockEnd {
      * @return the OSR entrypoint bock, if it exists; {@code null} otherwise
      */
     public BlockBegin osrEntry() {
-        return successors.size() < 2 ? null : successors.get(0);
+        return blockSuccessorCount() < 2 ? null : blockSuccessor(0);
     }
 
     @Override
