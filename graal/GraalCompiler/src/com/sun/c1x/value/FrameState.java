@@ -26,16 +26,16 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
-import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
-import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
+
+import static com.sun.c1x.value.ValueUtil.*;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
  */
-public abstract class FrameState {
+public class FrameState {
 
     /**
      * The operand stack and local variables.
@@ -51,15 +51,11 @@ public abstract class FrameState {
     protected final Value[] values;
 
     /**
-     * The depth of the operand stack.
-     * The top of stack value is in {@code values[maxLocals + stackIndex]}.
-     */
-    protected int stackIndex;
-
-    /**
      * The number of local variables.
      */
-    protected final int maxLocals;
+    protected final int localsSize;
+
+    protected final int stackSize;
 
     /**
      * The bytecode index to which this frame state applies. This will be {@code -1}
@@ -68,117 +64,64 @@ public abstract class FrameState {
     public final int bci;
 
     /**
-     * The list of locks held by this frame state.
-     * This does not include locks held by parent frames.
-     */
-    protected ArrayList<Value> locks;
-
-    /**
-     * The number of minimum stack slots required for doing IR wrangling during
-     * {@linkplain GraphBuilder bytecode parsing}. While this may hide stack
-     * overflow issues in the original bytecode, the assumption is that such
-     * issues must be caught by the verifier.
-     */
-    private static final int MINIMUM_STACK_SLOTS = 1;
-
-    /**
      * Creates a {@code FrameState} for the given scope and maximum number of stack and local variables.
      *
-     * @param irScope the inlining context of the method
      * @param bci the bytecode index of the frame state
-     * @param maxLocals maximum number of locals
-     * @param maxStack maximum size of the stack
+     * @param localsSize number of locals
+     * @param stackSize size of the stack
+     * @param lockSize number of locks
      */
-    public FrameState(int bci, int maxLocals, int maxStack) {
+    public FrameState(int bci, int localsSize, int stackSize, int lockSize) {
         this.bci = bci;
-        this.values = new Value[maxLocals + Math.max(maxStack, MINIMUM_STACK_SLOTS)];
-        this.maxLocals = maxLocals;
+        this.values = new Value[localsSize + stackSize + lockSize];
+        this.localsSize = localsSize;
+        this.stackSize = stackSize;
         C1XMetrics.FrameStatesCreated++;
         C1XMetrics.FrameStateValuesCreated += this.values.length;
     }
 
-    /**
-     * Copies the contents of this frame state so that further updates to either stack aren't reflected in the other.
-     * @param bci the bytecode index of the copy
-     * @param withLocals indicates whether to copy the local state
-     * @param withStack indicates whether to copy the stack state
-     * @param withLocks indicates whether to copy the lock state
-     *
-     * @return a new frame state with the specified components
-     */
-    public FrameState immutableCopy(int bci, boolean withLocals, boolean withStack, boolean withLocks) {
-        final ImmutableFrameState other = new ImmutableFrameState(bci, localsSize(), maxStackSize());
-        if (withLocals && withStack) {
-            // fast path: use array copy
-            System.arraycopy(values, 0, other.values, 0, valuesSize());
-            other.stackIndex = stackIndex;
-        } else {
-            if (withLocals) {
-                System.arraycopy(values, 0, other.values, 0, maxLocals);
-            }
-            if (withStack) {
-                System.arraycopy(values, maxLocals, other.values, other.maxLocals, stackIndex);
-                other.stackIndex = stackIndex;
-            }
+    FrameState(int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks) {
+        this(bci, locals.length, stackSize, locks.size());
+        System.arraycopy(locals, 0, values, 0, locals.length);
+        System.arraycopy(stack, 0, values, locals.length, stackSize);
+        for (int i = 0; i < locks.size(); i++) {
+            values[locals.length + stackSize + i] = locks.get(i);
         }
-        if (withLocks) {
-            if (locks != null) {
-                other.locks = new ArrayList<Value>(locks);
-            }
-        }
-        return other;
     }
 
     /**
-     * Gets a mutable copy ({@link MutableFrameState}) of this frame state.
+     * Gets a immutable copy ({@link FrameState}) of this frame state.
      */
-    public MutableFrameState copy() {
-        final MutableFrameState other = new MutableFrameState(bci, localsSize(), maxStackSize());
-        System.arraycopy(values, 0, other.values, 0, valuesSize());
-        other.stackIndex = stackIndex;
-        if (locks != null) {
-            other.locks = new ArrayList<Value>(locks);
-        }
+    public FrameState copy() {
+        FrameState other = new FrameState(bci, localsSize, stackSize, locksSize());
+        System.arraycopy(values, 0, other.values, 0, values.length);
         return other;
-    }
-
-    /**
-     * Gets a immutable copy ({@link MutableFrameState}) of this frame state.
-     */
-    public FrameState immutableCopy() {
-        return immutableCopy(bci, true, true, true);
     }
 
     /**
      * Gets an immutable copy of this frame state but without the stack.
      */
-    public FrameState immutableCopyWithEmptyStack() {
-        return immutableCopy(bci, true, false, true);
-    }
-
-    /**
-     * Gets an immutable copy of this frame state but without the frame info.
-     */
-    public FrameState immutableCopyCodePosOnly() {
-        return immutableCopy(bci, false, false, false);
+    public FrameState copyWithEmptyStack() {
+        FrameState other = new FrameState(bci, localsSize, 0, locksSize());
+        System.arraycopy(values, 0, other.values, 0, localsSize);
+        System.arraycopy(values, localsSize + stackSize, other.values, localsSize, locksSize());
+        return other;
     }
 
     public boolean isCompatibleWith(FrameState other) {
         if (stackSize() != other.stackSize() || localsSize() != other.localsSize() || locksSize() != other.locksSize()) {
             return false;
         }
-        for (int i = 0; i < stackIndex; i++) {
+        for (int i = 0; i < stackSize(); i++) {
             Value x = stackAt(i);
             Value y = other.stackAt(i);
             if (x != y && typeMismatch(x, y)) {
                 return false;
             }
         }
-        if (locks != null) {
-            for (int i = 0; i < locks.size(); i++) {
-                if (lockAt(i) != other.lockAt(i)) {
-                    return false;
-                }
+        for (int i = 0; i < locksSize(); i++) {
+            if (lockAt(i) != other.lockAt(i)) {
+                return false;
             }
         }
         return true;
@@ -190,37 +133,21 @@ public abstract class FrameState {
      * @return the size of the local variables
      */
     public int localsSize() {
-        return maxLocals;
-    }
-
-    /**
-     * Gets number of locks held by this frame state.
-     */
-    public int locksSize() {
-        return locks == null ? 0 : locks.size();
+        return localsSize;
     }
 
     /**
      * Gets the current size (height) of the stack.
      */
     public int stackSize() {
-        return stackIndex;
+        return stackSize;
     }
 
     /**
-     * Gets the maximum size (height) of the stack.
-]     */
-    public int maxStackSize() {
-        return values.length - maxLocals;
-    }
-
-    /**
-     * Checks whether the stack is empty.
-     *
-     * @return {@code true} the stack is currently empty
+     * Gets number of locks held by this frame state.
      */
-    public boolean stackEmpty() {
-        return stackIndex == 0;
+    public int locksSize() {
+        return values.length - localsSize - stackSize;
     }
 
     /**
@@ -237,24 +164,6 @@ public abstract class FrameState {
     }
 
     /**
-     * Loads the local variable at the specified index.
-     *
-     * @param i the index of the local variable to load
-     * @return the instruction that produced the specified local
-     */
-    public Value loadLocal(int i) {
-        assert i < maxLocals : "local variable index out of range: " + i;
-        Value x = values[i];
-        if (x != null) {
-            if (x.isIllegal()) {
-                return null;
-            }
-            assert x.kind.isSingleWord() || values[i + 1] == null || values[i + 1] instanceof Phi;
-        }
-        return x;
-    }
-
-    /**
      * Stores a given local variable at the specified index. If the value is a {@linkplain CiKind#isDoubleWord() double word},
      * then the next local variable index is also overwritten.
      *
@@ -262,7 +171,7 @@ public abstract class FrameState {
      * @param x the instruction which produces the value for the local
      */
     public void storeLocal(int i, Value x) {
-        assert i < maxLocals : "local variable index out of range: " + i;
+        assert i < localsSize : "local variable index out of range: " + i;
         invalidateLocal(i);
         values[i] = x;
         if (isDoubleWord(x)) {
@@ -279,25 +188,25 @@ public abstract class FrameState {
     }
 
     /**
-     * Get the value on the stack at the specified stack index.
-     *
-     * @param i the index into the stack, with {@code 0} being the bottom of the stack
-     * @return the instruction at the specified position in the stack
-     */
-    public final Value stackAt(int i) {
-        assert i < stackIndex;
-        return values[i + maxLocals];
-    }
-
-    /**
      * Gets the value in the local variables at the specified index.
      *
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
     public final Value localAt(int i) {
-        assert i < maxLocals : "local variable index out of range: " + i;
+        assert i < localsSize : "local variable index out of range: " + i;
         return values[i];
+    }
+
+    /**
+     * Get the value on the stack at the specified stack index.
+     *
+     * @param i the index into the stack, with {@code 0} being the bottom of the stack
+     * @return the instruction at the specified position in the stack
+     */
+    public final Value stackAt(int i) {
+        assert i >= 0 && i < (localsSize + stackSize);
+        return values[localsSize + i];
     }
 
     /**
@@ -306,7 +215,8 @@ public abstract class FrameState {
      * @return the instruction which produced the object at the specified location in the lock stack
      */
     public final Value lockAt(int i) {
-        return locks.get(i);
+        assert i >= 0;
+        return values[localsSize + stackSize + i];
     }
 
     /**
@@ -324,7 +234,7 @@ public abstract class FrameState {
                     return;
                 }
             }
-            values[maxLocals + i] = new Phi(p.kind, block, -i - 1, graph);
+            values[localsSize + i] = new Phi(p.kind, block, -i - 1, graph);
         }
     }
 
@@ -356,6 +266,7 @@ public abstract class FrameState {
      * @return the value at index {@code i} which may be {@code null}
      */
     public final Value valueAt(int i) {
+        assert i < (localsSize + stackSize);
         return values[i];
     }
 
@@ -368,7 +279,7 @@ public abstract class FrameState {
      * @return the number of local variables in this frame
      */
     public final int valuesSize() {
-        return maxLocals + stackIndex;
+        return localsSize + stackSize;
     }
 
     public void checkPhis(BlockBegin block, FrameState other) {
@@ -395,9 +306,9 @@ public abstract class FrameState {
     }
 
     private void checkSize(FrameState other) {
-        if (other.stackIndex != stackIndex) {
+        if (other.stackSize() != stackSize()) {
             throw new CiBailout("stack sizes do not match");
-        } else if (other.maxLocals != maxLocals) {
+        } else if (other.localsSize != localsSize) {
             throw new CiBailout("local sizes do not match");
         }
     }
@@ -419,25 +330,18 @@ public abstract class FrameState {
                         values[i] = null;
                         continue;
                     }
-                    if (i < maxLocals) {
+                    if (i < localsSize) {
                         // this a local
                         setupPhiForLocal(block, i, graph);
                     } else {
                         // this is a stack slot
-                        setupPhiForStack(block, i - maxLocals, graph);
+                        setupPhiForStack(block, i - localsSize, graph);
                     }
                 }
             }
         }
     }
 
-    private static boolean typeMismatch(Value x, Value y) {
-        return y == null || x.kind != y.kind;
-    }
-
-    private static boolean isDoubleWord(Value x) {
-        return x != null && x.kind.isDoubleWord();
-    }
 
     /**
      * The interface implemented by a client of {@link FrameState#forEachPhi(BlockBegin, PhiProcedure)} and
@@ -488,27 +392,10 @@ public abstract class FrameState {
      * @param closure the closure to apply to each value
      */
     public void valuesDo(ValueClosure closure) {
-        valuesDo(this, closure);
-    }
-
-    /**
-     * Iterates over all the values of a given frame state and its callers, including the stack, locals, and locks.
-     * @param closure the closure to apply to each value
-     */
-    public static void valuesDo(FrameState state, ValueClosure closure) {
-        final int max = state.valuesSize();
-        for (int i = 0; i < max; i++) {
-            if (state.values[i] != null) {
-                Value newValue = closure.apply(state.values[i]);
-                state.values[i] = newValue;
-            }
-        }
-        if (state.locks != null) {
-            for (int i = 0; i < state.locks.size(); i++) {
-                Value instr = state.locks.get(i);
-                if (instr != null) {
-                    state.locks.set(i, closure.apply(instr));
-                }
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] != null) {
+                Value newValue = closure.apply(values[i]);
+                values[i] = newValue;
             }
         }
     }
@@ -539,17 +426,17 @@ public abstract class FrameState {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         String nl = String.format("%n");
-        sb.append("[bci: ").append(this.bci).append("]").append(nl);
-        for (int i = 0; i < this.localsSize(); ++i) {
-            Value value = this.localAt(i);
+        sb.append("[bci: ").append(bci).append("]").append(nl);
+        for (int i = 0; i < localsSize(); ++i) {
+            Value value = localAt(i);
             sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
-        for (int i = 0; i < this.stackSize(); ++i) {
-            Value value = this.stackAt(i);
+        for (int i = 0; i < stackSize(); ++i) {
+            Value value = stackAt(i);
             sb.append(String.format("  stack[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
-        for (int i = 0; i < this.locksSize(); ++i) {
-            Value value = this.lockAt(i);
+        for (int i = 0; i < locksSize(); ++i) {
+            Value value = lockAt(i);
             sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
         return sb.toString();

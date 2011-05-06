@@ -94,7 +94,7 @@ public final class C1XCompilation {
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
-        this.placeholderState = method != null && method.minimalDebugInfo() ? new MutableFrameState(0, 0, 0) : null;
+        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(0, 0, 0, 0) : null;
 
         if (compiler.isObserved()) {
             compiler.fireCompilationStarted(new CompilationEvent(this));

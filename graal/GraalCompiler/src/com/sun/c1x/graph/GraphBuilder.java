@@ -81,47 +81,47 @@ public final class GraphBuilder {
         public final int mask = 1 << ordinal();
     }
 
-    final IR ir;
-    final C1XCompilation compilation;
-    final CiStatistics stats;
+    private final IR ir;
+    private final C1XCompilation compilation;
+    private final CiStatistics stats;
 
     /**
      * Map used to implement local value numbering for the current block.
      */
-    final ValueMap localValueMap;
+    private final ValueMap localValueMap;
 
     /**
      * Map used for local load elimination (i.e. within the current block).
      */
-    final MemoryMap memoryMap;
+    private final MemoryMap memoryMap;
 
-    final BytecodeStream stream;           // the bytecode stream
+    private final BytecodeStream stream;           // the bytecode stream
     // bci-to-block mapping
-    BlockMap blockMap;
+    private BlockMap blockMap;
 
     // the constant pool
-    final RiConstantPool constantPool;
+    private final RiConstantPool constantPool;
 
     // the worklist of blocks, managed like a sorted list
-    BlockBegin[] workList;
+    private BlockBegin[] workList;
 
     // the current position in the worklist
-    int workListIndex;
+    private int workListIndex;
 
     /**
      * Mask of {@link Flag} values.
      */
-    int flags;
+    private int flags;
 
     // Exception handler list
-    List<ExceptionHandler> exceptionHandlers;
+    private List<ExceptionHandler> exceptionHandlers;
 
-    BlockBegin curBlock;                   // the current block
-    MutableFrameState curState;            // the current execution state
-    Instruction lastInstr;                 // the last instruction added
-    final LogStream log;
+    private BlockBegin curBlock;                   // the current block
+    private FrameStateBuilder frameState;          // the current execution state
+    private Instruction lastInstr;                 // the last instruction added
+    private final LogStream log;
 
-    boolean skipBlock;                     // skip processing of the rest of this block
+    private boolean skipBlock;                     // skip processing of the rest of this block
     private Value rootMethodSynchronizedObject;
 
     private final Graph graph;
@@ -143,6 +143,7 @@ public final class GraphBuilder {
         stream = new BytecodeStream(compilation.method.code());
         constantPool = compilation.runtime.getConstantPool(compilation.method);
         this.graph = graph;
+        this.frameState = new FrameStateBuilder(compilation.method, graph);
     }
 
     /**
@@ -181,7 +182,7 @@ public final class GraphBuilder {
             flags |= Flag.HasHandler.mask;
         }
 
-        MutableFrameState initialState = stateAtEntry(rootMethod);
+        FrameState initialState = frameState.create(-1);
         startBlock.mergeOrClone(initialState, rootMethod);
         BlockBegin syncHandler = null;
 
@@ -189,7 +190,6 @@ public final class GraphBuilder {
         curBlock = startBlock;
         lastInstr = startBlock;
         lastInstr.appendNext(null, -1);
-        curState = initialState;
 
         if (isSynchronized(rootMethod.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
@@ -228,7 +228,7 @@ public final class GraphBuilder {
         assert curBlock == startBlock;
         Base base = new Base(stdEntry, graph);
         appendWithoutOptimization(base, 0);
-        FrameState stateAfter = curState.immutableCopy(bci());
+        FrameState stateAfter = frameState.create(bci());
         base.setStateAfter(stateAfter);
         startBlock.setEnd(base);
         assert stdEntry.stateBefore() == null;
@@ -252,71 +252,71 @@ public final class GraphBuilder {
     }
 
     private void ipush(Value x) {
-        curState.ipush(x);
+        frameState.ipush(x);
     }
 
     private void lpush(Value x) {
-        curState.lpush(x);
+        frameState.lpush(x);
     }
 
     private void fpush(Value x) {
-        curState.fpush(x);
+        frameState.fpush(x);
     }
 
     private void dpush(Value x) {
-        curState.dpush(x);
+        frameState.dpush(x);
     }
 
     private void apush(Value x) {
-        curState.apush(x);
+        frameState.apush(x);
     }
 
     private void wpush(Value x) {
-        curState.wpush(x);
+        frameState.wpush(x);
     }
 
     private void push(CiKind kind, Value x) {
-        curState.push(kind, x);
+        frameState.push(kind, x);
     }
 
     private void pushReturn(CiKind kind, Value x) {
         if (kind != CiKind.Void) {
-            curState.push(kind.stackKind(), x);
+            frameState.push(kind.stackKind(), x);
         }
     }
 
     private Value ipop() {
-        return curState.ipop();
+        return frameState.ipop();
     }
 
     private Value lpop() {
-        return curState.lpop();
+        return frameState.lpop();
     }
 
     private Value fpop() {
-        return curState.fpop();
+        return frameState.fpop();
     }
 
     private Value dpop() {
-        return curState.dpop();
+        return frameState.dpop();
     }
 
     private Value apop() {
-        return curState.apop();
+        return frameState.apop();
     }
 
     private Value wpop() {
-        return curState.wpop();
+        return frameState.wpop();
     }
 
     private Value pop(CiKind kind) {
-        return curState.pop(kind);
+        return frameState.pop(kind);
     }
 
     private CiKind peekKind() {
-        Value top = curState.stackAt(curState.stackSize() - 1);
+        Value top = frameState.stackAt(frameState.stackSize() - 1);
         if (top == null) {
-            top = curState.stackAt(curState.stackSize() - 2);
+            top = frameState.stackAt(frameState.stackSize() - 2);
             assert top != null;
             assert top.kind.isDoubleWord();
         }
@@ -324,11 +324,11 @@ public final class GraphBuilder {
     }
 
     private void loadLocal(int index, CiKind kind) {
-        push(kind, curState.loadLocal(index));
+        push(kind, frameState.loadLocal(index));
     }
 
     private void storeLocal(CiKind kind, int index) {
-        curState.storeLocal(index, pop(kind));
+        frameState.storeLocal(index, pop(kind));
     }
 
     List<ExceptionHandler> handleException(Instruction x, int bci) {
@@ -380,7 +380,7 @@ public final class GraphBuilder {
         assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:" + curState.locksSize() + " entry:" + entryState.locksSize();
 
         // exception handler starts with an empty expression stack
-        curState = curState.immutableCopyWithEmptyStack();
+        curState = curState.copyWithEmptyStack();
 
         entry.mergeOrClone(curState, method());
 
@@ -435,7 +435,7 @@ public final class GraphBuilder {
     }
 
     void genLoadIndexed(CiKind kind) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Value index = ipop();
         Value array = apop();
         Value length = null;
@@ -447,7 +447,7 @@ public final class GraphBuilder {
     }
 
     void genStoreIndexed(CiKind kind) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Value value = pop(kind.stackKind());
         Value index = ipop();
         Value array = apop();
@@ -465,76 +465,76 @@ public final class GraphBuilder {
     void stackOp(int opcode) {
         switch (opcode) {
             case POP: {
-                curState.xpop();
+                frameState.xpop();
                 break;
             }
             case POP2: {
-                curState.xpop();
-                curState.xpop();
+                frameState.xpop();
+                frameState.xpop();
                 break;
             }
             case DUP: {
-                Value w = curState.xpop();
-                curState.xpush(w);
-                curState.xpush(w);
+                Value w = frameState.xpop();
+                frameState.xpush(w);
+                frameState.xpush(w);
                 break;
             }
             case DUP_X1: {
-                Value w1 = curState.xpop();
-                Value w2 = curState.xpop();
-                curState.xpush(w1);
-                curState.xpush(w2);
-                curState.xpush(w1);
+                Value w1 = frameState.xpop();
+                Value w2 = frameState.xpop();
+                frameState.xpush(w1);
+                frameState.xpush(w2);
+                frameState.xpush(w1);
                 break;
             }
             case DUP_X2: {
-                Value w1 = curState.xpop();
-                Value w2 = curState.xpop();
-                Value w3 = curState.xpop();
-                curState.xpush(w1);
-                curState.xpush(w3);
-                curState.xpush(w2);
-                curState.xpush(w1);
+                Value w1 = frameState.xpop();
+                Value w2 = frameState.xpop();
+                Value w3 = frameState.xpop();
+                frameState.xpush(w1);
+                frameState.xpush(w3);
+                frameState.xpush(w2);
+                frameState.xpush(w1);
                 break;
             }
             case DUP2: {
-                Value w1 = curState.xpop();
-                Value w2 = curState.xpop();
-                curState.xpush(w2);
-                curState.xpush(w1);
-                curState.xpush(w2);
-                curState.xpush(w1);
+                Value w1 = frameState.xpop();
+                Value w2 = frameState.xpop();
+                frameState.xpush(w2);
+                frameState.xpush(w1);
+                frameState.xpush(w2);
+                frameState.xpush(w1);
                 break;
             }
             case DUP2_X1: {
-                Value w1 = curState.xpop();
-                Value w2 = curState.xpop();
-                Value w3 = curState.xpop();
-                curState.xpush(w2);
-                curState.xpush(w1);
-                curState.xpush(w3);
-                curState.xpush(w2);
-                curState.xpush(w1);
+                Value w1 = frameState.xpop();
+                Value w2 = frameState.xpop();
+                Value w3 = frameState.xpop();
+                frameState.xpush(w2);
+                frameState.xpush(w1);
+                frameState.xpush(w3);
+                frameState.xpush(w2);
+                frameState.xpush(w1);
                 break;
             }
             case DUP2_X2: {
-                Value w1 = curState.xpop();
-                Value w2 = curState.xpop();
-                Value w3 = curState.xpop();
-                Value w4 = curState.xpop();
-                curState.xpush(w2);
-                curState.xpush(w1);
-                curState.xpush(w4);
-                curState.xpush(w3);
-                curState.xpush(w2);
-                curState.xpush(w1);
+                Value w1 = frameState.xpop();
+                Value w2 = frameState.xpop();
+                Value w3 = frameState.xpop();
+                Value w4 = frameState.xpop();
+                frameState.xpush(w2);
+                frameState.xpush(w1);
+                frameState.xpush(w4);
+                frameState.xpush(w3);
+                frameState.xpush(w2);
+                frameState.xpush(w1);
                 break;
             }
             case SWAP: {
-                Value w1 = curState.xpop();
-                Value w2 = curState.xpop();
-                curState.xpush(w1);
-                curState.xpush(w2);
+                Value w1 = frameState.xpop();
+                Value w2 = frameState.xpop();
+                frameState.xpush(w1);
+                frameState.xpush(w2);
                 break;
             }
             default:
@@ -592,9 +592,9 @@ public final class GraphBuilder {
     void genIncrement() {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
-        Value x = curState.localAt(index);
+        Value x = frameState.localAt(index);
         Value y = append(Constant.forInt(delta, graph));
-        curState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null, graph)));
+        frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null, graph)));
     }
 
     void genGoto(int fromBCI, int toBCI) {
@@ -612,27 +612,27 @@ public final class GraphBuilder {
 
     void genIfZero(Condition cond) {
         Value y = appendConstant(CiConstant.INT_0);
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Value x = ipop();
         ifNode(x, cond, y, stateBefore);
     }
 
     void genIfNull(Condition cond) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Value y = appendConstant(CiConstant.NULL_OBJECT);
         Value x = apop();
         ifNode(x, cond, y, stateBefore);
     }
 
     void genIfSame(CiKind kind, Condition cond) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Value y = pop(kind);
         Value x = pop(kind);
         ifNode(x, cond, y, stateBefore);
     }
 
     void genThrow(int bci) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Throw t = new Throw(apop(), stateBefore, !noSafepoints(), graph);
         appendWithoutOptimization(t, bci);
     }
@@ -665,7 +665,7 @@ public final class GraphBuilder {
     }
 
     void genNewInstance(int cpi) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         RiType type = constantPool().lookupType(cpi, NEW);
         NewInstance n = new NewInstance(type, cpi, constantPool(), stateBefore, graph);
         if (memoryMap != null) {
@@ -675,7 +675,7 @@ public final class GraphBuilder {
     }
 
     void genNewTypeArray(int typeCode) {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         CiKind kind = CiKind.fromArrayTypeCode(typeCode);
         RiType elementType = compilation.runtime.asRiType(kind);
         apush(append(new NewTypeArray(ipop(), elementType, stateBefore, graph)));
@@ -683,14 +683,14 @@ public final class GraphBuilder {
 
     void genNewObjectArray(int cpi) {
         RiType type = constantPool().lookupType(cpi, ANEWARRAY);
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         NewArray n = new NewObjectArray(type, ipop(), stateBefore, graph);
         apush(append(n));
     }
 
     void genNewMultiArray(int cpi) {
         RiType type = constantPool().lookupType(cpi, MULTIANEWARRAY);
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         int rank = stream().readUByte(bci() + 3);
         Value[] dims = new Value[rank];
         for (int i = rank - 1; i >= 0; i--) {
@@ -702,14 +702,14 @@ public final class GraphBuilder {
 
     void genGetField(int cpi, RiField field) {
         // Must copy the state here, because the field holder must still be on the stack.
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         LoadField load = new LoadField(apop(), field, stateBefore, graph);
         appendOptimizedLoadField(field.kind(), load);
     }
 
     void genPutField(int cpi, RiField field) {
         // Must copy the state here, because the field holder must still be on the stack.
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         Value value = pop(field.kind().stackKind());
         appendOptimizedStoreField(new StoreField(apop(), field, value, stateBefore, graph));
     }
@@ -787,25 +787,25 @@ public final class GraphBuilder {
             genResolveClass(RiType.Representation.StaticFields, holder, isInitialized, cpi);
         }
 
-        Value[] args = curState.popArguments(target.signature().argumentSlots(false));
+        Value[] args = frameState.popArguments(target.signature().argumentSlots(false));
         appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
     }
 
     void genInvokeInterface(RiMethod target, int cpi, RiConstantPool constantPool) {
-        Value[] args = curState.popArguments(target.signature().argumentSlots(true));
+        Value[] args = frameState.popArguments(target.signature().argumentSlots(true));
 
         genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool);
 
     }
 
     void genInvokeVirtual(RiMethod target, int cpi, RiConstantPool constantPool) {
-        Value[] args = curState.popArguments(target.signature().argumentSlots(true));
+        Value[] args = frameState.popArguments(target.signature().argumentSlots(true));
         genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool);
 
     }
 
     void genInvokeSpecial(RiMethod target, RiType knownHolder, int cpi, RiConstantPool constantPool) {
-        Value[] args = curState.popArguments(target.signature().argumentSlots(true));
+        Value[] args = frameState.popArguments(target.signature().argumentSlots(true));
         invokeDirect(target, args, knownHolder, cpi, constantPool);
 
     }
@@ -967,7 +967,7 @@ public final class GraphBuilder {
     }
 
     void callRegisterFinalizer() {
-        Value receiver = curState.loadLocal(0);
+        Value receiver = frameState.loadLocal(0);
         RiType declaredType = receiver.declaredType();
         RiType receiverType = declaredType;
         RiType exactType = receiver.exactType();
@@ -1000,7 +1000,7 @@ public final class GraphBuilder {
 
         if (needsCheck) {
             // append a call to the finalizer registration
-            append(new RegisterFinalizer(curState.loadLocal(0), curState.immutableCopy(bci()), graph));
+            append(new RegisterFinalizer(frameState.loadLocal(0), frameState.create(bci()), graph));
             C1XMetrics.InlinedFinalizerChecks++;
         }
     }
@@ -1010,18 +1010,18 @@ public final class GraphBuilder {
             callRegisterFinalizer();
         }
 
-        curState.truncateStack(0);
+        frameState.clearStack();
         if (Modifier.isSynchronized(method().accessFlags())) {
-            FrameState stateBefore = curState.immutableCopy(bci());
+            FrameState stateBefore = frameState.create(bci());
             // unlock before exiting the method
-            int lockNumber = curState.locksSize() - 1;
+            int lockNumber = frameState.locksSize() - 1;
             MonitorAddress lockAddress = null;
             if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
                 lockAddress = new MonitorAddress(lockNumber, graph);
                 append(lockAddress);
             }
             append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, stateBefore, graph));
-            curState.unlock();
+            frameState.unlock();
         }
         append(new Return(x, !noSafepoints(), graph));
     }
@@ -1030,7 +1030,7 @@ public final class GraphBuilder {
      * Gets the number of locks held.
      */
     private int locksSize() {
-        return curState.locksSize();
+        return frameState.locksSize();
     }
 
     void genMonitorEnter(Value x, int bci) {
@@ -1042,13 +1042,13 @@ public final class GraphBuilder {
         }
         MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null, graph);
         appendWithoutOptimization(monitorEnter, bci);
-        curState.lock(ir, x, lockNumber + 1);
-        monitorEnter.setStateAfter(curState.immutableCopy(bci));
+        frameState.lock(ir, x, lockNumber + 1);
+        monitorEnter.setStateAfter(frameState.create(bci));
         killMemoryMap(); // prevent any optimizations across synchronization
     }
 
     void genMonitorExit(Value x, int bci) {
-        int lockNumber = curState.locksSize() - 1;
+        int lockNumber = frameState.locksSize() - 1;
         if (lockNumber < 0) {
             throw new CiBailout("monitor stack underflow");
         }
@@ -1058,7 +1058,7 @@ public final class GraphBuilder {
             append(lockAddress);
         }
         appendWithoutOptimization(new MonitorExit(x, lockAddress, lockNumber, null, graph), bci);
-        curState.unlock();
+        frameState.unlock();
         killMemoryMap(); // prevent any optimizations across synchronization
     }
 
@@ -1086,7 +1086,7 @@ public final class GraphBuilder {
         isBackwards |= offset < 0; // if the default successor is backwards
         list.add(blockAt(bci + offset));
         boolean isSafepoint = isBackwards && !noSafepoints();
-        FrameState stateBefore = isSafepoint ? curState.immutableCopy(bci()) : null;
+        FrameState stateBefore = isSafepoint ? frameState.create(bci()) : null;
         append(new TableSwitch(ipop(), list, ts.lowKey(), stateBefore, isSafepoint, graph));
     }
 
@@ -1108,7 +1108,7 @@ public final class GraphBuilder {
         isBackwards |= offset < 0; // if the default successor is backwards
         list.add(blockAt(bci + offset));
         boolean isSafepoint = isBackwards && !noSafepoints();
-        FrameState stateBefore = isSafepoint ? curState.immutableCopy(bci()) : null;
+        FrameState stateBefore = isSafepoint ? frameState.create(bci()) : null;
         append(new LookupSwitch(ipop(), list, keys, stateBefore, isSafepoint, graph));
     }
 
@@ -1186,7 +1186,7 @@ public final class GraphBuilder {
         if (x instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) x;
             if (stateSplit.stateBefore() == null) {
-                stateSplit.setStateBefore(curState.immutableCopy(bci));
+                stateSplit.setStateBefore(frameState.create(bci));
             }
         }
 
@@ -1212,33 +1212,6 @@ public final class GraphBuilder {
         return result;
     }
 
-    MutableFrameState stateAtEntry(RiMethod method) {
-        MutableFrameState state = new MutableFrameState(-1, method.maxLocals(), method.maxStackSize());
-        int index = 0;
-        if (!isStatic(method.accessFlags())) {
-            // add the receiver and assume it is non null
-            Local local = new Local(method.holder().kind(), index, graph);
-            local.setFlag(Value.Flag.NonNull, true);
-            local.setDeclaredType(method.holder());
-            state.storeLocal(index, local);
-            index = 1;
-        }
-        RiSignature sig = method.signature();
-        int max = sig.argumentCount(false);
-        RiType accessingClass = method.holder();
-        for (int i = 0; i < max; i++) {
-            RiType type = sig.argumentTypeAt(i, accessingClass);
-            CiKind kind = type.kind().stackKind();
-            Local local = new Local(kind, index, graph);
-            if (type.isResolved()) {
-                local.setDeclaredType(type);
-            }
-            state.storeLocal(index, local);
-            index += kind.sizeInSlots();
-        }
-        return state;
-    }
-
     private Value synchronizedObject(FrameState curState2, RiMethod target) {
         if (isStatic(target.accessFlags())) {
             Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass), graph);
@@ -1250,7 +1223,7 @@ public final class GraphBuilder {
 
     private void fillSyncHandler(Value lock, BlockBegin syncHandler) {
         BlockBegin origBlock = curBlock;
-        MutableFrameState origState = curState;
+        FrameState origState = frameState.create(-1);
         Instruction origLast = lastInstr;
 
         lastInstr = curBlock = syncHandler;
@@ -1258,13 +1231,13 @@ public final class GraphBuilder {
             // go forward to the end of the block
             lastInstr = lastInstr.next();
         }
-        curState = syncHandler.stateBefore().copy();
+        frameState.initializeFrom(syncHandler.stateBefore());
 
         int bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
-        Value exception = appendWithoutOptimization(new ExceptionObject(curState.immutableCopy(bci), graph), bci);
+        Value exception = appendWithoutOptimization(new ExceptionObject(frameState.create(bci), graph), bci);
 
         assert lock != null;
-        assert curState.locksSize() > 0 && curState.lockAt(locksSize() - 1) == lock;
+        assert frameState.locksSize() > 0 && frameState.lockAt(locksSize() - 1) == lock;
         if (lock instanceof Instruction) {
             Instruction l = (Instruction) lock;
             if (!l.isAppended()) {
@@ -1278,10 +1251,10 @@ public final class GraphBuilder {
         genThrow(bci);
         BlockEnd end = (BlockEnd) lastInstr;
         curBlock.setEnd(end);
-        end.setStateAfter(curState.immutableCopy(bci()));
+        end.setStateAfter(frameState.create(bci()));
 
         curBlock = origBlock;
-        curState = origState;
+        frameState.initializeFrom(origState);
         lastInstr = origLast;
     }
 
@@ -1293,7 +1266,7 @@ public final class GraphBuilder {
                 // now parse the block
                 killMemoryMap();
                 curBlock = b;
-                curState = b.stateBefore().copy();
+                frameState.initializeFrom(b.stateBefore());
                 lastInstr = b;
                 b.appendNext(null, -1);
 
@@ -1304,7 +1277,7 @@ public final class GraphBuilder {
 
     private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
         skipBlock = false;
-        assert curState != null;
+        assert frameState != null;
         stream.setBCI(bci);
 
         BlockBegin block = curBlock;
@@ -1335,7 +1308,7 @@ public final class GraphBuilder {
 
             // push an exception object onto the stack if we are parsing an exception handler
             if (pushException) {
-                FrameState stateBefore = curState.immutableCopy(bci());
+                FrameState stateBefore = frameState.create(bci());
                 apush(append(new ExceptionObject(stateBefore, graph)));
                 pushException = false;
             }
@@ -1363,13 +1336,13 @@ public final class GraphBuilder {
 
         // if the method terminates, we don't need the stack anymore
         if (end instanceof Return || end instanceof Throw) {
-            curState.clearStack();
+            frameState.clearStack();
         }
 
         // connect to begin and set state
         // NOTE that inlining may have changed the block we are parsing
         assert end != null : "end should exist after iterating over bytecodes";
-        end.setStateAfter(curState.immutableCopy(bci()));
+        end.setStateAfter(frameState.create(bci()));
         curBlock.setEnd(end);
         // propagate the state
         for (BlockBegin succ : end.blockSuccessors()) {
@@ -1382,17 +1355,17 @@ public final class GraphBuilder {
 
     private void traceState() {
         if (C1XOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
-            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", curState.localsSize(), curState.stackSize(), method()));
-            for (int i = 0; i < curState.localsSize(); ++i) {
-                Value value = curState.localAt(i);
+            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method()));
+            for (int i = 0; i < frameState.localsSize(); ++i) {
+                Value value = frameState.localAt(i);
                 log.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
             }
-            for (int i = 0; i < curState.stackSize(); ++i) {
-                Value value = curState.stackAt(i);
+            for (int i = 0; i < frameState.stackSize(); ++i) {
+                Value value = frameState.stackAt(i);
                 log.println(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
             }
-            for (int i = 0; i < curState.locksSize(); ++i) {
-                Value value = curState.lockAt(i);
+            for (int i = 0; i < frameState.locksSize(); ++i) {
+                Value value = frameState.lockAt(i);
                 log.println(String.format("|   lock[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
             }
         }
@@ -1503,12 +1476,12 @@ public final class GraphBuilder {
             case ISUB           : // fall through
             case IMUL           : genArithmeticOp(CiKind.Int, opcode); break;
             case IDIV           : // fall through
-            case IREM           : genArithmeticOp(CiKind.Int, opcode, curState.immutableCopy(bci())); break;
+            case IREM           : genArithmeticOp(CiKind.Int, opcode, frameState.create(bci())); break;
             case LADD           : // fall through
             case LSUB           : // fall through
             case LMUL           : genArithmeticOp(CiKind.Long, opcode); break;
             case LDIV           : // fall through
-            case LREM           : genArithmeticOp(CiKind.Long, opcode, curState.immutableCopy(bci())); break;
+            case LREM           : genArithmeticOp(CiKind.Long, opcode, frameState.create(bci())); break;
             case FADD           : // fall through
             case FSUB           : // fall through
             case FMUL           : // fall through
@@ -1629,7 +1602,7 @@ public final class GraphBuilder {
     }
 
     private void genArrayLength() {
-        FrameState stateBefore = curState.immutableCopy(bci());
+        FrameState stateBefore = frameState.create(bci());
         ipush(append(new ArrayLength(apop(), stateBefore, graph)));
     }
 
