@@ -787,26 +787,29 @@ public final class GraphBuilder {
             genResolveClass(RiType.Representation.StaticFields, holder, isInitialized, cpi);
         }
 
+        FrameState stateBefore = curState.immutableCopy(bci());
         Value[] args = curState.popArguments(target.signature().argumentSlots(false));
-        appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
+        appendInvoke(INVOKESTATIC, target, args, cpi, constantPool, stateBefore);
     }
 
     void genInvokeInterface(RiMethod target, int cpi, RiConstantPool constantPool) {
+        FrameState stateBefore = curState.immutableCopy(bci());
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
-
-        genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool);
+        genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool, stateBefore);
 
     }
 
     void genInvokeVirtual(RiMethod target, int cpi, RiConstantPool constantPool) {
+        FrameState stateBefore = curState.immutableCopy(bci());
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
-        genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool);
+        genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool, stateBefore);
 
     }
 
     void genInvokeSpecial(RiMethod target, RiType knownHolder, int cpi, RiConstantPool constantPool) {
+        FrameState stateBefore = curState.immutableCopy(bci());
         Value[] args = curState.popArguments(target.signature().argumentSlots(true));
-        invokeDirect(target, args, knownHolder, cpi, constantPool);
+        invokeDirect(target, args, knownHolder, cpi, constantPool, stateBefore);
 
     }
 
@@ -842,7 +845,7 @@ public final class GraphBuilder {
         return target;
     }
 
-    private void genInvokeIndirect(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
+    private void genInvokeIndirect(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool, FrameState stateBefore) {
         Value receiver = args[0];
         // attempt to devirtualize the call
         if (target.isResolved()) {
@@ -851,14 +854,14 @@ public final class GraphBuilder {
             // 0. check for trivial cases
             if (target.canBeStaticallyBound() && !isAbstract(target.accessFlags())) {
                 // check for trivial cases (e.g. final methods, nonvirtual methods)
-                invokeDirect(target, args, target.holder(), cpi, constantPool);
+                invokeDirect(target, args, target.holder(), cpi, constantPool, stateBefore);
                 return;
             }
             // 1. check if the exact type of the receiver can be determined
             RiType exact = getExactType(klass, receiver);
             if (exact != null && exact.isResolved()) {
                 // either the holder class is exact, or the receiver object has an exact type
-                invokeDirect(exact.resolveMethodImpl(target), args, exact, cpi, constantPool);
+                invokeDirect(exact.resolveMethodImpl(target), args, exact, cpi, constantPool, stateBefore);
                 return;
             }
             // 2. check if an assumed leaf method can be found
@@ -867,7 +870,7 @@ public final class GraphBuilder {
                 if (C1XOptions.PrintAssumptions) {
                     TTY.println("Optimistic invoke direct because of leaf method to " + leaf);
                 }
-                invokeDirect(leaf, args, null, cpi, constantPool);
+                invokeDirect(leaf, args, null, cpi, constantPool, stateBefore);
                 return;
             } else if (C1XOptions.PrintAssumptions) {
                 TTY.println("Could not make leaf method assumption for target=" + target + " leaf=" + leaf + " receiver.declaredType=" + receiver.declaredType());
@@ -880,27 +883,27 @@ public final class GraphBuilder {
                     TTY.println("Optimistic invoke direct because of leaf type to " + targetMethod);
                 }
                 // either the holder class is exact, or the receiver object has an exact type
-                invokeDirect(targetMethod, args, exact, cpi, constantPool);
+                invokeDirect(targetMethod, args, exact, cpi, constantPool, stateBefore);
                 return;
             } else if (C1XOptions.PrintAssumptions) {
                 TTY.println("Could not make leaf type assumption for type " + klass);
             }
         }
         // devirtualization failed, produce an actual invokevirtual
-        appendInvoke(opcode, target, args, cpi, constantPool);
+        appendInvoke(opcode, target, args, cpi, constantPool, stateBefore);
     }
 
     private CiKind returnKind(RiMethod target) {
         return target.signature().returnKind();
     }
 
-    private void invokeDirect(RiMethod target, Value[] args, RiType knownHolder, int cpi, RiConstantPool constantPool) {
-        appendInvoke(INVOKESPECIAL, target, args, cpi, constantPool);
+    private void invokeDirect(RiMethod target, Value[] args, RiType knownHolder, int cpi, RiConstantPool constantPool, FrameState stateBefore) {
+        appendInvoke(INVOKESPECIAL, target, args, cpi, constantPool, stateBefore);
     }
 
-    private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
+    private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool, FrameState stateBefore) {
         CiKind resultType = returnKind(target);
-        Value result = append(new Invoke(opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), null, graph));
+        Value result = append(new Invoke(opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), stateBefore, graph));
         pushReturn(resultType, result);
     }
 
@@ -1040,7 +1043,9 @@ public final class GraphBuilder {
             lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
-        MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null, graph);
+        curState.push(CiKind.Object, x);
+        MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, curState.immutableCopy(bci()), graph);
+        curState.apop();
         appendWithoutOptimization(monitorEnter, bci);
         curState.lock(ir, x, lockNumber + 1);
         monitorEnter.setStateAfter(curState.immutableCopy(bci));
