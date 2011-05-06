@@ -28,6 +28,7 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
+import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -105,22 +106,25 @@ public abstract class FrameState {
      *
      * @return a new frame state with the specified components
      */
-    public MutableFrameState copy(int bci, boolean withLocals, boolean withStack, boolean withLocks) {
-        final MutableFrameState other = new MutableFrameState(bci, localsSize(), maxStackSize());
+    public FrameState immutableCopy(int bci, boolean withLocals, boolean withStack, boolean withLocks) {
+        final ImmutableFrameState other = new ImmutableFrameState(bci, localsSize(), maxStackSize());
         if (withLocals && withStack) {
             // fast path: use array copy
             System.arraycopy(values, 0, other.values, 0, valuesSize());
             other.stackIndex = stackIndex;
         } else {
             if (withLocals) {
-                other.replaceLocals(this);
+                System.arraycopy(values, 0, other.values, 0, maxLocals);
             }
             if (withStack) {
-                other.replaceStack(this);
+                System.arraycopy(values, maxLocals, other.values, other.maxLocals, stackIndex);
+                other.stackIndex = stackIndex;
             }
         }
         if (withLocks) {
-            other.replaceLocks(this);
+            if (locks != null) {
+                other.locks = new ArrayList<Value>(locks);
+            }
         }
         return other;
     }
@@ -129,21 +133,34 @@ public abstract class FrameState {
      * Gets a mutable copy ({@link MutableFrameState}) of this frame state.
      */
     public MutableFrameState copy() {
-        return copy(bci, true, true, true);
+        final MutableFrameState other = new MutableFrameState(bci, localsSize(), maxStackSize());
+        System.arraycopy(values, 0, other.values, 0, valuesSize());
+        other.stackIndex = stackIndex;
+        if (locks != null) {
+            other.locks = new ArrayList<Value>(locks);
+        }
+        return other;
+    }
+
+    /**
+     * Gets a immutable copy ({@link MutableFrameState}) of this frame state.
+     */
+    public FrameState immutableCopy() {
+        return immutableCopy(bci, true, true, true);
     }
 
     /**
      * Gets an immutable copy of this frame state but without the stack.
      */
     public FrameState immutableCopyWithEmptyStack() {
-        return copy(bci, true, false, true);
+        return immutableCopy(bci, true, false, true);
     }
 
     /**
      * Gets an immutable copy of this frame state but without the frame info.
      */
     public FrameState immutableCopyCodePosOnly() {
-        return copy(bci, false, false, false);
+        return immutableCopy(bci, false, false, false);
     }
 
     public boolean isCompatibleWith(FrameState other) {
@@ -428,28 +445,6 @@ public abstract class FrameState {
      */
     public static interface PhiProcedure {
         boolean doPhi(Phi phi);
-    }
-
-    /**
-     * Traverses all {@linkplain Phi phis} of a given block in this frame state.
-     *
-     * @param block only phis {@linkplain Phi#block() associated} with this block are traversed
-     * @param proc the call back invoked for each live phi traversed
-     */
-    public boolean forEachPhi(BlockBegin block, PhiProcedure proc) {
-        int max = this.valuesSize();
-        for (int i = 0; i < max; i++) {
-            Value instr = values[i];
-            if (instr instanceof Phi && !instr.isDeadPhi()) {
-                Phi phi = (Phi) instr;
-                if (block == null || phi.block() == block) {
-                    if (!proc.doPhi(phi)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
     }
 
     /**

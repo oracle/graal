@@ -410,7 +410,7 @@ public final class BlockBegin extends Instruction {
             }
 
             // copy state because it is modified
-            newState = newState.copy();
+            newState = newState.immutableCopy();
 
             if (C1XOptions.UseStackMapTableLiveness) {
                 // if a liveness map is available, use it to invalidate dead locals

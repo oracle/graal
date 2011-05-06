@@ -35,11 +35,6 @@ public abstract class StateSplit extends Instruction {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    /**
-     * Sentinel denoting an explicitly cleared state.
-     */
-    private static final FrameState CLEARED_STATE = new MutableFrameState(-5, 0, 0);
-
     private FrameState stateBefore;
 
     /**

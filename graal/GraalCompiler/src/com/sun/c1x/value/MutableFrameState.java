@@ -39,48 +39,11 @@ import com.sun.cri.ci.*;
  * Contrariwise and as an optimization, an instance referenced as {@code MutableFrameState} can be assigned to
  * a variable, field, or method parameter of type {@link FrameState} without creating an immutable copy before
  * (using {@link #immutableCopy(int)}) if the state is not mutated after the assignment.
- *
- * @author Michael Duller
  */
 public final class MutableFrameState extends FrameState {
 
     public MutableFrameState(int bci, int maxLocals, int maxStack) {
         super(bci, maxLocals, maxStack);
-    }
-
-    /**
-     * Replace the local variables in this frame state with the local variables from the specified frame state. This is
-     * used in inlining.
-     *
-     * @param with the frame state containing the new local variables
-     */
-    public void replaceLocals(FrameState with) {
-        assert with.maxLocals == maxLocals;
-        System.arraycopy(with.values, 0, values, 0, maxLocals);
-    }
-
-    /**
-     * Replace the stack in this frame state with the stack from the specified frame state. This is used in inlining.
-     *
-     * @param with the frame state containing the new local variables
-     */
-    public void replaceStack(FrameState with) {
-        System.arraycopy(with.values, with.maxLocals, values, maxLocals, with.stackIndex);
-        stackIndex = with.stackIndex;
-        assert stackIndex >= 0;
-    }
-
-    /**
-     * Replace the locks in this frame state with the locks from the specified frame state. This is used in inlining.
-     *
-     * @param with the frame state containing the new local variables
-     */
-    public void replaceLocks(FrameState with) {
-        if (with.locks == null) {
-            locks = null;
-        } else {
-            locks = Util.uncheckedCast(with.locks.clone());
-        }
     }
 
     /**
@@ -349,7 +312,7 @@ public final class MutableFrameState extends FrameState {
      * @param bci the bytecode index of the new frame state
      */
     public FrameState immutableCopy(int bci) {
-        return copy(bci, true, true, true);
+        return immutableCopy(bci, true, true, true);
     }
 
     private static void assertHigh(Value x) {
