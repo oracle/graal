@@ -140,30 +140,32 @@ public class C1XCompiler extends ObservableCompiler {
             final String dotPattern = dot;
             addCompilationObserver(new CompilationObserver() {
                 private Graph graph;
+                private int n;
                 public void compilationStarted(CompilationEvent event) {
+                    n = 0;
                 }
                 public void compilationFinished(CompilationEvent event) {
-                    String name = event.getMethod().holder().name();
-                    name = name.substring(1, name.length() - 1).replace('/', '.');
-                    name = name + "." + event.getMethod().name();
-                    if (name.matches(dotPattern)) {
-                        ByteArrayOutputStream out = new ByteArrayOutputStream();
-                        GraphvizPrinter printer = new GraphvizPrinter(out);
-                        printer.begin("Simple test");
-                        printer.print(graph);
-                        printer.end();
-
-                        try {
-                            GraphvizRunner.process(GraphvizRunner.DOT_COMMAND, new ByteArrayInputStream(out.toByteArray()),
-                                            new FileOutputStream(name + ".pdf"), "pdf");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
                 }
                 public void compilationEvent(CompilationEvent event) {
                     if (event.getStartBlock() != null) {
                         graph = event.getStartBlock().graph();
+                        String name = event.getMethod().holder().name();
+                        name = name.substring(1, name.length() - 1).replace('/', '.');
+                        name = name + "." + event.getMethod().name();
+                        if (name.matches(dotPattern)) {
+                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            GraphvizPrinter printer = new GraphvizPrinter(out);
+                            printer.begin(name);
+                            printer.print(graph);
+                            printer.end();
+
+                            try {
+                                GraphvizRunner.process(GraphvizRunner.DOT_COMMAND, new ByteArrayInputStream(out.toByteArray()),
+                                                new FileOutputStream(name + "_" + (n++) + event.getLabel() + ".pdf"), "pdf");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 }
             });

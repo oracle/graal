@@ -1217,7 +1217,7 @@ public final class GraphBuilder {
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
-            Local local = new Local(method.holder().kind(), index);
+            Local local = new Local(method.holder().kind(), index, graph);
             local.setFlag(Value.Flag.NonNull, true);
             local.setDeclaredType(method.holder());
             state.storeLocal(index, local);
@@ -1229,7 +1229,7 @@ public final class GraphBuilder {
         for (int i = 0; i < max; i++) {
             RiType type = sig.argumentTypeAt(i, accessingClass);
             CiKind kind = type.kind().stackKind();
-            Local local = new Local(kind, index);
+            Local local = new Local(kind, index, graph);
             if (type.isResolved()) {
                 local.setDeclaredType(type);
             }

@@ -443,7 +443,7 @@ public final class BlockBegin extends Instruction {
                 throw new CiBailout("jsr/ret too complicated");
             }
 
-            existingState.merge(this, newState);
+            existingState.merge(this, newState, graph());
         }
     }
 
@@ -465,13 +465,13 @@ public final class BlockBegin extends Instruction {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
-            newState.setupPhiForStack(this, i);
+            newState.setupPhiForStack(this, i, graph());
         }
         int localsSize = newState.localsSize();
         for (int i = 0; i < localsSize; i++) {
             Value x = newState.localAt(i);
             if (x != null) {
-                newState.setupPhiForLocal(this, i);
+                newState.setupPhiForLocal(this, i, graph());
             }
         }
     }

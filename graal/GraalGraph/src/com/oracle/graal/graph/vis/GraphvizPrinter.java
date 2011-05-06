@@ -117,7 +117,7 @@ public class GraphvizPrinter {
         out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"predecessors\" BGCOLOR=\"rosybrown1\"></TD></TR></TABLE>");
         out.println("    </TD><TD COLSPAN=\"2\" CELLPADDING=\"0\" ALIGN=\"RIGHT\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
 
-        if (ninputs == 1 && nsuccessors == 1) {
+        if ((ninputs == 1 && nsuccessors == 1) || (ninputs == 0 && nsuccessors == 0)) {
             out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
         }
 
@@ -143,7 +143,7 @@ public class GraphvizPrinter {
             out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
         }
 
-        if (ninputs == 1 && nsuccessors == 1) {
+        if ((ninputs == 1 && nsuccessors == 1) || (ninputs == 0 && nsuccessors == 0)) {
             out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
         }
 

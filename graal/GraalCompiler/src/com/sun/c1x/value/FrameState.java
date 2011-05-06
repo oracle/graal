@@ -24,6 +24,7 @@ package com.sun.c1x.value;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
@@ -32,8 +33,6 @@ import com.sun.cri.ci.*;
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
- *
- * @author Ben L. Titzer
  */
 public abstract class FrameState {
 
@@ -297,8 +296,9 @@ public abstract class FrameState {
      * Inserts a phi statement into the stack at the specified stack index.
      * @param block the block begin for which we are creating the phi
      * @param i the index into the stack for which to create a phi
+     * @param graph
      */
-    public void setupPhiForStack(BlockBegin block, int i) {
+    public void setupPhiForStack(BlockBegin block, int i, Graph graph) {
         Value p = stackAt(i);
         if (p != null) {
             if (p instanceof Phi) {
@@ -307,7 +307,7 @@ public abstract class FrameState {
                     return;
                 }
             }
-            values[maxLocals + i] = new Phi(p.kind, block, -i - 1);
+            values[maxLocals + i] = new Phi(p.kind, block, -i - 1, graph);
         }
     }
 
@@ -315,8 +315,9 @@ public abstract class FrameState {
      * Inserts a phi statement for the local at the specified index.
      * @param block the block begin for which we are creating the phi
      * @param i the index of the local variable for which to create the phi
+     * @param graph
      */
-    public void setupPhiForLocal(BlockBegin block, int i) {
+    public void setupPhiForLocal(BlockBegin block, int i, Graph graph) {
         Value p = values[i];
         if (p instanceof Phi) {
             Phi phi = (Phi) p;
@@ -324,7 +325,7 @@ public abstract class FrameState {
                 return;
             }
         }
-        storeLocal(i, new Phi(p.kind, block, i));
+        storeLocal(i, new Phi(p.kind, block, i, graph));
     }
 
     /**
@@ -384,7 +385,7 @@ public abstract class FrameState {
         }
     }
 
-    public void merge(BlockBegin block, FrameState other) {
+    public void merge(BlockBegin block, FrameState other, Graph graph) {
         checkSize(other);
         for (int i = 0; i < valuesSize(); i++) {
             Value x = values[i];
@@ -403,10 +404,10 @@ public abstract class FrameState {
                     }
                     if (i < maxLocals) {
                         // this a local
-                        setupPhiForLocal(block, i);
+                        setupPhiForLocal(block, i, graph);
                     } else {
                         // this is a stack slot
-                        setupPhiForStack(block, i - maxLocals);
+                        setupPhiForStack(block, i - maxLocals, graph);
                     }
                 }
             }
