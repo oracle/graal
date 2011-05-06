@@ -48,7 +48,7 @@ to\hsize{\vrule\kern3pt\vbox{\kern3pt
 \date{Created: \today}
 
 \title{The Graal Compiler}
-\subtitle{Design and Strategy \\ \textcolor{red}{work in progress}}
+\subtitle{Design and Strategy \\ \textcolor{red}{work in progress (Oracle internal)}}
 
 \maketitle
 
@@ -60,7 +60,8 @@ This document contains information about the proposed design and strategy for de
 \section{Context}
 
 In 2009, the Maxine team started with creating C1X, a Java port of the HotSpot client compiler, and integrate it into the Maxine VM.
-Part of this effort, was the development of a clear and clean compiler-runtime interface that allows the separation of the compiler and the VM that enables the use of one compiler for multiple VMs.
+Part of this effort was the development of a clear and clean compiler-runtime interface that allows the separation of the compiler and the VM.
+This compiler-runtime interface enables the use of one compiler for multiple VMs.
 In June 2010, we started integrating C1X into the HotSpot VM and we called the resulting system Graal~VM.
 Currently, the Graal~VM is fully functional and runs benchmarks (SciMark, DaCapo) at a similar speed to the HotSpot client compiler.
 
@@ -115,30 +116,30 @@ After those four milestones, we see three different possible further development
 \begin{itemize}
   \item Removal of the XIR template mechanism and replacement with a snippet mechanism that works with the compiler graph.
   \item Improvements for peak performance (loop optimizations, escape analysis, bounds check elimination, processing additional interpreter runtime feedback).
-  \item Implementation of a prototype front-end for different languages, e.g., JavaScript.
+  \item Implementation of a prototype front-end for a different language, e.g., JavaScript.
 \end{itemize}
 
 \section{Graph}
 
 The \emph{intermediate representation}~(IR) of the compiler is designed as a directed graph.
-A graph deals out ids for new nodes and can be queried for the node corresponding to a given id as well as for an unordered list of nodes of the graph.
+The graph deals out ids for new nodes and can be queried for the node corresponding to a given id as well as for an unordered list of nodes of the graph.
 Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
 
 The nodes of the graph have the following properties:
 \begin{itemize}
     \item Each node is always associated with a single graph and this association is immutable.
     \item Each node has an immutable id that is unique within its associated graph.
-    \item Nodes can have a data dependency, which means that one node requires the result of some other node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
+    \item Nodes can have a data dependency, which means that one node requires the result of another node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
     \item Nodes can have a control flow dependency, which means that the execution of one node will be followed by the execution of another node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
     \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
-    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards. Situations that are normally incur cycles (like loops) are represented by special nodes (see Section~\ref{sec:loops}).
+    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards in a drawing of the graph. Situations that are normally incur cycles (like loops) are represented by special nodes (see Section~\ref{sec:loops}).
 	\item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. This gives the compiler flexibility for the possible scheduling of a node and therefore wriggle room for optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
     \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions (see Figure~\ref{fig:directions}):
     \begin{itemize}
         \item \emph{inputs} are all nodes that this node has data dependencies on.
-        \item \emph{usages} are all nodes that have data dependencies on this node, this is regarded as the inverse of inputs.
-        \item \emph{successors} are all nodes that have a control dependency on this node.
-        \item \emph{predecessors} are all nodes that this node has control dependencies on, this is regarded as the inverse of successors.
+        \item \emph{usages} are all nodes whose inputs contain this node.
+        \item \emph{successors} are all nodes that have to be after this node in control flow.
+        \item \emph{predecessors} are all nodes whose successors contain this node.
     \end{itemize}
     \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
     \item Every node must be able to support cloning and serialization.
@@ -148,7 +149,6 @@ The nodes of the graph have the following properties:
 \end{itemize}
 
 \begin{figure}[h]
-  \label{fig:directions}
   \centering
 \begin{digraphenv}{scale=0.5}{graphdirections}
 \node{node1}{Node}
@@ -161,14 +161,15 @@ The nodes of the graph have the following properties:
 \data{usages}{node1}
 \control{predecessors}{node1}
 \node{node2}{Node}
-\textnode{before}{happens before}
-\textnode{after}{happens after}
+\textnode{before}{happens-before}
+\textnode{after}{happens-after}
 \data{node2}{before}
 \control{node2}{after}
 \data{after}{node2}
 \control{before}{node2}
 \end{digraphenv}
   \caption{A node and its edges.}
+  \label{fig:directions}
 \end{figure}
 
 \subsection{Project Source Structure}
@@ -177,12 +178,12 @@ In order to support the goal of a modular compiler, the code will be divided int
 \begin{description}
     \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
     \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
- 				 Additional node classes should go into seperate projects and be specializations of the known basic nodes.]
+ 				 Additional node classes should go into seperate projects and be specializations of the known basic nodes.
     \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
     \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
     \item[compiler] contains the compiler, including:
         \begin{itemize}
-            \item Schedules the compilation phases.
+            \item Scheduling of the compilation phases.
             \item Implementation of the \emph{compiler interface} (CI).
             \item Implements the final compilation phase that produces the low-level representation.
             \item Machine code creation, including debug info.
@@ -201,7 +202,6 @@ An algorithm that traverses the control flow has to explicitely decide whether i
 Figure \ref{fig:loop1} shows a simple example with a loop with a single entry and two exits.
 
 \begin{figure}[h]
-  \label{fig:loop1}
   \centering
 \begin{digraphenv}{scale=0.5}{layout1}
 \textnode{BeforeLoop}{Loop entry}
@@ -220,6 +220,7 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 \controllabel{If2:succ2}{Exit2}
 \end{digraphenv}
   \caption{A simple loop with two exits.}
+  \label{fig:loop1}
 \end{figure}
 
 \subsection{Loop Phis}
@@ -229,7 +230,6 @@ A corresponding \nodename{LoopBeginPhi} node that is associated with the loop he
 Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph.
 
 \begin{figure}[h]
-  \label{fig:loop2}
   \centering
 \begin{digraphenv}{scale=0.5}{layout2}
 \textnode{BeforeLoop}{Loop entry}
@@ -261,6 +261,7 @@ Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
   \caption{Graph for a loop counting from 0 to n-1.}
+  \label{fig:loop2}
 \end{figure}
 
 \subsection{Loop Counters}
@@ -270,7 +271,6 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 
 
 \begin{figure}[h]
-  \label{fig:loop3}
   \centering
 \begin{digraphenv}{scale=0.5}{layout3}
 \textnode{BeforeLoop}{Loop entry}
@@ -296,18 +296,18 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
   \caption{Graph after loop counter transformation.}
+  \label{fig:loop3}
 \end{figure}
 
 \subsection{Bounded Loops}
 
 If the total maximum number of iterations of a loop is fixed, then the loop is converted into a bounded loop.
 The total number of iterations always denotes the number of full iterations of the loop with the control flowing from the loop begin to the loop end.
-If the totel number of iterations is reached, the loop is exited directly from the loop header.
+If the total number of iterations is reached, the loop is exited directly from the loop header.
 In the example, we can infer from the loop exit with the comparison on the loop counter that the total number of iterations of the loop is limited to n.
 Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bounded loop transformation.
 
 \begin{figure}[h]
-  \label{fig:loop4}
   \centering
 \begin{digraphenv}{scale=0.5}{layout4}
 \textnode{BeforeLoop}{Loop entry}
@@ -328,6 +328,7 @@ Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bo
 \controllabel{BeforeLoop}{LoopBegin}
 \end{digraphenv}
   \caption{Graph after bounded loop transformation.}
+  \label{fig:loop4}
 \end{figure}
 
 \subsection{Vectorization}
@@ -337,11 +338,10 @@ We replace the loop header with a normal instruction that produces a vector of v
 The loop counters are replaced with \texttt{VectorAdd} and \texttt{VectorMul} nodes.
 The vectorization is only possible if every node of the loop can be replaced with a corresponding vector node.
 Figure \ref{fig:loop5} shows the compiler graph of the example loop after vectorization.
-The vector nodes all work on an ordered list of integer values and are subject to canonicalization like any other node.
+The vector nodes all work on an ordered list of integer values and are subject to canonicalization and global value numbering like any other node.
 
 
 \begin{figure}[h]
-  \label{fig:loop5}
   \centering
 \begin{digraphenv}{scale=0.5}{layout5}
 \textnode{Entry}{Entry}
@@ -361,14 +361,15 @@ The vector nodes all work on an ordered list of integer values and are subject t
 \data{Vector}{n}
 \end{digraphenv}
   \caption{Graph after vectorization.}
+  \label{fig:loop5}
 \end{figure}
 
 
 \section{Frame States}
 A frame state captures the state of the program in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
 Every deoptimization point needs a valid frame state.
-A frame state is valid as long as the program performs only actions that can safely be reexecuted (e.g., operations on local variables, loads, etc.).
-Thus, frame states need only be generated for bytecodes that cannot be reexecuted:
+A frame state is valid as long as the program performs only actions that can safely be reexecuted.
+Thus, frame states need only be generated for the states after bytecodes that cannot be reexecuted:
 
 \begin{itemize}
     \item Array stores: {\tt IASTORE, LASTORE, FASTORE, \\DASTORE, AASTORE, BASTORE, CASTORE, SASTORE}
@@ -377,12 +378,14 @@ Thus, frame states need only be generated for bytecodes that cannot be reexecute
     \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
 \end{itemize}
 
-Within the node graph a frame state is represented as a node that is fixed to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
+Within the graph a frame state is represented as a node that is fixed to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
 Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
+
+The frame state at the method beginning does not have to be explicitely in the graph, because it can always be reconstructed at a later stage.
+We save the frame state at control flow merges if there is at least one frame state on any control flow path since the immediate dominator.
 
 
 \begin{figure}[h]
-  \label{fig:fs1}
   \centering
 \begin{digraphenv}{scale=0.5}{fs1}
     \nodetrisplit{store1}{ArrayStore}
@@ -399,20 +402,20 @@ Frame states also have data dependencies on the contents of the state: the local
     \controllabel{store2:succ2}{fs2}
 \end{digraphenv}
   \caption{Simple example using two frame states.}
+  \label{fig:fs1}
 \end{figure}
 
 
 \subsection{Traps}
 A trap node is a node that deoptimizes based on a conditional expression.
-Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state.
+Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
 The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
 In the example of Figure~\ref{fig:trap1}, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
-The trap is anchored to the control split, because as soon as this node is executed the second load must be executed as well.
-In the final scheduling the trap can be placed before or after the first load.
+The trap is anchored to the control split, because as soon as this node is executed, the second load must be executed as well.
+In the final schedule, the trap can be placed before or after the first load.
 
 \begin{figure}[h]
-  \label{fig:trap1}
   \centering
 \begin{digraphenv}{scale=0.5}{trap1}
     \nodesplit{if}{If}
@@ -443,16 +446,16 @@ In the final scheduling the trap can be placed before or after the first load.
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
   \caption{A load guarded by a null check trap.}
+  \label{fig:trap1}
 \end{figure}
 
-Another type of trap is a guard, which is used to remove branches that have a very low execution frequency from the compiled code.
+Another type of trap is a guard, which is used to remove branches that have a very low execution frequency and replace them with a conditional jump to deoptimization.
 
 In the example of Figure~\ref{fig:trap2}, an \texttt{If} node was replaced by a guard and a trap.
 The guard takes the place of the \texttt{If} node in the control flow, and is connected to the trap node.
 The trap is now anchored to the most distant node of which the \texttt{If} node was a postdominator.
 
 \begin{figure}[h]
-  \label{fig:trap2}
   \centering
 \begin{digraphenv}{scale=0.5}{trap2}
     start [shape=plaintext, label="..."]
@@ -471,6 +474,7 @@ The trap is now anchored to the most distant node of which the \texttt{If} node 
     \data{guard}{trap}    
 \end{digraphenv}
   \caption{A trap that is fixed to the control flow using a guard instruction.}
+  \label{fig:trap2}
 \end{figure}
 
 At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
@@ -479,7 +483,6 @@ A simple algorithm for this removal of frame states would be to move all traps a
 Multiple traps with the same condition and anchor can be merged (see Figure~\ref{fig:trap3}).
 
 \begin{figure}[h]
-  \label{fig:trap3}
   \centering
 \begin{digraphenv}{scale=0.5}{trap3}
     \nodesplit{if}{If}
@@ -510,6 +513,7 @@ Multiple traps with the same condition and anchor can be merged (see Figure~\ref
     \datalabel{trap:in1}{split2}
 \end{digraphenv}
   \caption{Two loads guarded by the same trap.}
+  \label{fig:trap3}
 \end{figure}
 
 Also, if two traps that are anchored to the true and false branch of the same \texttt{If} node have the same condition, they can be merged, so that the resulting trap is anchored at the most distant node of which the \texttt{If} node is a postdominator.
