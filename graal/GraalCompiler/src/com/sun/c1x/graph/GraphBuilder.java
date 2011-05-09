@@ -1043,7 +1043,9 @@ public final class GraphBuilder {
             lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
-        MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, null, graph);
+        frameState.push(CiKind.Object, x);
+        MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, frameState.create(bci()), graph);
+        frameState.apop();
         appendWithoutOptimization(monitorEnter, bci);
         frameState.lock(ir, x, lockNumber + 1);
         monitorEnter.setStateAfter(frameState.create(bci));
