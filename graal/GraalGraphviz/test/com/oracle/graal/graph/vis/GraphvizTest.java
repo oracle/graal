@@ -70,7 +70,7 @@ public class GraphvizTest {
         printer.print(g);
         printer.end();
 
-        int exitCode = GraphvizRunner.process(GraphvizRunner.DOT_COMMAND, new ByteArrayInputStream(out.toByteArray()), new NullOutputStream(), "xdot");
+        int exitCode = GraphvizRunner.process(GraphvizRunner.DOT_LAYOUT, new ByteArrayInputStream(out.toByteArray()), new NullOutputStream(), "xdot");
         assertEquals(0, exitCode);
     }
 

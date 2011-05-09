@@ -31,15 +31,15 @@ import java.io.OutputStream;
  */
 public class GraphvizRunner {
 
-    public static final String DOT_COMMAND = "dot";
+    public static final String DOT_LAYOUT = "dot";
 
     /**
      * Processes data from an input stream with a Graphviz tool such as {@code dot}, writing output in the specified
      * format to the given output stream. The method waits for the executed tool to finish and then returns its exit
      * code.
      * 
-     * @param command
-     *            The Graphviz tool to call.
+     * @param layout
+     *            The Graphviz layouter to use (e.g. "dot").
      * @param in
      *            Stream to read input from.
      * @param out
@@ -50,11 +50,11 @@ public class GraphvizRunner {
      * @throws IOException
      *             When the process can not be started (e.g. Graphviz missing) or reading/writing a stream fails.
      */
-    public static int process(String command, InputStream in, OutputStream out, String format) throws IOException {
+    public static int process(String layout, InputStream in, OutputStream out, String format) throws IOException {
         byte[] buffer = new byte[4096];
 
         // create and start process
-        ProcessBuilder pb = new ProcessBuilder(command, "-T", format);
+        ProcessBuilder pb = new ProcessBuilder("dot", "-T", format, "-K", layout);
         Process p = pb.start();
 
         // write data from in to stdin
