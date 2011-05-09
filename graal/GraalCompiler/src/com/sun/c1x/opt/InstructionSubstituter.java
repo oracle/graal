@@ -30,8 +30,6 @@ import com.sun.c1x.graph.IR;
  * This class allows instructions to be substituted within an IR graph. It allows
  * registering substitutions and iterates over the instructions of a program and replaces
  * the occurrence of each instruction with its substitution, if it has one.
- *
- * @author Ben L. Titzer
  */
 public final class InstructionSubstituter implements BlockClosure, ValueClosure {
 
@@ -46,7 +44,7 @@ public final class InstructionSubstituter implements BlockClosure, ValueClosure 
         Instruction last = null;
         if (block.exceptionHandlerStates() != null) {
             for (FrameState s : block.exceptionHandlerStates()) {
-                s.valuesDo(this);
+                s.inputValuesDo(this);
             }
         }
         for (Instruction n = block; n != null; n = last.next()) {

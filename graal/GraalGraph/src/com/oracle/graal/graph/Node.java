@@ -75,6 +75,10 @@ public abstract class Node implements Cloneable {
         return graph;
     }
 
+    public String shortName() {
+        return getClass().getSimpleName();
+    }
+
     public void replace(Node other) {
         assert !isDeleted() && !other.isDeleted();
         assert other == null || other.graph == graph;
@@ -161,8 +165,7 @@ public abstract class Node implements Cloneable {
         }
 
         public Node set(int index, Node node) {
-            // TODO: re-enable after Value class layout changes
-//            assert node == Null || node.graph == self().graph;
+            assert node == Null || node.graph == self().graph;
             Node old = nodes[index];
 
             if (old != node) {
@@ -186,6 +189,13 @@ public abstract class Node implements Cloneable {
             }
 
             return old;
+        }
+
+        public void setAll(NodeArray other) {
+            assert size() == other.size();
+            for (int i = 0; i < other.size(); i++) {
+                set(i, other.get(i));
+            }
         }
 
         public Node get(int index) {

@@ -32,8 +32,9 @@ import com.sun.cri.ci.*;
  */
 public final class Throw extends BlockEnd {
 
-    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_COUNT = 2;
     private static final int INPUT_EXCEPTION = 0;
+    private static final int INPUT_STATE_BEFORE = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -58,7 +59,17 @@ public final class Throw extends BlockEnd {
         return (Value) inputs().set(super.inputCount() + INPUT_EXCEPTION, n);
     }
 
-    FrameState stateBefore;
+    /**
+     * The state before this throw would occur.
+     */
+     @Override
+    public FrameState stateBefore() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
+    }
+
+    private FrameState setStateBefore(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    }
 
     /**
      * Creates a new Throw instruction.
@@ -69,17 +80,8 @@ public final class Throw extends BlockEnd {
      */
     public Throw(Value exception, FrameState stateAfter, boolean isSafepoint, Graph graph) {
         super(CiKind.Illegal, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.stateBefore = stateAfter;
+        setStateBefore(stateAfter);
         setException(exception);
-    }
-
-    /**
-     * Returns the state before this throw would occur.
-     * @return the state before the throw
-     */
-    @Override
-    public FrameState stateBefore() {
-        return stateBefore;
     }
 
     /**

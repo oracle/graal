@@ -32,10 +32,32 @@ import com.sun.cri.ci.*;
  */
 public abstract class StateSplit extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_STATE_BEFORE = 0;
+
     private static final int SUCCESSOR_COUNT = 0;
 
-    private FrameState stateBefore;
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The state for this instruction.
+     */
+     @Override
+    public FrameState stateBefore() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
+    }
+
+    public FrameState setStateBefore(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    }
 
     /**
      * Creates a new state split with the specified value type.
@@ -46,30 +68,12 @@ public abstract class StateSplit extends Instruction {
      */
     public StateSplit(CiKind kind, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
-        this.stateBefore = stateBefore;
+        setStateBefore(stateBefore);
     }
 
     @Override
     public boolean canTrap() {
-        return stateBefore != null;
+        return stateBefore() != null;
     }
 
-    /**
-     * Records the state of this instruction before it is executed.
-     *
-     * @param stateBefore the state
-     */
-    public final void setStateBefore(FrameState stateBefore) {
-        assert this.stateBefore == null;
-        this.stateBefore = stateBefore;
-    }
-
-    /**
-     * Gets the state for this instruction.
-     * @return the state
-     */
-    @Override
-    public final FrameState stateBefore() {
-        return stateBefore;
-    }
 }

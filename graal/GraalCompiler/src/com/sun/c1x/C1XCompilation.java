@@ -25,6 +25,7 @@ package com.sun.c1x;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.alloc.*;
 import com.sun.c1x.asm.*;
 import com.sun.c1x.gen.*;
@@ -55,6 +56,8 @@ public final class C1XCompilation {
     public final CiStatistics stats;
     public final CiAssumptions assumptions = new CiAssumptions();
     public final FrameState placeholderState;
+
+    public final Graph graph = new Graph();
 
     private boolean hasExceptionHandlers;
     private final C1XCompilation parent;
@@ -94,7 +97,7 @@ public final class C1XCompilation {
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
-        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(0, 0, 0, 0) : null;
+        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(0, 0, 0, 0, graph) : null;
 
         if (compiler.isObserved()) {
             compiler.fireCompilationStarted(new CompilationEvent(this));
@@ -166,7 +169,7 @@ public final class C1XCompilation {
      */
     public BlockMap getBlockMap(RiMethod method) {
         // PERF: cache the block map for methods that are compiled or inlined often
-        BlockMap map = new BlockMap(method, hir.numberOfBlocks(), hir.graph());
+        BlockMap map = new BlockMap(method, hir.numberOfBlocks(), graph);
         if (!map.build(C1XOptions.PhiLoopStores)) {
             throw new CiBailout("build of BlockMap failed for " + method);
         } else {

@@ -41,8 +41,33 @@ import com.sun.cri.ri.*;
  */
 public final class BlockBegin extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_STATE_BEFORE = 0;
+
     private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The frame state before execution of the first instruction in this block.
+     */
+     @Override
+    public FrameState stateBefore() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
+    }
+
+    public FrameState setStateBefore(FrameState n) {
+        assert stateBefore() == null;
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    }
 
     private static final List<BlockBegin> NO_HANDLERS = Collections.emptyList();
 
@@ -74,11 +99,6 @@ public final class BlockBegin extends Instruction {
      * Denotes the current set of {@link BlockBegin.BlockFlag} settings.
      */
     private int blockFlags;
-
-    /**
-     * The frame state before execution of the first instruction in this block.
-     */
-    private FrameState stateBefore;
 
     /**
      * A link to the last node in the block (which contains the successors).
@@ -180,24 +200,6 @@ public final class BlockBegin extends Instruction {
      */
     public BlockEnd end() {
         return end;
-    }
-
-    /**
-     * Gets the state at the start of this block.
-     * @return the state at the start of this block
-     */
-    @Override
-    public FrameState stateBefore() {
-        return stateBefore;
-    }
-
-    /**
-     * Sets the initial state for this block.
-     * @param stateBefore the state for this block
-     */
-    public void setStateBefore(FrameState stateBefore) {
-        assert this.stateBefore == null;
-        this.stateBefore = stateBefore;
     }
 
     /**
@@ -399,8 +401,8 @@ public final class BlockBegin extends Instruction {
         v.visitBlockBegin(this);
     }
 
-    public void mergeOrClone(FrameState newState, RiMethod method) {
-        FrameState existingState = stateBefore;
+    public void mergeOrClone(FrameStateAccess newState, RiMethod method) {
+        FrameState existingState = stateBefore();
 
         if (existingState == null) {
             // this is the first state for the block
@@ -410,7 +412,7 @@ public final class BlockBegin extends Instruction {
             }
 
             // copy state because it is modified
-            newState = newState.copy();
+            FrameState duplicate = newState.duplicate();
 
             if (C1XOptions.UseStackMapTableLiveness) {
                 // if a liveness map is available, use it to invalidate dead locals
@@ -419,17 +421,17 @@ public final class BlockBegin extends Instruction {
                     assert bci() < livenessMap.length;
                     CiBitMap liveness = livenessMap[bci()];
                     if (liveness != null) {
-                        invalidateDeadLocals(newState, liveness);
+                        invalidateDeadLocals(duplicate, liveness);
                     }
                 }
             }
 
             // if the block is a loop header, insert all necessary phis
             if (isParserLoopHeader()) {
-                insertLoopPhis(newState);
+                insertLoopPhis(duplicate);
             }
 
-            stateBefore = newState;
+            setStateBefore(duplicate);
         } else {
             if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
                 // stacks or locks do not match--bytecodes would not verify
@@ -443,7 +445,7 @@ public final class BlockBegin extends Instruction {
                 throw new CiBailout("jsr/ret too complicated");
             }
 
-            existingState.merge(this, newState, graph());
+            existingState.merge(this, newState);
         }
     }
 
@@ -465,13 +467,13 @@ public final class BlockBegin extends Instruction {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
-            newState.setupPhiForStack(this, i, graph());
+            newState.setupPhiForStack(this, i);
         }
         int localsSize = newState.localsSize();
         for (int i = 0; i < localsSize; i++) {
             Value x = newState.localAt(i);
             if (x != null) {
-                newState.setupPhiForLocal(this, i, graph());
+                newState.setupPhiForLocal(this, i);
             }
         }
     }

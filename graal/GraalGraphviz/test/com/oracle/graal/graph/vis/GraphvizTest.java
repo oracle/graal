@@ -67,7 +67,7 @@ public class GraphvizTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         GraphvizPrinter printer = new GraphvizPrinter(out);
         printer.begin("Simple test");
-        printer.print(g);
+        printer.print(g, false);
         printer.end();
 
         int exitCode = GraphvizRunner.process(GraphvizRunner.DOT_LAYOUT, new ByteArrayInputStream(out.toByteArray()), new NullOutputStream(), "xdot");

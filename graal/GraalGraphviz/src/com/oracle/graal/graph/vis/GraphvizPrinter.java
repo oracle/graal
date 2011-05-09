@@ -77,23 +77,27 @@ public class GraphvizPrinter {
     /**
      * Prints all nodes and edges in the specified graph.
      */
-    public void print(Graph graph) {
+    public void print(Graph graph, boolean shortNames) {
         // graph.getNodes() returns all the graph's nodes, not just "roots"
         for (Node n : graph.getNodes()) {
-            printNode(n);
+            printNode(n, shortNames);
         }
     }
 
     /**
      * Prints a single node and edges for all its inputs and successors.
      */
-    public void printNode(Node node) {
+    public void printNode(Node node, boolean shortNames) {
         int id = node.id();
         String name = "n" + id;
         NodeArray inputs = node.inputs();
         NodeArray successors = node.successors();
 
-        printNode(name, node.toString(), inputs.size(), successors.size());
+        if (shortNames) {
+            printNode(name, node.shortName(), inputs.size(), successors.size());
+        } else {
+            printNode(name, node.toString(), inputs.size(), successors.size());
+        }
 
         for (int i = 0; i < successors.size(); ++i) {
             Node successor = successors.get(i);
@@ -105,6 +109,9 @@ public class GraphvizPrinter {
         for (int i = 0; i < inputs.size(); ++i) {
             Node input = inputs.get(i);
             if (input != Node.Null) {
+                if (node.getClass().getSimpleName().equals("FrameState") && input.getClass().getSimpleName().equals("Local")) {
+                    continue;
+                }
                 printDataEdge(id, i, input.id());
             }
         }

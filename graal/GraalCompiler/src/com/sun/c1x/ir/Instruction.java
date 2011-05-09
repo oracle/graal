@@ -239,11 +239,11 @@ public abstract class Instruction extends Value {
         inputValuesDo(closure);
         FrameState stateBefore = stateBefore();
         if (stateBefore != null) {
-            stateBefore.valuesDo(closure);
+            stateBefore.inputValuesDo(closure);
         }
         FrameState stateAfter = stateAfter();
         if (stateAfter != null) {
-            stateAfter.valuesDo(closure);
+            stateAfter.inputValuesDo(closure);
         }
     }
 
