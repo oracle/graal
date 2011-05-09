@@ -54,7 +54,7 @@
 \newcommand{\nodetrisplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \genericnodeend }
 \newcommand{\nodesplittri}[2]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portsuccessor{succ3} \genericnodeend }
 
-\newcommand{\nodetrap}[2]{\cnodebi{#1}{#2}{rosybrown1}}
+\newcommand{\nodeguard}[2]{\cnodebi{#1}{#2}{rosybrown1}}
 
 \newcommand{\cnode}[3]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{#3} \portsuccessor{successors} \portempty \genericnodeend }
 \newcommand{\cnodebi}[3]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \genericnodelabel{#2}{#3} \portsuccessor{successors} \portempty \genericnodeend }

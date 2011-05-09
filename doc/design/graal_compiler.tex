@@ -59,17 +59,17 @@ This document contains information about the proposed design and strategy for de
 
 \section{Context}
 
-In 2009, the Maxine team started with creating C1X, a Java port of the HotSpot client compiler, and integrate it into the Maxine VM.
+In 2009, the Maxine team started with creating C1X, a Java port of the HotSpot client compiler, and integrated it into the Maxine VM.
 Part of this effort was the development of a clear and clean compiler-runtime interface that allows the separation of the compiler and the VM.
 This compiler-runtime interface enables the use of one compiler for multiple VMs.
 In June 2010, we started integrating C1X into the HotSpot VM and we called the resulting system Graal~VM.
-Currently, the Graal~VM is fully functional and runs benchmarks (SciMark, DaCapo) at a similar speed to the HotSpot client compiler.
+Currently, the Graal~VM is fully functional and runs benchmarks (SciMark, DaCapo) at a similar speed as the HotSpot client compiler.
 
 \section{Goals}
 The compiler effort aims at rewriting the high-level intermediate representation of C1X with two main goals:
 \begin{description}
 \item[Modularity:] A modular design of the compiler should simplify the implementation of new languages, new back-ends, and new optimizations.
-\item[Peak Performance:] A more powerful intermediate representation should enable the implementation of heavy-weight optimizations that impact the peak performance of the resulting machine code.
+\item[Peak Performance:] A more powerful intermediate representation should enable the implementation of aggressive optimizations that impact the peak performance of the resulting machine code.
 \end{description}
 
 \section{Design}
@@ -84,8 +84,8 @@ It is possible to replace a node with another node without traversing the full g
 The graph does not allow data flow edge cycles or control flow edge cycles.
 We achieve this by explicitely modelling loops (see Section~\ref{sec:loops}). 
 \item[Extensibility:]
-The compiler is extensible by adding new compiler phases and new node subclasses without modifying the compiler's sources.
-A node has an abstract way of expressing its effect and new compiler phases can ask compiler nodes for their properties and capabilities.
+The compiler is extensible by allowing developers to add new compiler phases and new node subclasses without modifying the compiler's sources.
+A node has an abstract way of expressing its semantics and new compiler phases can ask compiler nodes for their properties and capabilities.
 We use the ``everything is an extension'' concept.
 Even standard compiler optimizations are internally modeled as extensions, to show that the extension mechanism exposes all necessary functionality.
 \item[Detailing:]
@@ -96,7 +96,7 @@ Compiler phases can choose whether they want to work on the earlier versions of 
 The compiler does not require Java as its input.
 This is achieved by having a graph as the starting point of the compilation and not a Java bytecodes array.
 Building the graph from the Java bytecodes must happen before giving a method to the compiler.
-This enables front-ends for different languages (e.g., Ruby) to provide their own graph.
+This enables front-ends for different languages (e.g., Ruby or JavaScript) to provide their own graph.
 Also, there is no dependency on a specific back-end, but the output of the compiler is a graph that can then be converted to a different representation in a final compiler phase.
 \end{description}
 
@@ -104,7 +104,7 @@ Also, there is no dependency on a specific back-end, but the output of the compi
 \label{sec:mile}
 The compiler is developed starting from the current C1X source code base.
 This helps us testing the compiler at every intermediate development step on a variety of Java benchmarks.
-We define the following development milestones and when they are considered achieved:
+We define the following development milestones and when they are considered to be achieved (see Section~\ref{sec:conclusions} for planned dates):
 \begin{description}
 \item[M1:] We have a fully working Graal~VM version with a stripped down C1X compiler that does not perform any optimizations.
 \item[M2:] We modified the high-level intermediate representation to be based on the compiler graph data structure.
@@ -132,7 +132,7 @@ The nodes of the graph have the following properties:
     \item Nodes can have a data dependency, which means that one node requires the result of another node as its input. The fact that the result of the first node needs to be computed before the second node can be executed introduces a partial order to the set of nodes.
     \item Nodes can have a control flow dependency, which means that the execution of one node will be followed by the execution of another node. This includes conditional execution, memory access serialization and other reasons, and again introduces a partial order to the set of nodes.
     \item Nodes can only have data and control dependencies to nodes which belong to the same graph.
-    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards in a drawing of the graph. Situations that are normally incur cycles (like loops) are represented by special nodes (see Section~\ref{sec:loops}).
+    \item Control dependencies and data dependencies each represent a \emph{directed acyclic graph} (DAG) on the same set of nodes. This means that data dependencies always point upwards, and control dependencies always point downwards in a drawing of the graph. Situations that normally incur cycles (like loops) are represented by special nodes (see Section~\ref{sec:loops}).
 	\item Ordering between nodes is specified only to the extent which is required to correctly express the semantics of a given program. This gives the compiler flexibility for the possible scheduling of a node and therefore wriggle room for optimizations. For algorithms that require a fixed ordering of nodes, a temporary schedule can always be generated.
     \item Both data and control dependencies can be traversed in both directions, so that each node can be traversed in four directions (see Figure~\ref{fig:directions}):
     \begin{itemize}
@@ -178,27 +178,27 @@ In order to support the goal of a modular compiler, the code will be divided int
 \begin{description}
     \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
     \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
- 				 Additional node classes should go into seperate projects and be specializations of the known basic nodes.
+ 				 Additional node classes should go into separate projects and be specializations of the known basic nodes.
     \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
     \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
     \item[compiler] contains the compiler, including:
         \begin{itemize}
             \item Scheduling of the compilation phases.
             \item Implementation of the \emph{compiler interface} (CI).
-            \item Implements the final compilation phase that produces the low-level representation.
+            \item Implementation of the final compilation phase that produces the low-level representation.
             \item Machine code creation, including debug info.
         \end{itemize}
 \end{description}
 
 \section{Loops}
 \label{sec:loops}
-Loops form a first-class construct in the IR that is expressed in specialized IR nodes during all optimization phases.
-We only compile methods with a control flow where every loop has one single entry point.
+Loops form a first-class construct in the IR that is expressed by specialized IR nodes during all optimization phases.
+We only compile methods with a control flow where every loop has a single entry point.
 This entry point is a \nodename{LoopBegin} node.
 This node is connected to a \nodename{LoopEnd} node that merges all control flow paths that do not exit the loop.
 The edge between the \nodename{LoopBegin} and the \nodename{LoopEnd} is the backedge of the loop.
 It goes from the beginning to the end in order to make the graph acyclic.
-An algorithm that traverses the control flow has to explicitely decide whether it wants to incorporate backedges (i.e., special case the treatment of \nodename{LoopEnd}) or ignore them.
+An algorithm that traverses the control flow has to explicitely decide whether it wants to incorporate backedges (i.e., special case of the treatment of \nodename{LoopEnd}) or ignore them.
 Figure \ref{fig:loop1} shows a simple example with a loop with a single entry and two exits.
 
 \begin{figure}[h]
@@ -266,7 +266,7 @@ Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph
 
 \subsection{Loop Counters}
 The compiler is capable of recognizing variables that are only increased within a loop.
-A potential overflow of such a variable is guarded with a trap before the loop.
+A potential overflow of such a variable is prohibited with a guard before the loop (this is not necessary in this example, because the loop variable cannot overflow).
 Figure \ref{fig:loop3} shows the compiler graph of the example loop after the loop counter transformation.
 
 
@@ -368,7 +368,7 @@ The vector nodes all work on an ordered list of integer values and are subject t
 \section{Frame States}
 A frame state captures the state of the program in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
 Every deoptimization point needs a valid frame state.
-A frame state is valid as long as the program performs only actions that can safely be reexecuted.
+A frame state stays valid as long as the subsequent instructions perform only actions that can safely be reexecuted.
 Thus, frame states need only be generated for the states after bytecodes that cannot be reexecuted:
 
 \begin{itemize}
@@ -378,11 +378,11 @@ Thus, frame states need only be generated for the states after bytecodes that ca
     \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
 \end{itemize}
 
-Within the graph a frame state is represented as a node that is fixed to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
+Within the graph a frame state is represented as a node that is attached to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
 Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 The frame state at the method beginning does not have to be explicitely in the graph, because it can always be reconstructed at a later stage.
-We save the frame state at control flow merges if there is at least one frame state on any control flow path since the immediate dominator.
+We save the frame state at control flow merges if there is at least one frame state on any control flow path after the immediate dominator.
 
 
 \begin{figure}[h]
@@ -391,7 +391,7 @@ We save the frame state at control flow merges if there is at least one frame st
     \nodetrisplit{store1}{ArrayStore}
     \nodebi{load1}{ArrayLoad}
     \controllabel{store1:succ1}{load1}
-    \nodetrisplit{store2}{ArrayStore}
+    \nodetrisplit{store2}{FieldStore}
     \control{load1}{store2}
     end [shape=plaintext, label="...", width="2.0"]
     store2:succ1:s -> end:n [color=red];
@@ -406,25 +406,23 @@ We save the frame state at control flow merges if there is at least one frame st
 \end{figure}
 
 
-\subsection{Traps}
-A trap node is a node that deoptimizes based on a conditional expression.
-Trap nodes are not fixed to a certain frame state node, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
-The node that is guarded by the deoptimization has a data dependency on the trap, and the trap in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
+\subsection{Guards}
+A guard node is a node that deoptimizes based on a conditional expression.
+Guard nodes are not attached to a certain frame state node, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
+The node that is guarded by the deoptimization has a data dependency on the guard, and the guard in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
-In the example of Figure~\ref{fig:trap1}, the second load is guarded by a trap, because its receiver might be null (the receiver of the first load is assumed to be non-null).
-The trap is anchored to the control split, because as soon as this node is executed, the second load must be executed as well.
-In the final schedule, the trap can be placed before or after the first load.
+In the example of Figure~\ref{fig:guard1}, the second load is guarded by a guard, because its receiver might be null (the receiver of the first load is assumed to be non-null).
+The guard is anchored to the control split, because as soon as this node is executed, the second load must be executed as well.
+In the final schedule, the guard can be placed before or after the first load.
 
 \begin{figure}[h]
   \centering
-\begin{digraphenv}{scale=0.5}{trap1}
+\begin{digraphenv}{scale=0.5}{guard1}
     \nodesplit{if}{If}
-    \node{split1}{Split}
-    \controllabel{if:succ1}{split1}
     nop [shape=plaintext, label="..."]
-    \control{split1}{nop}
+    \controllabel{if:succ1}{nop}
     %
-    \node{split2}{Split}
+    \node{split2}{Anchor}
     \controllabel{if:succ2}{split2}
     \nodebi{load1}{MemLoad}
     \control{split2}{load1}
@@ -438,60 +436,58 @@ In the final schedule, the trap can be placed before or after the first load.
     \nodeconst{o2}{obj2}
     \datalabel{load1:in2}{o1}
     \datalabel{load2:in2}{o2}
-    \nodetrap{trap}{Trap}
+    \nodeguard{guard}{Guard}
     \node{cmpnull}{IsNull}
     \data{cmpnull}{o2}
-    \datalabel{trap:in2}{cmpnull}
-    \datalabel{load2:in1}{trap}    
-    \datalabel{trap:in1}{split2}
+    \datalabel{guard:in2}{cmpnull}
+    \datalabel{load2:in1}{guard}    
+    \datalabel{guard:in1}{split2}
 \end{digraphenv}
-  \caption{A load guarded by a null check trap.}
-  \label{fig:trap1}
+  \caption{A load guarded by a null check guard.}
+  \label{fig:guard1}
 \end{figure}
 
-Another type of trap is a guard, which is used to remove branches that have a very low execution frequency and replace them with a conditional jump to deoptimization.
+A guard can be used to remove branches that have a very low execution frequency and replace them with a conditional jump to deoptimization.
 
-In the example of Figure~\ref{fig:trap2}, an \texttt{If} node was replaced by a guard and a trap.
-The guard takes the place of the \texttt{If} node in the control flow, and is connected to the trap node.
-The trap is now anchored to the most distant node of which the \texttt{If} node was a postdominator.
+In the example of Figure~\ref{fig:guard2}, an \texttt{If} node was replaced by an anchor and a guard.
+The anchor takes the place of the \texttt{If} node in the control flow, and is connected to the guard node.
+The guard is now anchored to the most distant node of which the \texttt{If} node was a postdominator.
 
 \begin{figure}[h]
   \centering
-\begin{digraphenv}{scale=0.5}{trap2}
+\begin{digraphenv}{scale=0.5}{guard2}
     start [shape=plaintext, label="..."]
     start2 [shape=plaintext, label=""]
     start3 [shape=plaintext, label=""]
     \control{start}{guard}
-    \node{guard}{Guard}
+    \node{anchor}{Anchor}
     \nodebi{load1}{MemLoad}
-    \control{guard}{load1}
+    \control{anchor}{load1}
     \control{load1}{nop}
     nop [shape=plaintext, label="..."]
     %
-    \nodetrap{trap}{Trap}
-    \datalabel{trap:in1}{start2}
-    \datalabel{trap:in2}{start3}
-    \data{guard}{trap}    
+    \nodeguard{guard}{Guard}
+    \datalabel{guard:in1}{start2}
+    \datalabel{guard:in2}{start3}
+    \data{anchor}{guard}    
 \end{digraphenv}
-  \caption{A trap that is fixed to the control flow using a guard instruction.}
-  \label{fig:trap2}
+  \caption{A guard that is fixed to the control flow using an anchor instruction.}
+  \label{fig:guard2}
 \end{figure}
 
-At some point during the compilation, trap nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
+At some point during the compilation, guard nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
-A simple algorithm for this removal of frame states would be to move all traps as far upwards as possible.
-Multiple traps with the same condition and anchor can be merged (see Figure~\ref{fig:trap3}).
+A simple algorithm for this removal of frame states would be to move all guards as far upwards as possible.
+Multiple guards with the same condition and anchor can be merged (see Figure~\ref{fig:guard3}).
 
 \begin{figure}[h]
   \centering
-\begin{digraphenv}{scale=0.5}{trap3}
+\begin{digraphenv}{scale=0.5}{guard3}
     \nodesplit{if}{If}
-    \node{split1}{Split}
-    \controllabel{if:succ1}{split1}
     nop [shape=plaintext, label="..."]
-    \control{split1}{nop}
+    \controllabel{if:succ1}{nop}
     %
-    \node{split2}{Split}
+    \node{split2}{Anchor}
     \controllabel{if:succ2}{split2}
     \nodebi{load1}{MemLoad}
     \control{split2}{load1}
@@ -504,21 +500,22 @@ Multiple traps with the same condition and anchor can be merged (see Figure~\ref
     \nodeconst{o}{obj}
     \datalabel{load1:in2}{o}
     \datalabel{load2:in2}{o}
-    \nodetrap{trap}{Trap}
+    \nodeguard{guard}{Guard}
     \node{cmpnull}{IsNull}
     \data{cmpnull}{o}
-    \datalabel{trap:in2}{cmpnull}
-    \datalabel{load2:in1}{trap}    
-    \datalabel{load1:in1}{trap}    
-    \datalabel{trap:in1}{split2}
+    \datalabel{guard:in2}{cmpnull}
+    \datalabel{load2:in1}{guard}    
+    \datalabel{load1:in1}{guard}    
+    \datalabel{guard:in1}{split2}
 \end{digraphenv}
-  \caption{Two loads guarded by the same trap.}
-  \label{fig:trap3}
+  \caption{Two loads using the same guard.}
+  \label{fig:guard3}
 \end{figure}
 
-Also, if two traps that are anchored to the true and false branch of the same \texttt{If} node have the same condition, they can be merged, so that the resulting trap is anchored at the most distant node of which the \texttt{If} node is a postdominator.
+Also, if two guards that are anchored to the true and false branch of the same \texttt{If} node have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} node is a postdominator.
 
 \section{Conclusions}
+\label{sec:conclusions}
 This document sketched the strategy for the Graph compiler.
 We already reached M1 (as defined in Section~\ref{sec:mile}) and have the following plans for M2 to M4:
 \begin{description}
