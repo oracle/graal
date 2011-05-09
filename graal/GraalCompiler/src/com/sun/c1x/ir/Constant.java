@@ -164,4 +164,10 @@ public final class Constant extends Instruction {
     public void print(LogStream out) {
         out.print(value.valueString());
     }
+
+    @Override
+    public String shortName() {
+        return value.name();
+    }
+
 }

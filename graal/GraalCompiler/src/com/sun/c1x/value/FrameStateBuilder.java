@@ -34,7 +34,7 @@ import static com.sun.c1x.value.ValueUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 
-public class FrameStateBuilder {
+public class FrameStateBuilder implements FrameStateAccess {
 
     private final Graph graph;
 
@@ -75,12 +75,16 @@ public class FrameStateBuilder {
     }
 
     public void initializeFrom(FrameState other) {
-        assert locals.length == other.localsSize;
+        assert locals.length == other.localsSize();
         assert stack.length >= other.stackSize();
 
         this.stackIndex = other.stackSize();
-        System.arraycopy(other.values, 0, locals, 0, locals.length);
-        System.arraycopy(other.values, other.localsSize(), stack, 0, stackIndex);
+        for (int i = 0; i < other.localsSize(); i++) {
+            locals[i] = other.localAt(i);
+        }
+        for (int i = 0; i < other.stackSize(); i++) {
+            stack[i] = other.stackAt(i);
+        }
         locks.clear();
         for (int i = 0; i < other.locksSize(); i++) {
             locks.add(other.lockAt(i));
@@ -88,7 +92,7 @@ public class FrameStateBuilder {
     }
 
     public FrameState create(int bci) {
-        return new FrameState(bci, locals, stack, stackIndex, locks);
+        return new FrameState(bci, locals, stack, stackIndex, locks, graph);
     }
 
     /**
@@ -169,6 +173,12 @@ public class FrameStateBuilder {
     public void dpush(Value x) {
         xpush(assertDouble(x));
         xpush(null);
+    }
+
+    public void pushReturn(CiKind kind, Value x) {
+        if (kind != CiKind.Void) {
+            push(kind.stackKind(), x);
+        }
     }
 
     /**
@@ -263,6 +273,16 @@ public class FrameStateBuilder {
         }
         stackIndex = base;
         return r;
+    }
+
+    public CiKind peekKind() {
+        Value top = stackAt(stackSize() - 1);
+        if (top == null) {
+            top = stackAt(stackSize() - 2);
+            assert top != null;
+            assert top.kind.isDoubleWord();
+        }
+        return top.kind;
     }
 
     /**
@@ -432,6 +452,23 @@ public class FrameStateBuilder {
             throw new UnsupportedOperationException("cannot remove from array");
         }
 
+    }
+
+
+    @Override
+    public FrameState duplicate() {
+        return create(-1);
+    }
+
+    @Override
+    public Value valueAt(int i) {
+        if (i < locals.length) {
+            return locals[i];
+        } else if (i < locals.length + stackIndex) {
+            return stack[i - locals.length];
+        } else {
+            return locks.get(i - locals.length - stack.length);
+        }
     }
 
 }

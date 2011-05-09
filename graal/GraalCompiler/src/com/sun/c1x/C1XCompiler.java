@@ -155,7 +155,7 @@ public class C1XCompiler extends ObservableCompiler {
                             ByteArrayOutputStream out = new ByteArrayOutputStream();
                             GraphvizPrinter printer = new GraphvizPrinter(out);
                             printer.begin(name);
-                            printer.print(graph);
+                            printer.print(graph, true);
                             printer.end();
 
                             try {

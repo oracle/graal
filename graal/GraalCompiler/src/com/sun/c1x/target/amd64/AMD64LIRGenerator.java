@@ -30,6 +30,7 @@ import com.sun.c1x.globalstub.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.util.*;
+import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
@@ -567,5 +568,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected CiValue osrBufferPointer() {
         return Util.nonFatalUnimplemented(null);
+    }
+
+    @Override
+    public void visitFrameState(FrameState i) {
+        // nothing to do for now
     }
 }

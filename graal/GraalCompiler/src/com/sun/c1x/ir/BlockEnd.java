@@ -34,7 +34,8 @@ import com.sun.cri.ci.*;
  */
 public abstract class BlockEnd extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_STATE_AFTER = 0;
 
     private final int blockSuccessorCount;
 
@@ -48,6 +49,17 @@ public abstract class BlockEnd extends Instruction {
         return super.successorCount() + blockSuccessorCount;
     }
 
+    /**
+     * The state for this instruction.
+     */
+     @Override
+    public FrameState stateAfter() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
+    }
+
+    public FrameState setStateAfter(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
+    }
     /**
      * The list of instructions that produce input for this instruction.
      */
@@ -66,7 +78,6 @@ public abstract class BlockEnd extends Instruction {
     }
 
     BlockBegin begin;
-    FrameState stateAfter;
     boolean isSafepoint;
 
     /**
@@ -92,18 +103,6 @@ public abstract class BlockEnd extends Instruction {
 
     public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint, Graph graph) {
         this(kind, stateAfter, isSafepoint, 2, 0, 0, graph);
-    }
-
-    /**
-     * Gets the state after the end of this block.
-     */
-    @Override
-    public FrameState stateAfter() {
-        return stateAfter;
-    }
-
-    public void setStateAfter(FrameState state) {
-        stateAfter = state;
     }
 
     /**

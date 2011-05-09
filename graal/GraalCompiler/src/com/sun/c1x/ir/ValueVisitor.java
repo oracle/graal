@@ -22,6 +22,8 @@
  */
 package com.sun.c1x.ir;
 
+import com.sun.c1x.value.*;
+
 /**
  * The {@link ValueVisitor} implements one half of the visitor
  * pattern for {@linkplain Value IR values}, allowing clients to implement functionality
@@ -38,6 +40,7 @@ public abstract class ValueVisitor {
     public abstract void visitConstant(Constant i);
     public abstract void visitConvert(Convert i);
     public abstract void visitExceptionObject(ExceptionObject i);
+    public abstract void visitFrameState(FrameState i);
     public abstract void visitGoto(Goto i);
     public abstract void visitIf(If i);
     public abstract void visitIfOp(IfOp i);
