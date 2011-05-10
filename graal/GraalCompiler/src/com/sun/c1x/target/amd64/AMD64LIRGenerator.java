@@ -526,52 +526,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void genGetObjectUnsafe(CiValue dst, CiValue src, CiValue offset, CiKind kind, boolean isVolatile) {
-        if (isVolatile && kind == CiKind.Long) {
-            CiAddress addr = new CiAddress(CiKind.Double, src, offset);
-            CiValue tmp = newVariable(CiKind.Double);
-            lir.load(addr, tmp, null);
-            CiValue spill = operands.newVariable(CiKind.Long, VariableFlag.MustStartInMemory);
-            lir.move(tmp, spill);
-            lir.move(spill, dst);
-        } else {
-            CiAddress addr = new CiAddress(kind, src, offset);
-            lir.load(addr, dst, null);
-        }
-    }
-
-    @Override
-    protected void genPutObjectUnsafe(CiValue src, CiValue offset, CiValue data, CiKind kind, boolean isVolatile) {
-        if (isVolatile && kind == CiKind.Long) {
-            CiAddress addr = new CiAddress(CiKind.Double, src, offset);
-            CiValue tmp = newVariable(CiKind.Double);
-            CiValue spill = operands.newVariable(CiKind.Double, VariableFlag.MustStartInMemory);
-            lir.move(data, spill);
-            lir.move(spill, tmp);
-            lir.move(tmp, addr);
-        } else {
-            CiAddress addr = new CiAddress(kind, src, offset);
-            boolean isObj = (kind == CiKind.Jsr || kind == CiKind.Object);
-            if (isObj) {
-                // Do the pre-write barrier, if any.
-                preGCWriteBarrier(addr, false, null);
-                lir.move(data, addr);
-                assert src.isVariableOrRegister() : "must be register";
-                // Seems to be a precise address
-                postGCWriteBarrier(addr, data);
-            } else {
-                lir.move(data, addr);
-            }
-        }
-    }
-
-    @Override
     protected CiValue osrBufferPointer() {
         return Util.nonFatalUnimplemented(null);
-    }
-
-    @Override
-    public void visitFrameState(FrameState i) {
-        // nothing to do for now
     }
 }

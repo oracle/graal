@@ -454,7 +454,7 @@ public class FrameState extends Value implements FrameStateAccess {
         return "FrameState@" + bci;
     }
 
-
-
-
+    public void visitFrameState(FrameState i) {
+        // nothing to do for now
+    }
 }

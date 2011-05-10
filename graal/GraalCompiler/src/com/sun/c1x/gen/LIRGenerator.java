@@ -268,10 +268,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitBase(Base x) {
-        // emit phi-instruction move after safepoint since this simplifies
-        // describing the state at the safepoint.
-        //moveToPhi();
-
         // all blocks with a successor must end with an unconditional jump
         // to the successor even if they are consecutive
         lir.jump(x.defaultSuccessor());
@@ -1586,10 +1582,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     protected abstract void genCmpRegMem(Condition condition, CiValue reg, CiValue base, int disp, CiKind kind, LIRDebugInfo info);
 
-    protected abstract void genGetObjectUnsafe(CiValue dest, CiValue src, CiValue offset, CiKind kind, boolean isVolatile);
-
-    protected abstract void genPutObjectUnsafe(CiValue src, CiValue offset, CiValue data, CiKind kind, boolean isVolatile);
-
     /**
      * Implements site-specific information for the XIR interface.
      */
@@ -1657,5 +1649,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         Invoke invoke = new Invoke(isStatic ? Bytecodes.INVOKESTATIC : Bytecodes.INVOKESPECIAL, method.signature().returnKind(), args, method, null, stateBefore, null);
         visitInvoke(invoke);
         return invoke.operand();
+    }
+
+
+    @Override
+    public void visitFrameState(FrameState i) {
+        // nothing to do for now
     }
 }
