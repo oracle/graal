@@ -80,7 +80,9 @@ public class GraphvizPrinter {
     public void print(Graph graph, boolean shortNames) {
         // graph.getNodes() returns all the graph's nodes, not just "roots"
         for (Node n : graph.getNodes()) {
-            printNode(n, shortNames);
+            if (n != null) {
+                printNode(n, shortNames);
+            }
         }
     }
 

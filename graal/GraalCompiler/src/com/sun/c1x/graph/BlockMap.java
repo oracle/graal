@@ -265,7 +265,7 @@ public final class BlockMap {
         return null;
     }
 
-    BlockBegin make(int bci) {
+    private BlockBegin make(int bci) {
         BlockBegin block = blockMap[bci];
         if (block == null) {
             block = new BlockBegin(bci, blockNum++, graph);
