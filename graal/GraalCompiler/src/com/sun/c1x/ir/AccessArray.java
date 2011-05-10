@@ -23,7 +23,6 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -66,8 +65,8 @@ public abstract class AccessArray extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public AccessArray(CiKind kind, Value array, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
-        super(kind, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessArray(CiKind kind, Value array, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setArray(array);
     }
 

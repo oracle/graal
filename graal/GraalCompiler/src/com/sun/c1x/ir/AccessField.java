@@ -25,7 +25,6 @@ package com.sun.c1x.ir;
 import java.lang.reflect.*;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -72,8 +71,8 @@ public abstract class AccessField extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public AccessField(CiKind kind, Value object, RiField field, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
-        super(kind, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessField(CiKind kind, Value object, RiField field, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         assert object != null : "every field access must reference some object";
         this.field = field;
         setObject(object);

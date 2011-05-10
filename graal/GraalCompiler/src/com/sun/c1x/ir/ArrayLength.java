@@ -25,7 +25,6 @@ package com.sun.c1x.ir;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
@@ -44,8 +43,8 @@ public final class ArrayLength extends AccessArray {
      * @param array the instruction producing the array
      * @param newFrameState the state after executing this instruction
      */
-    public ArrayLength(Value array, FrameState stateAfter, Graph graph) {
-        super(CiKind.Int, array, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public ArrayLength(Value array, Graph graph) {
+        super(CiKind.Int, array, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

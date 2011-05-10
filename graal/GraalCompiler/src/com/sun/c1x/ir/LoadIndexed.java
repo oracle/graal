@@ -24,7 +24,6 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -45,8 +44,8 @@ public final class LoadIndexed extends AccessIndexed {
      * @param stateAfter the after before executing this instruction
      * @param graph
      */
-    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, FrameState stateAfter, Graph graph) {
-        super(elementType.stackKind(), array, index, length, elementType, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, Graph graph) {
+        super(elementType.stackKind(), array, index, length, elementType, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**
