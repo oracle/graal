@@ -44,7 +44,8 @@ public final class BlockBegin extends Instruction {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_STATE_BEFORE = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_END = 0;
 
     @Override
     protected int inputCount() {
@@ -67,6 +68,33 @@ public final class BlockBegin extends Instruction {
     public FrameState setStateBefore(FrameState n) {
         assert stateBefore() == null;
         return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    }
+
+    /**
+     * The last node in the block (which contains the successors).
+     */
+    public BlockEnd end() {
+        return (BlockEnd) successors().get(super.successorCount() + SUCCESSOR_END);
+    }
+
+    public void setEnd(BlockEnd end) {
+        assert end != null;
+        BlockEnd old = this.end();
+        if (old != end) {
+            if (old != null) {
+                // disconnect this block from the old end
+                old.setBegin(null);
+                // disconnect this block from its current successors
+                for (BlockBegin s : old.blockSuccessors()) {
+                    s.blockPredecessors().remove(this);
+                }
+            }
+            successors().set(super.successorCount() + SUCCESSOR_END, end);
+            end.setBegin(this);
+            for (BlockBegin s : end.blockSuccessors()) {
+                s.addPredecessor(this);
+            }
+        }
     }
 
     private static final List<BlockBegin> NO_HANDLERS = Collections.emptyList();
@@ -99,11 +127,6 @@ public final class BlockBegin extends Instruction {
      * Denotes the current set of {@link BlockBegin.BlockFlag} settings.
      */
     private int blockFlags;
-
-    /**
-     * A link to the last node in the block (which contains the successors).
-     */
-    private BlockEnd end;
 
     /**
      * The {@link BlockBegin} nodes for which this node is a successor.
@@ -195,14 +218,6 @@ public final class BlockBegin extends Instruction {
     }
 
     /**
-     * Gets the block end associated with this basic block.
-     * @return the block end
-     */
-    public BlockEnd end() {
-        return end;
-    }
-
-    /**
      * Gets the exception handlers that cover one or more instructions of this basic block.
      *
      * @return the exception handlers
@@ -230,32 +245,6 @@ public final class BlockBegin extends Instruction {
 
     public void setLoopIndex(int loopIndex) {
         this.loopIndex = loopIndex;
-    }
-
-    /**
-     * Set the block end for this block begin. This method will
-     * reset this block's successor list and rebuild it to be equivalent
-     * to the successor list of the specified block end.
-     * @param end the new block end for this block begin
-     */
-    public void setEnd(BlockEnd end) {
-        assert end != null;
-        BlockEnd old = this.end;
-        if (old != end) {
-            if (old != null) {
-                // disconnect this block from the old end
-                old.setBegin(null);
-                // disconnect this block from its current successors
-                for (BlockBegin s : old.blockSuccessors()) {
-                    s.blockPredecessors().remove(this);
-                }
-            }
-            this.end = end;
-            end.setBegin(this);
-            for (BlockBegin s : end.blockSuccessors()) {
-                s.addPredecessor(this);
-            }
-        }
     }
 
     /**
@@ -310,7 +299,7 @@ public final class BlockBegin extends Instruction {
         while ((block = queue.poll()) != null) {
             closure.apply(block);
             queueBlocks(queue, block.exceptionHandlerBlocks(), mark);
-            queueBlocks(queue, block.end.blockSuccessors(), mark);
+            queueBlocks(queue, block.end().blockSuccessors(), mark);
             queueBlocks(queue, predecessors ? block.predecessors : null, mark);
         }
     }
@@ -595,10 +584,10 @@ public final class BlockBegin extends Instruction {
         }
 
         builder.append("]");
-        if (end != null) {
+        if (end() != null) {
             builder.append(" -> ");
             boolean hasSucc = false;
-            for (BlockBegin s : end.blockSuccessors()) {
+            for (BlockBegin s : end().blockSuccessors()) {
                 if (hasSucc) {
                     builder.append(", ");
                 }
@@ -615,7 +604,7 @@ public final class BlockBegin extends Instruction {
      * @return the number of successors
      */
     public int numberOfSux() {
-        return end.blockSuccessorCount();
+        return end().blockSuccessorCount();
     }
 
     /**
@@ -624,7 +613,7 @@ public final class BlockBegin extends Instruction {
      * @return the successor
      */
     public BlockBegin suxAt(int i) {
-        return end.blockSuccessor(i);
+        return end().blockSuccessor(i);
     }
 
     /**
@@ -768,7 +757,7 @@ public final class BlockBegin extends Instruction {
         boolean hasPhisInLocals = false;
         boolean hasPhisOnStack = false;
 
-        if (end != null && end.stateAfter() != null) {
+        if (end() != null && end().stateAfter() != null) {
             FrameState state = stateBefore();
 
             int i = 0;

@@ -159,11 +159,11 @@ public class GraphvizPrinter {
     }
 
     private void printControlEdge(int from, int fromPort, int to) {
-        out.println("n" + from + ":succ" + fromPort + " -> n" + to + ":predecessors:n [color=red];");
+        out.println("n" + from + ":succ" + fromPort + " -> n" + to + ":predecessors:n [color=red, weight=10];");
     }
 
     private void printDataEdge(int from, int fromPort, int to) {
-        out.println("n" + to + ":usages -> n" + from + ":in" + fromPort + ":n [color=black,dir=back];");
+        out.println("n" + to + ":usages:s -> n" + from + ":in" + fromPort + ":n [color=black,dir=back];");
     }
 
 }

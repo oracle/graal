@@ -29,10 +29,12 @@ import java.util.Collections;
 public class Graph {
 
     private final ArrayList<Node> nodes;
+    private final Root root;
     private int nextId;
 
     public Graph() {
         nodes = new ArrayList<Node>();
+        root = new Root(this);
     }
 
     public Collection<Node> getNodes() {
@@ -47,5 +49,9 @@ public class Graph {
 
     void unregister(Node node) {
         nodes.set(node.id(), Node.Null);
+    }
+
+    public Root root() {
+        return root;
     }
 }

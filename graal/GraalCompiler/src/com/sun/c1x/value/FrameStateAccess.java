@@ -28,18 +28,18 @@ public interface FrameStateAccess {
 
     FrameState duplicate();
 
-    Value valueAt(int i);
+    int localsSize();
 
     int stackSize();
 
-    int localsSize();
+    int locksSize();
 
-    Value stackAt(int i);
+    Value valueAt(int i);
+
+    Value localAt(int i);
 
     Value lockAt(int i);
 
-    int locksSize();
-
-    Value localAt(int i);
+    Value stackAt(int i);
 
 }

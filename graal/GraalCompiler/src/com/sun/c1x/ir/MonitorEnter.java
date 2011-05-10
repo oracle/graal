@@ -31,10 +31,10 @@ import com.sun.c1x.value.*;
  */
 public final class MonitorEnter extends AccessMonitor {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_STATE_AFTER = 0;
+    private static final int INPUT_COUNT = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_STATE_AFTER = 0;
 
     @Override
     protected int inputCount() {
@@ -51,11 +51,11 @@ public final class MonitorEnter extends AccessMonitor {
      */
      @Override
     public FrameState stateAfter() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
+        return (FrameState) successors().get(super.successorCount() + SUCCESSOR_STATE_AFTER);
     }
 
     public FrameState setStateAfter(FrameState n) {
-        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
+        return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
     }
 
     /**

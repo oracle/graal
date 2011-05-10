@@ -44,9 +44,6 @@ import com.sun.cri.ri.RiType.Representation;
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  * A number of optimizations may be performed during parsing of the bytecode, including value
  * numbering, inlining, constant folding, strength reduction, etc.
- *
- * @author Ben L. Titzer
- * @author Doug Simon
  */
 public final class GraphBuilder {
 
@@ -165,6 +162,7 @@ public final class GraphBuilder {
         // 1. create the start block
         ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
         BlockBegin startBlock = ir.startBlock;
+        graph.root().setStart(startBlock);
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         blockMap = compilation.getBlockMap(rootMethod);

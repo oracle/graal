@@ -449,5 +449,12 @@ public class FrameState extends Value implements FrameStateAccess {
         return new FrameState(bci, localsSize, stackSize, locksSize, graph());
     }
 
+    @Override
+    public String shortName() {
+        return "FrameState@" + bci;
+    }
+
+
+
 
 }
