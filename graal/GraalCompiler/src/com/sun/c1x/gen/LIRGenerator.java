@@ -907,9 +907,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.move(exceptionOpr, argumentOperand);
 
         if (unwind) {
-            lir.unwindException(exceptionPcOpr(), exceptionOpr, info);
+            lir.unwindException(CiValue.IllegalValue, exceptionOpr, info);
         } else {
-            lir.throwException(exceptionPcOpr(), argumentOperand, info);
+            lir.throwException(CiValue.IllegalValue, argumentOperand, info);
         }
     }
 
@@ -1569,10 +1569,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     protected abstract boolean canInlineAsConstant(Value i);
 
     protected abstract boolean canStoreAsConstant(Value i, CiKind kind);
-
-    protected abstract CiValue exceptionPcOpr();
-
-    protected abstract CiValue osrBufferPointer();
 
     protected abstract boolean strengthReduceMultiply(CiValue left, int constant, CiValue result, CiValue tmp);
 

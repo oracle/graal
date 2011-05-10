@@ -65,11 +65,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected CiValue exceptionPcOpr() {
-        return ILLEGAL;
-    }
-
-    @Override
     protected boolean canStoreAsConstant(Value v, CiKind kind) {
         if (kind == CiKind.Short || kind == CiKind.Char) {
             // there is no immediate move of word values in asemblerI486.?pp
@@ -523,10 +518,5 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
         assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
         lir.jump(x.defaultSuccessor());
-    }
-
-    @Override
-    protected CiValue osrBufferPointer() {
-        return Util.nonFatalUnimplemented(null);
     }
 }
