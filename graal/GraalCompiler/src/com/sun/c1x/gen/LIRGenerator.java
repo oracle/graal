@@ -225,15 +225,29 @@ public abstract class LIRGenerator extends ValueVisitor {
         blockDoProlog(block);
         this.currentBlock = block;
 
+        if (C1XOptions.TraceLIRGeneratorLevel >= 1) {
+            TTY.println("BEGIN Generating LIR for block B" + block.blockID);
+        }
+
         for (Instruction instr = block; instr != null; instr = instr.next()) {
             FrameState stateAfter = instr.stateAfter();
-            if (stateAfter != null) {
-                lastState = stateAfter;
-            }
             if (!(instr instanceof BlockBegin)) {
                 walkState(instr, stateAfter);
                 doRoot(instr);
             }
+            if (stateAfter != null) {
+                lastState = stateAfter;
+                if (C1XOptions.TraceLIRGeneratorLevel >= 2) {
+                    TTY.println("STATE CHANGE");
+                    if (C1XOptions.TraceLIRGeneratorLevel >= 3) {
+                        TTY.println(stateAfter.toString());
+                    }
+                }
+            }
+        }
+
+        if (C1XOptions.TraceLIRGeneratorLevel >= 1) {
+            TTY.println("END Generating LIR for block B" + block.blockID);
         }
 
         this.currentBlock = null;
@@ -256,7 +270,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitBase(Base x) {
         // emit phi-instruction move after safepoint since this simplifies
         // describing the state at the safepoint.
-        moveToPhi();
+        //moveToPhi();
 
         // all blocks with a successor must end with an unconditional jump
         // to the successor even if they are consecutive
@@ -1234,6 +1248,9 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     void doRoot(Instruction instr) {
+        if (C1XOptions.TraceLIRGeneratorLevel >= 2) {
+            TTY.println("Emitting LIR for instruction " + instr.toString());
+        }
         currentInstruction = instr;
         assert !instr.hasSubst() : "shouldn't have missed substitution";
 

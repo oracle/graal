@@ -202,14 +202,14 @@ public class CFGPrinter {
      * @param block the block for which the frame state is to be printed
      */
     private void printState(BlockBegin block) {
-        begin("state");
+        begin("states");
 
         FrameState state = block.stateBefore();
         int stackSize = state.stackSize();
         if (stackSize > 0) {
             begin("stack");
             out.print("size ").println(stackSize);
-            out.print("bci ").println(state.bci);
+            out.print("method \"").print(CiUtil.toLocation(C1XCompilation.compilation().method, state.bci)).println('"');
 
             int i = 0;
             while (i < stackSize) {
@@ -231,7 +231,7 @@ public class CFGPrinter {
         if (state.locksSize() > 0) {
             begin("locks");
             out.print("size ").println(state.locksSize());
-            out.print("bci ").println(state.bci);
+            out.print("method \"").print(CiUtil.toLocation(C1XCompilation.compilation().method, state.bci)).println('"');
 
             for (int i = 0; i < state.locksSize(); ++i) {
                 Value value = state.lockAt(i);
@@ -246,7 +246,7 @@ public class CFGPrinter {
 
         begin("locals");
         out.print("size ").println(state.localsSize());
-        out.print("bci ").println(state.bci);
+        out.print("method \"").print(CiUtil.toLocation(C1XCompilation.compilation().method, state.bci)).println('"');
         int i = 0;
         while (i < state.localsSize()) {
             Value value = state.localAt(i);
@@ -263,7 +263,7 @@ public class CFGPrinter {
             }
         }
         end("locals");
-        end("state");
+        end("states");
     }
 
     /**
@@ -275,7 +275,7 @@ public class CFGPrinter {
         }
 
         StringBuilder buf = new StringBuilder();
-        buf.append("[bci: ").append(state.bci).append("]");
+        buf.append(CiUtil.toLocation(C1XCompilation.compilation().method, state.bci));
         buf.append('\n');
         if (state.stackSize() > 0) {
             int i = 0;
