@@ -275,9 +275,13 @@ public abstract class Value extends Node {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" #");
+        builder.append("#");
         builder.append(id());
+        builder.append(' ');
+        if (id() < 10) {
+            builder.append(' ');
+        }
+        builder.append(getClass().getSimpleName());
         if (this instanceof Instruction) {
             builder.append(" @ ");
             builder.append(((Instruction) this).bci());
