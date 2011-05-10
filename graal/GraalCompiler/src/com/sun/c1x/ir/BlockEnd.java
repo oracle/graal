@@ -79,8 +79,7 @@ public abstract class BlockEnd extends Instruction {
         return blockSuccessorCount;
     }
 
-    BlockBegin begin;
-    boolean isSafepoint;
+    private boolean isSafepoint;
 
     /**
      * Constructs a new block end with the specified value type.
@@ -120,17 +119,12 @@ public abstract class BlockEnd extends Instruction {
      * @return the beginning of this basic block
      */
     public BlockBegin begin() {
-        return begin;
-    }
-
-    /**
-     * Sets the basic block beginning for this block end. This should only
-     * be called from {@link BlockBegin}.
-     *
-     * @param block the beginning of this basic block
-     */
-    void setBegin(BlockBegin block) {
-        begin = block;
+        for (Node n : predecessors()) {
+            if (n instanceof BlockBegin) {
+                return (BlockBegin) n;
+            }
+        }
+        return null;
     }
 
     /**
