@@ -181,7 +181,7 @@ public abstract class Instruction extends Value {
         while (!(cur instanceof BlockEnd)) {
             cur = cur.next();
         }
-        return ((BlockEnd) cur).begin;
+        return ((BlockEnd) cur).begin();
     }
 
     /**

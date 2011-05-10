@@ -81,15 +81,12 @@ public final class BlockBegin extends Instruction {
         BlockEnd old = this.end();
         if (old != end) {
             if (old != null) {
-                // disconnect this block from the old end
-                old.setBegin(null);
                 // disconnect this block from its current successors
                 for (BlockBegin s : old.blockSuccessors()) {
                     s.blockPredecessors().remove(this);
                 }
             }
             successors().set(super.successorCount() + SUCCESSOR_END, end);
-            end.setBegin(this);
             for (BlockBegin s : end.blockSuccessors()) {
                 s.addPredecessor(this);
             }
