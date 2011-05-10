@@ -42,10 +42,10 @@ public final class ArrayLength extends AccessArray {
     /**
      * Constructs a new ArrayLength instruction.
      * @param array the instruction producing the array
-     * @param newFrameState the state before executing this instruction
+     * @param newFrameState the state after executing this instruction
      */
-    public ArrayLength(Value array, FrameState newFrameState, Graph graph) {
-        super(CiKind.Int, array, newFrameState, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public ArrayLength(Value array, FrameState stateAfter, Graph graph) {
+        super(CiKind.Int, array, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

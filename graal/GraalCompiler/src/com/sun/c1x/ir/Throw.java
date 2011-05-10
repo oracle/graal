@@ -24,7 +24,6 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -32,9 +31,8 @@ import com.sun.cri.ci.*;
  */
 public final class Throw extends BlockEnd {
 
-    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_COUNT = 1;
     private static final int INPUT_EXCEPTION = 0;
-    private static final int INPUT_STATE_BEFORE = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -60,27 +58,14 @@ public final class Throw extends BlockEnd {
     }
 
     /**
-     * The state before this throw would occur.
-     */
-     @Override
-    public FrameState stateBefore() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
-    }
-
-    private FrameState setStateBefore(FrameState n) {
-        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
-    }
-
-    /**
      * Creates a new Throw instruction.
      * @param exception the instruction that generates the exception to throw
      * @param stateAfter the state before the exception is thrown but after the exception object has been popped
      * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param graph
      */
-    public Throw(Value exception, FrameState stateAfter, boolean isSafepoint, Graph graph) {
+    public Throw(Value exception, boolean isSafepoint, Graph graph) {
         super(CiKind.Illegal, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setStateBefore(stateAfter);
         setException(exception);
     }
 

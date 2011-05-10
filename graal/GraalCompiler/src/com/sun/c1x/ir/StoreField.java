@@ -64,11 +64,11 @@ public final class StoreField extends AccessField {
      * @param object the receiver object
      * @param field the compiler interface field
      * @param value the instruction representing the value to store to the field
-     * @param stateBefore the state before the field access
+     * @param stateAfter the state after the field access
      * @param graph
      */
-    public StoreField(Value object, RiField field, Value value, FrameState stateBefore, Graph graph) {
-        super(CiKind.Void, object, field, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public StoreField(Value object, RiField field, Value value, FrameState stateAfter, Graph graph) {
+        super(CiKind.Void, object, field, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 

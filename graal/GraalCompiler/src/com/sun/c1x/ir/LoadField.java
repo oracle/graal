@@ -41,12 +41,12 @@ public final class LoadField extends AccessField {
      * @param object the receiver object
      * @param field the compiler interface field
      * @param isStatic indicates if the field is static
-     * @param stateBefore the state before the field access
+     * @param stateAfter the state after the field access
      * @param graph
      * @param isLoaded indicates if the class is loaded
      */
-    public LoadField(Value object, RiField field, FrameState stateBefore, Graph graph) {
-        super(field.kind().stackKind(), object, field, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LoadField(Value object, RiField field, FrameState stateAfter, Graph graph) {
+        super(field.kind().stackKind(), object, field, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**

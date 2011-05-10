@@ -23,14 +23,13 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
 /**
  * The {@code TypeCheck} instruction is the base class of casts and instanceof tests.
  */
-public abstract class TypeCheck extends StateSplit {
+public abstract class TypeCheck extends Instruction {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_OBJECT = 0;
@@ -82,8 +81,8 @@ public abstract class TypeCheck extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public TypeCheck(RiType targetClass, Value targetClassInstruction, Value object, CiKind kind, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
-        super(kind, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public TypeCheck(RiType targetClass, Value targetClassInstruction, Value object, CiKind kind, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.targetClass = targetClass;
         setObject(object);
         setTargetClassInstruction(targetClassInstruction);

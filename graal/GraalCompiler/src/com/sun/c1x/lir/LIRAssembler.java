@@ -31,7 +31,6 @@ import com.sun.c1x.gen.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.FrameMap.StackBlock;
 import com.sun.c1x.util.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;
@@ -211,13 +210,6 @@ public abstract class LIRAssembler {
         }
 
         return true;
-    }
-
-    static FrameState stateBefore(Value ins) {
-        if (ins instanceof Instruction) {
-            return ((Instruction) ins).stateBefore();
-        }
-        return null;
     }
 
     void emitCall(LIRCall op) {

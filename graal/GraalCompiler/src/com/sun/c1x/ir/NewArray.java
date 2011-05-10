@@ -23,13 +23,12 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code NewArray} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArray extends StateSplit {
+public abstract class NewArray extends Instruction {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_LENGTH = 0;
@@ -65,10 +64,14 @@ public abstract class NewArray extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    NewArray(Value length, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Object, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    NewArray(Value length, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Object, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setFlag(Flag.NonNull);
         setLength(length);
     }
 
+    @Override
+    public boolean canTrap() {
+        return true;
+    }
 }

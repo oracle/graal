@@ -190,6 +190,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     protected LIRList lir;
     final VolatileMemoryAccess vma;
     private ArrayList<DeoptimizationStub> deoptimizationStubs;
+    private FrameState lastState;
 
     public LIRGenerator(C1XCompilation compilation) {
         this.compilation = compilation;
@@ -225,8 +226,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.currentBlock = block;
 
         for (Instruction instr = block; instr != null; instr = instr.next()) {
+            FrameState stateAfter = instr.stateAfter();
+            if (stateAfter != null) {
+                lastState = stateAfter;
+            }
             if (!(instr instanceof BlockBegin)) {
-                walkState(instr, instr.stateBefore());
+                walkState(instr, stateAfter);
                 doRoot(instr);
             }
         }
@@ -251,7 +256,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitBase(Base x) {
         // emit phi-instruction move after safepoint since this simplifies
         // describing the state at the safepoint.
-        moveToPhi(x.stateAfter());
+        moveToPhi();
 
         // all blocks with a successor must end with an unconditional jump
         // to the successor even if they are consecutive
@@ -428,10 +433,29 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.cmove(i.condition(), tVal, fVal, reg);
     }
 
+    /*protected FrameState stateBeforeInvoke(Invoke invoke) {
+        FrameState stateAfter = invoke.stateAfter();
+        FrameStateBuilder builder = new FrameStateBuilder(compilation.method, invoke.graph());
+        System.out.println("stateBeforeInvoke(" + invoke + "); maxStack=" + compilation.method.maxStackSize());
+        System.out.println("stateAfter=" + stateAfter);
+        builder.initializeFrom(stateAfter);
+        if (invoke.kind != CiKind.Void) {
+            Value pop = builder.pop(invoke.kind);
+            System.out.println("pop " + pop);
+        }
+        int argumentCount = invoke.argumentCount(); // invoke.arguments() iterable?
+        for (int i = 0; i < argumentCount; i++) {
+            Value arg = invoke.argument(i);
+            System.out.println("push " + arg);
+            builder.push(arg.kind, arg);
+        }
+        return builder.create(invoke.bci());
+    }*/
+
     @Override
     public void visitInvoke(Invoke x) {
         RiMethod target = x.target();
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
+        LIRDebugInfo info = stateFor(x);
 
         XirSnippet snippet = null;
 
@@ -500,7 +524,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitLoadField(LoadField x) {
         RiField field = x.field();
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
+        LIRDebugInfo info = stateFor(x);
         XirArgument receiver = toXirArgument(x.object());
         XirSnippet snippet = x.isStatic() ? xir.genGetStatic(site(x), receiver, field) : xir.genGetField(site(x), receiver, field);
         emitXir(snippet, x, info, null, true);
@@ -550,7 +574,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         setNoResult(x);
 
         if (x.isSafepoint()) {
-            emitXir(xir.genSafepoint(site(x)), x, stateFor(x, x.stateAfter()), null, false);
+            emitXir(xir.genSafepoint(site(x)), x, stateFor(x), null, false);
         }
 
         // move values into phi locations
@@ -589,7 +613,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (x.kind.isVoid()) {
             XirSnippet epilogue = xir.genEpilogue(site(x), compilation.method);
             if (epilogue != null) {
-                emitXir(epilogue, x, stateFor(x, x.stateAfter()), compilation.method, false);
+                emitXir(epilogue, x, stateFor(x), compilation.method, false);
                 lir.returnOp(IllegalValue);
             }
         } else {
@@ -785,7 +809,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitStoreField(StoreField x) {
         RiField field = x.field();
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
+        LIRDebugInfo info = stateFor(x);
 
         if (x.isVolatile()) {
             vma.preVolatileWrite();
@@ -813,7 +837,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         setNoResult(x);
 
         if (x.isSafepoint()) {
-            emitXir(xir.genSafepoint(site(x)), x, stateFor(x, x.stateAfter()), null, false);
+            emitXir(xir.genSafepoint(site(x)), x, stateFor(x), null, false);
         }
 
         // move values into phi locations
@@ -845,7 +869,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitThrow(Throw x) {
         setNoResult(x);
         CiValue exceptionOpr = load(x.exception());
-        LIRDebugInfo info = stateFor(x, x.stateAfter());
+        LIRDebugInfo info = stateFor(x);
 
         // check if the instruction has an xhandler in any of the nested scopes
         boolean unwind = false;
@@ -969,8 +993,12 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitRegisterFinalizer(RegisterFinalizer x) {
-        CiValue receiver = load(x.object());
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
+        Value object = x.object();
+        CiValue receiver = load(object);
+        FrameStateBuilder builder = new FrameStateBuilder(compilation.method, x.graph());
+        builder.initializeFrom(x.stateAfter());
+        builder.push(object.kind, object);
+        LIRDebugInfo info = stateFor(x, builder.create(x.bci()));
         callRuntime(CiRuntimeCall.RegisterFinalizer, info, receiver);
         setNoResult(x);
     }
@@ -1266,6 +1294,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
+    protected void moveToPhi() {
+        assert lastState != null;
+        this.moveToPhi(lastState);
+    }
+
     protected void moveToPhi(FrameState curState) {
         // Moves all stack values into their phi position
         BlockBegin bb = currentBlock;
@@ -1378,7 +1411,10 @@ public abstract class LIRGenerator extends ValueVisitor {
             return;
         }
         for (int index = 0; index < state.stackSize(); index++) {
-            walkStateValue(state.stackAt(index));
+            Value value = state.stackAt(index);
+            if (value != x) {
+                walkStateValue(value);
+            }
         }
         FrameState s = state;
         int bci = x.bci();
@@ -1414,16 +1450,15 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected LIRDebugInfo maybeStateFor(Instruction x) {
-        FrameState stateBefore = x.stateBefore();
-        if (stateBefore == null) {
+        if (lastState == null) {
             return null;
         }
-        return stateFor(x, stateBefore);
+        return stateFor(x, lastState);
     }
 
     protected LIRDebugInfo stateFor(Instruction x) {
-        assert x.stateBefore() != null : "must have state before instruction for " + x;
-        return stateFor(x, x.stateBefore());
+        assert lastState != null : "must have state before instruction for " + x;
+        return stateFor(x, lastState);
     }
 
     protected LIRDebugInfo stateFor(Instruction x, FrameState state) {
@@ -1431,6 +1466,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             state = compilation.placeholderState;
         }
 
+        assert state != null;
         return new LIRDebugInfo(state, x.exceptionHandlers());
     }
 

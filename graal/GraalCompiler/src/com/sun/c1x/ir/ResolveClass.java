@@ -40,8 +40,8 @@ public final class ResolveClass extends StateSplit {
     public final RiType type;
     public final RiType.Representation portion;
 
-    public ResolveClass(RiType type, RiType.Representation r, FrameState stateBefore, Graph graph) {
-        super(type.getRepresentationKind(r), stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public ResolveClass(RiType type, RiType.Representation r, FrameState stateAfter, Graph graph) {
+        super(type.getRepresentationKind(r), stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.portion = r;
         this.type = type;
         setFlag(Flag.NonNull);

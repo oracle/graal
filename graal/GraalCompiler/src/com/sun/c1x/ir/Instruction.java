@@ -237,22 +237,10 @@ public abstract class Instruction extends Value {
      */
     public final void allValuesDo(ValueClosure closure) {
         inputValuesDo(closure);
-        FrameState stateBefore = stateBefore();
-        if (stateBefore != null) {
-            stateBefore.inputValuesDo(closure);
-        }
         FrameState stateAfter = stateAfter();
         if (stateAfter != null) {
             stateAfter.inputValuesDo(closure);
         }
-    }
-
-    /**
-     * Gets the state before the instruction, if it is recorded.
-     * @return the state before the instruction
-     */
-    public FrameState stateBefore() {
-        return null;
     }
 
     /**

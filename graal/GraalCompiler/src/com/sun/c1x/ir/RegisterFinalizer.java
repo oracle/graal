@@ -58,8 +58,8 @@ public class RegisterFinalizer extends StateSplit {
         return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
     }
 
-    public RegisterFinalizer(Value object, FrameState stateBefore, Graph graph) {
-        super(CiKind.Void, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public RegisterFinalizer(Value object, FrameState stateAfter, Graph graph) {
+        super(CiKind.Void, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setObject(object);
     }
 

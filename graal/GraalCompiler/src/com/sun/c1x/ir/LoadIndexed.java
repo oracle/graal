@@ -42,11 +42,11 @@ public final class LoadIndexed extends AccessIndexed {
      * @param index the instruction producing the index
      * @param length the instruction producing the length
      * @param elementType the element type
-     * @param stateBefore the state before executing this instruction
+     * @param stateAfter the after before executing this instruction
      * @param graph
      */
-    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, FrameState stateBefore, Graph graph) {
-        super(elementType.stackKind(), array, index, length, elementType, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, FrameState stateAfter, Graph graph) {
+        super(elementType.stackKind(), array, index, length, elementType, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**

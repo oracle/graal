@@ -60,7 +60,6 @@ public final class BlockBegin extends Instruction {
     /**
      * The frame state before execution of the first instruction in this block.
      */
-     @Override
     public FrameState stateBefore() {
         return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
     }
@@ -127,6 +126,8 @@ public final class BlockBegin extends Instruction {
      * Denotes the current set of {@link BlockBegin.BlockFlag} settings.
      */
     private int blockFlags;
+
+    private FrameState stateAfter;
 
     /**
      * The {@link BlockBegin} nodes for which this node is a successor.
@@ -215,6 +216,15 @@ public final class BlockBegin extends Instruction {
      */
     public int loopIndex() {
         return loopIndex;
+    }
+
+    public void setStateAfter(FrameState stateAfter) {
+        this.stateAfter = stateAfter;
+    }
+
+    @Override
+    public FrameState stateAfter() {
+        return stateAfter;
     }
 
     /**

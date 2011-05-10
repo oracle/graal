@@ -65,11 +65,11 @@ public final class StoreIndexed extends AccessIndexed {
      * @param length the instruction producing the length
      * @param elementType the element type
      * @param value the value to store into the array
-     * @param stateBefore the state before executing this instruction
+     * @param stateAfter the state after executing this instruction
      * @param graph
      */
-    public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, FrameState stateBefore, Graph graph) {
-        super(CiKind.Void, array, index, length, elementType, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, FrameState stateAfter, Graph graph) {
+        super(CiKind.Void, array, index, length, elementType, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 
