@@ -25,7 +25,6 @@ package com.sun.c1x.ir;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -80,8 +79,8 @@ public final class Invoke extends StateSplit {
      * @param target the target method being called
      * @param stateBefore the state before executing the invocation
      */
-    public Invoke(int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, FrameState stateAfter, Graph graph) {
-        super(result, stateAfter, args.length, SUCCESSOR_COUNT, graph);
+    public Invoke(int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, Graph graph) {
+        super(result, args.length, SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
         this.target = target;
         this.returnType = returnType;

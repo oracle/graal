@@ -23,7 +23,6 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -85,8 +84,8 @@ public abstract class AccessMonitor extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public AccessMonitor(Value object, Value lockAddress, FrameState stateAfter, int lockNumber, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Illegal, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessMonitor(Value object, Value lockAddress, int lockNumber, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Illegal, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.lockNumber = lockNumber;
         setObject(object);
         setLockAddress(lockAddress);

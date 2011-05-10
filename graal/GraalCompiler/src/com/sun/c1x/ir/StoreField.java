@@ -24,7 +24,6 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -67,8 +66,8 @@ public final class StoreField extends AccessField {
      * @param stateAfter the state after the field access
      * @param graph
      */
-    public StoreField(Value object, RiField field, Value value, FrameState stateAfter, Graph graph) {
-        super(CiKind.Void, object, field, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public StoreField(Value object, RiField field, Value value, Graph graph) {
+        super(CiKind.Void, object, field, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 

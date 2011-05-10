@@ -66,9 +66,8 @@ public abstract class StateSplit extends Instruction {
      * @param successorCount
      * @param graph
      */
-    public StateSplit(CiKind kind, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
+    public StateSplit(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
-        this.setStateAfter(stateAfter);
     }
 
     @Override
@@ -76,4 +75,7 @@ public abstract class StateSplit extends Instruction {
         return true;
     }
 
+    public boolean needsStateAfter() {
+        return true;
+    }
 }
