@@ -118,7 +118,6 @@ public final class GraphBuilder {
     private Instruction lastInstr;                 // the last instruction added
     private final LogStream log;
 
-    private boolean skipBlock;                     // skip processing of the rest of this block
     private Value rootMethodSynchronizedObject;
 
     private final Graph graph;
@@ -262,10 +261,8 @@ public final class GraphBuilder {
         }
 
         ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>();
-        FrameState stateBefore = x.stateBefore();
 
-        assert stateBefore != null : "exception handler state must be available for " + x;
-        FrameState state = stateBefore;
+        FrameState state = frameState.create(bci);
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         // join with all potential exception handlers
@@ -469,17 +466,17 @@ public final class GraphBuilder {
     }
 
     void genArithmeticOp(CiKind kind, int opcode) {
-        genArithmeticOp(kind, opcode, null);
+        genArithmeticOp(kind, opcode, false);
     }
 
-    void genArithmeticOp(CiKind kind, int opcode, FrameState state) {
-        genArithmeticOp(kind, opcode, kind, kind, state);
+    void genArithmeticOp(CiKind kind, int opcode, boolean canTrap) {
+        genArithmeticOp(kind, opcode, kind, kind, canTrap);
     }
 
-    void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, FrameState state) {
+    void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
         Value yValue = frameState.pop(y);
         Value xValue = frameState.pop(x);
-        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method().accessFlags()), state, graph));
+        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method().accessFlags()), canTrap, graph));
         frameState.push(result, result1);
     }
 
@@ -519,7 +516,7 @@ public final class GraphBuilder {
         int delta = stream().readIncrement();
         Value x = frameState.localAt(index);
         Value y = append(Constant.forInt(delta, graph));
-        frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), null, graph)));
+        frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), false, graph)));
     }
 
     void genGoto(int fromBCI, int toBCI) {
@@ -531,7 +528,7 @@ public final class GraphBuilder {
         BlockBegin tsucc = blockAt(stream().readBranchDest());
         BlockBegin fsucc = blockAt(stream().nextBCI());
         int bci = stream().currentBCI();
-        boolean isSafepoint = !noSafepoints() && tsucc.bci() <= bci || fsucc.bci() <= bci;
+        boolean isSafepoint = !noSafepoints() && (tsucc.bci() <= bci || fsucc.bci() <= bci);
         append(new If(x, cond, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint, graph));
     }
 
@@ -557,8 +554,7 @@ public final class GraphBuilder {
     }
 
     void genThrow(int bci) {
-        FrameState stateBefore = frameState.create(bci());
-        Throw t = new Throw(frameState.apop(), stateBefore, !noSafepoints(), graph);
+        Throw t = new Throw(frameState.apop(), !noSafepoints(), graph);
         appendWithoutOptimization(t, bci);
     }
 
@@ -567,7 +563,7 @@ public final class GraphBuilder {
         RiType type = constantPool().lookupType(cpi, CHECKCAST);
         boolean isInitialized = !C1XOptions.TestPatching && type.isResolved() && type.isInitialized();
         Value typeInstruction = genResolveClass(RiType.Representation.ObjectHub, type, isInitialized, cpi);
-        CheckCast c = new CheckCast(type, typeInstruction, frameState.apop(), null, graph);
+        CheckCast c = new CheckCast(type, typeInstruction, frameState.apop(), graph);
         frameState.apush(append(c));
         checkForDirectCompare(c);
     }
@@ -577,7 +573,7 @@ public final class GraphBuilder {
         RiType type = constantPool().lookupType(cpi, INSTANCEOF);
         boolean isInitialized = !C1XOptions.TestPatching && type.isResolved() && type.isInitialized();
         Value typeInstruction = genResolveClass(RiType.Representation.ObjectHub, type, isInitialized, cpi);
-        InstanceOf i = new InstanceOf(type, typeInstruction, frameState.apop(), null, graph);
+        InstanceOf i = new InstanceOf(type, typeInstruction, frameState.apop(), graph);
         frameState.ipush(append(i));
         checkForDirectCompare(i);
     }
@@ -590,9 +586,8 @@ public final class GraphBuilder {
     }
 
     void genNewInstance(int cpi) {
-        FrameState stateBefore = frameState.create(bci());
         RiType type = constantPool().lookupType(cpi, NEW);
-        NewInstance n = new NewInstance(type, cpi, constantPool(), stateBefore, graph);
+        NewInstance n = new NewInstance(type, cpi, constantPool(), graph);
         if (memoryMap != null) {
             memoryMap.newInstance(n);
         }
@@ -600,28 +595,25 @@ public final class GraphBuilder {
     }
 
     void genNewTypeArray(int typeCode) {
-        FrameState stateBefore = frameState.create(bci());
         CiKind kind = CiKind.fromArrayTypeCode(typeCode);
         RiType elementType = compilation.runtime.asRiType(kind);
-        frameState.apush(append(new NewTypeArray(frameState.ipop(), elementType, stateBefore, graph)));
+        frameState.apush(append(new NewTypeArray(frameState.ipop(), elementType, graph)));
     }
 
     void genNewObjectArray(int cpi) {
         RiType type = constantPool().lookupType(cpi, ANEWARRAY);
-        FrameState stateBefore = frameState.create(bci());
-        NewArray n = new NewObjectArray(type, frameState.ipop(), stateBefore, graph);
+        NewArray n = new NewObjectArray(type, frameState.ipop(), graph);
         frameState.apush(append(n));
     }
 
     void genNewMultiArray(int cpi) {
         RiType type = constantPool().lookupType(cpi, MULTIANEWARRAY);
-        FrameState stateBefore = frameState.create(bci());
         int rank = stream().readUByte(bci() + 3);
         Value[] dims = new Value[rank];
         for (int i = rank - 1; i >= 0; i--) {
             dims[i] = frameState.ipop();
         }
-        NewArray n = new NewMultiArray(type, dims, stateBefore, cpi, constantPool(), graph);
+        NewArray n = new NewMultiArray(type, dims, cpi, constantPool(), graph);
         frameState.apush(append(n));
     }
 
@@ -1098,6 +1090,14 @@ public final class GraphBuilder {
 
         assert x.next() == null : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
+
+        if (lastInstr instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) lastInstr;
+            if (stateSplit.stateAfter() == null) {
+                stateSplit.setStateAfter(frameState.create(bci));
+            }
+        }
+
         if (lastInstr instanceof Base) {
             assert false : "may only happen when inlining intrinsics";
         } else {
@@ -1111,13 +1111,6 @@ public final class GraphBuilder {
         if (memoryMap != null && hasUncontrollableSideEffects(x)) {
             // conservatively kill all memory if there are unknown side effects
             memoryMap.kill();
-        }
-
-        if (x instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) x;
-            if (stateSplit.stateBefore() == null) {
-                stateSplit.setStateBefore(frameState.create(bci));
-            }
         }
 
         if (x.canTrap()) {
@@ -1164,7 +1157,7 @@ public final class GraphBuilder {
         frameState.initializeFrom(syncHandler.stateBefore());
 
         int bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
-        Value exception = appendWithoutOptimization(new ExceptionObject(frameState.create(bci), graph), bci);
+        Value exception = appendWithoutOptimization(new ExceptionObject(graph), bci);
 
         assert lock != null;
         assert frameState.locksSize() > 0 && frameState.lockAt(locksSize() - 1) == lock;
@@ -1207,7 +1200,6 @@ public final class GraphBuilder {
     }
 
     private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
-        skipBlock = false;
         assert frameState != null;
         stream.setBCI(bci);
 
@@ -1239,8 +1231,7 @@ public final class GraphBuilder {
 
             // push an exception object onto the stack if we are parsing an exception handler
             if (pushException) {
-                FrameState stateBefore = frameState.create(bci());
-                frameState.apush(append(new ExceptionObject(stateBefore, graph)));
+                frameState.apush(append(new ExceptionObject(graph)));
                 pushException = false;
             }
 
@@ -1259,12 +1250,6 @@ public final class GraphBuilder {
             blockStart = false;
         }
 
-        // stop processing of this block
-        if (skipBlock) {
-            skipBlock = false;
-            return (BlockEnd) lastInstr;
-        }
-
         // if the method terminates, we don't need the stack anymore
         if (end instanceof Return || end instanceof Throw) {
             frameState.clearStack();
@@ -1273,12 +1258,13 @@ public final class GraphBuilder {
         // connect to begin and set state
         // NOTE that inlining may have changed the block we are parsing
         assert end != null : "end should exist after iterating over bytecodes";
-        end.setStateAfter(frameState.create(bci()));
+        FrameState stateAtEnd = frameState.create(bci());
+        end.setStateAfter(stateAtEnd);
         curBlock.setEnd(end);
         // propagate the state
         for (BlockBegin succ : end.blockSuccessors()) {
             assert succ.blockPredecessors().contains(curBlock);
-            succ.mergeOrClone(end.stateAfter(), method());
+            succ.mergeOrClone(stateAtEnd, method());
             addToWorkList(succ);
         }
         return end;
@@ -1407,12 +1393,12 @@ public final class GraphBuilder {
             case ISUB           : // fall through
             case IMUL           : genArithmeticOp(CiKind.Int, opcode); break;
             case IDIV           : // fall through
-            case IREM           : genArithmeticOp(CiKind.Int, opcode, frameState.create(bci())); break;
+            case IREM           : genArithmeticOp(CiKind.Int, opcode, true); break;
             case LADD           : // fall through
             case LSUB           : // fall through
             case LMUL           : genArithmeticOp(CiKind.Long, opcode); break;
             case LDIV           : // fall through
-            case LREM           : genArithmeticOp(CiKind.Long, opcode, frameState.create(bci())); break;
+            case LREM           : genArithmeticOp(CiKind.Long, opcode, true); break;
             case FADD           : // fall through
             case FSUB           : // fall through
             case FMUL           : // fall through

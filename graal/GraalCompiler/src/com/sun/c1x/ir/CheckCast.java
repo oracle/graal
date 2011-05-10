@@ -25,7 +25,6 @@ package com.sun.c1x.ir;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -45,8 +44,8 @@ public final class CheckCast extends TypeCheck {
      * @param stateBefore the state before the cast
      * @param graph
      */
-    public CheckCast(RiType targetClass, Value targetClassInstruction, Value object, FrameState stateBefore, Graph graph) {
-        super(targetClass, targetClassInstruction, object, CiKind.Object, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public CheckCast(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {
+        super(targetClass, targetClassInstruction, object, CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         initFlag(Flag.NonNull, object.isNonNull());
     }
 

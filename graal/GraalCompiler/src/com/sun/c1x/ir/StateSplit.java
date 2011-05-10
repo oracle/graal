@@ -33,7 +33,7 @@ import com.sun.cri.ci.*;
 public abstract class StateSplit extends Instruction {
 
     private static final int INPUT_COUNT = 1;
-    private static final int INPUT_STATE_BEFORE = 0;
+    private static final int INPUT_STATE_AFTER = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -51,12 +51,12 @@ public abstract class StateSplit extends Instruction {
      * The state for this instruction.
      */
      @Override
-    public FrameState stateBefore() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
+    public FrameState stateAfter() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
     }
 
-    public FrameState setStateBefore(FrameState n) {
-        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    public FrameState setStateAfter(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
     }
 
     /**
@@ -66,14 +66,14 @@ public abstract class StateSplit extends Instruction {
      * @param successorCount
      * @param graph
      */
-    public StateSplit(CiKind kind, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
+    public StateSplit(CiKind kind, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
-        setStateBefore(stateBefore);
+        this.setStateAfter(stateAfter);
     }
 
     @Override
     public boolean canTrap() {
-        return stateBefore() != null;
+        return true;
     }
 
 }

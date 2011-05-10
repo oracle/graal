@@ -24,7 +24,6 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -38,8 +37,8 @@ public final class NewTypeArray extends NewArray {
 
     final RiType elementType;
 
-    public NewTypeArray(Value length, RiType elementType, FrameState stateBefore, Graph graph) {
-        super(length, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public NewTypeArray(Value length, RiType elementType, Graph graph) {
+        super(length, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.elementType = elementType;
     }
 

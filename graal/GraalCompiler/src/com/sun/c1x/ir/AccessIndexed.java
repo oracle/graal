@@ -86,8 +86,8 @@ public abstract class AccessIndexed extends AccessArray {
      * @param successorCount
      * @param graph
      */
-    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementType, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
-        super(kind, array, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementType, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
+        super(kind, array, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setIndex(index);
         setLength(length);
         this.elementType = elementType;

@@ -72,8 +72,8 @@ public abstract class AccessField extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public AccessField(CiKind kind, Value object, RiField field, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
-        super(kind, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessField(CiKind kind, Value object, RiField field, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
+        super(kind, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         assert object != null : "every field access must reference some object";
         this.field = field;
         setObject(object);

@@ -546,7 +546,7 @@ public class CFGPrinter {
         }
         out.print("tid ").print(i).println(COLUMN_END);
 
-        String state = stateToString(i.stateBefore(), null);
+        String state = stateToString(i.stateAfter(), null);
         if (state != null) {
             out.print("st ").print(HOVER_START).print("st").print(HOVER_SEP).print(state).print(HOVER_END).println(COLUMN_END);
         }

@@ -34,28 +34,10 @@ public final class MonitorEnter extends AccessMonitor {
     private static final int INPUT_COUNT = 0;
 
     private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_STATE_AFTER = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
 
     @Override
     protected int successorCount() {
         return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The state for this instruction.
-     */
-     @Override
-    public FrameState stateAfter() {
-        return (FrameState) successors().get(super.successorCount() + SUCCESSOR_STATE_AFTER);
-    }
-
-    public FrameState setStateAfter(FrameState n) {
-        return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
     }
 
     /**
@@ -64,11 +46,11 @@ public final class MonitorEnter extends AccessMonitor {
      * @param object the instruction producing the object
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param lockNumber the number of the lock
-     * @param stateBefore the state before
+     * @param stateAfter the state after
      * @param graph
      */
-    public MonitorEnter(Value object, Value lockAddress, int lockNumber, FrameState stateBefore, Graph graph) {
-        super(object, lockAddress, stateBefore, lockNumber, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public MonitorEnter(Value object, Value lockAddress, int lockNumber, FrameState stateAfter, Graph graph) {
+        super(object, lockAddress, stateAfter, lockNumber, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

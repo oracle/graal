@@ -25,14 +25,13 @@ package com.sun.c1x.ir;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ri.*;
 
 /**
  * The {@code NullCheck} class represents an explicit null check instruction.
  */
-public final class NullCheck extends StateSplit {
+public final class NullCheck extends Instruction {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
@@ -66,8 +65,8 @@ public final class NullCheck extends StateSplit {
      * @param stateBefore the state before executing the null check
      * @param graph
      */
-    public NullCheck(Value object, FrameState stateBefore, Graph graph) {
-        super(object.kind, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public NullCheck(Value object, Graph graph) {
+        super(object.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setFlag(Flag.NonNull);
         setObject(object);
     }

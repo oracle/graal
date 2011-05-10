@@ -66,8 +66,8 @@ public abstract class AccessArray extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public AccessArray(CiKind kind, Value array, FrameState stateBefore, int inputCount, int successorCount, Graph graph) {
-        super(kind, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessArray(CiKind kind, Value array, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
+        super(kind, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setArray(array);
     }
 

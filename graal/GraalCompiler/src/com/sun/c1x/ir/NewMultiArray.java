@@ -24,7 +24,6 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -81,8 +80,8 @@ public final class NewMultiArray extends NewArray {
      * @param riConstantPool the constant pool for resolution
      * @param graph
      */
-    public NewMultiArray(RiType elementKind, Value[] dimensions, FrameState stateBefore, int cpi, RiConstantPool riConstantPool, Graph graph) {
-        super(null, stateBefore, dimensions.length, SUCCESSOR_COUNT, graph);
+    public NewMultiArray(RiType elementKind, Value[] dimensions, int cpi, RiConstantPool riConstantPool, Graph graph) {
+        super(null, dimensions.length, SUCCESSOR_COUNT, graph);
         this.constantPool = riConstantPool;
         this.elementKind = elementKind;
         this.cpi = cpi;

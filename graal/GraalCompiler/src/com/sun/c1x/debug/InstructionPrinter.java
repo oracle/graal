@@ -143,7 +143,7 @@ public class InstructionPrinter {
             out.print("  [flags: " + flags + "]");
         }
         if (instruction instanceof StateSplit) {
-            out.print("  [state: " + ((StateSplit) instruction).stateBefore() + "]");
+            out.print("  [state: " + ((StateSplit) instruction).stateAfter() + "]");
         }
         out.println();
     }

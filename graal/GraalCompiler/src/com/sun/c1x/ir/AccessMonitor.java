@@ -85,8 +85,8 @@ public abstract class AccessMonitor extends StateSplit {
      * @param successorCount
      * @param graph
      */
-    public AccessMonitor(Value object, Value lockAddress, FrameState stateBefore, int lockNumber, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Illegal, stateBefore, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessMonitor(Value object, Value lockAddress, FrameState stateAfter, int lockNumber, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Illegal, stateAfter, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.lockNumber = lockNumber;
         setObject(object);
         setLockAddress(lockAddress);
