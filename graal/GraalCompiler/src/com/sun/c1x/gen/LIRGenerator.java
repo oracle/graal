@@ -1465,7 +1465,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     private void walkStateValue(Value value) {
         if (value != null) {
-            assert !value.hasSubst() : "missed substitution";
+            assert !value.hasSubst() : "missed substitution on " + value.toString();
             if (value instanceof Phi && !value.isIllegal()) {
                 // phi's are special
                 operandForPhi((Phi) value);

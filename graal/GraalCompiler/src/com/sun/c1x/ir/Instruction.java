@@ -237,10 +237,6 @@ public abstract class Instruction extends Value {
      */
     public final void allValuesDo(ValueClosure closure) {
         inputValuesDo(closure);
-        FrameState stateAfter = stateAfter();
-        if (stateAfter != null) {
-            stateAfter.inputValuesDo(closure);
-        }
     }
 
     /**

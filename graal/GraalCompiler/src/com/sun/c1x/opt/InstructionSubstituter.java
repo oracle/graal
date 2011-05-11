@@ -89,6 +89,10 @@ public final class InstructionSubstituter implements BlockClosure, ValueClosure 
     }
 
     public Value apply(Value i) {
+        if (i instanceof FrameState) {
+            FrameState state = (FrameState) i;
+            state.inputValuesDo(this);
+        }
         if (i != null) {
             return getSubst(i);
         }
