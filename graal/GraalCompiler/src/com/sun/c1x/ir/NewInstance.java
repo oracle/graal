@@ -73,11 +73,6 @@ public final class NewInstance extends StateSplit {
     }
 
     @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    @Override
     public void accept(ValueVisitor v) {
         v.visitNewInstance(this);
     }

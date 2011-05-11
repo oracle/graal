@@ -181,17 +181,6 @@ public abstract class Value extends Node {
     }
 
     /**
-     * Tests whether this instruction can trap. This is conservative; it does not take
-     * into account analysis results that may eliminate the possibility of this
-     * instruction from trapping.
-     *
-     * @return {@code true} if this instruction can cause a trap.
-     */
-    public boolean canTrap() {
-        return false;
-    }
-
-    /**
      * Checks whether this value represents the null constant.
      * @return {@code true} if this value represents the null constant
      */

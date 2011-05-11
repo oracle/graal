@@ -86,11 +86,6 @@ public abstract class StateSplit extends Instruction {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
     public boolean needsStateAfter() {
         return true;
     }

@@ -105,8 +105,5 @@ public final class NullCheck extends Instruction {
     @Override
     public void print(LogStream out) {
         out.print("null_check(").print(object()).print(')');
-        if (!canTrap()) {
-          out.print(" (eliminated)");
-        }
     }
 }

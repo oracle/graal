@@ -82,15 +82,6 @@ public final class Throw extends BlockEnd {
         setException(exception);
     }
 
-    /**
-     * Checks whether this instruction can trap.
-     * @return {@code true} because this instruction definitely throws an exception!
-     */
-    @Override
-    public boolean canTrap() {
-        return true;
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitThrow(this);

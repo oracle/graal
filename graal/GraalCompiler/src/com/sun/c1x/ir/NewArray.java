@@ -71,11 +71,6 @@ public abstract class NewArray extends StateSplit {
     }
 
     @Override
-    public boolean canTrap() {
-        return true;
-    }
-
-    @Override
     public boolean needsStateAfter() {
         return false;
     }

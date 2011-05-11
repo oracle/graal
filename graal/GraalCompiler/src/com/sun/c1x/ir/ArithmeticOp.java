@@ -61,16 +61,6 @@ public final class ArithmeticOp extends Op2 {
         return isStrictFP;
     }
 
-    /**
-     * Checks whether this instruction can cause a trap. For arithmetic operations,
-     * only division and remainder operations can cause traps.
-     * @return {@code true} if this instruction can cause a trap
-     */
-    @Override
-    public boolean canTrap() {
-        return canTrap;
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitArithmeticOp(this);
