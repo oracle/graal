@@ -990,12 +990,12 @@ public final class GraphBuilder {
             lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
-        frameState.push(CiKind.Object, x);
         MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, graph);
-        frameState.apop();
         appendWithoutOptimization(monitorEnter, bci);
         frameState.lock(ir, x, lockNumber + 1);
-        monitorEnter.setStateAfter(frameState.create(bci));
+        if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
+            monitorEnter.setStateAfter(frameState.create(0));
+        }
         killMemoryMap(); // prevent any optimizations across synchronization
     }
 
@@ -1268,14 +1268,14 @@ public final class GraphBuilder {
                 end = (BlockEnd) lastInstr;
                 break;
             }
+            stream.next();
+            bci = stream.currentBCI();
             if (lastInstr instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) lastInstr;
                 if (stateSplit.stateAfter() == null && stateSplit.needsStateAfter()) {
                     stateSplit.setStateAfter(frameState.create(bci));
                 }
             }
-            stream.next();
-            bci = stream.currentBCI();
             blockStart = false;
         }
 

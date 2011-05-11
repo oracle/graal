@@ -469,6 +469,24 @@ public abstract class LIRGenerator extends ValueVisitor {
         for (int i = 0; i < argumentCount; i++) {
             Value arg = invoke.argument(i);
             if (arg != null) {
+                //builder.push(arg.kind, arg);
+            }
+        }
+        return builder.create(invoke.bci());
+    }
+
+    protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
+
+        FrameState stateAfter = invoke.stateAfter();
+        FrameStateBuilder builder = new FrameStateBuilder(compilation.method, invoke.graph());
+        builder.initializeFrom(stateAfter);
+        if (invoke.kind != CiKind.Void) {
+            builder.pop(invoke.kind);
+        }
+        int argumentCount = invoke.argumentCount(); // invoke.arguments() iterable?
+        for (int i = 0; i < argumentCount; i++) {
+            Value arg = invoke.argument(i);
+            if (arg != null) {
                 builder.push(arg.kind, arg);
             }
         }
@@ -478,7 +496,8 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitInvoke(Invoke x) {
         RiMethod target = x.target();
-        LIRDebugInfo info = stateFor(x, stateBeforeInvoke(x));
+        LIRDebugInfo info = stateFor(x, stateBeforeInvokeWithArguments(x));
+        LIRDebugInfo info2 = stateFor(x, stateBeforeInvoke(x));
 
         XirSnippet snippet = null;
 
@@ -522,11 +541,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (destinationAddress instanceof CiConstant) {
             // Direct call
             assert ((CiConstant) destinationAddress).isDefaultValue() : "destination address should be zero";
-            lir.callDirect(target, resultOperand, argList, info, snippet.marks, pointerSlots);
+            lir.callDirect(target, resultOperand, argList, info2, snippet.marks, pointerSlots);
         } else {
             // Indirect call
             argList.add(destinationAddress);
-            lir.callIndirect(target, resultOperand, argList, info, snippet.marks, pointerSlots);
+            lir.callIndirect(target, resultOperand, argList, info2, snippet.marks, pointerSlots);
         }
 
         if (resultOperand.isLegal()) {
