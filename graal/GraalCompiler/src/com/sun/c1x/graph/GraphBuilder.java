@@ -345,7 +345,7 @@ public final class GraphBuilder {
         }
     }
 
-    void genLoadIndexed(CiKind kind) {
+    private void genLoadIndexed(CiKind kind) {
         Value index = frameState.ipop();
         Value array = frameState.apop();
         Value length = append(new ArrayLength(array, graph));
@@ -353,7 +353,7 @@ public final class GraphBuilder {
         frameState.push(kind.stackKind(), v);
     }
 
-    void genStoreIndexed(CiKind kind) {
+    private void genStoreIndexed(CiKind kind) {
         Value value = frameState.pop(kind.stackKind());
         Value index = frameState.ipop();
         Value array = frameState.apop();
@@ -362,7 +362,7 @@ public final class GraphBuilder {
         append(result);
     }
 
-    void stackOp(int opcode) {
+    private void stackOp(int opcode) {
         switch (opcode) {
             case POP: {
                 frameState.xpop();
@@ -443,39 +443,38 @@ public final class GraphBuilder {
 
     }
 
-    void genArithmeticOp(CiKind kind, int opcode) {
+    private void genArithmeticOp(CiKind kind, int opcode) {
         genArithmeticOp(kind, opcode, false);
     }
 
-    void genArithmeticOp(CiKind kind, int opcode, boolean canTrap) {
+    private void genArithmeticOp(CiKind kind, int opcode, boolean canTrap) {
         genArithmeticOp(kind, opcode, kind, kind, canTrap);
     }
 
-    void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
+    private void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
         Value yValue = frameState.pop(y);
         Value xValue = frameState.pop(x);
         Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method().accessFlags()), canTrap, graph));
         frameState.push(result, result1);
     }
 
-    void genNegateOp(CiKind kind) {
+    private void genNegateOp(CiKind kind) {
         frameState.push(kind, append(new NegateOp(frameState.pop(kind), graph)));
     }
 
-    void genShiftOp(CiKind kind, int opcode) {
+    private void genShiftOp(CiKind kind, int opcode) {
         Value s = frameState.ipop();
         Value x = frameState.pop(kind);
-        // note that strength reduction of e << K >>> K is correctly handled in canonicalizer now
         frameState.push(kind, append(new ShiftOp(opcode, x, s, graph)));
     }
 
-    void genLogicOp(CiKind kind, int opcode) {
+    private void genLogicOp(CiKind kind, int opcode) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
         frameState.push(kind, append(new LogicOp(opcode, x, y, graph)));
     }
 
-    void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
+    private void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
         Value value = append(new CompareOp(opcode, resultKind, x, y, graph));
@@ -484,12 +483,12 @@ public final class GraphBuilder {
         }
     }
 
-    void genConvert(int opcode, CiKind from, CiKind to) {
+    private void genConvert(int opcode, CiKind from, CiKind to) {
         CiKind tt = to.stackKind();
         frameState.push(tt, append(new Convert(opcode, frameState.pop(from.stackKind()), tt, graph)));
     }
 
-    void genIncrement() {
+    private void genIncrement() {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
         Value x = frameState.localAt(index);
@@ -497,12 +496,12 @@ public final class GraphBuilder {
         frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), false, graph)));
     }
 
-    void genGoto(int fromBCI, int toBCI) {
+    private void genGoto(int fromBCI, int toBCI) {
         boolean isSafepoint = !noSafepoints() && toBCI <= fromBCI;
         append(new Goto(blockAt(toBCI), null, isSafepoint, graph));
     }
 
-    void ifNode(Value x, Condition cond, Value y, FrameState stateBefore) {
+    private void ifNode(Value x, Condition cond, Value y, FrameState stateBefore) {
         BlockBegin tsucc = blockAt(stream().readBranchDest());
         BlockBegin fsucc = blockAt(stream().nextBCI());
         int bci = stream().currentBCI();

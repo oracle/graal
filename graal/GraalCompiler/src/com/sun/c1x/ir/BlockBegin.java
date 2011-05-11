@@ -457,14 +457,6 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
-    public boolean isStandardEntry() {
-        return checkBlockFlag(BlockFlag.StandardEntry);
-    }
-
-    public void setStandardEntry() {
-        setBlockFlag(BlockFlag.StandardEntry);
-    }
-
     public boolean isBackwardBranchTarget() {
         return checkBlockFlag(BlockFlag.BackwardBranchTarget);
     }
@@ -683,9 +675,6 @@ public final class BlockBegin extends StateSplit {
 
         // print flags
         StringBuilder sb = new StringBuilder(8);
-        if (isStandardEntry()) {
-            sb.append('S');
-        }
         if (isExceptionEntry()) {
             sb.append('E');
         }

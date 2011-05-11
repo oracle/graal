@@ -42,7 +42,6 @@ public final class Base extends BlockEnd {
      */
     public Base(BlockBegin standardEntry, Graph graph) {
         super(CiKind.Illegal, null, false, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        assert standardEntry.isStandardEntry();
         setBlockSuccessor(0, standardEntry);
     }
 

@@ -47,10 +47,6 @@ import com.sun.cri.ri.*;
  *
  * If the method has any exception handlers the {@linkplain #exceptionMap exception map} will be created (TBD).
  *
- * A {@link BlockBegin} node with the {@link BlockFlag#StandardEntry} flag is created with bytecode index 0.
- * Note this is distinct from the similar {@link BlockBegin} node assigned to {@link IR#startBlock} by
- * {@link GraphBuilder}.
- *
  * The bytecodes are then scanned linearly looking for bytecodes that contain control transfers, e.g., {@code GOTO},
  * {@code RETURN}, {@code IFGE}, and creating the corresponding entries in {@link #successorMap} and {@link #blockMap}.
  * In addition, if {@link #exceptionMap} is not null, entries are made for any bytecode that can cause an exception.
@@ -364,7 +360,6 @@ public final class BlockMap {
         int bci = 0;
         ExceptionMap exceptionMap = this.exceptionMap;
         byte[] code = this.code;
-        make(0).setStandardEntry();
         while (bci < code.length) {
             int opcode = Bytes.beU1(code, bci);
             switch (opcode) {
