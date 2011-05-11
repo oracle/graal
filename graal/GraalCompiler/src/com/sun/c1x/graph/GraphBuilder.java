@@ -553,7 +553,9 @@ public final class GraphBuilder {
     }
 
     void genThrow(int bci) {
+        FrameState stateBefore = frameState.create(bci);
         Throw t = new Throw(frameState.apop(), !noSafepoints(), graph);
+        t.setStateBefore(stateBefore);
         appendWithoutOptimization(t, bci);
     }
 
