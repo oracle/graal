@@ -348,10 +348,7 @@ public final class GraphBuilder {
     void genLoadIndexed(CiKind kind) {
         Value index = frameState.ipop();
         Value array = frameState.apop();
-        Value length = null;
-        if (cseArrayLength(array)) {
-            length = append(new ArrayLength(array, graph));
-        }
+        Value length = append(new ArrayLength(array, graph));
         Value v = append(new LoadIndexed(array, index, length, kind, graph));
         frameState.push(kind.stackKind(), v);
     }
@@ -360,10 +357,7 @@ public final class GraphBuilder {
         Value value = frameState.pop(kind.stackKind());
         Value index = frameState.ipop();
         Value array = frameState.apop();
-        Value length = null;
-        if (cseArrayLength(array)) {
-            length = append(new ArrayLength(array, graph));
-        }
+        Value length = append(new ArrayLength(array, graph));
         StoreIndexed result = new StoreIndexed(array, index, length, kind, value, graph);
         append(result);
     }
@@ -887,15 +881,8 @@ public final class GraphBuilder {
         append(new Return(x, !noSafepoints(), graph));
     }
 
-    /**
-     * Gets the number of locks held.
-     */
-    private int locksSize() {
-        return frameState.locksSize();
-    }
-
     void genMonitorEnter(Value x, int bci) {
-        int lockNumber = locksSize();
+        int lockNumber = frameState.locksSize();
         MonitorAddress lockAddress = null;
         if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
             lockAddress = new MonitorAddress(lockNumber, graph);
@@ -971,31 +958,6 @@ public final class GraphBuilder {
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? frameState.create(bci()) : null;
         append(new LookupSwitch(frameState.ipop(), list, keys, stateBefore, isSafepoint, graph));
-    }
-
-    /**
-     * Determines whether the length of an array should be extracted out as a separate instruction
-     * before an array indexing instruction. This exposes it to CSE.
-     * @param array
-     * @return
-     */
-    private boolean cseArrayLength(Value array) {
-        // checks whether an array length access should be generated for CSE
-        if (C1XOptions.OptCSEArrayLength) {
-            // always access the length for CSE
-            return true;
-        } else if (array.isConstant()) {
-            // the array itself is a constant
-            return true;
-        } else if (array instanceof LoadField && ((LoadField) array).constantValue() != null) {
-            // the length is derived from a constant array
-            return true;
-        } else if (array instanceof NewArray) {
-            // the array is derived from an allocation
-            final Value length = ((NewArray) array).length();
-            return length != null && length.isConstant();
-        }
-        return false;
     }
 
     private Value appendConstant(CiConstant type) {
@@ -1076,7 +1038,7 @@ public final class GraphBuilder {
         Value exception = appendWithoutOptimization(new ExceptionObject(graph), bci);
 
         assert lock != null;
-        assert frameState.locksSize() > 0 && frameState.lockAt(locksSize() - 1) == lock;
+        assert frameState.locksSize() > 0 && frameState.lockAt(frameState.locksSize() - 1) == lock;
         if (lock instanceof Instruction) {
             Instruction l = (Instruction) lock;
             if (!l.isAppended()) {

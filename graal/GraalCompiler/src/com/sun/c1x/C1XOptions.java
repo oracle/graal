@@ -87,7 +87,6 @@ public final class C1XOptions {
     public static boolean QuietBailout                       = ____;
 
     // all optimization settings
-    public static boolean OptCSEArrayLength;
     public static boolean OptBlockSkipping;
     public static boolean OptControlFlow;
 
@@ -156,7 +155,6 @@ public final class C1XOptions {
         OptInline                       = ll;
 
         // Level 3 optimizations
-        OptCSEArrayLength               = lll;
         UseStackMapTableLiveness        = lll;
         UseAssumptions                  = lll;
         OptBlockSkipping                = lll;
