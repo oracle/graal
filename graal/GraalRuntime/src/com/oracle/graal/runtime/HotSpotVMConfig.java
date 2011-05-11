@@ -77,9 +77,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long unwindExceptionStub;
     public long handleExceptionStub;
     public long handleDeoptStub;
-    public long throwClassCastException;
-    public long throwArrayStoreException;
-    public long throwArrayIndexException;
     public long monitorEnterStub;
     public long monitorExitStub;
     public long fastMonitorEnterStub;

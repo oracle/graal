@@ -815,7 +815,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.pload(kind, result, array, index, config.getArrayOffset(kind), Scale.fromInt(elemSize), implicitNullException);
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
-                asm.callRuntime(config.throwArrayIndexException, null);
+                asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
             return asm.finishTemplate("arrayload<" + kind + ">");
@@ -1008,7 +1008,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.jneq(store, temp, asm.w(0));
                 XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
                 asm.mov(scratch, valueHub);
-                asm.callRuntime(config.throwArrayStoreException, null);
+                asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.jmp(store);
             }
 
@@ -1090,7 +1090,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             // -- out of line -------------------------------------------------------
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
-                asm.callRuntime(config.throwArrayIndexException, null);
+                asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
             if (is(STORE_CHECK, flags) && kind == CiKind.Object) {
@@ -1100,8 +1100,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.jneq(store, temp, asm.w(0));
                 XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
                 asm.mov(scratch, valueHub);
-                asm.callRuntime(config.throwArrayStoreException, null);
-                asm.jmp(store);
+                asm.callRuntime(CiRuntimeCall.Deoptimize, null);
+                asm.shouldNotReachHere();
             }
             return asm.finishTemplate("arraystore<" + kind + ">");
         }
