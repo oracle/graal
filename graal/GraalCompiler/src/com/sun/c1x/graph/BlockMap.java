@@ -360,6 +360,7 @@ public final class BlockMap {
         int bci = 0;
         ExceptionMap exceptionMap = this.exceptionMap;
         byte[] code = this.code;
+        make(0);
         while (bci < code.length) {
             int opcode = Bytes.beU1(code, bci);
             switch (opcode) {
