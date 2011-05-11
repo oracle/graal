@@ -456,8 +456,8 @@ public class FrameStateBuilder implements FrameStateAccess {
 
 
     @Override
-    public FrameState duplicate() {
-        return create(-1);
+    public FrameState duplicate(int bci) {
+        return create(bci);
     }
 
     @Override

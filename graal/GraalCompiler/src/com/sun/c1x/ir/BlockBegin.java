@@ -390,7 +390,8 @@ public final class BlockBegin extends StateSplit {
             }
 
             // copy state because it is modified
-            FrameState duplicate = newState.duplicate();
+            FrameState duplicate = newState.duplicate(bci());
+            assert duplicate.bci == bci() : "duplicate.bci=" + duplicate.bci + " my bci=" + bci();
 
             if (C1XOptions.UseStackMapTableLiveness) {
                 // if a liveness map is available, use it to invalidate dead locals
