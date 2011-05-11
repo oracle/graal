@@ -192,7 +192,6 @@ public class IR {
         // for the first and delete the rest.
         List<BlockBegin> list = target.blockPredecessors();
         int x = list.indexOf(source);
-        assert x >= 0;
         list.set(x, newSucc);
         newSucc.addPredecessor(source);
         Iterator<BlockBegin> iterator = list.iterator();
