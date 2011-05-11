@@ -82,11 +82,6 @@ public final class GraphBuilder {
     private final C1XCompilation compilation;
     private final CiStatistics stats;
 
-    /**
-     * Map used to implement local value numbering for the current block.
-     */
-    private final ValueMap localValueMap;
-
     private final BytecodeStream stream;           // the bytecode stream
     // bci-to-block mapping
     private BlockMap blockMap;
@@ -128,7 +123,6 @@ public final class GraphBuilder {
         this.compilation = compilation;
         this.ir = ir;
         this.stats = compilation.stats;
-        this.localValueMap = C1XOptions.OptLocalValueNumbering ? new ValueMap() : null;
         log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
         stream = new BytecodeStream(compilation.method.code());
         constantPool = compilation.runtime.getConstantPool(compilation.method);
@@ -965,7 +959,6 @@ public final class GraphBuilder {
         if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
             monitorEnter.setStateAfter(frameState.create(0));
         }
-        killMemoryMap(); // prevent any optimizations across synchronization
     }
 
     void genMonitorExit(Value x, int bci) {
@@ -980,7 +973,6 @@ public final class GraphBuilder {
         }
         appendWithoutOptimization(new MonitorExit(x, lockAddress, lockNumber, graph), bci);
         frameState.unlock();
-        killMemoryMap(); // prevent any optimizations across synchronization
     }
 
     void genJsr(int dest) {
@@ -1075,17 +1067,6 @@ public final class GraphBuilder {
             // the instruction has already been added
             return x;
         }
-        if (localValueMap != null) {
-            // look in the local value map
-            Value r = localValueMap.findInsert(x);
-            if (r != x) {
-                C1XMetrics.LocalValueNumberHits++;
-                if (r instanceof Instruction) {
-                    assert ((Instruction) r).isAppended() : "instruction " + r + "is not appended";
-                }
-                return r;
-            }
-        }
 
         assert x.next() == null : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
@@ -1175,7 +1156,6 @@ public final class GraphBuilder {
             if (!b.wasVisited()) {
                 b.setWasVisited(true);
                 // now parse the block
-                killMemoryMap();
                 curBlock = b;
                 frameState.initializeFrom(b.stateBefore());
                 lastInstr = b;
@@ -1513,12 +1493,6 @@ public final class GraphBuilder {
 
     private void genArrayLength() {
         frameState.ipush(append(new ArrayLength(frameState.apop(), graph)));
-    }
-
-    void killMemoryMap() {
-        if (localValueMap != null) {
-            localValueMap.killAll();
-        }
     }
 
     boolean assumeLeafClass(RiType type) {
