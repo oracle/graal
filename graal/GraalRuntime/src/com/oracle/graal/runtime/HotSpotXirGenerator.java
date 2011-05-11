@@ -710,7 +710,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.jneq(end, objHub, asm.o(null));
             XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
             asm.mov(scratch, object);
-            asm.callRuntime(config.throwClassCastException, null);
+
+            asm.callRuntime(CiRuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
 
             if (is(UNRESOLVED, flags)) {
