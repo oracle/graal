@@ -87,11 +87,6 @@ public final class GraphBuilder {
      */
     private final ValueMap localValueMap;
 
-    /**
-     * Map used for local load elimination (i.e. within the current block).
-     */
-    private final MemoryMap memoryMap;
-
     private final BytecodeStream stream;           // the bytecode stream
     // bci-to-block mapping
     private BlockMap blockMap;
@@ -133,7 +128,6 @@ public final class GraphBuilder {
         this.compilation = compilation;
         this.ir = ir;
         this.stats = compilation.stats;
-        this.memoryMap = C1XOptions.OptLocalLoadElimination ? new MemoryMap() : null;
         this.localValueMap = C1XOptions.OptLocalValueNumbering ? new ValueMap() : null;
         log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
         stream = new BytecodeStream(compilation.method.code());
@@ -378,9 +372,6 @@ public final class GraphBuilder {
         }
         StoreIndexed result = new StoreIndexed(array, index, length, kind, value, graph);
         append(result);
-        if (memoryMap != null) {
-            memoryMap.storeValue(value);
-        }
     }
 
     void stackOp(int opcode) {
@@ -593,9 +584,6 @@ public final class GraphBuilder {
             stateBefore = frameState.create(bci());
         }
         NewInstance n = new NewInstance(type, cpi, constantPool(), graph);
-        if (memoryMap != null) {
-            memoryMap.newInstance(n);
-        }
         n.setStateBefore(stateBefore);
         frameState.apush(append(n));
     }
@@ -702,31 +690,12 @@ public final class GraphBuilder {
     }
 
     private void appendOptimizedStoreField(StoreField store) {
-        if (memoryMap != null) {
-            StoreField previous = memoryMap.store(store);
-            if (previous == null) {
-                // the store is redundant, do not append
-                return;
-            }
-        }
         append(store);
     }
 
     private void appendOptimizedLoadField(CiKind kind, LoadField load) {
-        if (memoryMap != null) {
-            Value replacement = memoryMap.load(load);
-            if (replacement != load) {
-                // the memory buffer found a replacement for this load (no need to append)
-                frameState.push(kind.stackKind(), replacement);
-                return;
-            }
-        }
         // append the load to the instruction
         Value optimized = append(load);
-        if (memoryMap != null && optimized != load) {
-            // local optimization happened, replace its value in the memory map
-            memoryMap.setResult(load, optimized);
-        }
         frameState.push(kind.stackKind(), optimized);
     }
 
@@ -1129,11 +1098,6 @@ public final class GraphBuilder {
         if (++stats.nodeCount >= C1XOptions.MaximumInstructionCount) {
             // bailout if we've exceeded the maximum inlining size
             throw new CiBailout("Method and/or inlining is too large");
-        }
-
-        if (memoryMap != null && hasUncontrollableSideEffects(x)) {
-            // conservatively kill all memory if there are unknown side effects
-            memoryMap.kill();
         }
 
         if (x.canTrap()) {
@@ -1554,9 +1518,6 @@ public final class GraphBuilder {
     void killMemoryMap() {
         if (localValueMap != null) {
             localValueMap.killAll();
-        }
-        if (memoryMap != null) {
-            memoryMap.kill();
         }
     }
 
