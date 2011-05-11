@@ -957,10 +957,6 @@ public final class GraphBuilder {
         return x;
     }
 
-    private boolean hasUncontrollableSideEffects(Value x) {
-        return x instanceof Invoke || x instanceof ResolveClass;
-    }
-
     private BlockBegin blockAtOrNull(int bci) {
         return blockMap.get(bci);
     }
@@ -971,12 +967,12 @@ public final class GraphBuilder {
         return result;
     }
 
-    private Value synchronizedObject(FrameStateAccess curState2, RiMethod target) {
+    private Value synchronizedObject(FrameStateAccess state, RiMethod target) {
         if (isStatic(target.accessFlags())) {
             Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass), graph);
             return appendWithoutOptimization(classConstant, Instruction.SYNCHRONIZATION_ENTRY_BCI);
         } else {
-            return curState2.localAt(0);
+            return state.localAt(0);
         }
     }
 

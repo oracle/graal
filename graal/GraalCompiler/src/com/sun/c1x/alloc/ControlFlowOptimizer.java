@@ -45,16 +45,6 @@ final class ControlFlowOptimizer {
     public static void optimize(IR ir) {
         ControlFlowOptimizer optimizer = new ControlFlowOptimizer(ir);
         List<BlockBegin> code = ir.linearScanOrder();
-
-        // push the OSR entry block to the end so that we're not jumping over it.
-        BlockBegin osrEntry = ((Base) code.get(0).end()).osrEntry();
-        if (osrEntry != null) {
-            int index = osrEntry.linearScanNumber();
-            assert code.get(index) == osrEntry : "wrong index";
-            code.remove(index);
-            code.add(osrEntry);
-        }
-
         optimizer.reorderShortLoops(code);
         optimizer.deleteEmptyBlocks(code);
         optimizer.deleteUnnecessaryJumps(code);

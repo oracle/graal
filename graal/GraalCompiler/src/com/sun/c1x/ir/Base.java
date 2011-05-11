@@ -53,14 +53,6 @@ public final class Base extends BlockEnd {
         return defaultSuccessor();
     }
 
-    /**
-     * Gets the OSR entrypoint block, if it exists.
-     * @return the OSR entrypoint bock, if it exists; {@code null} otherwise
-     */
-    public BlockBegin osrEntry() {
-        return blockSuccessorCount() < 2 ? null : blockSuccessor(0);
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitBase(this);
@@ -69,8 +61,5 @@ public final class Base extends BlockEnd {
     @Override
     public void print(LogStream out) {
         out.print("std entry B").print(standardEntry().blockID);
-        if (blockSuccessors().size() > 1) {
-            out.print(" osr entry B").print(osrEntry().blockID);
-        }
     }
 }
