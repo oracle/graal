@@ -775,30 +775,6 @@ public final class GraphBuilder {
                 invokeDirect(exact.resolveMethodImpl(target), args, exact, cpi, constantPool);
                 return;
             }
-            // 2. check if an assumed leaf method can be found
-            RiMethod leaf = getAssumedLeafMethod(target, receiver);
-            if (leaf != null && leaf.isResolved() && !isAbstract(leaf.accessFlags()) && leaf.holder().isResolved()) {
-                if (C1XOptions.PrintAssumptions) {
-                    TTY.println("Optimistic invoke direct because of leaf method to " + leaf);
-                }
-                invokeDirect(leaf, args, null, cpi, constantPool);
-                return;
-            } else if (C1XOptions.PrintAssumptions) {
-                TTY.println("Could not make leaf method assumption for target=" + target + " leaf=" + leaf + " receiver.declaredType=" + receiver.declaredType());
-            }
-            // 3. check if the either of the holder or declared type of receiver can be assumed to be a leaf
-            exact = getAssumedLeafType(klass, receiver);
-            if (exact != null && exact.isResolved()) {
-                RiMethod targetMethod = exact.resolveMethodImpl(target);
-                if (C1XOptions.PrintAssumptions) {
-                    TTY.println("Optimistic invoke direct because of leaf type to " + targetMethod);
-                }
-                // either the holder class is exact, or the receiver object has an exact type
-                invokeDirect(targetMethod, args, exact, cpi, constantPool);
-                return;
-            } else if (C1XOptions.PrintAssumptions) {
-                TTY.println("Could not make leaf type assumption for type " + klass);
-            }
         }
         // devirtualization failed, produce an actual invokevirtual
         appendInvoke(opcode, target, args, cpi, constantPool);
@@ -847,34 +823,6 @@ public final class GraphBuilder {
                     TTY.println("Recording concrete subtype assumption in context of " + type.name() + ": " + assumed.name());
                 }
                 compilation.assumptions.recordConcreteSubtype(type, assumed);
-            }
-        }
-        return assumed;
-    }
-
-    private RiType getAssumedLeafType(RiType staticType, Value receiver) {
-        RiType assumed = getAssumedLeafType(staticType);
-        if (assumed != null) {
-            return assumed;
-        }
-        RiType declared = receiver.declaredType();
-        if (declared != null && declared.isResolved()) {
-            assumed = getAssumedLeafType(declared);
-            return assumed;
-        }
-        return null;
-    }
-
-    private RiMethod getAssumedLeafMethod(RiMethod target, Value receiver) {
-        RiMethod assumed = getAssumedLeafMethod(target);
-        if (assumed != null) {
-            return assumed;
-        }
-        RiType declared = receiver.declaredType();
-        if (declared != null && declared.isResolved() && !declared.isInterface()) {
-            RiMethod impl = declared.resolveMethodImpl(target);
-            if (impl != null) {
-                assumed = getAssumedLeafMethod(impl);
             }
         }
         return assumed;
@@ -1493,50 +1441,6 @@ public final class GraphBuilder {
 
     private void genArrayLength() {
         frameState.ipush(append(new ArrayLength(frameState.apop(), graph)));
-    }
-
-    boolean assumeLeafClass(RiType type) {
-        if (type.isResolved()) {
-            if (isFinal(type.accessFlags())) {
-                return true;
-            }
-
-            if (C1XOptions.UseAssumptions) {
-                RiType assumed = type.uniqueConcreteSubtype();
-                if (assumed != null && assumed == type) {
-                    if (C1XOptions.PrintAssumptions) {
-                        TTY.println("Recording leaf class assumption for " + type.name());
-                    }
-                    compilation.assumptions.recordConcreteSubtype(type, assumed);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    RiMethod getAssumedLeafMethod(RiMethod method) {
-        if (method.isResolved()) {
-            if (method.isLeafMethod()) {
-                return method;
-            }
-
-            if (C1XOptions.UseAssumptions) {
-                RiMethod assumed = method.uniqueConcreteMethod();
-                if (assumed != null) {
-                    if (C1XOptions.PrintAssumptions) {
-                        TTY.println("Recording concrete method assumption in context of " + method.holder().name() + ": " + assumed.name());
-                    }
-                    compilation.assumptions.recordConcreteMethod(method, assumed);
-                    return assumed;
-                } else {
-                    if (C1XOptions.PrintAssumptions) {
-                        TTY.println("Did not find unique concrete method for " + method);
-                    }
-                }
-            }
-        }
-        return null;
     }
 
     private RiConstantPool constantPool() {
