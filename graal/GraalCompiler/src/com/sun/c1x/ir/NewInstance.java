@@ -86,4 +86,9 @@ public final class NewInstance extends StateSplit {
     public void print(LogStream out) {
         out.print("new instance ").print(CiUtil.toJavaName(instanceClass()));
     }
+
+    @Override
+    public boolean needsStateAfter() {
+        return false;
+    }
 }

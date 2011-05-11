@@ -80,4 +80,9 @@ public final class LoadIndexed extends AccessIndexed {
     public void print(LogStream out) {
         out.print(array()).print('[').print(index()).print("] (").print(kind.typeChar).print(')');
     }
+
+    @Override
+    public boolean needsStateAfter() {
+        return false;
+    }
 }
