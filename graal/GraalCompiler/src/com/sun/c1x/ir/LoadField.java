@@ -74,24 +74,6 @@ public final class LoadField extends AccessField {
         v.visitLoadField(this);
     }
 
-    /**
-     * Gets a constant value to which this load can be reduced.
-     *
-     * @return {@code null} if this load cannot be reduced to a constant
-     */
-    public CiConstant constantValue() {
-        if (isStatic()) {
-            return field.constantValue(null);
-        } else if (object().isConstant()) {
-            CiConstant cons = field.constantValue(object().asConstant());
-            if (cons != null) {
-                return cons;
-            }
-            return cons;
-        }
-        return null;
-    }
-
     @Override
     public void print(LogStream out) {
         out.print(object()).
