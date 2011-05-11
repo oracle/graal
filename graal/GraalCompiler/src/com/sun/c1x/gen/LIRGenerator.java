@@ -902,36 +902,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         CiValue exceptionOpr = load(x.exception());
         LIRDebugInfo info = stateFor(x, x.stateBefore());
 
-        // check if the instruction has an xhandler in any of the nested scopes
-        boolean unwind = false;
-        if (x.exceptionHandlers().size() == 0) {
-            // this throw is not inside an xhandler
-            unwind = true;
-        } else {
-            // get some idea of the throw type
-            boolean typeIsExact = true;
-            RiType throwType = x.exception().exactType();
-            if (throwType == null) {
-                typeIsExact = false;
-                throwType = x.exception().declaredType();
-            }
-            if (throwType != null && throwType.isResolved() && throwType.isInstanceClass()) {
-                unwind = !ExceptionHandler.couldCatch(x.exceptionHandlers(), throwType, typeIsExact);
-            }
-        }
-
-        assert !currentBlock.checkBlockFlag(BlockBegin.BlockFlag.DefaultExceptionHandler) || unwind : "should be no more handlers to dispatch to";
-
         // move exception oop into fixed register
         CiCallingConvention callingConvention = compilation.frameMap().getCallingConvention(new CiKind[]{CiKind.Object}, RuntimeCall);
         CiValue argumentOperand = callingConvention.locations[0];
         lir.move(exceptionOpr, argumentOperand);
 
-        if (unwind) {
-            lir.unwindException(CiValue.IllegalValue, exceptionOpr, info);
-        } else {
-            lir.throwException(CiValue.IllegalValue, argumentOperand, info);
-        }
+        lir.throwException(CiValue.IllegalValue, argumentOperand, info);
     }
 
     private void blockDoEpilog(BlockBegin block) {

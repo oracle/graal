@@ -83,7 +83,6 @@ public enum LIROpcode {
         Shr,
         Ushr,
         Throw,
-        Unwind,
         CompareTo,
     EndOp2,
     BeginOp3,

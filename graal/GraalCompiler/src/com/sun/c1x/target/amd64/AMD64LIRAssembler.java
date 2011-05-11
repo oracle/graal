@@ -1392,13 +1392,13 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     }
 
     @Override
-    protected void emitThrow(CiValue exceptionPC, CiValue exceptionOop, LIRDebugInfo info, boolean unwind) {
+    protected void emitThrow(CiValue exceptionPC, CiValue exceptionOop, LIRDebugInfo info) {
        // exception object is not added to oop map by LinearScan
        // (LinearScan assumes that no oops are in fixed registers)
        // info.addRegisterOop(exceptionOop);
-        masm.directCall(unwind ? CiRuntimeCall.UnwindException : CiRuntimeCall.HandleException, info);
+        masm.directCall(CiRuntimeCall.HandleException, info);
         // enough room for two byte trap
-        masm.nop();
+        masm.shouldNotReachHere();
     }
 
     private void emitXIRShiftOp(LIROpcode code, CiValue left, CiValue count, CiValue dest) {

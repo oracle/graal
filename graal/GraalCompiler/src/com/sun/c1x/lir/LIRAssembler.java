@@ -367,8 +367,7 @@ public abstract class LIRAssembler {
                 break;
 
             case Throw:
-            case Unwind:
-                emitThrow(op.operand1(), op.operand2(), op.info, op.code == LIROpcode.Unwind);
+                emitThrow(op.operand1(), op.operand2(), op.info);
                 break;
 
             default:
@@ -465,7 +464,7 @@ public abstract class LIRAssembler {
 
     protected abstract void emitVolatileMove(CiValue inOpr, CiValue result, CiKind kind, LIRDebugInfo info);
 
-    protected abstract void emitThrow(CiValue inOpr1, CiValue inOpr2, LIRDebugInfo info, boolean unwind);
+    protected abstract void emitThrow(CiValue inOpr1, CiValue inOpr2, LIRDebugInfo info);
 
     protected abstract void emitLogicOp(LIROpcode code, CiValue inOpr1, CiValue inOpr2, CiValue dst);
 
