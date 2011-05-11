@@ -22,13 +22,6 @@
  */
 
 /**
- * @author Ben Titzer
- *
- *         Classes that define the (High-level) Intermediate Representation (HIR) if the C1X compiler.
- *
- *         HIR instances are created by processing Java bytecodes and are Directed Acyclic Graphs (DAGs). All nodes in
- *         an HIR graph are concrete subclasses of the abstract class {@link Value}. This indicates a property of HIR,
- *         namely that everything is a value, including instructions. This allows an operand for an instruction node to
- *         refer directly to the node that generated the value, which might, for example, be another instruction.
+ * High-level intermediate representation (HIR).
  */
 package com.sun.c1x.ir;

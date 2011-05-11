@@ -210,10 +210,9 @@ public final class GraphBuilder {
 
     private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
         assert curBlock == startBlock;
-        Base base = new Base(stdEntry, graph);
-        appendWithoutOptimization(base, 0);
         FrameState stateAfter = frameState.create(bci());
-        base.setStateAfter(stateAfter);
+        Goto base = new Goto(stdEntry, stateAfter, false, graph);
+        appendWithoutOptimization(base, 0);
         startBlock.setEnd(base);
         assert stdEntry.stateBefore() == null;
         stdEntry.mergeOrClone(stateAfter, method());
@@ -325,7 +324,7 @@ public final class GraphBuilder {
         return handler.isCatchAll();
     }
 
-    void genLoadConstant(int cpi) {
+    private void genLoadConstant(int cpi) {
         Object con = constantPool().lookupConstant(cpi);
 
         if (con instanceof RiType) {
@@ -939,11 +938,7 @@ public final class GraphBuilder {
         assert x.next() == null : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
 
-        if (lastInstr instanceof Base) {
-            assert false : "may only happen when inlining intrinsics";
-        } else {
-            lastInstr = lastInstr.appendNext(x, bci);
-        }
+        lastInstr = lastInstr.appendNext(x, bci);
         if (++stats.nodeCount >= C1XOptions.MaximumInstructionCount) {
             // bailout if we've exceeded the maximum inlining size
             throw new CiBailout("Method and/or inlining is too large");

@@ -30,10 +30,6 @@ import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
 
-/**
- * @author Thomas Wuerthinger
- *
- */
 public final class ComputeLinearScanOrder {
 
     private final int maxBlockId; // the highest blockId of a block
@@ -498,18 +494,12 @@ public final class ComputeLinearScanOrder {
 
         // the start block is always the first block in the linear scan order
         linearScanOrder = new ArrayList<BlockBegin>(numBlocks);
-        appendBlock(startBlock);
-
-        assert startBlock.end() instanceof Base : "start block must end with Base-instruction";
-        BlockBegin stdEntry = ((Base) startBlock.end()).standardEntry();
-
-        computeDominator(stdEntry, startBlock);
 
         // start processing with standard entry block
         assert workList.isEmpty() : "list must be empty before processing";
 
-        if (readyForProcessing(stdEntry)) {
-            sortIntoWorkList(stdEntry);
+        if (readyForProcessing(startBlock)) {
+            sortIntoWorkList(startBlock);
         } else {
             throw new CiBailout("the stdEntry must be ready for processing (otherwise, the method has no start block)");
         }

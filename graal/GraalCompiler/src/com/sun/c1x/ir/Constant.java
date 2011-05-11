@@ -32,8 +32,6 @@ import com.sun.cri.ri.*;
 /**
  * The {@code Constant} instruction represents a constant such as an integer value,
  * long, float, object reference, address, etc.
- *
- * @author Ben L. Titzer
  */
 public final class Constant extends Instruction {
 

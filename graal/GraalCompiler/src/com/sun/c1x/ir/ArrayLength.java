@@ -30,8 +30,6 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
- *
- * @author Ben L. Titzer
  */
 public final class ArrayLength extends AccessArray {
 

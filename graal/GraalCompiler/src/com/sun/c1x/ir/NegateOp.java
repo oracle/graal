@@ -29,8 +29,6 @@ import com.sun.cri.bytecode.*;
 
 /**
  * The {@code NegateOp} instruction negates its operand.
- *
- * @author Ben L. Titzer
  */
 public final class NegateOp extends Instruction {
 

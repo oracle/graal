@@ -24,8 +24,6 @@ package com.sun.c1x.ir;
 
 /**
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.
- *
- * @author Ben L. Titzer
  */
 public interface BlockClosure {
     void apply(BlockBegin block);

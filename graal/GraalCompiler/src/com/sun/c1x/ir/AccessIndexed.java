@@ -28,8 +28,6 @@ import com.sun.cri.ci.*;
 /**
  * The {@code AccessIndexed} class is the base class of instructions that read or write
  * elements of an array.
- *
- * @author Ben L. Titzer
  */
 public abstract class AccessIndexed extends AccessArray {
 

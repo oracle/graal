@@ -27,8 +27,6 @@ import java.util.*;
 /**
  * The {@code BlockList} class implements a specialized list data structure for representing
  * the predecessor and successor lists of basic blocks.
- *
- * @author Ben L. Titzer
  */
 public class BlockList implements Iterable<BlockBegin> {
 
