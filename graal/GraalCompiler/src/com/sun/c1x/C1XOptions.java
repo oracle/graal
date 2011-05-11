@@ -66,6 +66,7 @@ public final class C1XOptions {
     public static boolean PrintInliningFailures              = ____;
     public static boolean PrintLIR                           = ____;
     public static boolean PrintCFGToFile                     = ____;
+    public static boolean PrintDOTGraphToFile                = ____;
     public static boolean PrintMetrics                       = ____;
     public static boolean PrintTimers                        = ____;
     public static boolean PrintCompilation                   = ____;
