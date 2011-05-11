@@ -32,8 +32,9 @@ import com.sun.cri.ci.*;
  */
 public abstract class StateSplit extends Instruction {
 
-    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_COUNT = 2;
     private static final int INPUT_STATE_AFTER = 0;
+    private static final int INPUT_STATE_BEFORE = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -56,7 +57,22 @@ public abstract class StateSplit extends Instruction {
     }
 
     public FrameState setStateAfter(FrameState n) {
+        if (n != null && this instanceof BlockBegin) {
+            Exception e = new Exception();
+            e.printStackTrace();
+        }
         return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
+    }
+
+    /**
+     * The state for this instruction.
+     */
+    public FrameState stateBefore() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
+    }
+
+    public FrameState setStateBefore(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
     }
 
     /**

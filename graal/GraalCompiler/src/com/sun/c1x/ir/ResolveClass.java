@@ -24,6 +24,7 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
+import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -39,11 +40,12 @@ public final class ResolveClass extends StateSplit {
     public final RiType type;
     public final RiType.Representation portion;
 
-    public ResolveClass(RiType type, RiType.Representation r, Graph graph) {
+    public ResolveClass(RiType type, RiType.Representation r, Graph graph, FrameState stateBefore) {
         super(type.getRepresentationKind(r), INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.portion = r;
         this.type = type;
         setFlag(Flag.NonNull);
+        setStateBefore(stateBefore);
     }
 
     @Override

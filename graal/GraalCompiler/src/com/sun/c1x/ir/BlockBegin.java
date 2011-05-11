@@ -39,7 +39,7 @@ import com.sun.cri.ri.*;
  * about the basic block, including the successor and
  * predecessor blocks, exception handlers, liveness information, etc.
  */
-public final class BlockBegin extends Instruction {
+public final class BlockBegin extends StateSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_STATE_BEFORE = 0;
@@ -58,22 +58,15 @@ public final class BlockBegin extends Instruction {
     }
 
     /**
-     * The frame state before execution of the first instruction in this block.
-     */
-    public FrameState stateBefore() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
-    }
-
-    public FrameState setStateBefore(FrameState n) {
-        assert stateBefore() == null;
-        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
-    }
-
-    /**
      * The last node in the block (which contains the successors).
      */
     public BlockEnd end() {
         return (BlockEnd) successors().get(super.successorCount() + SUCCESSOR_END);
+    }
+
+    @Override
+    public boolean needsStateAfter() {
+        return false;
     }
 
     public void setEnd(BlockEnd end) {
@@ -123,8 +116,6 @@ public final class BlockBegin extends Instruction {
      * Denotes the current set of {@link BlockBegin.BlockFlag} settings.
      */
     private int blockFlags;
-
-    private FrameState stateAfter;
 
     /**
      * The {@link BlockBegin} nodes for which this node is a successor.
@@ -213,15 +204,6 @@ public final class BlockBegin extends Instruction {
      */
     public int loopIndex() {
         return loopIndex;
-    }
-
-    public void setStateAfter(FrameState stateAfter) {
-        this.stateAfter = stateAfter;
-    }
-
-    @Override
-    public FrameState stateAfter() {
-        return stateAfter;
     }
 
     /**

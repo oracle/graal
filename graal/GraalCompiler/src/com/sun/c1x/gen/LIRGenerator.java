@@ -229,6 +229,19 @@ public abstract class LIRGenerator extends ValueVisitor {
 
         for (Instruction instr = block; instr != null; instr = instr.next()) {
             FrameState stateAfter = instr.stateAfter();
+            FrameState stateBefore = null;
+            if (instr instanceof StateSplit && ((StateSplit) instr).stateBefore() != null) {
+                stateBefore = ((StateSplit) instr).stateBefore();
+            }
+            if (stateBefore != null) {
+                lastState = stateBefore;
+                if (C1XOptions.TraceLIRGeneratorLevel >= 2) {
+                    TTY.println("STATE CHANGE (stateBefore)");
+                    if (C1XOptions.TraceLIRGeneratorLevel >= 3) {
+                        TTY.println(stateBefore.toString());
+                    }
+                }
+            }
             if (!(instr instanceof BlockBegin)) {
                 walkState(instr, stateAfter);
                 doRoot(instr);
@@ -297,7 +310,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitResolveClass(ResolveClass i) {
-        LIRDebugInfo info = stateFor(i, i.stateAfter());
+        LIRDebugInfo info = stateFor(i);
         XirSnippet snippet = xir.genResolveClass(site(i), i.type, i.portion);
         emitXir(snippet, i, info, null, true);
     }
@@ -313,7 +326,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitInstanceOf(InstanceOf x) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
-        emitXir(snippet, x, maybeStateFor(x), null, true);
+        emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
@@ -321,7 +334,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = toXirArgument(x.lockAddress());
         XirSnippet snippet = xir.genMonitorEnter(site(x), obj, lockAddress);
-        emitXir(snippet, x, maybeStateFor(x), stateFor(x, x.stateAfter()), null, true, null);
+        emitXir(snippet, x, stateFor(x), stateFor(x, x.stateAfter()), null, true, null);
     }
 
     @Override
@@ -329,7 +342,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = toXirArgument(x.lockAddress());
         XirSnippet snippet = xir.genMonitorExit(site(x), obj, lockAddress);
-        emitXir(snippet, x, maybeStateFor(x), null, true);
+        emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
@@ -339,7 +352,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         XirArgument index = toXirArgument(x.index());
         XirArgument value = toXirArgument(x.value());
         XirSnippet snippet = xir.genArrayStore(site(x), array, index, length, value, x.elementKind(), null);
-        emitXir(snippet, x, maybeStateFor(x), null, true);
+        emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
@@ -405,7 +418,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         });
 
         XirSnippet snippet = xir.genExceptionObject(site(x));
-        emitXir(snippet, x, maybeStateFor(x), null, true);
+        emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
@@ -548,7 +561,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         XirArgument index = toXirArgument(x.index());
         XirArgument length = toXirArgument(x.length());
         XirSnippet snippet = xir.genArrayLoad(site(x), array, index, length, x.elementKind(), null);
-        emitXir(snippet, x, maybeStateFor(x), null, true);
+        emitXir(snippet, x, stateFor(x), null, true);
     }
 
     protected GlobalStub stubFor(CiRuntimeCall runtimeCall) {
@@ -1464,13 +1477,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected LIRDebugInfo maybeStateFor(Instruction x) {
-        if (x.stateAfter() == null) {
-            return null;
-        }
-        return stateFor(x, x.stateAfter());
-    }
-
     protected LIRDebugInfo stateFor(Instruction x) {
         assert lastState != null : "must have state before instruction for " + x;
         return stateFor(x, lastState);
@@ -1603,7 +1609,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         public boolean requiresNullCheck() {
-            return current == null || current.canTrap();
+            return current == null || current.canTrap() || current instanceof InstanceOf || current instanceof CheckCast;
         }
 
         public boolean requiresBoundsCheck() {

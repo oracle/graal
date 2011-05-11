@@ -653,7 +653,7 @@ public final class LinearScan {
                                 if (!liveKill.get(operandNum)) {
                                     liveGen.set(operandNum);
                                     if (C1XOptions.TraceLinearScanLevel >= 4) {
-                                        TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d", Util.valueString(value), op.id, operandNum);
+                                        TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d because of state for " + op.toString(), Util.valueString(value), op.id, operandNum);
                                     }
                                 }
                             } else if (operand.isRegister()) {

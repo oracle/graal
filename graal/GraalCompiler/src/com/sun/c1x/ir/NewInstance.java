@@ -30,7 +30,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
-public final class NewInstance extends Instruction {
+public final class NewInstance extends StateSplit {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
