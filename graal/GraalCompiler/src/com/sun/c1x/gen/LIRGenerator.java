@@ -277,17 +277,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         return x.operand();
     }
 
-    @Override
-    public void visitBase(Base x) {
-        // emit phi-instruction move after safepoint since this simplifies
-        // describing the state at the safepoint.
-        //moveToPhi();
-
-        // all blocks with a successor must end with an unconditional jump
-        // to the successor even if they are consecutive
-        lir.jump(x.defaultSuccessor());
-    }
-
     private void setOperandsForLocals(FrameState state) {
         CiCallingConvention args = compilation.frameMap().incomingArguments();
         int javaIndex = 0;

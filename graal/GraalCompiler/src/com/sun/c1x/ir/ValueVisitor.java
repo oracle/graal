@@ -33,7 +33,6 @@ public abstract class ValueVisitor {
     // Checkstyle: stop
     public abstract void visitArithmeticOp(ArithmeticOp i);
     public abstract void visitArrayLength(ArrayLength i);
-    public abstract void visitBase(Base i);
     public abstract void visitBlockBegin(BlockBegin i);
     public abstract void visitCheckCast(CheckCast i);
     public abstract void visitCompareOp(CompareOp i);
