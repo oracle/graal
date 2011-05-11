@@ -104,6 +104,6 @@ public final class LoadField extends AccessField {
 
     @Override
     public boolean needsStateAfter() {
-        return this.isVolatile();
+        return false;
     }
 }
