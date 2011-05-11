@@ -331,7 +331,7 @@ public final class GraphBuilder {
         if (con instanceof RiType) {
             // this is a load of class constant which might be unresolved
             RiType riType = (RiType) con;
-            if (!riType.isResolved() || C1XOptions.TestPatching) {
+            if (!riType.isResolved()) {
                 ResolveClass rc = new ResolveClass(riType, RiType.Representation.JavaClass, graph, frameState.create(bci()));
                 frameState.push(CiKind.Object, append(rc));
             } else {
@@ -540,7 +540,7 @@ public final class GraphBuilder {
     private void genCheckCast() {
         int cpi = stream().readCPI();
         RiType type = constantPool().lookupType(cpi, CHECKCAST);
-        boolean isInitialized = !C1XOptions.TestPatching && type.isResolved() && type.isInitialized();
+        boolean isInitialized = type.isResolved() && type.isInitialized();
         Value typeInstruction = genResolveClass(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         CheckCast c = new CheckCast(type, typeInstruction, frameState.apop(), graph);
         frameState.apush(append(c));
@@ -549,7 +549,7 @@ public final class GraphBuilder {
     private void genInstanceOf() {
         int cpi = stream().readCPI();
         RiType type = constantPool().lookupType(cpi, INSTANCEOF);
-        boolean isInitialized = !C1XOptions.TestPatching && type.isResolved() && type.isInitialized();
+        boolean isInitialized = type.isResolved() && type.isInitialized();
         Value typeInstruction = genResolveClass(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         InstanceOf i = new InstanceOf(type, typeInstruction, frameState.apop(), graph);
         frameState.ipush(append(i));
@@ -625,7 +625,7 @@ public final class GraphBuilder {
 
     private void genGetStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        boolean isInitialized = !C1XOptions.TestPatching && field.isResolved();
+        boolean isInitialized = field.isResolved();
         CiConstant constantValue = null;
         FrameState stateBefore = null;
         if (isInitialized) {
@@ -679,7 +679,7 @@ public final class GraphBuilder {
 
     private void genInvokeStatic(RiMethod target, int cpi, RiConstantPool constantPool) {
         RiType holder = target.holder();
-        boolean isInitialized = !C1XOptions.TestPatching && target.isResolved() && holder.isInitialized();
+        boolean isInitialized = target.isResolved() && holder.isInitialized();
         if (!isInitialized && C1XOptions.ResolveClassBeforeStaticInvoke) {
             // Re-use the same resolution code as for accessing a static field. Even though
             // the result of resolution is not used by the invocation (only the side effect

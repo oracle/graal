@@ -53,7 +53,6 @@ public final class C1XOptions {
     // debugging settings
     public static boolean VerifyPointerMaps                  = ____;
     public static boolean PinAllInstructions                 = ____;
-    public static boolean TestPatching                       = ____;
     public static boolean FatalUnimplemented                 = ____;
     public static int     MethodEndBreakpointGuards          = 0;
     public static boolean ZapStackOnMethodEntry              = ____;
