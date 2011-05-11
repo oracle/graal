@@ -304,19 +304,6 @@ public class Util {
         return result;
     }
 
-    public static <T> T nonFatalUnimplemented(T val) {
-        if (C1XOptions.FatalUnimplemented) {
-            throw new Error("unimplemented");
-        }
-        return val;
-    }
-
-    public static void nonFatalUnimplemented() {
-        if (C1XOptions.FatalUnimplemented) {
-            throw new Error("unimplemented");
-        }
-    }
-
     public static boolean isShiftCount(int x) {
         return 0 <= x && x < 32;
     }
