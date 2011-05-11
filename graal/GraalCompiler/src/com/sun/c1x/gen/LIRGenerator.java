@@ -468,7 +468,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         int argumentCount = invoke.argumentCount(); // invoke.arguments() iterable?
         for (int i = 0; i < argumentCount; i++) {
             Value arg = invoke.argument(i);
-            builder.push(arg.kind, arg);
+            if (arg != null) {
+                builder.push(arg.kind, arg);
+            }
         }
         return builder.create(invoke.bci());
     }
