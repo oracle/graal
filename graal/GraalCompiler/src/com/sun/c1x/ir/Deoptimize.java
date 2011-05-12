@@ -26,55 +26,57 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
+
 
 /**
- * An instruction that represents the runtime resolution of a Java class object. For example, an
- * ldc of a class constant that is unresolved.
+ *
  */
-public final class ResolveClass extends StateSplit {
+public class Deoptimize extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
     private static final int SUCCESSOR_COUNT = 0;
+    private static final int INPUT_STATE_BEFORE = 0;
 
-    public final RiType type;
-    public final RiType.Representation portion;
+    /**
+     * @param kind
+     * @param inputCount
+     * @param successorCount
+     * @param graph
+     */
+    public Deoptimize(Graph graph, FrameState stateBefore) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.setStateBefore(stateBefore);
+    }
 
-    public ResolveClass(RiType type, RiType.Representation r, Graph graph, FrameState stateBefore) {
-        super(type.getRepresentationKind(r), INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.portion = r;
-        this.type = type;
-        setFlag(Flag.NonNull);
-        setStateBefore(stateBefore);
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The state for this instruction.
+     */
+    public FrameState stateBefore() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
+    }
+
+    public FrameState setStateBefore(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitResolveClass(this);
-    }
-
-    @Override
-    public int valueNumber() {
-        return 0x50000000 | type.hashCode();
-    }
-
-    @Override
-    public boolean valueEqual(Instruction x) {
-        if (x instanceof ResolveClass) {
-            ResolveClass r = (ResolveClass) x;
-            return r.portion == portion && r.type.equals(type);
-        }
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        return super.toString() + "(type: " + type + ", portion: " + portion + ")";
+        v.visitDeoptimize(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("resolve[").print(CiUtil.toJavaName(type)).print("-" + portion + "]");
+        out.print("deoptimize");
     }
 
 }

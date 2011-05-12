@@ -61,11 +61,11 @@ public abstract class ValueVisitor {
     public abstract void visitNullCheck(NullCheck i);
     public abstract void visitPhi(Phi i);
     public abstract void visitRegisterFinalizer(RegisterFinalizer i);
-    public abstract void visitResolveClass(ResolveClass i);
     public abstract void visitReturn(Return i);
     public abstract void visitShiftOp(ShiftOp i);
     public abstract void visitStoreField(StoreField i);
     public abstract void visitStoreIndexed(StoreIndexed i);
     public abstract void visitTableSwitch(TableSwitch i);
     public abstract void visitThrow(Throw i);
+    public abstract void visitDeoptimize(Deoptimize deoptimize);
 }

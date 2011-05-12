@@ -534,7 +534,10 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
         if (op.cond() == Condition.TRUE) {
             if (op.info != null) {
-                asm.recordImplicitException(codePos(), op.info);
+                int codePos = codePos();
+                if (codePos > asm.lastSafepointPos()) {
+                    asm.recordImplicitException(codePos, op.info);
+                }
             }
             masm.jmp(op.label());
         } else {

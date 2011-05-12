@@ -210,6 +210,13 @@ public abstract class LIRGenerator extends ValueVisitor {
         return deoptimizationStubs;
     }
 
+    private void addDeoptimizationStub(DeoptimizationStub stub) {
+        if (deoptimizationStubs == null) {
+            deoptimizationStubs = new ArrayList<LIRGenerator.DeoptimizationStub>();
+        }
+        deoptimizationStubs.add(stub);
+    }
+
     public static class DeoptimizationStub {
         public final Label label = new Label();
         public final LIRDebugInfo info;
@@ -295,13 +302,6 @@ public abstract class LIRGenerator extends ValueVisitor {
             setResult(local, dest);
             javaIndex += kind.jvmSlots;
         }
-    }
-
-    @Override
-    public void visitResolveClass(ResolveClass i) {
-        LIRDebugInfo info = stateFor(i);
-        XirSnippet snippet = xir.genResolveClass(site(i), i.type, i.portion);
-        emitXir(snippet, i, info, null, true);
     }
 
     @Override
@@ -447,11 +447,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.cmove(i.condition(), tVal, fVal, reg);
     }
 
-    protected FrameState stateBeforeInvoke(Invoke invoke) {
-        Value[] args = new Value[invoke.argumentCount()];
-        for (int i = 0; i < invoke.argumentCount(); i++) {
-            args[i] = invoke.argument(i);
-        }
+    protected FrameState stateBeforeInvokeReturn(Invoke invoke) {
         return invoke.stateAfter().duplicateModified(invoke.bci(), invoke.kind/*, args*/);
     }
 
@@ -467,7 +463,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitInvoke(Invoke x) {
         RiMethod target = x.target();
         LIRDebugInfo info = stateFor(x, stateBeforeInvokeWithArguments(x));
-        LIRDebugInfo info2 = stateFor(x, stateBeforeInvoke(x));
+        LIRDebugInfo info2 = stateFor(x, stateBeforeInvokeReturn(x));
 
         XirSnippet snippet = null;
 
@@ -885,6 +881,13 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.move(exceptionOpr, argumentOperand);
 
         lir.throwException(CiValue.IllegalValue, argumentOperand, info);
+    }
+
+    @Override
+    public void visitDeoptimize(Deoptimize deoptimize) {
+        DeoptimizationStub stub = new DeoptimizationStub(deoptimize.stateBefore());
+        addDeoptimizationStub(stub);
+        lir.branch(Condition.TRUE, stub.label, stub.info);
     }
 
     private void blockDoEpilog(BlockBegin block) {

@@ -44,6 +44,7 @@ public abstract class AbstractAssembler {
     public final CiTarget target;
     public final CiTargetMethod targetMethod;
     public List<ExceptionInfo> exceptionInfoList;
+    protected int lastSafepointPos;
 
     public AbstractAssembler(CiTarget target) {
         this.target = target;
@@ -162,6 +163,8 @@ public abstract class AbstractAssembler {
     public void recordImplicitException(int pcOffset, LIRDebugInfo info) {
         // record an implicit exception point
         if (info != null) {
+            assert lastSafepointPos < pcOffset;
+            lastSafepointPos = pcOffset;
             targetMethod.recordSafepoint(pcOffset, info.debugInfo());
             recordExceptionHandlers(pcOffset, info);
         }
@@ -169,17 +172,23 @@ public abstract class AbstractAssembler {
 
     protected void recordDirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
+        assert lastSafepointPos < posAfter;
+        lastSafepointPos = posAfter;
         targetMethod.recordCall(posBefore, target, debugInfo, true);
     }
 
     protected void recordIndirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
+        assert lastSafepointPos < posAfter;
+        lastSafepointPos = posAfter;
         targetMethod.recordCall(posBefore, target, debugInfo, false);
     }
 
     public void recordSafepoint(int pos, LIRDebugInfo info) {
         // safepoints always need debug info
         CiDebugInfo debugInfo = info.debugInfo();
+        assert lastSafepointPos < pos;
+        lastSafepointPos = pos;
         targetMethod.recordSafepoint(pos, debugInfo);
     }
 
@@ -226,5 +235,9 @@ public abstract class AbstractAssembler {
 
     public void blockComment(String s) {
         targetMethod.addAnnotation(new CodeComment(codeBuffer.position(), s));
+    }
+
+    public int lastSafepointPos() {
+        return lastSafepointPos;
     }
 }

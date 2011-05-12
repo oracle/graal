@@ -24,6 +24,7 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
+import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -57,9 +58,10 @@ public class RegisterFinalizer extends StateSplit {
         return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
     }
 
-    public RegisterFinalizer(Value object, Graph graph) {
+    public RegisterFinalizer(Value object, FrameState stateBefore, Graph graph) {
         super(CiKind.Void, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setObject(object);
+        setStateBefore(stateBefore);
     }
 
     @Override
