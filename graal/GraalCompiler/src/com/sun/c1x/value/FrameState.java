@@ -86,7 +86,7 @@ public class FrameState extends Value implements FrameStateAccess {
             inputs().set(i, locals[i]);
         }
         for (int i = 0; i < stackSize; i++) {
-            inputs().set(i + localsSize, stack[i]);
+            inputs().set(localsSize + i, stack[i]);
         }
         for (int i = 0; i < locks.size(); i++) {
             inputs().set(locals.length + stackSize + i, locks.get(i));
@@ -109,6 +109,37 @@ public class FrameState extends Value implements FrameStateAccess {
         FrameState other = new FrameState(bci, localsSize, 0, locksSize(), graph());
         for (int i = 0; i < localsSize; i++) {
             other.inputs().set(i, localAt(i));
+        }
+        for (int i = 0; i < locksSize; i++) {
+            other.inputs().set(localsSize + i, lockAt(i));
+        }
+        return other;
+    }
+
+    /**
+     * Creates a copy of this frame state with one stack element of type popKind popped from the stack and the
+     * values in pushedValues pushed on the stack.
+     */
+    public FrameState duplicateModified(int bci, CiKind popKind, Value... pushedValues) {
+        int popSlots = popKind.sizeInSlots();
+        int pushSlots = 0;
+        for (Value v : pushedValues) {
+            pushSlots += v.kind.sizeInSlots();
+        }
+        FrameState other = new FrameState(bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), graph());
+        for (int i = 0; i < localsSize; i++) {
+            other.inputs().set(i, localAt(i));
+        }
+        for (int i = 0; i < stackSize - popSlots; i++) {
+            other.inputs().set(localsSize + i, stackAt(i));
+        }
+        int slot = stackSize - popSlots;
+        for (Value v : pushedValues) {
+            assert v.kind.sizeInSlots() > 0;
+            if (v.kind.sizeInSlots() == 2) {
+                other.inputs().set(localsSize + slot++, null);
+            }
+            other.inputs().set(localsSize + slot++, v);
         }
         for (int i = 0; i < locksSize; i++) {
             other.inputs().set(localsSize + i, lockAt(i));
