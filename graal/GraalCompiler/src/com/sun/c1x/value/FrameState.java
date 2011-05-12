@@ -86,7 +86,7 @@ public class FrameState extends Value implements FrameStateAccess {
             inputs().set(i, locals[i]);
         }
         for (int i = 0; i < stackSize; i++) {
-            inputs().set(i + localsSize, stack[i]);
+            inputs().set(localsSize + i, stack[i]);
         }
         for (int i = 0; i < locks.size(); i++) {
             inputs().set(locals.length + stackSize + i, locks.get(i));
@@ -112,6 +112,31 @@ public class FrameState extends Value implements FrameStateAccess {
         }
         for (int i = 0; i < locksSize; i++) {
             other.inputs().set(localsSize + i, lockAt(i));
+        }
+        return other;
+    }
+
+    /**
+     * Creates a copy of this frame state with one stack element of type popKind popped from the stack and the
+     * values in pushedValues pushed on the stack. The pushedValues are expected to be in slot encoding: a long
+     * or double is followed by a null slot.
+     */
+    public FrameState duplicateModified(int bci, CiKind popKind, Value... pushedValues) {
+        int popSlots = popKind.sizeInSlots();
+        int pushSlots = pushedValues.length;
+        FrameState other = new FrameState(bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), graph());
+        for (int i = 0; i < localsSize; i++) {
+            other.inputs().set(i, localAt(i));
+        }
+        for (int i = 0; i < stackSize - popSlots; i++) {
+            other.inputs().set(localsSize + i, stackAt(i));
+        }
+        int slot = localsSize + stackSize - popSlots;
+        for (int i = 0; i < pushSlots; i++) {
+            other.inputs().set(slot++, pushedValues[i]);
+        }
+        for (int i = 0; i < locksSize; i++) {
+            other.inputs().set(localsSize + other.stackSize + i, lockAt(i));
         }
         return other;
     }
