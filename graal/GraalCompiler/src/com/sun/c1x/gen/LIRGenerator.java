@@ -976,6 +976,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private FrameState stateBeforeRegisterFinalizer(RegisterFinalizer rf) {
+        assert rf.object().kind == CiKind.Object;
         return rf.stateAfter().duplicateModified(rf.bci(), CiKind.Void, rf.object());
     }
 
