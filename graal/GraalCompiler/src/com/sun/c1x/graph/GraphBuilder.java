@@ -812,7 +812,9 @@ public final class GraphBuilder {
 
         if (needsCheck) {
             // append a call to the finalizer registration
-            append(new RegisterFinalizer(frameState.loadLocal(0), graph));
+            RegisterFinalizer r = new RegisterFinalizer(frameState.loadLocal(0), graph);
+            append(r);
+            r.setStateBefore(frameState.create(bci()));
             C1XMetrics.InlinedFinalizerChecks++;
         }
     }

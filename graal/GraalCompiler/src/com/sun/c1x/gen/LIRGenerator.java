@@ -994,18 +994,10 @@ public abstract class LIRGenerator extends ValueVisitor {
         return operand;
     }
 
-    private FrameState stateBeforeRegisterFinalizer(RegisterFinalizer rf) {
-        Value object = rf.object();
-        FrameStateBuilder builder = new FrameStateBuilder(compilation.method, rf.graph());
-        builder.initializeFrom(rf.stateAfter());
-        builder.push(object.kind, object);
-        return builder.create(rf.bci());
-    }
-
     @Override
     public void visitRegisterFinalizer(RegisterFinalizer x) {
         CiValue receiver = load(x.object());
-        LIRDebugInfo info = stateFor(x, stateBeforeRegisterFinalizer(x));
+        LIRDebugInfo info = stateFor(x, x.stateBefore());
         callRuntime(CiRuntimeCall.RegisterFinalizer, info, receiver);
         setNoResult(x);
     }
