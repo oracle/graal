@@ -218,7 +218,11 @@ public final class C1XCompilation {
         } catch (CiBailout b) {
             return new CiResult(null, b, stats);
         } catch (Throwable t) {
-            return new CiResult(null, new CiBailout("Exception while compiling: " + method, t), stats);
+            if (C1XOptions.BailoutOnException) {
+                return new CiResult(null, new CiBailout("Exception while compiling: " + method, t), stats);
+            } else {
+                throw new RuntimeException(t);
+            }
         } finally {
             if (compiler.isObserved()) {
                 compiler.fireCompilationFinished(new CompilationEvent(this));

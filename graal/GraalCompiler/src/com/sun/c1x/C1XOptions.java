@@ -55,6 +55,7 @@ public final class C1XOptions {
     public static int     MethodEndBreakpointGuards          = 0;
     public static boolean ZapStackOnMethodEntry              = ____;
     public static boolean StressLinearScan                   = ____;
+    public static boolean BailoutOnException                 = ____;
 
     /**
      * See {@link Filter#Filter(String, Object)}.
