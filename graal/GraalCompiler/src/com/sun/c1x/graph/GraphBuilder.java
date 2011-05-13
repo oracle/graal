@@ -83,7 +83,7 @@ public final class GraphBuilder {
 
     private final BytecodeStream stream;           // the bytecode stream
     // bci-to-block mapping
-    private BlockMap blockMap;
+    private BlockBegin[] blockList;
 
     // the constant pool
     private final RiConstantPool constantPool;
@@ -151,17 +151,36 @@ public final class GraphBuilder {
         graph.root().setStart(startBlock);
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
-        blockMap = compilation.getBlockMap(rootMethod);
-        BlockBegin stdEntry = blockMap.get(0);
+        BlockMap blockMap = compilation.getBlockMap(rootMethod);
+
+        blockList = new BlockBegin[rootMethod.code().length];
+        for (int i = 0; i < blockMap.blocks.size(); i++) {
+            BlockMap.Block block = blockMap.blocks.get(i);
+            BlockBegin blockBegin = new BlockBegin(block.startBci, ir.nextBlockNumber(), graph);
+            if (block.isExceptionEntry) {
+                blockBegin.setBlockFlag(BlockBegin.BlockFlag.ExceptionEntry);
+            }
+            if (block.isLoopHeader) {
+                blockBegin.setBlockFlag(BlockBegin.BlockFlag.ParserLoopHeader);
+            }
+            blockBegin.setDepthFirstNumber(blockBegin.blockID);
+            blockList[block.startBci] = blockBegin;
+        }
+
+        BlockBegin stdEntry = blockList[0];
         curBlock = startBlock;
 
         RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
         if (handlers != null && handlers.length > 0) {
             exceptionHandlers = new ArrayList<ExceptionHandler>(handlers.length);
             for (RiExceptionHandler ch : handlers) {
-                ExceptionHandler h = new ExceptionHandler(ch);
-                h.setEntryBlock(blockAt(h.handler.handlerBCI()));
-                exceptionHandlers.add(h);
+                BlockBegin entry = blockAtOrNull(ch.handlerBCI());
+                // entry == null means that the exception handler is unreachable according to the BlockMap conservative analysis
+                if (entry != null) {
+                    ExceptionHandler h = new ExceptionHandler(ch);
+                    h.setEntryBlock(entry);
+                    exceptionHandlers.add(h);
+                }
             }
             flags |= Flag.HasHandler.mask;
         }
@@ -950,7 +969,7 @@ public final class GraphBuilder {
     }
 
     private BlockBegin blockAtOrNull(int bci) {
-        return blockMap.get(bci);
+        return blockList[bci];
     }
 
     private BlockBegin blockAt(int bci) {

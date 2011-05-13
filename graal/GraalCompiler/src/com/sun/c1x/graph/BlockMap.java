@@ -26,9 +26,7 @@ import static com.sun.cri.bytecode.Bytecodes.*;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
-import com.sun.c1x.ir.*;
-import com.sun.c1x.util.*;
+import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -114,279 +112,117 @@ import com.sun.cri.ri.*;
  * mark all local variables that are stored in the blocks in the list.
  */
 public final class BlockMap {
+    public class Block {
+        public int startBci;
+        public int endBci;
+        public boolean isExceptionEntry;
+        public boolean isLoopHeader;
 
-    private static final BlockBegin[] NONE = {};
-    private static final List<BlockBegin> NONE_LIST = Collections.emptyList();
-
-    /**
-     * The {@code ExceptionMap} class is used internally to track exception handlers
-     * while iterating over the bytecode and the control flow graph. Since methods with
-     * exception handlers are much less frequent than those without, the common case
-     * does not need to construct an exception map.
-     */
-    private class ExceptionMap {
-        private final CiBitMap canTrap;
-        private final boolean isObjectInit;
-        private final RiExceptionHandler[] allHandlers;
-        private final ArrayMap<HashSet<BlockBegin>> handlerMap;
-
-        ExceptionMap(RiMethod method, byte[] code) {
-            canTrap = new CiBitMap(code.length);
-            isObjectInit = (method.isConstructor() && method.holder().superType() == null);
-            allHandlers = method.exceptionHandlers();
-            handlerMap = new ArrayMap<HashSet<BlockBegin>>(firstBlock, firstBlock + code.length / 5);
-        }
-
-        void setCanTrap(int bci) {
-            canTrap.set(bci);
-        }
-
-        void addHandlers(BlockBegin block, int bci) {
-            if (canTrap.get(bci)) {
-                // XXX: replace with faster algorithm (sort exception handlers by start and end)
-                for (RiExceptionHandler h : allHandlers) {
-                    if (h.startBCI() <= bci && bci < h.endBCI()) {
-                        addHandler(block, get(h.handlerBCI()));
-                        if (h.isCatchAll()) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        Collection<BlockBegin> getHandlers(BlockBegin block) {
-            // lookup handlers for the basic block
-            HashSet<BlockBegin> set = handlerMap.get(block.blockID);
-            return set == null ? NONE_LIST : set;
-        }
-
-        void setHandlerEntrypoints() {
-            // start basic blocks at all exception handler blocks and mark them as exception entries
-            for (RiExceptionHandler h : allHandlers) {
-                addEntrypoint(h.handlerBCI(), BlockBegin.BlockFlag.ExceptionEntry);
-            }
-        }
-
-        void addHandler(BlockBegin block, BlockBegin handler) {
-            // add a handler to a basic block, creating the set if necessary
-            HashSet<BlockBegin> set = handlerMap.get(block.blockID);
-            if (set == null) {
-                set = new HashSet<BlockBegin>();
-                handlerMap.put(block.blockID, set);
-            }
-            set.add(handler);
-        }
+        private Block[] successors;
+        private boolean visited;
+        private boolean active;
+        private int loops;
     }
 
-    /** The bytecodes for the associated method. */
-    private final byte[] code;
+    private static final Block[] NO_SUCCESSORS = new Block[0];
 
     /**
-     * Every {@link BlockBegin} node created by {@link BlockMap#build} has an entry in this
-     * array at the corresponding bytecode index. Length is same as {@link BlockMap#code}.
+     * The blocks found in this method, in reverse postorder.
      */
-    private final BlockBegin[] blockMap;
+    public final List<Block> blocks;
 
     /**
-     * A bit map covering the locals with a bit set for each local that is
-     * stored to within a loop. This may be conservative depending on the value
-     * of the {@code computeStoresInLoops} parameters of {@link #build(boolean)}.
+     * A bit map covering the locals with a bit set for each local that might be stored to within a
+     * loop. If the bit is cleared, it is guaranteed that the local is never stored in a loop.
      */
-    private final CiBitMap storesInLoops;
+    public final BitSet storesInLoops;
 
-    /**
-     * Every bytecode instruction that has zero, one or more successor nodes (e.g. {@link Bytecodes#GOTO} has one) has
-     * an entry in this array at the corresponding bytecode index. The value is another array of {@code BlockBegin} nodes,
-     * with length equal to the number of successors, whose entries are the {@code BlockBegin} nodes for the successor
-     * blocks. Length is same as {@link BlockMap#code}.
-     */
-    private BlockBegin[][] successorMap;
+    private final RiMethod method;
 
-    /** List of {@code BlockBegin} nodes that are inside loops. */
-    private ArrayList<BlockBegin> loopBlocks;
-    private ExceptionMap exceptionMap;
+    private Block[] blockMap;
 
-    /**
-     * The first block number allocated for the blocks within this block map.
-     */
-    private final int firstBlock;
-
-    /**
-     * Used for initial block ID (count up) and post-order number (count down).
-     */
-    private int blockNum;
-
-    private final Graph graph;
+    private BitSet canTrap;
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
-     * @param firstBlockNum the first block number to use when creating {@link BlockBegin} nodes
-     * @param graph
      */
-    public BlockMap(RiMethod method, int firstBlockNum, Graph graph) {
-        this.graph = graph;
-        byte[] code = method.code();
-        this.code = code;
-        firstBlock = firstBlockNum;
-        blockNum = firstBlockNum;
-        blockMap = new BlockBegin[code.length];
-        successorMap = new BlockBegin[code.length][];
-        storesInLoops = new CiBitMap(method.maxLocals());
+    public BlockMap(RiMethod method) {
+        this.method = method;
+        this.blockMap = new Block[method.code().length];
         if (method.exceptionHandlers().length != 0) {
-            exceptionMap = new ExceptionMap(method, code);
+            this.canTrap = new BitSet(blockMap.length);
         }
-    }
-
-    /**
-     * Add an entrypoint to this BlockMap. The resulting block will be marked
-     * with the specified block flags.
-     * @param bci the bytecode index of the start of the block
-     * @param entryFlag the entry flag to mark the block with
-     */
-    public void addEntrypoint(int bci, BlockBegin.BlockFlag entryFlag) {
-        make(bci).setBlockFlag(entryFlag);
-    }
-
-    /**
-     * Gets the block that begins at the specified bytecode index.
-     * @param bci the bytecode index of the start of the block
-     * @return the block starting at the specified index, if it exists; {@code null} otherwise
-     */
-    public BlockBegin get(int bci) {
-        if (bci < blockMap.length) {
-            return blockMap[bci];
-        }
-        return null;
-    }
-
-    private BlockBegin make(int bci) {
-        BlockBegin block = blockMap[bci];
-        if (block == null) {
-            block = new BlockBegin(bci, blockNum++, graph);
-            blockMap[bci] = block;
-        }
-        return block;
-    }
-
-    /**
-     * Gets a conservative approximation of the successors of a given block.
-     * @param block the block for which to get the successors
-     * @return an array of the successors of the specified block
-     */
-    public BlockBegin[] getSuccessors(BlockBegin block) {
-        BlockBegin[] succ = successorMap[block.bci()];
-        return succ == null ? NONE : succ;
-    }
-
-    /**
-     * Gets the exception handlers for a specified block. Note that this
-     * set of exception handlers takes into account whether the block contains
-     * bytecodes that can cause traps or not.
-     * @param block the block for which to get the exception handlers
-     * @return an array of the blocks which represent exception handlers; a zero-length
-     * array of blocks if there are no handlers that cover any potentially trapping
-     * instruction in the specified block
-     */
-    public Collection<BlockBegin> getHandlers(BlockBegin block) {
-        if (exceptionMap == null) {
-            return NONE_LIST;
-        }
-        return exceptionMap.getHandlers(block);
+        this.blocks = new ArrayList<Block>();
+        this.storesInLoops = new BitSet(method.maxLocals());
     }
 
     /**
      * Builds the block map and conservative CFG and numbers blocks.
-     * @param computeStoresInLoops {@code true} if the block map builder should
-     * make a second pass over the bytecodes for blocks in loops
-     * @return {@code true} if the block map was built successfully; {@code false} otherwise
      */
-    public boolean build(boolean computeStoresInLoops) {
-        if (exceptionMap != null) {
-            exceptionMap.setHandlerEntrypoints();
-        }
+    public void build() {
+        makeExceptionEntries();
         iterateOverBytecodes();
-        moveSuccessorLists();
-        computeBlockNumbers();
-        if (computeStoresInLoops) {
-            // process any blocks in loops to compute their stores
-            // (requires another pass, but produces fewer phi's and ultimately better code)
-            processLoopBlocks();
-        } else {
-            // be conservative and assume all locals are potentially stored in loops
-            // (does not require another pass, but produces more phi's and worse code)
-            storesInLoops.setAll();
+        addExceptionEdges();
+        computeBlockOrder();
+
+        // Discard big arrays so that they can be GCed
+        blockMap = null;
+        canTrap = null;
+    }
+
+    private void makeExceptionEntries() {
+        // start basic blocks at all exception handler blocks and mark them as exception entries
+        for (RiExceptionHandler h : method.exceptionHandlers()) {
+            Block xhandler = makeBlock(h.handlerBCI());
+            xhandler.isExceptionEntry = true;
         }
-        return true; // XXX: what bailout conditions should the BlockMap check?
     }
 
-    /**
-     * Cleans up any internal state not necessary after the initial pass. Note that
-     * this method discards the conservative CFG edges and only retains the block mapping
-     * and stores in loops.
-     */
-    public void cleanup() {
-        // discard internal state no longer needed
-        successorMap = null;
-        loopBlocks = null;
-        exceptionMap = null;
-    }
-
-    /**
-     * Gets the number of blocks in this block map.
-     * @return the number of blocks
-     */
-    public int numberOfBlocks() {
-        return blockNum - firstBlock;
-    }
-
-    public int numberOfBytes() {
-        return code.length;
-    }
-
-    /**
-     * Gets the bitmap that indicates which local variables are assigned in loops.
-     * @return a bitmap which indicates the locals stored in loops
-     */
-    public CiBitMap getStoresInLoops() {
-        return storesInLoops;
-    }
-
-    void iterateOverBytecodes() {
+    private void iterateOverBytecodes() {
         // iterate over the bytecodes top to bottom.
         // mark the entrypoints of basic blocks and build lists of successors for
         // all bytecodes that end basic blocks (i.e. goto, ifs, switches, throw, jsr, returns, ret)
+        byte[] code = method.code();
+        Block current = null;
         int bci = 0;
-        ExceptionMap exceptionMap = this.exceptionMap;
-        byte[] code = this.code;
-        make(0);
         while (bci < code.length) {
+            if (current == null || blockMap[bci] != null) {
+                Block b = makeBlock(bci);
+                if (current != null) {
+                    setSuccessors(current.endBci, b);
+                }
+                current = b;
+            }
+            blockMap[bci] = current;
+            current.endBci = bci;
+
             int opcode = Bytes.beU1(code, bci);
             switch (opcode) {
-                case ATHROW:
-                    if (exceptionMap != null) {
-                        exceptionMap.setCanTrap(bci);
-                    }
-                    // fall through
                 case IRETURN: // fall through
                 case LRETURN: // fall through
                 case FRETURN: // fall through
                 case DRETURN: // fall through
                 case ARETURN: // fall through
                 case WRETURN: // fall through
-                case RETURN:
-                    if (exceptionMap != null && exceptionMap.isObjectInit) {
-                        exceptionMap.setCanTrap(bci);
-                    }
-                    successorMap[bci] = NONE; // end of control flow
-                    bci += 1; // these are all 1 byte opcodes
-                    break;
+                case RETURN: {
+                    current = null;
 
-                case RET:
-                    successorMap[bci] = NONE; // end of control flow
-                    bci += 2; // ret is 2 bytes
+                    assert lengthOf(code, bci) == 1;
+                    bci += 1;
                     break;
+                }
+
+                case ATHROW: {
+                    current = null;
+                    if (canTrap != null) {
+                        canTrap.set(bci);
+                    }
+
+                    assert lengthOf(code, bci) == 1;
+                    bci += 1;
+                    break;
+                }
 
                 case IFEQ:      // fall through
                 case IFNE:      // fall through
@@ -404,288 +240,417 @@ public final class BlockMap {
                 case IF_ACMPNE: // fall through
                 case IFNULL:    // fall through
                 case IFNONNULL: {
-                    succ2(bci, bci + 3, bci + Bytes.beS2(code, bci + 1));
-                    bci += 3; // these are all 3 byte opcodes
+                    current = null;
+                    Block b1 = makeBlock(bci + 3);
+                    Block b2 = makeBlock(bci + Bytes.beS2(code, bci + 1));
+                    setSuccessors(bci, b1, b2);
+
+                    assert lengthOf(code, bci) == 3;
+                    bci += 3;
                     break;
                 }
 
                 case GOTO: {
-                    succ1(bci, bci + Bytes.beS2(code, bci + 1));
-                    bci += 3; // goto is 3 bytes
+                    current = null;
+                    Block b1 = makeBlock(bci + Bytes.beS2(code, bci + 1));
+                    setSuccessors(bci, b1);
+
+                    assert lengthOf(code, bci) == 3;
+                    bci += 3;
                     break;
                 }
 
                 case GOTO_W: {
-                    succ1(bci, bci + Bytes.beS4(code, bci + 1));
-                    bci += 5; // goto_w is 5 bytes
-                    break;
-                }
+                    current = null;
+                    Block b1 = makeBlock(bci + Bytes.beS4(code, bci + 1));
+                    setSuccessors(bci, b1);
 
-                case JSR: {
-                    int target = bci + Bytes.beS2(code, bci + 1);
-                    succ2(bci, bci + 3, target); // make JSR's a successor or not?
-                    addEntrypoint(target, BlockBegin.BlockFlag.SubroutineEntry);
-                    bci += 3; // jsr is 3 bytes
-                    break;
-                }
-
-                case JSR_W: {
-                    int target = bci + Bytes.beS4(code, bci + 1);
-                    succ2(bci, bci + 5, target);
-                    addEntrypoint(target, BlockBegin.BlockFlag.SubroutineEntry);
-                    bci += 5; // jsr_w is 5 bytes
+                    assert lengthOf(code, bci) == 5;
+                    bci += 5;
                     break;
                 }
 
                 case TABLESWITCH: {
-                    BytecodeSwitch sw = new BytecodeTableSwitch(code, bci);
-                    makeSwitchSuccessors(bci, sw);
+                    BytecodeTableSwitch sw = new BytecodeTableSwitch(code, bci);
+                    setSuccessors(bci, makeSwitchSuccessors(sw));
+                    current = null;
+
+                    assert lengthOf(code, bci) == sw.size();
                     bci += sw.size();
                     break;
                 }
 
                 case LOOKUPSWITCH: {
-                    BytecodeSwitch sw = new BytecodeLookupSwitch(code, bci);
-                    makeSwitchSuccessors(bci, sw);
+                    current = null;
+                    BytecodeLookupSwitch sw = new BytecodeLookupSwitch(code, bci);
+                    setSuccessors(bci, makeSwitchSuccessors(sw));
+
+                    assert lengthOf(code, bci) == sw.size();
                     bci += sw.size();
                     break;
                 }
+
+                case JSR: {
+                    throw new JSRNotSupportedBailout();
+                }
+                case JSR_W: {
+                    throw new JSRNotSupportedBailout();
+                }
+                case RET: {
+                    throw new JSRNotSupportedBailout();
+                }
+
                 case WIDE: {
+                    if (canTrap != null && ProfileInformationStub.trappedFrequently(method, bci)) {
+                        canTrap.set(bci);
+                    }
+
                     bci += lengthOf(code, bci);
                     break;
                 }
 
                 default: {
-                    if (exceptionMap != null && canTrap(opcode)) {
-                        exceptionMap.setCanTrap(bci);
+                    if (canTrap != null && ProfileInformationStub.trappedFrequently(method, bci)) {
+                        canTrap.set(bci);
                     }
-                    bci += lengthOf(opcode); // all variable length instructions are handled above
+
+                    assert lengthOf(code, bci) == lengthOf(opcode);
+                    bci += lengthOf(opcode);
                 }
             }
         }
     }
 
-    private void makeSwitchSuccessors(int bci, BytecodeSwitch tswitch) {
-        // make a list of all the successors of a switch
+    private Block makeBlock(int startBci) {
+        Block oldBlock = blockMap[startBci];
+        if (oldBlock == null) {
+            Block newBlock = new Block();
+            newBlock.startBci = startBci;
+            newBlock.successors = NO_SUCCESSORS;
+            blockMap[startBci] = newBlock;
+            return newBlock;
+
+        } else if (oldBlock.startBci != startBci) {
+            // Backward branch into the middle of an already processed block.
+            // Add the correct fall-through successor.
+            Block newBlock = new Block();
+            newBlock.startBci = startBci;
+            newBlock.endBci = oldBlock.endBci;
+            newBlock.successors = oldBlock.successors;
+
+            oldBlock.endBci = startBci - 1;
+            oldBlock.successors = new Block[] {newBlock };
+
+            for (int i = startBci; i <= newBlock.endBci; i++) {
+                blockMap[i] = newBlock;
+            }
+            return newBlock;
+
+        } else {
+            return oldBlock;
+        }
+    }
+
+    private Block[] makeSwitchSuccessors(BytecodeSwitch tswitch) {
         int max = tswitch.numberOfCases();
-        ArrayList<BlockBegin> list = new ArrayList<BlockBegin>(max + 1);
+        Block[] successors = new Block[max + 1];
         for (int i = 0; i < max; i++) {
-            list.add(make(tswitch.targetAt(i)));
+            successors[i] = makeBlock(tswitch.targetAt(i));
         }
-        list.add(make(tswitch.defaultTarget()));
-        successorMap[bci] = list.toArray(new BlockBegin[list.size()]);
+        successors[max] = makeBlock(tswitch.defaultTarget());
+        return successors;
     }
 
-    private void moveSuccessorLists() {
-        // move successor lists from the block-ending bytecodes that created them
-        // to the basic blocks which they end.
-        // also handle fall-through cases from backwards branches into the middle of a block
-        // add exception handlers to basic blocks
-        BlockBegin current = get(0);
-        ExceptionMap exceptionMap = this.exceptionMap;
-        for (int bci = 0; bci < blockMap.length; bci++) {
-            BlockBegin next = blockMap[bci];
-            if (next != null && next != current) {
-                if (current != null) {
-                    // add fall through successor to current block
-                    successorMap[current.bci()] = new BlockBegin[] {next};
-                }
-                current = next;
-            }
-            if (exceptionMap != null) {
-                exceptionMap.addHandlers(current, bci);
-            }
-            BlockBegin[] succ = successorMap[bci];
-            if (succ != null && current != null) {
-                // move this successor list to current block
-                successorMap[bci] = null;
-                successorMap[current.bci()] = succ;
-                current = null;
+    private void setSuccessors(int predBci, Block... successors) {
+        for (Block sux : successors) {
+            if (sux.isExceptionEntry) {
+                throw new CiBailout("Exception handler can be reached by both normal and exceptional control flow");
             }
         }
-        assert current == null : "fell off end of code, should end with successor list";
+        Block predecessor = blockMap[predBci];
+        assert predecessor.successors.length == 0;
+        predecessor.successors = successors;
     }
 
-    private void computeBlockNumbers() {
-        // compute the block number for all blocks
-        int blockNum = this.blockNum;
-        int numBlocks = blockNum - firstBlock;
-        numberBlock(get(0), new CiBitMap(numBlocks), new CiBitMap(numBlocks));
-        this.blockNum = blockNum; // _blockNum is used to compute the number of blocks later
-    }
-
-    private boolean numberBlock(BlockBegin block, CiBitMap visited, CiBitMap active) {
-        // number a block with its reverse post-order traversal number
-        int blockIndex = block.blockID - firstBlock;
-
-        if (visited.get(blockIndex)) {
-            if (active.get(blockIndex)) {
-                // reached block via backward branch
-                block.setParserLoopHeader(true);
-                addLoopBlock(block);
-                return true;
-            }
-            // return whether the block is already a loop header
-            return block.isParserLoopHeader();
-        }
-
-        visited.set(blockIndex);
-        active.set(blockIndex);
-
-        boolean inLoop = false;
-        for (BlockBegin succ : getSuccessors(block)) {
-            // recursively process successors
-            inLoop |= numberBlock(succ, visited, active);
-        }
-        if (exceptionMap != null) {
-            for (BlockBegin succ : exceptionMap.getHandlers(block)) {
-                // process exception handler blocks
-                inLoop |= numberBlock(succ, visited, active);
-            }
-        }
-        // clear active bit after successors are processed
-        active.clear(blockIndex);
-        block.setDepthFirstNumber(blockNum--);
-        if (inLoop) {
-            addLoopBlock(block);
-        }
-
-        return inLoop;
-    }
-
-    private void addLoopBlock(BlockBegin block) {
-        if (loopBlocks == null) {
-            loopBlocks = new ArrayList<BlockBegin>();
-        }
-        loopBlocks.add(block);
-    }
-
-    private void processLoopBlocks() {
-        if (loopBlocks == null) {
+    private void addExceptionEdges() {
+        if (canTrap == null) {
             return;
         }
-        for (BlockBegin block : loopBlocks) {
-            // process all the stores in this block
-            int bci = block.bci();
-            byte[] code = this.code;
-            while (true) {
-                // iterate over the bytecodes in this block
-                int opcode = code[bci] & 0xff;
-                if (opcode == WIDE) {
-                    bci += processWideStore(code[bci + 1] & 0xff, code, bci);
-                } else if (isStore(opcode)) {
-                    bci += processStore(opcode, code, bci);
-                } else {
-                    bci += lengthOf(code, bci);
+
+        Block block = null;
+        HashSet<Block> newSuccessorsOfBlock = new HashSet<Block>();
+
+        for (int bci = canTrap.nextSetBit(0); bci >= 0; bci = canTrap.nextSetBit(bci + 1)) {
+            Block newBlock = blockMap[bci];
+            if (newBlock != block) {
+                if (block != null) {
+                    block.successors = newSuccessorsOfBlock.toArray(new Block[newSuccessorsOfBlock.size()]);
+                    newSuccessorsOfBlock.clear();
                 }
-                if (bci >= code.length || blockMap[bci] != null) {
-                    // stop when we reach the next block
-                    break;
+                Collections.addAll(newSuccessorsOfBlock, newBlock.successors);
+            }
+            block = newBlock;
+
+            for (RiExceptionHandler h : method.exceptionHandlers()) {
+                if (h.startBCI() <= bci && bci < h.endBCI()) {
+                    newSuccessorsOfBlock.add(blockMap[h.handlerBCI()]);
+                    if (h.isCatchAll()) {
+                        break;
+                    }
                 }
             }
         }
-    }
-
-    private int processWideStore(int opcode, byte[] code, int bci) {
-        switch (opcode) {
-            case IINC:     storeOne(Bytes.beU2(code, bci + 2)); return 6;
-            case ISTORE:   storeOne(Bytes.beU2(code, bci + 2)); return 3;
-            case LSTORE:   storeTwo(Bytes.beU2(code, bci + 2)); return 3;
-            case FSTORE:   storeOne(Bytes.beU2(code, bci + 2)); return 3;
-            case DSTORE:   storeTwo(Bytes.beU2(code, bci + 2)); return 3;
-            case ASTORE:   storeOne(Bytes.beU2(code, bci + 2)); return 3;
+        if (block != null) {
+            block.successors = newSuccessorsOfBlock.toArray(new Block[newSuccessorsOfBlock.size()]);
         }
-        return lengthOf(code, bci);
     }
 
-    private int processStore(int opcode, byte[] code, int bci) {
+    private void computeBlockOrder() {
+        int loop = computeBlockOrder(blockMap[0]);
+
+        if (loop != 0) {
+            // There is a path from a loop end to the method entry that does not pass the loop header.
+            // Therefore, the loop is non reducible (has more than one entry).
+            // We don't want to compile such methods because the IR only supports structured loops.
+            throw new CiBailout("Non-reducible loop");
+        }
+
+        // Convert postorder to the desired reverse postorder.
+        Collections.reverse(blocks);
+    }
+
+    /**
+     * The next available loop number.
+     */
+    private int nextLoop = 0;
+
+    /**
+     * Mark the block as a loop header, using the next available loop number.
+     * Also checks for corner cases that we don't want to compile.
+     */
+    private void makeLoopHeader(Block block) {
+        if (!block.isLoopHeader) {
+            block.isLoopHeader = true;
+
+            if (block.isExceptionEntry) {
+                // Loops that are implicitly formed by an exception handler lead to all sorts of corner cases.
+                // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
+                throw new CiBailout("Loop formed by an exception handler");
+            }
+            if (nextLoop >= Integer.SIZE) {
+                // This restriction can be removed by using a fall-back to a BitSet in case we have more than 32 loops
+                // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
+                throw new CiBailout("Too many loops in method");
+            }
+
+            assert block.loops == 0;
+            block.loops = 1 << nextLoop;
+            nextLoop++;
+        }
+        assert Integer.bitCount(block.loops) == 1;
+    }
+
+    /**
+     * Depth-first traversal of the control flow graph. The flag {@linkplain Block#visited} is used to
+     * visit every block only once. The flag {@linkplain Block#active} is used to detect cycles (backward
+     * edges).
+     */
+    private int computeBlockOrder(Block block) {
+        if (block.visited) {
+            if (block.active) {
+                // Reached block via backward branch.
+                makeLoopHeader(block);
+            }
+            // Return cached loop information for this block.
+            return block.loops;
+        }
+
+        block.visited = true;
+        block.active = true;
+
+        int loops = 0;
+        for (Block successor : block.successors) {
+            // Recursively process successors.
+            loops |= computeBlockOrder(successor);
+        }
+
+        if (loops != 0) {
+            processLoopBlock(block);
+        }
+        if (block.isLoopHeader) {
+            assert Integer.bitCount(block.loops) == 1;
+            loops &= ~block.loops;
+        }
+
+        block.loops = loops;
+        block.active = false;
+        blocks.add(block);
+
+        return loops;
+    }
+
+    private void processLoopBlock(Block block) {
+        // process all the stores in this block
+        byte[] code = method.code();
+        int bci = block.startBci;
+        while (bci <= block.endBci) {
+            int opcode = Bytes.beU1(code, bci);
+            if (isStore(opcode)) {
+                processStore(opcode, Bytes.beU1(code, bci + 1));
+
+            } else if (opcode == WIDE) {
+                opcode = Bytes.beU1(code, bci + 1);
+                if (isStore(opcode)) {
+                    processStore(opcode, Bytes.beU2(code, bci + 2));
+                }
+            }
+            bci += lengthOf(code, bci);
+        }
+    }
+
+    private void processStore(int opcode, int local) {
         switch (opcode) {
-            case IINC:     storeOne(code[bci + 1] & 0xff); return 3;
-            case ISTORE:   storeOne(code[bci + 1] & 0xff); return 2;
-            case LSTORE:   storeTwo(code[bci + 1] & 0xff); return 2;
-            case FSTORE:   storeOne(code[bci + 1] & 0xff); return 2;
-            case DSTORE:   storeTwo(code[bci + 1] & 0xff); return 2;
+            case IINC:
+            case ISTORE:
+            case FSTORE:
             case WSTORE:
-            case ASTORE:   storeOne(code[bci + 1] & 0xff); return 2;
-            case ISTORE_0: // fall through
-            case ISTORE_1: // fall through
-            case ISTORE_2: // fall through
-            case ISTORE_3: storeOne(opcode - ISTORE_0); return 1;
-            case LSTORE_0: // fall through
-            case LSTORE_1: // fall through
-            case LSTORE_2: // fall through
-            case LSTORE_3: storeTwo(opcode - LSTORE_0); return 1;
-            case FSTORE_0: // fall through
-            case FSTORE_1: // fall through
-            case FSTORE_2: // fall through
-            case FSTORE_3: storeOne(opcode - FSTORE_0); return 1;
-            case DSTORE_0: // fall through
-            case DSTORE_1: // fall through
-            case DSTORE_2: // fall through
-            case DSTORE_3: storeTwo(opcode - DSTORE_0); return 1;
-            case ASTORE_0: // fall through
-            case ASTORE_1: // fall through
-            case ASTORE_2: // fall through
-            case ASTORE_3: storeOne(opcode - ASTORE_0); return 1;
-            case WSTORE_0: // fall through
-            case WSTORE_1: // fall through
-            case WSTORE_2: // fall through
-            case WSTORE_3: storeOne(opcode - WSTORE_0); return 1;
+            case ASTORE:
+                storesInLoops.set(local);
+                break;
+
+            case LSTORE:
+            case DSTORE:
+                storesInLoops.set(local);
+                storesInLoops.set(local + 1);
+                break;
+
+            case ISTORE_0:
+            case FSTORE_0:
+            case ASTORE_0:
+            case WSTORE_0:
+                storesInLoops.set(0);
+                break;
+            case ISTORE_1:
+            case FSTORE_1:
+            case ASTORE_1:
+            case WSTORE_1:
+                storesInLoops.set(1);
+                break;
+            case ISTORE_2:
+            case FSTORE_2:
+            case ASTORE_2:
+            case WSTORE_2:
+                storesInLoops.set(2);
+                break;
+            case ISTORE_3:
+            case FSTORE_3:
+            case ASTORE_3:
+            case WSTORE_3:
+                storesInLoops.set(3);
+                break;
+
+            case LSTORE_0:
+            case DSTORE_0:
+                storesInLoops.set(0);
+                storesInLoops.set(1);
+                break;
+            case LSTORE_1:
+            case DSTORE_1:
+                storesInLoops.set(1);
+                storesInLoops.set(2);
+                break;
+            case LSTORE_2:
+            case DSTORE_2:
+                storesInLoops.set(2);
+                storesInLoops.set(3);
+                break;
+            case LSTORE_3:
+            case DSTORE_3:
+                storesInLoops.set(3);
+                storesInLoops.set(4);
+                break;
+
+            default:
+                throw new InternalError("undefined store bytecode");
         }
-        throw Util.shouldNotReachHere();
     }
 
-    private void storeOne(int local) {
-        storesInLoops.set(local);
-    }
 
-    private void storeTwo(int local) {
-        storesInLoops.set(local);
-        storesInLoops.set(local + 1);
-    }
 
-    private void succ2(int bci, int s1, int s2) {
-        successorMap[bci] = new BlockBegin[] {make(s1), make(s2)};
-    }
+    /**
+     * Print block information in the format required by {@linkplain CFGPrinter}. The method must
+     * be here because it accesses private state of a block.
+     */
+    public void printBlock(Block block, LogStream out) {
+        out.print("name \"B").print(block.startBci).println('"');
+        out.print("from_bci ").println(block.startBci);
+        out.print("to_bci ").println(block.endBci);
 
-    private void succ1(int bci, int s1) {
-        successorMap[bci] = new BlockBegin[] {make(s1)};
-    }
+        out.println("predecessors ");
 
-    private static StringBuilder append(StringBuilder sb, BlockBegin block) {
-        return sb.append('B').append(block.blockID).append('@').append(block.bci());
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (int bci = 0; bci < blockMap.length; ++bci) {
-            BlockBegin block = blockMap[bci];
-            if (block != null) {
-                append(sb, block);
-                if (loopBlocks != null && loopBlocks.contains(block)) {
-                    sb.append("{loop-header}");
-                }
-                if (successorMap != null) {
-                    BlockBegin[] succs = successorMap[bci];
-                    if (succs != null && succs.length > 0) {
-                        sb.append(" ->");
-                        for (BlockBegin succ : succs) {
-                            append(sb.append(' '), succ);
-                        }
-                    }
-                }
-                Collection<BlockBegin> handlers = getHandlers(block);
-                if (!handlers.isEmpty()) {
-                    sb.append(" xhandlers{");
-                    for (BlockBegin h : handlers) {
-                        append(sb, h).append(' ');
-                    }
-                    sb.append('}');
-                }
-                sb.append(String.format("%n"));
+        out.print("successors ");
+        for (Block succ : block.successors) {
+            if (!succ.isExceptionEntry) {
+                out.print("\"B").print(succ.startBci).print("\" ");
             }
         }
-        return sb.toString();
+        out.println();
+
+        out.print("xhandlers");
+        for (Block succ : block.successors) {
+            if (succ.isExceptionEntry) {
+                out.print("\"B").print(succ.startBci).print("\" ");
+            }
+        }
+        out.println();
+
+        out.print("flags ");
+        if (block.isExceptionEntry) {
+            out.print("\"ex\" ");
+        }
+        if (block.isLoopHeader) {
+            out.print("\"plh\" ");
+        }
+        out.println();
+
+        out.print("loop_depth ").println(Integer.bitCount(block.loops));
     }
+
+//
+//    private static StringBuilder append(StringBuilder sb, BlockBegin block) {
+//        return sb.append('B').append(block.blockID).append('@').append(block.bci());
+//    }
+//
+//    @Override
+//    public String toString() {
+//        StringBuilder sb = new StringBuilder();
+//        for (int bci = 0; bci < blockMap.length; ++bci) {
+//            BlockBegin block = blockMap[bci];
+//            if (block != null) {
+//                append(sb, block);
+//                if (loopBlocks != null && loopBlocks.contains(block)) {
+//                    sb.append("{loop-header}");
+//                }
+//                if (successorMap != null) {
+//                    BlockBegin[] succs = successorMap[bci];
+//                    if (succs != null && succs.length > 0) {
+//                        sb.append(" ->");
+//                        for (BlockBegin succ : succs) {
+//                            append(sb.append(' '), succ);
+//                        }
+//                    }
+//                }
+//                Collection<BlockBegin> handlers = getHandlers(block);
+//                if (!handlers.isEmpty()) {
+//                    sb.append(" xhandlers{");
+//                    for (BlockBegin h : handlers) {
+//                        append(sb, h).append(' ');
+//                    }
+//                    sb.append('}');
+//                }
+//                sb.append(String.format("%n"));
+//            }
+//        }
+//        return sb.toString();
+//    }
 }

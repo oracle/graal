@@ -169,18 +169,13 @@ public final class C1XCompilation {
      */
     public BlockMap getBlockMap(RiMethod method) {
         // PERF: cache the block map for methods that are compiled or inlined often
-        BlockMap map = new BlockMap(method, hir.numberOfBlocks(), graph);
-        if (!map.build(C1XOptions.PhiLoopStores)) {
-            throw new CiBailout("build of BlockMap failed for " + method);
-        } else {
-            if (compiler.isObserved()) {
-                String label = CiUtil.format("BlockListBuilder %f %r %H.%n(%p)", method, true);
-                compiler.fireCompilationEvent(new CompilationEvent(this, label, map, method.code().length));
-            }
+        BlockMap map = new BlockMap(method);
+        map.build();
+        if (compiler.isObserved()) {
+            String label = CiUtil.format("BlockListBuilder %f %r %H.%n(%p)", method, true);
+            compiler.fireCompilationEvent(new CompilationEvent(this, label, map, method.code().length));
         }
-        map.cleanup();
-        stats.bytecodeCount += map.numberOfBytes();
-        stats.blockCount += map.numberOfBlocks();
+        stats.bytecodeCount += method.code().length;
         return map;
     }
 
