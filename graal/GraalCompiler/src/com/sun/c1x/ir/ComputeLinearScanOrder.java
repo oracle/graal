@@ -250,7 +250,7 @@ public final class ComputeLinearScanOrder {
                 // recursive processing of all predecessors ends when start block of loop is reached
                 if (cur != loopStart) {
                     for (int j = cur.numberOfPreds() - 1; j >= 0; j--) {
-                        BlockBegin pred = cur.predAt(j);
+                        BlockBegin pred = cur.predAt(j).begin();
 
                         if (!isBlockInLoop(loopIdx, pred)) {
                             // this predecessor has not been processed yet, so add it to work list
@@ -539,14 +539,14 @@ public final class ComputeLinearScanOrder {
             BlockBegin block = linearScanOrder.get(i);
 
             assert block.numberOfPreds() > 0;
-            BlockBegin dominator = block.predAt(0);
+            BlockBegin dominator = block.predAt(0).begin();
             if (block.isExceptionEntry()) {
                 dominator = dominator.dominator();
             }
 
             int numPreds = block.numberOfPreds();
             for (int j = 1; j < numPreds; j++) {
-                BlockBegin curPred = block.predAt(j);
+                BlockBegin curPred = block.predAt(j).begin();
                 if (block.isExceptionEntry()) {
                     curPred = curPred.dominator();
                 }
@@ -615,7 +615,7 @@ public final class ComputeLinearScanOrder {
                 if (cur.numberOfPreds() > 0) {
                     TTY.print("    preds: ");
                     for (int j = 0; j < cur.numberOfPreds(); j++) {
-                        BlockBegin pred = cur.predAt(j);
+                        BlockBegin pred = cur.predAt(j).begin();
                         TTY.print("B%d ", pred.blockID);
                     }
                 }
@@ -666,16 +666,17 @@ public final class ComputeLinearScanOrder {
                 }
             }
 
-            for (BlockBegin pred : cur.blockPredecessors()) {
-                assert pred.linearScanNumber() >= 0 && pred.linearScanNumber() == linearScanOrder.indexOf(pred) : "incorrect linearScanNumber";
+            for (BlockEnd pred : cur.blockPredecessors()) {
+                BlockBegin begin = pred.begin();
+                assert begin.linearScanNumber() >= 0 && begin.linearScanNumber() == linearScanOrder.indexOf(begin) : "incorrect linearScanNumber";
                 if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
-                    assert cur.linearScanNumber() > pred.linearScanNumber() : "invalid order";
+                    assert cur.linearScanNumber() > begin.linearScanNumber() : "invalid order";
                 }
-                if (cur.loopDepth() == pred.loopDepth()) {
-                    assert cur.loopIndex() == pred.loopIndex() || cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader) : "successing blocks with same loop depth must have same loop index";
+                if (cur.loopDepth() == begin.loopDepth()) {
+                    assert cur.loopIndex() == begin.loopIndex() || cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader) : "successing blocks with same loop depth must have same loop index";
                 }
 
-                assert cur.dominator().linearScanNumber() <= pred.linearScanNumber() : "dominator must be before predecessors";
+                assert cur.dominator().linearScanNumber() <= begin.linearScanNumber() : "dominator must be before predecessors";
             }
 
             // check dominator
@@ -684,7 +685,7 @@ public final class ComputeLinearScanOrder {
             } else {
                 assert cur.dominator() != null : "all but first block must have dominator";
             }
-            assert cur.numberOfPreds() != 1 || cur.dominator() == cur.predAt(0) || cur.isExceptionEntry() : "Single predecessor must also be dominator";
+            assert cur.numberOfPreds() != 1 || cur.dominator() == cur.predAt(0).begin() || cur.isExceptionEntry() : "Single predecessor must also be dominator";
         }
 
         // check that all loops are continuous

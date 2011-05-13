@@ -438,7 +438,7 @@ public final class LIRList {
         if (x.numberOfPreds() > 0) {
             TTY.print("preds: ");
             for (int i = 0; i < x.numberOfPreds(); i++) {
-                TTY.print("B%d ", x.predAt(i).blockID);
+                TTY.print("B%d ", x.predAt(i).begin().blockID);
             }
         }
 

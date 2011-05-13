@@ -36,8 +36,8 @@ public class BlockUtil {
      * @param block the block to remove from the graph
      */
     public static void disconnectFromGraph(BlockBegin block) {
-        for (BlockBegin p : block.blockPredecessors()) {
-            p.end().blockSuccessors().remove(block);
+        for (BlockEnd p : block.blockPredecessors()) {
+            p.blockSuccessors().remove(block);
         }
         for (BlockBegin s : block.end().blockSuccessors()) {
             s.blockPredecessors().remove(block);

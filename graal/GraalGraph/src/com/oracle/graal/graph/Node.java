@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,35 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.List;
 
 public abstract class Node implements Cloneable {
 
     public static final Node Null = null;
     public static final int DeletedID = -1;
 
-    private final Graph graph;
+    final Graph graph;
     private int id;
-    private final NodeArray inputs;
-    private final NodeArray successors;
-    private final ArrayList<Node> usages;
-    private final ArrayList<Node> predecessors;
+    final NodeArray inputs;
+    final NodeArray successors;
+    final ArrayList<Node> usages;
+    final ArrayList<Node> predecessors;
 
     public Node(int inputCount, int successorCount, Graph graph) {
         assert graph != null;
         this.graph = graph;
         this.id = graph.register(this);
-        this.inputs = new NodeArray(inputCount);
-        this.successors = new NodeArray(successorCount);
+        this.inputs = new NodeArray(this, inputCount);
+        this.successors = new NodeArray(this, successorCount);
         this.predecessors = new ArrayList<Node>();
         this.usages = new ArrayList<Node>();
     }
 
-    public Collection<Node> predecessors() {
-        return Collections.unmodifiableCollection(predecessors);
+    public List<Node> predecessors() {
+        return Collections.unmodifiableList(predecessors);
     }
 
     public Collection<Node> usages() {
@@ -110,6 +108,7 @@ public abstract class Node implements Cloneable {
         for (int i = 0; i < successors.size(); ++i) {
             successors.set(i, Null);
         }
+        assert predecessors().size() == 0 && usages().size() == 0;
         // make sure its not connected. pred usages
         graph.unregister(this);
         id = DeletedID;
@@ -146,78 +145,5 @@ public abstract class Node implements Cloneable {
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "-" + this.id();
-    }
-
-    public class NodeArray extends AbstractList<Node> {
-
-        private final Node[] nodes;
-
-        public NodeArray(int length) {
-            this.nodes = new Node[length];
-        }
-
-        public Iterator<Node> iterator() {
-            return Arrays.asList(this.nodes).iterator();
-        }
-
-        private Node self() {
-            return Node.this;
-        }
-
-        public Node set(int index, Node node) {
-            assert node == Null || node.graph == self().graph;
-            Node old = nodes[index];
-
-            if (old != node) {
-                nodes[index] = node;
-                if (Node.this.inputs == this) {
-                    if (old != null) {
-                        old.usages.remove(self());
-                    }
-                    if (node != null) {
-                        node.usages.add(self());
-                    }
-                } else {
-                    assert Node.this.successors == this;
-                    if (old != null) {
-                        old.predecessors.remove(self());
-                    }
-                    if (node != null) {
-                        node.predecessors.add(self());
-                    }
-                }
-            }
-
-            return old;
-        }
-
-        public void setAll(NodeArray other) {
-            assert size() == other.size();
-            for (int i = 0; i < other.size(); i++) {
-                set(i, other.get(i));
-            }
-        }
-
-        public Node get(int index) {
-            return nodes[index];
-        }
-
-        public Node[] toArray() {
-            return Arrays.copyOf(nodes, nodes.length);
-        }
-
-        private boolean replaceFirstOccurrence(Node toReplace, Node replacement) {
-            for (int i = 0; i < nodes.length; i++) {
-                if (nodes[i] == toReplace) {
-                    nodes[i] = replacement;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public int size() {
-            return nodes.length;
-        }
     }
 }

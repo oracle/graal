@@ -25,10 +25,12 @@ package com.oracle.graal.graph.vis;
 import java.awt.Color;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.Node.NodeArray;
+import com.oracle.graal.graph.NodeArray;
 
 /**
  * Generates a representation of {@link Node Nodes} or entire {@link Graph Graphs} in the DOT language that can be
@@ -44,12 +46,17 @@ public class GraphvizPrinter {
     }
 
     private final PrintStream out;
+    private final HashSet<Class<?>> omittedClasses = new HashSet<Class<?>>();
 
     /**
      * Creates a new {@link GraphvizPrinter} that writes to the specified output stream.
      */
     public GraphvizPrinter(OutputStream out) {
         this.out = new PrintStream(out);
+    }
+
+    public void addOmittedClass(Class<?> clazz) {
+        omittedClasses.add(clazz);
     }
 
     /**
@@ -90,6 +97,9 @@ public class GraphvizPrinter {
      * Prints a single node and edges for all its inputs and successors.
      */
     public void printNode(Node node, boolean shortNames) {
+        if (omittedClasses.contains(node.getClass())) {
+            return;
+        }
         int id = node.id();
         String name = "n" + id;
         NodeArray inputs = node.inputs();
@@ -103,14 +113,14 @@ public class GraphvizPrinter {
 
         for (int i = 0; i < successors.size(); ++i) {
             Node successor = successors.get(i);
-            if (successor != Node.Null) {
+            if (successor != Node.Null && !omittedClasses.contains(successor.getClass())) {
                 printControlEdge(id, i, successor.id());
             }
         }
 
         for (int i = 0; i < inputs.size(); ++i) {
             Node input = inputs.get(i);
-            if (input != Node.Null) {
+            if (input != Node.Null && !omittedClasses.contains(input.getClass())) {
                 if (node.getClass().getSimpleName().equals("FrameState") && input.getClass().getSimpleName().equals("Local")) {
                     continue;
                 }
@@ -141,6 +151,7 @@ public class GraphvizPrinter {
         label = label.replace("&", "&amp;");
         label = label.replace("<", "&lt;");
         label = label.replace(">", "&gt;");
+        label = label.replace("\"", "&quot;");
         out.println("    </TR></TABLE></TD></TR><TR><TD BORDER=\"1\" COLSPAN=\"3\" BGCOLOR=\"" + NODE_BGCOLOR_STRING + "\">" + label + "</TD></TR>");
         out.println("    <TR><TD COLSPAN=\"2\" CELLPADDING=\"0\" ALIGN=\"RIGHT\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
 

@@ -138,8 +138,8 @@ final class ControlFlowOptimizer {
                 }
 
                 // update the block references in any branching LIR instructions
-                for (BlockBegin pred : block.blockPredecessors()) {
-                    for (LIRInstruction instr : pred.lir().instructionsList()) {
+                for (BlockEnd pred : block.blockPredecessors()) {
+                    for (LIRInstruction instr : pred.begin().lir().instructionsList()) {
                         if (instr instanceof LIRBranch) {
                             ((LIRBranch) instr).substitute(block, newTarget);
                         } else if (instr instanceof LIRTableSwitch) {
@@ -228,7 +228,7 @@ final class ControlFlowOptimizer {
                 CiValue returnOpr = ((LIROp1) curLastOp).operand();
 
                 for (int j = block.numberOfPreds() - 1; j >= 0; j--) {
-                    BlockBegin pred = block.predAt(j);
+                    BlockBegin pred = block.predAt(j).begin();
                     List<LIRInstruction> predInstructions = pred.lir().instructionsList();
                     LIRInstruction predLastOp = predInstructions.get(predInstructions.size() - 1);
 
@@ -263,8 +263,8 @@ final class ControlFlowOptimizer {
                 assert code.contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
 
-            for (BlockBegin pred : block.blockPredecessors()) {
-                assert code.contains(pred) : "missing predecessor from: " + block + "to: " + pred;
+            for (BlockEnd pred : block.blockPredecessors()) {
+                assert code.contains(pred.begin()) : "missing predecessor from: " + block + "to: " + pred.begin();
             }
         }
 

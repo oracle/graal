@@ -112,7 +112,7 @@ final class EdgeMoveOptimizer {
      * predecessors of {@code block} to the start of {@code block}.
      */
     private void optimizeMovesAtBlockEnd(BlockBegin block) {
-        if (block.isPredecessor(block)) {
+        if (block.isPredecessor(block.end())) {
             // currently we can't handle this correctly.
             return;
         }
@@ -126,7 +126,7 @@ final class EdgeMoveOptimizer {
 
         // setup a list with the LIR instructions of all predecessors
         for (int i = 0; i < numPreds; i++) {
-            BlockBegin pred = block.predAt(i);
+            BlockBegin pred = block.predAt(i).begin();
             List<LIRInstruction> predInstructions = pred.lir().instructionsList();
 
             if (pred.numberOfSux() != 1) {
@@ -231,7 +231,7 @@ final class EdgeMoveOptimizer {
                 // the same blocks.
                 return;
             }
-            assert sux.predAt(0) == block : "invalid control flow";
+            assert sux.predAt(0).begin() == block : "invalid control flow";
             assert !sux.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry) : "exception handlers not allowed";
 
             // ignore the label at the beginning of the block

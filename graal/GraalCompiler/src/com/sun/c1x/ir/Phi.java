@@ -120,7 +120,7 @@ public final class Phi extends Value {
         if (block().isExceptionEntry()) {
             state = block().exceptionHandlerStates().get(i);
         } else {
-            state = block().blockPredecessors().get(i).end().stateAfter();
+            state = block().blockPredecessors().get(i).stateAfter();
         }
         return inputIn(state);
     }
