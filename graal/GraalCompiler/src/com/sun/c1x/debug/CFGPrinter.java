@@ -132,8 +132,8 @@ public class CFGPrinter {
         out.print("to_bci ").println(block.end() == null ? -1 : block.end().bci());
 
         out.print("predecessors ");
-        for (BlockBegin pred : block.blockPredecessors()) {
-            out.print("\"B").print(pred.blockID).print("\" ");
+        for (BlockEnd pred : block.blockPredecessors()) {
+            out.print("\"B").print(pred.begin().blockID).print("\" ");
         }
         out.println();
 

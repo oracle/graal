@@ -70,8 +70,9 @@ public class CriticalEdgeFinder implements BlockClosure {
     }
 
     public void splitCriticalEdges() {
-        for (BlockBegin from : edges.keySet()) {
-            for (BlockBegin to : edges.get(from)) {
+        for (Map.Entry<BlockBegin, Set<BlockBegin>> entry : edges.entrySet()) {
+            BlockBegin from = entry.getKey();
+            for (BlockBegin to : entry.getValue()) {
                 BlockBegin split = ir.splitEdge(from, to);
                 if (C1XOptions.PrintHIR) {
                     TTY.println("Split edge between block %d and block %d, creating new block %d", from.blockID, to.blockID, split.blockID);

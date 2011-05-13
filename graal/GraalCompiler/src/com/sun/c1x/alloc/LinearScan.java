@@ -1596,7 +1596,7 @@ public final class LinearScan {
                 // may have be more than one predecessor but it will be guaranteed
                 // that all predecessors will be the same.
                 for (int i = 0; i < toBlock.numberOfPreds(); i++) {
-                    assert fromBlock == toBlock.predAt(i) : "all critical edges must be broken";
+                    assert fromBlock == toBlock.predAt(i).begin() : "all critical edges must be broken";
                 }
             }
 
@@ -1627,7 +1627,7 @@ public final class LinearScan {
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    BlockBegin pred = block.predAt(0);
+                    BlockBegin pred = block.predAt(0).begin();
                     BlockBegin sux = block.suxAt(0);
 
                     // prevent optimization of two consecutive blocks

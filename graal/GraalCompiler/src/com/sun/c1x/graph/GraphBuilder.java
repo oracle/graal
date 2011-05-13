@@ -111,6 +111,8 @@ public final class GraphBuilder {
 
     private final Graph graph;
 
+    private final List<BlockBegin> newExceptionHandlers = new ArrayList<BlockBegin>();
+
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
      *
@@ -148,7 +150,7 @@ public final class GraphBuilder {
         // 1. create the start block
         ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
         BlockBegin startBlock = ir.startBlock;
-        graph.root().setStart(startBlock);
+//        graph.root().setStart(startBlock);
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         blockMap = compilation.getBlockMap(rootMethod);
@@ -298,10 +300,7 @@ public final class GraphBuilder {
         // add entry to the list of exception handlers of this block
         curBlock.addExceptionHandler(entry);
 
-        // add back-edge from exception handler entry to this block
-        if (!entry.blockPredecessors().contains(curBlock)) {
-            entry.addPredecessor(curBlock);
-        }
+        newExceptionHandlers.add(entry);
 
         // clone exception handler
         ExceptionHandler newHandler = new ExceptionHandler(handler);
@@ -504,7 +503,12 @@ public final class GraphBuilder {
         BlockBegin fsucc = blockAt(stream().nextBCI());
         int bci = stream().currentBCI();
         boolean isSafepoint = !noSafepoints() && (tsucc.bci() <= bci || fsucc.bci() <= bci);
-        append(new If(x, cond, y, tsucc, fsucc, isSafepoint ? stateBefore : null, isSafepoint, graph));
+        if (isSafepoint) {
+            append(new If(x, cond, y, tsucc, fsucc, stateBefore, isSafepoint, graph));
+        } else {
+            append(new If(x, cond, y, tsucc, fsucc, null, isSafepoint, graph));
+            stateBefore.delete();
+        }
     }
 
     private void genIfZero(Condition cond) {
@@ -539,15 +543,9 @@ public final class GraphBuilder {
         int cpi = stream().readCPI();
         RiType type = constantPool().lookupType(cpi, CHECKCAST);
         boolean isInitialized = type.isResolved();
-        Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi, frameState.create(bci()));
-        Instruction result;
-        Value object = frameState.apop();
-        if (typeInstruction != null) {
-            result = new CheckCast(type, typeInstruction, object, graph);
-        } else {
-            result = Constant.forObject(null, graph);
-        }
-        frameState.apush(append(result));
+        Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi, frameState);
+        CheckCast c = new CheckCast(type, typeInstruction, frameState.apop(), graph);
+        frameState.apush(append(c));
     }
 
     private void genInstanceOf() {
@@ -555,7 +553,7 @@ public final class GraphBuilder {
         RiType type = constantPool().lookupType(cpi, INSTANCEOF);
         boolean isInitialized = type.isResolved();
         //System.out.println("instanceof : type.isResolved() = " + type.isResolved() + "; type.isInitialized() = " + type.isInitialized());
-        Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi, frameState.create(bci()));
+        Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi, frameState);
         Instruction result;
         Value object = frameState.apop();
         if (typeInstruction != null) {
@@ -637,14 +635,14 @@ public final class GraphBuilder {
         RiType holder = field.holder();
         boolean isInitialized = field.isResolved();
         CiConstant constantValue = null;
-        FrameState stateBefore = frameState.create(bci());
         if (isInitialized) {
             constantValue = field.constantValue(null);
         }
         if (constantValue != null) {
             frameState.push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
-            Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized, cpi, stateBefore);
+            FrameState stateBefore = frameState.create(bci());
+            Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized, cpi, frameState);
             if (container == null) {
                 container = Constant.forObject(null, graph);
             }
@@ -656,7 +654,7 @@ public final class GraphBuilder {
     private void genPutStatic(int cpi, RiField field) {
         RiType holder = field.holder();
         FrameState stateBefore = frameState.create(bci());
-        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved(), cpi, stateBefore);
+        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved(), cpi, frameState);
         Value value = frameState.pop(field.kind().stackKind());
         if (container != null) {
             StoreField store = new StoreField(container, field, value, graph);
@@ -667,11 +665,11 @@ public final class GraphBuilder {
         }
     }
 
-    private Value genTypeOrDeopt(RiType.Representation representation, RiType holder, boolean initialized, int cpi, FrameState stateBefore) {
+    private Value genTypeOrDeopt(RiType.Representation representation, RiType holder, boolean initialized, int cpi, FrameStateAccess stateBefore) {
         if (initialized) {
             return appendConstant(holder.getEncoding(representation));
         } else {
-            append(new Deoptimize(graph, stateBefore));
+            append(new Deoptimize(graph, stateBefore.duplicate(bci())));
             return null;
         }
     }
@@ -693,7 +691,7 @@ public final class GraphBuilder {
             // Re-use the same resolution code as for accessing a static field. Even though
             // the result of resolution is not used by the invocation (only the side effect
             // of initialization is required), it can be commoned with static field accesses.
-            genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized, cpi, frameState.create(bci()));
+            genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized, cpi, frameState);
         }
         Value[] args = frameState.popArguments(target.signature().argumentSlots(false));
         appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
@@ -1103,9 +1101,18 @@ public final class GraphBuilder {
         FrameState stateAtEnd = frameState.create(bci());
         end.setStateAfter(stateAtEnd);
         curBlock.setEnd(end);
+
+        for (BlockBegin entry : newExceptionHandlers) {
+            // add back-edge from exception handler entry to this block
+            if (!entry.blockPredecessors().contains(curBlock.end())) {
+                entry.addPredecessor(curBlock.end());
+            }
+        }
+        newExceptionHandlers.clear();
+
         // propagate the state
         for (BlockBegin succ : end.blockSuccessors()) {
-            assert succ.blockPredecessors().contains(curBlock);
+            assert succ.blockPredecessors().contains(curBlock.end());
             succ.mergeOrClone(stateAtEnd, method());
             addToWorkList(succ);
         }
