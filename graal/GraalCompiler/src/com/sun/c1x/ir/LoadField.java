@@ -24,6 +24,7 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
+import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -44,8 +45,9 @@ public final class LoadField extends AccessField {
      * @param graph
      * @param isLoaded indicates if the class is loaded
      */
-    public LoadField(Value object, RiField field, Graph graph) {
+    public LoadField(Value object, RiField field, FrameState stateBefore, Graph graph) {
         super(field.kind().stackKind(), object, field, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.setStateBefore(stateBefore);
     }
 
     /**
