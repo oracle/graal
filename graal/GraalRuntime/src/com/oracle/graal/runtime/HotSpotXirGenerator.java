@@ -29,17 +29,14 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.sun.c1x.target.amd64.*;
-import com.sun.cri.ci.CiAddress.Scale;
-import com.sun.cri.ci.CiRegister.*;
+import com.oracle.max.asm.target.amd64.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ci.CiAddress.*;
+import com.sun.cri.ci.CiRegister.*;
 import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
+import com.sun.cri.ri.RiType.*;
 import com.sun.cri.xir.*;
-import com.sun.cri.xir.CiXirAssembler.XirLabel;
-import com.sun.cri.xir.CiXirAssembler.XirMark;
-import com.sun.cri.xir.CiXirAssembler.XirOperand;
-import com.sun.cri.xir.CiXirAssembler.XirParameter;
+import com.sun.cri.xir.CiXirAssembler.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 

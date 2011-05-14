@@ -24,9 +24,9 @@ package com.sun.c1x.lir;
 
 import java.util.*;
 
+import com.oracle.max.asm.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.*;
-import com.sun.c1x.asm.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.globalstub.*;
@@ -41,10 +41,6 @@ import com.sun.cri.xir.*;
 /**
  * This class represents a list of LIR instructions and contains factory methods for creating and appending LIR
  * instructions to this list.
- *
- * @author Marcelo Cintra
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
  */
 public final class LIRList {
 

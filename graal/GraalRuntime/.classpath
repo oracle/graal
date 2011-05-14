@@ -6,5 +6,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/Base"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CRI"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GraalCompiler"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.asm"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

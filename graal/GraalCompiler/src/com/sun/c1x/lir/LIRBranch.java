@@ -22,7 +22,7 @@
  */
 package com.sun.c1x.lir;
 
-import com.sun.c1x.asm.*;
+import com.oracle.max.asm.*;
 import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
 

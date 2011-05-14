@@ -24,8 +24,8 @@ package com.sun.c1x.target;
 
 import java.lang.reflect.*;
 
+import com.oracle.max.asm.*;
 import com.sun.c1x.*;
-import com.sun.c1x.asm.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.globalstub.*;
 import com.sun.c1x.lir.*;
@@ -46,13 +46,13 @@ public abstract class Backend {
     }
 
     public static Backend create(CiArchitecture arch, C1XCompiler compiler) {
-        String className = arch.getClass().getName() + "Backend";
+        String className = arch.getClass().getName().replace("com.oracle.max.asm", "com.sun.c1x") + "Backend";
         try {
             Class<?> c = Class.forName(className);
             Constructor<?> cons = c.getDeclaredConstructor(C1XCompiler.class);
             return (Backend) cons.newInstance(compiler);
         } catch (Exception e) {
-            throw new Error("Could instantiate " + className, e);
+            throw new Error("Could not instantiate " + className, e);
         }
     }
 

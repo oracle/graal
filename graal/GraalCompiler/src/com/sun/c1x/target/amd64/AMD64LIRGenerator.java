@@ -23,6 +23,8 @@
 
 package com.sun.c1x.target.amd64;
 
+import com.oracle.max.asm.*;
+import com.oracle.max.asm.target.amd64.*;
 import com.sun.c1x.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.globalstub.*;
@@ -34,9 +36,6 @@ import com.sun.cri.ci.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.
- *
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
  */
 public class AMD64LIRGenerator extends LIRGenerator {
 
@@ -74,7 +73,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected boolean canInlineAsConstant(Value v) {
         if (v.kind == CiKind.Long) {
-            if (v.isConstant() && Util.isInt(v.asConstant().asLong())) {
+            if (v.isConstant() && NumUtil.isInt(v.asConstant().asLong())) {
                 return true;
             }
             return false;
@@ -150,7 +149,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         assert !left.isStack() || !right.isStack() : "can't both be memory operands";
-        boolean mustLoadBoth = (x.opcode == Bytecodes.FREM || x.opcode == Bytecodes.DREM);
+        boolean mustLoadBoth = x.opcode == Bytecodes.FREM || x.opcode == Bytecodes.DREM;
 
         // Both are in register, swap operands such that the short-living one is on the left side.
         if (x.isCommutative() && left.isRegisterOrVariable() && right.isRegisterOrVariable()) {
@@ -433,7 +432,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         } else if (x.x().kind.isFloat() || x.x().kind.isDouble()) {
             CiValue reg = createResultVariable(x);
             int code = x.opcode;
-            lir.fcmp2int(left.result(), right.result(), reg, (code == Bytecodes.FCMPL || code == Bytecodes.DCMPL));
+            lir.fcmp2int(left.result(), right.result(), reg, code == Bytecodes.FCMPL || code == Bytecodes.DCMPL);
         } else if (x.x().kind.isLong() || x.x().kind.isWord()) {
             CiValue reg = createResultVariable(x);
             lir.lcmp2int(left.result(), right.result(), reg);
@@ -448,12 +447,14 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiVariable result = newVariable(x.kind);
         // arguments of lirConvert
         GlobalStub globalStub = null;
+        // Checkstyle: off
         switch (x.opcode) {
             case Bytecodes.F2I: globalStub = stubFor(GlobalStub.Id.f2i); break;
             case Bytecodes.F2L: globalStub = stubFor(GlobalStub.Id.f2l); break;
             case Bytecodes.D2I: globalStub = stubFor(GlobalStub.Id.d2i); break;
             case Bytecodes.D2L: globalStub = stubFor(GlobalStub.Id.d2l); break;
         }
+        // Checkstyle: on
         if (globalStub != null) {
             // Force result to be rax to match global stubs expectation.
             CiValue stubResult = x.kind == CiKind.Int ? RAX_I : RAX_L;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,47 +24,41 @@ package com.sun.c1x.asm;
 
 import java.util.*;
 
+import com.oracle.max.asm.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.CodeComment;
-import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;
 
-/**
- * @author Marcelo Cintra
- * @author Thomas Wuerthinger
- */
-public abstract class AbstractAssembler {
-
-    public final Buffer codeBuffer;
-    public final CiTarget target;
+public class TargetMethodAssembler {
+    public final AbstractAssembler asm;
     public final CiTargetMethod targetMethod;
     public List<ExceptionInfo> exceptionInfoList;
     protected int lastSafepointPos;
 
-    public AbstractAssembler(CiTarget target) {
-        this.target = target;
+    public TargetMethodAssembler(AbstractAssembler asm) {
+        this.asm = asm;
         this.targetMethod = new CiTargetMethod();
-        this.codeBuffer = new Buffer(target.arch.byteOrder);
-    }
-
-    public final void bind(Label l) {
-        assert !l.isBound() : "can bind label only once";
-        l.bind(codeBuffer.position());
-        l.patchInstructions(this);
     }
 
     public void setFrameSize(int frameSize) {
         targetMethod.setFrameSize(frameSize);
     }
 
+    public CiTargetMethod.Mark recordMark(Object id, CiTargetMethod.Mark[] references) {
+        return targetMethod.recordMark(asm.codeBuffer.position(), id, references);
+    }
+
+    public void blockComment(String s) {
+        targetMethod.addAnnotation(new CiTargetMethod.CodeComment(asm.codeBuffer.position(), s));
+    }
+
     public CiTargetMethod finishTargetMethod(Object name, RiRuntime runtime, int registerRestoreEpilogueOffset, boolean isStub) {
         // Install code, data and frame size
-        targetMethod.setTargetCode(codeBuffer.close(false), codeBuffer.position());
+        targetMethod.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
         targetMethod.setRegisterRestoreEpilogueOffset(registerRestoreEpilogueOffset);
 
         // Record exception handlers if they exist
@@ -93,7 +87,7 @@ public abstract class AbstractAssembler {
             Util.printSection("Target Method", Util.SECTION_CHARACTER);
             TTY.println("Name: " + name);
             TTY.println("Frame size: " + targetMethod.frameSize());
-            TTY.println("Register size: " + target.arch.registerReferenceMapBitCount);
+            TTY.println("Register size: " + asm.target.arch.registerReferenceMapBitCount);
 
             if (C1XOptions.PrintCodeBytes) {
                 Util.printSection("Code", Util.SUB_SECTION_CHARACTER);
@@ -170,14 +164,14 @@ public abstract class AbstractAssembler {
         }
     }
 
-    protected void recordDirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
+    public void recordDirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
         targetMethod.recordCall(posBefore, target, debugInfo, true);
     }
 
-    protected void recordIndirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
+    public void recordIndirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
@@ -195,7 +189,7 @@ public abstract class AbstractAssembler {
     public CiAddress recordDataReferenceInCode(CiConstant data) {
         assert data != null;
 
-        int pos = codeBuffer.position();
+        int pos = asm.codeBuffer.position();
 
         if (C1XOptions.TraceRelocation) {
             TTY.print("Data reference in code: pos = %d, data = %s", pos, data.toString());
@@ -203,38 +197,6 @@ public abstract class AbstractAssembler {
 
         targetMethod.recordDataReference(pos, data);
         return CiAddress.Placeholder;
-    }
-
-    public Mark recordMark(Object id, Mark[] references) {
-        return targetMethod.recordMark(codeBuffer.position(), id, references);
-    }
-
-    public abstract void nop();
-
-    public abstract void nullCheck(CiRegister r);
-
-    public abstract void align(int codeEntryAlignment);
-
-    public abstract void patchJumpTarget(int branch, int target);
-
-    public final void emitByte(int x) {
-        codeBuffer.emitByte(x);
-    }
-
-    public final void emitShort(int x) {
-        codeBuffer.emitShort(x);
-    }
-
-    public final void emitInt(int x) {
-        codeBuffer.emitInt(x);
-    }
-
-    public final void emitLong(long x) {
-        codeBuffer.emitLong(x);
-    }
-
-    public void blockComment(String s) {
-        targetMethod.addAnnotation(new CodeComment(codeBuffer.position(), s));
     }
 
     public int lastSafepointPos() {

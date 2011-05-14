@@ -26,10 +26,12 @@ import static com.sun.cri.ci.CiCallingConvention.Type.*;
 
 import java.util.*;
 
+import com.oracle.max.asm.*;
+import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.target.amd64.AMD64Assembler.*;
 import com.sun.c1x.*;
 import com.sun.c1x.asm.*;
 import com.sun.c1x.globalstub.*;
-import com.sun.c1x.target.amd64.AMD64Assembler.ConditionFlag;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiRegister.RegisterFlag;
 import com.sun.cri.ri.*;
@@ -52,6 +54,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     private static final CiRegister negateArgument = AMD64.xmm0;
     private static final CiRegister negateTemp = AMD64.xmm1;
 
+    private TargetMethodAssembler tasm;
     private AMD64MacroAssembler asm;
     private final CiTarget target;
     private int argsSize;
@@ -73,7 +76,8 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     }
 
     private void reset(CiKind resultKind, CiKind[] argTypes) {
-        asm = new AMD64MacroAssembler.WithCompiler(compiler, compiler.globalStubRegisterConfig);
+        asm = new AMD64MacroAssembler(compiler.target, compiler.globalStubRegisterConfig);
+        tasm = new TargetMethodAssembler(asm);
         saveSize = 0;
         argsSize = 0;
         argOffsets = new int[argTypes.length];
@@ -98,7 +102,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         reset(runtimeCall.resultKind, runtimeCall.arguments);
         emitStandardForward(null, runtimeCall);
         String name = "stub-" + runtimeCall;
-        CiTargetMethod targetMethod = asm.finishTargetMethod(name, runtime, registerRestoreEpilogueOffset, true);
+        CiTargetMethod targetMethod = tasm.finishTargetMethod(name, runtime, registerRestoreEpilogueOffset, true);
         Object stubObject = runtime.registerGlobalStub(targetMethod, name);
         return new GlobalStub(null, runtimeCall.resultKind, stubObject, argsSize, argOffsets, resultOffset);
     }
@@ -128,7 +132,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         }
 
         String name = "stub-" + stub;
-        CiTargetMethod targetMethod = asm.finishTargetMethod(name, runtime, registerRestoreEpilogueOffset, true);
+        CiTargetMethod targetMethod = tasm.finishTargetMethod(name, runtime, registerRestoreEpilogueOffset, true);
         Object stubObject = runtime.registerGlobalStub(targetMethod, name);
         return new GlobalStub(stub, stub.resultKind, stubObject, argsSize, argOffsets, resultOffset);
     }
@@ -171,6 +175,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         compilation.frameMap().setFrameSize(frameSize());
         AMD64LIRAssembler assembler = new AMD64LIRAssembler(compilation);
         asm = assembler.masm;
+        tasm = assembler.tasm;
 
         ArrayList<CiRegister> allocatableRegisters = new ArrayList<CiRegister>(Arrays.asList(compiler.globalStubRegisterConfig.getCategorizedAllocatableRegisters().get(RegisterFlag.CPU)));
         for (XirTemp t : template.temps) {
@@ -237,7 +242,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         assert template.marks.length == 0 : "marks not supported in global stubs";
         assembler.emitXirInstructions(null, template.fastPath, labels, operands, null);
         epilogue();
-        CiTargetMethod targetMethod = asm.finishTargetMethod(template.name, runtime, registerRestoreEpilogueOffset, true);
+        CiTargetMethod targetMethod = tasm.finishTargetMethod(template.name, runtime, registerRestoreEpilogueOffset, true);
         Object stubObject = runtime.registerGlobalStub(targetMethod, template.name);
         return new GlobalStub(null, template.resultOperand.kind, stubObject, argsSize, argOffsets, resultOffset);
     }
@@ -263,14 +268,14 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
 
     private void emitDNEG() {
         negatePrologue();
-        asm.movsd(negateTemp, asm.recordDataReferenceInCode(CiConstant.forLong(DoubleSignFlip)));
+        asm.movsd(negateTemp, tasm.recordDataReferenceInCode(CiConstant.forLong(DoubleSignFlip)));
         asm.xorpd(negateArgument, negateTemp);
         negateEpilogue();
     }
 
     private void emitFNEG() {
         negatePrologue();
-        asm.movsd(negateTemp, asm.recordDataReferenceInCode(CiConstant.forLong(FloatSignFlip)));
+        asm.movsd(negateTemp, tasm.recordDataReferenceInCode(CiConstant.forLong(FloatSignFlip)));
         asm.xorps(negateArgument, negateTemp);
         negateEpilogue();
     }
@@ -304,9 +309,9 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     private void emitCOMISSD(boolean isDouble, boolean isInt) {
         convertPrologue();
         if (isDouble) {
-            asm.ucomisd(convertArgument, asm.recordDataReferenceInCode(CiConstant.DOUBLE_0));
+            asm.ucomisd(convertArgument, tasm.recordDataReferenceInCode(CiConstant.DOUBLE_0));
         } else {
-            asm.ucomiss(convertArgument, asm.recordDataReferenceInCode(CiConstant.FLOAT_0));
+            asm.ucomiss(convertArgument, tasm.recordDataReferenceInCode(CiConstant.FLOAT_0));
         }
         Label nan = new Label();
         Label ret = new Label();
@@ -372,7 +377,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
             index++;
         }
 
-        asm.setFrameSize(frameSize());
+        tasm.setFrameSize(frameSize());
         this.savedAllRegisters = false;
     }
 
@@ -385,7 +390,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
             asm.nop(entryCodeOffset);
         }
         asm.subq(AMD64.rsp, frameSize());
-        asm.setFrameSize(frameSize());
+        tasm.setFrameSize(frameSize());
         int frameToCSA = 0;
         asm.save(csa, frameToCSA);
         this.savedAllRegisters = true;
@@ -426,7 +431,10 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         }
 
         // Call to the runtime
-        asm.directCall(call, null);
+        int before = asm.codeBuffer.position();
+        asm.call();
+        int after = asm.codeBuffer.position();
+        tasm.recordDirectCall(before, after, call, null);
 
         if (call.resultKind != CiKind.Void) {
             CiRegister returnRegister = compiler.globalStubRegisterConfig.getReturnRegister(call.resultKind);
