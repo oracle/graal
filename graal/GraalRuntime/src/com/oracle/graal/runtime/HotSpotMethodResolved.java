@@ -152,7 +152,6 @@ public final class HotSpotMethodResolved extends HotSpotMethod {
         return CiUtil.toStackTraceElement(this, bci);
     }
 
-    @Override
     public RiMethod uniqueConcreteMethod() {
         return compiler.getVMEntries().RiMethod_uniqueConcreteMethod(vmId);
     }

@@ -25,7 +25,6 @@ package com.oracle.graal.graph.vis;
 import java.awt.Color;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.HashMap;
 import java.util.HashSet;
 
 import com.oracle.graal.graph.Graph;

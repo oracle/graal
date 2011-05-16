@@ -3,9 +3,9 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Assembler"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Base"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CRI"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/GraalCompiler"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.asm"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.base"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

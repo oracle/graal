@@ -201,4 +201,9 @@ public class HotSpotTypeUnresolved extends HotSpotType {
         return CiKind.Object;
     }
 
+    @Override
+    public RiMethod uniqueConcreteMethod(RiMethod method) {
+        throw unresolved("uniqueConcreteMethod");
+    }
+
 }

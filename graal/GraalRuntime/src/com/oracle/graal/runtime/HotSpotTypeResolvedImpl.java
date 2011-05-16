@@ -222,4 +222,10 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         return result;
     }
 
+    @Override
+    public RiMethod uniqueConcreteMethod(RiMethod method) {
+        assert method instanceof HotSpotMethodResolved;
+        return ((HotSpotMethodResolved) method).uniqueConcreteMethod();
+    }
+
 }
