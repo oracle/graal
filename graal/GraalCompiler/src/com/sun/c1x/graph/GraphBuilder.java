@@ -150,7 +150,7 @@ public final class GraphBuilder {
         // 1. create the start block
         ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
         BlockBegin startBlock = ir.startBlock;
-//        graph.root().setStart(startBlock);
+        graph.root().setStart(startBlock);
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(rootMethod);
