@@ -1,4 +1,5 @@
 \documentclass[twocolumn]{svjour3}
+\usepackage{listings}
 \usepackage[pdftex]{graphicx}
 \usepackage{environ}
 \usepackage{amsmath}
@@ -119,6 +120,25 @@ After those four milestones, we see three different possible further development
   \item Implementation of a prototype front-end for a different language, e.g., JavaScript.
 \end{itemize}
 
+\section{Project Source Structure}
+In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.max.graal}).
+
+\begin{description}
+    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
+    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
+ 				 Additional node classes should go into separate projects and be specializations of the known basic nodes.
+    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
+    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
+    \item[compiler] contains the compiler, including:
+        \begin{itemize}
+            \item Scheduling of the compilation phases.
+            \item Implementation of the \emph{compiler interface} (CI).
+            \item Implementation of the final compilation phase that produces the low-level representation.
+            \item Machine code creation, including debug info.
+        \end{itemize}
+\end{description}
+
+
 \section{Graph}
 
 The \emph{intermediate representation}~(IR) of the compiler is designed as a directed graph.
@@ -172,23 +192,104 @@ The nodes of the graph have the following properties:
   \label{fig:directions}
 \end{figure}
 
-\subsection{Project Source Structure}
-In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.graal}).
+\section{Control Flow}
 
-\begin{description}
-    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
-    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
- 				 Additional node classes should go into separate projects and be specializations of the known basic nodes.
-    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
-    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
-    \item[compiler] contains the compiler, including:
-        \begin{itemize}
-            \item Scheduling of the compilation phases.
-            \item Implementation of the \emph{compiler interface} (CI).
-            \item Implementation of the final compilation phase that produces the low-level representation.
-            \item Machine code creation, including debug info.
-        \end{itemize}
-\end{description}
+Control flow is managed in way where the predecessor node contains direct pointers to its successor nodes.
+This is opposite to the approach taken in the server compiler, where control flow and data flow edges point in the same direction.
+The advantage that we see in our approach is that there is no need for projection nodes in case of control flow splits.
+An \texttt{If} node can directly point to its true and false successors without any intermediate nodes.
+This makes the graph more compact and simplifies graph traversal.
+
+Listing \ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any instruction with side effects.
+The \texttt{If} instruction can directly point its true and false successors to a \texttt{Merge} node.
+A \texttt{Phi} node that selects the appropriate value is appended to the \texttt{Merge} node.
+The \texttt{Return} instruction then has a data dependency on the \texttt{Phi} node.
+
+\begin{lstlisting}[label=lst:cfg2, caption=Control flow in the graph, captionpos=b]
+if (condition) { return 0; }
+else { return 1; }
+\end{lstlisting}
+
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{cfg2}
+\textnode{entry}{Entry}
+\textnode{condition}{condition}
+\textnode{const0}{0}
+\textnode{const1}{1}
+\nodesplit{if}{If}
+\control{entry}{if}
+\controllabel{if:succ1}{merge}
+\controllabel{if:succ2}{merge}
+\data{if}{condition}
+\node{merge}{Merge}
+\node{return}{Return}
+\nodetri{phi}{Phi}
+\datalabel{phi:in1}{merge}
+\datalabel{phi:in2}{const0}
+\datalabel{phi:in3}{const1}
+\data{return}{phi}
+\control{merge}{return}
+\end{digraphenv}
+  \caption{A simple loop with two exits.}
+  \label{fig:exc1}
+\end{figure}
+
+\section{Exceptions}
+\label{sec:Exceptions}
+
+We do not throw runtime exceptions (e.g., \texttt{IndexOutOf\-BoundsException}, \texttt{NullPointerException}, or \texttt{Out\-Of\-MemoryException}), but deoptimize instead.
+This reduces the places in the compiled code where an exact bytecode location and debug information must be known.
+Additionally, this greatly reduces the number of exception handler edges in the compiled code.
+The main advantage of this technique is however, that we are free in moving around bounds checks, memory allocation, memory accesses with implicit null checks, etc.
+
+There are only two kinds of instruction that need explicit exception edges, because they are the only instructions that can throw exceptions in compiled code: \texttt{Throw} instructions and \texttt{Invoke} instructions.
+They are modelled as instructions with an additional control flow continuation that points to an \texttt{ExceptionDispatch} instruction.
+The exception dispatch instruction decides based on the type of the exception object whether the control should flow to the catch handler or to another exception dispatch.
+If there is no catch handler in the currently compiled method, then the control flows into the \texttt{Unwind} instruction that handles the exception by forwarding it to the caller.
+Listing \ref{lst:exc1} shows an example Java program with nested try blocks and Figure \ref{fig:exc1} shows the corresponding compiler graph.
+
+\begin{lstlisting}[label=lst:exc1, caption=Exception dispatch in the compiler graph, captionpos=b]
+try { m1();
+  try { m2();
+  } catch(ExtendedException e) { ... }
+  m3();
+  throw exception;
+} catch(Exception e) { ... }
+\end{lstlisting}
+
+
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{exc1}
+\textnode{entry}{Entry}
+\textnode{catch1}{catch1}
+\textnode{catch2}{catch2}
+\nodesplit{m1}{Invoke m1}
+\nodesplit{m2}{Invoke m2}
+\nodesplit{m3}{Invoke m3}
+\nodesplit{dispatch1}{ExceptionDispatch}
+\nodesplit{dispatch2}{ExceptionDispatch}
+\node{throw}{Throw}
+\node{unwind}{Unwind}
+\control{entry}{m1}
+\controllabel{m1:succ1}{m2}
+\controllabel{m1:succ2}{dispatch2}
+\controllabel{m2:succ1}{m3}
+\controllabel{m2:succ2}{dispatch1}
+\controllabel{m3:succ1}{throw}
+\controllabel{m3:succ2}{dispatch2}
+\control{throw}{dispatch2}
+\controllabel{dispatch1:succ2}{catch1}
+\controllabel{dispatch1:succ1}{dispatch2}
+\controllabel{dispatch2:succ2}{catch2}
+\controllabel{dispatch2:succ1}{unwind}
+\end{digraphenv}
+  \caption{A simple loop with two exits.}
+  \label{fig:exc1}
+\end{figure}
 
 \section{Loops}
 \label{sec:loops}
@@ -227,7 +328,14 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
 The \nodename{LoopEnd} node merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
-Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph.
+Listing \ref{lst:loop} shows a simple counting loop that is used as an example in the rest of this section.
+Figure \ref{fig:loop2} shows how the loop is modelled immediately after building the graph.
+
+\begin{lstlisting}[label=lst:loop, caption=Loop example, captionpos=b]
+for(int i=0; i<n; ++i) { }
+\end{lstlisting}
+
+
 
 \begin{figure}[h]
   \centering
