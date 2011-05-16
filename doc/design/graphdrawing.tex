@@ -1,7 +1,7 @@
 
 % graph drawing
+\newwrite\dotfile 
 \newcommand{\digraph}[3][scale=1]{ 
-  \newwrite\dotfile 
   \immediate\openout\dotfile=dot_temp_#2.dot 
   \immediate\write\dotfile{digraph #2 { margin=0; pad=0; concentrate=false; \string#3}} 
   \immediate\closeout\dotfile
@@ -53,6 +53,7 @@
 \newcommand{\nodequadsplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \portinput{in4} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \portempty \genericnodeend }
 \newcommand{\nodetrisplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \portinput{in3} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \genericnodeend }
 \newcommand{\nodesplittri}[2]{\genericnodestart{#1} \portempty \portinput{inputs} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portsuccessor{succ3} \genericnodeend }
+\newcommand{\nodebisplit}[2]{\genericnodestart{#1} \portinput{in1} \portinput{in2} \genericnodelabel{#2}{white} \portsuccessor{succ1} \portsuccessor{succ2} \portempty \genericnodeend }
 
 \newcommand{\nodeguard}[2]{\cnodebi{#1}{#2}{rosybrown1}}
 

@@ -201,12 +201,12 @@ The advantage that we see in our approach is that there is no need for projectio
 An \texttt{If} instruction can directly point to its true and false successors without any intermediate nodes.
 This makes the graph more compact and simplifies graph traversal.
 
-Listing \ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any instruction with side effects.
+Listing~\ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any instruction with side effects.
 The \texttt{If} instruction can directly point its true and false successors to a \texttt{Merge} instruction.
 A \texttt{Phi} node that selects the appropriate value is appended to the \texttt{Merge} instruction.
 The \texttt{Return} instruction then has a data dependency on the \texttt{Phi} node.
 
-\begin{lstlisting}[label=lst:cfg2, caption=Control flow in the graph, captionpos=b]
+\begin{lstlisting}[label=lst:cfg2, caption=Control flow in the graph., captionpos=b]
 if (condition) { return 0; }
 else { return 1; }
 \end{lstlisting}
@@ -248,9 +248,9 @@ There are only two kinds of instruction that need explicit exception edges, beca
 They are modelled as instructions with an additional control flow continuation that points to an \texttt{ExceptionDispatch} instruction.
 The exception dispatch instruction decides based on the type of the exception object whether the control should flow to the catch handler or to another exception dispatch.
 If there is no catch handler in the currently compiled method, then the control flows into the \texttt{Unwind} instruction that handles the exception by forwarding it to the caller.
-Listing \ref{lst:exc1} shows an example Java program with nested try blocks and Figure \ref{fig:exc1} shows the corresponding compiler graph.
+Listing~\ref{lst:exc1} shows an example Java program with nested try blocks and Figure \ref{fig:exc1} shows the corresponding compiler graph.
 
-\begin{lstlisting}[label=lst:exc1, caption=Exception dispatch in the compiler graph, captionpos=b]
+\begin{lstlisting}[label=lst:exc1, caption=Exception dispatch in the compiler graph., captionpos=b]
 try { m1();
   try { m2();
   } catch(ExtendedException e) { ... }
@@ -326,10 +326,10 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
 The \nodename{LoopEnd} instruction merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
-Listing \ref{lst:loop} shows a simple counting loop that is used as an example in the rest of this section.
-Figure \ref{fig:loop2} shows how the loop is modelled immediately after building the graph.
+Listing~\ref{lst:loop} shows a simple counting loop that is used as an example in the rest of this section.
+Figure~\ref{fig:loop2} shows how the loop is modelled immediately after building the graph.
 
-\begin{lstlisting}[label=lst:loop, caption=Loop example, captionpos=b]
+\begin{lstlisting}[label=lst:loop, caption=Loop example that counts from 0 to n-1., captionpos=b]
 for(int i=0; i<n; ++i) { }
 \end{lstlisting}
 
@@ -492,7 +492,7 @@ Within the graph a frame state is represented as a node that is attached to the 
 Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 The frame state at the method beginning does not have to be explicitely in the graph, because it can always be reconstructed at a later stage.
-We save the frame state at control flow merges if there is at least one frame state on any control flow path after the immediate dominator.
+We save the frame state at control flow merges if there is at least one frame state on any control flow path between a node and its immediate dominator.
 
 
 \begin{figure}[h]
@@ -516,113 +516,312 @@ We save the frame state at control flow merges if there is at least one frame st
 \end{figure}
 
 
+A deoptimization node needs a valid frame state that specifies the location and state where the interpreter should continue.
+The algorithm for constructing frame states makes sure that every possible location in the graph has a well-defined frame state that can be used by a deoptimization instruction.
+Therefore, there are no direct links between the deoptimization instruction and its frame state thus allowing the deoptimization instructions to move freely around.
+
+\subsection{Partial Escape Analysis}
+
+A partial escape analysis can help to further reduce the number of frame states.
+A field or array store does not create a new frame state, when the object that is modified did not have a chance to escape between its creation and the store.
+
+Listing~\ref{lst:escape1} shows an example of a method that creates two \texttt{Point} objects, connects them, and returns them.
+The object allocation of the first \texttt{Point} object does not need a frame state.
+We can always reexecute the \texttt{NEW} bytecode again in the interpreter.
+The \texttt{Point} object allocated by the compiler will then simply disappear after the next garbage collection.
+The following field store is a thread-local memory store, because the \texttt{Point} object did not have any chance to escape.
+Same applies to the assignment of the \texttt{next} field and the third field assignment.
+Therefore, the whole method \texttt{getPoint} does not need an explicit frame state, because at any time during execution of this method, we can deoptimize and continue execution in the interpreter at the first bytecode of the method.
+
+\begin{lstlisting}[label=lst:escape1, caption=Example method that needs no frame state., captionpos=b]
+void getPoint() {
+  Point p = new Point();
+  p.x = 1;
+  p.next = new Point();
+  p.next.x = 2;
+  return p;
+}
+\end{lstlisting}
+
+The reduction of frame states makes it easier for the compiler to perform memory optimizations like memory access coalescing.
+We believe that this reduction on frame states is the key to effective vectorization and other compiler optimizations where compilers of compilers of unmanaged languages have advantages.
+
 \subsection{Guards}
 A guard is a node that deoptimizes based on a conditional expression.
 Guards are not attached to a certain frame state, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
-The node that is guarded by the deoptimization has a data dependency on the guard, and the guard in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
+The node that is guarded by the deoptimization has a data dependency on the guard and the guard in turn has a data dependency on the condition.
+A guard must not be moved above any \texttt{If} nodes.
+Therefore, we use \texttt{Anchor} instructions after a control flow split and a data dependency from the guard to this anchor.
+The anchor is the most distant instruction that is postdominated by the guarded instruction and the guard can be scheduled anywhere between those two nodes.
+This ensures maximum flexibility for the guard instruction and guarantees that we only deoptimize if the control flow would have reached the guarded instruction (without taking exceptions into account).
 
-In the example of Figure~\ref{fig:guard1}, the second load is guarded by a guard, because its receiver might be null (the receiver of the first load is assumed to be non-null).
-The guard is anchored to the control split, because as soon as this node is executed, the second load must be executed as well.
-In the final schedule, the guard can be placed before or after the first load.
+To illustrate the strengths of this approach, we show the graph for the Java code snippet shown in \ref{lst:guard1}.
+The example looks artificial, but in case of method inlining, this is a pattern that is not unlikely to be present in a normal Java program.
+Figure \ref{fig:guard0} shows the compiler graph for the example method after graph building.
+The field stores are both represented by a single instruction and the null check that is implicitely incorporated in the field store.
+
+\begin{lstlisting}[label=lst:guard1, caption=Example method that demonstrates the strengths of modelling the guards explicitely., captionpos=b]
+void init(Point p) {
+  if (p != null) {
+    p.x = 0;
+  }
+  p.y = 0;
+}
+\end{lstlisting}
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{guard0}
+	\textnode{entry}{Entry}
+    \nodesplit{if}{If}
+    \node{merge}{Merge}
+    \node{return}{Return}
+    \node{cmpnull}{NonNull}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodebisplit{store1}{FieldStore x}
+    \nodebisplit{store2}{FieldStore y}
+    \nodeframestate{fs1}{FrameState}
+    \nodeframestate{fs2}{FrameState}
+    \datalabel{store1:in1}{p}
+    \datalabel{store2:in1}{p}
+    \datalabel{store1:in2}{const0}
+    \datalabel{store2:in2}{const0}
+    \control{entry}{if}
+    \data{if}{cmpnull}
+    \controllabel{if:succ1}{merge}
+    \controllabel{if:succ2}{store1}
+    \controllabel{store1:succ1}{merge}
+    \controllabel{store1:succ2}{fs1}
+    \control{merge}{store2}
+    \controllabel{store2:succ1}{return}
+    \controllabel{store2:succ2}{fs2}
+    \data{cmpnull}{p}
+\end{digraphenv}
+  \caption{Initial graph with the two field stores.}
+  \label{fig:guard0}
+\end{figure}
+
+Figure~\ref{fig:guard1} shows the example graph at a later compilation phase when the field store instructions are lowered to memory store instructions and explicitely modelled null check guards.
+The guards are attached to anchor instructions that delimit their possible schedule.
+The first guard must not be moved outside the \texttt{if} block; the second guard may be moved before the \texttt{If} instruction, because at this point it is already guaranteed that the second store is executed.
 
 \begin{figure}[h]
   \centering
 \begin{digraphenv}{scale=0.5}{guard1}
+	\textnode{entry}{Entry}
+    \node{anchor1}{Anchor}
+    \node{anchor2}{Anchor}
     \nodesplit{if}{If}
-    nop [shape=plaintext, label="..."]
-    \controllabel{if:succ1}{nop}
-    %
-    \node{split2}{Anchor}
-    \controllabel{if:succ2}{split2}
-    \nodebi{load1}{MemLoad}
-    \control{split2}{load1}
-    \nodebi{load2}{MemLoad}
-    \control{load1}{load2}
-    \control{load2}{merge}
     \node{merge}{Merge}
-    \control{nop}{merge}
-    %
-    \nodeconst{o1}{obj1}
-    \nodeconst{o2}{obj2}
-    \datalabel{load1:in2}{o1}
-    \datalabel{load2:in2}{o2}
-    \nodeguard{guard}{Guard}
-    \node{cmpnull}{IsNull}
-    \data{cmpnull}{o2}
-    \datalabel{guard:in2}{cmpnull}
-    \datalabel{load2:in1}{guard}    
-    \datalabel{guard:in1}{split2}
+    \node{return}{Return}
+    \node{cmpnull}{NonNull}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodeguard{guard1}{Guard}
+    \nodeguard{guard2}{Guard}
+    \nodetrisplit{store1}{MemStore 16 (int)}
+    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodeframestate{fs1}{FrameState}
+    \nodeframestate{fs2}{FrameState}
+    \data{store1:in1}{p}
+    \data{store2:in1}{p}
+    \data{store1:in2}{const0}
+    \data{store2:in2}{const0}
+    \data{store1:in3}{guard1}
+    \data{store2:in3}{guard2}
+    \data{guard1:in1}{anchor2}
+    \data{guard2:in1}{anchor1}
+    \data{guard1:in2}{cmpnull}
+    \data{guard2:in2}{cmpnull}
+    \control{entry}{anchor1}
+    \control{anchor1}{if}
+    \data{if}{cmpnull}
+    \controllabel{if:succ1}{merge}
+    \controllabel{if:succ2}{anchor2}
+    \control{anchor2}{store1}
+    \controllabel{store1:succ1}{merge}
+    \controllabel{store1:succ2}{fs1}
+    \control{merge}{store2}
+    \controllabel{store2:succ1}{return}
+    \controllabel{store2:succ2}{fs2}
+    \data{cmpnull}{p}
 \end{digraphenv}
   \caption{A load guarded by a null check guard.}
   \label{fig:guard1}
 \end{figure}
 
-A guard can be used to remove branches that have a very low execution frequency and replace them with a conditional jump to deoptimization.
+The first guard can be easily removed, because it is guarded by an \texttt{If} instruction that checks the same condition.
+Therefore we can remove the guard and the anchor from the graph and this gives us the graph shown in Figure \ref{fig:guard2}.
 
-In the example of Figure~\ref{fig:guard2}, an \texttt{If} instruction was replaced by an anchor and a guard.
-The anchor takes the place of the \texttt{If} instruction in the control flow, and is connected to the guard.
-The guard is now anchored to the most distant node of which the \texttt{If} instruction was a postdominator.
+There is another optimization for guard instructions: If two guards that are anchored to the true and false branch of the same \texttt{If} instruction have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} instruction is a postdominator.
+
 
 \begin{figure}[h]
   \centering
 \begin{digraphenv}{scale=0.5}{guard2}
-    start [shape=plaintext, label="..."]
-    start2 [shape=plaintext, label=""]
-    start3 [shape=plaintext, label=""]
-    \control{start}{guard}
-    \node{anchor}{Anchor}
-    \nodebi{load1}{MemLoad}
-    \control{anchor}{load1}
-    \control{load1}{nop}
-    nop [shape=plaintext, label="..."]
-    %
-    \nodeguard{guard}{Guard}
-    \datalabel{guard:in1}{start2}
-    \datalabel{guard:in2}{start3}
-    \data{anchor}{guard}    
+	\textnode{entry}{Entry}
+    \node{anchor1}{Anchor}
+    \nodesplit{if}{If}
+    \node{merge}{Merge}
+    \node{return}{Return}
+    \node{cmpnull}{NonNull}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodeguard{guard2}{Guard}
+    \nodetrisplit{store1}{MemStore 16 (int)}
+    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodeframestate{fs1}{FrameState}
+    \nodeframestate{fs2}{FrameState}
+    \data{store1:in1}{p}
+    \data{store2:in1}{p}
+    \data{store1:in2}{const0}
+    \data{store2:in2}{const0}
+    \data{store2:in3}{guard2}
+    \data{guard2:in1}{anchor1}
+    \data{guard2:in2}{cmpnull}
+    \control{entry}{anchor1}
+    \control{anchor1}{if}
+    \data{if}{cmpnull}
+    \controllabel{if:succ1}{merge}
+    \controllabel{if:succ2}{store1}
+    \controllabel{store1:succ1}{merge}
+    \controllabel{store1:succ2}{fs1}
+    \control{merge}{store2}
+    \controllabel{store2:succ1}{return}
+    \controllabel{store2:succ2}{fs2}
+    \data{cmpnull}{p}  
 \end{digraphenv}
-  \caption{A guard that is fixed to the control flow using an anchor instruction.}
+  \caption{After removing redundant guards.}
   \label{fig:guard2}
 \end{figure}
 
-At some point during the compilation, guards need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
-This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
-A simple algorithm for this removal of frame states would be to move all guards as far upwards as possible.
-Multiple guards with the same condition and anchor can be merged (see Figure~\ref{fig:guard3}).
+The remaining guard can now be moved above the \texttt{If} condition and be used to eliminate the need for the \texttt{If} node.
+From this point on, the guard can however no longer be moved below the first memory store.
+We use a control dependency from the guard to the field store to express this condition.
+The link between the second store and the guard and the control flow merge instruction is no longer necessary.
 
 \begin{figure}[h]
   \centering
 \begin{digraphenv}{scale=0.5}{guard3}
-    \nodesplit{if}{If}
-    nop [shape=plaintext, label="..."]
-    \controllabel{if:succ1}{nop}
-    %
-    \node{split2}{Anchor}
-    \controllabel{if:succ2}{split2}
-    \nodebi{load1}{MemLoad}
-    \control{split2}{load1}
-    \nodebi{load2}{MemLoad}
-    \control{load1}{load2}
-    \control{load2}{merge}
-    \node{merge}{Merge}
-    \control{nop}{merge}
-    %
-    \nodeconst{o}{obj}
-    \datalabel{load1:in2}{o}
-    \datalabel{load2:in2}{o}
-    \nodeguard{guard}{Guard}
-    \node{cmpnull}{IsNull}
-    \data{cmpnull}{o}
-    \datalabel{guard:in2}{cmpnull}
-    \datalabel{load2:in1}{guard}    
-    \datalabel{load1:in1}{guard}    
-    \datalabel{guard:in1}{split2}
+	\textnode{entry}{Entry}
+    \node{anchor1}{Anchor}
+    \node{return}{Return}
+    \node{cmpnull}{NonNull}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodeguard{guard2}{Guard}
+    \nodetrisplit{store1}{MemStore 16 (int)}
+    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodeframestate{fs1}{FrameState}
+    \nodeframestate{fs2}{FrameState}
+    \data{store1:in1}{p}
+    \data{store2:in1}{p}
+    \data{store1:in2}{const0}
+    \data{store2:in2}{const0}
+    \data{store2:in3}{guard2}
+    \data{guard2:in1}{anchor1}
+    \data{guard2:in2}{cmpnull}
+    \control{guard2}{store1}
+    \control{entry}{anchor1}
+    \control{anchor1}{store1}
+    \controllabel{store1:succ2}{fs1}
+    \control{store1}{store2}
+    \controllabel{store2:succ1}{return}
+    \controllabel{store2:succ2}{fs2}
+    \data{cmpnull}{p}  
 \end{digraphenv}
-  \caption{Two loads using the same guard.}
+  \caption{After eliminating an if with a guard.}
   \label{fig:guard3}
 \end{figure}
 
-Also, if two guards that are anchored to the true and false branch of the same \texttt{If} instruction have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} instruction is a postdominator.
+At some point during the compilation, guards need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
+This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
+A simple algorithm for this removal of frame states would be to move all guards as far upwards as possible and then the guards are fixed using anchor nodes.
+In our example, the guard is already fixed, so there is no deoptimization point that uses any of the memory store frame states.
+Therefore we can delete the frame states from the graph (see Figure \ref{fig:guard4}).
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{guard4}
+	\textnode{entry}{Entry}
+    \node{anchor1}{Anchor}
+    \node{return}{Return}
+    \node{cmpnull}{NonNull}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodeguard{guard2}{Guard}
+    \nodetrisplit{store1}{MemStore 16 (int)}
+    \nodetrisplit{store2}{MemStore 20 (int)}
+    \data{store1:in1}{p}
+    \data{store2:in1}{p}
+    \data{store1:in2}{const0}
+    \data{store2:in2}{const0}
+    \data{store2:in3}{guard2}
+    \data{guard2:in1}{anchor1}
+    \data{guard2:in2}{cmpnull}
+    \control{guard2}{store1}
+    \control{entry}{anchor1}
+    \control{anchor1}{store1}
+    \control{store1}{store2}
+    \controllabel{store2:succ1}{return}
+    \data{cmpnull}{p}  
+\end{digraphenv}
+  \caption{After removing the frame states.}
+  \label{fig:guard4}
+\end{figure}
+
+Now we can use memory coalescing to combine the two stores without frame state to adjacent locations in the same object.
+This is only possible if the first store does not have a frame state.
+Figure \ref{fig:guard5} shows the resulting graph.
+
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{guard5}
+	\textnode{entry}{Entry}
+    \node{anchor1}{Anchor}
+    \node{return}{Return}
+    \node{cmpnull}{NonNull}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodeguard{guard2}{Guard}
+    \nodetrisplit{store1}{MemStore 16 (long)}
+    \data{store1:in1}{p}
+    \data{store1:in2}{const0}
+    \data{guard2:in1}{anchor1}
+    \data{guard2:in2}{cmpnull}
+    \control{guard2}{store1}
+    \control{entry}{anchor1}
+    \control{anchor1}{store1}
+    \controllabel{store1:succ1}{return}
+    \data{cmpnull}{p}  
+\end{digraphenv}
+  \caption{After coalescing the two memory stores.}
+  \label{fig:guard5}
+\end{figure}
+
+A memory store that immediately follows a null check guard instruction on the same object, can be combined into a store with an implicit null check (that deoptimizes instead of throwing the exception).
+Therefore, we can remove the guard again and also the anchor is no longer necessary.
+Figure~\ref{fig:guard6} shows now that fully optimized graph that is generated for Listing~\ref{lst:guard1}.
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{guard6}
+	\textnode{entry}{Entry}
+    \node{return}{Return}
+    \textnode{p}{p}
+	\textnode{const0}{0}
+    \nodetrisplit{store1}{DeoptimizingMemStore 16 (long)}
+    \data{store1:in1}{p}
+    \data{store1:in2}{const0}
+    \control{entry}{store1}
+    \controllabel{store1:succ1}{return}
+\end{digraphenv}
+  \caption{Fully optimized method.}
+  \label{fig:guard6}
+\end{figure}
+
 
 \section{Conclusions}
 \label{sec:conclusions}
