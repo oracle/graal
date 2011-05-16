@@ -1,4 +1,5 @@
 \documentclass[twocolumn]{svjour3}
+\usepackage{listings}
 \usepackage[pdftex]{graphicx}
 \usepackage{environ}
 \usepackage{amsmath}
@@ -119,6 +120,25 @@ After those four milestones, we see three different possible further development
   \item Implementation of a prototype front-end for a different language, e.g., JavaScript.
 \end{itemize}
 
+\section{Project Source Structure}
+In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.max.graal}).
+
+\begin{description}
+    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
+    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
+ 				 Additional node classes should go into separate projects and be specializations of the known basic nodes.
+    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
+    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
+    \item[compiler] contains the compiler, including:
+        \begin{itemize}
+            \item Scheduling of the compilation phases.
+            \item Implementation of the \emph{compiler interface} (CI).
+            \item Implementation of the final compilation phase that produces the low-level representation.
+            \item Machine code creation, including debug info.
+        \end{itemize}
+\end{description}
+
+
 \section{Graph}
 
 The \emph{intermediate representation}~(IR) of the compiler is designed as a directed graph.
@@ -172,30 +192,109 @@ The nodes of the graph have the following properties:
   \label{fig:directions}
 \end{figure}
 
-\subsection{Project Source Structure}
-In order to support the goal of a modular compiler, the code will be divided into the following source code projects (as subprojects of \textbf{com.oracle.graal}).
+\section{Control Flow}
 
-\begin{description}
-    \item[graph] contains the abstract node implementation, the graph implementation and all the associated tools and auxiliary classes.
-    \item[nodes] contains the implementation of known basic nodes (e.g., phi nodes, control flow nodes, \ldots).
- 				 Additional node classes should go into separate projects and be specializations of the known basic nodes.
-    \item[java] contains code for building graphs from Java bytecodes and Java-specific nodes.
-    \item[opt] contains optimizations such as global value numbering or conditional constant propagation.
-    \item[compiler] contains the compiler, including:
-        \begin{itemize}
-            \item Scheduling of the compilation phases.
-            \item Implementation of the \emph{compiler interface} (CI).
-            \item Implementation of the final compilation phase that produces the low-level representation.
-            \item Machine code creation, including debug info.
-        \end{itemize}
-\end{description}
+Control flow is managed in way where the predecessor node contains direct pointers to its successor nodes.
+We reserve the term \textit{instruction} for nodes that are embedded in the control flow.
+This is opposite to the approach taken in the server compiler, where control flow and data flow edges point in the same direction.
+The advantage that we see in our approach is that there is no need for projection nodes in case of control flow splits.
+An \texttt{If} instruction can directly point to its true and false successors without any intermediate nodes.
+This makes the graph more compact and simplifies graph traversal.
+
+Listing \ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any instruction with side effects.
+The \texttt{If} instruction can directly point its true and false successors to a \texttt{Merge} instruction.
+A \texttt{Phi} node that selects the appropriate value is appended to the \texttt{Merge} instruction.
+The \texttt{Return} instruction then has a data dependency on the \texttt{Phi} node.
+
+\begin{lstlisting}[label=lst:cfg2, caption=Control flow in the graph, captionpos=b]
+if (condition) { return 0; }
+else { return 1; }
+\end{lstlisting}
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{cfg2}
+\textnode{entry}{Entry}
+\textnode{condition}{condition}
+\textnode{const0}{0}
+\textnode{const1}{1}
+\nodesplit{if}{If}
+\control{entry}{if}
+\controllabel{if:succ1}{merge}
+\controllabel{if:succ2}{merge}
+\data{if}{condition}
+\node{merge}{Merge}
+\node{return}{Return}
+\nodetri{phi}{Phi}
+\datalabel{phi:in1}{merge}
+\datalabel{phi:in2}{const0}
+\datalabel{phi:in3}{const1}
+\data{return}{phi}
+\control{merge}{return}
+\end{digraphenv}
+  \caption{A simple loop with two exits.}
+  \label{fig:exc1}
+\end{figure}
+
+\section{Exceptions}
+\label{sec:Exceptions}
+
+We do not throw runtime exceptions (e.g., \texttt{IndexOutOf\-BoundsException}, \texttt{NullPointerException}, or \texttt{Out\-Of\-MemoryException}), but deoptimize instead.
+This reduces the places in the compiled code where an exact bytecode location and debug information must be known.
+Additionally, this greatly reduces the number of exception handler edges in the compiled code.
+The main advantage of this technique is however, that we are free in moving around bounds checks, memory allocation, memory accesses with implicit null checks, etc.
+
+There are only two kinds of instruction that need explicit exception edges, because they are the only instructions that can throw exceptions in compiled code: \texttt{Throw} instructions and \texttt{Invoke} instructions.
+They are modelled as instructions with an additional control flow continuation that points to an \texttt{ExceptionDispatch} instruction.
+The exception dispatch instruction decides based on the type of the exception object whether the control should flow to the catch handler or to another exception dispatch.
+If there is no catch handler in the currently compiled method, then the control flows into the \texttt{Unwind} instruction that handles the exception by forwarding it to the caller.
+Listing \ref{lst:exc1} shows an example Java program with nested try blocks and Figure \ref{fig:exc1} shows the corresponding compiler graph.
+
+\begin{lstlisting}[label=lst:exc1, caption=Exception dispatch in the compiler graph, captionpos=b]
+try { m1();
+  try { m2();
+  } catch(ExtendedException e) { ... }
+  m3();
+  throw exception;
+} catch(Exception e) { ... }
+\end{lstlisting}
+
+\begin{figure}[h]
+  \centering
+\begin{digraphenv}{scale=0.5}{exc1}
+\textnode{entry}{Entry}
+\textnode{catch1}{catch1}
+\textnode{catch2}{catch2}
+\nodesplit{m1}{Invoke m1}
+\nodesplit{m2}{Invoke m2}
+\nodesplit{m3}{Invoke m3}
+\nodesplit{dispatch1}{ExceptionDispatch}
+\nodesplit{dispatch2}{ExceptionDispatch}
+\node{throw}{Throw}
+\node{unwind}{Unwind}
+\control{entry}{m1}
+\controllabel{m1:succ1}{m2}
+\controllabel{m1:succ2}{dispatch2}
+\controllabel{m2:succ1}{m3}
+\controllabel{m2:succ2}{dispatch1}
+\controllabel{m3:succ1}{throw}
+\controllabel{m3:succ2}{dispatch2}
+\control{throw}{dispatch2}
+\controllabel{dispatch1:succ2}{catch1}
+\controllabel{dispatch1:succ1}{dispatch2}
+\controllabel{dispatch2:succ2}{catch2}
+\controllabel{dispatch2:succ1}{unwind}
+\end{digraphenv}
+  \caption{A simple loop with two exits.}
+  \label{fig:exc1}
+\end{figure}
 
 \section{Loops}
 \label{sec:loops}
 Loops form a first-class construct in the IR that is expressed by specialized IR nodes during all optimization phases.
 We only compile methods with a control flow where every loop has a single entry point.
-This entry point is a \nodename{LoopBegin} node.
-This node is connected to a \nodename{LoopEnd} node that merges all control flow paths that do not exit the loop.
+This entry point is a \nodename{LoopBegin} instruction.
+This instruction is connected to a \nodename{LoopEnd} instruction that merges all control flow paths that do not exit the loop.
 The edge between the \nodename{LoopBegin} and the \nodename{LoopEnd} is the backedge of the loop.
 It goes from the beginning to the end in order to make the graph acyclic.
 An algorithm that traverses the control flow has to explicitely decide whether it wants to incorporate backedges (i.e., special case of the treatment of \nodename{LoopEnd}) or ignore them.
@@ -225,9 +324,14 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 
 \subsection{Loop Phis}
 Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
-The \nodename{LoopEnd} node merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
+The \nodename{LoopEnd} instruction merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
-Figure \ref{fig:loop2} shows how a simple counting loop is modelled in the graph.
+Listing \ref{lst:loop} shows a simple counting loop that is used as an example in the rest of this section.
+Figure \ref{fig:loop2} shows how the loop is modelled immediately after building the graph.
+
+\begin{lstlisting}[label=lst:loop, caption=Loop example, captionpos=b]
+for(int i=0; i<n; ++i) { }
+\end{lstlisting}
 
 \begin{figure}[h]
   \centering
@@ -366,19 +470,25 @@ The vector nodes all work on an ordered list of integer values and are subject t
 
 
 \section{Frame States}
-A frame state captures the state of the program in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
-Every deoptimization point needs a valid frame state.
-A frame state stays valid as long as the subsequent instructions perform only actions that can safely be reexecuted.
-Thus, frame states need only be generated for the states after bytecodes that cannot be reexecuted:
+A frame state captures the state of the program like it is seen in by an interpreter of the program.
+The frame state contains the information that is local to the current activation and will therefore disappear during SSA-form constructions or other compiler optimizations.
+For Java, the frame state is defined in terms of the Java bytecode specification (i.e., the values of the local variables, the operand stack, and the locked monitors).
+However, a frame state is not a concept specific to Java (e.g., the Crankshaft JavaScript engine uses frame states in their optimizing compiler to model the values of the AST interpreter).
+
+Frame states are necessary to support the deoptimization of the program, which is the precondition for performing aggressive optimizations that use optimistic assumptions.
+Therefore every point in the optimizing compiler that may revert execution back to the interpreter needs a valid frame state.
+However, the point where the interpreter continues execution need not correspond exactly to the execution position of the compiled code, because many Java bytecode instructions can be safely reexecuted.
+Thus, frame states need only be generated for the states after instructions that cannot be reexecuted, because they modify the state of the program.
+Examples for such instructions are:
 
 \begin{itemize}
-    \item Array stores: {\tt IASTORE, LASTORE, FASTORE, \\DASTORE, AASTORE, BASTORE, CASTORE, SASTORE}
-    \item Field stores: {\tt PUTSTATIC, PUTFIELD}
-    \item Method calls: {\tt INVOKEVIRTUAL, INVOKESPECIAL, \\INVOKESTATIC, INVOKEINTERFACE}
-    \item Synchronization: {\tt MONITORENTER, MONITOREXIT}
+    \item Array stores (in Java bytecodes {\tt IASTORE, LASTORE, FASTORE, \\DASTORE, AASTORE, BASTORE, CASTORE, SASTORE})
+    \item Field stores (in Java bytecodes {\tt PUTSTATIC, PUTFIELD})
+    \item Method calls (in Java bytecodes {\tt INVOKEVIRTUAL, INVOKESPECIAL, \\INVOKESTATIC, INVOKEINTERFACE})
+    \item Synchronization (in Java bytecodes {\tt MONITORENTER, MONITOREXIT})
 \end{itemize}
 
-Within the graph a frame state is represented as a node that is attached to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
+Within the graph a frame state is represented as a node that is attached to the instruction that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
 Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 The frame state at the method beginning does not have to be explicitely in the graph, because it can always be reconstructed at a later stage.
@@ -407,8 +517,8 @@ We save the frame state at control flow merges if there is at least one frame st
 
 
 \subsection{Guards}
-A guard node is a node that deoptimizes based on a conditional expression.
-Guard nodes are not attached to a certain frame state node, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
+A guard is a node that deoptimizes based on a conditional expression.
+Guards are not attached to a certain frame state, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
 The node that is guarded by the deoptimization has a data dependency on the guard, and the guard in turn has a data dependency on the condition and on the most distant node that is postdominated by the guarded node.
 
 In the example of Figure~\ref{fig:guard1}, the second load is guarded by a guard, because its receiver might be null (the receiver of the first load is assumed to be non-null).
@@ -449,9 +559,9 @@ In the final schedule, the guard can be placed before or after the first load.
 
 A guard can be used to remove branches that have a very low execution frequency and replace them with a conditional jump to deoptimization.
 
-In the example of Figure~\ref{fig:guard2}, an \texttt{If} node was replaced by an anchor and a guard.
-The anchor takes the place of the \texttt{If} node in the control flow, and is connected to the guard node.
-The guard is now anchored to the most distant node of which the \texttt{If} node was a postdominator.
+In the example of Figure~\ref{fig:guard2}, an \texttt{If} instruction was replaced by an anchor and a guard.
+The anchor takes the place of the \texttt{If} instruction in the control flow, and is connected to the guard.
+The guard is now anchored to the most distant node of which the \texttt{If} instruction was a postdominator.
 
 \begin{figure}[h]
   \centering
@@ -475,7 +585,7 @@ The guard is now anchored to the most distant node of which the \texttt{If} node
   \label{fig:guard2}
 \end{figure}
 
-At some point during the compilation, guard nodes need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
+At some point during the compilation, guards need to be fixed, which means that appropriate data and control dependencies will be inserted so that they cannot move outside the scope of the associated frame state.
 This will generate deoptimization-free zones that can be targeted by the most aggressive optimizations.
 A simple algorithm for this removal of frame states would be to move all guards as far upwards as possible.
 Multiple guards with the same condition and anchor can be merged (see Figure~\ref{fig:guard3}).
@@ -512,7 +622,7 @@ Multiple guards with the same condition and anchor can be merged (see Figure~\re
   \label{fig:guard3}
 \end{figure}
 
-Also, if two guards that are anchored to the true and false branch of the same \texttt{If} node have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} node is a postdominator.
+Also, if two guards that are anchored to the true and false branch of the same \texttt{If} instruction have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} instruction is a postdominator.
 
 \section{Conclusions}
 \label{sec:conclusions}
