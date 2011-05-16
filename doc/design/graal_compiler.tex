@@ -163,8 +163,6 @@ The nodes of the graph have the following properties:
     \end{itemize}
     \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
     \item Every node must be able to support cloning and serialization.
-    \item Inlining should always be performed as embedding one graph into another graph.
-    \item Nodes cannot be reassigned to another graph, they are cloned instead.
     \item The edges of a node also define \textit{happens-before} and \textit{happens-after} relationships as shown in Figure~\ref{fig:directions}.
 \end{itemize}
 
@@ -191,6 +189,17 @@ The nodes of the graph have the following properties:
   \caption{A node and its edges.}
   \label{fig:directions}
 \end{figure}
+
+\subsection{Inlining}
+Inlining is always performed by embedding one graph into another graph.
+Nodes cannot be reassigned to another graph, they are cloned instead.
+Therefore, inlining is performed by copying and rewiring the nodes of the inlined method into the graph of the outer method.
+While the copying will decrease compilation performance, it enables us to cache the graph for the inlined method, optimize it independently from the outer method, and use the optimized graph for subsequent inlinings.
+We do not expect a significant negative impact on overall compilation performance.
+
+We are able to perform the inlining at any point during the compilation of a method and can therefore selectively expand the inlining if a certain optimization turns out to depend on the inlining of a method.
+An example for this would be when the escape analysis finds out that a certain object only escapes because of one method call and this method call is not inlined, because the penalty was to high.
+In this case, we can chose to nevertheless inline the method in order to increase the chances for finding out that the object does not escape.
 
 \section{Control Flow}
 
