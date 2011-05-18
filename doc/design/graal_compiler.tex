@@ -54,7 +54,7 @@ to\hsize{\vrule\kern3pt\vbox{\kern3pt
 \maketitle
 
 \abstract{
-The Graal compiler (simply referred to as \emph{the compiler} in the rest of this document) aims at improving C1X, the Java port of the HotSpot client compiler, both in terms of modularity and peak performance.
+The Graal compiler (simply referred to as \emph{the compiler} in the rest of this document) aims at improving upon C1X, the Java port of the HotSpot client compiler, both in terms of modularity and peak performance.
 The compiler should work with the Maxine VM and the HotSpot VM.
 This document contains information about the proposed design and strategy for developing the compiler.}
 
@@ -83,7 +83,7 @@ Every node is serializable and has an id that is unique within its graph.
 Every edge is classified as either a control flow edge (anti-dependency) or a data flow edge (dependency) and represented as a simple pointer from the source node to the target node.
 It is possible to replace a node with another node without traversing the full graph.
 The graph does not allow data flow edge cycles or control flow edge cycles.
-We achieve this by explicitely modelling loops (see Section~\ref{sec:loops}). 
+We achieve this by explicitly modeling loops (see Section~\ref{sec:loops}). 
 \item[Extensibility:]
 The compiler is extensible by allowing developers to add new compiler phases and new node subclasses without modifying the compiler's sources.
 A node has an abstract way of expressing its semantics and new compiler phases can ask compiler nodes for their properties and capabilities.
@@ -95,7 +95,7 @@ During the compilation, the nodes are replaced with more detailed nodes (e.g., t
 Compiler phases can choose whether they want to work on the earlier versions of the graph (e.g., escape analysis) or on later versions (e.g., null check elimination).
 \item[Generality:]
 The compiler does not require Java as its input.
-This is achieved by having a graph as the starting point of the compilation and not a Java bytecodes array.
+This is achieved by having a graph as the starting point of the compilation and not a Java bytecode array.
 Building the graph from the Java bytecodes must happen before giving a method to the compiler.
 This enables front-ends for different languages (e.g., Ruby or JavaScript) to provide their own graph.
 Also, there is no dependency on a specific back-end, but the output of the compiler is a graph that can then be converted to a different representation in a final compiler phase.
@@ -103,11 +103,11 @@ Also, there is no dependency on a specific back-end, but the output of the compi
 
 \section{Milestones}
 \label{sec:mile}
-The compiler is developed starting from the current C1X source code base.
-This helps us testing the compiler at every intermediate development step on a variety of Java benchmarks.
-We define the following development milestones and when they are considered to be achieved (see Section~\ref{sec:conclusions} for planned dates):
+The compiler is being developed starting from the current C1X source code base.
+This helps us test the compiler at every intermediate development step on a variety of Java benchmarks.
+We define the following development milestones (see Section~\ref{sec:conclusions} for planned dates):
 \begin{description}
-\item[M1:] We have a fully working Graal~VM version with a stripped down C1X compiler that does not perform any optimizations.
+\item[M1:] We have a fully working Graal~VM version with a stripped down C1X compiler that does not perform any optimization.
 \item[M2:] We modified the high-level intermediate representation to be based on the compiler graph data structure.
 \item[M3:] We have reimplemented and reenabled compiler optimizations in the compiler that previously existed in C1X.
 \item[M4:] We have reintegrated the new compiler into the Maxine VM and can use it as a Maxine VM bootstrapping compiler.
@@ -142,8 +142,8 @@ In order to support the goal of a modular compiler, the code will be divided int
 \section{Graph}
 
 The \emph{intermediate representation}~(IR) of the compiler is designed as a directed graph.
-The graph deals out ids for new nodes and can be queried for the node corresponding to a given id as well as for an unordered list of nodes of the graph.
-Graphs can manage side data structures, which will be automatically invalidated and lazily recomputed whenever the graph changes. Examples for side data structures are dominator trees and temporary schedules. These side data structures will usually be understood by more than one optimization.
+The graph allocates unique ids for new nodes and can be queried for the node corresponding to a given id as well as for an unordered list of nodes of the graph.
+Graphs can manage side data structures (e.g. dominator trees and temporary schedules), which will be automatically invalidated and lazily recomputed whenever the graph changes. These side data structures will usually be understood by more than one optimization.
 
 The nodes of the graph have the following properties:
 \begin{itemize}
@@ -332,7 +332,7 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 \end{figure}
 
 \subsection{Loop Phis}
-Data flow in loops is modelled with special phi nodes at the beginning and the end of the loop.
+Data flow in loops is modeled with special phi nodes at the beginning and the end of the loop.
 The \nodename{LoopEnd} instruction merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
 Listing~\ref{lst:loop} shows a simple counting loop that is used as an example in the rest of this section.
