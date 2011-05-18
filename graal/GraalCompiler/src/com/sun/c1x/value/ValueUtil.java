@@ -23,6 +23,7 @@
 package com.sun.c1x.value;
 
 import com.sun.c1x.ir.*;
+import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
 
 
@@ -73,7 +74,7 @@ public class ValueUtil {
     }
 
     public static boolean typeMismatch(Value x, Value y) {
-        return y == null || x.kind != y.kind;
+        return y == null || !Util.archKindsEqual(x, y);
     }
 
     public static boolean isDoubleWord(Value x) {
