@@ -91,10 +91,6 @@ public final class C1XOptions {
     public static boolean PrintAssumptions                   = ____;
     public static boolean QuietBailout                       = ____;
 
-    // all optimization settings
-    public static boolean OptBlockSkipping;
-    public static boolean OptControlFlow;
-
     // optimistic optimization settings
     public static boolean UseAssumptions                = true;
 
@@ -156,7 +152,6 @@ public final class C1XOptions {
 
         // Level 1 optimizations
         PhiLoopStores                   = l;
-        OptControlFlow                  = l;
 
         // Level 2 optimizations
         OptInline                       = ll;
@@ -164,6 +159,5 @@ public final class C1XOptions {
         // Level 3 optimizations
         UseStackMapTableLiveness        = lll;
         UseAssumptions                  = lll;
-        OptBlockSkipping                = lll;
     }
 }

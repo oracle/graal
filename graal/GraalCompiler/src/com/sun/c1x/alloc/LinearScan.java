@@ -2288,12 +2288,7 @@ public final class LinearScan {
         }
 
         printLir("After register number assignment", true);
-
         EdgeMoveOptimizer.optimize(ir.linearScanOrder());
-        if (C1XOptions.OptControlFlow) {
-            ControlFlowOptimizer.optimize(ir);
-        }
-
         printLir("After control flow optimization", false);
     }
 
