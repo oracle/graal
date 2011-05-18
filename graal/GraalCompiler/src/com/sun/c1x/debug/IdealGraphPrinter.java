@@ -63,6 +63,13 @@ public class IdealGraphPrinter {
     }
 
     /**
+     * Flushes any buffered output.
+     */
+    public void flush() {
+        stream.flush();
+    }
+
+    /**
      * Starts a new graph document.
      */
     public void begin() {
@@ -90,7 +97,7 @@ public class IdealGraphPrinter {
      */
     public void end() {
         stream.println("</graphDocument>");
-        stream.flush();
+        flush();
     }
 
     /**
