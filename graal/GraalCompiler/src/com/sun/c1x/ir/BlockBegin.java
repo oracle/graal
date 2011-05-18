@@ -98,7 +98,6 @@ public final class BlockBegin extends StateSplit {
         IsOnWorkList,
         WasVisited,
         ParserLoopHeader,
-        CriticalEdgeSplit,
         LinearScanLoopHeader,
         LinearScanLoopEnd;
 
@@ -458,14 +457,6 @@ public final class BlockBegin extends StateSplit {
                 newState.setupPhiForLocal(this, i);
             }
         }
-    }
-
-    public boolean isCriticalEdgeSplit() {
-        return checkBlockFlag(BlockFlag.CriticalEdgeSplit);
-    }
-
-    public void setCriticalEdgeSplit(boolean value) {
-        setBlockFlag(BlockFlag.CriticalEdgeSplit, value);
     }
 
     public boolean isExceptionEntry() {

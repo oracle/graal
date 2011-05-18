@@ -167,8 +167,6 @@ public class IR {
         // create new successor and mark it for special block order treatment
         BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), compilation.graph);
 
-        newSucc.setCriticalEdgeSplit(true);
-
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, false, compilation.graph);
         newSucc.appendNext(e, bci);

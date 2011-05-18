@@ -353,13 +353,6 @@ public final class ComputeLinearScanOrder {
         }
         curBit--;
 
-        // critical edge split blocks are preferred because then they have a greater
-        // probability to be completely empty
-        if (cur.isCriticalEdgeSplit()) {
-            weight |= (1 << curBit);
-        }
-        curBit--;
-
         // exceptions should not be thrown in normal control flow, so these blocks
         // are added as late as possible
         if (!(cur.end() instanceof Throw) && (singleSux == null || !(singleSux.end() instanceof Throw))) {
@@ -504,7 +497,6 @@ public final class ComputeLinearScanOrder {
                 TTY.print(String.format("%4d: B%02d    loop: %2d  depth: %2d", cur.linearScanNumber(), cur.blockID, cur.loopIndex(), cur.loopDepth()));
 
                 TTY.print(cur.isExceptionEntry() ? " ex" : "   ");
-                TTY.print(cur.isCriticalEdgeSplit() ? " ce" : "   ");
                 TTY.print(cur.isLinearScanLoopHeader() ? " lh" : "   ");
                 TTY.print(cur.isLinearScanLoopEnd() ? " le" : "   ");
 
