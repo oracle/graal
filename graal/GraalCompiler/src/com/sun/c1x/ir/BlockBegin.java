@@ -71,19 +71,7 @@ public final class BlockBegin extends StateSplit {
 
     public void setEnd(BlockEnd end) {
         assert end != null;
-        BlockEnd old = this.end();
-        if (old != end) {
-            if (old != null) {
-                // disconnect this block from its current successors
-                for (BlockBegin s : old.blockSuccessors()) {
-                    s.blockPredecessors().remove(this.end());
-                }
-            }
-            successors().set(super.successorCount() + SUCCESSOR_END, end);
-            for (BlockBegin s : end.blockSuccessors()) {
-                s.addPredecessor(end);
-            }
-        }
+        successors().set(super.successorCount() + SUCCESSOR_END, end);
     }
 
     private static final List<BlockBegin> NO_HANDLERS = Collections.emptyList();
@@ -93,7 +81,6 @@ public final class BlockBegin extends StateSplit {
      */
     public enum BlockFlag {
         StandardEntry,
-        ExceptionEntry,
         SubroutineEntry,
         BackwardBranchTarget,
         IsOnWorkList,
@@ -117,19 +104,12 @@ public final class BlockBegin extends StateSplit {
      */
     private int blockFlags;
 
-    /**
-     * The {@link BlockBegin} nodes for which this node is a successor.
-     */
-    private final List<BlockEnd> predecessors;
-
     private int depthFirstNumber;
     private int linearScanNumber;
     private int loopDepth;
     private int loopIndex;
 
     private BlockBegin dominator;
-    private List<BlockBegin> exceptionHandlerBlocks;
-    private List<FrameState> exceptionHandlerStates;
 
     // LIR block
     public LIRBlock lirBlock;
@@ -145,7 +125,6 @@ public final class BlockBegin extends StateSplit {
         this.blockID = blockID;
         depthFirstNumber = -1;
         linearScanNumber = -1;
-        predecessors = new ArrayList<BlockEnd>(2);
         loopIndex = -1;
         setBCI(bci);
     }
@@ -154,9 +133,13 @@ public final class BlockBegin extends StateSplit {
      * Gets the list of predecessors of this block.
      * @return the predecessor list
      */
-    public List<BlockEnd> blockPredecessors() {
-//      return Collections.unmodifiableList(predecessors);
-      return predecessors;
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public List<Instruction> blockPredecessors() {
+        if (predecessors().size() == 1 && predecessors().get(0) == graph().root()) {
+            return Collections.EMPTY_LIST;
+        } else {
+            return (List) Collections.unmodifiableList(predecessors());
+        }
     }
 
     /**
@@ -205,19 +188,6 @@ public final class BlockBegin extends StateSplit {
      */
     public int loopIndex() {
         return loopIndex;
-    }
-
-    /**
-     * Gets the exception handlers that cover one or more instructions of this basic block.
-     *
-     * @return the exception handlers
-     */
-    public List<BlockBegin> exceptionHandlerBlocks() {
-        return exceptionHandlerBlocks == null ? NO_HANDLERS : exceptionHandlerBlocks;
-    }
-
-    public List<FrameState> exceptionHandlerStates() {
-        return exceptionHandlerStates;
     }
 
     public void setDepthFirstNumber(int depthFirstNumber) {
@@ -288,10 +258,27 @@ public final class BlockBegin extends StateSplit {
         BlockBegin block;
         while ((block = queue.poll()) != null) {
             closure.apply(block);
-            queueBlocks(queue, block.exceptionHandlerBlocks(), mark);
+
+            Instruction inst = block;
+            ArrayList<BlockBegin> excBlocks = new ArrayList<BlockBegin>();
+            while (inst != null) {
+                if (inst instanceof Invoke) {
+                    excBlocks.add(((Invoke) inst).exceptionEdge());
+                } else if (inst instanceof Throw) {
+                    excBlocks.add(((Throw) inst).exceptionEdge());
+                }
+                inst = inst.next();
+            }
+            while (excBlocks.remove(null)) {
+                // nothing
+            }
+            if (excBlocks.size() > 0) {
+                queueBlocks(queue, excBlocks, mark);
+            }
+
             queueBlocks(queue, block.end().blockSuccessors(), mark);
             if (predecessors) {
-                queueBlockEnds(queue, block.predecessors, mark);
+                queueBlockEnds(queue, block.blockPredecessors(), mark);
             }
         }
     }
@@ -307,10 +294,10 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
-    private void queueBlockEnds(LinkedList<BlockBegin> queue, List<BlockEnd> list, IdentityHashMap<BlockBegin, BlockBegin> mark) {
+    private void queueBlockEnds(LinkedList<BlockBegin> queue, List<Instruction> list, IdentityHashMap<BlockBegin, BlockBegin> mark) {
         if (list != null) {
-            for (BlockEnd end : list) {
-                BlockBegin b = end.begin();
+            for (Instruction end : list) {
+                BlockBegin b = end.block();
                 if (!mark.containsKey(b)) {
                     queue.offer(b);
                     mark.put(b, b);
@@ -324,9 +311,27 @@ public final class BlockBegin extends StateSplit {
             mark.put(this, this);
             closure.apply(this);
             BlockEnd e = end();
-            if (exceptionHandlerBlocks != null) {
-                iterateReverse(mark, closure, exceptionHandlerBlocks);
+
+            Instruction inst = this;
+            ArrayList<BlockBegin> excBlocks = new ArrayList<BlockBegin>();
+            while (inst != null) {
+                if (inst instanceof Invoke) {
+                    excBlocks.add(((Invoke) inst).exceptionEdge());
+                } else if (inst instanceof Throw) {
+                    excBlocks.add(((Throw) inst).exceptionEdge());
+                }
+                inst = inst.next();
             }
+            while (excBlocks.remove(null)) {
+                // nothing
+            }
+            if (excBlocks.size() > 0) {
+                iterateReverse(mark, closure, excBlocks);
+            }
+
+//            if (exceptionHandlerBlocks != null) {
+//                iterateReverse(mark, closure, exceptionHandlerBlocks);
+//            }
             assert e != null : "block must have block end";
             iterateReverse(mark, closure, e.blockSuccessors());
         }
@@ -335,58 +340,6 @@ public final class BlockBegin extends StateSplit {
     private void iterateReverse(IdentityHashMap<BlockBegin, BlockBegin> mark, BlockClosure closure, List<BlockBegin> list) {
         for (int i = list.size() - 1; i >= 0; i--) {
             list.get(i).iterate(mark, closure);
-        }
-    }
-
-    /**
-     * Adds an exception handler that covers one or more instructions in this block.
-     *
-     * @param handler the entry block for the exception handler to add
-     */
-    public void addExceptionHandler(BlockBegin handler) {
-        assert handler != null && handler.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry);
-        if (exceptionHandlerBlocks == null) {
-            exceptionHandlerBlocks = new ArrayList<BlockBegin>(3);
-            exceptionHandlerBlocks.add(handler);
-        } else if (!exceptionHandlerBlocks.contains(handler)) {
-            exceptionHandlerBlocks.add(handler);
-        }
-    }
-
-    /**
-     * Adds a frame state that merges into the exception handler whose entry is this block.
-     *
-     * @param state the frame state at an instruction that raises an exception that can be caught by the exception
-     *            handler represented by this block
-     * @return the index of {@code state} in the list of frame states merging at this block (i.e. the frames states for
-     *         all instruction throwing an exception caught by this exception handler)
-     */
-    public int addExceptionState(FrameState state) {
-        assert checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry);
-        if (exceptionHandlerStates == null) {
-            exceptionHandlerStates = new ArrayList<FrameState>(4);
-        }
-        exceptionHandlerStates.add(state);
-        return exceptionHandlerStates.size() - 1;
-    }
-
-    /**
-     * Add a predecessor to this block.
-     * @param pred the predecessor to add
-     */
-    public void addPredecessor(BlockEnd pred) {
-        assert pred != null;
-        predecessors.add(pred);
-    }
-
-    /**
-     * Removes all occurrences of the specified block from the predecessor list of this block.
-     * @param pred the predecessor to remove
-     */
-    public void removePredecessor(BlockEnd pred) {
-        while (predecessors.remove(pred)) {
-            // the block may appear multiple times in the list
-            // XXX: this is not very efficient, consider Util.removeAllFromList
         }
     }
 
@@ -409,7 +362,7 @@ public final class BlockBegin extends StateSplit {
             FrameState duplicate = newState.duplicate(bci());
             assert duplicate.bci == bci() : "duplicate.bci=" + duplicate.bci + " my bci=" + bci();
 
-            if (C1XOptions.UseStackMapTableLiveness) {
+            if (C1XOptions.UseStackMapTableLiveness && method != null) {
                 // if a liveness map is available, use it to invalidate dead locals
                 CiBitMap[] livenessMap = method.livenessMap();
                 if (livenessMap != null && bci() >= 0) {
@@ -489,14 +442,6 @@ public final class BlockBegin extends StateSplit {
         setBlockFlag(BlockFlag.CriticalEdgeSplit, value);
     }
 
-    public boolean isExceptionEntry() {
-        return checkBlockFlag(BlockFlag.ExceptionEntry);
-    }
-
-    public void setExceptionEntry() {
-        setBlockFlag(BlockFlag.ExceptionEntry);
-    }
-
     public boolean isSubroutineEntry() {
         return checkBlockFlag(BlockFlag.SubroutineEntry);
     }
@@ -556,7 +501,6 @@ public final class BlockBegin extends StateSplit {
     public void copyBlockFlags(BlockBegin other) {
         copyBlockFlag(other, BlockBegin.BlockFlag.ParserLoopHeader);
         copyBlockFlag(other, BlockBegin.BlockFlag.SubroutineEntry);
-        copyBlockFlag(other, BlockBegin.BlockFlag.ExceptionEntry);
         copyBlockFlag(other, BlockBegin.BlockFlag.WasVisited);
     }
 
@@ -619,8 +563,12 @@ public final class BlockBegin extends StateSplit {
      * @return the number of predecessors
      */
     public int numberOfPreds() {
-//        assert predecessors.size() == predecessors().size();
-        return predecessors.size();
+        // ignore the graph root
+        if (predecessors().size() == 1 && predecessors().get(0) == graph().root()) {
+            return 0;
+        } else {
+            return predecessors().size();
+        }
     }
 
     /**
@@ -645,25 +593,16 @@ public final class BlockBegin extends StateSplit {
         return lirBlock;
     }
 
-    public int exceptionHandlerPco() {
-        return lirBlock == null ? 0 : lirBlock.exceptionHandlerPCO;
+    public int blockEntryPco() {
+        return lirBlock == null ? 0 : lirBlock.blockEntryPco;
     }
 
-    public void setExceptionHandlerPco(int codeOffset) {
-        lirBlock().exceptionHandlerPCO = codeOffset;
+    public void setBlockEntryPco(int codeOffset) {
+        lirBlock().blockEntryPco = codeOffset;
     }
 
-    public int numberOfExceptionHandlers() {
-        return exceptionHandlerBlocks == null ? 0 : exceptionHandlerBlocks.size();
-    }
-
-    public BlockBegin exceptionHandlerAt(int i) {
-        return exceptionHandlerBlocks.get(i);
-    }
-
-    public BlockEnd predAt(int j) {
-//        assert predecessors.get(j) == predecessors().get(j);
-        return predecessors.get(j);
+    public Instruction predAt(int j) {
+        return (Instruction) predecessors().get(j);
     }
 
     public int firstLirInstructionId() {
@@ -682,9 +621,8 @@ public final class BlockBegin extends StateSplit {
         lirBlock.lastLirInstructionID = lastLirInstructionId;
     }
 
-    public boolean isPredecessor(BlockEnd block) {
-//        assert predecessors.contains(block) == predecessors().contains(block);
-        return predecessors.contains(block);
+    public boolean isPredecessor(Instruction block) {
+        return predecessors().contains(block);
     }
 
     public void printWithoutPhis(LogStream out) {
@@ -694,9 +632,6 @@ public final class BlockBegin extends StateSplit {
 
         // print flags
         StringBuilder sb = new StringBuilder(8);
-        if (isExceptionEntry()) {
-            sb.append('E');
-        }
         if (isSubroutineEntry()) {
             sb.append('s');
         }
@@ -723,14 +658,6 @@ public final class BlockBegin extends StateSplit {
                 out.print(" B").print(successor.blockID);
             }
         }
-        // print exception handlers
-        if (!exceptionHandlers().isEmpty()) {
-            out.print(" (xhandlers");
-            for (BlockBegin handler : exceptionHandlerBlocks()) {
-                out.print(" B").print(handler.blockID);
-            }
-            out.print(')');
-        }
 
         // print dominator block
         if (dominator() != null) {
@@ -740,8 +667,8 @@ public final class BlockBegin extends StateSplit {
         // print predecessors
         if (!blockPredecessors().isEmpty()) {
             out.print(" pred:");
-            for (BlockEnd pred : blockPredecessors()) {
-                out.print(" B").print(pred.begin().blockID);
+            for (Instruction pred : blockPredecessors()) {
+                out.print(" B").print(pred.block().blockID);
             }
         }
     }
@@ -872,6 +799,35 @@ public final class BlockBegin extends StateSplit {
     @Override
     public String shortName() {
         return "BlockBegin #" + blockID;
+    }
+
+    /**
+     * Iterates over all successors of this block: successors of the end node and exception handler.
+     */
+    public void allSuccessorsDo(boolean backwards, BlockClosure closure) {
+        if (backwards) {
+            for (int i = numberOfSux() - 1; i >= 0; i--) {
+                closure.apply(suxAt(i));
+            }
+        } else {
+            for (int i = 0; i < numberOfSux(); i++) {
+                closure.apply(suxAt(i));
+            }
+        }
+        for (Instruction x = next(); x != null; x = x.next()) {
+            if (x instanceof Invoke && ((Invoke) x).exceptionEdge() != null) {
+                closure.apply(((Invoke) x).exceptionEdge());
+            } else if (x instanceof Throw && ((Throw) x).exceptionEdge() != null) {
+                closure.apply(((Throw) x).exceptionEdge());
+            }
+        }
+    }
+
+    public void verifyPredecessors() {
+        for (int i = 0; i < numberOfPreds(); i++) {
+            predAt(i);
+        }
+
     }
 
 

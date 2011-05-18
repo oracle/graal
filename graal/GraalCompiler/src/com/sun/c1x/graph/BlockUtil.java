@@ -22,12 +22,12 @@
  */
 package com.sun.c1x.graph;
 
+import java.util.*;
+
 import com.sun.c1x.ir.*;
 
 /**
  * The {@code BlockUtil} class contains a number of utilities for manipulating a CFG of basic blocks.
- *
- * @author Ben L. Titzer
  */
 public class BlockUtil {
 
@@ -36,11 +36,10 @@ public class BlockUtil {
      * @param block the block to remove from the graph
      */
     public static void disconnectFromGraph(BlockBegin block) {
-        for (BlockEnd p : block.blockPredecessors()) {
-            p.blockSuccessors().remove(block);
+        ArrayList<Instruction> preds = new ArrayList<Instruction>(block.blockPredecessors());
+        for (Instruction p : preds) {
+            p.block().end().blockSuccessors().remove(block);
         }
-        for (BlockBegin s : block.end().blockSuccessors()) {
-            s.blockPredecessors().remove(block);
-        }
+        block.end().clearSuccessors();
     }
 }

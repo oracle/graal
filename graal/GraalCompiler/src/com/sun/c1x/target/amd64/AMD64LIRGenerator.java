@@ -33,6 +33,9 @@ import com.sun.c1x.lir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
+import com.sun.cri.ri.RiType.*;
+import com.sun.cri.xir.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.
@@ -518,4 +521,23 @@ public class AMD64LIRGenerator extends LIRGenerator {
         assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
         lir.jump(x.defaultSuccessor());
     }
+
+    @Override
+    public void visitExceptionDispatch(ExceptionDispatch x) {
+        // TODO ls: this needs some more work...
+
+        RiType riType = x.handler().handler.catchType();
+        assert riType.isResolved();
+
+        XirArgument obj = toXirArgument(x.exception());
+        XirArgument clazz = toXirArgument(riType.getEncoding(Representation.ObjectHub));
+        XirSnippet snippet = xir.genInstanceOf(site(x), obj, clazz, riType);
+        CiValue result = emitXir(snippet, x, stateFor(x), null, true);
+
+        lir.cmp(Condition.EQ, result, CiConstant.TRUE);
+        lir.branch(Condition.EQ, CiKind.Boolean, x.catchSuccessor());
+
+        lir.jump(x.otherSuccessor());
+    }
+
 }

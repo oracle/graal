@@ -111,7 +111,7 @@ public final class GraphBuilder {
 
     private final Graph graph;
 
-    private final List<BlockBegin> newExceptionHandlers = new ArrayList<BlockBegin>();
+    private BlockBegin unwindBlock;
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -150,7 +150,7 @@ public final class GraphBuilder {
         // 1. create the start block
         ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
         BlockBegin startBlock = ir.startBlock;
-//        graph.root().setStart(startBlock);
+        graph.root().setStart(startBlock);
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(rootMethod);
@@ -159,9 +159,6 @@ public final class GraphBuilder {
         for (int i = 0; i < blockMap.blocks.size(); i++) {
             BlockMap.Block block = blockMap.blocks.get(i);
             BlockBegin blockBegin = new BlockBegin(block.startBci, ir.nextBlockNumber(), graph);
-            if (block.isExceptionEntry) {
-                blockBegin.setBlockFlag(BlockBegin.BlockFlag.ExceptionEntry);
-            }
             if (block.isLoopHeader) {
                 blockBegin.setBlockFlag(BlockBegin.BlockFlag.ParserLoopHeader);
             }
@@ -204,7 +201,6 @@ public final class GraphBuilder {
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber(), graph);
-            syncHandler.setExceptionEntry();
             syncHandler.setBlockFlag(BlockBegin.BlockFlag.IsOnWorkList);
             syncHandler.setBlockFlag(BlockBegin.BlockFlag.DefaultExceptionHandler);
 
@@ -262,69 +258,148 @@ public final class GraphBuilder {
         frameState.storeLocal(index, frameState.pop(kind));
     }
 
-    List<ExceptionHandler> handleException(Instruction x, int bci) {
+    private void handleException(Instruction x, int bci) {
         if (!hasHandler()) {
-            return ExceptionHandler.ZERO_HANDLERS;
+            return;
         }
 
         ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>();
 
-        FrameState state = frameState.create(bci);
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         // join with all potential exception handlers
         if (this.exceptionHandlers != null) {
             for (ExceptionHandler handler : this.exceptionHandlers) {
+                // if the handler covers this bytecode index, add it to the list
                 if (handler.covers(bci)) {
-                    // if the handler covers this bytecode index, add it to the list
-                    if (addExceptionHandler(exceptionHandlers, handler, state)) {
-                        // if the handler was a default handler, we are done
-                        return exceptionHandlers;
+                    ExceptionHandler newHandler = addExceptionHandler(handler, frameState);
+                    exceptionHandlers.add(newHandler);
+
+                    // stop when reaching catch all
+                    if (handler.isCatchAll()) {
+                        break;
                     }
                 }
             }
         }
 
-        return exceptionHandlers;
+        if (!exceptionHandlers.isEmpty()) {
+            BlockBegin successor;
+
+            ArrayList<BlockBegin> newBlocks = new ArrayList<BlockBegin>();
+
+            int current = exceptionHandlers.size() - 1;
+            if (exceptionHandlers.get(current).isCatchAll()) {
+                successor = exceptionHandlers.get(current).entryBlock();
+                current--;
+            } else {
+                if (unwindBlock == null) {
+                    unwindBlock = new BlockBegin(bci, ir.nextBlockNumber(), graph);
+                    Unwind unwind = new Unwind(null, false, graph);
+                    unwindBlock.appendNext(unwind, bci);
+                    unwindBlock.setEnd(unwind);
+                }
+                successor = unwindBlock;
+            }
+
+            for (; current >= 0; current--) {
+                ExceptionHandler handler = exceptionHandlers.get(current);
+
+                BlockBegin newSucc = null;
+                for (Instruction pred : successor.blockPredecessors()) {
+                    if (pred instanceof ExceptionDispatch) {
+                        ExceptionDispatch dispatch = (ExceptionDispatch) pred;
+                        if (dispatch.handler().handler == handler.handler) {
+                            newSucc = dispatch.begin();
+                            break;
+                        }
+                    }
+                }
+                if (newSucc != null) {
+                    successor = newSucc;
+                } else {
+                    BlockBegin dispatchEntry = new BlockBegin(handler.handlerBCI(), ir.nextBlockNumber(), graph);
+                    if (handler.handler.catchType().isResolved()) {
+                        ExceptionDispatch end = new ExceptionDispatch(null, handler.entryBlock(), null, handler, null, false, graph);
+                        end.setBlockSuccessor(0, successor);
+                        dispatchEntry.appendNext(end, handler.handlerBCI());
+                        dispatchEntry.setEnd(end);
+                    } else {
+                        Deoptimize deopt = new Deoptimize(graph, null);
+                        dispatchEntry.appendNext(deopt, bci);
+                        Goto end = new Goto(successor, null, false, graph);
+                        deopt.appendNext(end, bci);
+                        dispatchEntry.setEnd(end);
+                    }
+                    newBlocks.add(dispatchEntry);
+                    successor = dispatchEntry;
+                }
+            }
+
+            FrameState entryState = frameState.duplicateWithEmptyStack(bci);
+
+            BlockBegin entry = new BlockBegin(bci, ir.nextBlockNumber(), graph);
+            entry.setStateBefore(entryState);
+            ExceptionObject exception = new ExceptionObject(graph);
+            entry.appendNext(exception, bci);
+            FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
+            BlockEnd end = new Goto(successor, stateWithException, false, graph);
+            exception.appendNext(end, bci);
+            entry.setEnd(end);
+
+            if (x instanceof Invoke) {
+                ((Invoke) x).setExceptionEdge(entry);
+            } else {
+                ((Throw) x).setExceptionEdge(entry);
+            }
+
+            updateDispatchChain(end.blockSuccessor(0), stateWithException, bci);
+        }
+    }
+
+    private void updateDispatchChain(BlockBegin dispatchEntry, FrameStateAccess state, int bci) {
+        FrameState oldState = dispatchEntry.stateBefore();
+        if (oldState != null && dispatchEntry.predecessors().size() == 1) {
+            dispatchEntry.setStateBefore(null);
+            oldState.delete();
+        }
+        dispatchEntry.mergeOrClone(state, null);
+        FrameState mergedState = dispatchEntry.stateBefore();
+
+        if (dispatchEntry.next() instanceof ExceptionDispatch) {
+            // ordinary dispatch handler
+            ExceptionDispatch dispatch = (ExceptionDispatch) dispatchEntry.next();
+            dispatch.setStateAfter(mergedState.duplicate(bci));
+            dispatch.setException(mergedState.stackAt(0));
+            dispatch.catchSuccessor().setStateBefore(mergedState.duplicate(bci));
+            updateDispatchChain(dispatch.otherSuccessor(), mergedState, bci);
+        } else if (dispatchEntry.next() instanceof Deoptimize) {
+            // deoptimizing handler
+            Deoptimize deopt = (Deoptimize) dispatchEntry.next();
+            deopt.setStateBefore(mergedState.duplicate(bci));
+            dispatchEntry.end().setStateAfter(mergedState.duplicate(bci));
+            updateDispatchChain(dispatchEntry.end().blockSuccessor(0), mergedState, bci);
+        } else if (dispatchEntry.next() instanceof Unwind) {
+            // unwind handler
+            Unwind unwind = (Unwind) dispatchEntry.next();
+            unwind.setStateAfter(mergedState.duplicate(bci));
+            unwind.setException(mergedState.stackAt(0));
+        } else {
+            // synchronization or default exception handler, nothing to do
+        }
     }
 
     /**
      * Adds an exception handler to the {@linkplain BlockBegin#exceptionHandlerBlocks() list}
      * of exception handlers for the {@link #curBlock current block}.
-     *
-     * @param exceptionHandlers
-     * @param handler
-     * @param curScopeData
-     * @param curState the current state with empty stack
-     * @param scopeCount
-     * @return {@code true} if handler catches all exceptions (i.e. {@code handler.isCatchAll() == true})
      */
-    private boolean addExceptionHandler(ArrayList<ExceptionHandler> exceptionHandlers, ExceptionHandler handler, FrameState curState) {
+    private ExceptionHandler addExceptionHandler(ExceptionHandler handler, FrameStateAccess curState) {
         compilation.setHasExceptionHandlers();
 
         BlockBegin entry = handler.entryBlock();
-        FrameState entryState = entry.stateBefore();
-
-        assert entry.bci() == handler.handler.handlerBCI();
-        assert entryState == null || curState.locksSize() == entryState.locksSize() : "locks do not match : cur:" + curState.locksSize() + " entry:" + entryState.locksSize();
-
-        // exception handler starts with an empty expression stack
-        curState = curState.duplicateWithEmptyStack();
-
-        entry.mergeOrClone(curState, method());
-
-        // add current state for correct handling of phi functions
-        int phiOperand = entry.addExceptionState(curState);
-
-        // add entry to the list of exception handlers of this block
-        curBlock.addExceptionHandler(entry);
-
-        newExceptionHandlers.add(entry);
 
         // clone exception handler
         ExceptionHandler newHandler = new ExceptionHandler(handler);
-        newHandler.setPhiOperand(phiOperand);
-        exceptionHandlers.add(newHandler);
 
         // fill in exception handler subgraph lazily
         if (!entry.wasVisited()) {
@@ -336,9 +411,7 @@ public final class GraphBuilder {
             //
             //   http://www.cs.arizona.edu/projects/sumatra/hallofshame/java-async-race.html
         }
-
-        // stop when reaching catch all
-        return handler.isCatchAll();
+        return newHandler;
     }
 
     private void genLoadConstant(int cpi) {
@@ -973,7 +1046,7 @@ public final class GraphBuilder {
 
         if (x instanceof Invoke || x instanceof Throw) {
             // connect the instruction to any exception handlers
-            x.setExceptionHandlers(handleException(x, bci));
+            handleException(x, bci);
         }
 
         return x;
@@ -1011,7 +1084,6 @@ public final class GraphBuilder {
         frameState.initializeFrom(syncHandler.stateBefore());
 
         int bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
-        Value exception = appendWithoutOptimization(new ExceptionObject(graph), bci);
 
         assert lock != null;
         assert frameState.locksSize() > 0 && frameState.lockAt(frameState.locksSize() - 1) == lock;
@@ -1024,7 +1096,6 @@ public final class GraphBuilder {
         // exit the monitor
         genMonitorExit(lock, Instruction.SYNCHRONIZATION_ENTRY_BCI);
 
-        frameState.apush(exception);
         genThrow(bci);
         BlockEnd end = (BlockEnd) lastInstr;
         curBlock.setEnd(end);
@@ -1039,6 +1110,13 @@ public final class GraphBuilder {
     private void iterateAllBlocks() {
         BlockBegin b;
         while ((b = removeFromWorkList()) != null) {
+
+            // remove blocks that have no predecessors by the time it their bytecodes are parsed
+            if (b.blockPredecessors().size() == 0) {
+                b.setWasVisited(true);
+                continue;
+            }
+
             if (!b.wasVisited()) {
                 b.setWasVisited(true);
                 // now parse the block
@@ -1058,7 +1136,6 @@ public final class GraphBuilder {
 
         BlockBegin block = curBlock;
         BlockEnd end = null;
-        boolean pushException = block.isExceptionEntry() && block.next() == null;
         int prevBCI = bci;
         int endBCI = stream.endBCI();
         boolean blockStart = true;
@@ -1081,12 +1158,6 @@ public final class GraphBuilder {
             }
             // read the opcode
             int opcode = stream.currentBC();
-
-            // push an exception object onto the stack if we are parsing an exception handler
-            if (pushException) {
-                frameState.apush(append(new ExceptionObject(graph)));
-                pushException = false;
-            }
 
             traceState();
             traceInstruction(bci, stream, opcode, blockStart);
@@ -1120,14 +1191,6 @@ public final class GraphBuilder {
         FrameState stateAtEnd = frameState.create(bci());
         end.setStateAfter(stateAtEnd);
         curBlock.setEnd(end);
-
-        for (BlockBegin entry : newExceptionHandlers) {
-            // add back-edge from exception handler entry to this block
-            if (!entry.blockPredecessors().contains(curBlock.end())) {
-                entry.addPredecessor(curBlock.end());
-            }
-        }
-        newExceptionHandlers.clear();
 
         // propagate the state
         for (BlockBegin succ : end.blockSuccessors()) {

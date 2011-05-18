@@ -124,7 +124,7 @@ public class CFGPrinter {
      * @param printHIR if {@code true} the HIR for each instruction in the block will be printed
      * @param printLIR if {@code true} the LIR for each instruction in the block will be printed
      */
-    void printBlock(BlockBegin block, List<BlockBegin> successors, Iterable<BlockBegin> handlers, boolean printHIR, boolean printLIR) {
+    void printBlock(BlockBegin block, List<BlockBegin> successors, BlockBegin handler, boolean printHIR, boolean printLIR) {
         begin("block");
 
         out.print("name \"B").print(block.blockID).println('"');
@@ -132,8 +132,8 @@ public class CFGPrinter {
         out.print("to_bci ").println(block.end() == null ? -1 : block.end().bci());
 
         out.print("predecessors ");
-        for (BlockEnd pred : block.blockPredecessors()) {
-            out.print("\"B").print(pred.begin().blockID).print("\" ");
+        for (Instruction pred : block.blockPredecessors()) {
+            out.print("\"B").print(pred.block().blockID).print("\" ");
         }
         out.println();
 
@@ -144,15 +144,12 @@ public class CFGPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (BlockBegin handler : handlers) {
+        if (handler != null) {
             out.print("\"B").print(handler.blockID).print("\" ");
         }
         out.println();
 
         out.print("flags ");
-        if (block.isExceptionEntry()) {
-            out.print("\"ex\" ");
-        }
         if (block.isSubroutineEntry()) {
             out.print("\"sr\" ");
         }
@@ -587,7 +584,7 @@ public class CFGPrinter {
         startBlock.iteratePreOrder(new BlockClosure() {
             public void apply(BlockBegin block) {
                 List<BlockBegin> successors = block.end() != null ? block.end().blockSuccessors() : new ArrayList<BlockBegin>(0);
-                printBlock(block, successors, block.exceptionHandlerBlocks(), printHIR, printLIR);
+                printBlock(block, successors, block.exceptionEdge(), printHIR, printLIR);
             }
         });
         end("cfg");

@@ -25,7 +25,6 @@ package com.oracle.graal.graph.vis;
 import java.awt.Color;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.HashMap;
 import java.util.HashSet;
 
 import com.oracle.graal.graph.Graph;
@@ -130,49 +129,54 @@ public class GraphvizPrinter {
     }
 
     private void printNode(String name, String label, int ninputs, int nsuccessors) {
+        int minWidth = Math.min(label.length() / 3, 10);
+        minWidth = Math.max(minWidth, Math.max(ninputs + 1, nsuccessors + 1));
         out.println(name + "  [shape=plaintext,");
-        out.println("   label=< <TABLE BORDER=\"0\" CELLSPACING=\"0\"><TR><TD CELLPADDING=\"0\">");
-        out.println("    <TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
-        out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"predecessors\" BGCOLOR=\"rosybrown1\"></TD></TR></TABLE>");
-        out.println("    </TD><TD COLSPAN=\"2\" CELLPADDING=\"0\" ALIGN=\"RIGHT\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
+        out.println("   label=< <TABLE BORDER=\"0\" CELLSPACING=\"0\"><TR>");
 
-        if ((ninputs == 1 && nsuccessors == 1) || (ninputs == 0 && nsuccessors == 0)) {
-            out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
-        }
+        printPort("predecessors", "rosybrown1");
 
-        for (int i = 0; i < nsuccessors - ninputs; i++) {
-            out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
+        for (int i = 1; i < minWidth - ninputs; i++) {
+            printEmptyPort();
         }
 
         for (int i = 0; i < ninputs; i++) {
-            out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"in" + i + "\" BGCOLOR=\"lightgrey\"></TD>");
+            printPort("in" + i, "lightgrey");
         }
 
         label = label.replace("&", "&amp;");
         label = label.replace("<", "&lt;");
         label = label.replace(">", "&gt;");
         label = label.replace("\"", "&quot;");
-        out.println("    </TR></TABLE></TD></TR><TR><TD BORDER=\"1\" COLSPAN=\"3\" BGCOLOR=\"" + NODE_BGCOLOR_STRING + "\">" + label + "</TD></TR>");
-        out.println("    <TR><TD COLSPAN=\"2\" CELLPADDING=\"0\" ALIGN=\"RIGHT\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
+        out.println("    </TR><TR><TD BORDER=\"1\" COLSPAN=\"" + minWidth + "\" BGCOLOR=\"" + NODE_BGCOLOR_STRING + "\">" + label + "</TD></TR><TR>");
 
         for (int i = 0; i < nsuccessors; i++) {
-            out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"succ" + i + "\" BGCOLOR=\"rosybrown1\"></TD>");
+            printPort("succ" + i, "rosybrown1");
         }
 
-        for (int i = 0; i < ninputs - nsuccessors; i++) {
-            out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
+        for (int i = 1; i < minWidth - nsuccessors; i++) {
+            printEmptyPort();
         }
 
-        if ((ninputs == 1 && nsuccessors == 1) || (ninputs == 0 && nsuccessors == 0)) {
-            out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\"></TD>");
-        }
+        printPort("usages", "lightgrey");
 
-        out.println("    </TR></TABLE></TD><TD CELLPADDING=\"0\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR>");
-        out.println("    <TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"usages\" BGCOLOR=\"lightgrey\"></TD></TR></TABLE></TD></TR></TABLE>>]; ");
+        out.println("    </TR></TABLE>>]; ");
+    }
+
+    private void printPort(String name, String color) {
+        out.print("    <TD CELLPADDING=\"0\" WIDTH=\"15\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR><TD WIDTH=\"15\" HEIGHT=\"5\" PORT=\"");
+        out.print(name);
+        out.print("\" BGCOLOR=\"");
+        out.print(color);
+        out.println("\"></TD></TR></TABLE></TD>");
+    }
+
+    private void printEmptyPort() {
+        out.print("    <TD CELLPADDING=\"0\" WIDTH=\"15\"><TABLE BORDER=\"0\" CELLSPACING=\"2\" CELLPADDING=\"0\"><TR><TD WIDTH=\"15\" HEIGHT=\"5\"></TD></TR></TABLE></TD>");
     }
 
     private void printControlEdge(int from, int fromPort, int to) {
-        out.println("n" + from + ":succ" + fromPort + " -> n" + to + ":predecessors:n [color=red, weight=10];");
+        out.println("n" + from + ":succ" + fromPort + " -> n" + to + ":predecessors:n [color=red, weight=2];");
     }
 
     private void printDataEdge(int from, int fromPort, int to) {

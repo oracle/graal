@@ -31,10 +31,6 @@ import com.sun.cri.ci.*;
 
 /**
  * This class represents debugging and deoptimization information attached to a LIR instruction.
- *
- * @author Marcelo Cintra
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
  */
 public class LIRDebugInfo {
 
@@ -43,27 +39,18 @@ public class LIRDebugInfo {
     }
 
     public final FrameState state;
-    public final List<ExceptionHandler> exceptionHandlers;
+    public final BlockBegin exceptionEdge;
     public CiDebugInfo debugInfo;
 
-    public LIRDebugInfo(FrameState state, List<ExceptionHandler> exceptionHandlers) {
+    public LIRDebugInfo(FrameState state, BlockBegin exceptionEdge) {
         assert state != null;
         this.state = state;
-        this.exceptionHandlers = exceptionHandlers;
+        this.exceptionEdge = exceptionEdge;
     }
 
     private LIRDebugInfo(LIRDebugInfo info) {
         this.state = info.state;
-
-        // deep copy of exception handlers
-        if (info.exceptionHandlers != null) {
-            this.exceptionHandlers = new ArrayList<ExceptionHandler>(info.exceptionHandlers.size());
-            for (ExceptionHandler h : info.exceptionHandlers) {
-                this.exceptionHandlers.add(new ExceptionHandler(h));
-            }
-        } else {
-            this.exceptionHandlers = null;
-        }
+        this.exceptionEdge = info.exceptionEdge;
     }
 
     public LIRDebugInfo copy() {

@@ -66,7 +66,7 @@ final class EdgeMoveOptimizer {
         for (int i = blockList.size() - 1; i >= 1; i--) {
             BlockBegin block = blockList.get(i);
 
-            if (block.numberOfPreds() > 1 && !block.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
+            if (block.numberOfPreds() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);
             }
             if (block.numberOfSux() == 2) {
@@ -122,11 +122,10 @@ final class EdgeMoveOptimizer {
 
         int numPreds = block.numberOfPreds();
         assert numPreds > 1 : "do not call otherwise";
-        assert !block.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry) : "exception handlers not allowed";
 
         // setup a list with the LIR instructions of all predecessors
         for (int i = 0; i < numPreds; i++) {
-            BlockBegin pred = block.predAt(i).begin();
+            BlockBegin pred = block.predAt(i).block();
             List<LIRInstruction> predInstructions = pred.lir().instructionsList();
 
             if (pred.numberOfSux() != 1) {
@@ -231,8 +230,7 @@ final class EdgeMoveOptimizer {
                 // the same blocks.
                 return;
             }
-            assert sux.predAt(0).begin() == block : "invalid control flow";
-            assert !sux.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry) : "exception handlers not allowed";
+            assert sux.predAt(0).block() == block : "invalid control flow";
 
             // ignore the label at the beginning of the block
             List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());

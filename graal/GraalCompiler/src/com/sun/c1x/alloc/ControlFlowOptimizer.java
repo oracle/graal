@@ -101,9 +101,7 @@ final class ControlFlowOptimizer {
     // must always end with an unconditional branch to this successor
     private boolean canDeleteBlock(BlockBegin block) {
         if (block.numberOfSux() != 1 ||
-            block.numberOfExceptionHandlers() != 0 ||
             block == ir.startBlock ||
-            block.isExceptionEntry() ||
             block.suxAt(0) == block) {
             return false;
         }
@@ -138,8 +136,8 @@ final class ControlFlowOptimizer {
                 }
 
                 // update the block references in any branching LIR instructions
-                for (BlockEnd pred : block.blockPredecessors()) {
-                    for (LIRInstruction instr : pred.begin().lir().instructionsList()) {
+                for (Instruction pred : block.blockPredecessors()) {
+                    for (LIRInstruction instr : pred.block().lir().instructionsList()) {
                         if (instr instanceof LIRBranch) {
                             ((LIRBranch) instr).substitute(block, newTarget);
                         } else if (instr instanceof LIRTableSwitch) {
@@ -228,7 +226,7 @@ final class ControlFlowOptimizer {
                 CiValue returnOpr = ((LIROp1) curLastOp).operand();
 
                 for (int j = block.numberOfPreds() - 1; j >= 0; j--) {
-                    BlockBegin pred = block.predAt(j).begin();
+                    BlockBegin pred = block.predAt(j).block();
                     List<LIRInstruction> predInstructions = pred.lir().instructionsList();
                     LIRInstruction predLastOp = predInstructions.get(predInstructions.size() - 1);
 
@@ -263,8 +261,8 @@ final class ControlFlowOptimizer {
                 assert code.contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
 
-            for (BlockEnd pred : block.blockPredecessors()) {
-                assert code.contains(pred.begin()) : "missing predecessor from: " + block + "to: " + pred.begin();
+            for (Instruction pred : block.blockPredecessors()) {
+                assert code.contains(pred.block()) : "missing predecessor from: " + block + "to: " + pred.block();
             }
         }
 

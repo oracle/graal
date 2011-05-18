@@ -28,8 +28,6 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code LIRBlock} class definition.
- *
- * @author Ben L. Titzer
  */
 public final class LIRBlock {
 
@@ -70,7 +68,7 @@ public final class LIRBlock {
 
     public int firstLirInstructionID;
     public int lastLirInstructionID;
-    public int exceptionHandlerPCO;
+    public int blockEntryPco;
 
     public LIRList lir() {
         return lir;

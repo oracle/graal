@@ -28,18 +28,18 @@ import static java.lang.reflect.Modifier.*;
 import java.util.*;
 
 import com.sun.c1x.*;
-import com.sun.c1x.alloc.Interval.*;
+import com.sun.c1x.alloc.Interval.RegisterBinding;
+import com.sun.c1x.alloc.Interval.RegisterPriority;
+import com.sun.c1x.alloc.Interval.SpillState;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
-import com.sun.c1x.ir.BlockBegin.BlockFlag;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.lir.LIRInstruction.OperandMode;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
-import com.sun.c1x.value.FrameState.PhiProcedure;
 import com.sun.c1x.value.FrameState.ValueProcedure;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -599,17 +599,6 @@ public final class LinearScan {
             final CiBitMap liveGen = new CiBitMap(liveSize);
             final CiBitMap liveKill = new CiBitMap(liveSize);
 
-            if (block.isExceptionEntry()) {
-                // Phi functions at the begin of an exception handler are
-                // implicitly defined (= killed) at the beginning of the block.
-                block.stateBefore().forEachLivePhi(block, new PhiProcedure() {
-                    public boolean doPhi(Phi phi) {
-                        liveKill.set(operandNumber(phi.operand()));
-                        return true;
-                    }
-                });
-            }
-
             List<LIRInstruction> instructions = block.lir().instructionsList();
             int numInst = instructions.size();
 
@@ -773,8 +762,7 @@ public final class LinearScan {
 
                 // liveOut(block) is the union of liveIn(sux), for successors sux of block
                 int n = block.numberOfSux();
-                int e = block.numberOfExceptionHandlers();
-                if (n + e > 0) {
+                if (n > 0) {
                     // block has successors
                     if (n > 0) {
                         liveOut.setFrom(block.suxAt(0).lirBlock.liveIn);
@@ -783,9 +771,6 @@ public final class LinearScan {
                         }
                     } else {
                         liveOut.clearAll();
-                    }
-                    for (int j = 0; j < e; j++) {
-                        liveOut.setUnion(block.exceptionHandlerAt(j).lirBlock.liveIn);
                     }
 
                     if (!lirBlock.liveOut.isSame(liveOut)) {
@@ -1282,19 +1267,19 @@ public final class LinearScan {
             } // end of instruction iteration
 
             // (tw) Make sure that no spill store optimization is applied for phi instructions that flow into exception handlers.
-            if (block.isExceptionEntry()) {
-                FrameState stateBefore = block.stateBefore();
-                stateBefore.forEachLivePhi(block, new PhiProcedure() {
-                    @Override
-                    public boolean doPhi(Phi phi) {
-                        Interval interval = intervalFor(phi.operand());
-                        if (interval != null) {
-                            interval.setSpillState(SpillState.NoOptimization);
-                        }
-                        return true;
-                    }
-                });
-            }
+//            if (block.isExceptionEntry()) {
+//                FrameState stateBefore = block.stateBefore();
+//                stateBefore.forEachLivePhi(block, new PhiProcedure() {
+//                    @Override
+//                    public boolean doPhi(Phi phi) {
+//                        Interval interval = intervalFor(phi.operand());
+//                        if (interval != null) {
+//                            interval.setSpillState(SpillState.NoOptimization);
+//                        }
+//                        return true;
+//                    }
+//                });
+//            }
 
         } // end of block iteration
 
@@ -1596,7 +1581,7 @@ public final class LinearScan {
                 // may have be more than one predecessor but it will be guaranteed
                 // that all predecessors will be the same.
                 for (int i = 0; i < toBlock.numberOfPreds(); i++) {
-                    assert fromBlock == toBlock.predAt(i).begin() : "all critical edges must be broken";
+                    assert fromBlock == toBlock.predAt(i).block() : "all critical edges must be broken";
                 }
             }
 
@@ -1619,7 +1604,7 @@ public final class LinearScan {
             BlockBegin block = blockAt(i);
 
             // check if block has only one predecessor and only one successor
-            if (block.numberOfPreds() == 1 && block.numberOfSux() == 1 && block.numberOfExceptionHandlers() == 0 && !block.isExceptionEntry()) {
+            if (block.numberOfPreds() == 1 && block.numberOfSux() == 1) {
                 List<LIRInstruction> instructions = block.lir().instructionsList();
                 assert instructions.get(0).code == LIROpcode.Label : "block must start with label";
                 assert instructions.get(instructions.size() - 1).code == LIROpcode.Branch : "block with successors must end with branch";
@@ -1627,7 +1612,7 @@ public final class LinearScan {
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    BlockBegin pred = block.predAt(0).begin();
+                    BlockBegin pred = block.predAt(0).block();
                     BlockBegin sux = block.suxAt(0);
 
                     // prevent optimization of two consecutive blocks
@@ -1671,191 +1656,6 @@ public final class LinearScan {
                             moveResolver.resolveAndAppendMoves();
                         }
                     }
-                }
-            }
-        }
-    }
-
-    void resolveExceptionEntry(BlockBegin block, CiValue operand, MoveResolver moveResolver) {
-        if (intervalFor(operand) == null) {
-            // if a phi function is never used, no interval is created . ignore this
-            return;
-        }
-
-        Interval interval = intervalAtBlockBegin(block, operand);
-        CiValue location = interval.location();
-
-        if (location.isRegister() && interval.alwaysInMemory()) {
-            // the interval is split to get a short range that is located on the stack
-            // in the following two cases:
-            // * the interval started in memory (e.g. method parameter), but is currently in a register
-            // this is an optimization for exception handling that reduces the number of moves that
-            // are necessary for resolving the states when an exception uses this exception handler
-            // * the interval would be on the fpu stack at the begin of the exception handler
-            // this is not allowed because of the complicated fpu stack handling on Intel
-
-            // range that will be spilled to memory
-            int fromOpId = block.firstLirInstructionId();
-            int toOpId = fromOpId + 1; // short live range of length 1
-            assert interval.from() <= fromOpId && interval.to() >= toOpId : "no split allowed between exception entry and first instruction";
-
-            if (interval.from() != fromOpId) {
-                // the part before fromOpId is unchanged
-                interval = interval.split(fromOpId, this);
-                interval.assignLocation(location);
-            }
-            assert interval.from() == fromOpId : "must be true now";
-
-            Interval spilledPart = interval;
-            if (interval.to() != toOpId) {
-                // the part after toOpId is unchanged
-                spilledPart = interval.splitFromStart(toOpId, this);
-                moveResolver.addMapping(spilledPart, interval);
-            }
-            assignSpillSlot(spilledPart);
-
-            assert spilledPart.from() == fromOpId && spilledPart.to() == toOpId : "just checking";
-        }
-    }
-
-    void resolveExceptionEntry(final BlockBegin block, final MoveResolver moveResolver) {
-        assert block.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry) : "should not call otherwise";
-        assert moveResolver.checkEmpty();
-
-        // visit all registers where the liveIn bit is set
-        for (int operandNum = block.lirBlock.liveIn.nextSetBit(0); operandNum >= 0; operandNum = block.lirBlock.liveIn.nextSetBit(operandNum + 1)) {
-            resolveExceptionEntry(block, operands.operandFor(operandNum), moveResolver);
-        }
-
-        // the liveIn bits are not set for phi functions of the xhandler entry, so iterate them separately
-        block.stateBefore().forEachLivePhi(block, new PhiProcedure() {
-            public boolean doPhi(Phi phi) {
-                resolveExceptionEntry(block, phi.operand(), moveResolver);
-                return true;
-            }
-        });
-
-        if (moveResolver.hasMappings()) {
-            // insert moves after first instruction
-            moveResolver.setInsertPosition(block.lir(), 0);
-            moveResolver.resolveAndAppendMoves();
-        }
-    }
-
-    void resolveExceptionEdge(ExceptionHandler handler, int throwingOpId, CiValue operand, Phi phi, MoveResolver moveResolver) {
-        if (intervalFor(operand) == null) {
-            // if a phi function is never used, no interval is created . ignore this
-            return;
-        }
-
-        // the computation of toInterval is equal to resolveCollectMappings,
-        // but fromInterval is more complicated because of phi functions
-        BlockBegin toBlock = handler.entryBlock();
-        Interval toInterval = intervalAtBlockBegin(toBlock, operand);
-
-        if (phi != null) {
-            // phi function of the exception entry block
-            // no moves are created for this phi function in the LIRGenerator, so the
-            // interval at the throwing instruction must be searched using the operands
-            // of the phi function
-            Value fromValue = phi.inputAt(handler.phiOperand());
-            Constant con = null;
-            if (fromValue instanceof Constant) {
-                con = (Constant) fromValue;
-            }
-            if (con != null && (con.operand().isIllegal() || con.operand().isConstant())) {
-                // unpinned constants may have no register, so add mapping from constant to interval
-                moveResolver.addMapping(con.asConstant(), toInterval);
-            } else {
-                // search split child at the throwing opId
-                Interval fromInterval = intervalAtOpId(fromValue.operand(), throwingOpId);
-                if (fromInterval != toInterval) {
-                    moveResolver.addMapping(fromInterval, toInterval);
-                    // with phi functions it can happen that the same fromValue is used in
-                    // multiple mappings, so notify move-resolver that this is allowed
-                    moveResolver.setMultipleReadsAllowed();
-                }
-            }
-        } else {
-            // no phi function, so use regNum also for fromInterval
-            // search split child at the throwing opId
-            Interval fromInterval = intervalAtOpId(operand, throwingOpId);
-            if (fromInterval != toInterval) {
-                // optimization to reduce number of moves: when toInterval is on stack and
-                // the stack slot is known to be always correct, then no move is necessary
-                if (!fromInterval.alwaysInMemory() || fromInterval.spillSlot() != toInterval.location()) {
-                    moveResolver.addMapping(fromInterval, toInterval);
-                }
-            }
-        }
-    }
-
-    void resolveExceptionEdge(final ExceptionHandler handler, final int throwingOpId, final MoveResolver moveResolver) {
-        if (C1XOptions.TraceLinearScanLevel >= 4) {
-            TTY.println("resolving exception handler B%d: throwingOpId=%d", handler.entryBlock().blockID, throwingOpId);
-        }
-
-        assert moveResolver.checkEmpty();
-        assert handler.lirOpId() == -1 : "already processed this xhandler";
-        handler.setLirOpId(throwingOpId);
-        assert handler.entryCode() == null : "code already present";
-
-        // visit all registers where the liveIn bit is set
-        BlockBegin block = handler.entryBlock();
-        for (int operandNum = block.lirBlock.liveIn.nextSetBit(0); operandNum >= 0; operandNum = block.lirBlock.liveIn.nextSetBit(operandNum + 1)) {
-            resolveExceptionEdge(handler, throwingOpId, operands.operandFor(operandNum), null, moveResolver);
-        }
-
-        // the liveIn bits are not set for phi functions of the xhandler entry, so iterate them separately
-        block.stateBefore().forEachLivePhi(block, new PhiProcedure() {
-            public boolean doPhi(Phi phi) {
-                resolveExceptionEdge(handler, throwingOpId, phi.operand(), phi, moveResolver);
-                return true;
-            }
-        });
-
-        if (moveResolver.hasMappings()) {
-            LIRList entryCode = new LIRList(gen);
-            moveResolver.setInsertPosition(entryCode, 0);
-            moveResolver.resolveAndAppendMoves();
-
-            entryCode.jump(handler.entryBlock());
-            handler.setEntryCode(entryCode);
-        }
-    }
-
-    void resolveExceptionHandlers() {
-        MoveResolver moveResolver = new MoveResolver(this);
-        //LIRVisitState visitor = new LIRVisitState();
-        int numBlocks = blockCount();
-
-        int i;
-        for (i = 0; i < numBlocks; i++) {
-            BlockBegin block = blockAt(i);
-            if (block.checkBlockFlag(BlockFlag.ExceptionEntry)) {
-                resolveExceptionEntry(block, moveResolver);
-            }
-        }
-
-        for (i = 0; i < numBlocks; i++) {
-            BlockBegin block = blockAt(i);
-            LIRList ops = block.lir();
-            int numOps = ops.length();
-
-            // iterate all instructions of the block. skip the first because it is always a label
-            assert !ops.at(0).hasOperands() : "first operation must always be a label";
-            for (int j = 1; j < numOps; j++) {
-                LIRInstruction op = ops.at(j);
-                int opId = op.id;
-
-                if (opId != -1 && op.info != null) {
-                    // visit operation to collect all operands
-                    for (ExceptionHandler handler : op.exceptionEdges()) {
-                        resolveExceptionEdge(handler, opId, moveResolver);
-                    }
-
-                } else if (C1XOptions.DetailedAsserts) {
-                    assert op.exceptionEdges().size() == 0 : "missed exception handler";
                 }
             }
         }
@@ -2172,13 +1972,11 @@ public final class LinearScan {
 
             if (op.info != null) {
                 // exception handling
-                if (compilation.hasExceptionHandlers()) {
-                    for (ExceptionHandler handler : op.exceptionEdges()) {
-                        if (handler.entryCode() != null) {
-                            assignLocations(handler.entryCode().instructionsList(), null);
-                        }
-                    }
-                }
+//                if (compilation.hasExceptionHandlers()) {
+//                    if (op.exceptionEdge() != null && op.exceptionEdge().lir() != null) {
+//                        assignLocations(op.exceptionEdge().lir().instructionsList(), iw);
+//                    }
+//                }
 
                 // compute reference map and debug information
                 computeDebugInfo(iw, op);
@@ -2252,9 +2050,6 @@ public final class LinearScan {
         }
 
         resolveDataFlow();
-        if (compilation.hasExceptionHandlers()) {
-            resolveExceptionHandlers();
-        }
 
         if (C1XOptions.PrintTimers) {
             C1XTimers.RESOLUTION.stop();

@@ -266,9 +266,6 @@ public final class C1XCompilation {
             // generate code for slow cases
             lirAssembler.emitLocalStubs();
 
-            // generate exception adapters
-            lirAssembler.emitExceptionEntries();
-
             // generate deoptimization stubs
             ArrayList<DeoptimizationStub> deoptimizationStubs = lirGenerator.deoptimizationStubs();
             if (deoptimizationStubs != null) {

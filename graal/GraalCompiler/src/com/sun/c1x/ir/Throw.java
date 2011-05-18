@@ -36,7 +36,8 @@ public final class Throw extends BlockEnd {
     private static final int INPUT_EXCEPTION = 0;
     private static final int INPUT_STATE_BEFORE = 1;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_EXCEPTION_EDGE = 0;
 
     @Override
     protected int inputCount() {
@@ -68,6 +69,19 @@ public final class Throw extends BlockEnd {
 
     public FrameState setStateBefore(FrameState n) {
         return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    }
+
+    /**
+     * The entry to the exception dispatch chain for this throw.
+     * TODO ls: this needs more cleanup - throw should either unwind or jump to the exception dispatch chain
+     */
+    @Override
+    public BlockBegin exceptionEdge() {
+        return (BlockBegin) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
+    }
+
+    public BlockBegin setExceptionEdge(BlockBegin n) {
+        return (BlockBegin) successors().set(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE, n);
     }
 
     /**

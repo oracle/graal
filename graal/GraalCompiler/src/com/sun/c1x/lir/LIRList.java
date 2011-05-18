@@ -411,9 +411,6 @@ public final class LIRList {
         TTY.print("B%d ", x.blockID);
 
         // print flags
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
-            TTY.print("ex ");
-        }
         if (x.checkBlockFlag(BlockBegin.BlockFlag.SubroutineEntry)) {
             TTY.print("jsr ");
         }
@@ -434,7 +431,7 @@ public final class LIRList {
         if (x.numberOfPreds() > 0) {
             TTY.print("preds: ");
             for (int i = 0; i < x.numberOfPreds(); i++) {
-                TTY.print("B%d ", x.predAt(i).begin().blockID);
+                TTY.print("B%d ", x.predAt(i).block().blockID);
             }
         }
 
@@ -442,14 +439,6 @@ public final class LIRList {
             TTY.print("sux: ");
             for (int i = 0; i < x.numberOfSux(); i++) {
                 TTY.print("B%d ", x.suxAt(i).blockID);
-            }
-        }
-
-        // print exception handlers
-        if (x.numberOfExceptionHandlers() > 0) {
-            TTY.print("xhandler: ");
-            for (int i = 0; i < x.numberOfExceptionHandlers(); i++) {
-                TTY.print("B%d ", x.exceptionHandlerAt(i).blockID);
             }
         }
 

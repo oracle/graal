@@ -32,11 +32,11 @@ import com.sun.cri.ci.*;
  */
 public abstract class StateSplit extends Instruction {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_STATE_AFTER = 0;
-    private static final int INPUT_STATE_BEFORE = 1;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_STATE_BEFORE = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_STATE_AFTER = 0;
 
     @Override
     protected int inputCount() {
@@ -51,28 +51,24 @@ public abstract class StateSplit extends Instruction {
     /**
      * The state for this instruction.
      */
-     @Override
-    public FrameState stateAfter() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
-    }
-
-    public FrameState setStateAfter(FrameState n) {
-        if (n != null && this instanceof BlockBegin) {
-            Exception e = new Exception();
-            e.printStackTrace();
-        }
-        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
-    }
-
-    /**
-     * The state for this instruction.
-     */
     public FrameState stateBefore() {
         return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
     }
 
     public FrameState setStateBefore(FrameState n) {
         return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
+    }
+
+    /**
+     * The state for this instruction.
+     */
+     @Override
+    public FrameState stateAfter() {
+        return (FrameState) successors().get(super.successorCount() + SUCCESSOR_STATE_AFTER);
+    }
+
+    public FrameState setStateAfter(FrameState n) {
+        return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
     }
 
     /**

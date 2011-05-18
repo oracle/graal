@@ -42,4 +42,6 @@ public interface FrameStateAccess {
 
     Value stackAt(int i);
 
+    FrameState duplicateWithEmptyStack(int bci);
+
 }

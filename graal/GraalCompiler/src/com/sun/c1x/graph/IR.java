@@ -185,55 +185,16 @@ public class IR {
         // link predecessor to new block
         source.end().substituteSuccessor(target, newSucc);
 
-        // The ordering needs to be the same, so remove the link that the
-        // set_end call above added and substitute the new_sux for this
-        // block.
-        target.removePredecessor(newSucc.end());
-
-        // the successor could be the target of a switch so it might have
-        // multiple copies of this predecessor, so substitute the new_sux
-        // for the first and delete the rest.
-        List<BlockEnd> list = target.blockPredecessors();
-        int x = list.indexOf(source.end());
-        list.set(x, newSucc.end());
-        newSucc.addPredecessor(source.end());
-        Iterator<BlockEnd> iterator = list.iterator();
-        while (iterator.hasNext()) {
-            if (iterator.next() == source.end()) {
-                iterator.remove();
-                newSucc.addPredecessor(source.end());
-            }
-        }
         return newSucc;
     }
 
     public void replaceBlock(BlockBegin oldBlock, BlockBegin newBlock) {
-        assert !oldBlock.isExceptionEntry() : "cannot replace exception handler blocks (yet)";
-        for (BlockBegin succ : oldBlock.end().blockSuccessors()) {
-            succ.removePredecessor(oldBlock.end());
-        }
-        for (BlockEnd pred : oldBlock.blockPredecessors()) {
+        List<Instruction> predecessors = new ArrayList<Instruction>(oldBlock.blockPredecessors());
+        for (Instruction pred : predecessors) {
             // substitute the new successor for this block in each predecessor
-            pred.substituteSuccessor(oldBlock, newBlock);
-            // and add each predecessor to the successor
-            newBlock.addPredecessor(pred);
+            pred.block().end().substituteSuccessor(oldBlock, newBlock);
         }
-        // this block is now disconnected; remove all its incoming and outgoing edges
-//        oldBlock.blockPredecessors().clear();
-//        oldBlock.end().successors().clear();
-    }
-
-    /**
-     * Disconnects the specified block from all other blocks.
-     * @param block the block to remove from the graph
-     */
-    public void disconnectFromGraph(BlockBegin block) {
-        for (BlockEnd p : block.blockPredecessors()) {
-            p.blockSuccessors().remove(block);
-        }
-        for (BlockBegin s : block.end().blockSuccessors()) {
-            s.blockPredecessors().remove(block);
-        }
+        oldBlock.end().clearSuccessors();
     }
 
     public int nextBlockNumber() {

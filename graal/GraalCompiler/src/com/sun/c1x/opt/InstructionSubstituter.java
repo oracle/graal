@@ -42,11 +42,6 @@ public final class InstructionSubstituter implements BlockClosure, ValueClosure 
 
     public void apply(BlockBegin block) {
         Instruction last = null;
-        if (block.exceptionHandlerStates() != null) {
-            for (FrameState s : block.exceptionHandlerStates()) {
-                s.inputValuesDo(this);
-            }
-        }
         for (Instruction n = block; n != null; n = last.next()) {
             n.allValuesDo(this);
             if (n.subst != null && last != null) {

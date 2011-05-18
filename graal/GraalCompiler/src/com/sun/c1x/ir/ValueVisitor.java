@@ -68,4 +68,6 @@ public abstract class ValueVisitor {
     public abstract void visitTableSwitch(TableSwitch i);
     public abstract void visitThrow(Throw i);
     public abstract void visitDeoptimize(Deoptimize deoptimize);
+    public abstract void visitExceptionDispatch(ExceptionDispatch exceptionDispatch);
+    public abstract void visitUnwind(Unwind unwind);
 }
