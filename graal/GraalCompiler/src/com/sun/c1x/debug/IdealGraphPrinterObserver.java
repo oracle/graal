@@ -23,6 +23,7 @@
 package com.sun.c1x.debug;
 
 import java.io.*;
+import java.util.regex.*;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
@@ -32,10 +33,12 @@ import com.sun.c1x.value.*;
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation that can be
  * inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
- * 
+ *
  * @author Peter Hofer
  */
 public class IdealGraphPrinterObserver implements CompilationObserver {
+
+    private static final Pattern INVALID_CHAR = Pattern.compile("[^A-Za-z0-9_.-]");
 
     private IdealGraphPrinter printer;
     private OutputStream stream;
@@ -48,7 +51,10 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
             String name = event.getMethod().holder().name();
             name = name.substring(1, name.length() - 1).replace('/', '.');
             name = name + "." + event.getMethod().name();
+
             String filename = name + ".igv.xml";
+            filename = INVALID_CHAR.matcher(filename).replaceAll("_");
+
             try {
                 stream = new FileOutputStream(filename);
                 printer = new IdealGraphPrinter(stream);
@@ -57,7 +63,8 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
                     printer.addOmittedClass(FrameState.class);
                 }
 
-                printer.begin(name, name, -1);
+                printer.begin();
+                printer.beginGroup(name, name, -1);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -76,6 +83,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
     public void compilationFinished(CompilationEvent event) {
         if (printer != null) {
             try {
+                printer.endGroup();
                 printer.end();
                 stream.close();
             } catch (IOException e) {
