@@ -414,9 +414,6 @@ public final class LIRList {
         if (x.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
             TTY.print("ex ");
         }
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.SubroutineEntry)) {
-            TTY.print("jsr ");
-        }
         if (x.checkBlockFlag(BlockBegin.BlockFlag.BackwardBranchTarget)) {
             TTY.print("bb ");
         }

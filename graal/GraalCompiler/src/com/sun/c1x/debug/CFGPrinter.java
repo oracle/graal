@@ -153,9 +153,6 @@ public class CFGPrinter {
         if (block.isExceptionEntry()) {
             out.print("\"ex\" ");
         }
-        if (block.isSubroutineEntry()) {
-            out.print("\"sr\" ");
-        }
         if (block.isBackwardBranchTarget()) {
             out.print("\"bb\" ");
         }
