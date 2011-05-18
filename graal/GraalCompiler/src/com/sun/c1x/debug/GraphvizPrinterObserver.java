@@ -60,9 +60,24 @@ public class GraphvizPrinterObserver implements CompilationObserver {
             name = name.substring(1, name.length() - 1).replace('/', '.');
             name = name + "." + event.getMethod().name();
             String filename = name + "_" + (n++) + "_" + event.getLabel();
+
+            OutputStream out = null;
             try {
                 if (pdf) {
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    GraphvizPrinter printer = new GraphvizPrinter(buffer);
+                    if (C1XOptions.OmitDOTFrameStates) {
+                        printer.addOmittedClass(FrameState.class);
+                    }
+                    printer.begin(name);
+                    printer.print(graph, true);
+                    printer.end();
+
+                    out = new FileOutputStream(filename + ".pdf");
+                    GraphvizRunner.process(GraphvizRunner.DOT_LAYOUT, new ByteArrayInputStream(buffer.toByteArray()), out, "pdf");
+                } else {
+                    out = new FileOutputStream(filename + ".gv");
+
                     GraphvizPrinter printer = new GraphvizPrinter(out);
                     if (C1XOptions.OmitDOTFrameStates) {
                         printer.addOmittedClass(FrameState.class);
@@ -70,25 +85,16 @@ public class GraphvizPrinterObserver implements CompilationObserver {
                     printer.begin(name);
                     printer.print(graph, true);
                     printer.end();
-
-                    FileOutputStream output = new FileOutputStream(filename + ".pdf");
-                    GraphvizRunner.process(GraphvizRunner.DOT_LAYOUT, new ByteArrayInputStream(out.toByteArray()), output, "pdf");
-                    output.close();
-                } else {
-                    final FileOutputStream stream = new FileOutputStream(filename + ".gv");
-
-                    GraphvizPrinter printer = new GraphvizPrinter(stream);
-                    if (C1XOptions.OmitDOTFrameStates) {
-                        printer.addOmittedClass(FrameState.class);
-                    }
-                    printer.begin(name);
-                    printer.print(graph, true);
-                    printer.end();
-
-                    stream.close();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                if (out != null) {
+                    try {
+                        out.close();
+                    } catch (IOException e) {
+                    }
+                }
             }
         }
     }
