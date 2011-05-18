@@ -97,7 +97,6 @@ public final class BlockBegin extends StateSplit {
         BackwardBranchTarget,
         IsOnWorkList,
         WasVisited,
-        DefaultExceptionHandler,
         ParserLoopHeader,
         CriticalEdgeSplit,
         LinearScanLoopHeader,
@@ -123,15 +122,13 @@ public final class BlockBegin extends StateSplit {
 
     private int depthFirstNumber;
     private int linearScanNumber;
-    private int loopDepth;
-    private int loopIndex;
 
     private BlockBegin dominator;
     private List<BlockBegin> exceptionHandlerBlocks;
     private List<FrameState> exceptionHandlerStates;
 
     // LIR block
-    public LIRBlock lirBlock;
+    public final LIRBlock lirBlock = new LIRBlock();
 
     /**
      * Constructs a new BlockBegin at the specified bytecode index.
@@ -145,7 +142,6 @@ public final class BlockBegin extends StateSplit {
         depthFirstNumber = -1;
         linearScanNumber = -1;
         predecessors = new ArrayList<BlockEnd>(2);
-        loopIndex = -1;
         setBCI(bci);
     }
 
@@ -187,7 +183,7 @@ public final class BlockBegin extends StateSplit {
      * @return the loop depth
      */
     public int loopDepth() {
-        return loopDepth;
+        return lirBlock.loopDepth;
     }
 
     /**
@@ -195,7 +191,7 @@ public final class BlockBegin extends StateSplit {
      * @return the loop index
      */
     public int loopIndex() {
-        return loopIndex;
+        return lirBlock.loopIndex;
     }
 
     /**
@@ -221,11 +217,11 @@ public final class BlockBegin extends StateSplit {
     }
 
     public void setLoopDepth(int loopDepth) {
-        this.loopDepth = loopDepth;
+        this.lirBlock.loopDepth = loopDepth;
     }
 
     public void setLoopIndex(int loopIndex) {
-        this.loopIndex = loopIndex;
+        this.lirBlock.loopIndex = loopIndex;
     }
 
     /**
@@ -621,9 +617,6 @@ public final class BlockBegin extends StateSplit {
     }
 
     public LIRBlock lirBlock() {
-        if (lirBlock == null) {
-            lirBlock = new LIRBlock();
-        }
         return lirBlock;
     }
 

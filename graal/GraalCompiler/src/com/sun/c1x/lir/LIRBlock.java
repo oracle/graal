@@ -28,12 +28,11 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code LIRBlock} class definition.
- *
- * @author Ben L. Titzer
  */
 public final class LIRBlock {
 
     public LIRBlock() {
+        loopIndex = -1;
     }
 
     public final Label label = new Label();
@@ -71,6 +70,10 @@ public final class LIRBlock {
     public int firstLirInstructionID;
     public int lastLirInstructionID;
     public int exceptionHandlerPCO;
+
+
+    public int loopDepth;
+    public int loopIndex;
 
     public LIRList lir() {
         return lir;
