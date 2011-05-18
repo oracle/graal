@@ -159,14 +159,6 @@ public final class BlockBegin extends StateSplit {
     }
 
     /**
-     * Gets the dominator of this block.
-     * @return the dominator block
-     */
-    public BlockBegin dominator() {
-        return dominator;
-    }
-
-    /**
      * Sets the dominator block for this block.
      * @param dominator the dominator for this block
      */
@@ -717,11 +709,6 @@ public final class BlockBegin extends StateSplit {
                 out.print(" B").print(handler.blockID);
             }
             out.print(')');
-        }
-
-        // print dominator block
-        if (dominator() != null) {
-            out.print(" dom B").print(dominator().blockID);
         }
 
         // print predecessors

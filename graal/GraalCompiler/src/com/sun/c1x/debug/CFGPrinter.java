@@ -170,9 +170,6 @@ public class CFGPrinter {
         }
         out.println();
 
-        if (block.dominator() != null) {
-            out.print("dominator \"B").print(block.dominator().blockID).println('"');
-        }
         if (block.loopIndex() != -1) {
             out.print("loop_index ").println(block.loopIndex());
             out.print("loop_depth ").println(block.loopDepth());
