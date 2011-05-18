@@ -32,6 +32,7 @@ import com.sun.cri.ci.*;
 public final class LIRBlock {
 
     public LIRBlock() {
+        loopIndex = -1;
     }
 
     public final Label label = new Label();
@@ -66,9 +67,28 @@ public final class LIRBlock {
      */
     public CiBitMap liveKill;
 
-    public int firstLirInstructionID;
-    public int lastLirInstructionID;
+    private int firstLirInstructionID;
+    private int lastLirInstructionID;
     public int blockEntryPco;
+
+    public int firstLirInstructionId() {
+        return firstLirInstructionID;
+    }
+
+    public void setFirstLirInstructionId(int firstLirInstructionId) {
+        this.firstLirInstructionID = firstLirInstructionId;
+    }
+
+    public int lastLirInstructionId() {
+        return lastLirInstructionID;
+    }
+
+    public void setLastLirInstructionId(int lastLirInstructionId) {
+        this.lastLirInstructionID = lastLirInstructionId;
+    }
+
+    public int loopDepth;
+    public int loopIndex;
 
     public LIRList lir() {
         return lir;

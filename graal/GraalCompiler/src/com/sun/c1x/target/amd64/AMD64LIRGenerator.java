@@ -440,7 +440,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             CiValue reg = createResultVariable(x);
             lir.lcmp2int(left.result(), right.result(), reg);
         } else {
-            Util.unimplemented();
+            assert false;
         }
     }
 

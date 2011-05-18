@@ -147,11 +147,6 @@ public final class GraphBuilder {
             flags |= Flag.NoSafepoints.mask;
         }
 
-        // 1. create the start block
-        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
-        BlockBegin startBlock = ir.startBlock;
-        graph.root().setStart(startBlock);
-
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(rootMethod);
 
@@ -166,7 +161,11 @@ public final class GraphBuilder {
             blockList[block.startBci] = blockBegin;
         }
 
-        BlockBegin stdEntry = blockList[0];
+
+        // 1. create the start block
+        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
+        BlockBegin startBlock = ir.startBlock;
+        graph.root().setStart(startBlock);
         curBlock = startBlock;
 
         RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
@@ -192,36 +191,56 @@ public final class GraphBuilder {
         lastInstr = startBlock;
         lastInstr.appendNext(null, -1);
 
+        BlockBegin entryBlock = blockList[0];
         if (isSynchronized(rootMethod.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
             rootMethodSynchronizedObject = synchronizedObject(frameState, compilation.method);
             genMonitorEnter(rootMethodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
             // 4A.2 finish the start block
-            finishStartBlock(startBlock, stdEntry);
+            finishStartBlock(startBlock, entryBlock);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber(), graph);
-            syncHandler.setBlockFlag(BlockBegin.BlockFlag.IsOnWorkList);
-            syncHandler.setBlockFlag(BlockBegin.BlockFlag.DefaultExceptionHandler);
+            markOnWorkList(syncHandler);
 
             ExceptionHandler h = new ExceptionHandler(new CiExceptionHandler(0, rootMethod.code().length, -1, 0, null));
             h.setEntryBlock(syncHandler);
             addExceptionHandler(h);
         } else {
             // 4B.1 simply finish the start block
-            finishStartBlock(startBlock, stdEntry);
+            finishStartBlock(startBlock, entryBlock);
         }
 
         // 5. SKIPPED: look for intrinsics
 
         // 6B.1 do the normal parsing
-        addToWorkList(stdEntry);
+        addToWorkList(entryBlock);
         iterateAllBlocks();
 
         if (syncHandler != null && syncHandler.stateBefore() != null) {
             // generate unlocking code if the exception handler is reachable
             fillSyncHandler(rootMethodSynchronizedObject, syncHandler);
         }
+    }
+
+    private Set<BlockBegin> blocksOnWorklist = new HashSet<BlockBegin>();
+
+    private void markOnWorkList(BlockBegin block) {
+        blocksOnWorklist.add(block);
+    }
+
+    private boolean isOnWorkList(BlockBegin block) {
+        return blocksOnWorklist.contains(block);
+    }
+
+    private Set<BlockBegin> blocksVisited = new HashSet<BlockBegin>();
+
+    private void markVisited(BlockBegin block) {
+        blocksVisited.add(block);
+    }
+
+    private boolean isVisited(BlockBegin block) {
+        return blocksVisited.contains(block);
     }
 
     private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
@@ -402,7 +421,7 @@ public final class GraphBuilder {
         ExceptionHandler newHandler = new ExceptionHandler(handler);
 
         // fill in exception handler subgraph lazily
-        if (!entry.wasVisited()) {
+        if (!isVisited(entry)) {
             addToWorkList(entry);
         } else {
             // This will occur for exception handlers that cover themselves. This code
@@ -1113,24 +1132,24 @@ public final class GraphBuilder {
 
             // remove blocks that have no predecessors by the time it their bytecodes are parsed
             if (b.blockPredecessors().size() == 0) {
-                b.setWasVisited(true);
+                markVisited(b);
                 continue;
             }
 
-            if (!b.wasVisited()) {
-                b.setWasVisited(true);
+            if (!isVisited(b)) {
+                markVisited(b);
                 // now parse the block
                 curBlock = b;
                 frameState.initializeFrom(b.stateBefore());
                 lastInstr = b;
                 b.appendNext(null, -1);
 
-                iterateBytecodesForBlock(b.bci(), false);
+                iterateBytecodesForBlock(b.bci());
             }
         }
     }
 
-    private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
+    private BlockEnd iterateBytecodesForBlock(int bci) {
         assert frameState != null;
         stream.setBCI(bci);
 
@@ -1142,14 +1161,6 @@ public final class GraphBuilder {
 
         while (bci < endBCI) {
             BlockBegin nextBlock = blockAtOrNull(bci);
-            if (bci == 0 && inliningIntoCurrentBlock) {
-                if (!nextBlock.isParserLoopHeader()) {
-                    // Ignore the block boundary of the entry block of a method
-                    // being inlined unless the block is a loop header.
-                    nextBlock = null;
-                    blockStart = false;
-                }
-            }
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 end = new Goto(nextBlock, null, false, graph);
@@ -1476,8 +1487,8 @@ public final class GraphBuilder {
      * @param block the block to add to the work list
      */
     private void addToWorkList(BlockBegin block) {
-        if (!block.isOnWorkList()) {
-            block.setOnWorkList(true);
+        if (!isOnWorkList(block)) {
+            markOnWorkList(block);
             sortIntoWorkList(block);
         }
     }

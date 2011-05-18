@@ -27,7 +27,6 @@ import static com.sun.cri.xir.XirTemplate.GlobalFlags.*;
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.xir.*;
 
@@ -194,7 +193,7 @@ public class AMD64XirAssembler extends CiXirAssembler {
                 case ShouldNotReachHere:
                     break;
                 default:
-                    throw Util.unimplemented("XIR operation " + i.op);
+                    assert false : "Unknown XIR operation " + i.op;
             }
             if (!appended) {
                 currentList.add(i);

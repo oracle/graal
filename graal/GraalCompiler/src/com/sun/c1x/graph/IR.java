@@ -89,7 +89,6 @@ public class IR {
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
         new GraphBuilder(compilation, this, compilation.graph).build();
-        assert startBlock != null;
         verifyAndPrint("After graph building");
 
         if (C1XOptions.PrintCompilation) {
@@ -167,8 +166,6 @@ public class IR {
 
         // create new successor and mark it for special block order treatment
         BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), compilation.graph);
-
-        newSucc.setCriticalEdgeSplit(true);
 
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, false, compilation.graph);

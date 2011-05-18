@@ -34,13 +34,10 @@ import com.sun.c1x.value.*;
 public final class PhiSimplifier implements BlockClosure {
 
     final IR ir;
-    final InstructionSubstituter subst;
 
     public PhiSimplifier(IR ir) {
         this.ir = ir;
-        this.subst = new InstructionSubstituter(ir);
         ir.startBlock.iterateAnyOrder(this, false);
-        subst.finish();
     }
 
     /**
@@ -62,10 +59,7 @@ public final class PhiSimplifier implements BlockClosure {
             return x;
         }
         Phi phi = (Phi) x;
-        if (phi.hasSubst()) {
-            // already substituted, but the subst could be a phi itself, so simplify
-            return simplify(subst.getSubst(phi));
-        } else if (phi.checkFlag(Value.Flag.PhiCannotSimplify)) {
+        if (phi.checkFlag(Value.Flag.PhiCannotSimplify)) {
             // already tried, cannot simplify this phi
             return phi;
         } else if (phi.checkFlag(Value.Flag.PhiVisited)) {
@@ -121,7 +115,6 @@ public final class PhiSimplifier implements BlockClosure {
             // successfully simplified the phi
             assert phiSubst != null : "illegal phi function";
             phi.clearFlag(Value.Flag.PhiVisited);
-            subst.setSubst(phi, phiSubst);
             return phiSubst;
         }
     }

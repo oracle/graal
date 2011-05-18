@@ -69,6 +69,10 @@ public final class C1XOptions {
     public static boolean PrintCFGToFile                     = ____;
     public static boolean PrintDOTGraphToFile                = ____;
     public static boolean PrintDOTGraphToPdf                 = ____;
+    public static int     PrintIdealGraphLevel               = 0;
+    public static boolean PrintIdealGraphFile                = ____;
+    public static String  PrintIdealGraphAddress             = "127.0.0.1";
+    public static int     PrintIdealGraphPort                = 4444;
     public static boolean OmitDOTFrameStates                 = true;
     public static boolean PrintMetrics                       = ____;
     public static boolean PrintTimers                        = ____;
@@ -86,10 +90,6 @@ public final class C1XOptions {
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean PrintAssumptions                   = ____;
     public static boolean QuietBailout                       = ____;
-
-    // all optimization settings
-    public static boolean OptBlockSkipping;
-    public static boolean OptControlFlow;
 
     // optimistic optimization settings
     public static boolean UseAssumptions                = true;
@@ -152,7 +152,6 @@ public final class C1XOptions {
 
         // Level 1 optimizations
         PhiLoopStores                   = l;
-        OptControlFlow                  = l;
 
         // Level 2 optimizations
         OptInline                       = ll;
@@ -160,6 +159,5 @@ public final class C1XOptions {
         // Level 3 optimizations
         UseStackMapTableLiveness        = lll;
         UseAssumptions                  = lll;
-        OptBlockSkipping                = lll;
     }
 }

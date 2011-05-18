@@ -150,4 +150,9 @@ public final class HotSpotTypePrimitive extends HotSpotType {
         return this;
     }
 
+    @Override
+    public RiMethod uniqueConcreteMethod(RiMethod method) {
+        return null;
+    }
+
 }

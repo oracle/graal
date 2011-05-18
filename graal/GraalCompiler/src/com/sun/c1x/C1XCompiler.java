@@ -131,6 +131,15 @@ public class C1XCompiler extends ObservableCompiler {
         if (C1XOptions.PrintDOTGraphToPdf) {
             addCompilationObserver(new GraphvizPrinterObserver(true));
         }
+        if (C1XOptions.PrintIdealGraphLevel != 0) {
+            CompilationObserver observer;
+            if (C1XOptions.PrintIdealGraphFile) {
+                observer = new IdealGraphPrinterObserver();
+            } else {
+                observer = new IdealGraphPrinterObserver(C1XOptions.PrintIdealGraphAddress, C1XOptions.PrintIdealGraphPort);
+            }
+            addCompilationObserver(observer);
+        }
     }
 
     public GlobalStub lookupGlobalStub(GlobalStub.Id id) {

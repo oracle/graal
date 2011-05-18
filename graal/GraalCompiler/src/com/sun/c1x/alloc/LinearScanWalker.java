@@ -262,9 +262,9 @@ final class LinearScanWalker extends IntervalWalker {
 
         // Try to split at end of maxBlock. If this would be after
         // maxSplitPos, then use the begin of maxBlock
-        int optimalSplitPos = maxBlock.lastLirInstructionId() + 2;
+        int optimalSplitPos = maxBlock.lirBlock.lastLirInstructionId() + 2;
         if (optimalSplitPos > maxSplitPos) {
-            optimalSplitPos = maxBlock.firstLirInstructionId();
+            optimalSplitPos = maxBlock.lirBlock.firstLirInstructionId();
         }
 
         int minLoopDepth = maxBlock.loopDepth();
@@ -274,7 +274,7 @@ final class LinearScanWalker extends IntervalWalker {
             if (cur.loopDepth() < minLoopDepth) {
                 // block with lower loop-depth found . split at the end of this block
                 minLoopDepth = cur.loopDepth();
-                optimalSplitPos = cur.lastLirInstructionId() + 2;
+                optimalSplitPos = cur.lirBlock.lastLirInstructionId() + 2;
             }
         }
         assert optimalSplitPos > allocator.maxOpId() || allocator.isBlockBegin(optimalSplitPos) : "algorithm must move split pos to block boundary";
@@ -334,7 +334,7 @@ final class LinearScanWalker extends IntervalWalker {
                     if (doLoopOptimization) {
                         // Loop optimization: if a loop-end marker is found between min- and max-position :
                         // then split before this loop
-                        int loopEndPos = interval.nextUsageExact(RegisterPriority.LiveAtLoopEnd, minBlock.lastLirInstructionId() + 2);
+                        int loopEndPos = interval.nextUsageExact(RegisterPriority.LiveAtLoopEnd, minBlock.lirBlock.lastLirInstructionId() + 2);
                         if (C1XOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("      loop optimization: loop end found at pos %d", loopEndPos);
                         }
@@ -353,8 +353,8 @@ final class LinearScanWalker extends IntervalWalker {
                             }
                             assert loopBlock != minBlock : "loopBlock and minBlock must be different because block boundary is needed between";
 
-                            optimalSplitPos = findOptimalSplitPos(minBlock, loopBlock, loopBlock.lastLirInstructionId() + 2);
-                            if (optimalSplitPos == loopBlock.lastLirInstructionId() + 2) {
+                            optimalSplitPos = findOptimalSplitPos(minBlock, loopBlock, loopBlock.lirBlock.lastLirInstructionId() + 2);
+                            if (optimalSplitPos == loopBlock.lirBlock.lastLirInstructionId() + 2) {
                                 optimalSplitPos = -1;
                                 if (C1XOptions.TraceLinearScanLevel >= 4) {
                                     TTY.println("      loop optimization not necessary");
