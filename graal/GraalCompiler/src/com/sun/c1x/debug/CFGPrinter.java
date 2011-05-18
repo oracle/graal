@@ -153,12 +153,6 @@ public class CFGPrinter {
         if (block.isExceptionEntry()) {
             out.print("\"ex\" ");
         }
-        if (block.isBackwardBranchTarget()) {
-            out.print("\"bb\" ");
-        }
-        if (block.isParserLoopHeader()) {
-            out.print("\"plh\" ");
-        }
         if (block.isCriticalEdgeSplit()) {
             out.print("\"ces\" ");
         }

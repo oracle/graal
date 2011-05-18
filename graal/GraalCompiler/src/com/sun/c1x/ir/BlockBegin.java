@@ -460,14 +460,6 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
-    public boolean isBackwardBranchTarget() {
-        return checkBlockFlag(BlockFlag.BackwardBranchTarget);
-    }
-
-    public void setBackwardBranchTarget(boolean value) {
-        setBlockFlag(BlockFlag.BackwardBranchTarget, value);
-    }
-
     public boolean isCriticalEdgeSplit() {
         return checkBlockFlag(BlockFlag.CriticalEdgeSplit);
     }
@@ -512,16 +504,8 @@ public final class BlockBegin extends StateSplit {
         return checkBlockFlag(BlockFlag.LinearScanLoopHeader);
     }
 
-    public void setLinearScanLoopHeader(boolean value) {
-        setBlockFlag(BlockFlag.LinearScanLoopHeader, value);
-    }
-
     public boolean isLinearScanLoopEnd() {
         return checkBlockFlag(BlockFlag.LinearScanLoopEnd);
-    }
-
-    public void setLinearScanLoopEnd(boolean value) {
-        setBlockFlag(BlockFlag.LinearScanLoopEnd, value);
     }
 
     private void setBlockFlag(BlockFlag flag, boolean value) {
@@ -530,12 +514,6 @@ public final class BlockBegin extends StateSplit {
         } else {
             clearBlockFlag(flag);
         }
-    }
-
-    public void copyBlockFlags(BlockBegin other) {
-        copyBlockFlag(other, BlockBegin.BlockFlag.ParserLoopHeader);
-        copyBlockFlag(other, BlockBegin.BlockFlag.ExceptionEntry);
-        copyBlockFlag(other, BlockBegin.BlockFlag.WasVisited);
     }
 
     @Override
@@ -641,22 +619,6 @@ public final class BlockBegin extends StateSplit {
         return predecessors.get(j);
     }
 
-    public int firstLirInstructionId() {
-        return lirBlock.firstLirInstructionID;
-    }
-
-    public void setFirstLirInstructionId(int firstLirInstructionId) {
-        lirBlock.firstLirInstructionID = firstLirInstructionId;
-    }
-
-    public int lastLirInstructionId() {
-        return lirBlock.lastLirInstructionID;
-    }
-
-    public void setLastLirInstructionId(int lastLirInstructionId) {
-        lirBlock.lastLirInstructionID = lastLirInstructionId;
-    }
-
     public boolean isPredecessor(BlockEnd block) {
 //        assert predecessors.contains(block) == predecessors().contains(block);
         return predecessors.contains(block);
@@ -674,9 +636,6 @@ public final class BlockBegin extends StateSplit {
         }
         if (isParserLoopHeader()) {
             sb.append("LH");
-        }
-        if (isBackwardBranchTarget()) {
-            sb.append('b');
         }
         if (wasVisited()) {
             sb.append('V');

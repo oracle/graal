@@ -563,7 +563,7 @@ public final class LinearScan {
 
         for (int i = 0; i < numBlocks; i++) {
             BlockBegin block = blockAt(i);
-            block.setFirstLirInstructionId(opId);
+            block.lirBlock.setFirstLirInstructionId(opId);
             List<LIRInstruction> instructions = block.lir().instructionsList();
 
             int numInst = instructions.size();
@@ -578,7 +578,7 @@ public final class LinearScan {
                 index++;
                 opId += 2; // numbering of lirOps by two
             }
-            block.setLastLirInstructionId(opId - 2);
+            block.lirBlock.setLastLirInstructionId((opId - 2));
         }
         assert index == numInstructions : "must match";
         assert (index << 1) == opId : "must match: " + (index << 1);
@@ -1174,8 +1174,8 @@ public final class LinearScan {
         for (int i = blockCount() - 1; i >= 0; i--) {
             BlockBegin block = blockAt(i);
             List<LIRInstruction> instructions = block.lir().instructionsList();
-            final int blockFrom = block.firstLirInstructionId();
-            int blockTo = block.lastLirInstructionId();
+            final int blockFrom = block.lirBlock.firstLirInstructionId();
+            int blockTo = block.lirBlock.lastLirInstructionId();
 
             assert blockFrom == instructions.get(0).id;
             assert blockTo == instructions.get(instructions.size() - 1).id;
@@ -1527,14 +1527,14 @@ public final class LinearScan {
         assert operand.isVariable() : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), block.firstLirInstructionId(), LIRInstruction.OperandMode.Output);
+        return splitChildAtOpId(intervalFor(operand), block.lirBlock.firstLirInstructionId(), LIRInstruction.OperandMode.Output);
     }
 
     Interval intervalAtBlockEnd(BlockBegin block, CiValue operand) {
         assert operand.isVariable() : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
-        return splitChildAtOpId(intervalFor(operand), block.lastLirInstructionId() + 1, LIRInstruction.OperandMode.Output);
+        return splitChildAtOpId(intervalFor(operand), block.lirBlock.lastLirInstructionId() + 1, LIRInstruction.OperandMode.Output);
     }
 
     Interval intervalAtOpId(CiValue operand, int opId) {
@@ -1695,7 +1695,7 @@ public final class LinearScan {
             // this is not allowed because of the complicated fpu stack handling on Intel
 
             // range that will be spilled to memory
-            int fromOpId = block.firstLirInstructionId();
+            int fromOpId = block.lirBlock.firstLirInstructionId();
             int toOpId = fromOpId + 1; // short live range of length 1
             assert interval.from() <= fromOpId && interval.to() >= toOpId : "no split allowed between exception entry and first instruction";
 
@@ -1928,7 +1928,7 @@ public final class LinearScan {
         if (opId != -1) {
             if (C1XOptions.DetailedAsserts) {
                 BlockBegin block = blockForId(opId);
-                if (block.numberOfSux() <= 1 && opId == block.lastLirInstructionId()) {
+                if (block.numberOfSux() <= 1 && opId == block.lirBlock.lastLirInstructionId()) {
                     // check if spill moves could have been appended at the end of this block, but
                     // before the branch instruction. So the split child information for this branch would
                     // be incorrect.
@@ -2048,7 +2048,7 @@ public final class LinearScan {
             if (operand.isVariable()) {
                 OperandMode mode = OperandMode.Input;
                 BlockBegin block = blockForId(opId);
-                if (block.numberOfSux() == 1 && opId == block.lastLirInstructionId()) {
+                if (block.numberOfSux() == 1 && opId == block.lirBlock.lastLirInstructionId()) {
                     // generating debug information for the last instruction of a block.
                     // if this instruction is a branch, spill moves are inserted before this branch
                     // and so the wrong operand would be returned (spill moves at block boundaries are not
@@ -2057,7 +2057,7 @@ public final class LinearScan {
                     final LIRInstruction instr = block.lir().instructionsList().get(block.lir().instructionsList().size() - 1);
                     if (instr instanceof LIRBranch) {
                         if (block.lirBlock.liveOut.get(operandNumber(operand))) {
-                            opId = block.suxAt(0).firstLirInstructionId();
+                            opId = block.suxAt(0).lirBlock.firstLirInstructionId();
                             mode = OperandMode.Output;
                         }
                     }
@@ -2308,7 +2308,7 @@ public final class LinearScan {
             TTY.println("--- Basic Blocks ---");
             for (i = 0; i < blockCount(); i++) {
                 BlockBegin block = blockAt(i);
-                TTY.print("B%d [%d, %d, %d, %d] ", block.blockID, block.firstLirInstructionId(), block.lastLirInstructionId(), block.loopIndex(), block.loopDepth());
+                TTY.print("B%d [%d, %d, %d, %d] ", block.blockID, block.lirBlock.firstLirInstructionId(), block.lirBlock.lastLirInstructionId(), block.loopIndex(), block.loopDepth());
             }
             TTY.println();
             TTY.println();

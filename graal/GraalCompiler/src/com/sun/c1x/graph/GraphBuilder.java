@@ -1046,12 +1046,12 @@ public final class GraphBuilder {
                 lastInstr = b;
                 b.appendNext(null, -1);
 
-                iterateBytecodesForBlock(b.bci(), false);
+                iterateBytecodesForBlock(b.bci());
             }
         }
     }
 
-    private BlockEnd iterateBytecodesForBlock(int bci, boolean inliningIntoCurrentBlock) {
+    private BlockEnd iterateBytecodesForBlock(int bci) {
         assert frameState != null;
         stream.setBCI(bci);
 
@@ -1064,14 +1064,6 @@ public final class GraphBuilder {
 
         while (bci < endBCI) {
             BlockBegin nextBlock = blockAtOrNull(bci);
-            if (bci == 0 && inliningIntoCurrentBlock) {
-                if (!nextBlock.isParserLoopHeader()) {
-                    // Ignore the block boundary of the entry block of a method
-                    // being inlined unless the block is a loop header.
-                    nextBlock = null;
-                    blockStart = false;
-                }
-            }
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 end = new Goto(nextBlock, null, false, graph);

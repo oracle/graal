@@ -138,10 +138,6 @@ public abstract class LIRAssembler {
     }
 
     void emitBlock(BlockBegin block) {
-        if (block.checkBlockFlag(BlockBegin.BlockFlag.BackwardBranchTarget)) {
-            emitAlignment();
-        }
-
         // if this block is the start of an exception handler, record the
         // PC offset of the first instruction for later construction of
         // the ExceptionHandlerTable

@@ -229,8 +229,8 @@ public final class ComputeLinearScanOrder {
             if (C1XOptions.TraceLinearScanLevel >= 3) {
                 TTY.println("Processing loop from B%d to B%d (loop %d):", loopStart.blockID, loopEnd.blockID, loopIdx);
             }
-            assert loopEnd.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd) : "loop end flag must be set";
-            assert loopStart.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader) : "loop header flag must be set";
+            assert loopEnd.isLinearScanLoopEnd() : "loop end flag must be set";
+            assert loopStart.isLinearScanLoopHeader() : "loop header flag must be set";
             assert loopIdx >= 0 && loopIdx < numLoops : "loop index not set";
             assert workList.isEmpty() : "work list must be empty before processing";
 
@@ -341,14 +341,14 @@ public final class ComputeLinearScanOrder {
         // this is necessary for the (very rare) case that two successive blocks have
         // the same loop depth, but a different loop index (can happen for endless loops
         // with exception handlers)
-        if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
+        if (!cur.isLinearScanLoopHeader()) {
             weight |= (1 << curBit);
         }
         curBit--;
 
         // loop end blocks (blocks that end with a backward branch) are added
         // after all other blocks of the loop.
-        if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd)) {
+        if (!cur.isLinearScanLoopEnd()) {
             weight |= (1 << curBit);
         }
         curBit--;
@@ -505,8 +505,8 @@ public final class ComputeLinearScanOrder {
 
                 TTY.print(cur.isExceptionEntry() ? " ex" : "   ");
                 TTY.print(cur.isCriticalEdgeSplit() ? " ce" : "   ");
-                TTY.print(cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader) ? " lh" : "   ");
-                TTY.print(cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd) ? " le" : "   ");
+                TTY.print(cur.isLinearScanLoopHeader() ? " lh" : "   ");
+                TTY.print(cur.isLinearScanLoopEnd() ? " le" : "   ");
 
                 if (cur.numberOfPreds() > 0) {
                     TTY.print("    preds: ");
