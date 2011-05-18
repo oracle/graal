@@ -205,7 +205,7 @@ public final class GraphBuilder {
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber(), graph);
             syncHandler.setExceptionEntry();
-            syncHandler.setBlockFlag(BlockBegin.BlockFlag.IsOnWorkList);
+            markOnWorkList(syncHandler);
 
             ExceptionHandler h = new ExceptionHandler(new CiExceptionHandler(0, rootMethod.code().length, -1, 0, null));
             h.setEntryBlock(syncHandler);
@@ -225,6 +225,16 @@ public final class GraphBuilder {
             // generate unlocking code if the exception handler is reachable
             fillSyncHandler(rootMethodSynchronizedObject, syncHandler);
         }
+    }
+
+    private Set<BlockBegin> blocksOnWorklist = new HashSet<BlockBegin>();
+
+    private void markOnWorkList(BlockBegin block) {
+        blocksOnWorklist.add(block);
+    }
+
+    private boolean isOnWorkList(BlockBegin block) {
+        return blocksOnWorklist.contains(block);
     }
 
     private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
@@ -1404,8 +1414,8 @@ public final class GraphBuilder {
      * @param block the block to add to the work list
      */
     private void addToWorkList(BlockBegin block) {
-        if (!block.isOnWorkList()) {
-            block.setOnWorkList(true);
+        if (!isOnWorkList(block)) {
+            markOnWorkList(block);
             sortIntoWorkList(block);
         }
     }
