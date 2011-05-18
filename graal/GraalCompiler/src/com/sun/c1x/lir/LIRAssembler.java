@@ -290,18 +290,6 @@ public abstract class LIRAssembler {
         switch (op.code) {
             case Label:
                 throw Util.shouldNotReachHere();
-            case OsrEntry:
-                emitOsrEntry();
-                break;
-            case Here:
-                emitHere(op.result(), op.info, false);
-                break;
-            case Info:
-                emitHere(op.result(), op.info, true);
-                break;
-            case Pause:
-                emitPause();
-                break;
             case Breakpoint:
                 emitBreakpoint();
                 break;
@@ -446,11 +434,7 @@ public abstract class LIRAssembler {
 
     protected abstract void emitNegate(LIRNegate negate);
 
-    protected abstract void emitHere(CiValue dst, LIRDebugInfo info, boolean infoOnly);
-
     protected abstract void emitMonitorAddress(int monitor, CiValue dst);
-
-    protected abstract void emitPause();
 
     protected abstract void emitStackAllocate(StackBlock src, CiValue dst);
 
@@ -503,8 +487,6 @@ public abstract class LIRAssembler {
     protected abstract void emitCallAlignment(LIROpcode code);
 
     protected abstract void emitMemoryBarriers(int barriers);
-
-    protected abstract void emitOsrEntry();
 
     protected abstract void reg2stack(CiValue src, CiValue dest, CiKind kind);
 

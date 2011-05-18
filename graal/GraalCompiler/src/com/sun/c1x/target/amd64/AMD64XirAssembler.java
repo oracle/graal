@@ -194,7 +194,7 @@ public class AMD64XirAssembler extends CiXirAssembler {
                 case ShouldNotReachHere:
                     break;
                 default:
-                    throw Util.unimplemented("XIR operation " + i.op);
+                    assert false : "Unknown XIR operation " + i.op;
             }
             if (!appended) {
                 currentList.add(i);

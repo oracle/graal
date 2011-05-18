@@ -89,7 +89,6 @@ public class IR {
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
         new GraphBuilder(compilation, this, compilation.graph).build();
-        assert startBlock != null;
         verifyAndPrint("After graph building");
 
         if (C1XOptions.PrintCompilation) {
