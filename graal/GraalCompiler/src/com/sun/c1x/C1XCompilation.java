@@ -246,6 +246,7 @@ public final class C1XCompilation {
             initFrameMap(hir.maxLocks());
 
             lirGenerator = compiler.backend.newLIRGenerator(this);
+
             for (BlockBegin begin : hir.linearScanOrder()) {
                 lirGenerator.doBlock(begin);
             }

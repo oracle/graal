@@ -147,11 +147,6 @@ public final class GraphBuilder {
             flags |= Flag.NoSafepoints.mask;
         }
 
-        // 1. create the start block
-        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
-        BlockBegin startBlock = ir.startBlock;
-        graph.root().setStart(startBlock);
-
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(rootMethod);
 
@@ -169,7 +164,11 @@ public final class GraphBuilder {
             blockList[block.startBci] = blockBegin;
         }
 
-        BlockBegin stdEntry = blockList[0];
+
+        // 1. create the start block
+        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
+        BlockBegin startBlock = ir.startBlock;
+        graph.root().setStart(startBlock);
         curBlock = startBlock;
 
         RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
@@ -195,12 +194,13 @@ public final class GraphBuilder {
         lastInstr = startBlock;
         lastInstr.appendNext(null, -1);
 
+        BlockBegin entryBlock = blockList[0];
         if (isSynchronized(rootMethod.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
             rootMethodSynchronizedObject = synchronizedObject(frameState, compilation.method);
             genMonitorEnter(rootMethodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
             // 4A.2 finish the start block
-            finishStartBlock(startBlock, stdEntry);
+            finishStartBlock(startBlock, entryBlock);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, ir.nextBlockNumber(), graph);
@@ -213,13 +213,13 @@ public final class GraphBuilder {
             addExceptionHandler(h);
         } else {
             // 4B.1 simply finish the start block
-            finishStartBlock(startBlock, stdEntry);
+            finishStartBlock(startBlock, entryBlock);
         }
 
         // 5. SKIPPED: look for intrinsics
 
         // 6B.1 do the normal parsing
-        addToWorkList(stdEntry);
+        addToWorkList(entryBlock);
         iterateAllBlocks();
 
         if (syncHandler != null && syncHandler.stateBefore() != null) {
