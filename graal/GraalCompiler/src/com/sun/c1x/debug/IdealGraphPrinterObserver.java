@@ -48,10 +48,16 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
     private OutputStream stream;
     private Socket socket;
 
+    /**
+     * Creates a new {@link IdealGraphPrinterObserver} that writes output to a file named after the compiled method.
+     */
     public IdealGraphPrinterObserver() {
         this(null, -1);
     }
 
+    /**
+     * Creates a new {@link IdealGraphPrinterObserver} that sends output to a remove IdealGraphVisualizer instance.
+     */
     public IdealGraphPrinterObserver(String host, int port) {
         this.host = host;
         this.port = port;
