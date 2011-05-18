@@ -237,6 +237,16 @@ public final class GraphBuilder {
         return blocksOnWorklist.contains(block);
     }
 
+    private Set<BlockBegin> blocksVisited = new HashSet<BlockBegin>();
+
+    private void markVisited(BlockBegin block) {
+        blocksVisited.add(block);
+    }
+
+    private boolean isVisited(BlockBegin block) {
+        return blocksVisited.contains(block);
+    }
+
     private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
         assert curBlock == startBlock;
         FrameState stateAfter = frameState.create(bci());
@@ -336,7 +346,7 @@ public final class GraphBuilder {
         exceptionHandlers.add(newHandler);
 
         // fill in exception handler subgraph lazily
-        if (!entry.wasVisited()) {
+        if (!isVisited(entry)) {
             addToWorkList(entry);
         } else {
             // This will occur for exception handlers that cover themselves. This code
@@ -1048,8 +1058,8 @@ public final class GraphBuilder {
     private void iterateAllBlocks() {
         BlockBegin b;
         while ((b = removeFromWorkList()) != null) {
-            if (!b.wasVisited()) {
-                b.setWasVisited(true);
+            if (!isVisited(b)) {
+                markVisited(b);
                 // now parse the block
                 curBlock = b;
                 frameState.initializeFrom(b.stateBefore());

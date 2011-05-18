@@ -95,7 +95,6 @@ public final class BlockBegin extends StateSplit {
         StandardEntry,
         ExceptionEntry,
         BackwardBranchTarget,
-        WasVisited,
         ParserLoopHeader,
         LinearScanLoopHeader,
         LinearScanLoopEnd;
@@ -384,12 +383,6 @@ public final class BlockBegin extends StateSplit {
         FrameState existingState = stateBefore();
 
         if (existingState == null) {
-            // this is the first state for the block
-            if (wasVisited()) {
-                // this can happen for complex jsr/ret patterns; just bail out
-                throw new CiBailout("jsr/ret too complex");
-            }
-
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci());
             assert duplicate.bci == bci() : "duplicate.bci=" + duplicate.bci + " my bci=" + bci();
@@ -420,10 +413,6 @@ public final class BlockBegin extends StateSplit {
 
             assert existingState.localsSize() == newState.localsSize();
             assert existingState.stackSize() == newState.stackSize();
-
-            if (wasVisited() && !isParserLoopHeader()) {
-                throw new CiBailout("jsr/ret too complicated");
-            }
 
             existingState.merge(this, newState);
         }
@@ -464,14 +453,6 @@ public final class BlockBegin extends StateSplit {
 
     public void setExceptionEntry() {
         setBlockFlag(BlockFlag.ExceptionEntry);
-    }
-
-    public boolean wasVisited() {
-        return checkBlockFlag(BlockFlag.WasVisited);
-    }
-
-    public void setWasVisited(boolean value) {
-        setBlockFlag(BlockFlag.WasVisited, value);
     }
 
     public boolean isParserLoopHeader() {
@@ -618,9 +599,6 @@ public final class BlockBegin extends StateSplit {
         }
         if (isParserLoopHeader()) {
             sb.append("LH");
-        }
-        if (wasVisited()) {
-            sb.append('V');
         }
         if (sb.length() != 0) {
             out.print('(').print(sb.toString()).print(')');
