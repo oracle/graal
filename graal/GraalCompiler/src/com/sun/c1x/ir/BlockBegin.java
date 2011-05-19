@@ -82,7 +82,7 @@ public final class BlockBegin extends StateSplit {
     private int linearScanNumber;
 
     // LIR block
-    private LIRBlock lirBlock;
+    public LIRBlock lirBlock;
 
     public void setLIRBlock(LIRBlock block) {
         this.lirBlock = block;
@@ -265,7 +265,7 @@ public final class BlockBegin extends StateSplit {
         v.visitBlockBegin(this);
     }
 
-    public void mergeOrClone(FrameStateAccess newState, RiMethod method) {
+    public void mergeOrClone(FrameStateAccess newState, RiMethod method, boolean loopHeader) {
         FrameState existingState = stateBefore();
 
         if (existingState == null) {
@@ -273,7 +273,7 @@ public final class BlockBegin extends StateSplit {
             FrameState duplicate = newState.duplicate(bci());
 
             // if the block is a loop header, insert all necessary phis
-            if (isParserLoopHeader()) {
+            if (loopHeader) {
                 insertLoopPhis(duplicate);
             }
 
@@ -304,16 +304,6 @@ public final class BlockBegin extends StateSplit {
                 newState.setupPhiForLocal(this, i);
             }
         }
-    }
-
-    boolean parserLoopHeader;
-
-    public boolean isParserLoopHeader() {
-        return parserLoopHeader;
-    }
-
-    public void setParserLoopHeader(boolean value) {
-        parserLoopHeader = value;
     }
 
     @Override
@@ -382,9 +372,6 @@ public final class BlockBegin extends StateSplit {
 
         // print flags
         StringBuilder sb = new StringBuilder(8);
-        if (isParserLoopHeader()) {
-            sb.append("LH");
-        }
         if (sb.length() != 0) {
             out.print('(').print(sb.toString()).print(')');
         }
