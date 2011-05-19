@@ -118,12 +118,7 @@ public class IR {
                 LIRBlock lirBlock = new LIRBlock(bb.blockID);
                 bb.setLIRBlock(lirBlock);
                 lirBlock.setLinearScanNumber(bb.linearScanNumber());
-                if (bb.isLinearScanLoopHeader()) {
-                    lirBlock.setLinearScanLoopHeader();
-                }
-                if (bb.isLinearScanLoopEnd()) {
-                    lirBlock.setLinearScanLoopEnd();
-                }
+                // TODO(tw): Initialize LIRBlock.linearScanLoopHeader and LIRBlock.linearScanLoopEnd
                 lirBlock.setStateBefore(bb.stateBefore());
                 orderedBlocks.add(lirBlock);
             }

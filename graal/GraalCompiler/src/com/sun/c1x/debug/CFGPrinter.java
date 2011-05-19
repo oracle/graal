@@ -148,12 +148,6 @@ public class CFGPrinter {
         out.println();
 
         out.print("flags ");
-        if (block.isLinearScanLoopHeader()) {
-            out.print("\"llh\" ");
-        }
-        if (block.isLinearScanLoopEnd()) {
-            out.print("\"lle\" ");
-        }
         out.println();
 
         out.print("loop_index ").println(-1);

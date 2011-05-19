@@ -80,9 +80,7 @@ public final class BlockBegin extends StateSplit {
      * An enumeration of flags for block entries indicating various things.
      */
     public enum BlockFlag {
-        ParserLoopHeader,
-        LinearScanLoopHeader,
-        LinearScanLoopEnd;
+        ParserLoopHeader;
 
         public final int mask = 1 << ordinal();
     }
@@ -400,14 +398,6 @@ public final class BlockBegin extends StateSplit {
 
     public void setParserLoopHeader(boolean value) {
         setBlockFlag(BlockFlag.ParserLoopHeader, value);
-    }
-
-    public boolean isLinearScanLoopHeader() {
-        return checkBlockFlag(BlockFlag.LinearScanLoopHeader);
-    }
-
-    public boolean isLinearScanLoopEnd() {
-        return checkBlockFlag(BlockFlag.LinearScanLoopEnd);
     }
 
     private void setBlockFlag(BlockFlag flag, boolean value) {

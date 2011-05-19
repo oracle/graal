@@ -143,9 +143,9 @@ public final class ComputeLinearScanOrder {
             assert isVisited(cur) : "block must be visited when block is active";
             assert parent != null : "must have parent";
 
-            cur.setBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader);
+            //cur.setBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader);
 
-            parent.setBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd);
+            //parent.setBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd);
 
             loopEndBlocks.add(parent);
             return;
@@ -190,21 +190,6 @@ public final class ComputeLinearScanOrder {
         int weight = (loopDepth & 0x7FFF) << 16;
 
         int curBit = 15;
-
-        // this is necessary for the (very rare) case that two successive blocks have
-        // the same loop depth, but a different loop index (can happen for endless loops
-        // with exception handlers)
-        if (!cur.isLinearScanLoopHeader()) {
-            weight |= (1 << curBit);
-        }
-        curBit--;
-
-        // loop end blocks (blocks that end with a backward branch) are added
-        // after all other blocks of the loop.
-        if (!cur.isLinearScanLoopEnd()) {
-            weight |= (1 << curBit);
-        }
-        curBit--;
 
         // exceptions should not be thrown in normal control flow, so these blocks
         // are added as late as possible
@@ -318,24 +303,10 @@ public final class ComputeLinearScanOrder {
     }
 
     public void printBlocks() {
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
-            TTY.println("----- loop information:");
-            for (BlockBegin cur : linearScanOrder) {
-                TTY.print(String.format("%4d: B%02d: ", cur.linearScanNumber(), cur.blockID));
-//                for (int loopIdx = 0; loopIdx < numLoops; loopIdx++) {
-//                    TTY.print(String.format("%d = %b ", loopIdx, isBlockInLoop(loopIdx, cur)));
-//                }
-                TTY.println(String.format(" . loopIndex: %2d, loopDepth: %2d", -1, -1));
-            }
-        }
-
         if (C1XOptions.TraceLinearScanLevel >= 1) {
             TTY.println("----- linear-scan block order:");
             for (BlockBegin cur : linearScanOrder) {
                 TTY.print(String.format("%4d: B%02d    loop: %2d  depth: %2d", cur.linearScanNumber(), cur.blockID, -1, -1));
-
-                TTY.print(cur.isLinearScanLoopHeader() ? " lh" : "   ");
-                TTY.print(cur.isLinearScanLoopEnd() ? " le" : "   ");
 
                 if (cur.numberOfPreds() > 0) {
                     TTY.print("    preds: ");
@@ -376,17 +347,11 @@ public final class ComputeLinearScanOrder {
 
             for (BlockBegin sux : cur.end().blockSuccessors()) {
                 assert sux.linearScanNumber() >= 0 && sux.linearScanNumber() == linearScanOrder.indexOf(sux) : "incorrect linearScanNumber";
-                if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd)) {
-                    assert cur.linearScanNumber() < sux.linearScanNumber() : "invalid order";
-                }
             }
 
             for (Instruction pred : cur.blockPredecessors()) {
                 BlockBegin begin = pred.block();
                 assert begin.linearScanNumber() >= 0 && begin.linearScanNumber() == linearScanOrder.indexOf(begin) : "incorrect linearScanNumber";
-                if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
-                    assert cur.linearScanNumber() > begin.linearScanNumber() : "invalid order";
-                }
             }
         }
 
