@@ -313,16 +313,12 @@ public final class BlockMap {
                 }
 
                 case WIDE: {
-                    if (canTrap != null) {
-                        canTrap.set(bci);
-                    }
-
                     bci += lengthOf(code, bci);
                     break;
                 }
 
                 default: {
-                    if (canTrap != null) {
+                    if (canTrap != null && canTrap(opcode)) {
                         canTrap.set(bci);
                     }
 
