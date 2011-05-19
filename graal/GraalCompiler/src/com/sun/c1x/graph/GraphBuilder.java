@@ -155,7 +155,7 @@ public final class GraphBuilder {
             BlockMap.Block block = blockMap.blocks.get(i);
             BlockBegin blockBegin = new BlockBegin(block.startBci, ir.nextBlockNumber(), graph);
             if (block.isLoopHeader) {
-                blockBegin.setBlockFlag(BlockBegin.BlockFlag.ParserLoopHeader);
+                blockBegin.setParserLoopHeader(true);
             }
             blockBegin.setDepthFirstNumber(blockBegin.blockID);
             blockList[block.startBci] = blockBegin;

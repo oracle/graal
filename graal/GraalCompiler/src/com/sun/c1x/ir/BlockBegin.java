@@ -77,15 +77,6 @@ public final class BlockBegin extends StateSplit {
     private static final List<BlockBegin> NO_HANDLERS = Collections.emptyList();
 
     /**
-     * An enumeration of flags for block entries indicating various things.
-     */
-    public enum BlockFlag {
-        ParserLoopHeader;
-
-        public final int mask = 1 << ordinal();
-    }
-
-    /**
      * A unique id used in tracing.
      */
     public final int blockID;
@@ -97,8 +88,6 @@ public final class BlockBegin extends StateSplit {
 
     private int depthFirstNumber;
     private int linearScanNumber;
-
-    private BlockBegin dominator;
 
     // LIR block
     private LIRBlock lirBlock;
@@ -141,14 +130,6 @@ public final class BlockBegin extends StateSplit {
     }
 
     /**
-     * Sets the dominator block for this block.
-     * @param dominator the dominator for this block
-     */
-    public void setDominator(BlockBegin dominator) {
-        this.dominator = dominator;
-    }
-
-    /**
      * Gets the depth first traversal number of this block.
      * @return the depth first number
      */
@@ -171,35 +152,6 @@ public final class BlockBegin extends StateSplit {
 
     public void setLinearScanNumber(int linearScanNumber) {
         this.linearScanNumber = linearScanNumber;
-    }
-
-    /**
-     * Set a flag on this block.
-     * @param flag the flag to set
-     */
-    public void setBlockFlag(BlockFlag flag) {
-        blockFlags |= flag.mask;
-    }
-
-    /**
-     * Clear a flag on this block.
-     * @param flag the flag to clear
-     */
-    public void clearBlockFlag(BlockFlag flag) {
-        blockFlags &= ~flag.mask;
-    }
-
-    public void copyBlockFlag(BlockBegin other, BlockFlag flag) {
-        setBlockFlag(flag, other.checkBlockFlag(flag));
-    }
-
-    /**
-     * Check whether this block has the specified flag set.
-     * @param flag the flag to test
-     * @return {@code true} if this block has the flag
-     */
-    public boolean checkBlockFlag(BlockFlag flag) {
-        return (blockFlags & flag.mask) != 0;
     }
 
     /**
@@ -392,20 +344,14 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
+    boolean parserLoopHeader;
+
     public boolean isParserLoopHeader() {
-        return checkBlockFlag(BlockFlag.ParserLoopHeader);
+        return parserLoopHeader;
     }
 
     public void setParserLoopHeader(boolean value) {
-        setBlockFlag(BlockFlag.ParserLoopHeader, value);
-    }
-
-    private void setBlockFlag(BlockFlag flag, boolean value) {
-        if (value) {
-            setBlockFlag(flag);
-        } else {
-            clearBlockFlag(flag);
-        }
+        parserLoopHeader = value;
     }
 
     @Override
@@ -416,16 +362,6 @@ public final class BlockBegin extends StateSplit {
         builder.append(",");
         builder.append(depthFirstNumber);
         builder.append(" [");
-        boolean hasFlag = false;
-        for (BlockFlag f : BlockFlag.values()) {
-            if (checkBlockFlag(f)) {
-                if (hasFlag) {
-                    builder.append(' ');
-                }
-                builder.append(f.name());
-                hasFlag = true;
-            }
-        }
 
         builder.append("]");
         if (end() != null) {
