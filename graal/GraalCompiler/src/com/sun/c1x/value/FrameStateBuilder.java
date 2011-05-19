@@ -22,6 +22,9 @@
  */
 package com.sun.c1x.value;
 
+import static com.sun.c1x.value.ValueUtil.*;
+import static java.lang.reflect.Modifier.*;
+
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -29,9 +32,6 @@ import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
-
-import static com.sun.c1x.value.ValueUtil.*;
-import static java.lang.reflect.Modifier.*;
 
 
 public class FrameStateBuilder implements FrameStateAccess {

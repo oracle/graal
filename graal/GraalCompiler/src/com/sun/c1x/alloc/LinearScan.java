@@ -28,19 +28,17 @@ import static java.lang.reflect.Modifier.*;
 import java.util.*;
 
 import com.sun.c1x.*;
-import com.sun.c1x.alloc.Interval.RegisterBinding;
-import com.sun.c1x.alloc.Interval.RegisterPriority;
-import com.sun.c1x.alloc.Interval.SpillState;
+import com.sun.c1x.alloc.Interval.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
-import com.sun.c1x.lir.LIRInstruction.OperandMode;
+import com.sun.c1x.lir.LIRInstruction.*;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
-import com.sun.c1x.value.FrameState.ValueProcedure;
+import com.sun.c1x.value.FrameState.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

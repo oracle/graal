@@ -33,15 +33,10 @@ import com.sun.c1x.*;
 import com.sun.c1x.asm.*;
 import com.sun.c1x.globalstub.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiRegister.RegisterFlag;
+import com.sun.cri.ci.CiRegister.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.xir.*;
-import com.sun.cri.xir.CiXirAssembler.XirConstant;
-import com.sun.cri.xir.CiXirAssembler.XirConstantOperand;
-import com.sun.cri.xir.CiXirAssembler.XirOperand;
-import com.sun.cri.xir.CiXirAssembler.XirParameter;
-import com.sun.cri.xir.CiXirAssembler.XirRegister;
-import com.sun.cri.xir.CiXirAssembler.XirTemp;
+import com.sun.cri.xir.CiXirAssembler.*;
 
 public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
 

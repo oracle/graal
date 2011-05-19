@@ -31,7 +31,7 @@ import com.sun.c1x.globalstub.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiCallingConvention.Type;
+import com.sun.cri.ci.CiCallingConvention.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.util.*;
 

@@ -27,9 +27,7 @@ import static com.sun.c1x.C1XCompilation.*;
 import java.util.*;
 
 import com.sun.c1x.*;
-import com.sun.c1x.ir.*;
-import com.sun.c1x.lir.LIROperand.LIRAddressOperand;
-import com.sun.c1x.lir.LIROperand.LIRVariableOperand;
+import com.sun.c1x.lir.LIROperand.*;
 import com.sun.cri.ci.*;
 
 /**

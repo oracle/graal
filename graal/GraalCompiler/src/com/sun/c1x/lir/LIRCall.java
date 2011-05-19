@@ -25,9 +25,9 @@ package com.sun.c1x.lir;
 import java.util.*;
 
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.Mark;
+import com.sun.cri.ci.CiTargetMethod.*;
 import com.sun.cri.ri.*;
-import com.sun.cri.xir.CiXirAssembler.XirMark;
+import com.sun.cri.xir.CiXirAssembler.*;
 
 /**
  * This class represents a call instruction; either to a {@linkplain CiRuntimeCall runtime method},

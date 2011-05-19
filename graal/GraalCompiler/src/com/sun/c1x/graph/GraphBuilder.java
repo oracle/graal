@@ -37,7 +37,7 @@ import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
+import com.sun.cri.ri.RiType.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -393,8 +393,6 @@ public final class GraphBuilder {
             updateDispatchChain(dispatch.otherSuccessor(), mergedState, bci);
         } else if (dispatchEntry.next() instanceof Deoptimize) {
             // deoptimizing handler
-            Deoptimize deopt = (Deoptimize) dispatchEntry.next();
-            //deopt.setStateBefore(mergedState.duplicate(bci));
             dispatchEntry.end().setStateAfter(mergedState.duplicate(bci));
             updateDispatchChain(dispatchEntry.end().blockSuccessor(0), mergedState, bci);
         } else if (dispatchEntry.next() instanceof Unwind) {
@@ -878,23 +876,6 @@ public final class GraphBuilder {
             }
         }
         return exact;
-    }
-
-    private RiType getAssumedLeafType(RiType type) {
-        if (isFinal(type.accessFlags())) {
-            return type;
-        }
-        RiType assumed = null;
-        if (C1XOptions.UseAssumptions) {
-            assumed = type.uniqueConcreteSubtype();
-            if (assumed != null) {
-                if (C1XOptions.PrintAssumptions) {
-                    TTY.println("Recording concrete subtype assumption in context of " + type.name() + ": " + assumed.name());
-                }
-                compilation.assumptions.recordConcreteSubtype(type, assumed);
-            }
-        }
-        return assumed;
     }
 
     private void callRegisterFinalizer() {

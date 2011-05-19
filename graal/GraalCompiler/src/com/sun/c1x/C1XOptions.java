@@ -39,8 +39,6 @@ public final class C1XOptions {
     // Checkstyle: resume
 
     // inlining settings
-    public static boolean OptInline                          = ____;
-
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
@@ -91,12 +89,8 @@ public final class C1XOptions {
     public static boolean PrintAssumptions                   = ____;
     public static boolean QuietBailout                       = ____;
 
-    // optimistic optimization settings
-    public static boolean UseAssumptions                = true;
-
     // state merging settings
     public static boolean AssumeVerifiedBytecode        = ____;
-    public static boolean PhiLoopStores                 = true;
 
     // miscellaneous settings
     public static boolean SupportObjectConstants        = true;
@@ -139,23 +133,4 @@ public final class C1XOptions {
     public static boolean UseXmmRegToRegMoveAll         = ____;
 
     public static boolean StressImplicitExceptions       = ____;
-
-    static {
-        setOptimizationLevel(1);
-    }
-
-    public static void setOptimizationLevel(int level) {
-        final boolean l = (level >= 1);
-        final boolean ll = (level >= 2);
-        final boolean lll = (level >= 3);
-
-        // Level 1 optimizations
-        PhiLoopStores                   = l;
-
-        // Level 2 optimizations
-        OptInline                       = ll;
-
-        // Level 3 optimizations
-        UseAssumptions                  = lll;
-    }
 }

@@ -24,7 +24,6 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;

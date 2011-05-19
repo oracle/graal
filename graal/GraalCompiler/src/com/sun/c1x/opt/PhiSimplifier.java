@@ -22,7 +22,7 @@
  */
 package com.sun.c1x.opt;
 
-import com.sun.c1x.graph.IR;
+import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.value.*;
 

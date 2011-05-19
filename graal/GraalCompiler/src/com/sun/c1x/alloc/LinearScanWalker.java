@@ -27,16 +27,12 @@ import static com.sun.cri.ci.CiUtil.*;
 import java.util.*;
 
 import com.sun.c1x.*;
-import com.sun.c1x.alloc.Interval.RegisterBinding;
-import com.sun.c1x.alloc.Interval.RegisterPriority;
-import com.sun.c1x.alloc.Interval.SpillState;
-import com.sun.c1x.alloc.Interval.State;
+import com.sun.c1x.alloc.Interval.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiRegister.RegisterFlag;
+import com.sun.cri.ci.CiRegister.*;
 
 /**
  *

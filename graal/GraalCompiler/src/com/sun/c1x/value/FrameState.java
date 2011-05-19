@@ -22,6 +22,8 @@
  */
 package com.sun.c1x.value;
 
+import static com.sun.c1x.value.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -29,8 +31,6 @@ import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
-
-import static com.sun.c1x.value.ValueUtil.*;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
