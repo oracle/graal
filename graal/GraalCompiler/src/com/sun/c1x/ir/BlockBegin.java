@@ -79,11 +79,6 @@ public final class BlockBegin extends StateSplit {
      */
     public final int blockID;
 
-    /**
-     * Denotes the current set of {@link BlockBegin.BlockFlag} settings.
-     */
-    private int blockFlags;
-
     private int depthFirstNumber;
     private int linearScanNumber;
 

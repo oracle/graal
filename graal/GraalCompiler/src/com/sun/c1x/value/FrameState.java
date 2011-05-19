@@ -381,27 +381,6 @@ public class FrameState extends Value implements FrameStateAccess {
     }
 
     /**
-     * Traverses all live {@linkplain Phi phis} of a given block in this frame state.
-     *
-     * @param block only phis {@linkplain Phi#block() associated} with this block are traversed
-     * @param proc the call back invoked for each live phi traversed
-     */
-    public final boolean forEachLivePhi(int blockID, PhiProcedure proc) {
-        for (int i = 0; i < valuesSize(); i++) {
-            Value instr = valueAt(i);
-            if (instr instanceof Phi && !instr.isDeadPhi()) {
-                Phi phi = (Phi) instr;
-                if (phi.block().blockID == blockID) {
-                    if (!proc.doPhi(phi)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
      * Checks whether this frame state has any {@linkplain Phi phi} statements.
      */
     public boolean hasPhis() {

@@ -114,13 +114,15 @@ public class IR {
             List<BlockBegin> blocks = computeLinearScanOrder.linearScanOrder();
             orderedBlocks = new ArrayList<LIRBlock>();
 
+            int z = 0;
             for (BlockBegin bb : blocks) {
-                LIRBlock lirBlock = new LIRBlock(bb.blockID);
+                LIRBlock lirBlock = new LIRBlock(z);
                 bb.setLIRBlock(lirBlock);
                 lirBlock.setLinearScanNumber(bb.linearScanNumber());
                 // TODO(tw): Initialize LIRBlock.linearScanLoopHeader and LIRBlock.linearScanLoopEnd
                 lirBlock.setStateBefore(bb.stateBefore());
                 orderedBlocks.add(lirBlock);
+                ++z;
             }
 
             for (BlockBegin bb : blocks) {

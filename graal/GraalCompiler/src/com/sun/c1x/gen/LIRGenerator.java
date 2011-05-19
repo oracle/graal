@@ -390,16 +390,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitExceptionObject(ExceptionObject x) {
-
-        // no moves are created for phi functions at the begin of exception
-        // handlers, so assign operands manually here
-        currentBlock.stateBefore().forEachLivePhi(currentBlock.blockID(), new PhiProcedure() {
-            public boolean doPhi(Phi phi) {
-                operandForPhi(phi);
-                return true;
-            }
-        });
-
         XirSnippet snippet = xir.genExceptionObject(site(x));
         emitXir(snippet, x, stateFor(x), null, true);
     }
@@ -1442,7 +1432,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (x instanceof ExceptionEdgeInstruction) {
             BlockBegin begin = ((ExceptionEdgeInstruction) x).exceptionEdge();
             if (begin != null) {
-                exceptionEdge = begin.lirBlock();
+                exceptionEdge = getLIRBlock(begin);
             }
         }
         return new LIRDebugInfo(state, exceptionEdge);
