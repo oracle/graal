@@ -273,10 +273,6 @@ public abstract class Value extends Node {
             builder.append(' ');
         }
         builder.append(getClass().getSimpleName());
-        if (this instanceof Instruction) {
-            builder.append(" @ ");
-            builder.append(((Instruction) this).bci());
-        }
         builder.append(" [").append(flagsToString()).append("]");
         return builder.toString();
     }

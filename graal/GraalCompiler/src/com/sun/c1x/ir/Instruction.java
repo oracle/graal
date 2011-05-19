@@ -71,12 +71,6 @@ public abstract class Instruction extends Value {
 
     public static final int SYNCHRONIZATION_ENTRY_BCI = -1;
 
-    /**
-     * Index of bytecode that generated this node when appended in a basic block.
-     * Negative values indicate special cases.
-     */
-    private int bci;
-
     private boolean isAppended = false;
 
     /**
@@ -88,23 +82,6 @@ public abstract class Instruction extends Value {
     public Instruction(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         C1XMetrics.HIRInstructions++;
-    }
-
-    /**
-     * Gets the bytecode index of this instruction.
-     * @return the bytecode index of this instruction
-     */
-    public final int bci() {
-        return bci;
-    }
-
-    /**
-     * Sets the bytecode index of this instruction.
-     * @param bci the new bytecode index for this instruction
-     */
-    public final void setBCI(int bci) {
-        assert bci >= 0 || bci == SYNCHRONIZATION_ENTRY_BCI;
-        this.bci = bci;
     }
 
     /**
@@ -123,11 +100,10 @@ public abstract class Instruction extends Value {
      * @param bci the bytecode index of the next instruction
      * @return the new next instruction
      */
-    public final Instruction appendNext(Instruction next, int bci) {
+    public final Instruction appendNext(Instruction next) {
         setNext(next);
         if (next != null) {
             assert !(this instanceof BlockEnd);
-            next.setBCI(bci);
             next.isAppended = true;
         }
         return next;
@@ -135,7 +111,6 @@ public abstract class Instruction extends Value {
 
     @Override
     public BlockBegin block() {
-        // TODO(tw): Make this more efficient.
         Instruction cur = this;
         while (!(cur instanceof BlockEnd)) {
             cur = cur.next();

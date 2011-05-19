@@ -42,6 +42,7 @@ import com.sun.c1x.opt.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 import com.sun.c1x.value.FrameState.PhiProcedure;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.bytecode.Bytecodes.MemoryBarriers;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -447,7 +448,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected FrameState stateBeforeInvokeReturn(Invoke invoke) {
-        return invoke.stateAfter().duplicateModified(invoke.bci(), invoke.kind/*, args*/);
+        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.kind);
     }
 
     protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
@@ -455,7 +456,15 @@ public abstract class LIRGenerator extends ValueVisitor {
         for (int i = 0; i < invoke.argumentCount(); i++) {
             args[i] = invoke.argument(i);
         }
-        return invoke.stateAfter().duplicateModified(invoke.bci(), invoke.kind, args);
+        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.kind, args);
+    }
+
+    private int getBeforeInvokeBci(Invoke invoke) {
+        int length = 3;
+        if (invoke.opcode() == Bytecodes.INVOKEINTERFACE) {
+            length += 2;
+        }
+        return invoke.stateAfter().bci - length;
     }
 
     @Override
@@ -1393,17 +1402,8 @@ public abstract class LIRGenerator extends ValueVisitor {
                 walkStateValue(value);
             }
         }
-        FrameState s = state;
-        int bci = x.bci();
-        if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
-            assert x instanceof ExceptionObject ||
-                   x instanceof Throw ||
-                   x instanceof MonitorEnter ||
-                   x instanceof MonitorExit : x + ", " + x.getClass();
-        }
-
-        for (int index = 0; index < s.localsSize(); index++) {
-            final Value value = s.localAt(index);
+        for (int index = 0; index < state.localsSize(); index++) {
+            final Value value = state.localAt(index);
             if (value != null) {
                 if (!value.isIllegal()) {
                     walkStateValue(value);

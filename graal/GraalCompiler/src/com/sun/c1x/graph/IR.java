@@ -155,12 +155,7 @@ public class IR {
      * @return the new block inserted
      */
     public BlockBegin splitEdge(BlockBegin source, BlockBegin target) {
-        int bci;
-        if (target.blockPredecessors().size() == 1) {
-            bci = target.bci();
-        } else {
-            bci = source.end().bci();
-        }
+        int bci = -2;
 
         int backEdgeIndex = target.predecessors().indexOf(source.end());
 
@@ -169,7 +164,7 @@ public class IR {
 
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, compilation.graph);
-        newSucc.appendNext(e, bci);
+        newSucc.appendNext(e);
         newSucc.setEnd(e);
         e.reorderSuccessor(0, backEdgeIndex);
         // setup states

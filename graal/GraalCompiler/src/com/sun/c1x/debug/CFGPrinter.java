@@ -128,8 +128,8 @@ public class CFGPrinter {
         begin("block");
 
         out.print("name \"B").print(block.blockID).println('"');
-        out.print("from_bci ").println(block.bci());
-        out.print("to_bci ").println(block.end() == null ? -1 : block.end().bci());
+        out.print("from_bci -1");
+        out.print("to_bci -1");
 
         out.print("predecessors ");
         for (Instruction pred : block.blockPredecessors()) {
@@ -519,7 +519,7 @@ public class CFGPrinter {
      * @param i the instruction for which HIR will be printed
      */
     private void printInstructionHIR(Instruction i) {
-        out.print("bci ").print(i.bci()).println(COLUMN_END);
+        out.print("bci ").print(-1).println(COLUMN_END);
         if (i.operand().isLegal()) {
             out.print("result ").print(new CFGOperandFormatter(false).format(i.operand())).println(COLUMN_END);
         }

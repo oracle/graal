@@ -131,7 +131,7 @@ public class InstructionPrinter {
     public void printInstructionListing(Value instruction) {
         int indentation = out.indentationLevel();
         out.fillTo(BCI.position + indentation, ' ').
-             print(instruction instanceof Instruction ? ((Instruction) instruction).bci() : 0).
+             print(0).
              fillTo(USE.position + indentation, ' ').
              print("0").
              fillTo(VALUE.position + indentation, ' ').

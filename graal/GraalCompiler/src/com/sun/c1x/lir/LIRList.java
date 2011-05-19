@@ -390,7 +390,6 @@ public final class LIRList {
 
     public static void printBlock(BlockBegin x) {
         // print block id
-        BlockEnd end = x.end();
         TTY.print("B%d ", x.blockID);
 
         // print flags
@@ -402,7 +401,7 @@ public final class LIRList {
         }
 
         // print block bci range
-        TTY.print("[%d, %d] ", x.bci(), (end == null ? -1 : end.bci()));
+        TTY.print("[%d, %d] ", -1, -1);
 
         // print predecessors and successors
         if (x.numberOfPreds() > 0) {

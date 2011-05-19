@@ -118,7 +118,7 @@ public abstract class LIRAssembler {
 
         assert block.lir() != null : "must have LIR";
         if (C1XOptions.CommentedAssembly) {
-            String st = String.format(" block B%d [%d, %d]", block.blockID, block.bci(), block.end().bci());
+            String st = String.format(" block B%d", block.blockID);
             tasm.blockComment(st);
         }
 

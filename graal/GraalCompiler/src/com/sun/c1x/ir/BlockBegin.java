@@ -108,6 +108,12 @@ public final class BlockBegin extends StateSplit {
     public final LIRBlock lirBlock = new LIRBlock();
 
     /**
+     * Index of bytecode that generated this node when appended in a basic block.
+     * Negative values indicate special cases.
+     */
+    private int bci;
+
+    /**
      * Constructs a new BlockBegin at the specified bytecode index.
      * @param bci the bytecode index of the start
      * @param blockID the ID of the block
@@ -288,6 +294,22 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
+    /**
+     * Gets the bytecode index of this instruction.
+     * @return the bytecode index of this instruction
+     */
+    public int bci() {
+        return bci;
+    }
+
+    /**
+     * Sets the bytecode index of this instruction.
+     * @param bci the new bytecode index for this instruction
+     */
+    public void setBCI(int bci) {
+        this.bci = bci;
+    }
+
     private void iterate(IdentityHashMap<BlockBegin, BlockBegin> mark, BlockClosure closure) {
         if (!mark.containsKey(this)) {
             mark.put(this, this);
@@ -311,9 +333,6 @@ public final class BlockBegin extends StateSplit {
                 iterateReverse(mark, closure, excBlocks);
             }
 
-//            if (exceptionHandlerBlocks != null) {
-//                iterateReverse(mark, closure, exceptionHandlerBlocks);
-//            }
             assert e != null : "block must have block end";
             iterateReverse(mark, closure, e.blockSuccessors());
         }
@@ -336,7 +355,6 @@ public final class BlockBegin extends StateSplit {
         if (existingState == null) {
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci());
-            assert duplicate.bci == bci() : "duplicate.bci=" + duplicate.bci + " my bci=" + bci();
 
             if (C1XOptions.UseStackMapTableLiveness && method != null) {
                 // if a liveness map is available, use it to invalidate dead locals
@@ -429,8 +447,6 @@ public final class BlockBegin extends StateSplit {
         builder.append(blockID);
         builder.append(",");
         builder.append(depthFirstNumber);
-        builder.append(" @ ");
-        builder.append(bci());
         builder.append(" [");
         boolean hasFlag = false;
         for (BlockFlag f : BlockFlag.values()) {
@@ -540,7 +556,7 @@ public final class BlockBegin extends StateSplit {
         }
 
         // print block bci range
-        out.print('[').print(bci()).print(", ").print(end == null ? -1 : end.bci()).print(']');
+        out.print('[').print(-1).print(", ").print(-1).print(']');
 
         // print block successors
         if (end != null && end.blockSuccessors().size() > 0) {
