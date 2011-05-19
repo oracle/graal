@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Throw} instruction represents a throw of an exception.
  */
-public final class Throw extends BlockEnd {
+public final class Throw extends BlockEnd implements ExceptionEdgeInstruction {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_EXCEPTION = 0;

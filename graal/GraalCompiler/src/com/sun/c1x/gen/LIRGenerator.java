@@ -1437,7 +1437,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         assert state != null;
-        return new LIRDebugInfo(state, x.exceptionEdge());
+        return new LIRDebugInfo(state, (x instanceof ExceptionEdgeInstruction) ? ((ExceptionEdgeInstruction) x).exceptionEdge() : null);
     }
 
     List<CiValue> visitInvokeArguments(CiCallingConvention cc, Invoke x, List<CiValue> pointerSlots) {

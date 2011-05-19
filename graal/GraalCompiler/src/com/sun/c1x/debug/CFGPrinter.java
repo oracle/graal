@@ -569,7 +569,7 @@ public class CFGPrinter {
         startBlock.iteratePreOrder(new BlockClosure() {
             public void apply(BlockBegin block) {
                 List<BlockBegin> successors = block.end() != null ? block.end().blockSuccessors() : new ArrayList<BlockBegin>(0);
-                printBlock(block, successors, block.exceptionEdge(), printHIR, printLIR);
+                printBlock(block, successors, null, printHIR, printLIR);
             }
         });
         end("cfg");

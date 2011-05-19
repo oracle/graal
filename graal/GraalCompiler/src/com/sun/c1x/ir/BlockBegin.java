@@ -246,10 +246,8 @@ public final class BlockBegin extends StateSplit {
             Instruction inst = block;
             ArrayList<BlockBegin> excBlocks = new ArrayList<BlockBegin>();
             while (inst != null) {
-                if (inst instanceof Invoke) {
-                    excBlocks.add(((Invoke) inst).exceptionEdge());
-                } else if (inst instanceof Throw) {
-                    excBlocks.add(((Throw) inst).exceptionEdge());
+                if (inst instanceof ExceptionEdgeInstruction) {
+                    excBlocks.add(((ExceptionEdgeInstruction) inst).exceptionEdge());
                 }
                 inst = inst.next();
             }
@@ -703,10 +701,8 @@ public final class BlockBegin extends StateSplit {
             }
         }
         for (Instruction x = next(); x != null; x = x.next()) {
-            if (x instanceof Invoke && ((Invoke) x).exceptionEdge() != null) {
-                closure.apply(((Invoke) x).exceptionEdge());
-            } else if (x instanceof Throw && ((Throw) x).exceptionEdge() != null) {
-                closure.apply(((Throw) x).exceptionEdge());
+            if (x instanceof ExceptionEdgeInstruction && ((ExceptionEdgeInstruction) x).exceptionEdge() != null) {
+                closure.apply(((ExceptionEdgeInstruction) x).exceptionEdge());
             }
         }
     }

@@ -166,32 +166,11 @@ public abstract class Instruction extends Value {
     }
 
     /**
-     * Gets the name of this instruction as a string.
-     * @return the name of this instruction
-     */
-    public final String name() {
-        return getClass().getSimpleName();
-    }
-
-    /**
-     * Apply the specified closure to all the values of this instruction, including
-     * input values, state values, and other values.
-     * @param closure the closure to apply
-     */
-    public final void allValuesDo(ValueClosure closure) {
-        inputValuesDo(closure);
-    }
-
-    /**
      * Gets the state after the instruction, if it is recorded. Typically only
      * instances of {@link BlockEnd} have a non-null state after.
      * @return the state after the instruction
      */
     public FrameState stateAfter() {
-        return null;
-    }
-
-    public BlockBegin exceptionEdge() {
         return null;
     }
 }

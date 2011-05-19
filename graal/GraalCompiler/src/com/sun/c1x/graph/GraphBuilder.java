@@ -1066,7 +1066,7 @@ public final class GraphBuilder {
             throw new CiBailout("Method and/or inlining is too large");
         }
 
-        if (x instanceof Invoke || x instanceof Throw) {
+        if (x instanceof ExceptionEdgeInstruction) {
             // connect the instruction to any exception handlers
             handleException(x, bci);
         }
