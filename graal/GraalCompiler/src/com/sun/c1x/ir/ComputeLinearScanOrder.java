@@ -117,11 +117,6 @@ public final class ComputeLinearScanOrder {
 
         countEdges(startBlock, null);
 
-        if (numLoops > 0) {
-            markLoops();
-            clearNonNaturalLoops(startBlock);
-        }
-
         computeOrder(startBlock);
 
         printBlocks();
@@ -180,94 +175,9 @@ public final class ComputeLinearScanOrder {
 
         clearActive(cur);
 
-        // Each loop has a unique number.
-        // When multiple loops are nested, assignLoopDepth assumes that the
-        // innermost loop has the lowest number. This is guaranteed by setting
-        // the loop number after the recursive calls for the successors above
-        // have returned.
-//        if (cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
-//           // assert cur.loopIndex() == -1 : "cannot set loop-index twice";
-//            if (C1XOptions.TraceLinearScanLevel >= 3) {
-//                TTY.println("Block B%d is loop header of loop %d", cur.blockID, numLoops);
-//            }
-//
-//            cur.setLoopIndex(numLoops);
-//            numLoops++;
-//        }
-
         if (C1XOptions.TraceLinearScanLevel >= 3) {
             TTY.println("Finished counting edges for block B%d", cur.blockID);
         }
-    }
-
-    private void markLoops() {
-//        if (C1XOptions.TraceLinearScanLevel >= 3) {
-//            TTY.println("----- marking loops");
-//        }
-//
-//        loopMap = new BitMap2D(numLoops, maxBlockId);
-//
-//        for (int i = loopEndBlocks.size() - 1; i >= 0; i--) {
-//            BlockBegin loopEnd = loopEndBlocks.get(i);
-//            BlockBegin loopStart = loopEnd.suxAt(0);
-//            int loopIdx = loopStart.loopIndex();
-//
-//            if (C1XOptions.TraceLinearScanLevel >= 3) {
-//                TTY.println("Processing loop from B%d to B%d (loop %d):", loopStart.blockID, loopEnd.blockID, loopIdx);
-//            }
-//            assert loopEnd.isLinearScanLoopEnd() : "loop end flag must be set";
-//            assert loopStart.isLinearScanLoopHeader() : "loop header flag must be set";
-//            assert loopIdx >= 0 && loopIdx < numLoops : "loop index not set";
-//            assert workList.isEmpty() : "work list must be empty before processing";
-//
-//            // add the end-block of the loop to the working list
-//            workList.add(loopEnd);
-//            setBlockInLoop(loopIdx, loopEnd);
-//            do {
-//                BlockBegin cur = workList.remove(workList.size() - 1);
-//
-//                if (C1XOptions.TraceLinearScanLevel >= 3) {
-//                    TTY.println("    processing B%d", cur.blockID);
-//                }
-//                //assert isBlockInLoop(loopIdx, cur) : "bit in loop map must be set when block is in work list";
-//
-//                // recursive processing of all predecessors ends when start block of loop is reached
-//                if (cur != loopStart) {
-//                    for (int j = cur.numberOfPreds() - 1; j >= 0; j--) {
-//                        BlockBegin pred = cur.predAt(j).block();
-//
-//                        if (!isBlockInLoop(loopIdx, pred)) {
-//                            // this predecessor has not been processed yet, so add it to work list
-//                            if (C1XOptions.TraceLinearScanLevel >= 3) {
-//                                TTY.println("    pushing B%d", pred.blockID);
-//                            }
-//                            workList.add(pred);
-//                            setBlockInLoop(loopIdx, pred);
-//                        }
-//                    }
-//                }
-//            } while (!workList.isEmpty());
-//        }
-    }
-
-    // check for non-natural loops (loops where the loop header does not dominate
-    // all other loop blocks = loops with multiple entries).
-    // such loops are ignored
-    private void clearNonNaturalLoops(BlockBegin startBlock) {
-//        for (int i = numLoops - 1; i >= 0; i--) {
-//            if (isBlockInLoop(i, startBlock)) {
-//                // loop i contains the entry block of the method.
-//                // this is not a natural loop, so ignore it
-//                if (C1XOptions.TraceLinearScanLevel >= 2) {
-//                    TTY.println("Loop %d is non-natural, so it is ignored", i);
-//                }
-//
-//                for (int blockId = maxBlockId - 1; blockId >= 0; blockId--) {
-//                    clearBlockInLoop(i, blockId);
-//                }
-//                iterativeDominators = true;
-//            }
-//        }
     }
 
     private int computeWeight(BlockBegin cur) {
