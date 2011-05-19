@@ -50,8 +50,8 @@ public final class LookupSwitch extends Switch {
      * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
-    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateBefore, boolean isSafepoint, Graph graph) {
-        super(value, successors, stateBefore, isSafepoint, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateBefore, Graph graph) {
+        super(value, successors, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.keys = keys;
     }
 
@@ -76,9 +76,6 @@ public final class LookupSwitch extends Switch {
     @Override
     public void print(LogStream out) {
         out.print("lookupswitch ");
-        if (isSafepoint()) {
-            out.print("(safepoint) ");
-        }
         out.println(value());
         int l = numberOfCases();
         for (int i = 0; i < l; i++) {

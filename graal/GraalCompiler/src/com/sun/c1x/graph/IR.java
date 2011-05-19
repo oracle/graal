@@ -168,7 +168,7 @@ public class IR {
         BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), compilation.graph);
 
         // This goto is not a safepoint.
-        Goto e = new Goto(target, null, false, compilation.graph);
+        Goto e = new Goto(target, null, compilation.graph);
         newSucc.appendNext(e, bci);
         newSucc.setEnd(e);
         e.reorderSuccessor(0, backEdgeIndex);

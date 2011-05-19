@@ -79,8 +79,6 @@ public abstract class BlockEnd extends Instruction {
         return blockSuccessorCount;
     }
 
-    private boolean isSafepoint;
-
     /**
      * Constructs a new block end with the specified value type.
      * @param kind the type of the value produced by this instruction
@@ -88,30 +86,21 @@ public abstract class BlockEnd extends Instruction {
      * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
-    public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint, List<BlockBegin> blockSuccessors, int inputCount, int successorCount, Graph graph) {
-        this(kind, stateAfter, isSafepoint, blockSuccessors.size(), inputCount, successorCount, graph);
+    public BlockEnd(CiKind kind, FrameState stateAfter, List<BlockBegin> blockSuccessors, int inputCount, int successorCount, Graph graph) {
+        this(kind, stateAfter, blockSuccessors.size(), inputCount, successorCount, graph);
         for (int i = 0; i < blockSuccessors.size(); i++) {
             setBlockSuccessor(i, blockSuccessors.get(i));
         }
     }
 
-    public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
+    public BlockEnd(CiKind kind, FrameState stateAfter, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + blockSuccessorCount + SUCCESSOR_COUNT, graph);
         this.blockSuccessorCount = blockSuccessorCount;
         setStateAfter(stateAfter);
-        this.isSafepoint = isSafepoint;
     }
 
-    public BlockEnd(CiKind kind, FrameState stateAfter, boolean isSafepoint, Graph graph) {
-        this(kind, stateAfter, isSafepoint, 2, 0, 0, graph);
-    }
-
-    /**
-     * Checks whether this instruction is a safepoint.
-     * @return {@code true} if this instruction is a safepoint
-     */
-    public boolean isSafepoint() {
-        return isSafepoint;
+    public BlockEnd(CiKind kind, FrameState stateAfter, Graph graph) {
+        this(kind, stateAfter, 2, 0, 0, graph);
     }
 
     /**

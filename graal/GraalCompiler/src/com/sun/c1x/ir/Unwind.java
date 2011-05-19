@@ -58,8 +58,8 @@ public final class Unwind extends BlockEnd {
         return (Value) inputs().set(super.inputCount() + INPUT_EXCEPTION, n);
     }
 
-    public Unwind(Value exception, boolean isSafepoint, Graph graph) {
-        super(CiKind.Object, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Unwind(Value exception, Graph graph) {
+        super(CiKind.Object, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
     }
 

@@ -64,8 +64,8 @@ public final class Return extends BlockEnd {
      * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param graph
      */
-    public Return(Value result, boolean isSafepoint, Graph graph) {
-        super(result == null ? CiKind.Void : result.kind, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Return(Value result, Graph graph) {
+        super(result == null ? CiKind.Void : result.kind, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setResult(result);
     }
 

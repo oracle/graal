@@ -580,10 +580,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         CiValue tag = load(x.value());
         setNoResult(x);
 
-        if (x.isSafepoint()) {
-            emitXir(xir.genSafepoint(site(x)), x, stateFor(x), null, false);
-        }
-
         // move values into phi locations
         moveToPhi(x.stateAfter());
 
@@ -838,10 +834,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
         CiValue tag = value.result();
         setNoResult(x);
-
-        if (x.isSafepoint()) {
-            emitXir(xir.genSafepoint(site(x)), x, stateFor(x), null, false);
-        }
 
         // move values into phi locations
         moveToPhi(x.stateAfter());

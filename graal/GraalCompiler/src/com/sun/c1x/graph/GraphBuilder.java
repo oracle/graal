@@ -246,7 +246,7 @@ public final class GraphBuilder {
     private void finishStartBlock(BlockBegin startBlock, BlockBegin stdEntry) {
         assert curBlock == startBlock;
         FrameState stateAfter = frameState.create(bci());
-        Goto base = new Goto(stdEntry, stateAfter, false, graph);
+        Goto base = new Goto(stdEntry, stateAfter, graph);
         appendWithoutOptimization(base, 0);
         startBlock.setEnd(base);
         assert stdEntry.stateBefore() == null;
@@ -314,7 +314,7 @@ public final class GraphBuilder {
             } else {
                 if (unwindBlock == null) {
                     unwindBlock = new BlockBegin(bci, ir.nextBlockNumber(), graph);
-                    Unwind unwind = new Unwind(null, false, graph);
+                    Unwind unwind = new Unwind(null, graph);
                     unwindBlock.appendNext(unwind, bci);
                     unwindBlock.setEnd(unwind);
                 }
@@ -339,14 +339,14 @@ public final class GraphBuilder {
                 } else {
                     BlockBegin dispatchEntry = new BlockBegin(handler.handlerBCI(), ir.nextBlockNumber(), graph);
                     if (handler.handler.catchType().isResolved()) {
-                        ExceptionDispatch end = new ExceptionDispatch(null, handler.entryBlock(), null, handler, null, false, graph);
+                        ExceptionDispatch end = new ExceptionDispatch(null, handler.entryBlock(), null, handler, null, graph);
                         end.setBlockSuccessor(0, successor);
                         dispatchEntry.appendNext(end, handler.handlerBCI());
                         dispatchEntry.setEnd(end);
                     } else {
                         Deoptimize deopt = new Deoptimize(graph, null);
                         dispatchEntry.appendNext(deopt, bci);
-                        Goto end = new Goto(successor, null, false, graph);
+                        Goto end = new Goto(successor, null, graph);
                         deopt.appendNext(end, bci);
                         dispatchEntry.setEnd(end);
                     }
@@ -362,7 +362,7 @@ public final class GraphBuilder {
             ExceptionObject exception = new ExceptionObject(graph);
             entry.appendNext(exception, bci);
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
-            BlockEnd end = new Goto(successor, stateWithException, false, graph);
+            BlockEnd end = new Goto(successor, stateWithException, graph);
             exception.appendNext(end, bci);
             entry.setEnd(end);
 
@@ -605,8 +605,7 @@ public final class GraphBuilder {
     }
 
     private void genGoto(int fromBCI, int toBCI) {
-        boolean isSafepoint = !noSafepoints() && toBCI <= fromBCI;
-        append(new Goto(blockAt(toBCI), null, isSafepoint, graph));
+        append(new Goto(blockAt(toBCI), null, graph));
     }
 
     private void ifNode(Value x, Condition cond, Value y, FrameState stateBefore) {
@@ -615,9 +614,9 @@ public final class GraphBuilder {
         int bci = stream().currentBCI();
         boolean isSafepoint = !noSafepoints() && (tsucc.bci() <= bci || fsucc.bci() <= bci);
         if (isSafepoint) {
-            append(new If(x, cond, y, tsucc, fsucc, stateBefore, isSafepoint, graph));
+            append(new If(x, cond, y, tsucc, fsucc, stateBefore, graph));
         } else {
-            append(new If(x, cond, y, tsucc, fsucc, null, isSafepoint, graph));
+            append(new If(x, cond, y, tsucc, fsucc, null, graph));
             stateBefore.delete();
         }
     }
@@ -645,7 +644,7 @@ public final class GraphBuilder {
 
     private void genThrow(int bci) {
         FrameState stateBefore = frameState.create(bci);
-        Throw t = new Throw(frameState.apop(), !noSafepoints(), graph);
+        Throw t = new Throw(frameState.apop(), graph);
         t.setStateBefore(stateBefore);
         appendWithoutOptimization(t, bci);
     }
@@ -954,7 +953,7 @@ public final class GraphBuilder {
             append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
             frameState.unlock();
         }
-        append(new Return(x, !noSafepoints(), graph));
+        append(new Return(x, graph));
     }
 
     private void genMonitorEnter(Value x, int bci) {
@@ -1011,7 +1010,7 @@ public final class GraphBuilder {
         list.add(blockAt(bci + offset));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? frameState.create(bci()) : null;
-        append(new TableSwitch(frameState.ipop(), list, ts.lowKey(), stateBefore, isSafepoint, graph));
+        append(new TableSwitch(frameState.ipop(), list, ts.lowKey(), stateBefore, graph));
     }
 
     private void genLookupswitch() {
@@ -1033,7 +1032,7 @@ public final class GraphBuilder {
         list.add(blockAt(bci + offset));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateBefore = isSafepoint ? frameState.create(bci()) : null;
-        append(new LookupSwitch(frameState.ipop(), list, keys, stateBefore, isSafepoint, graph));
+        append(new LookupSwitch(frameState.ipop(), list, keys, stateBefore, graph));
     }
 
     private Value appendConstant(CiConstant type) {
@@ -1163,7 +1162,7 @@ public final class GraphBuilder {
             BlockBegin nextBlock = blockAtOrNull(bci);
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
-                end = new Goto(nextBlock, null, false, graph);
+                end = new Goto(nextBlock, null, graph);
                 lastInstr = lastInstr.appendNext(end, prevBCI);
                 break;
             }

@@ -22,8 +22,6 @@
  */
 package com.sun.c1x.ir;
 
-import java.util.*;
-
 import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.value.*;

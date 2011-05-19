@@ -91,8 +91,8 @@ public final class Throw extends BlockEnd {
      * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param graph
      */
-    public Throw(Value exception, boolean isSafepoint, Graph graph) {
-        super(CiKind.Illegal, null, isSafepoint, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Throw(Value exception, Graph graph) {
+        super(CiKind.Illegal, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
     }
 

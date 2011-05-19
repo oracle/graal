@@ -42,8 +42,8 @@ public final class Goto extends BlockEnd {
      * @param isSafepoint {@code true} if the goto should be considered a safepoint (e.g. backward branch)
      * @param graph
      */
-    public Goto(BlockBegin succ, FrameState stateAfter, boolean isSafepoint, Graph graph) {
-        super(CiKind.Illegal, stateAfter, isSafepoint, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Goto(BlockBegin succ, FrameState stateAfter, Graph graph) {
+        super(CiKind.Illegal, stateAfter, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setBlockSuccessor(0, succ);
     }
 
@@ -55,8 +55,5 @@ public final class Goto extends BlockEnd {
     @Override
     public void print(LogStream out) {
         out.print("goto B").print(defaultSuccessor().blockID);
-        if (isSafepoint()) {
-            out.print(" (safepoint)");
-        }
     }
 }

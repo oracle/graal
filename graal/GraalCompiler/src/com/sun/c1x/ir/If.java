@@ -87,8 +87,8 @@ public final class If extends BlockEnd {
      * @param graph
      */
     public If(Value x, Condition cond, Value y,
-              BlockBegin trueSucc, BlockBegin falseSucc, FrameState stateAfter, boolean isSafepoint, Graph graph) {
-        super(CiKind.Illegal, stateAfter, isSafepoint, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+              BlockBegin trueSucc, BlockBegin falseSucc, FrameState stateAfter, Graph graph) {
+        super(CiKind.Illegal, stateAfter, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert Util.archKindsEqual(x, y);
         condition = cond;
         setX(x);
@@ -187,9 +187,6 @@ public final class If extends BlockEnd {
         print(blockSuccessors().get(0).blockID).
         print(" else B").
         print(blockSuccessors().get(1).blockID);
-        if (isSafepoint()) {
-            out.print(" (safepoint)");
-        }
     }
 
     @Override

@@ -64,8 +64,8 @@ public final class ExceptionDispatch extends BlockEnd {
     /**
      * Constructs a new ExceptionDispatch instruction.
      */
-    public ExceptionDispatch(Value exception, BlockBegin catchSuccessor, BlockBegin otherSuccessor, ExceptionHandler handler, FrameState stateAfter, boolean isSafepoint, Graph graph) {
-        super(CiKind.Int, stateAfter, isSafepoint, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public ExceptionDispatch(Value exception, BlockBegin catchSuccessor, BlockBegin otherSuccessor, ExceptionHandler handler, FrameState stateAfter, Graph graph) {
+        super(CiKind.Int, stateAfter, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
         setBlockSuccessor(0, otherSuccessor);
         setBlockSuccessor(1, catchSuccessor);
@@ -129,9 +129,6 @@ public final class ExceptionDispatch extends BlockEnd {
         print(blockSuccessors().get(1).blockID).
         print(" else B").
         print(blockSuccessors().get(0).blockID);
-        if (isSafepoint()) {
-            out.print(" (safepoint)");
-        }
     }
 
     @Override

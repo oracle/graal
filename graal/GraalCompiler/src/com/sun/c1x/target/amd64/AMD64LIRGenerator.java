@@ -503,10 +503,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
             yin.loadItem();
         }
 
-        // add safepoint before generating condition code so it can be recomputed
-        if (x.isSafepoint()) {
-            emitXir(xir.genSafepoint(site(x)), x, stateFor(x, x.stateAfter()), null, false);
-        }
         setNoResult(x);
 
         CiValue left = xin.result();
