@@ -126,7 +126,6 @@ public final class C1XOptions {
 
     // Runtime settings
     public static int     ReadPrefetchInstr             = 0;
-    public static boolean UseStackMapTableLiveness      = ____;
     public static int     StackShadowPages              = 2;
 
     // Assembler settings
@@ -157,7 +156,6 @@ public final class C1XOptions {
         OptInline                       = ll;
 
         // Level 3 optimizations
-        UseStackMapTableLiveness        = lll;
         UseAssumptions                  = lll;
     }
 }

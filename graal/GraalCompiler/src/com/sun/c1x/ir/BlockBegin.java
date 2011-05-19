@@ -273,18 +273,6 @@ public final class BlockBegin extends StateSplit {
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci());
 
-            if (C1XOptions.UseStackMapTableLiveness && method != null) {
-                // if a liveness map is available, use it to invalidate dead locals
-                CiBitMap[] livenessMap = method.livenessMap();
-                if (livenessMap != null && bci() >= 0) {
-                    assert bci() < livenessMap.length;
-                    CiBitMap liveness = livenessMap[bci()];
-                    if (liveness != null) {
-                        invalidateDeadLocals(duplicate, liveness);
-                    }
-                }
-            }
-
             // if the block is a loop header, insert all necessary phis
             if (isParserLoopHeader()) {
                 insertLoopPhis(duplicate);
@@ -301,20 +289,6 @@ public final class BlockBegin extends StateSplit {
             assert existingState.stackSize() == newState.stackSize();
 
             existingState.merge(this, newState);
-        }
-    }
-
-    private void invalidateDeadLocals(FrameState newState, CiBitMap liveness) {
-        int max = newState.localsSize();
-        assert max <= liveness.size();
-        for (int i = 0; i < max; i++) {
-            Value x = newState.localAt(i);
-            if (x != null) {
-                if (!liveness.get(i)) {
-                    // invalidate the local if it is not live
-                    newState.invalidateLocal(i);
-                }
-            }
         }
     }
 
