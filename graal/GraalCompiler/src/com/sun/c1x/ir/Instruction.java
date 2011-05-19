@@ -133,40 +133,6 @@ public abstract class Instruction extends Value {
         return next;
     }
 
-    /**
-     * Re-sets the next instruction for this instruction. Note that it is illegal to
-     * set the next field of a phi, block end, or local instruction.
-     * @param next the next instruction
-     * @return the new next instruction
-     */
-    public final Instruction resetNext(Instruction next) {
-        if (next != null) {
-            assert !(this instanceof BlockEnd);
-            setNext(next);
-        }
-        return next;
-    }
-
-    /**
-     * Gets the instruction preceding this instruction in the specified basic block.
-     * Note that instructions do not directly refer to their previous instructions,
-     * and therefore this operation much search from the beginning of the basic
-     * block, thereby requiring time linear in the size of the basic block in the worst
-     * case. Use with caution!
-     * @param block the basic block that contains this instruction
-     * @return the instruction before this instruction in the basic block
-     */
-    public final Instruction prev(BlockBegin block) {
-        Instruction p = null;
-        Instruction q = block;
-        while (q != this) {
-            assert q != null : "this instruction is not in the specified basic block";
-            p = q;
-            q = q.next();
-        }
-        return p;
-    }
-
     @Override
     public BlockBegin block() {
         // TODO(tw): Make this more efficient.
