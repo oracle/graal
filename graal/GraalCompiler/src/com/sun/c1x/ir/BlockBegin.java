@@ -80,8 +80,6 @@ public final class BlockBegin extends StateSplit {
      * An enumeration of flags for block entries indicating various things.
      */
     public enum BlockFlag {
-        StandardEntry,
-        BackwardBranchTarget,
         ParserLoopHeader,
         LinearScanLoopHeader,
         LinearScanLoopEnd;

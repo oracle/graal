@@ -144,7 +144,6 @@ public final class ComputeLinearScanOrder {
             assert parent != null : "must have parent";
 
             cur.setBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader);
-            cur.setBlockFlag(BlockBegin.BlockFlag.BackwardBranchTarget);
 
             parent.setBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd);
 
@@ -380,9 +379,6 @@ public final class ComputeLinearScanOrder {
                 if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd)) {
                     assert cur.linearScanNumber() < sux.linearScanNumber() : "invalid order";
                 }
-                //if (cur.loopDepth() == sux.loopDepth()) {
-                //    assert cur.loopIndex() == sux.loopIndex() || sux.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader) : "successing blocks with same loop depth must have same loop index";
-                //}
             }
 
             for (Instruction pred : cur.blockPredecessors()) {
@@ -391,31 +387,8 @@ public final class ComputeLinearScanOrder {
                 if (!cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
                     assert cur.linearScanNumber() > begin.linearScanNumber() : "invalid order";
                 }
-                //if (cur.loopDepth() == begin.loopDepth()) {
-                //    assert cur.loopIndex() == begin.loopIndex() || cur.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader) : "successing blocks with same loop depth must have same loop index";
-                //}
             }
         }
-
-        // check that all loops are continuous
-//        for (int loopIdx = 0; loopIdx < numLoops; loopIdx++) {
-//            int blockIdx = 0;
-//            assert !isBlockInLoop(loopIdx, linearScanOrder.get(blockIdx)) : "the first block must not be present in any loop";
-//
-//            // skip blocks before the loop
-//            while (blockIdx < numBlocks && !isBlockInLoop(loopIdx, linearScanOrder.get(blockIdx))) {
-//                blockIdx++;
-//            }
-//            // skip blocks of loop
-//            while (blockIdx < numBlocks && isBlockInLoop(loopIdx, linearScanOrder.get(blockIdx))) {
-//                blockIdx++;
-//            }
-//            // after the first non-loop block : there must not be another loop-block
-//            while (blockIdx < numBlocks) {
-//                assert !isBlockInLoop(loopIdx, linearScanOrder.get(blockIdx)) : "loop not continuous in linear-scan order";
-//                blockIdx++;
-//            }
-//        }
 
         return true;
     }
