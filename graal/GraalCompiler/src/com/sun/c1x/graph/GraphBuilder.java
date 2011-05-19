@@ -344,7 +344,7 @@ public final class GraphBuilder {
                         dispatchEntry.appendNext(end, handler.handlerBCI());
                         dispatchEntry.setEnd(end);
                     } else {
-                        Deoptimize deopt = new Deoptimize(graph, null);
+                        Deoptimize deopt = new Deoptimize(graph);
                         dispatchEntry.appendNext(deopt, bci);
                         Goto end = new Goto(successor, null, false, graph);
                         deopt.appendNext(end, bci);
@@ -395,7 +395,7 @@ public final class GraphBuilder {
         } else if (dispatchEntry.next() instanceof Deoptimize) {
             // deoptimizing handler
             Deoptimize deopt = (Deoptimize) dispatchEntry.next();
-            deopt.setStateBefore(mergedState.duplicate(bci));
+            //deopt.setStateBefore(mergedState.duplicate(bci));
             dispatchEntry.end().setStateAfter(mergedState.duplicate(bci));
             updateDispatchChain(dispatchEntry.end().blockSuccessor(0), mergedState, bci);
         } else if (dispatchEntry.next() instanceof Unwind) {
