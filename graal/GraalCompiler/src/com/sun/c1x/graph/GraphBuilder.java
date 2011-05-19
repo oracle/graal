@@ -163,7 +163,6 @@ public final class GraphBuilder {
 
 //            if (block.isLoopHeader) {
                 BlockBegin blockBegin = new BlockBegin(block.startBci, ir.nextBlockNumber(), graph);
-                blockBegin.setDepthFirstNumber(blockBegin.blockID);
 
                 block.firstInstruction = blockBegin;
                 blockList[block.startBci] = block;

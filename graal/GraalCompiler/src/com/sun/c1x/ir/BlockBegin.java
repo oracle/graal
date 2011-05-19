@@ -107,7 +107,6 @@ public final class BlockBegin extends StateSplit {
     public BlockBegin(int bci, int blockID, Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.blockID = blockID;
-        depthFirstNumber = -1;
         linearScanNumber = -1;
         this.bci = bci;
     }
@@ -126,24 +125,11 @@ public final class BlockBegin extends StateSplit {
     }
 
     /**
-     * Gets the depth first traversal number of this block.
-     * @return the depth first number
-     */
-    public int depthFirstNumber() {
-        return depthFirstNumber;
-    }
-
-    /**
      * Gets the linear scan number of this block.
      * @return the linear scan number
      */
     public int linearScanNumber() {
         return linearScanNumber;
-    }
-
-    public void setDepthFirstNumber(int depthFirstNumber) {
-        assert depthFirstNumber >= 0;
-        this.depthFirstNumber = depthFirstNumber;
     }
 
     public void setLinearScanNumber(int linearScanNumber) {
