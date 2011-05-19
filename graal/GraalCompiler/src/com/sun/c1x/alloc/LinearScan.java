@@ -110,7 +110,7 @@ public final class LinearScan {
 
     /**
      * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain
-     * BlockBegin block} containing the instruction. Entries should be retrieved with
+     * LIRBlock block} containing the instruction. Entries should be retrieved with
      * {@link #blockForId(int)} as the id is not simply an index into this array.
      */
     LIRBlock[] opIdToBlockMap;

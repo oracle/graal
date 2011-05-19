@@ -159,7 +159,7 @@ public class CFGPrinter {
         }
 
         if (printLIR) {
-            printLIR(block);
+            printLIR(block.lirBlock());
         }
 
         end("block");
@@ -465,7 +465,7 @@ public class CFGPrinter {
      *
      * @param block the block to print
      */
-    private void printLIR(BlockBegin block) {
+    private void printLIR(LIRBlock block) {
         LIRList lir = block.lir();
         if (lir != null) {
             begin("IR");

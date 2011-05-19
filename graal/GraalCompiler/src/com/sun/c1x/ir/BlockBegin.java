@@ -74,8 +74,6 @@ public final class BlockBegin extends StateSplit {
         successors().set(super.successorCount() + SUCCESSOR_END, end);
     }
 
-    private static final List<BlockBegin> NO_HANDLERS = Collections.emptyList();
-
     /**
      * A unique id used in tracing.
      */
@@ -94,6 +92,10 @@ public final class BlockBegin extends StateSplit {
 
     public void setLIRBlock(LIRBlock block) {
         this.lirBlock = block;
+    }
+
+    public LIRBlock lirBlock() {
+        return lirBlock;
     }
 
     /**
@@ -409,28 +411,8 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
-    /**
-     * @return the label associated with the block, used by the LIR
-     */
-    public Label label() {
-        return lirBlock().label;
-    }
-
-    public LIRList lir() {
-        return lirBlock().lir();
-    }
-
-    public LIRBlock lirBlock() {
-        return lirBlock;
-    }
-
     public Instruction predAt(int j) {
         return (Instruction) predecessors().get(j);
-    }
-
-
-    public boolean isPredecessor(Instruction block) {
-        return predecessors().contains(block);
     }
 
     public void printWithoutPhis(LogStream out) {
@@ -540,8 +522,6 @@ public final class BlockBegin extends StateSplit {
 
     }
 
-
-
     /**
      * Determines if a given instruction is a phi whose {@linkplain Phi#block() join block} is a given block.
      *
@@ -614,6 +594,4 @@ public final class BlockBegin extends StateSplit {
             }
         }
     }
-
-
 }
