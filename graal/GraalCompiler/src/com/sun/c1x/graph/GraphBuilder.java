@@ -163,8 +163,7 @@ public final class GraphBuilder {
 
 
         // 1. create the start block
-        ir.startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
-        BlockBegin startBlock = ir.startBlock;
+        BlockBegin startBlock = new BlockBegin(0, ir.nextBlockNumber(), graph);
         graph.root().setStart(startBlock);
         curBlock = startBlock;
 

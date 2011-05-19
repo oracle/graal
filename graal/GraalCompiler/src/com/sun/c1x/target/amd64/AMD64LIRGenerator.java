@@ -140,12 +140,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     public boolean livesLonger(Value x, Value y) {
-        BlockBegin bx = x.block();
-        BlockBegin by = y.block();
-        if (bx == null || by == null) {
-            return false;
-        }
-        return bx.loopDepth() < by.loopDepth();
+        // TODO(tw): Estimate which value will live longer.
+        return false;
     }
 
     public void visitArithmeticOpFloat(ArithmeticOp x) {

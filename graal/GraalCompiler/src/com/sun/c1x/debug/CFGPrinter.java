@@ -158,10 +158,8 @@ public class CFGPrinter {
         }
         out.println();
 
-        if (block.loopIndex() != -1) {
-            out.print("loop_index ").println(block.loopIndex());
-            out.print("loop_depth ").println(block.loopDepth());
-        }
+        out.print("loop_index ").println(-1);
+        out.print("loop_depth ").println(-1);
 
         if (printHIR) {
             printState(block);

@@ -388,9 +388,9 @@ public final class LIRList {
         append(new LIROp1(LIROpcode.Move, src, dst, src.kind, info));
     }
 
-    public static void printBlock(BlockBegin x) {
+    public static void printBlock(LIRBlock x) {
         // print block id
-        TTY.print("B%d ", x.blockID);
+        TTY.print("B%d ", x.blockID());
 
         // print flags
         if (x.isLinearScanLoopHeader()) {
@@ -407,28 +407,28 @@ public final class LIRList {
         if (x.numberOfPreds() > 0) {
             TTY.print("preds: ");
             for (int i = 0; i < x.numberOfPreds(); i++) {
-                TTY.print("B%d ", x.predAt(i).block().blockID);
+                TTY.print("B%d ", x.predAt(i).blockID());
             }
         }
 
         if (x.numberOfSux() > 0) {
             TTY.print("sux: ");
             for (int i = 0; i < x.numberOfSux(); i++) {
-                TTY.print("B%d ", x.suxAt(i).blockID);
+                TTY.print("B%d ", x.suxAt(i).blockID());
             }
         }
 
         TTY.println();
     }
 
-    public static void printLIR(List<BlockBegin> blocks) {
+    public static void printLIR(List<LIRBlock> blocks) {
         if (TTY.isSuppressed()) {
             return;
         }
         TTY.println("LIR:");
         int i;
         for (i = 0; i < blocks.size(); i++) {
-            BlockBegin bb = blocks.get(i);
+            LIRBlock bb = blocks.get(i);
             printBlock(bb);
             TTY.println("__id_Instruction___________________________________________");
             bb.lir().printInstructions();

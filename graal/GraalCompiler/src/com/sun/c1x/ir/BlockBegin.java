@@ -105,7 +105,11 @@ public final class BlockBegin extends StateSplit {
     private BlockBegin dominator;
 
     // LIR block
-    public final LIRBlock lirBlock = new LIRBlock();
+    private LIRBlock lirBlock;
+
+    public void setLIRBlock(LIRBlock block) {
+        this.lirBlock = block;
+    }
 
     /**
      * Index of bytecode that generated this node when appended in a basic block.
@@ -164,22 +168,6 @@ public final class BlockBegin extends StateSplit {
         return linearScanNumber;
     }
 
-    /**
-     * Gets the loop depth of this block.
-     * @return the loop depth
-     */
-    public int loopDepth() {
-        return lirBlock.loopDepth;
-    }
-
-    /**
-     * Gets the loop index of this block.
-     * @return the loop index
-     */
-    public int loopIndex() {
-        return lirBlock.loopIndex;
-    }
-
     public void setDepthFirstNumber(int depthFirstNumber) {
         assert depthFirstNumber >= 0;
         this.depthFirstNumber = depthFirstNumber;
@@ -187,14 +175,6 @@ public final class BlockBegin extends StateSplit {
 
     public void setLinearScanNumber(int linearScanNumber) {
         this.linearScanNumber = linearScanNumber;
-    }
-
-    public void setLoopDepth(int loopDepth) {
-        this.lirBlock.loopDepth = loopDepth;
-    }
-
-    public void setLoopIndex(int loopIndex) {
-        this.lirBlock.loopIndex = loopIndex;
     }
 
     /**
@@ -512,24 +492,12 @@ public final class BlockBegin extends StateSplit {
         return lirBlock().label;
     }
 
-    public void setLir(LIRList lir) {
-        lirBlock().setLir(lir);
-    }
-
     public LIRList lir() {
         return lirBlock().lir();
     }
 
     public LIRBlock lirBlock() {
         return lirBlock;
-    }
-
-    public int blockEntryPco() {
-        return lirBlock == null ? 0 : lirBlock.blockEntryPco;
-    }
-
-    public void setBlockEntryPco(int codeOffset) {
-        lirBlock().blockEntryPco = codeOffset;
     }
 
     public Instruction predAt(int j) {

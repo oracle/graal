@@ -22,19 +22,15 @@
  */
 package com.sun.c1x.asm;
 
-import com.sun.c1x.ir.*;
+import com.sun.c1x.lir.*;
 
-/**
- *
- * @author Thomas Wuerthinger
- */
 public class ExceptionInfo {
 
     public final int codeOffset;
-    public final BlockBegin exceptionEdge;
+    public final LIRBlock exceptionEdge;
     public final int bci;
 
-    public ExceptionInfo(int pcOffset, BlockBegin exceptionEdge, int bci) {
+    public ExceptionInfo(int pcOffset, LIRBlock exceptionEdge, int bci) {
         this.codeOffset = pcOffset;
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;

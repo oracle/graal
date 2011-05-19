@@ -56,11 +56,6 @@ import com.sun.cri.xir.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
- *
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
- * @author Marcelo Cintra
- * @author Doug Simon
  */
 public abstract class LIRGenerator extends ValueVisitor {
 
@@ -177,7 +172,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     protected final RiXirGenerator xir;
     protected final boolean isTwoOperand;
 
-    private BlockBegin currentBlock;
+    private LIRBlock currentBlock;
 
     public final OperandPool operands;
 
@@ -227,15 +222,15 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    public void doBlock(BlockBegin block) {
+    public void doBlock(LIRBlock block) {
         blockDoProlog(block);
         this.currentBlock = block;
 
         if (C1XOptions.TraceLIRGeneratorLevel >= 1) {
-            TTY.println("BEGIN Generating LIR for block B" + block.blockID);
+            TTY.println("BEGIN Generating LIR for block B" + block.blockID());
         }
 
-        for (Instruction instr = block; instr != null; instr = instr.next()) {
+        for (Instruction instr : block.getInstructions()) {
             FrameState stateAfter = instr.stateAfter();
             FrameState stateBefore = null;
             if (instr instanceof StateSplit && ((StateSplit) instr).stateBefore() != null) {
@@ -266,11 +261,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         if (C1XOptions.TraceLIRGeneratorLevel >= 1) {
-            TTY.println("END Generating LIR for block B" + block.blockID);
+            TTY.println("END Generating LIR for block B" + block.blockID());
         }
 
         this.currentBlock = null;
-        blockDoEpilog(block);
+        blockDoEpilog();
     }
 
     @Override
@@ -395,11 +390,10 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitExceptionObject(ExceptionObject x) {
-        assert currentBlock.next() == x : "ExceptionObject must be first instruction of block";
 
         // no moves are created for phi functions at the begin of exception
         // handlers, so assign operands manually here
-        currentBlock.stateBefore().forEachLivePhi(currentBlock, new PhiProcedure() {
+        currentBlock.stateBefore().forEachLivePhi(currentBlock.blockID(), new PhiProcedure() {
             public boolean doPhi(Phi phi) {
                 operandForPhi(phi);
                 return true;
@@ -890,7 +884,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.branch(Condition.TRUE, stub.label, stub.info);
     }
 
-    private void blockDoEpilog(BlockBegin block) {
+    private void blockDoEpilog() {
         if (C1XOptions.PrintIRWithLIR) {
             TTY.println();
         }
@@ -900,7 +894,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         variablesForConstants.clear();
     }
 
-    private void blockDoProlog(BlockBegin block) {
+    private void blockDoProlog(LIRBlock block) {
         if (C1XOptions.PrintIRWithLIR) {
             TTY.print(block.toString());
         }
@@ -915,7 +909,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (prologue != null) {
                 emitXir(prologue, null, null, null, false);
             }
-            setOperandsForLocals(block.end().stateAfter());
+            setOperandsForLocals(ir.getHIRStartBlock().end().stateAfter());
         }
     }
 
@@ -1287,9 +1281,9 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     protected void moveToPhi(FrameState curState) {
         // Moves all stack values into their phi position
-        BlockBegin bb = currentBlock;
+        LIRBlock bb = currentBlock;
         if (bb.numberOfSux() == 1) {
-            BlockBegin sux = bb.suxAt(0);
+            LIRBlock sux = bb.suxAt(0);
             assert sux.numberOfPreds() > 0 : "invalid CFG";
 
             // a block with only one predecessor never has phi functions
@@ -1437,7 +1431,14 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         assert state != null;
-        return new LIRDebugInfo(state, (x instanceof ExceptionEdgeInstruction) ? ((ExceptionEdgeInstruction) x).exceptionEdge() : null);
+        LIRBlock exceptionEdge = null;
+        if (x instanceof ExceptionEdgeInstruction) {
+            BlockBegin begin = ((ExceptionEdgeInstruction) x).exceptionEdge();
+            if (begin != null) {
+                exceptionEdge = begin.lirBlock();
+            }
+        }
+        return new LIRDebugInfo(state, exceptionEdge);
     }
 
     List<CiValue> visitInvokeArguments(CiCallingConvention cc, Invoke x, List<CiValue> pointerSlots) {

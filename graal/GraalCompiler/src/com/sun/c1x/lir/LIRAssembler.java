@@ -96,19 +96,19 @@ public abstract class LIRAssembler {
 
     public abstract void emitTraps();
 
-    public void emitCode(List<BlockBegin> hir) {
+    public void emitCode(List<LIRBlock> hir) {
         if (C1XOptions.PrintLIR && !TTY.isSuppressed()) {
             LIRList.printLIR(hir);
         }
 
-        for (BlockBegin b : hir) {
+        for (LIRBlock b : hir) {
             emitBlock(b);
         }
 
         assert checkNoUnboundLabels();
     }
 
-    void emitBlock(BlockBegin block) {
+    void emitBlock(LIRBlock block) {
 
         block.setBlockEntryPco(codePos());
 
@@ -118,7 +118,7 @@ public abstract class LIRAssembler {
 
         assert block.lir() != null : "must have LIR";
         if (C1XOptions.CommentedAssembly) {
-            String st = String.format(" block B%d", block.blockID);
+            String st = String.format(" block B%d", block.blockID());
             tasm.blockComment(st);
         }
 

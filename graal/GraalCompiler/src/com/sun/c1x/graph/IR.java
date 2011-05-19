@@ -24,9 +24,11 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
+import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.value.*;
 
@@ -47,14 +49,14 @@ public class IR {
     /**
      * The start block of this IR.
      */
-    public BlockBegin startBlock;
+    public LIRBlock startBlock;
 
     private int maxLocks;
 
     /**
      * The linear-scan ordered list of blocks.
      */
-    private List<BlockBegin> orderedBlocks;
+    private List<LIRBlock> orderedBlocks;
 
     /**
      * Creates a new IR instance for the specified compilation.
@@ -106,10 +108,51 @@ public class IR {
     private void makeLinearScanOrder() {
         if (orderedBlocks == null) {
             CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
-            startBlock.iteratePreOrder(finder);
+            getHIRStartBlock().iteratePreOrder(finder);
             finder.splitCriticalEdges();
-            ComputeLinearScanOrder computeLinearScanOrder = new ComputeLinearScanOrder(compilation.stats.blockCount, startBlock);
-            orderedBlocks = computeLinearScanOrder.linearScanOrder();
+            ComputeLinearScanOrder computeLinearScanOrder = new ComputeLinearScanOrder(compilation.stats.blockCount, getHIRStartBlock());
+            List<BlockBegin> blocks = computeLinearScanOrder.linearScanOrder();
+            orderedBlocks = new ArrayList<LIRBlock>();
+
+            for (BlockBegin bb : blocks) {
+                LIRBlock lirBlock = new LIRBlock(bb.blockID);
+                bb.setLIRBlock(lirBlock);
+                lirBlock.setLinearScanNumber(bb.linearScanNumber());
+                if (bb.isLinearScanLoopHeader()) {
+                    lirBlock.setLinearScanLoopHeader();
+                }
+                if (bb.isLinearScanLoopEnd()) {
+                    lirBlock.setLinearScanLoopEnd();
+                }
+                lirBlock.setStateBefore(bb.stateBefore());
+                orderedBlocks.add(lirBlock);
+            }
+
+            for (BlockBegin bb : blocks) {
+                LIRBlock lirBlock = bb.lirBlock();
+                for (Node n : bb.predecessors()) {
+                    if (n instanceof BlockEnd) {
+                        BlockEnd end = (BlockEnd) n;
+                        lirBlock.blockPredecessors().add(end.block().lirBlock());
+                    }
+                }
+
+                for (Node n : bb.successors()) {
+                    if (n instanceof BlockBegin) {
+                        BlockBegin begin = (BlockBegin) n;
+                        lirBlock.blockSuccessors().add(begin.lirBlock());
+                    }
+                }
+
+                Instruction first = bb;
+                while (first != null) {
+                    lirBlock.getInstructions().add(first);
+                    first = first.next();
+                }
+            }
+
+            startBlock = getHIRStartBlock().lirBlock();
+            assert startBlock != null;
             compilation.stats.loopCount = computeLinearScanOrder.numLoops();
             computeLinearScanOrder.printBlocks();
         }
@@ -119,7 +162,7 @@ public class IR {
      * Gets the linear scan ordering of blocks as a list.
      * @return the blocks in linear scan order
      */
-    public List<BlockBegin> linearScanOrder() {
+    public List<LIRBlock> linearScanOrder() {
         return orderedBlocks;
     }
 
@@ -128,7 +171,7 @@ public class IR {
             TTY.println("IR for " + compilation.method);
             final InstructionPrinter ip = new InstructionPrinter(TTY.out());
             final BlockPrinter bp = new BlockPrinter(this, ip, cfgOnly);
-            startBlock.iteratePreOrder(bp);
+            getHIRStartBlock().iteratePreOrder(bp);
         }
     }
 
@@ -143,7 +186,8 @@ public class IR {
         }
 
         if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, startBlock, true, false));
+            // TODO(tw): FIXME
+            // compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, startBlock, true, false));
         }
     }
 
@@ -218,5 +262,9 @@ public class IR {
      */
     public final int maxLocks() {
         return maxLocks;
+    }
+
+    public BlockBegin getHIRStartBlock() {
+        return (BlockBegin) compilation.graph.root().successors().get(0);
     }
 }

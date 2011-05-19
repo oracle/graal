@@ -483,7 +483,7 @@ public abstract class LIRInstruction {
         }
     }
 
-    public final BlockBegin exceptionEdge() {
+    public final LIRBlock exceptionEdge() {
         return info.exceptionEdge;
     }
 

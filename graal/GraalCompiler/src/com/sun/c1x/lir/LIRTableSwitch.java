@@ -66,24 +66,4 @@ public class LIRTableSwitch extends LIRInstruction {
         }
         return buf.toString();
     }
-
-    private BlockBegin substitute(BlockBegin block, BlockBegin oldBlock, BlockBegin newBlock) {
-        if (block == oldBlock) {
-            LIRInstruction instr = newBlock.lir().instructionsList().get(0);
-            assert instr instanceof LIRLabel : "first instruction of block must be label";
-            return newBlock;
-        }
-        return oldBlock;
-    }
-
-    public void substitute(BlockBegin oldBlock, BlockBegin newBlock) {
-        if (substitute(defaultTarget, oldBlock, newBlock) == newBlock) {
-            defaultTarget = newBlock;
-        }
-        for (int i = 0; i < targets.length; i++) {
-            if (substitute(targets[i], oldBlock, newBlock) == newBlock) {
-                targets[i] = newBlock;
-            }
-        }
-    }
 }

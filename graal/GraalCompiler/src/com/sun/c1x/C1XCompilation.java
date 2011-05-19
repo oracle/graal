@@ -247,7 +247,7 @@ public final class C1XCompilation {
 
             lirGenerator = compiler.backend.newLIRGenerator(this);
 
-            for (BlockBegin begin : hir.linearScanOrder()) {
+            for (LIRBlock begin : hir.linearScanOrder()) {
                 lirGenerator.doBlock(begin);
             }
 
@@ -284,7 +284,8 @@ public final class C1XCompilation {
             }
 
             if (compiler.isObserved()) {
-                compiler.fireCompilationEvent(new CompilationEvent(this, "After code generation", hir.startBlock, false, true, targetMethod));
+                // TODO(tw): FIXME
+                // compiler.fireCompilationEvent(new CompilationEvent(this, "After code generation", hir.startBlock, false, true, targetMethod));
             }
 
             if (C1XOptions.PrintTimers) {

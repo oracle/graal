@@ -37,7 +37,7 @@ public final class PhiSimplifier implements BlockClosure {
 
     public PhiSimplifier(IR ir) {
         this.ir = ir;
-        ir.startBlock.iterateAnyOrder(this, false);
+        ir.getHIRStartBlock().iterateAnyOrder(this, false);
     }
 
     /**
