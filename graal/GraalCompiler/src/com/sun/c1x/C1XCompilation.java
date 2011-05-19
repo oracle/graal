@@ -166,7 +166,6 @@ public final class C1XCompilation {
      * @return the block map for the specified method
      */
     public BlockMap getBlockMap(RiMethod method) {
-        // PERF: cache the block map for methods that are compiled or inlined often
         BlockMap map = new BlockMap(method);
         map.build();
         if (compiler.isObserved()) {

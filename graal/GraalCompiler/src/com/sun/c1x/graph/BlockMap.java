@@ -165,10 +165,6 @@ public final class BlockMap {
         iterateOverBytecodes();
         addExceptionEdges();
         computeBlockOrder();
-
-        // Discard big arrays so that they can be GCed
-        blockMap = null;
-        canTrap = null;
     }
 
     private void makeExceptionEntries() {
@@ -301,7 +297,7 @@ public final class BlockMap {
                 }
 
                 case WIDE: {
-                    if (canTrap != null && ProfileInformationStub.trappedFrequently(method, bci)) {
+                    if (canTrap != null) {
                         canTrap.set(bci);
                     }
 
@@ -310,7 +306,7 @@ public final class BlockMap {
                 }
 
                 default: {
-                    if (canTrap != null && ProfileInformationStub.trappedFrequently(method, bci)) {
+                    if (canTrap != null) {
                         canTrap.set(bci);
                     }
 
