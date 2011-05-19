@@ -514,10 +514,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
         lir.jump(getLIRBlock(x.defaultSuccessor()));
     }
 
-    private LIRBlock getLIRBlock(BlockBegin b) {
-        return b.lirBlock();
-    }
-
     @Override
     public void visitExceptionDispatch(ExceptionDispatch x) {
         // TODO ls: this needs some more work...

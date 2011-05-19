@@ -598,7 +598,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    private LIRBlock getLIRBlock(BlockBegin b) {
+    protected LIRBlock getLIRBlock(BlockBegin b) {
         return b.lirBlock();
     }
 

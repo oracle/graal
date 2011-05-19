@@ -115,7 +115,7 @@ public final class BlockBegin extends StateSplit {
         this.blockID = blockID;
         depthFirstNumber = -1;
         linearScanNumber = -1;
-        setBCI(bci);
+        this.bci = bci;
     }
 
     /**
@@ -230,14 +230,6 @@ public final class BlockBegin extends StateSplit {
      */
     public int bci() {
         return bci;
-    }
-
-    /**
-     * Sets the bytecode index of this instruction.
-     * @param bci the new bytecode index for this instruction
-     */
-    public void setBCI(int bci) {
-        this.bci = bci;
     }
 
     private void iterate(IdentityHashMap<BlockBegin, BlockBegin> mark, BlockClosure closure) {
