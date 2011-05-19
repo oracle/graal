@@ -59,7 +59,14 @@ public abstract class BlockEnd extends Instruction {
     }
 
     public FrameState setStateAfter(FrameState n) {
-        return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
+        FrameState oldState = stateAfter();
+        try {
+            return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
+        } finally {
+            if (oldState != n && oldState != null) {
+                oldState.delete();
+            }
+        }
     }
 
     /**

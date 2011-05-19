@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +23,17 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
+import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code StateSplit} class is the abstract base class of all instructions
- * that store an immutable copy of the frame state.
- */
-public abstract class StateSplit extends Instruction {
+
+public class Placeholder extends Instruction {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_STATE_BEFORE = 0;
 
-    private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_STATE_AFTER = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     @Override
     protected int inputCount() {
@@ -66,30 +63,22 @@ public abstract class StateSplit extends Instruction {
         }
     }
 
-    /**
-     * The state for this instruction.
-     */
-     @Override
-    public FrameState stateAfter() {
-        return (FrameState) successors().get(super.successorCount() + SUCCESSOR_STATE_AFTER);
+    public Placeholder(Graph graph) {
+        super(CiKind.Void, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
-    public FrameState setStateAfter(FrameState n) {
-        return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
+    @Override
+    public void accept(ValueVisitor v) {
+        assert false;
     }
 
-    /**
-     * Creates a new state split with the specified value type.
-     * @param kind the type of the value that this instruction produces
-     * @param inputCount
-     * @param successorCount
-     * @param graph
-     */
-    public StateSplit(CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    @Override
+    public void print(LogStream out) {
+        assert false;
     }
 
-    public boolean needsStateAfter() {
-        return true;
+    @Override
+    public String shortName() {
+        return "Placeholder" + id();
     }
 }

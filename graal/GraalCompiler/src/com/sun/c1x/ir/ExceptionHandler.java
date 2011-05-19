@@ -24,6 +24,7 @@ package com.sun.c1x.ir;
 
 import java.util.*;
 
+import com.sun.c1x.graph.*;
 import com.sun.c1x.lir.*;
 import com.sun.cri.ri.*;
 
@@ -41,7 +42,7 @@ public final class ExceptionHandler {
     public static final List<ExceptionHandler> ZERO_HANDLERS = Collections.emptyList();
 
     public final RiExceptionHandler handler;
-    private BlockBegin entryBlock;
+    private BlockMap.Block entryBlock;
     private LIRList entryCode;
     private int entryCodeOffset;
     private int phiOperand;
@@ -98,7 +99,7 @@ public final class ExceptionHandler {
      * Gets the entry block for this exception handler.
      * @return the entry block
      */
-    public BlockBegin entryBlock() {
+    public BlockMap.Block entryBlock() {
         return entryBlock;
     }
 
@@ -115,7 +116,7 @@ public final class ExceptionHandler {
         return phiOperand;
     }
 
-    public void setEntryBlock(BlockBegin entry) {
+    public void setEntryBlock(BlockMap.Block entry) {
         entryBlock = entry;
     }
 
