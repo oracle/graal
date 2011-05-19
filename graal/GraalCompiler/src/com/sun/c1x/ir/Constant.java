@@ -129,6 +129,30 @@ public final class Constant extends Instruction {
         return new Constant(CiConstant.forWord(val), graph);
     }
 
+    public static Constant defaultForKind(CiKind kind, Graph graph) {
+        switch(kind) {
+            case Boolean:
+                return Constant.forBoolean(false, graph);
+            case Byte:
+            case Char:
+            case Short:
+            case Int:
+                return Constant.forInt(0, graph);
+            case Double:
+                return Constant.forDouble(0.0, graph);
+            case Float:
+                return Constant.forFloat(0.0f, graph);
+            case Long:
+                return Constant.forLong(0L, graph);
+            case Object:
+                return Constant.forObject(null, graph);
+            case Word:
+                return Constant.forWord(0L, graph);
+            default:
+                return null;
+        }
+    }
+
     @Override
     public String toString() {
         return super.toString() + "(" + value + ")";
