@@ -42,8 +42,6 @@ import com.sun.cri.ri.*;
  * Utility for printing the control flow graph of a method being compiled by C1X at various compilation phases.
  * The output format matches that produced by HotSpot so that it can then be fed to the
  * <a href="https://c1visualizer.dev.java.net/">C1 Visualizer</a>.
- *
- * @author Doug Simon
  */
 public class CFGPrinter {
     private static final String COLUMN_END = " <|@";

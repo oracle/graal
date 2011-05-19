@@ -130,18 +130,12 @@ public class IR {
 
             for (BlockBegin bb : blocks) {
                 LIRBlock lirBlock = bb.lirBlock();
-                for (Node n : bb.predecessors()) {
-                    if (n instanceof BlockEnd) {
-                        BlockEnd end = (BlockEnd) n;
-                        lirBlock.blockPredecessors().add(end.block().lirBlock());
-                    }
+                for (int i = 0; i < bb.numberOfPreds(); ++i) {
+                    lirBlock.blockPredecessors().add(bb.predAt(i).block().lirBlock());
                 }
 
-                for (Node n : bb.successors()) {
-                    if (n instanceof BlockBegin) {
-                        BlockBegin begin = (BlockBegin) n;
-                        lirBlock.blockSuccessors().add(begin.lirBlock());
-                    }
+                for (int i = 0; i < bb.numberOfSux(); ++i) {
+                    lirBlock.blockSuccessors().add(bb.suxAt(i).lirBlock());
                 }
 
                 Instruction first = bb;
@@ -186,8 +180,7 @@ public class IR {
         }
 
         if (compilation.compiler.isObserved()) {
-            // TODO(tw): FIXME
-            // compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, startBlock, true, false));
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, getHIRStartBlock(), true, false));
         }
     }
 

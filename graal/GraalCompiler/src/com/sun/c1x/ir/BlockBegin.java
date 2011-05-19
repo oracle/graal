@@ -691,12 +691,5 @@ public final class BlockBegin extends StateSplit {
         }
     }
 
-    public void verifyPredecessors() {
-        for (int i = 0; i < numberOfPreds(); i++) {
-            predAt(i);
-        }
-
-    }
-
 
 }

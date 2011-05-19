@@ -2122,8 +2122,7 @@ public final class LinearScan {
         }
 
         if (compilation.compiler.isObserved()) {
-            // TODO(tw): FIXME
-            //compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, label, compilation.hir().startBlock, hirValid, true));
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, label, compilation.hir().getHIRStartBlock(), hirValid, true));
         }
     }
 
