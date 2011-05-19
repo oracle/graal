@@ -506,12 +506,16 @@ public class AMD64LIRGenerator extends LIRGenerator {
         lir.cmp(cond, left, right);
         moveToPhi();
         if (x.x().kind.isFloat() || x.x().kind.isDouble()) {
-            lir.branch(cond, right.kind, x.trueSuccessor(), x.unorderedSuccessor());
+            lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()), getLIRBlock(x.unorderedSuccessor()));
         } else {
-            lir.branch(cond, right.kind, x.trueSuccessor());
+            lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()));
         }
         assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
-        lir.jump(x.defaultSuccessor());
+        lir.jump(getLIRBlock(x.defaultSuccessor()));
+    }
+
+    private LIRBlock getLIRBlock(BlockBegin b) {
+        return b.lirBlock();
     }
 
     @Override
@@ -527,9 +531,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiValue result = emitXir(snippet, x, stateFor(x), null, true);
 
         lir.cmp(Condition.EQ, result, CiConstant.TRUE);
-        lir.branch(Condition.EQ, CiKind.Boolean, x.catchSuccessor());
+        lir.branch(Condition.EQ, CiKind.Boolean, getLIRBlock(x.catchSuccessor()));
 
-        lir.jump(x.otherSuccessor());
+        lir.jump(getLIRBlock(x.otherSuccessor()));
     }
 
 }

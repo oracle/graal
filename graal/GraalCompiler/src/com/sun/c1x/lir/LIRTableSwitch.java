@@ -30,13 +30,13 @@ import com.sun.cri.ci.*;
  */
 public class LIRTableSwitch extends LIRInstruction {
 
-    public BlockBegin defaultTarget;
+    public LIRBlock defaultTarget;
 
-    public final BlockBegin[] targets;
+    public final LIRBlock[] targets;
 
     public final int lowKey;
 
-    public LIRTableSwitch(CiValue value, int lowKey, BlockBegin defaultTarget, BlockBegin[] targets) {
+    public LIRTableSwitch(CiValue value, int lowKey, LIRBlock defaultTarget, LIRBlock[] targets) {
         super(LIROpcode.TableSwitch, CiValue.IllegalValue, null, false, 1, 0, value);
         this.lowKey = lowKey;
         this.targets = targets;
@@ -58,10 +58,10 @@ public class LIRTableSwitch extends LIRInstruction {
     @Override
     public String operationString(OperandFormatter operandFmt) {
         StringBuilder buf = new StringBuilder(super.operationString(operandFmt));
-        buf.append("\ndefault: [B").append(defaultTarget.blockID).append(']');
+        buf.append("\ndefault: [B").append(defaultTarget.blockID()).append(']');
         int key = lowKey;
-        for (BlockBegin b : targets) {
-            buf.append("\ncase ").append(key).append(": [B").append(b.blockID).append(']');
+        for (LIRBlock b : targets) {
+            buf.append("\ncase ").append(key).append(": [B").append(b.blockID()).append(']');
             key++;
         }
         return buf.toString();

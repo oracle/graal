@@ -49,7 +49,7 @@ public abstract class LIRAssembler {
     public int registerRestoreEpilogueOffset = -1;
 
     protected final List<SlowPath> xirSlowPath;
-    protected final List<BlockBegin> branchTargetBlocks;
+    protected final List<LIRBlock> branchTargetBlocks;
 
     private int lastDecodeStart;
 
@@ -70,7 +70,7 @@ public abstract class LIRAssembler {
         this.tasm = compilation.assembler();
         this.asm = tasm.asm;
         this.frameMap = compilation.frameMap();
-        this.branchTargetBlocks = new ArrayList<BlockBegin>();
+        this.branchTargetBlocks = new ArrayList<LIRBlock>();
         this.xirSlowPath = new ArrayList<SlowPath>();
     }
 
@@ -166,7 +166,7 @@ public abstract class LIRAssembler {
     boolean checkNoUnboundLabels() {
         for (int i = 0; i < branchTargetBlocks.size() - 1; i++) {
             if (!branchTargetBlocks.get(i).label().isBound()) {
-                TTY.println(String.format("label of block B%d is not bound", branchTargetBlocks.get(i).blockID));
+                TTY.println(String.format("label of block B%d is not bound", branchTargetBlocks.get(i).blockID()));
                 assert false : "unbound label";
             }
         }

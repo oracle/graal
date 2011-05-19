@@ -40,12 +40,12 @@ public class LIRBranch extends LIRInstruction {
     /**
      * The target block of this branch.
      */
-    private BlockBegin block;
+    private LIRBlock block;
 
     /**
      * This is the unordered block for a float branch.
      */
-    private BlockBegin unorderedBlock;
+    private LIRBlock unorderedBlock;
 
 
     public LIRBranch(Condition cond, Label label) {
@@ -73,7 +73,7 @@ public class LIRBranch extends LIRInstruction {
      * @param block
      *
      */
-    public LIRBranch(Condition cond, CiKind kind, BlockBegin block) {
+    public LIRBranch(Condition cond, CiKind kind, LIRBlock block) {
         super(LIROpcode.Branch, CiValue.IllegalValue, null, false);
         this.cond = cond;
         this.kind = kind;
@@ -82,7 +82,7 @@ public class LIRBranch extends LIRInstruction {
         this.unorderedBlock = null;
     }
 
-    public LIRBranch(Condition cond, CiKind kind, BlockBegin block, BlockBegin ublock) {
+    public LIRBranch(Condition cond, CiKind kind, LIRBlock block, LIRBlock ublock) {
         super(LIROpcode.CondFloatBranch, CiValue.IllegalValue, null, false);
         this.cond = cond;
         this.kind = kind;
@@ -102,15 +102,15 @@ public class LIRBranch extends LIRInstruction {
         return label;
     }
 
-    public BlockBegin block() {
+    public LIRBlock block() {
         return block;
     }
 
-    public BlockBegin unorderedBlock() {
+    public LIRBlock unorderedBlock() {
         return unorderedBlock;
     }
 
-    public void changeBlock(BlockBegin b) {
+    public void changeBlock(LIRBlock b) {
         assert block != null : "must have old block";
         assert block.label() == label() : "must be equal";
 
@@ -118,7 +118,7 @@ public class LIRBranch extends LIRInstruction {
         this.label = b.label();
     }
 
-    public void changeUblock(BlockBegin b) {
+    public void changeUblock(LIRBlock b) {
         assert unorderedBlock != null : "must have old block";
         this.unorderedBlock = b;
     }
@@ -136,19 +136,19 @@ public class LIRBranch extends LIRInstruction {
     public String operationString(OperandFormatter operandFmt) {
         StringBuilder buf = new StringBuilder(cond().operator).append(' ');
         if (block() != null) {
-            buf.append("[B").append(block.blockID).append(']');
+            buf.append("[B").append(block.blockID()).append(']');
         } else if (label().isBound()) {
             buf.append("[label:0x").append(Integer.toHexString(label().position())).append(']');
         } else {
             buf.append("[label:??]");
         }
         if (unorderedBlock() != null) {
-            buf.append("unordered: [B").append(unorderedBlock().blockID).append(']');
+            buf.append("unordered: [B").append(unorderedBlock().blockID()).append(']');
         }
         return buf.toString();
     }
 
-    public void substitute(BlockBegin oldBlock, BlockBegin newBlock) {
+    public void substitute(LIRBlock oldBlock, LIRBlock newBlock) {
         if (block == oldBlock) {
             block = newBlock;
             LIRInstruction instr = newBlock.lir().instructionsList().get(0);

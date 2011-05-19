@@ -451,7 +451,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     private boolean assertEmitTableSwitch(LIRTableSwitch op) {
         assert op.defaultTarget != null;
         branchTargetBlocks.add(op.defaultTarget);
-        for (BlockBegin target : op.targets) {
+        for (LIRBlock target : op.targets) {
             assert target != null;
             branchTargetBlocks.add(target);
         }
@@ -502,7 +502,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
         buf.setPosition(jumpTablePos);
 
         // Emit jump table entries
-        for (BlockBegin target : op.targets) {
+        for (LIRBlock target : op.targets) {
             Label label = target.label();
             int offsetToJumpTableBase = buf.position() - jumpTablePos;
             if (label.isBound()) {

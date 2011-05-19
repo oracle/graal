@@ -157,9 +157,9 @@ public abstract class LIRGenerator extends ValueVisitor {
     private static final class SwitchRange {
         final int lowKey;
         int highKey;
-        final BlockBegin sux;
+        final LIRBlock sux;
 
-        SwitchRange(int lowKey, BlockBegin sux) {
+        SwitchRange(int lowKey, LIRBlock sux) {
             this.lowKey = lowKey;
             this.highKey = lowKey;
             this.sux = sux;
@@ -412,7 +412,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         // describing the state at the safepoint.
         moveToPhi(x.stateAfter());
 
-        lir.jump(x.defaultSuccessor());
+        lir.jump(getLIRBlock(x.defaultSuccessor()));
     }
 
     @Override
@@ -590,12 +590,16 @@ public abstract class LIRGenerator extends ValueVisitor {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
                 lir.cmp(Condition.EQ, tag, x.keyAt(i));
-                lir.branch(Condition.EQ, CiKind.Int, x.blockSuccessor(i));
+                lir.branch(Condition.EQ, CiKind.Int, getLIRBlock(x.blockSuccessor(i)));
             }
-            lir.jump(x.defaultSuccessor());
+            lir.jump(getLIRBlock(x.defaultSuccessor()));
         } else {
-            visitSwitchRanges(createLookupRanges(x), tag, x.defaultSuccessor());
+            visitSwitchRanges(createLookupRanges(x), tag, getLIRBlock(x.defaultSuccessor()));
         }
+    }
+
+    private LIRBlock getLIRBlock(BlockBegin b) {
+        return b.lirBlock();
     }
 
     @Override
@@ -847,18 +851,21 @@ public abstract class LIRGenerator extends ValueVisitor {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
                 lir.cmp(Condition.EQ, tag, i + loKey);
-                lir.branch(Condition.EQ, CiKind.Int, x.blockSuccessor(i));
+                lir.branch(Condition.EQ, CiKind.Int, getLIRBlock(x.blockSuccessor(i)));
             }
-            lir.jump(x.defaultSuccessor());
+            lir.jump(getLIRBlock(x.defaultSuccessor()));
         } else {
             SwitchRange[] switchRanges = createLookupRanges(x);
             int rangeDensity = x.numberOfCases() / switchRanges.length;
             if (rangeDensity >= C1XOptions.RangeTestsSwitchDensity) {
-                visitSwitchRanges(switchRanges, tag, x.defaultSuccessor());
+                visitSwitchRanges(switchRanges, tag, getLIRBlock(x.defaultSuccessor()));
             } else {
                 List<BlockBegin> nonDefaultSuccessors = x.blockSuccessors().subList(0, x.numberOfCases());
-                BlockBegin[] targets = nonDefaultSuccessors.toArray(new BlockBegin[nonDefaultSuccessors.size()]);
-                lir.tableswitch(tag, x.lowKey(), x.defaultSuccessor(), targets);
+                LIRBlock[] targets = new LIRBlock[nonDefaultSuccessors.size()];
+                for (int i = 0; i < nonDefaultSuccessors.size(); ++i) {
+                    targets[i] = getLIRBlock(nonDefaultSuccessors.get(i));
+                }
+                lir.tableswitch(tag, x.lowKey(), getLIRBlock(x.defaultSuccessor()), targets);
             }
         }
     }
@@ -980,12 +987,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         setNoResult(x);
     }
 
-    private void visitSwitchRanges(SwitchRange[] x, CiValue value, BlockBegin defaultSux) {
+    private void visitSwitchRanges(SwitchRange[] x, CiValue value, LIRBlock defaultSux) {
         for (int i = 0; i < x.length; i++) {
             SwitchRange oneRange = x[i];
             int lowKey = oneRange.lowKey;
             int highKey = oneRange.highKey;
-            BlockBegin dest = oneRange.sux;
+            LIRBlock dest = oneRange.sux;
             if (lowKey == highKey) {
                 lir.cmp(Condition.EQ, value, lowKey);
                 lir.branch(Condition.EQ, CiKind.Int, dest);
@@ -1153,13 +1160,13 @@ public abstract class LIRGenerator extends ValueVisitor {
         List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
         int len = x.numberOfCases();
         if (len > 0) {
-            BlockBegin defaultSux = x.defaultSuccessor();
+            LIRBlock defaultSux = getLIRBlock(x.defaultSuccessor());
             int key = x.keyAt(0);
-            BlockBegin sux = x.blockSuccessor(0);
+            LIRBlock sux = getLIRBlock(x.blockSuccessor(0));
             SwitchRange range = new SwitchRange(key, sux);
             for (int i = 1; i < len; i++) {
                 int newKey = x.keyAt(i);
-                BlockBegin newSux = x.blockSuccessor(i);
+                LIRBlock newSux = getLIRBlock(x.blockSuccessor(i));
                 if (key + 1 == newKey && sux == newSux) {
                     // still in same range
                     range.highKey = newKey;
@@ -1185,12 +1192,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
         int len = x.numberOfCases();
         if (len > 0) {
-            BlockBegin sux = x.blockSuccessor(0);
+            LIRBlock sux = getLIRBlock(x.blockSuccessor(0));
             int key = x.lowKey();
-            BlockBegin defaultSux = x.defaultSuccessor();
+            LIRBlock defaultSux = getLIRBlock(x.defaultSuccessor());
             SwitchRange range = new SwitchRange(key, sux);
             for (int i = 0; i < len; i++, key++) {
-                BlockBegin newSux = x.blockSuccessor(i);
+                LIRBlock newSux = getLIRBlock(x.blockSuccessor(i));
                 if (sux == newSux) {
                     // still in same range
                     range.highKey = key;
