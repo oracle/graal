@@ -876,7 +876,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitDeoptimize(Deoptimize deoptimize) {
-        DeoptimizationStub stub = new DeoptimizationStub(deoptimize.stateBefore());
+        DeoptimizationStub stub = new DeoptimizationStub(lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);
     }
