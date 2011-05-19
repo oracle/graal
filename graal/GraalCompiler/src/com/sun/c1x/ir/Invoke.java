@@ -36,7 +36,8 @@ public final class Invoke extends StateSplit {
 
     private final int argumentCount;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_EXCEPTION_EDGE = 0;
 
     @Override
     protected int inputCount() {
@@ -63,6 +64,18 @@ public final class Invoke extends StateSplit {
 
     public int argumentCount() {
         return argumentCount;
+    }
+
+    /**
+     * The entry to the exception dispatch chain for this invoke.
+     */
+    @Override
+    public BlockBegin exceptionEdge() {
+        return (BlockBegin) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
+    }
+
+    public BlockBegin setExceptionEdge(BlockBegin n) {
+        return (BlockBegin) successors().set(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE, n);
     }
 
     public final int opcode;

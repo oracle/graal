@@ -95,6 +95,11 @@ public class FrameStateBuilder implements FrameStateAccess {
         return new FrameState(bci, locals, stack, stackIndex, locks, graph);
     }
 
+    @Override
+    public FrameState duplicateWithEmptyStack(int bci) {
+        return new FrameState(bci, locals, new Value[0], 0, locks, graph);
+    }
+
     /**
      * Pushes an instruction onto the stack with the expected type.
      * @param kind the type expected for this instruction

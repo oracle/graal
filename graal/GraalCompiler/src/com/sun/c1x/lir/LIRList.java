@@ -31,7 +31,6 @@ import com.sun.c1x.debug.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.globalstub.*;
 import com.sun.c1x.ir.*;
-import com.sun.c1x.lir.FrameMap.StackBlock;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;
@@ -101,10 +100,6 @@ public final class LIRList {
         append(new LIRMemoryBarrier(barriers));
     }
 
-    public void osrEntry(CiValue osrPointer) {
-        append(new LIROp0(LIROpcode.OsrEntry, osrPointer));
-    }
-
     public void branchDestination(Label lbl) {
         append(new LIRLabel(lbl));
     }
@@ -153,14 +148,6 @@ public final class LIRList {
 
     public void monitorAddress(int monitor, CiValue dst) {
         append(new LIRMonitorAddress(dst, monitor));
-    }
-
-    public void infopoint(LIROpcode opcode, CiValue dst, LIRDebugInfo info) {
-        append(new LIROp0(opcode, dst, info));
-    }
-
-    public void alloca(StackBlock stackBlock, CiValue dst) {
-        append(new LIRStackAllocate(dst, stackBlock));
     }
 
     public void convert(int code, CiValue left, CiValue dst, GlobalStub globalStub) {
@@ -303,10 +290,6 @@ public final class LIRList {
         append(new LIRCall(runtimeCallOp, rtCall, result, arguments, info, null, false, null));
     }
 
-    public void pause() {
-        append(new LIROp0(LIROpcode.Pause));
-    }
-
     public void breakpoint() {
         append(new LIROp0(LIROpcode.Breakpoint));
     }
@@ -411,19 +394,10 @@ public final class LIRList {
         TTY.print("B%d ", x.blockID);
 
         // print flags
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
-            TTY.print("ex ");
-        }
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.SubroutineEntry)) {
-            TTY.print("jsr ");
-        }
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.BackwardBranchTarget)) {
-            TTY.print("bb ");
-        }
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopHeader)) {
+        if (x.isLinearScanLoopHeader()) {
             TTY.print("lh ");
         }
-        if (x.checkBlockFlag(BlockBegin.BlockFlag.LinearScanLoopEnd)) {
+        if (x.isLinearScanLoopEnd()) {
             TTY.print("le ");
         }
 
@@ -434,7 +408,7 @@ public final class LIRList {
         if (x.numberOfPreds() > 0) {
             TTY.print("preds: ");
             for (int i = 0; i < x.numberOfPreds(); i++) {
-                TTY.print("B%d ", x.predAt(i).begin().blockID);
+                TTY.print("B%d ", x.predAt(i).block().blockID);
             }
         }
 
@@ -442,14 +416,6 @@ public final class LIRList {
             TTY.print("sux: ");
             for (int i = 0; i < x.numberOfSux(); i++) {
                 TTY.print("B%d ", x.suxAt(i).blockID);
-            }
-        }
-
-        // print exception handlers
-        if (x.numberOfExceptionHandlers() > 0) {
-            TTY.print("xhandler: ");
-            for (int i = 0; i < x.numberOfExceptionHandlers(); i++) {
-                TTY.print("B%d ", x.exceptionHandlerAt(i).blockID);
             }
         }
 

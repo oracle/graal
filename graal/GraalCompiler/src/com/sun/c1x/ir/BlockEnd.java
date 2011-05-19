@@ -181,10 +181,16 @@ public abstract class BlockEnd extends Instruction {
      * Gets this block end's list of successors.
      * @return the successor list
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes"})
     public List<BlockBegin> blockSuccessors() {
         List<BlockBegin> list = (List) successors().subList(super.successorCount() + SUCCESSOR_COUNT, super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT);
         return Collections.unmodifiableList(list);
+    }
+
+    public void clearSuccessors() {
+        for (int i = 0; i < blockSuccessorCount(); i++) {
+            setBlockSuccessor(i, null);
+        }
     }
 
 }

@@ -116,13 +116,7 @@ public final class Phi extends Value {
      * @return the instruction that produced the value in the i'th predecessor
      */
     public Value inputAt(int i) {
-        FrameState state;
-        if (block().isExceptionEntry()) {
-            state = block().exceptionHandlerStates().get(i);
-        } else {
-            state = block().blockPredecessors().get(i).stateAfter();
-        }
-        return inputIn(state);
+        return inputIn(block().blockPredecessors().get(i).stateAfter());
     }
 
     /**
@@ -143,11 +137,7 @@ public final class Phi extends Value {
      * @return the number of inputs in this phi
      */
     public int phiInputCount() {
-        if (block().isExceptionEntry()) {
-            return block().exceptionHandlerStates().size();
-        } else {
-            return block().blockPredecessors().size();
-        }
+        return block().blockPredecessors().size();
     }
 
     @Override
@@ -170,7 +160,7 @@ public final class Phi extends Value {
 
     @Override
     public String shortName() {
-        return "Phi: " + index;
+        return "Phi: " + index + " (" + phiInputCount() + ")";
     }
 
 

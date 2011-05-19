@@ -63,21 +63,41 @@ public class IdealGraphPrinter {
     }
 
     /**
-     * Starts a new graph document containing a single group of graphs with the given name, short name and byte code
-     * index (BCI) as properties.
+     * Flushes any buffered output.
      */
-    public void begin(String name, String shortName, int bci) {
-        stream.println("<graphDocument><group>");
+    public void flush() {
+        stream.flush();
+    }
+
+    /**
+     * Starts a new graph document.
+     */
+    public void begin() {
+        stream.println("<graphDocument>");
+    }
+
+    /**
+     * Starts a new group of graphs with the given name, short name and method byte code index (BCI) as properties.
+     */
+    public void beginGroup(String name, String shortName, int bci) {
+        stream.println("<group>");
         stream.printf(" <properties><p name='name'>%s</p></properties>%n", escape(name));
         stream.printf(" <method name='%s' shortName='%s' bci='%d'/>%n", escape(name), escape(shortName), bci);
     }
 
     /**
-     * Finishes the graph document.
+     * Ends the current group.
+     */
+    public void endGroup() {
+        stream.println("</group>");
+    }
+
+    /**
+     * Finishes the graph document and flushes the output stream.
      */
     public void end() {
-        stream.println("</group></graphDocument>");
-        stream.flush();
+        stream.println("</graphDocument>");
+        flush();
     }
 
     /**

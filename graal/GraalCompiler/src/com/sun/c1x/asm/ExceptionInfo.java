@@ -22,8 +22,6 @@
  */
 package com.sun.c1x.asm;
 
-import java.util.*;
-
 import com.sun.c1x.ir.*;
 
 /**
@@ -33,12 +31,12 @@ import com.sun.c1x.ir.*;
 public class ExceptionInfo {
 
     public final int codeOffset;
-    public final List<ExceptionHandler> exceptionHandlers;
+    public final BlockBegin exceptionEdge;
     public final int bci;
 
-    public ExceptionInfo(int pcOffset, List<ExceptionHandler> exceptionHandlers, int bci) {
+    public ExceptionInfo(int pcOffset, BlockBegin exceptionEdge, int bci) {
         this.codeOffset = pcOffset;
-        this.exceptionHandlers = exceptionHandlers;
+        this.exceptionEdge = exceptionEdge;
         this.bci = bci;
     }
 }

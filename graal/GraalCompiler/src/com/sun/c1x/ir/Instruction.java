@@ -79,11 +79,6 @@ public abstract class Instruction extends Value {
      */
     private int bci;
 
-    /**
-     * List of associated exception handlers.
-     */
-    private List<ExceptionHandler> exceptionHandlers = ExceptionHandler.ZERO_HANDLERS;
-
     private boolean isAppended = false;
 
     /**
@@ -185,22 +180,6 @@ public abstract class Instruction extends Value {
     }
 
     /**
-     * Gets the list of exception handlers associated with this instruction.
-     * @return the list of exception handlers for this instruction
-     */
-    public final List<ExceptionHandler> exceptionHandlers() {
-        return exceptionHandlers;
-    }
-
-    /**
-     * Sets the list of exception handlers for this instruction.
-     * @param exceptionHandlers the exception handlers
-     */
-    public final void setExceptionHandlers(List<ExceptionHandler> exceptionHandlers) {
-        this.exceptionHandlers = exceptionHandlers;
-    }
-
-    /**
      * Compute the value number of this Instruction. Local and global value numbering
      * optimizations use a hash map, and the value number provides a hash code.
      * If the instruction cannot be value numbered, then this method should return
@@ -245,6 +224,10 @@ public abstract class Instruction extends Value {
      * @return the state after the instruction
      */
     public FrameState stateAfter() {
+        return null;
+    }
+
+    public BlockBegin exceptionEdge() {
         return null;
     }
 }

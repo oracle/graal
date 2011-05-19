@@ -615,42 +615,4 @@ public final class BlockMap {
 
         out.print("loop_depth ").println(Integer.bitCount(block.loops));
     }
-
-//
-//    private static StringBuilder append(StringBuilder sb, BlockBegin block) {
-//        return sb.append('B').append(block.blockID).append('@').append(block.bci());
-//    }
-//
-//    @Override
-//    public String toString() {
-//        StringBuilder sb = new StringBuilder();
-//        for (int bci = 0; bci < blockMap.length; ++bci) {
-//            BlockBegin block = blockMap[bci];
-//            if (block != null) {
-//                append(sb, block);
-//                if (loopBlocks != null && loopBlocks.contains(block)) {
-//                    sb.append("{loop-header}");
-//                }
-//                if (successorMap != null) {
-//                    BlockBegin[] succs = successorMap[bci];
-//                    if (succs != null && succs.length > 0) {
-//                        sb.append(" ->");
-//                        for (BlockBegin succ : succs) {
-//                            append(sb.append(' '), succ);
-//                        }
-//                    }
-//                }
-//                Collection<BlockBegin> handlers = getHandlers(block);
-//                if (!handlers.isEmpty()) {
-//                    sb.append(" xhandlers{");
-//                    for (BlockBegin h : handlers) {
-//                        append(sb, h).append(' ');
-//                    }
-//                    sb.append('}');
-//                }
-//                sb.append(String.format("%n"));
-//            }
-//        }
-//        return sb.toString();
-//    }
 }

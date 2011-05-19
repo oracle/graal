@@ -246,6 +246,7 @@ public final class C1XCompilation {
             initFrameMap(hir.maxLocks());
 
             lirGenerator = compiler.backend.newLIRGenerator(this);
+
             for (BlockBegin begin : hir.linearScanOrder()) {
                 lirGenerator.doBlock(begin);
             }
@@ -265,9 +266,6 @@ public final class C1XCompilation {
 
             // generate code for slow cases
             lirAssembler.emitLocalStubs();
-
-            // generate exception adapters
-            lirAssembler.emitExceptionEntries();
 
             // generate deoptimization stubs
             ArrayList<DeoptimizationStub> deoptimizationStubs = lirGenerator.deoptimizationStubs();

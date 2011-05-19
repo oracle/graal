@@ -81,11 +81,6 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     }
 
     @Override
-    protected void emitOsrEntry() {
-        throw Util.unimplemented();
-    }
-
-    @Override
     protected int initialFrameSizeInBytes() {
         return frameMap.frameSize();
     }
@@ -97,23 +92,9 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     }
 
     @Override
-    protected void emitHere(CiValue dst, LIRDebugInfo info, boolean infoOnly) {
-        tasm.recordSafepoint(codePos(), info);
-        if (!infoOnly) {
-            masm.codeBuffer.putMark();
-            masm.leaq(dst.asRegister(), new CiAddress(CiKind.Word, InstructionRelative.asValue(), 0));
-        }
-    }
-
-    @Override
     protected void emitMonitorAddress(int monitor, CiValue dst) {
         CiStackSlot slot = frameMap.toMonitorBaseStackAddress(monitor);
         masm.leaq(dst.asRegister(), new CiAddress(slot.kind, AMD64.rsp.asValue(), slot.index() * target.arch.wordSize));
-    }
-
-    @Override
-    protected void emitPause() {
-        masm.pause();
     }
 
     @Override
@@ -1336,7 +1317,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
             } else if (left.kind.isDouble()) {
                 masm.cmpsd2int(asXmmDoubleReg(left), asXmmDoubleReg(right), dst.asRegister(), code == LIROpcode.Ucmpfd2i);
             } else {
-                throw Util.unimplemented("no fpu stack");
+                assert false : "no fpu stack";
             }
         } else {
             assert code == LIROpcode.Cmpl2i;
@@ -2062,7 +2043,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                     break;
                 }
                 default:
-                    throw Util.unimplemented("XIR operation " + inst.op);
+                    assert false : "Unknown XIR operation " + inst.op;
             }
         }
     }

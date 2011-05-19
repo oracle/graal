@@ -96,35 +96,6 @@ public abstract class LIRAssembler {
 
     public abstract void emitTraps();
 
-    public void emitExceptionEntries() {
-        if (tasm.exceptionInfoList == null) {
-            return;
-        }
-        for (ExceptionInfo ilist : tasm.exceptionInfoList) {
-            List<ExceptionHandler> handlers = ilist.exceptionHandlers;
-
-            for (ExceptionHandler handler : handlers) {
-                assert handler.lirOpId() != -1 : "handler not processed by LinearScan";
-                assert handler.entryCode() == null || handler.entryCode().instructionsList().get(handler.entryCode().instructionsList().size() - 1).code == LIROpcode.Branch : "last operation must be branch";
-
-                if (handler.entryCodeOffset() == -1) {
-                    // entry code not emitted yet
-                    if (handler.entryCode() != null && handler.entryCode().instructionsList().size() > 1) {
-                        handler.setEntryCodeOffset(codePos());
-                        if (C1XOptions.CommentedAssembly) {
-                            tasm.blockComment("Exception adapter block");
-                        }
-                        emitLirList(handler.entryCode());
-                    } else {
-                        handler.setEntryCodeOffset(handler.entryBlock().exceptionHandlerPco());
-                    }
-
-                    assert handler.entryCodeOffset() != -1 : "must be set now";
-                }
-            }
-        }
-    }
-
     public void emitCode(List<BlockBegin> hir) {
         if (C1XOptions.PrintLIR && !TTY.isSuppressed()) {
             LIRList.printLIR(hir);
@@ -138,16 +109,8 @@ public abstract class LIRAssembler {
     }
 
     void emitBlock(BlockBegin block) {
-        if (block.checkBlockFlag(BlockBegin.BlockFlag.BackwardBranchTarget)) {
-            emitAlignment();
-        }
 
-        // if this block is the start of an exception handler, record the
-        // PC offset of the first instruction for later construction of
-        // the ExceptionHandlerTable
-        if (block.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
-            block.setExceptionHandlerPco(codePos());
-        }
+        block.setBlockEntryPco(codePos());
 
         if (C1XOptions.PrintLIRWithAssembly) {
             block.printWithoutPhis(TTY.out());
@@ -290,18 +253,6 @@ public abstract class LIRAssembler {
         switch (op.code) {
             case Label:
                 throw Util.shouldNotReachHere();
-            case OsrEntry:
-                emitOsrEntry();
-                break;
-            case Here:
-                emitHere(op.result(), op.info, false);
-                break;
-            case Info:
-                emitHere(op.result(), op.info, true);
-                break;
-            case Pause:
-                emitPause();
-                break;
             case Breakpoint:
                 emitBreakpoint();
                 break;
@@ -446,11 +397,7 @@ public abstract class LIRAssembler {
 
     protected abstract void emitNegate(LIRNegate negate);
 
-    protected abstract void emitHere(CiValue dst, LIRDebugInfo info, boolean infoOnly);
-
     protected abstract void emitMonitorAddress(int monitor, CiValue dst);
-
-    protected abstract void emitPause();
 
     protected abstract void emitStackAllocate(StackBlock src, CiValue dst);
 
@@ -503,8 +450,6 @@ public abstract class LIRAssembler {
     protected abstract void emitCallAlignment(LIROpcode code);
 
     protected abstract void emitMemoryBarriers(int barriers);
-
-    protected abstract void emitOsrEntry();
 
     protected abstract void reg2stack(CiValue src, CiValue dest, CiKind kind);
 

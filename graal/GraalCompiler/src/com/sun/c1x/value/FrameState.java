@@ -105,7 +105,8 @@ public class FrameState extends Value implements FrameStateAccess {
     /**
      * Gets a copy of this frame state without the stack.
      */
-    public FrameState duplicateWithEmptyStack() {
+    @Override
+    public FrameState duplicateWithEmptyStack(int bci) {
         FrameState other = new FrameState(bci, localsSize, 0, locksSize(), graph());
         for (int i = 0; i < localsSize; i++) {
             other.inputs().set(i, localAt(i));

@@ -28,12 +28,11 @@ import com.sun.cri.ci.*;
 
 /**
  * The {@code LIRBlock} class definition.
- *
- * @author Ben L. Titzer
  */
 public final class LIRBlock {
 
     public LIRBlock() {
+        loopIndex = -1;
     }
 
     public final Label label = new Label();
@@ -68,9 +67,28 @@ public final class LIRBlock {
      */
     public CiBitMap liveKill;
 
-    public int firstLirInstructionID;
-    public int lastLirInstructionID;
-    public int exceptionHandlerPCO;
+    private int firstLirInstructionID;
+    private int lastLirInstructionID;
+    public int blockEntryPco;
+
+    public int firstLirInstructionId() {
+        return firstLirInstructionID;
+    }
+
+    public void setFirstLirInstructionId(int firstLirInstructionId) {
+        this.firstLirInstructionID = firstLirInstructionId;
+    }
+
+    public int lastLirInstructionId() {
+        return lastLirInstructionID;
+    }
+
+    public void setLastLirInstructionId(int lastLirInstructionId) {
+        this.lastLirInstructionID = lastLirInstructionId;
+    }
+
+    public int loopDepth;
+    public int loopIndex;
 
     public LIRList lir() {
         return lir;

@@ -483,12 +483,8 @@ public abstract class LIRInstruction {
         }
     }
 
-    public final List<ExceptionHandler> exceptionEdges() {
-        if (info != null && info.exceptionHandlers != null) {
-            return info.exceptionHandlers;
-        }
-
-        return Collections.emptyList();
+    public final BlockBegin exceptionEdge() {
+        return info.exceptionEdge;
     }
 
     @Override

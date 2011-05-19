@@ -134,18 +134,18 @@ final class RegisterVerifier {
         }
     }
 
-    void processXhandler(ExceptionHandler xhandler, Interval[] inputState) {
+    void processXhandler(BlockBegin xhandler, Interval[] inputState) {
         if (C1XOptions.TraceLinearScanLevel >= 2) {
-            TTY.println("processXhandler B%d", xhandler.entryBlock().blockID);
+            TTY.println("processXhandler B%d", xhandler.blockID);
         }
 
         // must copy state because it is modified
         inputState = copy(inputState);
 
-        if (xhandler.entryCode() != null) {
-            processOperations(xhandler.entryCode(), inputState);
+        if (xhandler.lir() != null) {
+            processOperations(xhandler.lir(), inputState);
         }
-        processSuccessor(xhandler.entryBlock(), inputState);
+        processSuccessor(xhandler, inputState);
     }
 
     void processSuccessor(BlockBegin block, Interval[] inputState) {
@@ -260,10 +260,8 @@ final class RegisterVerifier {
             }
 
             // process xhandler before output and temp operands
-            List<ExceptionHandler> xhandlers = op.exceptionEdges();
-            n = xhandlers.size();
-            for (int k = 0; k < n; k++) {
-                processXhandler(xhandlers.get(k), inputState);
+            if (op.exceptionEdge() != null) {
+                processXhandler(op.exceptionEdge(), inputState);
             }
 
             // set temp operands (some operations use temp operands also as output operands, so can't set them null)

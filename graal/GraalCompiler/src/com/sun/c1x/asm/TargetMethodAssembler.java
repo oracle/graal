@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
@@ -65,11 +64,7 @@ public class TargetMethodAssembler {
         if (exceptionInfoList != null) {
             for (ExceptionInfo ei : exceptionInfoList) {
                 int codeOffset = ei.codeOffset;
-                for (ExceptionHandler handler : ei.exceptionHandlers) {
-                    int entryOffset = handler.entryCodeOffset();
-                    RiType caughtType = handler.handler.catchType();
-                    targetMethod.recordExceptionHandler(codeOffset, ei.bci, 0, entryOffset, handler.handlerBCI(), caughtType);
-                }
+                targetMethod.recordExceptionHandler(codeOffset, -1, 0, ei.exceptionEdge.lirBlock.blockEntryPco, -1, null);
             }
         }
 
@@ -145,11 +140,11 @@ public class TargetMethodAssembler {
 
     public void recordExceptionHandlers(int pcOffset, LIRDebugInfo info) {
         if (info != null) {
-            if (info.exceptionHandlers != null) {
+            if (info.exceptionEdge != null) {
                 if (exceptionInfoList == null) {
                     exceptionInfoList = new ArrayList<ExceptionInfo>(4);
                 }
-                exceptionInfoList.add(new ExceptionInfo(pcOffset, info.exceptionHandlers, info.state.bci));
+                exceptionInfoList.add(new ExceptionInfo(pcOffset, info.exceptionEdge, info.state.bci));
             }
         }
     }
