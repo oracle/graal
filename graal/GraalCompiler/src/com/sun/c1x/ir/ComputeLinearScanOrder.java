@@ -352,12 +352,6 @@ public final class ComputeLinearScanOrder {
         }
         curBit--;
 
-//        // exceptions handlers are added as late as possible
-//        if (!cur.checkBlockFlag(BlockBegin.BlockFlag.ExceptionEntry)) {
-//            weight |= (1 << curBit);
-//        }
-        curBit--;
-
         // guarantee that weight is > 0
         weight |= 1;
 
