@@ -115,8 +115,6 @@ public final class GraphBuilder {
 
     private BlockBegin unwindBlock;
 
-    private final Set<Instruction> loopHeaders = new HashSet<Instruction>();
-
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
      *
@@ -156,22 +154,11 @@ public final class GraphBuilder {
 
         blockList = new Block[rootMethod.code().length];
         for (int i = 0; i < blockMap.blocks.size(); i++) {
+            int blockID = ir.nextBlockNumber();
+            assert blockID == i;
             Block block = blockMap.blocks.get(i);
-
-//            if (block.isLoopHeader) {
-                BlockBegin blockBegin = new BlockBegin(block.startBci, ir.nextBlockNumber(), graph);
-
-                block.firstInstruction = blockBegin;
-                blockList[block.startBci] = block;
-
-                if (block.isLoopHeader) {
-                    loopHeaders.add(blockBegin);
-                }
-//            } else {
-//                blockList[block.startBci] = new Placeholder(graph);
-//            }
+            blockList[block.startBci] = block;
         }
-
 
         // 1. create the start block
         Block startBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
@@ -381,7 +368,7 @@ public final class GraphBuilder {
 
             int current = exceptionHandlers.size() - 1;
             if (exceptionHandlers.get(current).isCatchAll()) {
-                successor = exceptionHandlers.get(current).entryBlock().firstInstruction;
+                successor = createTarget(exceptionHandlers.get(current).entryBlock(), null);
                 current--;
             } else {
                 if (unwindBlock == null) {
@@ -412,6 +399,7 @@ public final class GraphBuilder {
                     BlockBegin dispatchEntry = new BlockBegin(handler.handlerBCI(), ir.nextBlockNumber(), graph);
 
                     if (handler.handler.catchType().isResolved()) {
+                        Instruction entry = createTarget(handler.entryBlock(), null);
                         ExceptionDispatch end = new ExceptionDispatch(null, (BlockBegin) handler.entryBlock().firstInstruction, null, handler, null, graph);
                         end.setBlockSuccessor(0, (BlockBegin) successor);
                         dispatchEntry.appendNext(end);
@@ -1072,7 +1060,13 @@ public final class GraphBuilder {
     }
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
-        mergeOrClone(block, stateAfter);
+        if (block.firstInstruction == null) {
+            BlockBegin blockBegin = new BlockBegin(block.startBci, block.blockID, graph);
+            block.firstInstruction = blockBegin;
+        }
+        if (stateAfter != null) {
+            mergeOrClone(block, stateAfter);
+        }
         addToWorkList(block);
         return block.firstInstruction;
     }
