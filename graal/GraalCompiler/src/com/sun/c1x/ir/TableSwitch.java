@@ -45,12 +45,12 @@ public final class TableSwitch extends Switch {
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
      * @param lowKey the lowest integer key in the table
-     * @param stateBefore the state before the switch
+     * @param stateAfter the state after the switch
      * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
-    public TableSwitch(Value value, List<BlockBegin> successors, int lowKey, FrameState stateBefore, Graph graph) {
-        super(value, successors, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public TableSwitch(Value value, List<BlockBegin> successors, int lowKey, FrameState stateAfter, Graph graph) {
+        super(value, successors, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.lowKey = lowKey;
     }
 
