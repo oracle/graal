@@ -46,12 +46,12 @@ public final class LookupSwitch extends Switch {
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
      * @param keys the list of keys, sorted
-     * @param stateBefore the state before the switch
+     * @param stateAfter the state after the switch
      * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
-    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateBefore, Graph graph) {
-        super(value, successors, stateBefore, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateAfter, Graph graph) {
+        super(value, successors, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.keys = keys;
     }
 
