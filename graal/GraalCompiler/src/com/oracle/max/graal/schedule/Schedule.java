@@ -39,6 +39,14 @@ public class Schedule {
         identifyBlocks();
     }
 
+    public List<Block> getBlocks() {
+        return Collections.unmodifiableList(blocks);
+    }
+
+    public NodeMap<Block> getNodeToBlock() {
+        return nodeToBlock;
+    }
+
     private Block createBlock() {
         Block b = new Block(blocks.size());
         blocks.add(b);

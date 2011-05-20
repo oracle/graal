@@ -79,6 +79,7 @@ public final class LIRBlock {
     public LIRBlock(int blockID) {
         this.blockID = blockID;
         loopIndex = -1;
+        linearScanNumber = blockID;
     }
 
     public List<Instruction> getInstructions() {

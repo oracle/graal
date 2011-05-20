@@ -24,6 +24,7 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
@@ -84,6 +85,25 @@ public class IR {
         }
 
         Schedule schedule = new Schedule(this.compilation.graph);
+        List<Block> blocks = schedule.getBlocks();
+        NodeMap<Block> nodeToBlock = schedule.getNodeToBlock();
+        Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
+        for (Block b : blocks) {
+            map.put(b, new LIRBlock(b.blockID()));
+        }
+
+        for (Block b : blocks) {
+            for (Block succ : b.getSuccessors()) {
+                map.get(b).blockSuccessors().add(map.get(succ));
+            }
+
+            for (Block pred : b.getPredecessors()) {
+                map.get(b).blockPredecessors().add(map.get(pred));
+            }
+        }
+
+        // TODO(tw): Schedule nodes within a block.
+
 
         valueToBlock = computeLinearScanOrder();
         verifyAndPrint("After linear scan order");
