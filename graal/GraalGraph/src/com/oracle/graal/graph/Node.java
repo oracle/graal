@@ -53,8 +53,8 @@ public abstract class Node {
         return Collections.unmodifiableList(predecessors);
     }
 
-    public Collection<Node> usages() {
-        return Collections.unmodifiableCollection(usages);
+    public List<Node> usages() {
+        return Collections.unmodifiableList(usages);
     }
 
     public NodeArray inputs() {

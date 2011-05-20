@@ -25,45 +25,21 @@ package com.sun.c1x.gen;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
-import com.sun.c1x.value.*;
 
 /**
  * The {@code PhiSimplifier} class is a helper class that can reduce phi instructions.
- *
- * @author Ben L. Titzer
  */
-public final class PhiSimplifier implements BlockClosure {
-
-    final IR ir;
+public final class PhiSimplifier {
 
     public PhiSimplifier(IR ir) {
-        this.ir = ir;
-        //ir.getHIRStartBlock().iterateAnyOrder(this, false);
-
         for (Node n : ir.compilation.graph.getNodes()) {
             if (n instanceof Phi) {
-                simplify((Phi)n);
+                simplify((Phi) n);
             }
         }
-
-
     }
 
-    /**
-     * This method is called for each block and processes any phi statements in the block.
-     * @param block the block to apply the simplification to
-     */
-    public void apply(BlockBegin block) {
-        FrameState state = block.stateBefore();
-        for (int i = 0; i < state.stackSize(); i++) {
-            simplify(state.stackAt(i));
-        }
-        for (int i = 0; i < state.localsSize(); i++) {
-            simplify(state.localAt(i));
-        }
-    }
-
-    Value simplify(Value x) {
+    private Value simplify(Value x) {
         if (x == null || !(x instanceof Phi)) {
             return x;
         }

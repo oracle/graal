@@ -35,6 +35,14 @@ public final class NodeBitMap {
         bitMap = new CiBitMap(graph.nextId);
     }
 
+    public boolean setIntersect(NodeBitMap other) {
+        return bitMap.setIntersect(other.bitMap);
+    }
+
+    public void setUnion(NodeBitMap other) {
+        bitMap.setUnion(other.bitMap);
+    }
+
     public boolean isMarked(Node node) {
         check(node);
         return bitMap.get(node.id());
@@ -48,5 +56,10 @@ public final class NodeBitMap {
     private void check(Node node) {
         assert node.graph == graph : "this node is not part of the graph";
         assert node.id() < bitMap.size() : "this node (" + node.id() + ") was added to the graph after creating the node bitmap (" + bitMap.length() + ")";
+    }
+
+    @Override
+    public String toString() {
+        return bitMap.toBinaryString(-1);
     }
 }

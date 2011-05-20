@@ -27,46 +27,47 @@ import java.util.List;
 
 
 public class NodeIterator {
-    public static NodeBitMap iterate(EdgeType e, Node start, NodeVisitor visitor) {
+    public static NodeBitMap iterate(EdgeType e, Node start, NodeBitMap constraint, NodeVisitor visitor) {
         LinkedList<Node> nodes = new LinkedList<Node>();
         NodeBitMap nodeBitMap = start.graph.createNodeBitMap();
 
-        add(nodes, nodeBitMap, start);
+        add(nodes, nodeBitMap, start, constraint, null);
         while (nodes.size() > 0) {
             Node n = nodes.remove();
-            if (visitor == null || visitor.visit(n)) {
-                switch(e) {
-                    case INPUTS:
-                        for (Node inputs : n.inputs()) {
-                            add(nodes, nodeBitMap, inputs);
-                        }
-                        break;
-                    case USAGES:
-                        for (Node usage : n.usages()) {
-                            add(nodes, nodeBitMap, usage);
-                        }
-                        break;
-                    case PREDECESSORS:
-                        for (Node preds : n.predecessors()) {
-                            add(nodes, nodeBitMap, preds);
-                        }
-                        break;
-                    case SUCCESSORS:
-                        for (Node succ : n.successors()) {
-                            add(nodes, nodeBitMap, succ);
-                        }
-                        break;
-                    default:
-                        assert false : "unknown edge type";
-                }
+            if (visitor != null) {
+                visitor.visit(n);
+            }
+            switch(e) {
+                case INPUTS:
+                    for (Node inputs : n.inputs()) {
+                        add(nodes, nodeBitMap, inputs, constraint, n.usages());
+                    }
+                    break;
+                case USAGES:
+                    for (Node usage : n.usages()) {
+                        add(nodes, nodeBitMap, usage, constraint, n.inputs());
+                    }
+                    break;
+                case PREDECESSORS:
+                    for (Node preds : n.predecessors()) {
+                        add(nodes, nodeBitMap, preds, constraint, n.successors());
+                    }
+                    break;
+                case SUCCESSORS:
+                    for (Node succ : n.successors()) {
+                        add(nodes, nodeBitMap, succ, constraint, n.predecessors());
+                    }
+                    break;
+                default:
+                    assert false : "unknown edge type";
             }
         }
 
         return nodeBitMap;
     }
 
-    private static void add(List<Node> nodes, NodeBitMap nodeBitMap, Node node) {
-        if (node != null && !nodeBitMap.isMarked(node)) {
+    private static void add(List<Node> nodes, NodeBitMap nodeBitMap, Node node, NodeBitMap constraint, List<Node> others) {
+        if (node != null && !nodeBitMap.isMarked(node) && (constraint == null || constraint.isMarked(node))) {
             nodes.add(node);
             nodeBitMap.mark(node);
         }

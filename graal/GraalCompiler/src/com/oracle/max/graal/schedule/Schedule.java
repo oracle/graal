@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.ir.*;
 
 
 public class Schedule {
@@ -56,23 +55,26 @@ public class Schedule {
     }
 
     private void identifyBlocks() {
-        final NodeBitMap bottomUpBitMap = NodeIterator.iterate(EdgeType.PREDECESSORS, graph.end(), null);
-        NodeIterator.iterate(EdgeType.SUCCESSORS, graph.start(), new NodeVisitor() {
-            @Override
-            public boolean visit(Node n) {
-                if (!bottomUpBitMap.isMarked(n)) {
-                    return false;
-                }
 
+        // Identify nodes that form the control flow.
+        final NodeBitMap topDownBitMap = NodeIterator.iterate(EdgeType.SUCCESSORS, graph.start(), null, null);
+        final NodeBitMap combinedBitMap = NodeIterator.iterate(EdgeType.PREDECESSORS, graph.end(), topDownBitMap, null);
+
+        // Identify blocks.
+        final ArrayList<Node> blockBeginNodes = new ArrayList<Node>();
+        NodeIterator.iterate(EdgeType.SUCCESSORS, graph.start(), combinedBitMap, new NodeVisitor() {
+            @Override
+            public void visit(Node n) {
                 Node singlePred = null;
                 for (Node pred : n.predecessors()) {
-                    if (pred != null && bottomUpBitMap.isMarked(pred)) {
+                    if (pred != null && combinedBitMap.isMarked(pred)) {
                         if (singlePred == null) {
                             singlePred = pred;
                         } else {
                             // We have more than one predecessor => we are a merge block.
                             assignBlock(n);
-                            return true;
+                            blockBeginNodes.add(n);
+                            return;
                         }
                     }
                 }
@@ -80,24 +82,34 @@ public class Schedule {
                 if (singlePred == null) {
                     // We have no predecessor => we are the start block.
                     assignBlock(n);
+                    blockBeginNodes.add(n);
                 } else {
                     // We have a single predecessor => its successor count.
                     int successorCount = 0;
                     for (Node succ : singlePred.successors()) {
-                        if (succ != null && bottomUpBitMap.isMarked(succ)) {
+                        if (succ != null && combinedBitMap.isMarked(succ)) {
                             successorCount++;
                             if (successorCount > 1) {
                                 // Our predecessor is a split => we need a new block.
                                 assignBlock(n);
-                                return true;
+                                blockBeginNodes.add(n);
+                                return;
                             }
                         }
                     }
                     nodeToBlock.set(n, nodeToBlock.get(singlePred));
                 }
-                return true;
             }}
         );
+
+        // Connect blocks.
+        for (Node n : blockBeginNodes) {
+            Block block = nodeToBlock.get(n);
+            for (Node pred : n.predecessors()) {
+                Block predBlock = nodeToBlock.get(pred);
+                predBlock.addSuccessor(block);
+            }
+        }
     }
 
     private void print() {
