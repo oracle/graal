@@ -41,8 +41,7 @@ public final class BlockBegin extends StateSplit {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_STATE_BEFORE = 0;
 
-    private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_END = 0;
+    private static final int SUCCESSOR_COUNT = 0;
 
     @Override
     protected int inputCount() {
@@ -58,17 +57,16 @@ public final class BlockBegin extends StateSplit {
      * The last node in the block (which contains the successors).
      */
     public BlockEnd end() {
-        return (BlockEnd) successors().get(super.successorCount() + SUCCESSOR_END);
+        Instruction next = next();
+        while (!(next instanceof BlockEnd)) {
+            next = next.next();
+        }
+        return (BlockEnd) next;
     }
 
     @Override
     public boolean needsStateAfter() {
         return false;
-    }
-
-    public void setEnd(BlockEnd end) {
-        assert end != null;
-        successors().set(super.successorCount() + SUCCESSOR_END, end);
     }
 
     /**

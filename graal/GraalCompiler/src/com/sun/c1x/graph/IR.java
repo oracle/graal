@@ -200,7 +200,6 @@ public class IR {
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, compilation.graph);
         newSucc.appendNext(e);
-        newSucc.setEnd(e);
         e.reorderSuccessor(0, backEdgeIndex);
         // setup states
         FrameState s = source.end().stateAfter();
