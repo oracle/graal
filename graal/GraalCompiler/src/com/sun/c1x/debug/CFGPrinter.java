@@ -158,9 +158,10 @@ public class CFGPrinter {
             printHIR(block);
         }
 
-        if (printLIR) {
-            printLIR(block.lirBlock());
-        }
+        // TODO(tw): Add possibility to print LIR.
+        //if (printLIR) {
+        //    printLIR(block.lirBlock());
+        //}
 
         end("block");
     }

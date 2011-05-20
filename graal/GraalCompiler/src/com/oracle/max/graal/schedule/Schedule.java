@@ -84,7 +84,7 @@ public class Schedule {
                     assignBlock(n);
                     blockBeginNodes.add(n);
                 } else {
-                    // We have a single predecessor => its successor count.
+                    // We have a single predecessor => check its successor count.
                     int successorCount = 0;
                     for (Node succ : singlePred.successors()) {
                         if (succ != null && combinedBitMap.isMarked(succ)) {
