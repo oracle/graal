@@ -329,6 +329,18 @@ public final class BlockMap {
         }
     }
 
+    public static boolean canTrap(int opcode) {
+        switch (opcode) {
+            case INVOKESTATIC:
+            case INVOKESPECIAL:
+            case INVOKEVIRTUAL:
+            case INVOKEINTERFACE: {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Block makeBlock(int startBci) {
         Block oldBlock = blockMap[startBci];
         if (oldBlock == null) {
