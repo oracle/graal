@@ -255,7 +255,7 @@ public final class GraphBuilder {
         assert bci() == 0;
         FrameState stateAfter = frameState.create(bci());
         Instruction target = createTargetAt(0, stateAfter);
-        Goto base = new Goto((BlockBegin) target, stateAfter, graph);
+        Goto base = new Goto(target, stateAfter, graph);
         appendWithBCI(base);
         ((BlockBegin) startBlock.firstInstruction).setEnd(base);
     }
@@ -400,14 +400,14 @@ public final class GraphBuilder {
 
                     if (handler.handler.catchType().isResolved()) {
                         Instruction entry = createTarget(handler.entryBlock(), null);
-                        ExceptionDispatch end = new ExceptionDispatch(null, (BlockBegin) handler.entryBlock().firstInstruction, null, handler, null, graph);
-                        end.setBlockSuccessor(0, (BlockBegin) successor);
+                        ExceptionDispatch end = new ExceptionDispatch(null, entry, null, handler, null, graph);
+                        end.setBlockSuccessor(0, successor);
                         dispatchEntry.appendNext(end);
                         dispatchEntry.setEnd(end);
                     } else {
                         Deoptimize deopt = new Deoptimize(graph);
                         dispatchEntry.appendNext(deopt);
-                        Goto end = new Goto((BlockBegin) successor, null, graph);
+                        Goto end = new Goto(successor, null, graph);
                         deopt.appendNext(end);
                         dispatchEntry.setEnd(end);
                     }
@@ -424,7 +424,7 @@ public final class GraphBuilder {
             ExceptionObject exception = new ExceptionObject(graph);
             entry.appendNext(exception);
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
-            BlockEnd end = new Goto((BlockBegin) successor, stateWithException, graph);
+            BlockEnd end = new Goto(successor, stateWithException, graph);
             exception.appendNext(end);
             entry.setEnd(end);
 
@@ -666,13 +666,13 @@ public final class GraphBuilder {
     }
 
     private void genGoto(int fromBCI, int toBCI) {
-        append(new Goto((BlockBegin) createTargetAt(toBCI, frameState), null, graph));
+        append(new Goto(createTargetAt(toBCI, frameState), null, graph));
     }
 
     private void ifNode(Value x, Condition cond, Value y) {
         Instruction tsucc = createTargetAt(stream().readBranchDest(), frameState);
         Instruction fsucc = createTargetAt(stream().nextBCI(), frameState);
-        append(new If(x, cond, y, (BlockBegin) tsucc, (BlockBegin) fsucc, null, graph));
+        append(new If(x, cond, y, tsucc, fsucc, null, graph));
     }
 
     private void genIfZero(Condition cond) {
@@ -1052,23 +1052,7 @@ public final class GraphBuilder {
         list.add(createTargetAt(bci + offset, frameState));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateAfter = isSafepoint ? frameState.create(bci()) : null;
-        append(new TableSwitch(value, (List) list, ts.lowKey(), stateAfter, graph));
-    }
-
-    private Instruction createTargetAt(int bci, FrameStateAccess stateAfter) {
-        return createTarget(blockList[bci], stateAfter);
-    }
-
-    private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
-        if (block.firstInstruction == null) {
-            BlockBegin blockBegin = new BlockBegin(block.startBci, block.blockID, graph);
-            block.firstInstruction = blockBegin;
-        }
-        if (stateAfter != null) {
-            mergeOrClone(block, stateAfter);
-        }
-        addToWorkList(block);
-        return block.firstInstruction;
+        append(new TableSwitch(value, list, ts.lowKey(), stateAfter, graph));
     }
 
     private void genLookupswitch() {
@@ -1091,7 +1075,7 @@ public final class GraphBuilder {
         list.add(createTargetAt(bci + offset, frameState));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateAfter = isSafepoint ? frameState.create(bci()) : null;
-        append(new LookupSwitch(value, (List) list, keys, stateAfter, graph));
+        append(new LookupSwitch(value, list, keys, stateAfter, graph));
     }
 
     private Value appendConstant(CiConstant constant) {
@@ -1128,6 +1112,22 @@ public final class GraphBuilder {
         Instruction result = blockAtOrNull(bci);
         assert result != null : "Expected a block to begin at " + bci;
         return result;
+    }
+
+    private Instruction createTargetAt(int bci, FrameStateAccess stateAfter) {
+        return createTarget(blockList[bci], stateAfter);
+    }
+
+    private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
+        if (block.firstInstruction == null) {
+            BlockBegin blockBegin = new BlockBegin(block.startBci, block.blockID, graph);
+            block.firstInstruction = blockBegin;
+        }
+        if (stateAfter != null) {
+            mergeOrClone(block, stateAfter);
+        }
+        addToWorkList(block);
+        return block.firstInstruction;
     }
 
     private Value synchronizedObject(FrameStateAccess state, RiMethod target) {
@@ -1210,7 +1210,7 @@ public final class GraphBuilder {
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 Instruction next = createTarget(nextBlock, frameState);
-                end = new Goto((BlockBegin) next, null, graph);
+                end = new Goto(next, null, graph);
                 lastInstr = lastInstr.appendNext(end);
                 break;
             }

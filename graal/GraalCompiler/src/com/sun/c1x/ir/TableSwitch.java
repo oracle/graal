@@ -49,7 +49,7 @@ public final class TableSwitch extends Switch {
      * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
-    public TableSwitch(Value value, List<BlockBegin> successors, int lowKey, FrameState stateAfter, Graph graph) {
+    public TableSwitch(Value value, List<? extends Instruction> successors, int lowKey, FrameState stateAfter, Graph graph) {
         super(value, successors, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.lowKey = lowKey;
     }
