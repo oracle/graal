@@ -79,7 +79,7 @@ public abstract class BlockEnd extends Instruction {
 
     public Instruction setBlockSuccessor(int index, Instruction n) {
         assert index >= 0 && index < blockSuccessorCount;
-        assert n instanceof BlockBegin : "only BlockBegins, for now...";
+        assert n == null || n instanceof BlockBegin : "only BlockBegins, for now... " + n.getClass();
         return (BlockBegin) successors().set(super.successorCount() + SUCCESSOR_COUNT + index, n);
     }
 
