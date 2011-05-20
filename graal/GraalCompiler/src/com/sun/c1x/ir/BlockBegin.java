@@ -78,7 +78,6 @@ public final class BlockBegin extends StateSplit {
      */
     public final int blockID;
 
-    private int depthFirstNumber;
     private int linearScanNumber;
 
     // LIR block
@@ -251,54 +250,13 @@ public final class BlockBegin extends StateSplit {
         v.visitBlockBegin(this);
     }
 
-    public void mergeOrClone(FrameStateAccess newState, RiMethod method, boolean loopHeader) {
-        FrameState existingState = stateBefore();
-
-        if (existingState == null) {
-            // copy state because it is modified
-            FrameState duplicate = newState.duplicate(bci());
-
-            // if the block is a loop header, insert all necessary phis
-            if (loopHeader) {
-                insertLoopPhis(duplicate);
-            }
-
-            setStateBefore(duplicate);
-        } else {
-            if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
-                // stacks or locks do not match--bytecodes would not verify
-                throw new CiBailout("stack or locks do not match");
-            }
-
-            assert existingState.localsSize() == newState.localsSize();
-            assert existingState.stackSize() == newState.stackSize();
-
-            existingState.merge(this, newState);
-        }
-    }
-
-    private void insertLoopPhis(FrameState newState) {
-        int stackSize = newState.stackSize();
-        for (int i = 0; i < stackSize; i++) {
-            // always insert phis for the stack
-            newState.setupPhiForStack(this, i);
-        }
-        int localsSize = newState.localsSize();
-        for (int i = 0; i < localsSize; i++) {
-            Value x = newState.localAt(i);
-            if (x != null) {
-                newState.setupPhiForLocal(this, i);
-            }
-        }
-    }
-
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("block #");
         builder.append(blockID);
         builder.append(",");
-        builder.append(depthFirstNumber);
+        builder.append(blockID); // was: depthFirstNumber
         builder.append(" [");
 
         builder.append("]");
