@@ -64,7 +64,7 @@ public final class ExceptionDispatch extends BlockEnd {
     /**
      * Constructs a new ExceptionDispatch instruction.
      */
-    public ExceptionDispatch(Value exception, BlockBegin catchSuccessor, BlockBegin otherSuccessor, ExceptionHandler handler, FrameState stateAfter, Graph graph) {
+    public ExceptionDispatch(Value exception, Instruction catchSuccessor, Instruction otherSuccessor, ExceptionHandler handler, FrameState stateAfter, Graph graph) {
         super(CiKind.Int, stateAfter, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
         setBlockSuccessor(0, otherSuccessor);

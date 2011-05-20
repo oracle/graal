@@ -50,7 +50,7 @@ public final class LookupSwitch extends Switch {
      * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
-    public LookupSwitch(Value value, List<BlockBegin> successors, int[] keys, FrameState stateAfter, Graph graph) {
+    public LookupSwitch(Value value, List<? extends Instruction> successors, int[] keys, FrameState stateAfter, Graph graph) {
         super(value, successors, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.keys = keys;
     }

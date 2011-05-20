@@ -86,8 +86,7 @@ public final class If extends BlockEnd {
      * @param isSafepoint {@code true} if this branch should be considered a safepoint
      * @param graph
      */
-    public If(Value x, Condition cond, Value y,
-              BlockBegin trueSucc, BlockBegin falseSucc, FrameState stateAfter, Graph graph) {
+    public If(Value x, Condition cond, Value y, Instruction trueSucc, Instruction falseSucc, FrameState stateAfter, Graph graph) {
         super(CiKind.Illegal, stateAfter, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert Util.archKindsEqual(x, y);
         condition = cond;
