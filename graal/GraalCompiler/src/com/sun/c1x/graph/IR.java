@@ -24,6 +24,7 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
+import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
@@ -79,6 +80,8 @@ public class IR {
             C1XTimers.HIR_CREATE.stop();
             C1XTimers.HIR_OPTIMIZE.start();
         }
+
+        Schedule schedule = new Schedule(this.compilation.graph);
 
         computeLinearScanOrder();
 
