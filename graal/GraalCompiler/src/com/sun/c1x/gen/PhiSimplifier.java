@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.c1x.opt;
+package com.sun.c1x.gen;
 
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
