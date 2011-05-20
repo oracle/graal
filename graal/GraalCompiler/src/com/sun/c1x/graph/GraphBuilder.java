@@ -1048,6 +1048,7 @@ public final class GraphBuilder {
 
     private void genTableswitch() {
         int bci = bci();
+        Value value = frameState.ipop();
         BytecodeTableSwitch ts = new BytecodeTableSwitch(stream(), bci);
         int max = ts.numberOfCases();
         List<Instruction> list = new ArrayList<Instruction>(max + 1);
@@ -1063,7 +1064,7 @@ public final class GraphBuilder {
         list.add(createTargetAt(bci + offset, frameState));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateAfter = isSafepoint ? frameState.create(bci()) : null;
-        append(new TableSwitch(frameState.ipop(), (List) list, ts.lowKey(), stateAfter, graph));
+        append(new TableSwitch(value, (List) list, ts.lowKey(), stateAfter, graph));
     }
 
     private Instruction createTargetAt(int bci, FrameStateAccess stateAfter) {
@@ -1078,6 +1079,7 @@ public final class GraphBuilder {
 
     private void genLookupswitch() {
         int bci = bci();
+        Value value = frameState.ipop();
         BytecodeLookupSwitch ls = new BytecodeLookupSwitch(stream(), bci);
         int max = ls.numberOfCases();
         List<Instruction> list = new ArrayList<Instruction>(max + 1);
@@ -1095,7 +1097,7 @@ public final class GraphBuilder {
         list.add(createTargetAt(bci + offset, frameState));
         boolean isSafepoint = isBackwards && !noSafepoints();
         FrameState stateAfter = isSafepoint ? frameState.create(bci()) : null;
-        append(new LookupSwitch(frameState.ipop(), (List) list, keys, stateAfter, graph));
+        append(new LookupSwitch(value, (List) list, keys, stateAfter, graph));
     }
 
     private Value appendConstant(CiConstant constant) {
@@ -1213,7 +1215,8 @@ public final class GraphBuilder {
             Block nextBlock = blockList[bci];
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
-                end = new Goto((BlockBegin) nextBlock.firstInstruction, null, graph);
+                Instruction next = createTarget(nextBlock, frameState);
+                end = new Goto((BlockBegin) next, null, graph);
                 lastInstr = lastInstr.appendNext(end);
                 break;
             }
