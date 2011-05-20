@@ -35,7 +35,6 @@ public final class ComputeLinearScanOrder {
     private final int maxBlockId; // the highest blockId of a block
     private int numBlocks; // total number of blocks (smaller than maxBlockId)
     private int numLoops; // total number of loops
-    private boolean iterativeDominators; // method requires iterative computation of dominators
 
     List<BlockBegin> linearScanOrder; // the resulting list of blocks in correct order
 
@@ -118,9 +117,6 @@ public final class ComputeLinearScanOrder {
         countEdges(startBlock, null);
 
         computeOrder(startBlock);
-
-        printBlocks();
-        assert verify();
     }
 
     /**
@@ -300,61 +296,5 @@ public final class ComputeLinearScanOrder {
                 }
             });
         } while (workList.size() > 0);
-    }
-
-    public void printBlocks() {
-        if (C1XOptions.TraceLinearScanLevel >= 1) {
-            TTY.println("----- linear-scan block order:");
-            for (BlockBegin cur : linearScanOrder) {
-                TTY.print(String.format("%4d: B%02d    loop: %2d  depth: %2d", cur.linearScanNumber(), cur.blockID, -1, -1));
-
-                if (cur.numberOfPreds() > 0) {
-                    TTY.print("    preds: ");
-                    for (int j = 0; j < cur.numberOfPreds(); j++) {
-                        BlockBegin pred = cur.predAt(j).block();
-                        TTY.print("B%d ", pred.blockID);
-                    }
-                }
-                if (cur.numberOfSux() > 0) {
-                    TTY.print("    sux: ");
-                    for (int j = 0; j < cur.numberOfSux(); j++) {
-                        BlockBegin sux = cur.suxAt(j);
-                        TTY.print("B%d ", sux.blockID);
-                    }
-                }
-                TTY.println();
-            }
-        }
-    }
-
-    private boolean verify() {
-        assert linearScanOrder.size() == numBlocks : "wrong number of blocks in list";
-
-        if (C1XOptions.StressLinearScan) {
-            // blocks are scrambled when StressLinearScan is used
-            return true;
-        }
-
-        // check that all successors of a block have a higher linear-scan-number
-        // and that all predecessors of a block have a lower linear-scan-number
-        // (only backward branches of loops are ignored)
-        int i;
-        for (i = 0; i < linearScanOrder.size(); i++) {
-            BlockBegin cur = linearScanOrder.get(i);
-
-            assert cur.linearScanNumber() == i : "incorrect linearScanNumber";
-            assert cur.linearScanNumber() >= 0 && cur.linearScanNumber() == linearScanOrder.indexOf(cur) : "incorrect linearScanNumber";
-
-            for (BlockBegin sux : cur.end().blockSuccessors()) {
-                assert sux.linearScanNumber() >= 0 && sux.linearScanNumber() == linearScanOrder.indexOf(sux) : "incorrect linearScanNumber";
-            }
-
-            for (Instruction pred : cur.blockPredecessors()) {
-                BlockBegin begin = pred.block();
-                assert begin.linearScanNumber() >= 0 && begin.linearScanNumber() == linearScanOrder.indexOf(begin) : "incorrect linearScanNumber";
-            }
-        }
-
-        return true;
     }
 }

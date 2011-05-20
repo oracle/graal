@@ -144,7 +144,6 @@ public class IR {
             startBlock = getHIRStartBlock().lirBlock();
             assert startBlock != null;
             compilation.stats.loopCount = computeLinearScanOrder.numLoops();
-            computeLinearScanOrder.printBlocks();
         }
     }
 
