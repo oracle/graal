@@ -27,14 +27,14 @@ import java.util.List;
 
 
 public class NodeIterator {
-    public static void doBFS(EdgeType e, Node start, NodeVisitor visitor) {
+    public static NodeBitMap iterate(EdgeType e, Node start, NodeVisitor visitor) {
         LinkedList<Node> nodes = new LinkedList<Node>();
         NodeBitMap nodeBitMap = start.graph.createNodeBitMap();
 
         add(nodes, nodeBitMap, start);
         while (nodes.size() > 0) {
             Node n = nodes.remove();
-            if (visitor.visit(n)) {
+            if (visitor == null || visitor.visit(n)) {
                 switch(e) {
                     case INPUTS:
                         for (Node inputs : n.inputs()) {
@@ -61,6 +61,8 @@ public class NodeIterator {
                 }
             }
         }
+
+        return nodeBitMap;
     }
 
     private static void add(List<Node> nodes, NodeBitMap nodeBitMap, Node node) {

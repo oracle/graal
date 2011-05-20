@@ -34,7 +34,8 @@ public final class Return extends BlockEnd {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_RESULT = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_END = 0;
 
     @Override
     protected int inputCount() {
@@ -57,6 +58,11 @@ public final class Return extends BlockEnd {
         return (Value) inputs().set(super.inputCount() + INPUT_RESULT, n);
     }
 
+    @Override
+    public Instruction next() {
+        return null;
+    }
+
     /**
      * Constructs a new Return instruction.
      * @param result the instruction producing the result for this return; {@code null} if this
@@ -67,6 +73,7 @@ public final class Return extends BlockEnd {
     public Return(Value result, Graph graph) {
         super(result == null ? CiKind.Void : result.kind, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setResult(result);
+        successors().set(SUCCESSOR_END, graph.end());
     }
 
     @Override

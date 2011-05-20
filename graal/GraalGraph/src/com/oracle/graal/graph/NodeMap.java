@@ -45,6 +45,10 @@ public final class NodeMap<T> {
         values[node.id()] = value;
     }
 
+    public int size() {
+        return values.length;
+    }
+
     private void check(Node node) {
         assert node.graph == graph : "this node is not part of the graph";
         assert node.id() < values.length : "this node was added to the graph after creating the node map";

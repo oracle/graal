@@ -180,7 +180,7 @@ public final class GraphBuilder {
         BlockBegin startBlockBegin = new BlockBegin(0, startBlock.blockID, graph);
         startBlock.firstInstruction = startBlockBegin;
 
-        graph.root().setStart(startBlockBegin);
+        graph.start().setStart(startBlockBegin);
 
         RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
         if (handlers != null && handlers.length > 0) {

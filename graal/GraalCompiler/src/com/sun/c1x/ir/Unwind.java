@@ -34,7 +34,8 @@ public final class Unwind extends BlockEnd {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_EXCEPTION = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_END = 0;
 
     @Override
     protected int inputCount() {
@@ -44,6 +45,11 @@ public final class Unwind extends BlockEnd {
     @Override
     protected int successorCount() {
         return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    @Override
+    public Instruction next() {
+        return null;
     }
 
     /**
@@ -61,6 +67,7 @@ public final class Unwind extends BlockEnd {
     public Unwind(Value exception, Graph graph) {
         super(CiKind.Object, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
+        successors().set(SUCCESSOR_END, graph.end());
     }
 
     @Override

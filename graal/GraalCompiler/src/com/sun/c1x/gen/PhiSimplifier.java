@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.gen;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.value.*;
@@ -37,7 +38,15 @@ public final class PhiSimplifier implements BlockClosure {
 
     public PhiSimplifier(IR ir) {
         this.ir = ir;
-        ir.getHIRStartBlock().iterateAnyOrder(this, false);
+        //ir.getHIRStartBlock().iterateAnyOrder(this, false);
+
+        for (Node n : ir.compilation.graph.getNodes()) {
+            if (n instanceof Phi) {
+                simplify((Phi)n);
+            }
+        }
+
+
     }
 
     /**

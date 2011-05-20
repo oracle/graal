@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-public class Root extends Node {
+public class StartNode extends Node {
 
     private static final int INPUT_COUNT = 0;
 
@@ -47,7 +47,7 @@ public class Root extends Node {
         return successors().set(super.successorCount() + SUCCESSOR_START, next);
     }
 
-    Root(Graph graph) {
+    StartNode(Graph graph) {
         super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
@@ -58,11 +58,6 @@ public class Root extends Node {
 
     @Override
     public void delete() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected Object clone() throws CloneNotSupportedException {
         throw new UnsupportedOperationException();
     }
 

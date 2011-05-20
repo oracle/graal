@@ -256,6 +256,6 @@ public class IR {
     }
 
     public BlockBegin getHIRStartBlock() {
-        return (BlockBegin) compilation.graph.root().successors().get(0);
+        return (BlockBegin) compilation.graph.start().successors().get(0);
     }
 }

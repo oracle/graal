@@ -116,7 +116,7 @@ public final class BlockBegin extends StateSplit {
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public List<Instruction> blockPredecessors() {
-        if (predecessors().size() == 1 && predecessors().get(0) == graph().root()) {
+        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
             return Collections.EMPTY_LIST;
         } else {
             return (List) Collections.unmodifiableList(predecessors());
@@ -142,65 +142,6 @@ public final class BlockBegin extends StateSplit {
     public void iteratePreOrder(BlockClosure closure) {
         // XXX: identity hash map might be too slow, consider a boolean array or a mark field
         iterate(new IdentityHashMap<BlockBegin, BlockBegin>(), closure);
-    }
-
-    /**
-     * Iterate over all blocks transitively reachable from this block.
-     * @param closure the closure to apply to each block
-     * @param predecessors {@code true} if also to include this blocks predecessors
-     */
-    public void iterateAnyOrder(BlockClosure closure, boolean predecessors) {
-        IdentityHashMap<BlockBegin, BlockBegin> mark = new IdentityHashMap<BlockBegin, BlockBegin>();
-        LinkedList<BlockBegin> queue = new LinkedList<BlockBegin>();
-        queue.offer(this);
-        mark.put(this, this);
-        BlockBegin block;
-        while ((block = queue.poll()) != null) {
-            closure.apply(block);
-
-            Instruction inst = block;
-            ArrayList<BlockBegin> excBlocks = new ArrayList<BlockBegin>();
-            while (inst != null) {
-                if (inst instanceof ExceptionEdgeInstruction) {
-                    excBlocks.add(((ExceptionEdgeInstruction) inst).exceptionEdge());
-                }
-                inst = inst.next();
-            }
-            while (excBlocks.remove(null)) {
-                // nothing
-            }
-            if (excBlocks.size() > 0) {
-                queueBlocks(queue, excBlocks, mark);
-            }
-
-            queueBlocks(queue, block.end().blockSuccessors(), mark);
-            if (predecessors) {
-                queueBlockEnds(queue, block.blockPredecessors(), mark);
-            }
-        }
-    }
-
-    private void queueBlocks(LinkedList<BlockBegin> queue, List<BlockBegin> list, IdentityHashMap<BlockBegin, BlockBegin> mark) {
-        if (list != null) {
-            for (BlockBegin b : list) {
-                if (!mark.containsKey(b)) {
-                    queue.offer(b);
-                    mark.put(b, b);
-                }
-            }
-        }
-    }
-
-    private void queueBlockEnds(LinkedList<BlockBegin> queue, List<Instruction> list, IdentityHashMap<BlockBegin, BlockBegin> mark) {
-        if (list != null) {
-            for (Instruction end : list) {
-                BlockBegin b = end.block();
-                if (!mark.containsKey(b)) {
-                    queue.offer(b);
-                    mark.put(b, b);
-                }
-            }
-        }
     }
 
     /**
@@ -298,7 +239,7 @@ public final class BlockBegin extends StateSplit {
      */
     public int numberOfPreds() {
         // ignore the graph root
-        if (predecessors().size() == 1 && predecessors().get(0) == graph().root()) {
+        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
             return 0;
         } else {
             return predecessors().size();

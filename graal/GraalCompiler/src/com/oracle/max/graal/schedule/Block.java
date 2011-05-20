@@ -27,6 +27,7 @@ import java.util.*;
 
 public class Block {
 
+    private int blockID;
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
 
@@ -38,8 +39,21 @@ public class Block {
         return Collections.unmodifiableList(predecessors);
     }
 
+    public Block(int blockID) {
+        this.blockID = blockID;
+    }
+
     public void addSuccessor(Block other) {
         successors.add(other);
         other.predecessors.add(this);
+    }
+
+    public int blockID() {
+        return blockID;
+    }
+
+    @Override
+    public String toString() {
+        return "B" + blockID;
     }
 }

@@ -25,6 +25,8 @@ package com.oracle.max.graal.schedule;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.sun.c1x.debug.*;
+import com.sun.c1x.ir.*;
 
 
 public class Schedule {
@@ -38,12 +40,96 @@ public class Schedule {
         identifyBlocks();
     }
 
+    private Block createBlock() {
+        Block b = new Block(blocks.size());
+        blocks.add(b);
+        return b;
+    }
+
+    private Block assignBlock(Node n) {
+        Block curBlock = nodeToBlock.get(n);
+        if (curBlock == null) {
+            curBlock = createBlock();
+            nodeToBlock.set(n, curBlock);
+        }
+        return curBlock;
+    }
+
     private void identifyBlocks() {
-        NodeIterator.doBFS(EdgeType.SUCCESSORS, graph.root(), new NodeVisitor() {
+        final NodeBitMap bottomUpBitMap = NodeIterator.iterate(EdgeType.PREDECESSORS, graph.end(), null);
+        NodeIterator.iterate(EdgeType.SUCCESSORS, graph.start(), new NodeVisitor() {
             @Override
             public boolean visit(Node n) {
+                if (!bottomUpBitMap.isMarked(n)) {
+                    return false;
+                }
+
+                Node singlePred = null;
+                for (Node pred : n.predecessors()) {
+                    if (pred != null && bottomUpBitMap.isMarked(pred)) {
+                        if (singlePred == null) {
+                            singlePred = pred;
+                        } else {
+                            // We have more than one predecessor => we are a merge block.
+                            assignBlock(n);
+                            return true;
+                        }
+                    }
+                }
+
+                if (singlePred == null) {
+                    // We have no predecessor => we are the start block.
+                    assignBlock(n);
+                } else {
+                    // We have a single predecessor => its successor count.
+                    int successorCount = 0;
+                    for (Node succ : singlePred.successors()) {
+                        if (succ != null && bottomUpBitMap.isMarked(succ)) {
+                            successorCount++;
+                            if (successorCount > 1) {
+                                // Our predecessor is a split => we need a new block.
+                                assignBlock(n);
+                                return true;
+                            }
+                        }
+                    }
+                    nodeToBlock.set(n, nodeToBlock.get(singlePred));
+                }
                 return true;
+            }}
+        );
+    }
+
+    private void print() {
+        TTY.println("============================================");
+        TTY.println("%d blocks", blocks.size());
+        for (Block b : blocks) {
+           TTY.print(b.toString());
+
+           TTY.print(" succs=");
+           for (Block succ : b.getSuccessors()) {
+               TTY.print(succ + ";");
+           }
+
+           TTY.print(" preds=");
+           for (Block pred : b.getPredecessors()) {
+               TTY.print(pred + ";");
+           }
+           TTY.println();
+        }
+
+
+        TTY.println("============================================");
+        TTY.println("%d nodes", nodeToBlock.size());
+        for (Node n : graph.getNodes()) {
+            if (n != null) {
+                TTY.print("Node %d: %s", n.id(), n.getClass().toString());
+                Block curBlock = nodeToBlock.get(n);
+                if (curBlock != null) {
+                    TTY.print(" %s", curBlock);
+                }
+                TTY.println();
             }
-        });
+        }
     }
 }

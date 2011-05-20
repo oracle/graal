@@ -27,7 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class Node implements Cloneable {
+public abstract class Node {
 
     public static final Node Null = null;
     public static final int DeletedID = -1;
