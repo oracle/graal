@@ -580,8 +580,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected LIRBlock getLIRBlock(BlockBegin b) {
-        return b.lirBlock();
+    protected LIRBlock getLIRBlock(Instruction b) {
+        assert b instanceof BlockBegin : "only BlockBegin, for now...";
+        return ((BlockBegin) b).lirBlock();
     }
 
     @Override

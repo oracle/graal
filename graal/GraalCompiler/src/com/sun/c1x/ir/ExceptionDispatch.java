@@ -101,17 +101,6 @@ public final class ExceptionDispatch extends BlockEnd {
         return blockSuccessor(istrue ? 1 : 0);
     }
 
-    /**
-     * Swaps the successor blocks to this if and negates the condition (e.g. == goes to !=)
-     * @see Condition#negate()
-     */
-    public void swapSuccessors() {
-        BlockBegin t = blockSuccessor(0);
-        BlockBegin f = blockSuccessor(1);
-        setBlockSuccessor(0, f);
-        setBlockSuccessor(1, t);
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitExceptionDispatch(this);

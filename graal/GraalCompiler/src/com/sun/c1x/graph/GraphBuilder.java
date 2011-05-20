@@ -1178,7 +1178,7 @@ public final class GraphBuilder {
         while ((block = removeFromWorkList()) != null) {
 
             // remove blocks that have no predecessors by the time it their bytecodes are parsed
-            if (block.firstInstruction.predecessors().size() == 0) {
+            if (block.firstInstruction == null) {
                 markVisited(block);
                 continue;
             }

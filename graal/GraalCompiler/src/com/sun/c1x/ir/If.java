@@ -116,7 +116,7 @@ public final class If extends BlockEnd {
      * Gets the block corresponding to the true successor.
      * @return the true successor
      */
-    public BlockBegin trueSuccessor() {
+    public Instruction trueSuccessor() {
         return blockSuccessor(0);
     }
 
@@ -124,7 +124,7 @@ public final class If extends BlockEnd {
      * Gets the block corresponding to the false successor.
      * @return the false successor
      */
-    public BlockBegin falseSuccessor() {
+    public Instruction falseSuccessor() {
         return blockSuccessor(1);
     }
 
@@ -133,7 +133,7 @@ public final class If extends BlockEnd {
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
-    public BlockBegin successor(boolean istrue) {
+    public Instruction successor(boolean istrue) {
         return blockSuccessor(istrue ? 0 : 1);
     }
 
@@ -141,7 +141,7 @@ public final class If extends BlockEnd {
      * Gets the successor of this instruction for the unordered case.
      * @return the successor for unordered inputs
      */
-    public BlockBegin unorderedSuccessor() {
+    public Instruction unorderedSuccessor() {
         return successor(unorderedIsTrue());
     }
 
@@ -163,8 +163,8 @@ public final class If extends BlockEnd {
     public void swapSuccessors() {
         unorderedIsTrue = !unorderedIsTrue;
         condition = condition.negate();
-        BlockBegin t = blockSuccessor(0);
-        BlockBegin f = blockSuccessor(1);
+        Instruction t = blockSuccessor(0);
+        Instruction f = blockSuccessor(1);
         setBlockSuccessor(0, f);
         setBlockSuccessor(1, t);
     }

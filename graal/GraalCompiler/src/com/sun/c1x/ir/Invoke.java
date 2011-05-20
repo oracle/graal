@@ -74,8 +74,8 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
         return (BlockBegin) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
     }
 
-    public BlockBegin setExceptionEdge(BlockBegin n) {
-        return (BlockBegin) successors().set(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE, n);
+    public Instruction setExceptionEdge(Instruction n) {
+        return (Instruction) successors().set(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE, n);
     }
 
     public final int opcode;
