@@ -1172,8 +1172,7 @@ public final class GraphBuilder {
         while ((block = removeFromWorkList()) != null) {
 
             // remove blocks that have no predecessors by the time it their bytecodes are parsed
-            Instruction firstInstruction = block.firstInstruction;
-            if (firstInstruction.predecessors().size() == 0) {
+            if (block.firstInstruction == null) {
                 markVisited(block);
                 continue;
             }
@@ -1181,9 +1180,9 @@ public final class GraphBuilder {
             if (!isVisited(block)) {
                 markVisited(block);
                 // now parse the block
-                frameState.initializeFrom(((BlockBegin) firstInstruction).stateBefore());
-                lastInstr = firstInstruction;
-                assert firstInstruction.next() == null;
+                frameState.initializeFrom(((BlockBegin) block.firstInstruction).stateBefore());
+                lastInstr = block.firstInstruction;
+                assert block.firstInstruction.next() == null;
 
                 iterateBytecodesForBlock(block);
             }
