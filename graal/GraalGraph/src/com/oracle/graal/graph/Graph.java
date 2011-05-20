@@ -56,11 +56,11 @@ public class Graph {
     public Root root() {
         return root;
     }
-    
+
     public NodeBitMap createNodeBitMap() {
         return new NodeBitMap();
     }
-    
+
     public <T> NodeMap<T> createNodeMap() {
         return new NodeMap<T>();
     }

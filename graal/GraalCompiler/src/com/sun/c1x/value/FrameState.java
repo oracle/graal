@@ -225,7 +225,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
-    public final Value localAt(int i) {
+    public Value localAt(int i) {
         assert i < localsSize : "local variable index out of range: " + i;
         return (Value) inputs().get(i);
     }
@@ -236,7 +236,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
-    public final Value stackAt(int i) {
+    public Value stackAt(int i) {
         assert i >= 0 && i < (localsSize + stackSize);
         return (Value) inputs().get(localsSize + i);
     }
@@ -246,7 +246,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the lock stack
      * @return the instruction which produced the object at the specified location in the lock stack
      */
-    public final Value lockAt(int i) {
+    public Value lockAt(int i) {
         assert i >= 0;
         return (Value) inputs().get(localsSize + stackSize + i);
     }
@@ -295,7 +295,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i a value in the range {@code [0 .. valuesSize()]}
      * @return the value at index {@code i} which may be {@code null}
      */
-    public final Value valueAt(int i) {
+    public Value valueAt(int i) {
         assert i < (localsSize + stackSize);
         return (Value) inputs().get(i);
     }
@@ -308,7 +308,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      *
      * @return the number of local variables in this frame
      */
-    public final int valuesSize() {
+    public int valuesSize() {
         return localsSize + stackSize;
     }
 
@@ -405,7 +405,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      *
      * @param proc the call back called to process each live value traversed
      */
-    public final void forEachLiveStateValue(ValueProcedure proc) {
+    public void forEachLiveStateValue(ValueProcedure proc) {
         for (int i = 0; i < valuesSize(); i++) {
             Value value = valueAt(i);
             if (value != null) {
