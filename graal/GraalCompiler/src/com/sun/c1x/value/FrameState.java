@@ -36,7 +36,7 @@ import com.sun.cri.ci.*;
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
  */
-public class FrameState extends Value implements FrameStateAccess {
+public final class FrameState extends Value implements FrameStateAccess {
 
     protected final int localsSize;
 

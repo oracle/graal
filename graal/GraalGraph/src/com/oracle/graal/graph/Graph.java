@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.sun.cri.ci.CiBitMap;
+
 public class Graph {
 
     private final ArrayList<Node> nodes;
@@ -53,5 +55,60 @@ public class Graph {
 
     public Root root() {
         return root;
+    }
+    
+    public NodeBitMap createNodeBitMap() {
+        return new NodeBitMap();
+    }
+    
+    public <T> NodeMap<T> createNodeMap() {
+        return new NodeMap<T>();
+    }
+
+    public final class NodeBitMap {
+
+        private final CiBitMap bitMap = new CiBitMap(nextId);
+
+        private NodeBitMap() {
+        }
+
+        public boolean isMarked(Node node) {
+            check(node);
+            return bitMap.get(node.id());
+        }
+
+        public void mark(Node node) {
+            check(node);
+            bitMap.set(node.id());
+        }
+
+        private void check(Node node) {
+            assert node.graph == Graph.this : "this node is not part of the graph";
+            assert node.id() < bitMap.length() : "this node was added to the graph after creating the node bitmap";
+        }
+    }
+
+    public final class NodeMap<T> {
+
+        private final Object[] values = new Object[nextId];
+
+        private NodeMap() {
+        }
+
+        @SuppressWarnings("unchecked")
+        public T get(Node node) {
+            check(node);
+            return (T) values[node.id()];
+        }
+
+        public void set(Node node, T value) {
+            check(node);
+            values[node.id()] = value;
+        }
+
+        private void check(Node node) {
+            assert node.graph == Graph.this : "this node is not part of the graph";
+            assert node.id() < values.length : "this node was added to the graph after creating the node map";
+        }
     }
 }
