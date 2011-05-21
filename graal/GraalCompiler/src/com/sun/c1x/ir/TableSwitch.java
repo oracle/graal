@@ -46,7 +46,6 @@ public final class TableSwitch extends Switch {
      * @param successors the list of successors
      * @param lowKey the lowest integer key in the table
      * @param stateAfter the state after the switch
-     * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
     public TableSwitch(Value value, List<? extends Instruction> successors, int lowKey, FrameState stateAfter, Graph graph) {

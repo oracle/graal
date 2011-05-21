@@ -88,7 +88,6 @@ public final class Throw extends BlockEnd implements ExceptionEdgeInstruction {
      * Creates a new Throw instruction.
      * @param exception the instruction that generates the exception to throw
      * @param stateAfter the state before the exception is thrown but after the exception object has been popped
-     * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param graph
      */
     public Throw(Value exception, Graph graph) {

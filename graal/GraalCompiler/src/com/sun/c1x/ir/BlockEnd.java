@@ -91,7 +91,6 @@ public abstract class BlockEnd extends Instruction {
      * Constructs a new block end with the specified value type.
      * @param kind the type of the value produced by this instruction
      * @param stateAfter the frame state at the end of this block
-     * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
     public BlockEnd(CiKind kind, FrameState stateAfter, List<? extends Instruction> blockSuccessors, int inputCount, int successorCount, Graph graph) {

@@ -67,7 +67,6 @@ public final class Return extends BlockEnd {
      * Constructs a new Return instruction.
      * @param result the instruction producing the result for this return; {@code null} if this
      * is a void return
-     * @param isSafepoint {@code true} if this instruction is a safepoint instruction
      * @param graph
      */
     public Return(Value result, Graph graph) {

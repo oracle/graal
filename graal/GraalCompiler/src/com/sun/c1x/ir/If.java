@@ -83,7 +83,6 @@ public final class If extends BlockEnd {
      * @param trueSucc the block representing the true successor
      * @param falseSucc the block representing the false successor
      * @param stateAfter the state before the branch but after the input values have been popped
-     * @param isSafepoint {@code true} if this branch should be considered a safepoint
      * @param graph
      */
     public If(Value x, Condition cond, Value y, Instruction trueSucc, Instruction falseSucc, FrameState stateAfter, Graph graph) {

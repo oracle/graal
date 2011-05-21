@@ -47,7 +47,6 @@ public final class LookupSwitch extends Switch {
      * @param successors the list of successors
      * @param keys the list of keys, sorted
      * @param stateAfter the state after the switch
-     * @param isSafepoint {@code true} if this instruction is a safepoint
      * @param graph
      */
     public LookupSwitch(Value value, List<? extends Instruction> successors, int[] keys, FrameState stateAfter, Graph graph) {
