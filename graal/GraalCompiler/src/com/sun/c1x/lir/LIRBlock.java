@@ -28,6 +28,7 @@ import com.oracle.max.asm.*;
 import com.sun.c1x.alloc.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
+import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
@@ -202,5 +203,19 @@ public final class LIRBlock {
 
     public FrameState stateBefore() {
         return stateBefore;
+    }
+
+    public void replaceWith(LIRBlock other) {
+        for (LIRBlock pred : predecessors) {
+            Util.replaceAllInList(this, other, pred.successors);
+        }
+        for (int i = 0; i < other.predecessors.size(); ++i) {
+            if (other.predecessors.get(i) == this) {
+                other.predecessors.remove(i);
+                other.predecessors.addAll(i, this.predecessors);
+            }
+        }
+        successors.clear();
+        predecessors.clear();
     }
 }

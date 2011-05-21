@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.lir;
 
+import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -64,5 +65,26 @@ public class LIRTableSwitch extends LIRInstruction {
             key++;
         }
         return buf.toString();
+    }
+
+
+    private LIRBlock substitute(LIRBlock block, LIRBlock oldBlock, LIRBlock newBlock) {
+        if (block == oldBlock) {
+            LIRInstruction instr = newBlock.lir().instructionsList().get(0);
+            assert instr instanceof LIRLabel : "first instruction of block must be label";
+            return newBlock;
+        }
+        return oldBlock;
+    }
+
+    public void substitute(LIRBlock oldBlock, LIRBlock newBlock) {
+        if (substitute(defaultTarget, oldBlock, newBlock) == newBlock) {
+            defaultTarget = newBlock;
+        }
+        for (int i = 0; i < targets.length; i++) {
+            if (substitute(targets[i], oldBlock, newBlock) == newBlock) {
+                targets[i] = newBlock;
+            }
+        }
     }
 }

@@ -240,15 +240,6 @@ public class IR {
         return newSucc;
     }
 
-    public void replaceBlock(BlockBegin oldBlock, BlockBegin newBlock) {
-        List<Instruction> predecessors = new ArrayList<Instruction>(oldBlock.blockPredecessors());
-        for (Instruction pred : predecessors) {
-            // substitute the new successor for this block in each predecessor
-            pred.block().end().substituteSuccessor(oldBlock, newBlock);
-        }
-        oldBlock.end().clearSuccessors();
-    }
-
     public int nextBlockNumber() {
         return compilation.stats.blockCount++;
     }
