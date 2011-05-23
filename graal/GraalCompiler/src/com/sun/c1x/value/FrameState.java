@@ -364,15 +364,15 @@ public final class FrameState extends Value implements FrameStateAccess {
                     } else {
                         phi = phi.addInput((x == y) ? phi : y);
                     }
-                    /*if (originalPhi != phi) {
+                    if (originalPhi != phi) {
                         for (int j = 0; j < other.localsSize() + other.stackSize(); ++j) {
                             if (other.valueAt(j) == originalPhi) {
                                 other.setValueAt(j, phi);
                             }
                         }
-                    }*/
+                    }
 
-                    //assert phi.valueCount() == block.predecessors().size() + (blockAppended ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
+                    assert phi.valueCount() == block.predecessors().size() + (blockAppended ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
                }
             }
         }

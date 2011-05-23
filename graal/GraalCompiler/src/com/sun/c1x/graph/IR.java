@@ -224,10 +224,18 @@ public class IR {
         // create new successor and mark it for special block order treatment
         BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), false, compilation.graph);
 
+        List<Integer> removePhiInputs = new ArrayList<Integer>();
+        for (int i = backEdgeIndex + 1; i < target.predecessors().size(); ++i) {
+            if (target.predecessors().get(i) == source.end()) {
+                removePhiInputs.add(i);
+            }
+        }
+
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, compilation.graph);
         newSucc.appendNext(e);
         e.reorderSuccessor(0, backEdgeIndex);
+
         // setup states
         FrameState s = source.end().stateAfter();
         newSucc.setStateBefore(s);
@@ -237,6 +245,20 @@ public class IR {
         assert newSucc.stateBefore().locksSize() == s.locksSize();
         // link predecessor to new block
         source.end().substituteSuccessor(target, newSucc);
+        if (removePhiInputs.size() > 0) {
+
+            for (Node n : target.usages()) {
+                if (n instanceof Phi) {
+                    Phi phi = (Phi) n;
+                    int correction = 0;
+                    for (int index : removePhiInputs) {
+                        phi.removeInput(index - correction);
+                        correction++;
+                    }
+                }
+            }
+
+        }
 
         return newSucc;
     }

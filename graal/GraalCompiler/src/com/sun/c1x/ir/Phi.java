@@ -34,7 +34,7 @@ import com.sun.xml.internal.messaging.saaj.packaging.mime.util.*;
  */
 public final class Phi extends Value {
 
-    private static final int DEFAULT_MAX_VALUES = 20;
+    private static final int DEFAULT_MAX_VALUES = 2;
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_BLOCK = 0;
@@ -139,5 +139,13 @@ public final class Phi extends Value {
             phi.inputs().set(usedInputCount++, y);
         }
         return phi;
+    }
+
+    public void removeInput(int index) {
+        inputs().set(index, null);
+        for (int i = index + 1; i < usedInputCount; ++i) {
+            inputs().set(i - 1, inputs().get(i));
+        }
+        usedInputCount--;
     }
 }
