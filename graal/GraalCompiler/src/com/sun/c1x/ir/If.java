@@ -80,19 +80,15 @@ public final class If extends BlockEnd {
      * @param x the instruction producing the first input to the instruction
      * @param cond the condition (comparison operation)
      * @param y the instruction that produces the second input to this instruction
-     * @param trueSucc the block representing the true successor
-     * @param falseSucc the block representing the false successor
      * @param stateAfter the state before the branch but after the input values have been popped
      * @param graph
      */
-    public If(Value x, Condition cond, Value y, Instruction trueSucc, Instruction falseSucc, FrameState stateAfter, Graph graph) {
+    public If(Value x, Condition cond, Value y, FrameState stateAfter, Graph graph) {
         super(CiKind.Illegal, stateAfter, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert Util.archKindsEqual(x, y);
         condition = cond;
         setX(x);
         setY(y);
-        setBlockSuccessor(0, trueSucc);
-        setBlockSuccessor(1, falseSucc);
     }
 
     /**

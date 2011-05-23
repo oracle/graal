@@ -29,6 +29,7 @@ import static com.sun.cri.ci.CiValue.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.max.asm.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.*;
@@ -1263,6 +1264,22 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.moveToPhi(lastState);
     }
 
+    private List<Phi> getPhis(LIRBlock block) {
+        if (block.getInstructions().size() > 0) {
+            Instruction i = block.getInstructions().get(0);
+            if (i instanceof BlockBegin) {
+                List<Phi> result = new ArrayList<Phi>();
+                for (Node n : i.usages()) {
+                    if (n instanceof Phi) {
+                        result.add((Phi) n);
+                    }
+                }
+                return result;
+            }
+        }
+        return null;
+    }
+
     protected void moveToPhi(FrameState curState) {
         // Moves all stack values into their phi position
         LIRBlock bb = currentBlock;
@@ -1272,9 +1289,46 @@ public abstract class LIRGenerator extends ValueVisitor {
 
             // a block with only one predecessor never has phi functions
             if (sux.numberOfPreds() > 1) {
-                PhiResolver resolver = new PhiResolver(this);
-
                 FrameState suxState = sux.stateBefore();
+
+
+                List<Phi> phis = getPhis(sux);
+                if (phis != null) {
+                    int predIndex = 0;
+                    for (; predIndex < sux.numberOfPreds(); ++predIndex) {
+                        if (sux.predAt(predIndex) == bb) {
+                            break;
+                        }
+                    }
+                    assert predIndex < sux.numberOfPreds();
+
+//                    TTY.println("predIndex=" + predIndex + ", bb" + bb.blockID() + ", sux=" + sux.blockID());
+//                    for (int i = 0; i < sux.numberOfPreds(); ++i) {
+//                        TTY.println("pred[" + i + "]=" + sux.predAt(i).blockID());
+//                    }
+
+                    PhiResolver resolver = new PhiResolver(this);
+                    for (Phi phi : phis) {
+                        if (!phi.isDeadPhi() && phi.valueCount() > predIndex) {
+                            Value curVal = phi.valueAt(predIndex);
+                            if (curVal != null) {
+                                if (curVal instanceof Phi) {
+                                    operandForPhi((Phi) curVal);
+                                }
+                                CiValue operand = curVal.operand();
+                                if (operand.isIllegal()) {
+                             //       phi.print(TTY.out());
+                                    assert curVal instanceof Constant || curVal instanceof Local : "these can be produced lazily" + curVal + "/" + phi;
+                                    operand = operandForInstruction(curVal);
+                                }
+                                resolver.move(operand, operandForPhi(phi));
+                            }
+                        }
+                    }
+                    resolver.dispose();
+                }
+
+/*                PhiResolver resolver = new PhiResolver(this);
 
                 for (int index = 0; index < suxState.stackSize(); index++) {
                     moveToPhi(resolver, curState.stackAt(index), suxState.stackAt(index));
@@ -1283,7 +1337,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 for (int index = 0; index < suxState.localsSize(); index++) {
                     moveToPhi(resolver, curState.localAt(index), suxState.localAt(index));
                 }
-                resolver.dispose();
+                resolver.dispose();*/
             }
         }
     }

@@ -41,8 +41,9 @@ public final class LIRBlock {
     private LIRList lir;
     private final int blockID;
     private List<Instruction> instructions = new ArrayList<Instruction>(4);
-    private List<LIRBlock> predecessors = new ArrayList<LIRBlock>();
-    private List<LIRBlock> successors = new ArrayList<LIRBlock>();
+    private List<LIRBlock> predecessors = new ArrayList<LIRBlock>(4);
+    private List<LIRBlock> successors = new ArrayList<LIRBlock>(4);
+    private List<Phi> phis = new ArrayList<Phi>(4);
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.

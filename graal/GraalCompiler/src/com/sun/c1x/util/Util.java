@@ -422,6 +422,6 @@ public class Util {
      * @return the instruction representation as a string
      */
     public static String valueString(Value value) {
-        return value == null ? "-" : "" + value.kind.typeChar + value.id();
+        return (value == null) ? "-" : ("" + value.kind.typeChar + value.id());
     }
 }

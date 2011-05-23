@@ -162,7 +162,7 @@ public final class GraphBuilder {
 
         // 1. create the start block
         Block startBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
-        BlockBegin startBlockBegin = new BlockBegin(0, startBlock.blockID, graph);
+        BlockBegin startBlockBegin = new BlockBegin(0, startBlock.blockID, false, graph);
         startBlock.firstInstruction = startBlockBegin;
 
         graph.start().setStart(startBlockBegin);
@@ -199,7 +199,7 @@ public final class GraphBuilder {
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
-            syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, syncBlock.blockID, graph);
+            syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, syncBlock.blockID, false, graph);
             syncBlock.firstInstruction = syncHandler;
             markOnWorkList(syncBlock);
 
@@ -302,6 +302,15 @@ public final class GraphBuilder {
         } else {
             assert false;
         }
+
+
+
+
+        for (int j = 0; j < frameState.localsSize() + frameState.stackSize(); ++j) {
+            if (frameState.valueAt(j) != null) {
+                assert !frameState.valueAt(j).isDeleted();
+            }
+        }
     }
 
     private void insertLoopPhis(BlockBegin merge, FrameState newState) {
@@ -378,7 +387,7 @@ public final class GraphBuilder {
                 current--;
             } else {
                 if (unwindBlock == null) {
-                    unwindBlock = new BlockBegin(bci, ir.nextBlockNumber(), graph);
+                    unwindBlock = new BlockBegin(bci, ir.nextBlockNumber(), false, graph);
                     Unwind unwind = new Unwind(null, graph);
                     unwindBlock.appendNext(unwind);
                 }
@@ -401,7 +410,7 @@ public final class GraphBuilder {
                 if (newSucc != null) {
                     successor = newSucc;
                 } else {
-                    BlockBegin dispatchEntry = new BlockBegin(handler.handlerBCI(), ir.nextBlockNumber(), graph);
+                    BlockBegin dispatchEntry = new BlockBegin(handler.handlerBCI(), ir.nextBlockNumber(), false, graph);
 
                     if (handler.handler.catchType().isResolved()) {
                         Instruction entry = createTarget(handler.entryBlock(), null);
@@ -422,7 +431,7 @@ public final class GraphBuilder {
 
             FrameState entryState = frameState.duplicateWithEmptyStack(bci);
 
-            BlockBegin entry = new BlockBegin(bci, ir.nextBlockNumber(), graph);
+            BlockBegin entry = new BlockBegin(bci, ir.nextBlockNumber(), false, graph);
             entry.setStateBefore(entryState);
             ExceptionObject exception = new ExceptionObject(graph);
             entry.appendNext(exception);
@@ -672,9 +681,13 @@ public final class GraphBuilder {
     }
 
     private void ifNode(Value x, Condition cond, Value y) {
+        assert !x.isDeleted() && !y.isDeleted();
+        If ifNode = new If(x, cond, y, null, graph);
+        append(ifNode);
         Instruction tsucc = createTargetAt(stream().readBranchDest(), frameState);
         Instruction fsucc = createTargetAt(stream().nextBCI(), frameState);
-        append(new If(x, cond, y, tsucc, fsucc, null, graph));
+        ifNode.setBlockSuccessor(0, tsucc);
+        ifNode.setBlockSuccessor(1, fsucc);
     }
 
     private void genIfZero(Condition cond) {
@@ -692,6 +705,7 @@ public final class GraphBuilder {
     private void genIfSame(CiKind kind, Condition cond) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
+        assert !x.isDeleted() && !y.isDeleted();
         ifNode(x, cond, y);
     }
 
@@ -1122,7 +1136,7 @@ public final class GraphBuilder {
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
         if (block.firstInstruction == null) {
-            BlockBegin blockBegin = new BlockBegin(block.startBci, block.blockID, graph);
+            BlockBegin blockBegin = new BlockBegin(block.startBci, block.blockID, block.isLoopHeader, graph);
             block.firstInstruction = blockBegin;
         }
         if (stateAfter != null) {

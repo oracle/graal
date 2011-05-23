@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
+import com.sun.xml.internal.messaging.saaj.packaging.mime.util.*;
 
 /**
  * The {@code Phi} instruction represents the merging of dataflow
@@ -33,7 +34,7 @@ import com.sun.cri.ci.*;
  */
 public final class Phi extends Value {
 
-    private static final int DEFAULT_MAX_VALUES = 2;
+    private static final int DEFAULT_MAX_VALUES = 20;
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_BLOCK = 0;
@@ -109,7 +110,14 @@ public final class Phi extends Value {
 
     @Override
     public void print(LogStream out) {
-        out.print("phi function");
+        out.print("phi function (");
+        for (int i = 0; i < inputs().size(); ++i) {
+            if (i != 0) {
+                out.print(' ');
+            }
+            out.print((Value) inputs().get(i));
+        }
+        out.print(')');
     }
 
     @Override

@@ -118,6 +118,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param x the instruction to push onto the stack
      */
     public void xpush(Value x) {
+        assert x == null || !x.isDeleted();
         stack[stackIndex++] = x;
     }
 
@@ -204,7 +205,9 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @return x the instruction popped off the stack
      */
     public Value xpop() {
-        return stack[--stackIndex];
+        Value result = stack[--stackIndex];
+        assert result == null || !result.isDeleted();
+        return result;
     }
 
     /**

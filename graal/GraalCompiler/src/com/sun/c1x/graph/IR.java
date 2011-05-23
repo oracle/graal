@@ -142,6 +142,7 @@ public class IR {
             int z = 0;
             for (BlockBegin bb : blocks) {
                 LIRBlock lirBlock = new LIRBlock(z);
+                lirBlock.getInstructions().add(bb);
                 valueToBlock.put(bb, lirBlock);
                 lirBlock.setLinearScanNumber(bb.linearScanNumber());
                 // TODO(tw): Initialize LIRBlock.linearScanLoopHeader and LIRBlock.linearScanLoopEnd
@@ -221,7 +222,7 @@ public class IR {
         int backEdgeIndex = target.predecessors().indexOf(source.end());
 
         // create new successor and mark it for special block order treatment
-        BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), compilation.graph);
+        BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), false, compilation.graph);
 
         // This goto is not a safepoint.
         Goto e = new Goto(target, null, compilation.graph);
