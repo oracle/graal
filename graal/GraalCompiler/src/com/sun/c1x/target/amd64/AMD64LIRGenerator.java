@@ -504,7 +504,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiValue left = xin.result();
         CiValue right = yin.result();
         lir.cmp(cond, left, right);
-        moveToPhi();
         if (x.x().kind.isFloat() || x.x().kind.isDouble()) {
             lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()), getLIRBlock(x.unorderedSuccessor()));
         } else {

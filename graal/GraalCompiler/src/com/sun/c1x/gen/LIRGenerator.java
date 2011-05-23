@@ -565,9 +565,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         CiValue tag = load(x.value());
         setNoResult(x);
 
-        // move values into phi locations
-        moveToPhi(x.stateAfter());
-
         if (x.numberOfCases() == 0 || x.numberOfCases() < C1XOptions.SequentialSwitchLimit) {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
@@ -824,9 +821,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
         CiValue tag = value.result();
         setNoResult(x);
-
-        // move values into phi locations
-        moveToPhi(x.stateAfter());
 
         // TODO: tune the defaults for the controls used to determine what kind of translation to use
         if (x.numberOfCases() == 0 || x.numberOfCases() <= C1XOptions.SequentialSwitchLimit) {
