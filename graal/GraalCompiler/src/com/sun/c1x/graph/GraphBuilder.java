@@ -270,6 +270,10 @@ public final class GraphBuilder {
 
 
     private void mergeOrClone(Instruction first, FrameStateAccess stateAfter, boolean loopHeader) {
+        mergeOrClone(first, stateAfter, loopHeader, false);
+    }
+
+    private void mergeOrClone(Instruction first, FrameStateAccess stateAfter, boolean loopHeader, boolean blockAppended) {
         if (first instanceof BlockBegin) {
             BlockBegin block = (BlockBegin) first;
             FrameState existingState = block.stateBefore();
@@ -293,7 +297,7 @@ public final class GraphBuilder {
                 assert existingState.localsSize() == stateAfter.localsSize();
                 assert existingState.stackSize() == stateAfter.stackSize();
 
-                existingState.merge(block, stateAfter);
+                existingState.merge(block, stateAfter, blockAppended);
             }
         } else {
             assert false;
@@ -304,13 +308,16 @@ public final class GraphBuilder {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
-            newState.setupPhiForStack(merge, i);
+            Value x = newState.stackAt(i);
+            if (x != null) {
+                newState.setupPhiForStack(merge, i).addInput(x);
+            }
         }
         int localsSize = newState.localsSize();
         for (int i = 0; i < localsSize; i++) {
             Value x = newState.localAt(i);
             if (x != null) {
-                newState.setupPhiForLocal(merge, i);
+                newState.setupPhiForLocal(merge, i).addInput(x);
             }
         }
     }
@@ -438,7 +445,7 @@ public final class GraphBuilder {
         if (oldState != null && dispatchEntry.predecessors().size() == 1) {
             dispatchEntry.setStateBefore(null);
         }
-        mergeOrClone(dispatchEntry, state, false);
+        mergeOrClone(dispatchEntry, state, false, true);
         FrameState mergedState = dispatchEntry.stateBefore();
 
         if (dispatchEntry.next() instanceof ExceptionDispatch) {

@@ -477,4 +477,15 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
     }
 
+    @Override
+    public void setValueAt(int i, Value v) {
+        if (i < locals.length) {
+            locals[i] = v;
+        } else if (i < locals.length + stackIndex) {
+            stack[i - locals.length] = v;
+        } else {
+            locks.set(i - locals.length - stack.length, v);
+        }
+    }
+
 }
