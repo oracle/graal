@@ -57,10 +57,10 @@ public final class PhiSimplifier {
             // attempt to simplify the phi by recursively simplifying its operands
             phi.setFlag(Value.Flag.PhiVisited);
             Value phiSubst = null;
-            int max = phi.phiInputCount();
+            int max = phi.valueCount();
             boolean cannotSimplify = false;
             for (int i = 0; i < max; i++) {
-                Value oldInstr = phi.inputAt(i);
+                Value oldInstr = phi.valueAt(i);
 
                 if (oldInstr == null || oldInstr.isIllegal() || oldInstr.isDeadPhi()) {
                     // if one operand is illegal, make the entire phi illegal

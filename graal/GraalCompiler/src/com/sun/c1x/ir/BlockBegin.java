@@ -352,7 +352,7 @@ public final class BlockBegin extends StateSplit {
 
     /**
      * Formats a given instruction as a value in a {@linkplain FrameState frame state}. If the instruction is a phi defined at a given
-     * block, its {@linkplain Phi#phiInputCount() inputs} are appended to the returned string.
+     * block, its {@linkplain Phi#valueCount() inputs} are appended to the returned string.
      *
      * @param index the index of the value in the frame state
      * @param value the frame state value
@@ -368,9 +368,9 @@ public final class BlockBegin extends StateSplit {
             // print phi operands
             if (phi.block() == this) {
                 sb.append(" [");
-                for (int j = 0; j < phi.phiInputCount(); j++) {
+                for (int j = 0; j < phi.valueCount(); j++) {
                     sb.append(' ');
-                    Value operand = phi.inputAt(j);
+                    Value operand = phi.valueAt(j);
                     if (operand != null) {
                         sb.append(Util.valueString(operand));
                     } else {

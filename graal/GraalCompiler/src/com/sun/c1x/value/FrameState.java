@@ -261,11 +261,11 @@ public final class FrameState extends Value implements FrameStateAccess {
         if (p != null) {
             if (p instanceof Phi) {
                 Phi phi = (Phi) p;
-                if (phi.block() == block && phi.isOnStack() && phi.stackIndex() == i) {
+                if (phi.block() == block) {
                     return phi;
                 }
             }
-            Phi phi = new Phi(p.kind, block, -i - 1, graph());
+            Phi phi = new Phi(p.kind, block, graph());
             inputs().set(localsSize + i, phi);
             return phi;
         }
@@ -281,11 +281,11 @@ public final class FrameState extends Value implements FrameStateAccess {
         Value p = localAt(i);
         if (p instanceof Phi) {
             Phi phi = (Phi) p;
-            if (phi.block() == block && phi.isLocal() && phi.localIndex() == i) {
+            if (phi.block() == block) {
                 return phi;
             }
         }
-        Phi phi = new Phi(p.kind, block, i, graph());
+        Phi phi = new Phi(p.kind, block, graph());
         storeLocal(i, phi);
         return phi;
     }
@@ -352,7 +352,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                     }
 
                     Phi originalPhi = phi;
-                    if (phi.phiInputCount() == 0) {
+                    if (phi.valueCount() == 0) {
                         int size = block.predecessors().size();
                         if (blockAppended) {
                             size--;

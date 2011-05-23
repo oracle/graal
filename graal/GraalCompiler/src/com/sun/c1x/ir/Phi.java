@@ -33,15 +33,14 @@ import com.sun.cri.ci.*;
  */
 public final class Phi extends Value {
 
+    private static final int DEFAULT_MAX_VALUES = 2;
+
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_BLOCK = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT + maxValues;
-    }
+    private int usedInputCount;
 
     @Override
     protected int successorCount() {
@@ -60,10 +59,6 @@ public final class Phi extends Value {
         return (BlockBegin) inputs().set(super.inputCount() + INPUT_BLOCK, n);
     }
 
-    private final int index;
-    private final int maxValues;
-    private int usedInputCount;
-
     /**
      * Create a new Phi for the specified join block and local variable (or operand stack) slot.
      * @param kind the type of the variable
@@ -71,50 +66,14 @@ public final class Phi extends Value {
      * @param index the index into the stack (if < 0) or local variables
      * @param graph
      */
-    public Phi(CiKind kind, BlockBegin block, int index, Graph graph) {
-        this(kind, block, index, 2, graph);
+    public Phi(CiKind kind, BlockBegin block, Graph graph) {
+        this(kind, block, DEFAULT_MAX_VALUES, graph);
     }
 
-    public Phi(CiKind kind, BlockBegin block, int index, int maxValues, Graph graph) {
+    public Phi(CiKind kind, BlockBegin block, int maxValues, Graph graph) {
         super(kind, INPUT_COUNT + maxValues, SUCCESSOR_COUNT, graph);
         usedInputCount = 1;
-        this.maxValues = maxValues;
-        this.index = index;
         setBlock(block);
-    }
-
-    /**
-     * Check whether this phi corresponds to a local variable.
-     * @return {@code true} if this phi refers to a local variable
-     */
-    public boolean isLocal() {
-        return index >= 0;
-    }
-
-    /**
-     * Check whether this phi corresponds to a stack location.
-     * @return {@code true} if this phi refers to a stack location
-     */
-    public boolean isOnStack() {
-        return index < 0;
-    }
-
-    /**
-     * Get the local index of this phi.
-     * @return the local index
-     */
-    public int localIndex() {
-        assert isLocal();
-        return index;
-    }
-
-    /**
-     * Get the stack index of this phi.
-     * @return the stack index of this phi
-     */
-    public int stackIndex() {
-        assert isOnStack();
-        return -(index + 1);
     }
 
     /**
@@ -123,28 +82,15 @@ public final class Phi extends Value {
      * @param i the index of the predecessor
      * @return the instruction that produced the value in the i'th predecessor
      */
-    public Value inputAt(int i) {
+    public Value valueAt(int i) {
         return (Value) inputs().get(i + INPUT_COUNT);
-    }
-
-    /**
-     * Gets the instruction that produces the value for this phi in the specified state.
-     * @param state the state to access
-     * @return the instruction producing the value
-     */
-    public Value inputIn(FrameState state) {
-        if (isLocal()) {
-            return state.localAt(localIndex());
-        } else {
-            return state.stackAt(stackIndex());
-        }
     }
 
     /**
      * Get the number of inputs to this phi (i.e. the number of predecessors to the join block).
      * @return the number of inputs in this phi
      */
-    public int phiInputCount() {
+    public int valueCount() {
         return usedInputCount - 1;
     }
 
@@ -168,16 +114,16 @@ public final class Phi extends Value {
 
     @Override
     public String shortName() {
-        return "Phi: " + index + " (" + phiInputCount() + ")";
+        return "Phi: (" + valueCount() + ")";
     }
 
-    public Phi addInput(Value y) {
+    public Phi addInput(Node y) {
         assert !this.isDeleted() && !y.isDeleted();
         Phi phi = this;
         if (usedInputCount == inputs().size()) {
-            phi = new Phi(kind, block(), index, maxValues * 2, graph());
-            for (int i = 0; i < phiInputCount(); ++i) {
-                phi.addInput(inputAt(i));
+            phi = new Phi(kind, block(), usedInputCount * 2, graph());
+            for (int i = 0; i < valueCount(); ++i) {
+                phi.addInput(valueAt(i));
             }
             phi.addInput(y);
             this.replace(phi);
@@ -186,6 +132,4 @@ public final class Phi extends Value {
         }
         return phi;
     }
-
-
 }
