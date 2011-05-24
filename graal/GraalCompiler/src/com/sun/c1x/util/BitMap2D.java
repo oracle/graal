@@ -40,7 +40,8 @@ public final class BitMap2D {
     }
 
     private boolean verifyBitWithinSlotIndex(int index)  {
-      return index < bitsPerSlot;
+      assert index < bitsPerSlot : "index " + index + " is out of bounds " + bitsPerSlot;
+      return true;
     }
 
     public BitMap2D(int sizeInSlots, int bitsPerSlot) {

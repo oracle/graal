@@ -27,6 +27,7 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.Interval.*;
 import com.sun.c1x.debug.*;
@@ -1159,6 +1160,14 @@ public final class LinearScan {
             final int blockFrom = block.firstLirInstructionId();
             int blockTo = block.lastLirInstructionId();
 
+            // (tw) Destroy all registers on exception handler entry.
+            if (block.isExceptionEntry()) {
+                for (CiRegister r : callerSaveRegs) {
+                    if (attributes(r).isAllocatable) {
+                        addTemp(r.asValue(), block.firstLirInstructionId(), RegisterPriority.None, CiKind.Illegal);
+                    }
+                }
+            }
             assert blockFrom == instructions.get(0).id;
             assert blockTo == instructions.get(instructions.size() - 1).id;
 
@@ -1262,6 +1271,22 @@ public final class LinearScan {
                 addRegisterHints(op);
 
             } // end of instruction iteration
+
+
+            // (tw) TODO: Check if this matters..
+            // (tw) Make sure that no spill store optimization is applied for phi instructions that flow into exception handlers.
+//            if (block.isExceptionEntry()) {
+//                Instruction firstInstruction = block.getInstructions().get(0);
+//                for (Node n : firstInstruction.usages()) {
+//                    if (n instanceof Phi) {
+//                        Phi phi = (Phi) n;
+//                        Interval interval = intervalFor(phi.operand());
+//                        if (interval != null) {
+//                            interval.setSpillState(SpillState.NoOptimization);
+//                        }
+//                    }
+//                }
+//            }
 
         } // end of block iteration
 
@@ -1589,7 +1614,7 @@ public final class LinearScan {
             if (block.numberOfPreds() == 1 && block.numberOfSux() == 1) {
                 List<LIRInstruction> instructions = block.lir().instructionsList();
                 assert instructions.get(0).code == LIROpcode.Label : "block must start with label";
-                assert instructions.get(instructions.size() - 1).code == LIROpcode.Branch : "block with successors must end with branch";
+                assert instructions.get(instructions.size() - 1).code == LIROpcode.Branch : "block with successors must end with branch (" + block + "), " + instructions.get(instructions.size() - 1);
                 assert ((LIRBranch) instructions.get(instructions.size() - 1)).cond() == Condition.TRUE : "block with successor must end with unconditional branch";
 
                 // check if block is empty (only label and branch)
@@ -2065,8 +2090,8 @@ public final class LinearScan {
         }
 
         printLir("After register number assignment", true);
-        EdgeMoveOptimizer.optimize(ir.linearScanOrder());
-        ControlFlowOptimizer.optimize(ir);
+        //EdgeMoveOptimizer.optimize(ir.linearScanOrder());
+        //ControlFlowOptimizer.optimize(ir);
         printLir("After control flow optimization", false);
     }
 

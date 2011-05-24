@@ -55,6 +55,7 @@ public class Schedule {
     }
 
     private Block assignBlock(Node n) {
+        assert n instanceof BlockBegin : n;
         Block curBlock = nodeToBlock.get(n);
         if (curBlock == null) {
             curBlock = createBlock();
@@ -111,13 +112,27 @@ public class Schedule {
                             successorCount++;
                             if (successorCount > 1) {
                                 // Our predecessor is a split => we need a new block.
-                                assignBlock(n);
+                                if (singlePred instanceof ExceptionEdgeInstruction) {
+                                    ExceptionEdgeInstruction e = (ExceptionEdgeInstruction) singlePred;
+                                    if (e.exceptionEdge() != n) {
+                                        break;
+                                    }
+                                }
+                                Block b = assignBlock(n);
+                                b.setExceptionEntry(singlePred instanceof ExceptionEdgeInstruction);
                                 blockBeginNodes.add(n);
                                 return true;
                             }
                         }
                     }
-                    assignBlock(n, nodeToBlock.get(singlePred));
+
+                    if (singlePred instanceof BlockEnd) {
+                        Block b = assignBlock(n);
+                        b.setExceptionEntry(singlePred instanceof Throw);
+                        blockBeginNodes.add(n);
+                    } else {
+                        assignBlock(n, nodeToBlock.get(singlePred));
+                    }
                 }
                 return true;
             }}
@@ -134,14 +149,32 @@ public class Schedule {
             }
         }
 
+        orderBlocks();
         //print();
+    }
+
+    private void orderBlocks() {
+       /* List<Block> orderedBlocks = new ArrayList<Block>();
+        Block startBlock = nodeToBlock.get(graph.start().start());
+        List<Block> toSchedule = new ArrayList<Block>();
+        toSchedule.add(startBlock);
+
+        while (toSchedule.size() != 0) {
+
+
+        }*/
     }
 
     private void print() {
         TTY.println("============================================");
         TTY.println("%d blocks", blocks.size());
+
         for (Block b : blocks) {
+           TTY.println();
            TTY.print(b.toString());
+           if (b.isExceptionEntry()) {
+               TTY.print(" (ex)");
+           }
 
            TTY.print(" succs=");
            for (Block succ : b.getSuccessors()) {
@@ -153,9 +186,11 @@ public class Schedule {
                TTY.print(pred + ";");
            }
            TTY.println();
+           TTY.print("first instr: " + b.getInstructions().get(0));
+           TTY.print("last instr: " + b.getInstructions().get(b.getInstructions().size() - 1));
         }
 
-
+/*
         TTY.println("============================================");
         TTY.println("%d nodes", nodeToBlock.size());
         for (Node n : graph.getNodes()) {
@@ -167,6 +202,6 @@ public class Schedule {
                 }
                 TTY.println();
             }
-        }
+        }*/
     }
 }

@@ -175,6 +175,9 @@ public class CFGPrinter {
         begin("states");
 
         FrameState state = block.stateBefore();
+        if (state == null) {
+            return;
+        }
         int stackSize = state.stackSize();
         if (stackSize > 0) {
             begin("stack");

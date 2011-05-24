@@ -126,6 +126,8 @@ final class EdgeMoveOptimizer {
         // setup a list with the LIR instructions of all predecessors
         for (int i = 0; i < numPreds; i++) {
             LIRBlock pred = block.predAt(i);
+            assert pred != null;
+            assert pred.lir() != null;
             List<LIRInstruction> predInstructions = pred.lir().instructionsList();
 
             if (pred.numberOfSux() != 1) {

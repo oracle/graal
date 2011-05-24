@@ -86,33 +86,37 @@ public class IR {
 
         Schedule schedule = new Schedule(this.compilation.graph);
         List<Block> blocks = schedule.getBlocks();
-        NodeMap<Block> nodeToBlock = schedule.getNodeToBlock();
-       /* orderedBlocks = new ArrayList<LIRBlock>();
+        List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
         for (Block b : blocks) {
             LIRBlock block = new LIRBlock(b.blockID());
+            block.setExceptionEntry(b.isExceptionEntry());
             map.put(b, block);
             block.setInstructions(b.getInstructions());
-            orderedBlocks.add(block);
+            block.setLinearScanNumber(b.blockID());
+            lirBlocks.add(block);
         }
 
         for (Block b : blocks) {
             for (Block succ : b.getSuccessors()) {
-                map.get(b).blockSuccessors().add(map.get(succ));
+                if (succ.isExceptionEntry()) {
+                    map.get(b).getExceptionHandlerSuccessors().add(map.get(succ));
+                } else {
+                    map.get(b).blockSuccessors().add(map.get(succ));
+                }
             }
 
             for (Block pred : b.getPredecessors()) {
                 map.get(b).blockPredecessors().add(map.get(pred));
             }
-        }*/
+        }
 
 
-        // TODO(tw): Schedule nodes within a block.
+     // TODO(tw): Schedule nodes within a block.
+        //computeLinearScanOrder();
 
-
-
-
-        computeLinearScanOrder();
+//        assert orderedBlocks.size() == lirBlocks.size();
+        orderedBlocks = lirBlocks;
 
 
         valueToBlock = new HashMap<Value, LIRBlock>();
@@ -124,6 +128,37 @@ public class IR {
         startBlock = valueToBlock.get(getHIRStartBlock());
         assert startBlock != null;
         verifyAndPrint("After linear scan order");
+
+        ComputeLinearScanOrder clso = new ComputeLinearScanOrder(lirBlocks.size(), startBlock);
+        orderedBlocks = clso.linearScanOrder();
+        this.compilation.stats.loopCount = clso.numLoops();
+
+        int z = 0;
+        for (LIRBlock b : orderedBlocks) {
+            b.setLinearScanNumber(z++);
+
+        /*    TTY.println();
+
+            for (Instruction i : b.getInstructions()) {
+                if (i instanceof BlockBegin) {
+                    TTY.println("BlockBegin #" + ((BlockBegin) i).blockID);
+
+                    TTY.print("    => succs: ");
+                    for (LIRBlock succBlock : b.blockSuccessors()) {
+                        TTY.print("B#" + ((BlockBegin) succBlock.getInstructions().get(0)).blockID);
+                    }
+                    TTY.print("    => ex: ");
+                    for (LIRBlock succBlock : b.getExceptionHandlerSuccessors()) {
+                        TTY.print("B#" + ((BlockBegin) succBlock.getInstructions().get(0)).blockID);
+                    }
+                    TTY.println();
+                } else {
+                    TTY.println(i.getClass().getSimpleName() + " #" + i.id());
+                }
+            }*/
+        }
+
+
 
         if (C1XOptions.PrintTimers) {
             C1XTimers.HIR_OPTIMIZE.stop();
@@ -145,7 +180,7 @@ public class IR {
     }
 
     private Map<Value, LIRBlock> makeLinearScanOrder() {
-
+/*
         if (orderedBlocks == null) {
 
             Map<Value, LIRBlock> valueToBlock = new HashMap<Value, LIRBlock>();
@@ -160,7 +195,6 @@ public class IR {
                 valueToBlock.put(bb, lirBlock);
                 lirBlock.setLinearScanNumber(bb.linearScanNumber());
                 // TODO(tw): Initialize LIRBlock.linearScanLoopHeader and LIRBlock.linearScanLoopEnd
-                lirBlock.setStateBefore(bb.stateBefore());
                 orderedBlocks.add(lirBlock);
                 ++z;
             }
@@ -185,8 +219,9 @@ public class IR {
                 ++z;
             }
 
-        }
-        return valueToBlock;
+        }*/
+        return null;
+        //return valueToBlock;
     }
 
     /**

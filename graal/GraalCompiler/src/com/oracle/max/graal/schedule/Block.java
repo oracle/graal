@@ -24,6 +24,7 @@ package com.oracle.max.graal.schedule;
 
 import java.util.*;
 
+import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 
 
@@ -33,6 +34,7 @@ public class Block {
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
     private final List<Instruction> instructions = new ArrayList<Instruction>();
+    private boolean exceptionEntry;
 
     public List<Block> getSuccessors() {
         return Collections.unmodifiableList(successors);
@@ -59,8 +61,28 @@ public class Block {
         return blockID;
     }
 
+    public void setExceptionEntry(boolean b) {
+        exceptionEntry = b;
+    }
+
+    public boolean isExceptionEntry() {
+        return exceptionEntry;
+    }
+
     @Override
     public String toString() {
         return "B" + blockID;
+    }
+
+    public void removeExceptionSuccessors() {
+        for (int i = 0; i < successors.size(); ++i) {
+            TTY.println("checking succ");
+            if (successors.get(i).isExceptionEntry()) {
+                TTY.println("removing successor " + i);
+                successors.remove(i);
+                i--;
+            }
+        }
+
     }
 }
