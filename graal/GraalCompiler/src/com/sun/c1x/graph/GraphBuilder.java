@@ -1167,7 +1167,7 @@ public final class GraphBuilder {
         }
     }
 
-    private BlockEnd iterateBytecodesForBlock(Block block) {
+    private void iterateBytecodesForBlock(Block block) {
         assert frameState != null;
 
         stream.setBCI(block.startBci);
@@ -1207,17 +1207,6 @@ public final class GraphBuilder {
             }
             blockStart = false;
         }
-
-        // if the method terminates, we don't need the stack anymore
-        if (end instanceof Return || end instanceof Throw) {
-            frameState.clearStack();
-        }
-
-        // connect to begin and set state
-        // NOTE that inlining may have changed the block we are parsing
-        assert end != null : "end should exist after iterating over bytecodes";
-        end.setStateAfter(frameState.create(bci()));
-        return end;
     }
 
     private void traceState() {

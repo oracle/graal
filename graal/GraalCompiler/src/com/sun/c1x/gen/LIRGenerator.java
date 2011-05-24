@@ -599,7 +599,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (x.kind.isVoid()) {
             XirSnippet epilogue = xir.genEpilogue(site(x), compilation.method);
             if (epilogue != null) {
-                emitXir(epilogue, x, stateFor(x), compilation.method, false);
+                emitXir(epilogue, x, null, compilation.method, false);
                 lir.returnOp(IllegalValue);
             }
         } else {
@@ -607,7 +607,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             CiValue result = force(x.result(), operand);
             XirSnippet epilogue = xir.genEpilogue(site(x), compilation.method);
             if (epilogue != null) {
-                emitXir(epilogue, x, stateFor(x, x.stateAfter()), compilation.method, false);
+                emitXir(epilogue, x, null, compilation.method, false);
                 lir.returnOp(result);
             }
         }

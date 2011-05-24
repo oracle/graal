@@ -1263,21 +1263,6 @@ public final class LinearScan {
 
             } // end of instruction iteration
 
-            // (tw) Make sure that no spill store optimization is applied for phi instructions that flow into exception handlers.
-//            if (block.isExceptionEntry()) {
-//                FrameState stateBefore = block.stateBefore();
-//                stateBefore.forEachLivePhi(block, new PhiProcedure() {
-//                    @Override
-//                    public boolean doPhi(Phi phi) {
-//                        Interval interval = intervalFor(phi.operand());
-//                        if (interval != null) {
-//                            interval.setSpillState(SpillState.NoOptimization);
-//                        }
-//                        return true;
-//                    }
-//                });
-//            }
-
         } // end of block iteration
 
         // add the range [0, 1] to all fixed intervals.
