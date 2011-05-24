@@ -31,12 +31,12 @@ import com.sun.c1x.ir.*;
  */
 public final class PhiSimplifier {
 
-    public PhiSimplifier(IR ir) {
+    public PhiSimplifier(IR ir) {/*
         for (Node n : ir.compilation.graph.getNodes()) {
             if (n instanceof Phi) {
                 simplify((Phi) n);
             }
-        }
+        }*/
     }
 
     private Value simplify(Value x) {

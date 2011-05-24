@@ -24,9 +24,7 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
-import com.sun.xml.internal.messaging.saaj.packaging.mime.util.*;
 
 /**
  * The {@code Phi} instruction represents the merging of dataflow
