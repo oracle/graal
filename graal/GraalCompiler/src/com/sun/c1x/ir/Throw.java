@@ -91,7 +91,7 @@ public final class Throw extends BlockEnd implements ExceptionEdgeInstruction {
      * @param graph
      */
     public Throw(Value exception, Graph graph) {
-        super(CiKind.Illegal, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
     }
 

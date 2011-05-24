@@ -49,8 +49,8 @@ public final class LookupSwitch extends Switch {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public LookupSwitch(Value value, List<? extends Instruction> successors, int[] keys, FrameState stateAfter, Graph graph) {
-        super(value, successors, stateAfter, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LookupSwitch(Value value, List<? extends Instruction> successors, int[] keys, Graph graph) {
+        super(value, successors, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.keys = keys;
     }
 

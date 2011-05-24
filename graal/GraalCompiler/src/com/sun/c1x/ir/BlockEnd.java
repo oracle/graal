@@ -90,24 +90,22 @@ public abstract class BlockEnd extends Instruction {
     /**
      * Constructs a new block end with the specified value type.
      * @param kind the type of the value produced by this instruction
-     * @param stateAfter the frame state at the end of this block
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
-    public BlockEnd(CiKind kind, FrameState stateAfter, List<? extends Instruction> blockSuccessors, int inputCount, int successorCount, Graph graph) {
-        this(kind, stateAfter, blockSuccessors.size(), inputCount, successorCount, graph);
+    public BlockEnd(CiKind kind, List<? extends Instruction> blockSuccessors, int inputCount, int successorCount, Graph graph) {
+        this(kind, blockSuccessors.size(), inputCount, successorCount, graph);
         for (int i = 0; i < blockSuccessors.size(); i++) {
             setBlockSuccessor(i, blockSuccessors.get(i));
         }
     }
 
-    public BlockEnd(CiKind kind, FrameState stateAfter, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
+    public BlockEnd(CiKind kind, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + blockSuccessorCount + SUCCESSOR_COUNT, graph);
         this.blockSuccessorCount = blockSuccessorCount;
-        setStateAfter(stateAfter);
     }
 
-    public BlockEnd(CiKind kind, FrameState stateAfter, Graph graph) {
-        this(kind, stateAfter, 2, 0, 0, graph);
+    public BlockEnd(CiKind kind, Graph graph) {
+        this(kind, 2, 0, 0, graph);
     }
 
     /**

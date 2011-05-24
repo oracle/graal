@@ -65,7 +65,7 @@ public final class Unwind extends BlockEnd {
     }
 
     public Unwind(Value exception, Graph graph) {
-        super(CiKind.Object, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
         successors().set(SUCCESSOR_END, graph.end());
     }

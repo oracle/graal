@@ -281,9 +281,8 @@ public final class GraphBuilder {
 
     private void finishStartBlock(Block startBlock) {
         assert bci() == 0;
-        FrameState stateAfter = frameState.create(bci());
-        Instruction target = createTargetAt(0, stateAfter);
-        Goto base = new Goto(target, stateAfter, graph);
+        Instruction target = createTargetAt(0, frameState);
+        Goto base = new Goto(target, graph);
         appendWithBCI(base);
     }
 
@@ -420,7 +419,7 @@ public final class GraphBuilder {
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
 
             Instruction successor = createTarget(dispatchBlock, stateWithException);
-            BlockEnd end = new Goto(successor, stateWithException, graph);
+            BlockEnd end = new Goto(successor, graph);
             exception.appendNext(end);
 
             if (x instanceof Invoke) {
@@ -603,12 +602,12 @@ public final class GraphBuilder {
     }
 
     private void genGoto(int fromBCI, int toBCI) {
-        append(new Goto(createTargetAt(toBCI, frameState), null, graph));
+        append(new Goto(createTargetAt(toBCI, frameState), graph));
     }
 
     private void ifNode(Value x, Condition cond, Value y) {
         assert !x.isDeleted() && !y.isDeleted();
-        If ifNode = new If(x, cond, y, null, graph);
+        If ifNode = new If(x, cond, y, graph);
         append(ifNode);
         Instruction tsucc = createTargetAt(stream().readBranchDest(), frameState);
         ifNode.setBlockSuccessor(0, tsucc);
@@ -992,7 +991,7 @@ public final class GraphBuilder {
         int offset = ts.defaultOffset();
         list.add(null);
         offsetList.add(offset);
-        TableSwitch tableSwitch = new TableSwitch(value, list, ts.lowKey(), null, graph);
+        TableSwitch tableSwitch = new TableSwitch(value, list, ts.lowKey(), graph);
         for (int i = 0; i < offsetList.size(); ++i) {
             tableSwitch.setBlockSuccessor(i, createTargetAt(bci + offsetList.get(i), frameState));
         }
@@ -1017,7 +1016,7 @@ public final class GraphBuilder {
         int offset = ls.defaultOffset();
         list.add(null);
         offsetList.add(offset);
-        LookupSwitch lookupSwitch = new LookupSwitch(value, list, keys, null, graph);
+        LookupSwitch lookupSwitch = new LookupSwitch(value, list, keys, graph);
         for (int i = 0; i < offsetList.size(); ++i) {
             lookupSwitch.setBlockSuccessor(i, createTargetAt(bci + offsetList.get(i), frameState));
         }
@@ -1157,13 +1156,13 @@ public final class GraphBuilder {
             if (block.handler.catchType().isResolved()) {
                 Instruction catchSuccessor = createTarget(block.handlerBlock, frameState);
                 Instruction nextDispatch = createTarget(block.next, frameState);
-                append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), frameState.duplicate(bci()), graph));
+                append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
             } else {
                 Deoptimize deopt = new Deoptimize(graph);
                 deopt.setMessage("unresolved " + block.handler.catchType().name());
                 append(deopt);
                 Instruction nextDispatch = createTarget(block.next, frameState);
-                append(new Goto(nextDispatch, frameState.duplicate(bci()), graph));
+                append(new Goto(nextDispatch, graph));
             }
         }
     }
@@ -1183,7 +1182,7 @@ public final class GraphBuilder {
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 Instruction next = createTarget(nextBlock, frameState);
-                end = new Goto(next, null, graph);
+                end = new Goto(next, graph);
                 lastInstr = lastInstr.appendNext(end);
                 break;
             }

@@ -70,7 +70,7 @@ public final class Return extends BlockEnd {
      * @param graph
      */
     public Return(Value result, Graph graph) {
-        super(result == null ? CiKind.Void : result.kind, null, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(result == null ? CiKind.Void : result.kind, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setResult(result);
         successors().set(SUCCESSOR_END, graph.end());
     }

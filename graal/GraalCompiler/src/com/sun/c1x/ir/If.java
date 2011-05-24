@@ -83,8 +83,8 @@ public final class If extends BlockEnd {
      * @param stateAfter the state before the branch but after the input values have been popped
      * @param graph
      */
-    public If(Value x, Condition cond, Value y, FrameState stateAfter, Graph graph) {
-        super(CiKind.Illegal, stateAfter, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public If(Value x, Condition cond, Value y, Graph graph) {
+        super(CiKind.Illegal, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert Util.archKindsEqual(x, y);
         condition = cond;
         setX(x);

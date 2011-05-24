@@ -230,17 +230,10 @@ public class IR {
         }
 
         // This goto is not a safepoint.
-        Goto e = new Goto(target, null, compilation.graph);
+        Goto e = new Goto(target, compilation.graph);
         newSucc.appendNext(e);
         e.reorderSuccessor(0, backEdgeIndex);
 
-        // setup states
-        FrameState s = source.end().stateAfter();
-        newSucc.setStateBefore(s);
-        e.setStateAfter(s);
-        assert newSucc.stateBefore().localsSize() == s.localsSize();
-        assert newSucc.stateBefore().stackSize() == s.stackSize();
-        assert newSucc.stateBefore().locksSize() == s.locksSize();
         // link predecessor to new block
         source.end().substituteSuccessor(target, newSucc);
         if (removePhiInputs.size() > 0) {

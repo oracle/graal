@@ -41,8 +41,8 @@ public final class Goto extends BlockEnd {
      * @param stateAfter the frame state at the end of this block
      * @param graph
      */
-    public Goto(Instruction succ, FrameState stateAfter, Graph graph) {
-        super(CiKind.Illegal, stateAfter, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Goto(Instruction succ, Graph graph) {
+        super(CiKind.Illegal, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setBlockSuccessor(0, succ);
     }
 

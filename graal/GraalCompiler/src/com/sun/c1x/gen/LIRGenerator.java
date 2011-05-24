@@ -1300,15 +1300,16 @@ public abstract class LIRGenerator extends ValueVisitor {
 
                 List<Phi> phis = getPhis(sux);
 
-                int predIndex = 0;
-                for (; predIndex < sux.numberOfPreds(); ++predIndex) {
-                    if (sux.predAt(predIndex) == bb) {
-                        break;
-                    }
-                }
-                assert predIndex < sux.numberOfPreds();
-
                 if (phis != null) {
+
+                    int predIndex = 0;
+                    for (; predIndex < sux.numberOfPreds(); ++predIndex) {
+                        if (sux.predAt(predIndex) == bb) {
+                            break;
+                        }
+                    }
+                    assert predIndex < sux.numberOfPreds();
+
                     PhiResolver resolver = new PhiResolver(this);
                     for (Phi phi : phis) {
                         if (!phi.isDeadPhi() && phi.valueCount() > predIndex) {
@@ -1328,23 +1329,6 @@ public abstract class LIRGenerator extends ValueVisitor {
                     }
                     resolver.dispose();
                 }
-
-                /*
-
-                FrameState suxState = sux.stateBefore();
-                TTY.println("number of preds: " + sux.numberOfPreds());
-
-                PhiResolver resolver = new PhiResolver(this);
-
-
-                for (int index = 0; index < suxState.stackSize(); index++) {
-                    moveToPhi(resolver, curState.stackAt(index), suxState.stackAt(index), phis, predIndex);
-                }
-
-                for (int index = 0; index < suxState.localsSize(); index++) {
-                    moveToPhi(resolver, curState.localAt(index), suxState.localAt(index), phis, predIndex);
-                }
-                resolver.dispose();*/
             }
         }
     }

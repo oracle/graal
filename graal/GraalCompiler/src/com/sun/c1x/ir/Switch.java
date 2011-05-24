@@ -66,8 +66,8 @@ public abstract class Switch extends BlockEnd {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public Switch(Value value, List<? extends Instruction> successors, FrameState stateAfter, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Illegal, stateAfter, successors, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public Switch(Value value, List<? extends Instruction> successors, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Illegal, successors, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 
