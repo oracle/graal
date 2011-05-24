@@ -219,4 +219,8 @@ public final class LIRBlock {
         successors.clear();
         predecessors.clear();
     }
+
+    public void setInstructions(List<Instruction> list) {
+        instructions = list;
+    }
 }

@@ -24,15 +24,22 @@ package com.oracle.max.graal.schedule;
 
 import java.util.*;
 
+import com.sun.c1x.ir.*;
+
 
 public class Block {
 
     private int blockID;
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
+    private final List<Instruction> instructions = new ArrayList<Instruction>();
 
     public List<Block> getSuccessors() {
         return Collections.unmodifiableList(successors);
+    }
+
+    public List<Instruction> getInstructions() {
+        return instructions;
     }
 
     public List<Block> getPredecessors() {

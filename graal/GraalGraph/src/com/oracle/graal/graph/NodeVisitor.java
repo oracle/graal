@@ -24,5 +24,5 @@ package com.oracle.graal.graph;
 
 
 public interface NodeVisitor {
-    void visit(Node n);
+    boolean visit(Node n);
 }

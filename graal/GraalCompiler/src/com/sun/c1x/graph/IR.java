@@ -80,12 +80,20 @@ public class IR {
             C1XTimers.HIR_OPTIMIZE.start();
         }
 
+        CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
+        getHIRStartBlock().iteratePreOrder(finder);
+        finder.splitCriticalEdges();
+
         Schedule schedule = new Schedule(this.compilation.graph);
         List<Block> blocks = schedule.getBlocks();
         NodeMap<Block> nodeToBlock = schedule.getNodeToBlock();
+       /* orderedBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
         for (Block b : blocks) {
-            map.put(b, new LIRBlock(b.blockID()));
+            LIRBlock block = new LIRBlock(b.blockID());
+            map.put(b, block);
+            block.setInstructions(b.getInstructions());
+            orderedBlocks.add(block);
         }
 
         for (Block b : blocks) {
@@ -96,12 +104,25 @@ public class IR {
             for (Block pred : b.getPredecessors()) {
                 map.get(b).blockPredecessors().add(map.get(pred));
             }
-        }
+        }*/
+
 
         // TODO(tw): Schedule nodes within a block.
 
 
-        valueToBlock = computeLinearScanOrder();
+
+
+        computeLinearScanOrder();
+
+
+        valueToBlock = new HashMap<Value, LIRBlock>();
+        for (LIRBlock b : orderedBlocks) {
+            for (Instruction i : b.getInstructions()) {
+                valueToBlock.put(i, b);
+            }
+        }
+        startBlock = valueToBlock.get(getHIRStartBlock());
+        assert startBlock != null;
         verifyAndPrint("After linear scan order");
 
         if (C1XOptions.PrintTimers) {
@@ -125,12 +146,9 @@ public class IR {
 
     private Map<Value, LIRBlock> makeLinearScanOrder() {
 
-        Map<Value, LIRBlock> valueToBlock = new HashMap<Value, LIRBlock>();
-
         if (orderedBlocks == null) {
-            CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
-            getHIRStartBlock().iteratePreOrder(finder);
-            finder.splitCriticalEdges();
+
+            Map<Value, LIRBlock> valueToBlock = new HashMap<Value, LIRBlock>();
             ComputeLinearScanOrder computeLinearScanOrder = new ComputeLinearScanOrder(compilation.stats.blockCount, getHIRStartBlock());
             List<BlockBegin> blocks = computeLinearScanOrder.linearScanOrder();
             orderedBlocks = new ArrayList<LIRBlock>();
@@ -167,9 +185,6 @@ public class IR {
                 ++z;
             }
 
-            startBlock = valueToBlock.get(getHIRStartBlock());
-            assert startBlock != null;
-            compilation.stats.loopCount = computeLinearScanOrder.numLoops();
         }
         return valueToBlock;
     }
