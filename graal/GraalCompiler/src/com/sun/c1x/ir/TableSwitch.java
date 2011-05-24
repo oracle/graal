@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 
 /**
  * The {@code TableSwitch} instruction represents a table switch.

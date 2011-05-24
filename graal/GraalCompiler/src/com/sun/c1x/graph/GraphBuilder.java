@@ -31,8 +31,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.graph.BlockMap.Block;
-import com.sun.c1x.graph.BlockMap.ExceptionBlock;
+import com.sun.c1x.graph.BlockMap.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
@@ -1101,8 +1100,6 @@ public final class GraphBuilder {
         genMonitorExit(lock, Instruction.SYNCHRONIZATION_ENTRY_BCI);
 
         genThrow(bci);
-        BlockEnd end = (BlockEnd) lastInstr;
-        end.setStateAfter(frameState.create(bci()));
 
         frameState.initializeFrom(origState);
         origState.delete();

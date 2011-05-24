@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 
 /**
  * The {@code LookupSwitch} instruction represents a lookup switch bytecode, which has a sorted

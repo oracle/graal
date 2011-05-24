@@ -25,7 +25,6 @@ package com.sun.c1x.ir;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -48,25 +47,6 @@ public abstract class BlockEnd extends Instruction {
     @Override
     protected int successorCount() {
         return super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The state for this instruction.
-     */
-     @Override
-    public FrameState stateAfter() {
-        return (FrameState) successors().get(super.successorCount() + SUCCESSOR_STATE_AFTER);
-    }
-
-    public FrameState setStateAfter(FrameState n) {
-        FrameState oldState = stateAfter();
-        try {
-            return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
-        } finally {
-            if (oldState != n && oldState != null) {
-                oldState.delete();
-            }
-        }
     }
 
     /**

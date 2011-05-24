@@ -338,7 +338,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                         if (x instanceof Phi) {
                             Phi phi = (Phi) x;
                             if (phi.block() == block) {
-                                //phi.makeDead();
+                                phi.makeDead();
                             }
                         }
                         inputs().set(i, null);
