@@ -517,7 +517,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public void visitExceptionDispatch(ExceptionDispatch x) {
         // TODO ls: this needs some more work...
 
-        RiType riType = x.handler().handler.catchType();
+        RiType riType = x.catchType();
         assert riType.isResolved();
 
         XirArgument obj = toXirArgument(x.exception());

@@ -36,9 +36,6 @@ import com.sun.c1x.value.*;
 /**
  * This class implements the overall container for the HIR (high-level IR) graph
  * and directs its construction, optimization, and finalization.
- *
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
  */
 public class IR {
 
@@ -158,8 +155,9 @@ public class IR {
                     lirBlock.blockPredecessors().add(valueToBlock.get(bb.predAt(i).block()));
                 }
 
-                for (int i = 0; i < bb.numberOfSux(); ++i) {
-                    lirBlock.blockSuccessors().add(valueToBlock.get(bb.suxAt(i)));
+                BlockEnd end = bb.end();
+                for (int i = 0; i < end.blockSuccessorCount(); ++i) {
+                    lirBlock.blockSuccessors().add(valueToBlock.get(end.blockSuccessor(i)));
                 }
 
                 Instruction first = bb;

@@ -26,23 +26,23 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 
-
-/**
- *
- */
 public class Deoptimize extends Instruction {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    /**
-     * @param kind
-     * @param inputCount
-     * @param successorCount
-     * @param graph
-     */
+    private String message;
+
     public Deoptimize(Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public String message() {
+        return message;
     }
 
     @Override
@@ -53,6 +53,11 @@ public class Deoptimize extends Instruction {
     @Override
     public void print(LogStream out) {
         out.print("deoptimize");
+    }
+
+    @Override
+    public String shortName() {
+        return "Deopt " + message;
     }
 
 }

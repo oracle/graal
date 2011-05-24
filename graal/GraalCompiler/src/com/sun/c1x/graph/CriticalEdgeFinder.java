@@ -51,8 +51,9 @@ public class CriticalEdgeFinder implements BlockClosure {
     }
 
     public void apply(BlockBegin block) {
-        if (block.numberOfSux() >= 2) {
-            for (BlockBegin succ : block.end().blockSuccessors()) {
+        BlockEnd end = block.end();
+        if (end.blockSuccessorCount() >= 2) {
+            for (BlockBegin succ : end.blockSuccessors()) {
                 if (succ.numberOfPreds() >= 2) {
                     // TODO: (tw) probably we don't have to make it a critical edge if succ only contains the _same_ predecessor multiple times.
                     recordCriticalEdge(block, succ);

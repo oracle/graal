@@ -122,10 +122,16 @@ public final class BlockMap {
 
         public Instruction firstInstruction;
 
-        private Block[] successors;
+        final HashSet<Block> successors = new HashSet<Block>();
         private boolean visited;
         private boolean active;
         private int loops;
+    }
+
+    public static class ExceptionBlock  extends Block {
+        public RiExceptionHandler handler;
+        public Block next;
+        public Block handlerBlock;
     }
 
     private static final Block[] NO_SUCCESSORS = new Block[0];
@@ -346,7 +352,6 @@ public final class BlockMap {
         if (oldBlock == null) {
             Block newBlock = new Block();
             newBlock.startBci = startBci;
-            newBlock.successors = NO_SUCCESSORS;
             blockMap[startBci] = newBlock;
             return newBlock;
 
@@ -356,10 +361,11 @@ public final class BlockMap {
             Block newBlock = new Block();
             newBlock.startBci = startBci;
             newBlock.endBci = oldBlock.endBci;
-            newBlock.successors = oldBlock.successors;
+            newBlock.successors.addAll(oldBlock.successors);
 
             oldBlock.endBci = startBci - 1;
-            oldBlock.successors = new Block[] {newBlock };
+            oldBlock.successors.clear();
+            oldBlock.successors.add(newBlock);
 
             for (int i = startBci; i <= newBlock.endBci; i++) {
                 blockMap[i] = newBlock;
@@ -388,8 +394,47 @@ public final class BlockMap {
             }
         }
         Block predecessor = blockMap[predBci];
-        assert predecessor.successors.length == 0;
-        predecessor.successors = successors;
+        assert predecessor.successors.size() == 0;
+        predecessor.successors.addAll(Arrays.asList(successors));
+    }
+
+    private HashMap<RiExceptionHandler, ExceptionBlock> exceptionDispatch = new HashMap<RiExceptionHandler, ExceptionBlock>();
+
+    private ExceptionBlock unwindBlock;
+
+    private ExceptionBlock makeUnwind() {
+        if (unwindBlock == null) {
+            unwindBlock = new ExceptionBlock();
+            unwindBlock.startBci = -1;
+            unwindBlock.endBci = -1;
+        }
+        return unwindBlock;
+    }
+
+    private Block makeExceptionDispatch(List<RiExceptionHandler> handlers, int index) {
+        RiExceptionHandler handler = handlers.get(index);
+        if (handler.isCatchAll()) {
+            return blockMap[handler.handlerBCI()];
+        }
+        ExceptionBlock block = exceptionDispatch.get(handler);
+        if (block == null) {
+            block = new ExceptionBlock();
+            block.startBci = -1;
+            block.endBci = -1;
+            block.handler = handler;
+            block.successors.add(blockMap[handler.handlerBCI()]);
+            block.handlerBlock = blockMap[handler.handlerBCI()];
+            Block next;
+            if (index < handlers.size() - 1) {
+                next = makeExceptionDispatch(handlers, index + 1);
+            } else {
+                next = makeUnwind();
+            }
+            block.successors.add(next);
+            block.next = next;
+            exceptionDispatch.put(handler, block);
+        }
+        return block;
     }
 
     private void addExceptionEdges() {
@@ -397,31 +442,25 @@ public final class BlockMap {
             return;
         }
 
-        Block block = null;
-        HashSet<Block> newSuccessorsOfBlock = new HashSet<Block>();
-
         for (int bci = canTrap.nextSetBit(0); bci >= 0; bci = canTrap.nextSetBit(bci + 1)) {
-            Block newBlock = blockMap[bci];
-            if (newBlock != block) {
-                if (block != null) {
-                    block.successors = newSuccessorsOfBlock.toArray(new Block[newSuccessorsOfBlock.size()]);
-                    newSuccessorsOfBlock.clear();
-                }
-                Collections.addAll(newSuccessorsOfBlock, newBlock.successors);
-            }
-            block = newBlock;
+            Block block = blockMap[bci];
 
+            ArrayList<RiExceptionHandler> handlers = null;
             for (RiExceptionHandler h : method.exceptionHandlers()) {
                 if (h.startBCI() <= bci && bci < h.endBCI()) {
-                    newSuccessorsOfBlock.add(blockMap[h.handlerBCI()]);
+                    if (handlers == null) {
+                        handlers = new ArrayList<RiExceptionHandler>();
+                    }
+                    handlers.add(h);
                     if (h.isCatchAll()) {
                         break;
                     }
                 }
             }
-        }
-        if (block != null) {
-            block.successors = newSuccessorsOfBlock.toArray(new Block[newSuccessorsOfBlock.size()]);
+            if (handlers != null) {
+                Block dispatch = makeExceptionDispatch(handlers, 0);
+                block.successors.add(dispatch);
+            }
         }
     }
 
@@ -513,18 +552,20 @@ public final class BlockMap {
         // process all the stores in this block
         byte[] code = method.code();
         int bci = block.startBci;
-        while (bci <= block.endBci) {
-            int opcode = Bytes.beU1(code, bci);
-            if (isStore(opcode)) {
-                processStore(opcode, Bytes.beU1(code, bci + 1));
-
-            } else if (opcode == WIDE) {
-                opcode = Bytes.beU1(code, bci + 1);
+        if (bci >= 0) {
+            while (bci <= block.endBci) {
+                int opcode = Bytes.beU1(code, bci);
                 if (isStore(opcode)) {
-                    processStore(opcode, Bytes.beU2(code, bci + 2));
+                    processStore(opcode, Bytes.beU1(code, bci + 1));
+
+                } else if (opcode == WIDE) {
+                    opcode = Bytes.beU1(code, bci + 1);
+                    if (isStore(opcode)) {
+                        processStore(opcode, Bytes.beU2(code, bci + 2));
+                    }
                 }
+                bci += lengthOf(code, bci);
             }
-            bci += lengthOf(code, bci);
         }
     }
 

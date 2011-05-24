@@ -177,8 +177,9 @@ public final class ComputeLinearScanOrder {
 
     private int computeWeight(BlockBegin cur) {
         BlockBegin singleSux = null;
-        if (cur.numberOfSux() == 1) {
-            singleSux = cur.suxAt(0);
+        BlockEnd end = cur.end();
+        if (end.blockSuccessorCount() == 1) {
+            singleSux = end.blockSuccessor(0);
         }
 
         // limit loop-depth to 15 bit (only for security reason, it will never be so big)

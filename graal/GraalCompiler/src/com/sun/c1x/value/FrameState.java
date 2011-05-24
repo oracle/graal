@@ -325,7 +325,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
     }
 
-    public void merge(BlockBegin block, FrameStateAccess other, boolean blockAppended) {
+    public void merge(BlockBegin block, FrameStateAccess other) {
         checkSize(other);
         for (int i = 0; i < valuesSize(); i++) {
             Value x = valueAt(i);
@@ -354,9 +354,6 @@ public final class FrameState extends Value implements FrameStateAccess {
                     Phi originalPhi = phi;
                     if (phi.valueCount() == 0) {
                         int size = block.predecessors().size();
-                        if (blockAppended) {
-                            size--;
-                        }
                         for (int j = 0; j < size; ++j) {
                             phi = phi.addInput(x);
                         }
@@ -372,7 +369,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                         }
                     }
 
-                    assert phi.valueCount() == block.predecessors().size() + (blockAppended ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
+                    assert phi.valueCount() == block.predecessors().size() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
                }
             }
         }

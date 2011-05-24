@@ -97,19 +97,6 @@ public final class BlockBegin extends StateSplit {
     }
 
     /**
-     * Gets the list of predecessors of this block.
-     * @return the predecessor list
-     */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public List<Instruction> blockPredecessors() {
-        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
-            return Collections.EMPTY_LIST;
-        } else {
-            return (List) Collections.unmodifiableList(predecessors());
-        }
-    }
-
-    /**
      * Gets the linear scan number of this block.
      * @return the linear scan number
      */
@@ -147,10 +134,8 @@ public final class BlockBegin extends StateSplit {
             Instruction inst = this;
             ArrayList<BlockBegin> excBlocks = new ArrayList<BlockBegin>();
             while (inst != null) {
-                if (inst instanceof Invoke) {
-                    excBlocks.add(((Invoke) inst).exceptionEdge());
-                } else if (inst instanceof Throw) {
-                    excBlocks.add(((Throw) inst).exceptionEdge());
+                if (inst instanceof ExceptionEdgeInstruction) {
+                    excBlocks.add(((ExceptionEdgeInstruction) inst).exceptionEdge());
                 }
                 inst = inst.next();
             }
@@ -200,40 +185,6 @@ public final class BlockBegin extends StateSplit {
             }
         }
         return builder.toString();
-    }
-
-    /**
-     * Get the number of successors.
-     * @return the number of successors
-     */
-    public int numberOfSux() {
-        return end().blockSuccessorCount();
-    }
-
-    /**
-     * Get the successor at a certain position.
-     * @param i the position
-     * @return the successor
-     */
-    public BlockBegin suxAt(int i) {
-        return end().blockSuccessor(i);
-    }
-
-    /**
-     * Get the number of predecessors.
-     * @return the number of predecessors
-     */
-    public int numberOfPreds() {
-        // ignore the graph root
-        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
-            return 0;
-        } else {
-            return predecessors().size();
-        }
-    }
-
-    public Instruction predAt(int j) {
-        return (Instruction) predecessors().get(j);
     }
 
     public void printWithoutPhis(LogStream out) {
@@ -397,13 +348,14 @@ public final class BlockBegin extends StateSplit {
      * Iterates over all successors of this block: successors of the end node and exception handler.
      */
     public void allSuccessorsDo(boolean backwards, BlockClosure closure) {
+        BlockEnd end = end();
         if (backwards) {
-            for (int i = numberOfSux() - 1; i >= 0; i--) {
-                closure.apply(suxAt(i));
+            for (int i = end.blockSuccessorCount() - 1; i >= 0; i--) {
+                closure.apply(end.blockSuccessor(i));
             }
         } else {
-            for (int i = 0; i < numberOfSux(); i++) {
-                closure.apply(suxAt(i));
+            for (int i = 0; i < end.blockSuccessorCount(); i++) {
+                closure.apply(end.blockSuccessor(i));
             }
         }
         for (Instruction x = next(); x != null; x = x.next()) {

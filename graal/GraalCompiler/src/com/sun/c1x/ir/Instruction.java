@@ -111,6 +111,36 @@ public abstract class Instruction extends Value {
         return next;
     }
 
+    /**
+     * Gets the list of predecessors of this block.
+     * @return the predecessor list
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public List<Instruction> blockPredecessors() {
+        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
+            return Collections.EMPTY_LIST;
+        } else {
+            return (List) Collections.unmodifiableList(predecessors());
+        }
+    }
+
+    /**
+     * Get the number of predecessors.
+     * @return the number of predecessors
+     */
+    public int numberOfPreds() {
+        // ignore the graph root
+        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
+            return 0;
+        } else {
+            return predecessors().size();
+        }
+    }
+
+    public Instruction predAt(int j) {
+        return (Instruction) predecessors().get(j);
+    }
+
     @Override
     public BlockBegin block() {
         Instruction cur = this;

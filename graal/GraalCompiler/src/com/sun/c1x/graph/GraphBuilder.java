@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.graph.BlockMap.Block;
+import com.sun.c1x.graph.BlockMap.ExceptionBlock;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
@@ -84,7 +85,8 @@ public final class GraphBuilder {
 
     private final BytecodeStream stream;           // the bytecode stream
     // bci-to-block mapping
-    private Block[] blockList;
+    private Block[] blockFromBci;
+    private ArrayList<Block> blockList;
 
     // the constant pool
     private final RiConstantPool constantPool;
@@ -152,12 +154,16 @@ public final class GraphBuilder {
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(rootMethod);
 
-        blockList = new Block[rootMethod.code().length];
-        for (int i = 0; i < blockMap.blocks.size(); i++) {
+        blockList = new ArrayList<Block>(blockMap.blocks);
+        blockFromBci = new Block[rootMethod.code().length];
+        for (int i = 0; i < blockList.size(); i++) {
             int blockID = ir.nextBlockNumber();
             assert blockID == i;
-            Block block = blockMap.blocks.get(i);
-            blockList[block.startBci] = block;
+            Block block = blockList.get(i);
+            if (block.startBci >= 0) {
+                blockFromBci[block.startBci] = block;
+            }
+//            System.out.println("block " + blockID + " @ " + block.startBci);
         }
 
         // 1. create the start block
@@ -171,7 +177,7 @@ public final class GraphBuilder {
         if (handlers != null && handlers.length > 0) {
             exceptionHandlers = new ArrayList<ExceptionHandler>(handlers.length);
             for (RiExceptionHandler ch : handlers) {
-                Block entry = blockList[ch.handlerBCI()];
+                Block entry = blockFromBci[ch.handlerBCI()];
                 // entry == null means that the exception handler is unreachable according to the BlockMap conservative analysis
                 if (entry != null) {
                     ExceptionHandler h = new ExceptionHandler(ch);
@@ -182,7 +188,7 @@ public final class GraphBuilder {
             flags |= Flag.HasHandler.mask;
         }
 
-        mergeOrClone(startBlockBegin, frameState, false);
+        mergeOrClone(startBlock, frameState);
 
         // 3. setup internal state for appending instructions
         lastInstr = startBlockBegin;
@@ -203,6 +209,11 @@ public final class GraphBuilder {
             syncBlock.firstInstruction = syncHandler;
             markOnWorkList(syncBlock);
 
+            ExceptionBlock excBlock = new ExceptionBlock();
+            excBlock.startBci = -1;
+            excBlock.endBci = -1;
+            excBlock.blockID = ir.nextBlockNumber();
+            blockList.add(excBlock);
             ExceptionHandler h = new ExceptionHandler(new CiExceptionHandler(0, rootMethod.code().length, -1, 0, null));
             h.setEntryBlock(syncBlock);
             addExceptionHandler(h);
@@ -214,13 +225,30 @@ public final class GraphBuilder {
         // 5. SKIPPED: look for intrinsics
 
         // 6B.1 do the normal parsing
-        addToWorkList(blockList[0]);
+        addToWorkList(blockFromBci[0]);
         iterateAllBlocks();
 
         if (syncBlock != null && syncHandler.stateBefore() != null) {
             // generate unlocking code if the exception handler is reachable
             fillSyncHandler(rootMethodSynchronizedObject, syncBlock);
         }
+
+//        for (Node n : graph.getNodes()) {
+//            if (n instanceof FrameState) {
+//                boolean delete = false;
+//                if (n.usages().size() == 0 && n.predecessors().size() == 0) {
+//                    delete = true;
+//                }
+//                if (n.predecessors().size() == 0 && n.usages().size() == 1 && n.usages().get(0) instanceof BlockBegin) {
+//                    n.usages().get(0).inputs().replace(n, null);
+//                    delete = true;
+//                }
+//                if (delete) {
+//                    n.delete();
+//                    System.out.println("deleted framestate");
+//                }
+//            }
+//        }
     }
 
     private Block nextBlock(int bci) {
@@ -260,51 +288,46 @@ public final class GraphBuilder {
     }
 
     public void mergeOrClone(Block target, FrameStateAccess newState) {
-        assert target.firstInstruction instanceof BlockBegin;
-        if (target.isLoopHeader) {
-            mergeOrClone(target.firstInstruction, newState, true);
+        Instruction first = target.firstInstruction;
+        int bci = target.startBci;
+        boolean loopHeader = target.isLoopHeader;
+
+        FrameState existingState;
+        if (first instanceof Placeholder) {
+            existingState = ((Placeholder) first).stateBefore();
         } else {
-            mergeOrClone(target.firstInstruction, newState, false);
+            assert first instanceof BlockBegin;
+            existingState = ((BlockBegin) first).stateBefore();
         }
-    }
 
+        if (existingState == null) {
+            // copy state because it is modified
+            FrameState duplicate = newState.duplicate(bci);
 
-    private void mergeOrClone(Instruction first, FrameStateAccess stateAfter, boolean loopHeader) {
-        mergeOrClone(first, stateAfter, loopHeader, false);
-    }
-
-    private void mergeOrClone(Instruction first, FrameStateAccess stateAfter, boolean loopHeader, boolean blockAppended) {
-        if (first instanceof BlockBegin) {
-            BlockBegin block = (BlockBegin) first;
-            FrameState existingState = block.stateBefore();
-
-            if (existingState == null) {
-                // copy state because it is modified
-                FrameState duplicate = stateAfter.duplicate(block.bci());
-
-                // if the block is a loop header, insert all necessary phis
-                if (loopHeader) {
-                    insertLoopPhis(block, duplicate);
-                }
-
-                block.setStateBefore(duplicate);
+            // if the block is a loop header, insert all necessary phis
+            if (loopHeader) {
+                assert first instanceof BlockBegin;
+                insertLoopPhis((BlockBegin) first, duplicate);
+                ((BlockBegin) first).setStateBefore(duplicate);
             } else {
-                if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(stateAfter)) {
-                    // stacks or locks do not match--bytecodes would not verify
-                    throw new CiBailout("stack or locks do not match");
+                if (first instanceof Placeholder) {
+                    ((Placeholder) first).setStateBefore(duplicate);
+                } else {
+                    ((BlockBegin) first).setStateBefore(duplicate);
                 }
-
-                assert existingState.localsSize() == stateAfter.localsSize();
-                assert existingState.stackSize() == stateAfter.stackSize();
-
-                existingState.merge(block, stateAfter, blockAppended);
             }
         } else {
-            assert false;
+
+            if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
+                // stacks or locks do not match--bytecodes would not verify
+                throw new CiBailout("stack or locks do not match");
+            }
+
+            assert existingState.localsSize() == newState.localsSize();
+            assert existingState.stackSize() == newState.stackSize();
+
+            existingState.merge((BlockBegin) first, newState);
         }
-
-
-
 
         for (int j = 0; j < frameState.localsSize() + frameState.stackSize(); ++j) {
             if (frameState.valueAt(j) != null) {
@@ -356,79 +379,38 @@ public final class GraphBuilder {
             return;
         }
 
-        ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>();
-
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
+        ExceptionHandler firstHandler = null;
         // join with all potential exception handlers
         if (this.exceptionHandlers != null) {
             for (ExceptionHandler handler : this.exceptionHandlers) {
                 // if the handler covers this bytecode index, add it to the list
                 if (handler.covers(bci)) {
-                    ExceptionHandler newHandler = addExceptionHandler(handler, frameState);
-                    exceptionHandlers.add(newHandler);
-
-                    // stop when reaching catch all
-                    if (handler.isCatchAll()) {
-                        break;
-                    }
+                    firstHandler = new ExceptionHandler(handler);
+                    break;
                 }
             }
         }
 
-        if (!exceptionHandlers.isEmpty()) {
-            Instruction successor;
+        if (firstHandler != null) {
+            compilation.setHasExceptionHandlers();
 
-            ArrayList<BlockBegin> newBlocks = new ArrayList<BlockBegin>();
-
-            int current = exceptionHandlers.size() - 1;
-            if (exceptionHandlers.get(current).isCatchAll()) {
-                successor = createTarget(exceptionHandlers.get(current).entryBlock(), null);
-                current--;
-            } else {
-                if (unwindBlock == null) {
-                    unwindBlock = new BlockBegin(bci, ir.nextBlockNumber(), false, graph);
-                    Unwind unwind = new Unwind(null, graph);
-                    unwindBlock.appendNext(unwind);
-                }
-                successor = unwindBlock;
-            }
-
-            for (; current >= 0; current--) {
-                ExceptionHandler handler = exceptionHandlers.get(current);
-
-                BlockBegin newSucc = null;
-                for (Node pred : successor.predecessors()) {
-                    if (pred instanceof ExceptionDispatch) {
-                        ExceptionDispatch dispatch = (ExceptionDispatch) pred;
-                        if (dispatch.handler().handler == handler.handler) {
-                            newSucc = dispatch.begin();
-                            break;
-                        }
+            Block dispatchBlock = null;
+            for (Block block : blockList) {
+                if (block instanceof ExceptionBlock) {
+                    ExceptionBlock excBlock = (ExceptionBlock) block;
+                    if (excBlock.handler == firstHandler.handler) {
+                        dispatchBlock = block;
+                        break;
                     }
                 }
-                if (newSucc != null) {
-                    successor = newSucc;
-                } else {
-                    BlockBegin dispatchEntry = new BlockBegin(handler.handlerBCI(), ir.nextBlockNumber(), false, graph);
-
-                    if (handler.handler.catchType().isResolved()) {
-                        Instruction entry = createTarget(handler.entryBlock(), null);
-                        ExceptionDispatch end = new ExceptionDispatch(null, entry, null, handler, null, graph);
-                        end.setBlockSuccessor(0, successor);
-                        dispatchEntry.appendNext(end);
-                    } else {
-                        Deoptimize deopt = new Deoptimize(graph);
-                        dispatchEntry.appendNext(deopt);
-                        Goto end = new Goto(successor, null, graph);
-                        deopt.appendNext(end);
-                    }
-
-                    newBlocks.add(dispatchEntry);
-                    successor = dispatchEntry;
-                }
             }
-
+            // if there's no dispatch block then the catch block needs to be a catch all
+            if (dispatchBlock == null) {
+                assert firstHandler.isCatchAll();
+                dispatchBlock = firstHandler.entryBlock();
+            }
             FrameState entryState = frameState.duplicateWithEmptyStack(bci);
 
             BlockBegin entry = new BlockBegin(bci, ir.nextBlockNumber(), false, graph);
@@ -436,6 +418,8 @@ public final class GraphBuilder {
             ExceptionObject exception = new ExceptionObject(graph);
             entry.appendNext(exception);
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
+
+            Instruction successor = createTarget(dispatchBlock, stateWithException);
             BlockEnd end = new Goto(successor, stateWithException, graph);
             exception.appendNext(end);
 
@@ -444,65 +428,7 @@ public final class GraphBuilder {
             } else {
                 ((Throw) x).setExceptionEdge(entry);
             }
-
-            updateDispatchChain(end.blockSuccessor(0), stateWithException, bci);
         }
-    }
-
-    private void updateDispatchChain(BlockBegin dispatchEntry, FrameStateAccess state, int bci) {
-        FrameState oldState = dispatchEntry.stateBefore();
-        if (oldState != null && dispatchEntry.predecessors().size() == 1) {
-            dispatchEntry.setStateBefore(null);
-        }
-        mergeOrClone(dispatchEntry, state, false, true);
-        FrameState mergedState = dispatchEntry.stateBefore();
-
-        if (dispatchEntry.next() instanceof ExceptionDispatch) {
-            // ordinary dispatch handler
-            ExceptionDispatch dispatch = (ExceptionDispatch) dispatchEntry.next();
-            dispatch.setStateAfter(mergedState.duplicate(bci));
-            dispatch.setException(mergedState.stackAt(0));
-            dispatch.catchSuccessor().setStateBefore(mergedState.duplicate(bci));
-            updateDispatchChain(dispatch.otherSuccessor(), mergedState, bci);
-        } else if (dispatchEntry.next() instanceof Deoptimize) {
-            // deoptimizing handler
-            dispatchEntry.end().setStateAfter(mergedState.duplicate(bci));
-            updateDispatchChain(dispatchEntry.end().blockSuccessor(0), mergedState, bci);
-        } else if (dispatchEntry.next() instanceof Unwind) {
-            // unwind handler
-            Unwind unwind = (Unwind) dispatchEntry.next();
-            unwind.setStateAfter(mergedState.duplicate(bci));
-            unwind.setException(mergedState.stackAt(0));
-        } else {
-            // synchronization or default exception handler, nothing to do
-        }
-    }
-
-    /**
-     * Adds an exception handler to the {@linkplain BlockBegin#exceptionHandlerBlocks() list}
-     * of exception handlers for the {@link #curBlock current block}.
-     */
-    private ExceptionHandler addExceptionHandler(ExceptionHandler handler, FrameStateAccess curState) {
-        compilation.setHasExceptionHandlers();
-
-        BlockMap.Block entry = handler.entryBlock();
-
-        // clone exception handler
-        ExceptionHandler newHandler = new ExceptionHandler(handler);
-
-        // fill in exception handler subgraph lazily
-        if (!isVisited(entry)) {
-            if (handler.handlerBCI() != Instruction.SYNCHRONIZATION_ENTRY_BCI) {
-                addToWorkList(entry);
-            }
-        } else {
-            // This will occur for exception handlers that cover themselves. This code
-            // pattern is generated by javac for synchronized blocks. See the following
-            // for why this change to javac was made:
-            //
-            //   http://www.cs.arizona.edu/projects/sumatra/hallofshame/java-async-race.html
-        }
-        return newHandler;
     }
 
     private void genLoadConstant(int cpi) {
@@ -1124,28 +1050,20 @@ public final class GraphBuilder {
         return x;
     }
 
-    private Instruction blockAtOrNull(int bci) {
-        return blockList[bci] != null ? blockList[bci].firstInstruction : null;
-    }
-
-    private Instruction blockAt(int bci) {
-        Instruction result = blockAtOrNull(bci);
-        assert result != null : "Expected a block to begin at " + bci;
-        return result;
-    }
-
     private Instruction createTargetAt(int bci, FrameStateAccess stateAfter) {
-        return createTarget(blockList[bci], stateAfter);
+        return createTarget(blockFromBci[bci], stateAfter);
     }
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
+        assert block != null && stateAfter != null;
         if (block.firstInstruction == null) {
-            BlockBegin blockBegin = new BlockBegin(block.startBci, block.blockID, block.isLoopHeader, graph);
-            block.firstInstruction = blockBegin;
+//            if (block.isLoopHeader) {
+                block.firstInstruction = new BlockBegin(block.startBci, block.blockID, block.isLoopHeader, graph);
+//            } else {
+//                block.firstInstruction = new Placeholder(graph);
+//            }
         }
-        if (stateAfter != null) {
-            mergeOrClone(block, stateAfter);
-        }
+        mergeOrClone(block, stateAfter);
         addToWorkList(block);
         return block.firstInstruction;
     }
@@ -1209,7 +1127,43 @@ public final class GraphBuilder {
                 lastInstr = block.firstInstruction;
                 assert block.firstInstruction.next() == null;
 
-                iterateBytecodesForBlock(block);
+                if (block instanceof ExceptionBlock) {
+                    createExceptionDispatch((ExceptionBlock) block);
+                } else {
+                    iterateBytecodesForBlock(block);
+                }
+            }
+        }
+    }
+
+    private void createExceptionDispatch(ExceptionBlock block) {
+        if (block.handler == null) {
+            assert frameState.stackSize() == 1 : "only exception object expected on stack, actual size: " + frameState.stackSize();
+            if (Modifier.isSynchronized(method().accessFlags())) {
+                // unlock before exiting the method
+                int lockNumber = frameState.locksSize() - 1;
+                MonitorAddress lockAddress = null;
+                if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
+                    lockAddress = new MonitorAddress(lockNumber, graph);
+                    append(lockAddress);
+                }
+                append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
+                frameState.unlock();
+            }
+            append(new Unwind(frameState.apop(), graph));
+        } else {
+            assert frameState.stackSize() == 1;
+
+            if (block.handler.catchType().isResolved()) {
+                Instruction catchSuccessor = createTarget(block.handlerBlock, frameState);
+                Instruction nextDispatch = createTarget(block.next, frameState);
+                append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), frameState.duplicate(bci()), graph));
+            } else {
+                Deoptimize deopt = new Deoptimize(graph);
+                deopt.setMessage("unresolved " + block.handler.catchType().name());
+                append(deopt);
+                Instruction nextDispatch = createTarget(block.next, frameState);
+                append(new Goto(nextDispatch, frameState.duplicate(bci()), graph));
             }
         }
     }
@@ -1225,7 +1179,7 @@ public final class GraphBuilder {
 
         int bci = block.startBci;
         while (bci < endBCI) {
-            Block nextBlock = blockList[bci];
+            Block nextBlock = blockFromBci[bci];
             if (nextBlock != null && nextBlock != block) {
                 // we fell through to the next block, add a goto and break
                 Instruction next = createTarget(nextBlock, frameState);
@@ -1263,8 +1217,7 @@ public final class GraphBuilder {
         // connect to begin and set state
         // NOTE that inlining may have changed the block we are parsing
         assert end != null : "end should exist after iterating over bytecodes";
-        FrameState stateAtEnd = frameState.create(bci());
-        end.setStateAfter(stateAtEnd);
+        end.setStateAfter(frameState.create(bci()));
         return end;
     }
 
