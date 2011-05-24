@@ -49,13 +49,15 @@ public class FrameStateBuilder implements FrameStateAccess {
         this.locals = new Value[method.maxLocals()];
         this.stack = new Value[method.maxStackSize()];
 
+        int javaIndex = 0;
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
-            Local local = new Local(method.holder().kind(), index, graph);
+            Local local = new Local(method.holder().kind(), javaIndex, graph);
             local.setFlag(Value.Flag.NonNull, true);
             local.setDeclaredType(method.holder());
-            storeLocal(index, local);
+            storeLocal(javaIndex, local);
+            javaIndex = 1;
             index = 1;
         }
         RiSignature sig = method.signature();
@@ -68,8 +70,9 @@ public class FrameStateBuilder implements FrameStateAccess {
             if (type.isResolved()) {
                 local.setDeclaredType(type);
             }
-            storeLocal(index, local);
-            index += kind.sizeInSlots();
+            storeLocal(javaIndex, local);
+            javaIndex += kind.sizeInSlots();
+            index++;
         }
         this.locks = new ArrayList<Value>();
     }

@@ -962,7 +962,7 @@ public final class GraphBuilder {
         if (exactType == null && declaredType != null) {
             exactType = declaredType.exactType();
         }
-        if (exactType == null && receiver instanceof Local && ((Local) receiver).javaIndex() == 0) {
+        if (exactType == null && receiver instanceof Local && ((Local) receiver).index() == 0) {
             // the exact type isn't known, but the receiver is parameter 0 => use holder
             receiverType = compilation.method.holder();
             exactType = receiverType.exactType();
