@@ -165,13 +165,6 @@ public final class GraphBuilder {
 //            System.out.println("block " + blockID + " @ " + block.startBci);
         }
 
-        // 1. create the start block
-        Block startBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
-        BlockBegin startBlockBegin = new BlockBegin(0, startBlock.blockID, false, graph);
-        startBlock.firstInstruction = startBlockBegin;
-
-        graph.start().setStart(startBlockBegin);
-
         RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
         if (handlers != null && handlers.length > 0) {
             exceptionHandlers = new ArrayList<ExceptionHandler>(handlers.length);
@@ -187,13 +180,12 @@ public final class GraphBuilder {
             flags |= Flag.HasHandler.mask;
         }
 
-        mergeOrClone(startBlock, frameState);
+        // 1. create the start block
+        Block startBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
+        markOnWorkList(startBlock);
+        lastInstr = createTarget(startBlock, frameState);
+        graph.start().setStart(lastInstr);
 
-        // 3. setup internal state for appending instructions
-        lastInstr = startBlockBegin;
-        lastInstr.appendNext(null);
-
-        BlockBegin syncHandler = null;
         Block syncBlock = null;
         if (isSynchronized(rootMethod.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
@@ -204,15 +196,8 @@ public final class GraphBuilder {
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
             syncBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
-            syncHandler = new BlockBegin(Instruction.SYNCHRONIZATION_ENTRY_BCI, syncBlock.blockID, false, graph);
-            syncBlock.firstInstruction = syncHandler;
             markOnWorkList(syncBlock);
 
-            ExceptionBlock excBlock = new ExceptionBlock();
-            excBlock.startBci = -1;
-            excBlock.endBci = -1;
-            excBlock.blockID = ir.nextBlockNumber();
-            blockList.add(excBlock);
             ExceptionHandler h = new ExceptionHandler(new CiExceptionHandler(0, rootMethod.code().length, -1, 0, null));
             h.setEntryBlock(syncBlock);
             addExceptionHandler(h);
@@ -227,27 +212,45 @@ public final class GraphBuilder {
         addToWorkList(blockFromBci[0]);
         iterateAllBlocks();
 
-        if (syncBlock != null && syncHandler.stateBefore() != null) {
+        if (syncBlock != null && syncBlock.firstInstruction != null) {
             // generate unlocking code if the exception handler is reachable
             fillSyncHandler(rootMethodSynchronizedObject, syncBlock);
         }
 
-//        for (Node n : graph.getNodes()) {
-//            if (n instanceof FrameState) {
-//                boolean delete = false;
-//                if (n.usages().size() == 0 && n.predecessors().size() == 0) {
-//                    delete = true;
-//                }
+        for (Node n : graph.getNodes()) {
+            if (n instanceof Placeholder) {
+                Placeholder p = (Placeholder) n;
+
+                if (p == graph.start().successors().get(0)) {
+                    // nothing to do...
+                } else if (p.blockPredecessors().size() == 0) {
+                    assert p.next() == null;
+                    p.delete();
+                } else {
+                    assert p.blockPredecessors().size() == 1;
+                    for (Node pred : new ArrayList<Node>(p.predecessors())) {
+                        pred.successors().replace(p, p.next());
+                    }
+                    p.successors().clearAll();
+                    p.delete();
+                }
+            }
+        }
+        for (Node n : graph.getNodes()) {
+            if (n instanceof FrameState) {
+                boolean delete = false;
+                if (n.usages().size() == 0 && n.predecessors().size() == 0) {
+                    delete = true;
+                }
 //                if (n.predecessors().size() == 0 && n.usages().size() == 1 && n.usages().get(0) instanceof BlockBegin) {
 //                    n.usages().get(0).inputs().replace(n, null);
 //                    delete = true;
 //                }
-//                if (delete) {
-//                    n.delete();
-//                    System.out.println("deleted framestate");
-//                }
-//            }
-//        }
+                if (delete) {
+                    n.delete();
+                }
+            }
+        }
     }
 
     private Block nextBlock(int bci) {
@@ -287,44 +290,44 @@ public final class GraphBuilder {
 
     public void mergeOrClone(Block target, FrameStateAccess newState) {
         Instruction first = target.firstInstruction;
-        int bci = target.startBci;
-        boolean loopHeader = target.isLoopHeader;
+        assert first instanceof StateSplit;
 
-        FrameState existingState;
-        if (first instanceof Placeholder) {
-            existingState = ((Placeholder) first).stateBefore();
-        } else {
-            assert first instanceof BlockBegin;
-            existingState = ((BlockBegin) first).stateBefore();
-        }
+        int bci = target.startBci;
+
+        FrameState existingState = ((StateSplit) first).stateBefore();
 
         if (existingState == null) {
+            assert first instanceof BlockBegin ^ !target.isLoopHeader : "isLoopHeader: " + target.isLoopHeader;
+
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci);
 
             // if the block is a loop header, insert all necessary phis
-            if (loopHeader) {
+            if (target.isLoopHeader) {
                 assert first instanceof BlockBegin;
                 insertLoopPhis((BlockBegin) first, duplicate);
                 ((BlockBegin) first).setStateBefore(duplicate);
             } else {
-                if (first instanceof Placeholder) {
-                    ((Placeholder) first).setStateBefore(duplicate);
-                } else {
-                    ((BlockBegin) first).setStateBefore(duplicate);
-                }
+                ((StateSplit) first).setStateBefore(duplicate);
             }
         } else {
-
             if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
                 // stacks or locks do not match--bytecodes would not verify
                 throw new CiBailout("stack or locks do not match");
             }
-
             assert existingState.localsSize() == newState.localsSize();
             assert existingState.stackSize() == newState.stackSize();
 
-            existingState.merge((BlockBegin) first, newState);
+            if (first instanceof Placeholder) {
+                BlockBegin merge = new BlockBegin(existingState.bci, target.blockID, target.isLoopHeader, graph);
+                for (Node n : new ArrayList<Node>(first.predecessors())) {
+                    n.successors().replace(first, merge);
+                }
+                target.firstInstruction = merge;
+                merge.setStateBefore(existingState);
+            }
+
+            existingState.merge((BlockBegin) target.firstInstruction, newState);
         }
 
         for (int j = 0; j < frameState.localsSize() + frameState.stackSize(); ++j) {
@@ -411,7 +414,7 @@ public final class GraphBuilder {
             }
             FrameState entryState = frameState.duplicateWithEmptyStack(bci);
 
-            BlockBegin entry = new BlockBegin(bci, ir.nextBlockNumber(), false, graph);
+            StateSplit entry = new Placeholder(graph);
             entry.setStateBefore(entryState);
             ExceptionObject exception = new ExceptionObject(graph);
             entry.appendNext(exception);
@@ -1054,12 +1057,14 @@ public final class GraphBuilder {
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
         assert block != null && stateAfter != null;
+        assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null : "non-loop block must be iterated after all its predecessors";
+
         if (block.firstInstruction == null) {
-//            if (block.isLoopHeader) {
+            if (block.isLoopHeader) {
                 block.firstInstruction = new BlockBegin(block.startBci, block.blockID, block.isLoopHeader, graph);
-//            } else {
-//                block.firstInstruction = new Placeholder(graph);
-//            }
+            } else {
+                block.firstInstruction = new Placeholder(graph);
+            }
         }
         mergeOrClone(block, stateAfter);
         addToWorkList(block);
@@ -1119,9 +1124,9 @@ public final class GraphBuilder {
             if (!isVisited(block)) {
                 markVisited(block);
                 // now parse the block
-                frameState.initializeFrom(((BlockBegin) block.firstInstruction).stateBefore());
+                frameState.initializeFrom(((StateSplit) block.firstInstruction).stateBefore());
                 lastInstr = block.firstInstruction;
-                assert block.firstInstruction.next() == null;
+                assert block.firstInstruction.next() == null : "instructions already appended at block " + block.blockID;
 
                 if (block instanceof ExceptionBlock) {
                     createExceptionDispatch((ExceptionBlock) block);

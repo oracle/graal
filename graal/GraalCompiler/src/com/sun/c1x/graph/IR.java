@@ -129,9 +129,9 @@ public class IR {
 
         if (orderedBlocks == null) {
             CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
-            getHIRStartBlock().iteratePreOrder(finder);
+            ((BlockBegin) getHIRStartBlock()).iteratePreOrder(finder);
             finder.splitCriticalEdges();
-            ComputeLinearScanOrder computeLinearScanOrder = new ComputeLinearScanOrder(compilation.stats.blockCount, getHIRStartBlock());
+            ComputeLinearScanOrder computeLinearScanOrder = new ComputeLinearScanOrder(compilation.stats.blockCount, (BlockBegin) getHIRStartBlock());
             List<BlockBegin> blocks = computeLinearScanOrder.linearScanOrder();
             orderedBlocks = new ArrayList<LIRBlock>();
 
@@ -187,7 +187,7 @@ public class IR {
             TTY.println("IR for " + compilation.method);
             final InstructionPrinter ip = new InstructionPrinter(TTY.out());
             final BlockPrinter bp = new BlockPrinter(this, ip, cfgOnly);
-            getHIRStartBlock().iteratePreOrder(bp);
+            ((BlockBegin) getHIRStartBlock()).iteratePreOrder(bp);
         }
     }
 
@@ -287,7 +287,7 @@ public class IR {
         return maxLocks;
     }
 
-    public BlockBegin getHIRStartBlock() {
-        return (BlockBegin) compilation.graph.start().successors().get(0);
+    public Instruction getHIRStartBlock() {
+        return (Instruction) compilation.graph.start().successors().get(0);
     }
 }

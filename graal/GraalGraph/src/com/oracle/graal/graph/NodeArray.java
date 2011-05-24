@@ -130,4 +130,18 @@ public class NodeArray extends AbstractList<Node> {
     public int size() {
         return nodes.length;
     }
+
+    public void replace(Node node, Node with) {
+        for (int i = 0; i < nodes.length; i++) {
+            if (get(i) == node) {
+                set(i, with);
+            }
+        }
+    }
+
+    public void clearAll() {
+        for (int i = 0; i < nodes.length; i++) {
+            set(i, Node.Null);
+        }
+    }
 }
