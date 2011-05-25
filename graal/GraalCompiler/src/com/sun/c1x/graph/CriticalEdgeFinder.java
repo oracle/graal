@@ -108,7 +108,10 @@ public class CriticalEdgeFinder {
         newSucc.getInstructions().add(e);
 
         // link predecessor to new block
-        ((BlockEnd) source.getInstructions().get(source.getInstructions().size() - 1)).successors().replace(target.getInstructions().get(0), newSucc.getInstructions().get(0));
+//        if (source.getInstructions().size() > 0) {
+            source.getInstructions().get(source.getInstructions().size() - 1).successors().replace(target.getInstructions().get(0), newSucc.getInstructions().get(0));
+//        }
+
 
         source.substituteSuccessor(target, newSucc);
         target.substitutePredecessor(source, newSucc);

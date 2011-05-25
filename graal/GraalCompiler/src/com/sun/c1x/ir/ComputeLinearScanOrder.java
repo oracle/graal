@@ -461,9 +461,9 @@ public final class ComputeLinearScanOrder {
 
         // the start block is always the first block in the linear scan order
         linearScanOrder = new ArrayList<LIRBlock>(numBlocks);
-        appendBlock(startBlock);
+//        appendBlock(startBlock);
 
-        LIRBlock stdEntry = startBlock.suxAt(0);
+        LIRBlock stdEntry = startBlock; //.suxAt(0);
 
         // start processing with standard entry block
         assert workList.isEmpty() : "list must be empty before processing";

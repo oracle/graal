@@ -174,12 +174,12 @@ public final class BlockBegin extends StateSplit {
         if (end() != null) {
             builder.append(" -> ");
             boolean hasSucc = false;
-            for (BlockBegin s : end().blockSuccessors()) {
+            for (Instruction s : end().blockSuccessors()) {
                 if (hasSucc) {
                     builder.append(", ");
                 }
                 builder.append("#");
-                builder.append(s.blockID);
+                builder.append(s.id());
                 hasSucc = true;
             }
         }

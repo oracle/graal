@@ -35,8 +35,7 @@ public abstract class BlockEnd extends Instruction {
 
     private static final int INPUT_COUNT = 0;
 
-    private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_STATE_AFTER = 0;
+    private static final int SUCCESSOR_COUNT = 0;
     private final int blockSuccessorCount;
 
     @Override
