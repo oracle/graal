@@ -1087,8 +1087,6 @@ public final class GraphBuilder {
     }
 
     private void fillSyncHandler(Value lock, Block syncHandler) {
-        FrameState origState = frameState.create(-1);
-
         lastInstr = syncHandler.firstInstruction;
         while (lastInstr.next() != null) {
             // go forward to the end of the block
@@ -1096,7 +1094,6 @@ public final class GraphBuilder {
         }
 
         frameState.initializeFrom(((StateSplit) syncHandler.firstInstruction).stateBefore());
-        int bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
 
         assert lock != null;
         assert frameState.locksSize() > 0 && frameState.lockAt(frameState.locksSize() - 1) == lock;
