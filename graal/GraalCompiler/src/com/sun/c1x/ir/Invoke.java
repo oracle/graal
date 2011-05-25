@@ -70,8 +70,8 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
      * The entry to the exception dispatch chain for this invoke.
      */
     @Override
-    public BlockBegin exceptionEdge() {
-        return (BlockBegin) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
+    public Instruction exceptionEdge() {
+        return (Instruction) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
     }
 
     public Instruction setExceptionEdge(Instruction n) {

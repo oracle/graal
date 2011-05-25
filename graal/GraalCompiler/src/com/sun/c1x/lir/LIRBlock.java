@@ -29,6 +29,7 @@ import com.sun.c1x.alloc.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
+import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -39,6 +40,7 @@ public final class LIRBlock {
     public final Label label = new Label();
     private LIRList lir;
     private final int blockID;
+    private FrameState lastState;
     private List<Instruction> instructions = new ArrayList<Instruction>(4);
     private List<LIRBlock> predecessors = new ArrayList<LIRBlock>(4);
     private List<LIRBlock> successors = new ArrayList<LIRBlock>(4);
@@ -264,5 +266,13 @@ public final class LIRBlock {
                 predecessors.set(i, newSucc);
             }
         }
+    }
+
+    public void setLastState(FrameState fs) {
+        lastState = fs;
+    }
+
+    public FrameState lastState() {
+        return lastState;
     }
 }

@@ -165,7 +165,7 @@ public class IR {
             TTY.println("IR for " + compilation.method);
             final InstructionPrinter ip = new InstructionPrinter(TTY.out());
             final BlockPrinter bp = new BlockPrinter(this, ip, cfgOnly);
-            getHIRStartBlock().iteratePreOrder(bp);
+            //getHIRStartBlock().iteratePreOrder(bp);
         }
     }
 

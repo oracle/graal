@@ -27,6 +27,7 @@ import static com.sun.cri.bytecode.Bytecodes.MemoryBarriers.*;
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
 import static com.sun.cri.ci.CiValue.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -257,6 +258,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             TTY.println("END Generating LIR for block B" + block.blockID());
         }
 
+        block.setLastState(lastState);
         this.currentBlock = null;
         blockDoEpilog();
     }
@@ -273,12 +275,18 @@ public abstract class LIRGenerator extends ValueVisitor {
         return x.operand();
     }
 
-    private void setOperandsForLocals() {
+    private FrameState setOperandsForLocals() {
         CiCallingConvention args = compilation.frameMap().incomingArguments();
+        int bci = 0;
+        if (Modifier.isSynchronized(compilation.method.accessFlags())) {
+            bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+        }
+        FrameState fs = new FrameState(bci, compilation.method.maxLocals(), 0, 0, compilation.graph);
         for (Node node : compilation.graph.start().usages()) {
             if (node instanceof Local) {
                 Local local = (Local) node;
                 int i = local.index();
+                fs.storeLocal(i, local);
 
                 CiValue src = args.locations[i];
                 assert src.isLegal() : "check";
@@ -290,6 +298,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 setResult(local, dest);
             }
         }
+        return fs;
     }
 
     @Override
@@ -892,7 +901,12 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (prologue != null) {
                 emitXir(prologue, null, null, null, false);
             }
-            setOperandsForLocals();
+            FrameState fs = setOperandsForLocals();
+            lastState = fs;
+        } else if (block.blockPredecessors().size() == 1) {
+            FrameState fs = block.blockPredecessors().get(0).lastState();
+            assert fs != null;
+            lastState = fs;
         }
     }
 

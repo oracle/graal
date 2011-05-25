@@ -117,11 +117,11 @@ public abstract class Instruction extends Value {
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public List<Instruction> blockPredecessors() {
-        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
+        /*if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
             return Collections.EMPTY_LIST;
-        } else {
+        } else {)*/
             return (List) Collections.unmodifiableList(predecessors());
-        }
+        //}
     }
 
     /**
@@ -130,11 +130,11 @@ public abstract class Instruction extends Value {
      */
     public int numberOfPreds() {
         // ignore the graph root
-        if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
+        /*if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
             return 0;
-        } else {
+        } else {*/
             return predecessors().size();
-        }
+        //}
     }
 
     public Instruction predAt(int j) {
