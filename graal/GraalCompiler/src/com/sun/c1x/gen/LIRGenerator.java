@@ -1456,7 +1456,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         assert state != null;
         LIRBlock exceptionEdge = null;
         if (x instanceof ExceptionEdgeInstruction) {
-            BlockBegin begin = ((ExceptionEdgeInstruction) x).exceptionEdge();
+            Instruction begin = ((ExceptionEdgeInstruction) x).exceptionEdge();
             if (begin != null) {
                 exceptionEdge = getLIRBlock(begin);
             }

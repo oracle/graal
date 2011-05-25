@@ -24,14 +24,12 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 
-public class Placeholder extends Instruction {
+public class Placeholder extends StateSplit {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_STATE_BEFORE = 0;
+    private static final int INPUT_COUNT = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -43,24 +41,6 @@ public class Placeholder extends Instruction {
     @Override
     protected int successorCount() {
         return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The state for this instruction.
-     */
-    public FrameState stateBefore() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_BEFORE);
-    }
-
-    public FrameState setStateBefore(FrameState n) {
-        FrameState oldState = stateBefore();
-        try {
-            return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_BEFORE, n);
-        } finally {
-            if (oldState != n && oldState != null) {
-                oldState.delete();
-            }
-        }
     }
 
     public Placeholder(Graph graph) {

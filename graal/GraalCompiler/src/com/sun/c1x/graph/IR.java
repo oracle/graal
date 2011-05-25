@@ -216,7 +216,7 @@ public class IR {
         return maxLocks;
     }
 
-    public BlockBegin getHIRStartBlock() {
-        return (BlockBegin) compilation.graph.start().successors().get(0);
+    public Instruction getHIRStartBlock() {
+        return (Instruction) compilation.graph.start().successors().get(0);
     }
 }

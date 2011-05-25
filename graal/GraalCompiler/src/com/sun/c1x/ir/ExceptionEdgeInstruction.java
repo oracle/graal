@@ -24,5 +24,5 @@ package com.sun.c1x.ir;
 
 
 public interface ExceptionEdgeInstruction {
-   BlockBegin exceptionEdge();
+    StateSplit exceptionEdge();
 }

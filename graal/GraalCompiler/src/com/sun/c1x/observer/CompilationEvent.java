@@ -43,7 +43,7 @@ public class CompilationEvent {
 
     private final C1XCompilation compilation;
     private final String label;
-    private BlockBegin startBlock;
+    private Instruction startBlock;
 
     private BlockMap blockMap;
     private int codeSize = -1;
@@ -67,14 +67,14 @@ public class CompilationEvent {
         this.compilation = compilation;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, BlockBegin startBlock, boolean hirValid, boolean lirValid) {
+    public CompilationEvent(C1XCompilation compilation, String label, Instruction startBlock, boolean hirValid, boolean lirValid) {
         this(compilation, label);
         this.startBlock = startBlock;
         this.hirValid = hirValid;
         this.lirValid = lirValid;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, BlockBegin startBlock, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
+    public CompilationEvent(C1XCompilation compilation, String label, Instruction startBlock, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
         this(compilation, label, startBlock, hirValid, lirValid);
         this.targetMethod = targetMethod;
     }
@@ -108,7 +108,7 @@ public class CompilationEvent {
         return blockMap;
     }
 
-    public BlockBegin getStartBlock() {
+    public Instruction getStartBlock() {
         return startBlock;
     }
 
