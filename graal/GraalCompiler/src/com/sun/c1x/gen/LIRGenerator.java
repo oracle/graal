@@ -1643,11 +1643,11 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitUnwind(Unwind x) {
-        // TODO ls: this needs some thorough testing...
-        CiValue operand = resultOperandFor(x.kind);
-        CiValue result = force(x.exception(), operand);
-        ArrayList<CiValue> args = new ArrayList<CiValue>(1);
-        args.add(result);
+        // move exception oop into fixed register
+        CiCallingConvention callingConvention = compilation.frameMap().getCallingConvention(new CiKind[]{CiKind.Object}, RuntimeCall);
+        CiValue argumentOperand = callingConvention.locations[0];
+        lir.move(makeOperand(x.exception()), argumentOperand);
+        List<CiValue> args = new ArrayList<CiValue>(1);
         lir.callRuntime(CiRuntimeCall.UnwindException, CiValue.IllegalValue, args, null);
         setNoResult(x);
     }
