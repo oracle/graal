@@ -482,7 +482,7 @@ public abstract class LIRInstruction {
     }
 
     public final LIRBlock exceptionEdge() {
-        return info.exceptionEdge;
+        return (info == null) ? null : info.exceptionEdge;
     }
 
     @Override

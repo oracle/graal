@@ -24,6 +24,7 @@ package com.oracle.graal.graph;
 
 import java.util.AbstractList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 
 public class NodeArray extends AbstractList<Node> {
@@ -136,6 +137,67 @@ public class NodeArray extends AbstractList<Node> {
             }
         }
         return result;
+    }
+
+    public void setAndClear(int index, Node clearedNode, int clearedIndex) {
+        assert self().successors == this;
+        Node value = clearedNode.successors.get(clearedIndex);
+        assert value != Node.Null;
+        clearedNode.successors.nodes[clearedIndex] = Node.Null;
+        set(index, Node.Null);
+        nodes[index] = value;
+
+        int numberOfMatchingSuccs = 0;
+        for (int i = 0; i < clearedIndex; ++i) {
+            if (clearedNode.successors.get(i) == value) {
+                numberOfMatchingSuccs++;
+            }
+        }
+
+        for (int i = 0; i < value.predecessors.size(); ++i) {
+            if (value.predecessors.get(i) == clearedNode) {
+                if (numberOfMatchingSuccs == 0) {
+                    value.predecessors.set(i, self());
+                    break;
+                } else {
+                    numberOfMatchingSuccs--;
+                }
+            }
+        }
+    }
+
+    public int replaceKeepOrder(Node targetNode, Node replacement) {
+        int deletedSuccessorIndex = -1;
+        if (this == self().successors) {
+            int firstIndex = -1;
+            for (int i = 0; i < replacement.successors.size(); ++i) {
+                if (replacement.successors.get(i) == self()) {
+                    replacement.successors().set(i, Node.Null);
+                    firstIndex = i;
+                    break;
+                }
+            }
+
+            assert firstIndex != -1;
+
+            for (int i = 0; i < this.size(); ++i) {
+                if (nodes[i] == targetNode) {
+                    replacement.successors().nodes[firstIndex] = targetNode;
+                    for (int j = 0; j < targetNode.predecessors.size(); ++j) {
+                        if (targetNode.predecessors.get(j) == self()) {
+                            targetNode.predecessors.set(j, replacement);
+                            break;
+                        }
+                    }
+                    nodes[i] = Node.Null;
+                    deletedSuccessorIndex = i;
+                    break;
+                }
+            }
+        } else {
+            assert false : "not supported";
+        }
+        return deletedSuccessorIndex;
     }
 
     public int size() {

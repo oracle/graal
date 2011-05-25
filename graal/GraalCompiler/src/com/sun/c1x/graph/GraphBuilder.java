@@ -178,6 +178,7 @@ public final class GraphBuilder {
                 }
             }
             flags |= Flag.HasHandler.mask;
+
         }
 
         // 1. create the start block
@@ -223,15 +224,13 @@ public final class GraphBuilder {
 
                 /*if (p == graph.start().successors().get(0)) {
                     // nothing to do...
-                } else*/ if (p.blockPredecessors().size() == 0) {
+                } else*/
+                if (p.blockPredecessors().size() == 0) {
                     assert p.next() == null;
                     p.delete();
                 } else {
                     assert p.blockPredecessors().size() == 1;
-                    for (Node pred : new ArrayList<Node>(p.predecessors())) {
-                        pred.successors().replace(p, p.next());
-                    }
-                    p.successors().clearAll();
+                    p.successors().replaceKeepOrder(p.next(), p.blockPredecessors().get(0));
                     p.delete();
                 }
             }
@@ -1064,6 +1063,7 @@ public final class GraphBuilder {
     }
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
+
         assert block != null && stateAfter != null;
         assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null : "non-loop block must be iterated after all its predecessors";
 
@@ -1177,11 +1177,6 @@ public final class GraphBuilder {
     }
 
     private void appendGoto(Instruction target) {
-        //lastInstr.appendNext(target);
-        append(new Goto(target, graph));
-    }
-
-    private void appendGoto2(Instruction target) {
         lastInstr.appendNext(target);
         //append(new Goto(target, graph));
     }

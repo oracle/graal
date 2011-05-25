@@ -725,7 +725,7 @@ public final class LinearScan {
         // this is checked by these assertions to be sure about it.
         // the entry block may have incoming
         // values in registers, which is ok.
-        if (!operand.isVariable() /*&& block != ir.startBlock*/) {
+        if (!operand.isVariable() && block != ir.startBlock) {
             if (isProcessed(operand)) {
                 assert liveKill.get(operandNumber(operand)) : "using fixed register that is not defined in this block";
             }
@@ -811,6 +811,8 @@ public final class LinearScan {
             if (C1XOptions.DetailedAsserts) {
                 reportFailure(numBlocks);
             }
+
+            TTY.println("preds=" + startBlock.blockPredecessors().size() + ", succs=" + startBlock.blockSuccessors().size());
 
             // bailout of if this occurs in product mode.
             throw new CiBailout("liveIn set of first block must be empty");
