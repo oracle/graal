@@ -77,7 +77,7 @@ public class HotSpotOptions {
             }
             if (value != null) {
                 f.set(null, value);
-                Logger.info("Set option " + fieldName + " to " + value);
+                //Logger.info("Set option " + fieldName + " to " + value);
             } else {
                 Logger.info("Wrong value \"" + valueString + "\" for option " + fieldName);
                 return false;

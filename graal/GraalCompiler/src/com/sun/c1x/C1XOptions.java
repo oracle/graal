@@ -116,7 +116,7 @@ public final class C1XOptions {
     public static int     SequentialSwitchLimit              = 4;
     public static int     RangeTestsSwitchDensity            = 5;
 
-    public static boolean DetailedAsserts                    = ____;
+    public static boolean DetailedAsserts                    = true;//____;
 
     // Runtime settings
     public static int     ReadPrefetchInstr                  = 0;

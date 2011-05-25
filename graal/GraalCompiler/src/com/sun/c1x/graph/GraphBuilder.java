@@ -221,18 +221,11 @@ public final class GraphBuilder {
         for (Node n : graph.getNodes()) {
             if (n instanceof Placeholder) {
                 Placeholder p = (Placeholder) n;
-
-                /*if (p == graph.start().successors().get(0)) {
-                    // nothing to do...
-                } else*/
-                if (p.blockPredecessors().size() == 0) {
-                    assert p.next() == null;
-                    p.delete();
-                } else {
-                    assert p.blockPredecessors().size() == 1;
-                    p.successors().replaceKeepOrder(p.next(), p.blockPredecessors().get(0));
-                    p.delete();
-                }
+                assert p.blockPredecessors().size() == 1;
+                Node pred = p.blockPredecessors().get(0);
+                int predIndex = p.predecessorsIndex().get(0);
+                pred.successors().setAndClear(predIndex, p, 0);
+                p.delete();
             }
         }
 
@@ -326,9 +319,10 @@ public final class GraphBuilder {
 
             if (first instanceof Placeholder) {
                 BlockBegin merge = new BlockBegin(existingState.bci, target.blockID, target.isLoopHeader, graph);
-                for (Node n : new ArrayList<Node>(first.predecessors())) {
-                    n.successors().replace(first, merge);
-                }
+
+                Placeholder p = (Placeholder) first;
+                assert p.next() == null;
+                p.replace(merge);
                 target.firstInstruction = merge;
                 merge.setStateBefore(existingState);
             }
@@ -1177,8 +1171,13 @@ public final class GraphBuilder {
     }
 
     private void appendGoto(Instruction target) {
-        lastInstr.appendNext(target);
-        //append(new Goto(target, graph));
+        //if (target instanceof BlockBegin && !((BlockBegin)target).isLoopHeader) {
+        //    System.out.println("NOTOMITTED");
+            //append(new Goto(target, graph));
+        //} else {
+        //    System.out.println("omitted");
+            lastInstr.appendNext(target);
+        //}
     }
 
     private void iterateBytecodesForBlock(Block block) {

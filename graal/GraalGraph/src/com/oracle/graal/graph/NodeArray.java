@@ -30,7 +30,7 @@ import java.util.Iterator;
 public class NodeArray extends AbstractList<Node> {
 
     private final Node node;
-    private final Node[] nodes;
+    final Node[] nodes;
 
     public NodeArray(Node node, int length) {
         this.node = node;
@@ -62,40 +62,17 @@ public class NodeArray extends AbstractList<Node> {
             } else {
                 assert self().successors == this;
                 if (old != null) {
-                    old.predecessors.remove(self());
+                    for (int i = 0; i < old.predecessors.size(); ++i) {
+                        Node cur = old.predecessors.get(i);
+                        if (cur == self() && old.predecessorsIndex.get(i) == index) {
+                            old.predecessors.remove(i);
+                            old.predecessorsIndex.remove(i);
+                        }
+                    }
                 }
                 if (node != null) {
                     node.predecessors.add(self());
-                }
-            }
-        }
-
-        return old;
-    }
-
-    /**
-     * Sets the specified input/successor to the given node, and inserts the back edge (usage/predecessor) at the given index.
-     */
-    public Node set(int index, Node node, int backIndex) {
-        assert node == Node.Null || node.graph == self().graph;
-        Node old = nodes[index];
-
-        if (old != node) {
-            nodes[index] = node;
-            if (self().inputs == this) {
-                if (old != null) {
-                    old.usages.remove(self());
-                }
-                if (node != null) {
-                    node.usages.add(backIndex, self());
-                }
-            } else {
-                assert self().successors == this;
-                if (old != null) {
-                    old.predecessors.remove(self());
-                }
-                if (node != null) {
-                    node.predecessors.add(backIndex, self());
+                    node.predecessorsIndex.add(index);
                 }
             }
         }
@@ -147,57 +124,12 @@ public class NodeArray extends AbstractList<Node> {
         set(index, Node.Null);
         nodes[index] = value;
 
-        int numberOfMatchingSuccs = 0;
-        for (int i = 0; i < clearedIndex; ++i) {
-            if (clearedNode.successors.get(i) == value) {
-                numberOfMatchingSuccs++;
-            }
-        }
-
         for (int i = 0; i < value.predecessors.size(); ++i) {
-            if (value.predecessors.get(i) == clearedNode) {
-                if (numberOfMatchingSuccs == 0) {
-                    value.predecessors.set(i, self());
-                    break;
-                } else {
-                    numberOfMatchingSuccs--;
-                }
+            if (value.predecessors.get(i) == clearedNode && value.predecessorsIndex.get(i) == clearedIndex) {
+                value.predecessors.set(i, self());
+                value.predecessorsIndex.set(i, index);
             }
         }
-    }
-
-    public int replaceKeepOrder(Node targetNode, Node replacement) {
-        int deletedSuccessorIndex = -1;
-        if (this == self().successors) {
-            int firstIndex = -1;
-            for (int i = 0; i < replacement.successors.size(); ++i) {
-                if (replacement.successors.get(i) == self()) {
-                    replacement.successors().set(i, Node.Null);
-                    firstIndex = i;
-                    break;
-                }
-            }
-
-            assert firstIndex != -1;
-
-            for (int i = 0; i < this.size(); ++i) {
-                if (nodes[i] == targetNode) {
-                    replacement.successors().nodes[firstIndex] = targetNode;
-                    for (int j = 0; j < targetNode.predecessors.size(); ++j) {
-                        if (targetNode.predecessors.get(j) == self()) {
-                            targetNode.predecessors.set(j, replacement);
-                            break;
-                        }
-                    }
-                    nodes[i] = Node.Null;
-                    deletedSuccessorIndex = i;
-                    break;
-                }
-            }
-        } else {
-            assert false : "not supported";
-        }
-        return deletedSuccessorIndex;
     }
 
     public int size() {

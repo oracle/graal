@@ -105,28 +105,19 @@ public class CriticalEdgeFinder {
 
         // This goto is not a safepoint.
         Goto e = new Goto(null, graph);
-
-        //TTY.println("SPLITTING NODE");
-        // link predecessor to new block
-//        if (source.getInstructions().size() > 0) {
-
         Instruction sourceInstruction = source.getInstructions().get(source.getInstructions().size() - 1);
         Instruction targetInstruction = target.getInstructions().get(0);
-        int replacedIndex = sourceInstruction.successors().indexOf(targetInstruction);
+        int sourceInstructionPredIndex = targetInstruction.predecessors().indexOf(sourceInstruction);
+        int replacedIndex = targetInstruction.predecessorsIndex().get(sourceInstructionPredIndex);
         assert replacedIndex != -1 && sourceInstruction.successors().get(replacedIndex) != null;
         e.successors().setAndClear(1, sourceInstruction, replacedIndex);
         sourceInstruction.successors().set(replacedIndex, e);
         newSucc.getInstructions().add(e);
-       // assert e.successors().get(0) != null;
         assert e.defaultSuccessor() != null;
-//        }
-
-
         source.substituteSuccessor(target, newSucc);
         target.substitutePredecessor(source, newSucc);
         newSucc.blockPredecessors().add(source);
         newSucc.blockSuccessors().add(target);
-
         return newSucc;
     }
 }
