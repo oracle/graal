@@ -127,6 +127,17 @@ public class NodeArray extends AbstractList<Node> {
         return false;
     }
 
+    public int replace(Node toReplace, Node replacement) {
+        int result = 0;
+        for (int i = 0; i < nodes.length; i++) {
+            if (nodes[i] == toReplace) {
+                set(i, replacement);
+                result++;
+            }
+        }
+        return result;
+    }
+
     public int size() {
         return nodes.length;
     }

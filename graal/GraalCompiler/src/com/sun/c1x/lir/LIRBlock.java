@@ -249,4 +249,20 @@ public final class LIRBlock {
     public void setInstructions(List<Instruction> list) {
         instructions = list;
     }
+
+    public void substituteSuccessor(LIRBlock target, LIRBlock newSucc) {
+        for (int i = 0; i < successors.size(); ++i) {
+            if (successors.get(i) == target) {
+                successors.set(i, newSucc);
+            }
+        }
+    }
+
+    public void substitutePredecessor(LIRBlock source, LIRBlock newSucc) {
+        for (int i = 0; i < predecessors.size(); ++i) {
+            if (predecessors.get(i) == source) {
+                predecessors.set(i, newSucc);
+            }
+        }
+    }
 }

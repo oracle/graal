@@ -83,6 +83,6 @@ public final class TableSwitch extends Switch {
             out.printf("case %5d: B%d%n", lowKey() + i, blockSuccessors().get(i).blockID);
         }
         INSTRUCTION.advance(out);
-        out.print("default   : B").print(defaultSuccessor().blockID);
+        out.print("default   : ").print(defaultSuccessor());
     }
 }

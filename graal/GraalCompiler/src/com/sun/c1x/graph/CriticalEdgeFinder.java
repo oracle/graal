@@ -24,9 +24,11 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
+import com.sun.c1x.lir.*;
 
 /**
  * This class finds and splits "critical" edges in the control flow graph.
@@ -34,26 +36,31 @@ import com.sun.c1x.ir.*;
  * has more than one successor and {@code B} has more than one predecessor. Such
  * edges are split by adding a block between the two blocks.
  */
-public class CriticalEdgeFinder implements BlockClosure {
+public class CriticalEdgeFinder {
 
-    private final IR ir;
+    private final List<LIRBlock> lirBlocks;
+    private final Graph graph;
 
     /**
      * The graph edges represented as a map from source to target nodes.
      * Using a linked hash map makes compilation tracing more deterministic and thus eases debugging.
      */
-    private Map<BlockBegin, Set<BlockBegin>> edges = C1XOptions.DetailedAsserts ?
-                    new LinkedHashMap<BlockBegin, Set<BlockBegin>>() :
-                    new HashMap<BlockBegin, Set<BlockBegin>>();
+    private Map<LIRBlock, Set<LIRBlock>> edges = C1XOptions.DetailedAsserts ?
+                    new LinkedHashMap<LIRBlock, Set<LIRBlock>>() :
+                    new HashMap<LIRBlock, Set<LIRBlock>>();
 
-    public CriticalEdgeFinder(IR ir) {
-        this.ir = ir;
+    public CriticalEdgeFinder(List<LIRBlock> lirBlocks, Graph graph) {
+        this.lirBlocks = lirBlocks;
+        this.graph = graph;
+        for (LIRBlock block : lirBlocks) {
+            apply(block);
+        }
+
     }
 
-    public void apply(BlockBegin block) {
-        BlockEnd end = block.end();
-        if (end.blockSuccessorCount() >= 2) {
-            for (BlockBegin succ : end.blockSuccessors()) {
+    private void apply(LIRBlock block) {
+        if (block.numberOfSux() >= 2) {
+            for (LIRBlock succ : block.blockSuccessors()) {
                 if (succ.numberOfPreds() >= 2) {
                     // TODO: (tw) probably we don't have to make it a critical edge if succ only contains the _same_ predecessor multiple times.
                     recordCriticalEdge(block, succ);
@@ -62,23 +69,78 @@ public class CriticalEdgeFinder implements BlockClosure {
         }
     }
 
-    private void recordCriticalEdge(BlockBegin block, BlockBegin succ) {
+    private void recordCriticalEdge(LIRBlock block, LIRBlock succ) {
         if (!edges.containsKey(block)) {
-            edges.put(block, new HashSet<BlockBegin>());
+            edges.put(block, new HashSet<LIRBlock>());
         }
 
         edges.get(block).add(succ);
     }
 
     public void splitCriticalEdges() {
-        for (Map.Entry<BlockBegin, Set<BlockBegin>> entry : edges.entrySet()) {
-            BlockBegin from = entry.getKey();
-            for (BlockBegin to : entry.getValue()) {
-                BlockBegin split = ir.splitEdge(from, to);
+        for (Map.Entry<LIRBlock, Set<LIRBlock>> entry : edges.entrySet()) {
+            LIRBlock from = entry.getKey();
+            for (LIRBlock to : entry.getValue()) {
+                LIRBlock split = splitEdge(from, to);
                 if (C1XOptions.PrintHIR) {
-                    TTY.println("Split edge between block %d and block %d, creating new block %d", from.blockID, to.blockID, split.blockID);
+                    TTY.println("Split edge between block %d and block %d, creating new block %d", from.blockID(), to.blockID(), split.blockID());
                 }
             }
         }
+    }
+
+
+    /**
+     * Creates and inserts a new block between this block and the specified successor,
+     * altering the successor and predecessor lists of involved blocks appropriately.
+     * @param source the source of the edge
+     * @param target the successor before which to insert a block
+     * @return the new block inserted
+     */
+    public LIRBlock splitEdge(LIRBlock source, LIRBlock target) {
+
+        int backEdgeIndex = target.blockPredecessors().indexOf(source);
+
+        // create new successor and mark it for special block order treatment
+        LIRBlock newSucc = new LIRBlock(lirBlocks.size());
+        lirBlocks.add(newSucc);
+
+        List<Integer> removePhiInputs = null;
+        for (int i = backEdgeIndex + 1; i < target.blockPredecessors().size(); ++i) {
+            if (target.blockPredecessors().get(i) == source) {
+                if (removePhiInputs == null) {
+                    removePhiInputs = new ArrayList<Integer>(4);
+                }
+                removePhiInputs.add(i);
+            }
+        }
+
+        // This goto is not a safepoint.
+        Goto e = new Goto(target.getInstructions().get(0), graph);
+        newSucc.getInstructions().add(e);
+        //e.reorderSuccessor(0, backEdgeIndex);
+
+        // link predecessor to new block
+        ((BlockEnd) source.getInstructions().get(source.getInstructions().size() - 1)).successors().replace(target.getInstructions().get(0), newSucc.getInstructions().get(0));
+/*        if (removePhiInputs != null && removePhiInputs.size() > 0) {
+
+            for (Node n : target.getInstructions().get(0).usages()) {
+                if (n instanceof Phi) {
+                    Phi phi = (Phi) n;
+                    int correction = 0;
+                    for (int index : removePhiInputs) {
+                        phi.removeInput(index - correction);
+                        correction++;
+                    }
+                }
+            }
+        }*/
+
+        source.substituteSuccessor(target, newSucc);
+        target.substitutePredecessor(source, newSucc);
+        newSucc.blockPredecessors().add(source);
+        newSucc.blockSuccessors().add(target);
+
+        return newSucc;
     }
 }

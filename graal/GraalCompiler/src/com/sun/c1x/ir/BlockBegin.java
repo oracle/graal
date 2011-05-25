@@ -343,25 +343,4 @@ public final class BlockBegin extends StateSplit {
     public String shortName() {
         return "BlockBegin #" + blockID;
     }
-
-    /**
-     * Iterates over all successors of this block: successors of the end node and exception handler.
-     */
-    public void allSuccessorsDo(boolean backwards, BlockClosure closure) {
-        BlockEnd end = end();
-        if (backwards) {
-            for (int i = end.blockSuccessorCount() - 1; i >= 0; i--) {
-                closure.apply(end.blockSuccessor(i));
-            }
-        } else {
-            for (int i = 0; i < end.blockSuccessorCount(); i++) {
-                closure.apply(end.blockSuccessor(i));
-            }
-        }
-        for (Instruction x = next(); x != null; x = x.next()) {
-            if (x instanceof ExceptionEdgeInstruction && ((ExceptionEdgeInstruction) x).exceptionEdge() != null) {
-                closure.apply(((ExceptionEdgeInstruction) x).exceptionEdge());
-            }
-        }
-    }
 }

@@ -52,9 +52,9 @@ public abstract class BlockEnd extends Instruction {
     /**
      * The list of instructions that produce input for this instruction.
      */
-    public BlockBegin blockSuccessor(int index) {
+    public Instruction blockSuccessor(int index) {
         assert index >= 0 && index < blockSuccessorCount;
-        return (BlockBegin) successors().get(super.successorCount() + SUCCESSOR_COUNT + index);
+        return (Instruction) successors().get(super.successorCount() + SUCCESSOR_COUNT + index);
     }
 
     public Instruction setBlockSuccessor(int index, Instruction n) {
@@ -123,7 +123,7 @@ public abstract class BlockEnd extends Instruction {
      * Gets the successor corresponding to the default (fall through) case.
      * @return the default successor
      */
-    public BlockBegin defaultSuccessor() {
+    public Instruction defaultSuccessor() {
         return blockSuccessor(blockSuccessorCount - 1);
     }
 

@@ -81,6 +81,6 @@ public final class LookupSwitch extends Switch {
             out.printf("case %5d: B%d%n", keyAt(i), blockSuccessors().get(i).blockID);
         }
         INSTRUCTION.advance(out);
-        out.print("default   : B").print(defaultSuccessor().blockID);
+        out.print("default   : ").print(defaultSuccessor());
     }
 }

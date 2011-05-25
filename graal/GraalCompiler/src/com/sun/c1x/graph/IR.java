@@ -80,10 +80,6 @@ public class IR {
             C1XTimers.HIR_OPTIMIZE.start();
         }
 
-        CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
-        getHIRStartBlock().iteratePreOrder(finder);
-        finder.splitCriticalEdges();
-
         Schedule schedule = new Schedule(this.compilation.graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
@@ -116,8 +112,13 @@ public class IR {
         //computeLinearScanOrder();
 
 //        assert orderedBlocks.size() == lirBlocks.size();
-        orderedBlocks = lirBlocks;
 
+
+        CriticalEdgeFinder finder = new CriticalEdgeFinder(lirBlocks, compilation.graph);
+        finder.splitCriticalEdges();
+
+
+        orderedBlocks = lirBlocks;
 
         valueToBlock = new HashMap<Value, LIRBlock>();
         for (LIRBlock b : orderedBlocks) {
@@ -256,55 +257,6 @@ public class IR {
         }
     }
 
-    /**
-     * Creates and inserts a new block between this block and the specified successor,
-     * altering the successor and predecessor lists of involved blocks appropriately.
-     * @param source the source of the edge
-     * @param target the successor before which to insert a block
-     * @return the new block inserted
-     */
-    public BlockBegin splitEdge(BlockBegin source, BlockBegin target) {
-        int bci = -2;
-
-        int backEdgeIndex = target.predecessors().indexOf(source.end());
-
-        // create new successor and mark it for special block order treatment
-        BlockBegin newSucc = new BlockBegin(bci, nextBlockNumber(), false, compilation.graph);
-
-        List<Integer> removePhiInputs = null;
-        for (int i = backEdgeIndex + 1; i < target.predecessors().size(); ++i) {
-            if (target.predecessors().get(i) == source.end()) {
-                if (removePhiInputs == null) {
-                    removePhiInputs = new ArrayList<Integer>();
-                }
-                removePhiInputs.add(i);
-            }
-        }
-
-        // This goto is not a safepoint.
-        Goto e = new Goto(target, compilation.graph);
-        newSucc.appendNext(e);
-        e.reorderSuccessor(0, backEdgeIndex);
-
-        // link predecessor to new block
-        source.end().substituteSuccessor(target, newSucc);
-        if (removePhiInputs != null && removePhiInputs.size() > 0) {
-
-            for (Node n : target.usages()) {
-                if (n instanceof Phi) {
-                    Phi phi = (Phi) n;
-                    int correction = 0;
-                    for (int index : removePhiInputs) {
-                        phi.removeInput(index - correction);
-                        correction++;
-                    }
-                }
-            }
-
-        }
-
-        return newSucc;
-    }
 
     public int nextBlockNumber() {
         return compilation.stats.blockCount++;
