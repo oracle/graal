@@ -24,6 +24,7 @@ package com.sun.c1x.debug;
 
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import com.oracle.graal.graph.*;
 
@@ -129,17 +130,26 @@ public class IdealGraphPrinter {
                 continue;
             }
 
-            String name;
-            if (shortNames) {
-                name = node.shortName();
-            } else {
-                name = node.toString();
+            stream.printf("   <node id='%d'><properties>%n", node.id());
+            stream.printf("    <p name='idx'>%d</p>%n", node.id());
+
+            Map<Object, Object> props = node.getDebugProperties();
+            if (!props.containsKey("name")) {
+                String name;
+                if (shortNames) {
+                    name = node.shortName();
+                } else {
+                    name = node.toString();
+                }
+                stream.printf("    <p name='name'>%s</p>%n", escape(name));
+            }
+            for (Entry<Object, Object> entry : props.entrySet()) {
+                String key = entry.getKey().toString();
+                String value = entry.getValue().toString();
+                stream.printf("    <p name='%s'>%s</p>%n", escape(key), escape(value));
             }
 
-            stream.printf("   <node id='%d'><properties>", node.id());
-            stream.printf("<p name='idx'>%d</p>", node.id());
-            stream.printf("<p name='name'>%s</p>", escape(name));
-            stream.println("</properties></node>");
+            stream.println("   </properties></node>");
 
             // successors
             int fromIndex = 0;
