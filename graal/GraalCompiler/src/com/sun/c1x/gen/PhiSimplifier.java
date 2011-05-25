@@ -44,6 +44,11 @@ public final class PhiSimplifier {
             return x;
         }
         Phi phi = (Phi) x;
+
+        if (phi.valueCount() == 1) {
+            return (Value) phi.replace(phi.valueAt(0));
+        }
+
         if (phi.checkFlag(Value.Flag.PhiCannotSimplify)) {
             // already tried, cannot simplify this phi
             return phi;

@@ -82,8 +82,8 @@ public abstract class Node {
         return getClass().getSimpleName();
     }
 
-    public void replace(Node other) {
-        assert !isDeleted() && !other.isDeleted();
+    public Node replace(Node other) {
+        assert !isDeleted() && (other == null || !other.isDeleted());
         assert other == null || other.graph == graph;
         for (Node usage : usages) {
             usage.inputs.replaceFirstOccurrence(this, other);
@@ -103,6 +103,7 @@ public abstract class Node {
         predecessors.clear();
         predecessorsIndex.clear();
         delete();
+        return other;
     }
 
     public boolean isDeleted() {
