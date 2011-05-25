@@ -36,12 +36,14 @@ public class IdealGraphPrinter {
     private static class Edge {
         final int from;
         final int to;
-        final int index;
+        final int fromIndex;
+        final int toIndex;
 
-        Edge(int from, int to, int index) {
+        Edge(int from, int fromIndex, int to, int toIndex) {
             this.from = from;
+            this.fromIndex = fromIndex;
             this.to = to;
-            this.index = index;
+            this.toIndex = toIndex;
         }
     }
 
@@ -139,18 +141,22 @@ public class IdealGraphPrinter {
             stream.printf("<p name='name'>%s</p>", escape(name));
             stream.println("</properties></node>");
 
-            int index = 0;
-            for (Node predecessor : node.predecessors()) {
-                if (predecessor != Node.Null && !omittedClasses.contains(predecessor.getClass())) {
-                    edges.add(new Edge(predecessor.id(), node.id(), index));
+            // successors
+            int fromIndex = 0;
+            for (Node successor : node.successors()) {
+                if (successor != Node.Null && !omittedClasses.contains(successor.getClass())) {
+                    edges.add(new Edge(node.id(), fromIndex, successor.id(), 0));
                 }
-                index++;
+                fromIndex++;
             }
+
+            // inputs
+            int toIndex = 1;
             for (Node input : node.inputs()) {
                 if (input != Node.Null && !omittedClasses.contains(input.getClass())) {
-                    edges.add(new Edge(input.id(), node.id(), index));
+                    edges.add(new Edge(input.id(), input.successors().size(), node.id(), toIndex));
                 }
-                index++;
+                toIndex++;
             }
         }
 
@@ -158,7 +164,7 @@ public class IdealGraphPrinter {
     }
 
     private void printEdge(Edge edge) {
-        stream.printf("   <edge from='%d' to='%d' index='%d'/>%n", edge.from, edge.to, edge.index);
+        stream.printf("   <edge from='%d' fromIndex='%d' to='%d' toIndex='%d'/>%n", edge.from, edge.fromIndex, edge.to, edge.toIndex);
     }
 
     private String escape(String s) {
