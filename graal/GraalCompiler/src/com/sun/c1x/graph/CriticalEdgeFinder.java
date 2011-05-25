@@ -99,42 +99,16 @@ public class CriticalEdgeFinder {
      */
     public LIRBlock splitEdge(LIRBlock source, LIRBlock target) {
 
-        int backEdgeIndex = target.blockPredecessors().indexOf(source);
-
         // create new successor and mark it for special block order treatment
         LIRBlock newSucc = new LIRBlock(lirBlocks.size());
         lirBlocks.add(newSucc);
 
-        List<Integer> removePhiInputs = null;
-        for (int i = backEdgeIndex + 1; i < target.blockPredecessors().size(); ++i) {
-            if (target.blockPredecessors().get(i) == source) {
-                if (removePhiInputs == null) {
-                    removePhiInputs = new ArrayList<Integer>(4);
-                }
-                removePhiInputs.add(i);
-            }
-        }
-
         // This goto is not a safepoint.
         Goto e = new Goto(target.getInstructions().get(0), graph);
         newSucc.getInstructions().add(e);
-        //e.reorderSuccessor(0, backEdgeIndex);
 
         // link predecessor to new block
         ((BlockEnd) source.getInstructions().get(source.getInstructions().size() - 1)).successors().replace(target.getInstructions().get(0), newSucc.getInstructions().get(0));
-/*        if (removePhiInputs != null && removePhiInputs.size() > 0) {
-
-            for (Node n : target.getInstructions().get(0).usages()) {
-                if (n instanceof Phi) {
-                    Phi phi = (Phi) n;
-                    int correction = 0;
-                    for (int index : removePhiInputs) {
-                        phi.removeInput(index - correction);
-                        correction++;
-                    }
-                }
-            }
-        }*/
 
         source.substituteSuccessor(target, newSucc);
         target.substitutePredecessor(source, newSucc);

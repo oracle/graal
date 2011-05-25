@@ -24,7 +24,6 @@ package com.oracle.max.graal.schedule;
 
 import java.util.*;
 
-import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 
 
@@ -72,17 +71,5 @@ public class Block {
     @Override
     public String toString() {
         return "B" + blockID;
-    }
-
-    public void removeExceptionSuccessors() {
-        for (int i = 0; i < successors.size(); ++i) {
-            TTY.println("checking succ");
-            if (successors.get(i).isExceptionEntry()) {
-                TTY.println("removing successor " + i);
-                successors.remove(i);
-                i--;
-            }
-        }
-
     }
 }
