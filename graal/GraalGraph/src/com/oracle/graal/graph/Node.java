@@ -24,7 +24,9 @@ package com.oracle.graal.graph;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public abstract class Node {
 
@@ -152,6 +154,19 @@ public abstract class Node {
      */
     protected int successorCount() {
         return 0;
+    }
+
+    /**
+     * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the ideal graph
+     * visualizer). Subclasses overriding this method should add to the map returned by their superclass.
+     */
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> map = new HashMap<Object, Object>();
+        map.put("inputCount", inputCount());
+        map.put("usageCount", usages.size());
+        map.put("successorCount", successorCount());
+        map.put("predecessorCount", predecessors.size());
+        return map;
     }
 
     @Override
