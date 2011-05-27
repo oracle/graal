@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.max.graal.schedule.Schedule;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.graph.BlockMap.*;
@@ -421,7 +422,7 @@ public final class GraphBuilder {
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
 
             Instruction successor = createTarget(dispatchBlock, stateWithException);
-            BlockEnd end = new Anchor(successor, graph);
+            Anchor end = new Anchor(successor, graph);
             exception.appendNext(end);
 
             if (x instanceof Invoke) {
@@ -1204,7 +1205,7 @@ public final class GraphBuilder {
             traceInstruction(bci, opcode, blockStart);
             processBytecode(bci, opcode);
 
-            if (lastInstr instanceof BlockEnd || lastInstr.next() != null) {
+            if (Schedule.isBlockEnd(lastInstr) || lastInstr.next() != null) {
                 break;
             }
 

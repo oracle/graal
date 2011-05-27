@@ -99,6 +99,9 @@ public final class Merge extends StateSplit {
             builder.append(" -> ");
             boolean hasSucc = false;
             for (Node s : this.successors()) {
+                if (s == null) {
+                    continue;
+                }
                 if (hasSucc) {
                     builder.append(", ");
                 }

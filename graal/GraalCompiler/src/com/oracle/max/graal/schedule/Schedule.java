@@ -72,8 +72,12 @@ public class Schedule {
         return b;
     }
 
-    private boolean isCFG(Node n) {
+    private static boolean isCFG(Node n) {
         return n != null && ((n instanceof Instruction) || n == n.graph().start());
+    }
+
+    public static boolean isBlockEnd(Node n) {
+        return trueSuccessorCount(n) > 1 || n instanceof Anchor || n instanceof Return || n instanceof Throw;
     }
 
     private void identifyBlocks() {
@@ -106,27 +110,7 @@ public class Schedule {
                     blockBeginNodes.add(n);
                 } else {
                     // We have a single predecessor => check its successor count.
-                    int successorCount = 0;
-                    for (Node succ : singlePred.successors()) {
-                        if (isCFG(succ)) {
-                            successorCount++;
-                            if (successorCount > 1) {
-                                // Our predecessor is a split => we need a new block.
-                                if (singlePred instanceof ExceptionEdgeInstruction) {
-                                    ExceptionEdgeInstruction e = (ExceptionEdgeInstruction) singlePred;
-                                    if (e.exceptionEdge() != n) {
-                                        break;
-                                    }
-                                }
-                                Block b = assignBlock(n);
-                                b.setExceptionEntry(singlePred instanceof ExceptionEdgeInstruction);
-                                blockBeginNodes.add(n);
-                                return true;
-                            }
-                        }
-                    }
-
-                    if (singlePred instanceof BlockEnd) {
+                    if (isBlockEnd(singlePred)) {
                         Block b = assignBlock(n);
                         b.setExceptionEntry(singlePred instanceof Throw);
                         blockBeginNodes.add(n);
@@ -206,5 +190,15 @@ public class Schedule {
                 TTY.println();
             }
         }*/
+    }
+
+    public static int trueSuccessorCount(Node n) {
+        int i = 0;
+        for (Node s : n.successors()) {
+            if (isCFG(s)) {
+                i++;
+            }
+        }
+        return i;
     }
 }
