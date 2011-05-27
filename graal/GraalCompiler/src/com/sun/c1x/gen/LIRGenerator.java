@@ -400,7 +400,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitGoto(Goto x) {
+    public void visitGoto(Anchor x) {
         setNoResult(x);
 
         // emit phi-instruction moves after safepoint since this simplifies

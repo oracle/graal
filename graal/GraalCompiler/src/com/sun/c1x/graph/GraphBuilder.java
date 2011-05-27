@@ -421,7 +421,7 @@ public final class GraphBuilder {
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
 
             Instruction successor = createTarget(dispatchBlock, stateWithException);
-            BlockEnd end = new Goto(successor, graph);
+            BlockEnd end = new Anchor(successor, graph);
             exception.appendNext(end);
 
             if (x instanceof Invoke) {

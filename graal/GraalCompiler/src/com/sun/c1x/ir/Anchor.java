@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Goto} instruction represents the end of a block with an unconditional jump to another block.
  */
-public final class Goto extends BlockEnd {
+public final class Anchor extends BlockEnd {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -40,7 +40,7 @@ public final class Goto extends BlockEnd {
      * @param stateAfter the frame state at the end of this block
      * @param graph
      */
-    public Goto(Instruction succ, Graph graph) {
+    public Anchor(Instruction succ, Graph graph) {
         super(CiKind.Illegal, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setBlockSuccessor(0, succ);
     }
