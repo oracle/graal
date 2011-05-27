@@ -70,4 +70,6 @@ public abstract class ValueVisitor {
     public abstract void visitDeoptimize(Deoptimize deoptimize);
     public abstract void visitExceptionDispatch(ExceptionDispatch exceptionDispatch);
     public abstract void visitUnwind(Unwind unwind);
+    public abstract void visitLoopBegin(LoopBegin loopBegin);
+    public abstract void visitLoopEnd(LoopEnd loopEnd);
 }
