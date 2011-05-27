@@ -95,7 +95,7 @@ public class Schedule {
                     return false;
                 }
 
-                if (n instanceof LoopBegin || n instanceof LoopEnd) {
+                if (n instanceof LoopBegin) {
                     // a LoopBegin is always a merge
                     assignBlock(n);
                     blockBeginNodes.add(n);
@@ -234,6 +234,12 @@ public class Schedule {
                 assert mergeBlock != null;
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == n) {
+                        if (mergeBlock.getPredecessors().size() == 0) {
+                            TTY.println(merge.toString());
+                            TTY.println(phi.toString());
+                            TTY.println(merge.predecessors().toString());
+                            TTY.println("value count: " + phi.valueCount());
+                        }
                         block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
                     }
                 }

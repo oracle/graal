@@ -192,8 +192,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         variablesForConstants = new ArrayList<CiVariable>();
 
         this.operands = new OperandPool(compilation.target);
-
-        new PhiSimplifier(ir);
     }
 
     public ArrayList<DeoptimizationStub> deoptimizationStubs() {

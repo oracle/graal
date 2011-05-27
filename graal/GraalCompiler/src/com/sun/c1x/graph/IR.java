@@ -28,6 +28,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
+import com.sun.c1x.gen.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
@@ -80,6 +81,7 @@ public class IR {
             C1XTimers.HIR_OPTIMIZE.start();
         }
 
+        new PhiSimplifier(this);
         Schedule schedule = new Schedule(this.compilation.graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
