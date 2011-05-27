@@ -50,12 +50,12 @@ public final class Phi extends Value {
      * The join block for this phi.
      */
      @Override
-    public BlockBegin block() {
-        return (BlockBegin) inputs().get(super.inputCount() + INPUT_BLOCK);
+    public Merge block() {
+        return (Merge) inputs().get(super.inputCount() + INPUT_BLOCK);
     }
 
     public Value setBlock(Value n) {
-        return (BlockBegin) inputs().set(super.inputCount() + INPUT_BLOCK, n);
+        return (Merge) inputs().set(super.inputCount() + INPUT_BLOCK, n);
     }
 
     /**
@@ -65,11 +65,11 @@ public final class Phi extends Value {
      * @param index the index into the stack (if < 0) or local variables
      * @param graph
      */
-    public Phi(CiKind kind, BlockBegin block, Graph graph) {
+    public Phi(CiKind kind, Merge block, Graph graph) {
         this(kind, block, DEFAULT_MAX_VALUES, graph);
     }
 
-    public Phi(CiKind kind, BlockBegin block, int maxValues, Graph graph) {
+    public Phi(CiKind kind, Merge block, int maxValues, Graph graph) {
         super(kind, INPUT_COUNT + maxValues, SUCCESSOR_COUNT, graph);
         usedInputCount = 1;
         setBlock(block);

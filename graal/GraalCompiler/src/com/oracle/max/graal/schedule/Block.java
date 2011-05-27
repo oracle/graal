@@ -68,6 +68,31 @@ public class Block {
         return exceptionEntry;
     }
 
+    /**
+     * Iterate over this block, its exception handlers, and its successors, in that order.
+     *
+     * @param closure the closure to apply to each block
+     */
+    public void iteratePreOrder(BlockClosure closure) {
+        // XXX: identity hash map might be too slow, consider a boolean array or a mark field
+        iterate(new IdentityHashMap<Block, Block>(), closure);
+    }
+
+    private void iterate(IdentityHashMap<Block, Block> mark, BlockClosure closure) {
+        if (!mark.containsKey(this)) {
+            mark.put(this, this);
+            closure.apply(this);
+
+            iterateReverse(mark, closure, this.successors);
+        }
+    }
+
+    private void iterateReverse(IdentityHashMap<Block, Block> mark, BlockClosure closure, List<Block> list) {
+        for (int i = list.size() - 1; i >= 0; i--) {
+            list.get(i).iterate(mark, closure);
+        }
+    }
+
     @Override
     public String toString() {
         return "B" + blockID;

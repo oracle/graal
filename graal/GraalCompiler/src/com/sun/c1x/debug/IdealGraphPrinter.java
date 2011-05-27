@@ -134,7 +134,7 @@ public class IdealGraphPrinter {
             stream.printf("    <p name='idx'>%d</p>%n", node.id());
 
             Map<Object, Object> props = node.getDebugProperties();
-            if (!props.containsKey("name")) {
+            if (!props.containsKey("name") || props.get("name").toString().trim().length() == 0) {
                 String name;
                 if (shortNames) {
                     name = node.shortName();

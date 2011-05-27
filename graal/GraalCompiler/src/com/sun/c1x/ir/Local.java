@@ -47,7 +47,7 @@ public final class Local extends Value {
     }
 
     @Override
-    public BlockBegin block() {
+    public Merge block() {
         return null;
     }
 

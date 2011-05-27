@@ -38,7 +38,7 @@ import com.sun.c1x.ir.*;
  * @author Ben L. Titzer
  */
 public class BlockWorkList {
-    BlockBegin[] workList;
+    Merge[] workList;
     int[] workListNumbers;
     int workListIndex;
 
@@ -46,7 +46,7 @@ public class BlockWorkList {
      * Adds a block to this list in an unsorted fashion, like a stack.
      * @param block the block to add
      */
-    public void add(BlockBegin block) {
+    public void add(Merge block) {
         if (workList == null) {
             // worklist not allocated yet
             allocate();
@@ -64,7 +64,7 @@ public class BlockWorkList {
      * @param block the block to add
      * @param number the number used to sort the block
      */
-    public void addSorted(BlockBegin block, int number) {
+    public void addSorted(Merge block, int number) {
         if (workList == null) {
             // worklist not allocated yet
             allocate();
@@ -96,7 +96,7 @@ public class BlockWorkList {
      * the last block added is returned.
      * @return the next block in the list
      */
-    public BlockBegin removeFromWorkList() {
+    public Merge removeFromWorkList() {
         if (workListIndex != 0) {
             return workList[--workListIndex];
         }
@@ -112,13 +112,13 @@ public class BlockWorkList {
     }
 
     private void allocate() {
-        workList = new BlockBegin[5];
+        workList = new Merge[5];
         workListNumbers = new int[5];
     }
 
     private void grow() {
         int prevLength = workList.length;
-        BlockBegin[] nworkList = new BlockBegin[prevLength * 3];
+        Merge[] nworkList = new Merge[prevLength * 3];
         System.arraycopy(workList, 0, nworkList, 0, prevLength);
         workList = nworkList;
 

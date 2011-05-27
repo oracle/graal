@@ -25,6 +25,7 @@ package com.sun.c1x.debug;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.*;
 import com.sun.c1x.alloc.Interval.*;
@@ -122,28 +123,28 @@ public class CFGPrinter {
      * @param printHIR if {@code true} the HIR for each instruction in the block will be printed
      * @param printLIR if {@code true} the LIR for each instruction in the block will be printed
      */
-    void printBlock(BlockBegin block, List<BlockBegin> successors, BlockBegin handler, boolean printHIR, boolean printLIR) {
+    void printBlock(Block block, List<Block> successors, Block handler, boolean printHIR, boolean printLIR) {
         begin("block");
 
-        out.print("name \"B").print(block.blockID).println('"');
+        out.print("name \"B").print(block.blockID()).println('"');
         out.print("from_bci -1");
         out.print("to_bci -1");
 
         out.print("predecessors ");
-        for (Instruction pred : block.blockPredecessors()) {
-            out.print("\"B").print(pred.block().blockID).print("\" ");
+        for (Block pred : block.getPredecessors()) {
+            out.print("\"B").print(pred.blockID()).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (BlockBegin succ : successors) {
-            out.print("\"B").print(succ.blockID).print("\" ");
+        for (Block succ : successors) {
+            out.print("\"B").print(succ.blockID()).print("\" ");
         }
         out.println();
 
         out.print("xhandlers");
         if (handler != null) {
-            out.print("\"B").print(handler.blockID).print("\" ");
+            out.print("\"B").print(handler.blockID()).print("\" ");
         }
         out.println();
 
@@ -154,7 +155,6 @@ public class CFGPrinter {
         out.print("loop_depth ").println(-1);
 
         if (printHIR) {
-            printState(block);
             printHIR(block);
         }
 
@@ -171,7 +171,7 @@ public class CFGPrinter {
      *
      * @param block the block for which the frame state is to be printed
      */
-    private void printState(BlockBegin block) {
+    /*private void printState(Block block) {
         begin("states");
 
         FrameState state = block.stateBefore();
@@ -237,7 +237,7 @@ public class CFGPrinter {
         }
         end("locals");
         end("states");
-    }
+    }*/
 
     /**
      * Formats a given {@linkplain FrameState JVM frame state} as a multi line string.
@@ -403,11 +403,11 @@ public class CFGPrinter {
      *
      * @param block
      */
-    private void printHIR(BlockBegin block) {
+    private void printHIR(Block block) {
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
-        for (Instruction i = block.next(); i != null; i = i.next()) {
+        for (Instruction i : block.getInstructions()) {
             printInstructionHIR(i);
         }
         out.enableIndentation();
@@ -557,12 +557,12 @@ public class CFGPrinter {
      * @param printHIR if {@code true} the HIR for each instruction in the block will be printed
      * @param printLIR if {@code true} the LIR for each instruction in the block will be printed
      */
-    public void printCFG(BlockBegin startBlock, String label, final boolean printHIR, final boolean printLIR) {
+    public void printCFG(Block startBlock, String label, final boolean printHIR, final boolean printLIR) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
         startBlock.iteratePreOrder(new BlockClosure() {
-            public void apply(BlockBegin block) {
-                List<BlockBegin> successors = block.end() != null ? block.end().blockSuccessors() : new ArrayList<BlockBegin>(0);
+            public void apply(Block block) {
+                List<Block> successors = block.getSuccessors();
                 printBlock(block, successors, null, printHIR, printLIR);
             }
         });

@@ -52,7 +52,7 @@ public class StartNode extends Node {
     }
 
     @Override
-    public void replace(Node other) {
+    public Node replace(Node other) {
         throw new UnsupportedOperationException();
     }
 

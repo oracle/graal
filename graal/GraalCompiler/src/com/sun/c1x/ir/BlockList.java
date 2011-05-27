@@ -28,16 +28,16 @@ import java.util.*;
  * The {@code BlockList} class implements a specialized list data structure for representing
  * the predecessor and successor lists of basic blocks.
  */
-public class BlockList implements Iterable<BlockBegin> {
+public class BlockList implements Iterable<Merge> {
 
-    private BlockBegin[] array;
+    private Merge[] array;
     private int cursor;
 
     BlockList(int sizeHint) {
         if (sizeHint > 0) {
-            array = new BlockBegin[sizeHint];
+            array = new Merge[sizeHint];
         } else {
-            array = new BlockBegin[2];
+            array = new Merge[2];
         }
     }
 
@@ -51,7 +51,7 @@ public class BlockList implements Iterable<BlockBegin> {
         cursor--;
     }
 
-    public void remove(BlockBegin block) {
+    public void remove(Merge block) {
         int j = 0;
         for (int i = 0; i < cursor; i++) {
             if (i != j) {
@@ -71,12 +71,12 @@ public class BlockList implements Iterable<BlockBegin> {
         if (index2 < 0 || index2 >= cursor) {
             throw new IndexOutOfBoundsException();
         }
-        BlockBegin t = array[index2];
+        Merge t = array[index2];
         array[index2] = array[index1];
         array[index1] = t;
     }
 
-    public void insert(int index, BlockBegin block) {
+    public void insert(int index, Merge block) {
         if (index < 0 || index >= cursor) {
             throw new IndexOutOfBoundsException();
         }
@@ -87,19 +87,19 @@ public class BlockList implements Iterable<BlockBegin> {
         array[cursor++] = block;
     }
 
-    public void append(BlockBegin block) {
+    public void append(Merge block) {
         growOne();
         array[cursor++] = block;
     }
 
-    public BlockBegin get(int index) {
+    public Merge get(int index) {
         if (index < 0 || index >= cursor) {
             throw new IndexOutOfBoundsException();
         }
         return array[index];
     }
 
-    public void replace(BlockBegin oldBlock, BlockBegin newBlock) {
+    public void replace(Merge oldBlock, Merge newBlock) {
         for (int i = 0; i < cursor; i++) {
             if (array[i] == oldBlock) {
                 array[i] = newBlock;
@@ -111,7 +111,7 @@ public class BlockList implements Iterable<BlockBegin> {
         if (cursor == 0) {
             return true;
         }
-        BlockBegin b = array[0];
+        Merge b = array[0];
         for (int i = 1; i < cursor; i++) {
             if (array[i] != b) {
                 return false;
@@ -120,7 +120,7 @@ public class BlockList implements Iterable<BlockBegin> {
         return true;
     }
 
-    public Iterator<BlockBegin> iterator() {
+    public Iterator<Merge> iterator() {
         return new Iter();
     }
 
@@ -130,14 +130,14 @@ public class BlockList implements Iterable<BlockBegin> {
         }
     }
 
-    private class Iter implements Iterator<BlockBegin> {
+    private class Iter implements Iterator<Merge> {
         private int pos;
 
         public boolean hasNext() {
             return pos < cursor;
         }
 
-        public BlockBegin next() {
+        public Merge next() {
             return array[pos++];
         }
 

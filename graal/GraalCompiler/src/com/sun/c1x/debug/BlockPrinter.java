@@ -22,13 +22,14 @@
  */
 package com.sun.c1x.debug;
 
+import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 
 /**
- * Prints a listing for a {@linkplain BlockBegin block}.
+ * Prints a listing for a {@linkplain Merge block}.
  */
 public class BlockPrinter implements BlockClosure {
 
@@ -40,25 +41,26 @@ public class BlockPrinter implements BlockClosure {
         this.cfgOnly = cfgOnly;
     }
 
-    public void apply(BlockBegin block) {
+    public void apply(Block block) {
         if (cfgOnly) {
-            ip.printInstruction(block);
+            if (block.getInstructions().size() > 0) {
+                ip.printInstruction(block.getInstructions().get(0));
+            } else {
+                ip.out().println("Empty block");
+            }
             ip.out().println();
         } else {
             printBlock(block);
         }
     }
 
-    public void printBlock(BlockBegin block) {
-        ip.printInstruction(block);
+    public void printBlock(Block block) {
         LogStream out = ip.out();
-        out.println();
-        printFrameState(block.stateBefore(), out);
         out.println();
 
         ip.printInstructionListingHeader();
 
-        for (Instruction i = block.next(); i != null; i = i.next()) {
+        for (Instruction i : block.getInstructions()) {
             ip.printInstructionListing(i);
         }
         out.println();

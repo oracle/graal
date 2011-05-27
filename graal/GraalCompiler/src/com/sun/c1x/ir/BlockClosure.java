@@ -22,9 +22,11 @@
  */
 package com.sun.c1x.ir;
 
+import com.oracle.max.graal.schedule.*;
+
 /**
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.
  */
 public interface BlockClosure {
-    void apply(BlockBegin block);
+    void apply(Block block);
 }

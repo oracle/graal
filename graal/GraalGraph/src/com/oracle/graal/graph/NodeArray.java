@@ -24,7 +24,6 @@ package com.oracle.graal.graph;
 
 import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 
 public class NodeArray extends AbstractList<Node> {

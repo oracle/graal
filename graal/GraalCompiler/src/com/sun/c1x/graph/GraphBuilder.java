@@ -114,7 +114,7 @@ public final class GraphBuilder {
 
     private final Graph graph;
 
-    private BlockBegin unwindBlock;
+    private Merge unwindBlock;
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -294,16 +294,16 @@ public final class GraphBuilder {
         FrameState existingState = ((StateSplit) first).stateBefore();
 
         if (existingState == null) {
-            assert first instanceof BlockBegin ^ !target.isLoopHeader : "isLoopHeader: " + target.isLoopHeader;
+            assert first instanceof Merge ^ !target.isLoopHeader : "isLoopHeader: " + target.isLoopHeader;
 
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci);
 
             // if the block is a loop header, insert all necessary phis
             if (target.isLoopHeader) {
-                assert first instanceof BlockBegin;
-                insertLoopPhis((BlockBegin) first, duplicate);
-                ((BlockBegin) first).setStateBefore(duplicate);
+                assert first instanceof Merge;
+                insertLoopPhis((Merge) first, duplicate);
+                ((Merge) first).setStateBefore(duplicate);
             } else {
                 ((StateSplit) first).setStateBefore(duplicate);
             }
@@ -318,7 +318,7 @@ public final class GraphBuilder {
             assert existingState.stackSize() == newState.stackSize();
 
             if (first instanceof Placeholder) {
-                BlockBegin merge = new BlockBegin(existingState.bci, target.blockID, target.isLoopHeader, graph);
+                Merge merge = new Merge(existingState.bci, target.isLoopHeader, graph);
 
                 Placeholder p = (Placeholder) first;
                 assert p.next() == null;
@@ -327,7 +327,7 @@ public final class GraphBuilder {
                 merge.setStateBefore(existingState);
             }
 
-            existingState.merge((BlockBegin) target.firstInstruction, newState);
+            existingState.merge((Merge) target.firstInstruction, newState);
         }
 
         for (int j = 0; j < frameState.localsSize() + frameState.stackSize(); ++j) {
@@ -337,7 +337,7 @@ public final class GraphBuilder {
         }
     }
 
-    private void insertLoopPhis(BlockBegin merge, FrameState newState) {
+    private void insertLoopPhis(Merge merge, FrameState newState) {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
@@ -1066,7 +1066,7 @@ public final class GraphBuilder {
 
         if (block.firstInstruction == null) {
             if (block.isLoopHeader) {
-                block.firstInstruction = new BlockBegin(block.startBci, block.blockID, block.isLoopHeader, graph);
+                block.firstInstruction = new Merge(block.startBci, block.isLoopHeader, graph);
             } else {
                 block.firstInstruction = new Placeholder(graph);
             }

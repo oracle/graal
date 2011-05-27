@@ -25,7 +25,6 @@ package com.sun.c1x.debug;
 import java.io.*;
 
 import com.sun.c1x.*;
-import com.sun.c1x.ir.*;
 import com.sun.c1x.observer.*;
 import com.sun.cri.ri.*;
 
@@ -74,10 +73,11 @@ public class CFGPrinterObserver implements CompilationObserver {
             cfgprinted = true;
         }
 
-        if (event.getStartBlock() != null) {
+        // TODO fix that when schedule is here (startBlock : Instruction->Block)
+        /*if (event.getStartBlock() != null) {
             cfgPrinter.printCFG((BlockBegin) event.getStartBlock(), label, event.isHIRValid(), event.isLIRValid());
             cfgprinted = true;
-        }
+        }*/
 
         if (event.getTargetMethod() != null) {
             if (cfgprinted) {

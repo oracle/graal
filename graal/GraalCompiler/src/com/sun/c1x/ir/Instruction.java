@@ -142,13 +142,13 @@ public abstract class Instruction extends Value {
     }
 
     @Override
-    public BlockBegin block() {
+    public Merge block() {
         Instruction cur = this;
-        while (!(cur instanceof BlockBegin)) {
+        while (!(cur instanceof Merge)) {
             List<Node> preds = cur.predecessors();
             cur = (Instruction) preds.get(0);
         }
-        return (BlockBegin) cur;
+        return (Merge) cur;
     }
 
     /**

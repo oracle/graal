@@ -176,10 +176,10 @@ public final class If extends BlockEnd {
         print(condition().operator).
         print(' ').
         print(y()).
-        print(" then B").
-        print(blockSuccessors().get(0).blockID).
-        print(" else B").
-        print(blockSuccessors().get(1).blockID);
+        print(" then ").
+        print(blockSuccessors().get(0)).
+        print(" else ").
+        print(blockSuccessors().get(1));
     }
 
     @Override

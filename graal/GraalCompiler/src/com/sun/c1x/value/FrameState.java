@@ -258,7 +258,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param block the block begin for which we are creating the phi
      * @param i the index into the stack for which to create a phi
      */
-    public Phi setupPhiForStack(BlockBegin block, int i) {
+    public Phi setupPhiForStack(Merge block, int i) {
         Value p = stackAt(i);
         if (p != null) {
             if (p instanceof Phi) {
@@ -279,7 +279,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param block the block begin for which we are creating the phi
      * @param i the index of the local variable for which to create the phi
      */
-    public Phi setupPhiForLocal(BlockBegin block, int i) {
+    public Phi setupPhiForLocal(Merge block, int i) {
         Value p = localAt(i);
         if (p instanceof Phi) {
             Phi phi = (Phi) p;
@@ -327,7 +327,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
     }
 
-    public void merge(BlockBegin block, FrameStateAccess other) {
+    public void merge(Merge block, FrameStateAccess other) {
         checkSize(other);
         for (int i = 0; i < valuesSize(); i++) {
             Value x = valueAt(i);
@@ -379,8 +379,8 @@ public final class FrameState extends Value implements FrameStateAccess {
 
 
     /**
-     * The interface implemented by a client of {@link FrameState#forEachPhi(BlockBegin, PhiProcedure)} and
-     * {@link FrameState#forEachLivePhi(BlockBegin, PhiProcedure)}.
+     * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
+     * {@link FrameState#forEachLivePhi(Merge, PhiProcedure)}.
      */
     public static interface PhiProcedure {
         boolean doPhi(Phi phi);
@@ -441,7 +441,7 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     @Override
-    public BlockBegin block() {
+    public Merge block() {
         return null;
     }
 

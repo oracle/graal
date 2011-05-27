@@ -61,7 +61,7 @@ public abstract class Value extends Node {
      */
     public Value subst;
 
-    public abstract BlockBegin block();
+    public abstract Merge block();
 
     /**
      * Creates a new value with the specified kind.

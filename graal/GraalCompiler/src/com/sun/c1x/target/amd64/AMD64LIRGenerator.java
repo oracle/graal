@@ -466,7 +466,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitBlockBegin(BlockBegin x) {
+    public void visitMerge(Merge x) {
         // nothing to do for now
     }
 

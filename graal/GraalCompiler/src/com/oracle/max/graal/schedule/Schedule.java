@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
-import com.sun.c1x.lir.*;
 
 
 public class Schedule {
@@ -40,7 +39,6 @@ public class Schedule {
         nodeToBlock = graph.createNodeMap();
         identifyBlocks();
     }
-
     public List<Block> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
