@@ -95,7 +95,7 @@ public class Schedule {
                     return false;
                 }
 
-                if (n instanceof LoopBegin) {
+                if (n instanceof LoopBegin || n instanceof LoopEnd) {
                     // a LoopBegin is always a merge
                     assignBlock(n);
                     blockBeginNodes.add(n);
@@ -221,14 +221,12 @@ public class Schedule {
         if (prevBlock != null) {
             return prevBlock;
         }
-        TTY.println("handling " + n);
 
         Block block = null;
         for (Node succ : n.successors()) {
             block = getCommonDominator(block, assignLatestPossibleBlockToNode(succ));
         }
         for (Node usage : n.usages()) {
-            TTY.println("usaged at: " + usage.id() + ", " + nodeToBlock.get(usage));
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
                 Merge merge = phi.block();
@@ -244,7 +242,6 @@ public class Schedule {
             }
         }
 
-        TTY.println("assigning block " + block + " to node " + n);
         nodeToBlock.set(n, block);
         if (block != null) {
             block.getInstructions().add(n);
@@ -273,7 +270,9 @@ public class Schedule {
         List<Node> instructions = b.getInstructions();
         List<Node> sortedInstructions = new ArrayList<Node>();
         assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
-        addToSorting(b, b.firstNode(), sortedInstructions, map);
+        if (b.firstNode() != b.lastNode()) {
+            addToSorting(b, b.firstNode(), sortedInstructions, map);
+        }
         for (Node i : instructions) {
             addToSorting(b, i, sortedInstructions, map);
         }
@@ -281,10 +280,10 @@ public class Schedule {
         //assert b.firstNode() == sortedInstructions.get(0) : b.firstNode();
     //    assert b.lastNode() == sortedInstructions.get(sortedInstructions.size() - 1);
         b.setInstructions(sortedInstructions);
-        TTY.println("Block " + b);
-        for (Node n : sortedInstructions) {
-            TTY.println("Node: " + n);
-        }
+//        TTY.println("Block " + b);
+//        for (Node n : sortedInstructions) {
+//            TTY.println("Node: " + n);
+//        }
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {

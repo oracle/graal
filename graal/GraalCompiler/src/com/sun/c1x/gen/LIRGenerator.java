@@ -1291,7 +1291,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     private List<Phi> getPhis(LIRBlock block) {
         if (block.getInstructions().size() > 0) {
-            Node i = block.getInstructions().get(0);
+            Node i = block.firstInstruction();
             if (i instanceof Merge) {
                 List<Phi> result = new ArrayList<Phi>();
                 for (Node n : i.usages()) {
