@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
+import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
 
 
@@ -153,16 +154,29 @@ public class Schedule {
                     predBlock.addSuccessor(block);
                 }
             }
-            if (n instanceof LoopBegin) {
-                LoopBegin loopBegin = (LoopBegin) n;
-                nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
-//                System.out.println("added LoopEnd to LoopBegin successor 2: " + loopBegin.loopEnd() + "->" + loopBegin);
+
+            if (n instanceof Merge) {
+                for (Node usage : n.usages()) {
+                    if (usage instanceof Phi) {
+                        nodeToBlock.set(usage, block);
+                    }
+                }
             }
         }
 
         computeDominators();
         assignLatestPossibleBlockToNodes();
         sortNodesWithinBlocks();
+
+        // Add successors of loop end nodes. Makes the graph cyclic.
+        for (Node n : blockBeginNodes) {
+            Block block = nodeToBlock.get(n);
+            if (n instanceof LoopBegin) {
+                LoopBegin loopBegin = (LoopBegin) n;
+                nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+            }
+        }
+
         //print();
     }
 
@@ -213,6 +227,7 @@ public class Schedule {
 
     private void sortNodesWithinBlocks(Block b, NodeBitMap map) {
         List<Node> instructions = b.getInstructions();
+
         Collections.shuffle(instructions);
 
         List<Node> sortedInstructions = new ArrayList<Node>();
@@ -220,16 +235,18 @@ public class Schedule {
             addToSorting(b, i, sortedInstructions, map);
         }
         b.setInstructions(sortedInstructions);
+//        TTY.println("Block " + b);
+//        for (Node n : sortedInstructions) {
+//            TTY.println("Node: " + n);
+//        }
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
-        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof FrameState || i instanceof Local) {
             return;
         }
-        TTY.println("addToSorting " + i.id() + " " + i.getClass().getName());
 
         for (Node input : i.inputs()) {
-            if (input != null) TTY.println("visiting input " + input.id() + " " + input.getClass().getName());
             addToSorting(b, input, sortedInstructions, map);
         }
 
@@ -253,7 +270,6 @@ public class Schedule {
         while (!workList.isEmpty()) {
             Block b = workList.remove();
 
-            TTY.println("processing" + b);
             List<Block> predecessors = b.getPredecessors();
             if (predecessors.size() == 1) {
                 b.setDominator(predecessors.get(0));

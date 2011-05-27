@@ -245,9 +245,6 @@ public abstract class Value extends Node {
         }
         builder.append(getClass().getSimpleName());
         builder.append(" [").append(flagsToString()).append("]");
-        for (Node input : inputs()) {
-            TTY.println("input: " + input);
-        }
         return builder.toString();
     }
 
