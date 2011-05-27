@@ -196,21 +196,6 @@ public class HotSpotRuntime implements RiRuntime {
     }
 
     @Override
-    public RiField getRiField(Field javaField) {
-        throw new UnsupportedOperationException("getRiField");
-    }
-
-    @Override
-    public RiMethod getRiMethod(Method javaMethod) {
-        throw new UnsupportedOperationException("getRiMethod");
-    }
-
-    @Override
-    public RiMethod getRiMethod(Constructor<?> javaConstructor) {
-        throw new UnsupportedOperationException("getRiMethod");
-    }
-
-    @Override
     public CiConstant invoke(RiMethod method, CiMethodInvokeArguments args) {
         return null;
     }

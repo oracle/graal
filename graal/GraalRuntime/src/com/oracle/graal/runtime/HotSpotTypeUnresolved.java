@@ -82,11 +82,6 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     }
 
     @Override
-    public Class<?> javaClass() {
-        throw unresolved("javaClass");
-    }
-
-    @Override
     public boolean hasSubclass() {
         throw unresolved("hasSubclass()");
     }

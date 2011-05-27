@@ -95,11 +95,11 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     public CiConstant getEncoding(Representation r) {
         switch (r) {
             case JavaClass:
-                return CiConstant.forObject(javaClass());
+                return CiConstant.forObject(javaMirror);
             case ObjectHub:
                 return CiConstant.forObject(this);
             case StaticFields:
-                return CiConstant.forObject(javaClass());
+                return CiConstant.forObject(javaMirror);
             case TypeInfo:
                 return CiConstant.forObject(this);
             default:
@@ -164,11 +164,6 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         }
         // No resolved type is a subtype of an unresolved type.
         return false;
-    }
-
-    @Override
-    public Class<?> javaClass() {
-        return javaMirror;
     }
 
     @Override

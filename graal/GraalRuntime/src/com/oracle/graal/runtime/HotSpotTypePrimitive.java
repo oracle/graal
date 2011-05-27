@@ -42,7 +42,7 @@ public final class HotSpotTypePrimitive extends HotSpotType {
 
     @Override
     public int accessFlags() {
-        return javaClass().getModifiers();
+        return kind.toJavaClass().getModifiers();
     }
 
     @Override
@@ -123,11 +123,6 @@ public final class HotSpotTypePrimitive extends HotSpotType {
     @Override
     public boolean isSubtypeOf(RiType other) {
         return false;
-    }
-
-    @Override
-    public Class<?> javaClass() {
-        return kind.toJavaClass();
     }
 
     @Override
