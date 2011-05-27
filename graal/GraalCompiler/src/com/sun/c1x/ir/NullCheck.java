@@ -82,7 +82,7 @@ public final class NullCheck extends Instruction {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof NullCheck) {
             NullCheck o = (NullCheck) i;
             return object() == o.object();

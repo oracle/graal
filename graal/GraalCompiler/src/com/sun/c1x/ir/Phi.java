@@ -49,7 +49,6 @@ public final class Phi extends Value {
     /**
      * The join block for this phi.
      */
-     @Override
     public Merge block() {
         return (Merge) inputs().get(super.inputCount() + INPUT_BLOCK);
     }

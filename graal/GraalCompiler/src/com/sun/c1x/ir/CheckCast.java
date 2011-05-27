@@ -78,7 +78,7 @@ public final class CheckCast extends TypeCheck {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof CheckCast) {
             CheckCast o = (CheckCast) i;
             return targetClass == o.targetClass && object() == o.object();

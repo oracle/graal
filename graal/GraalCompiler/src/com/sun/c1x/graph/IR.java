@@ -90,6 +90,9 @@ public class IR {
             map.put(b, block);
             block.setInstructions(b.getInstructions());
             block.setLinearScanNumber(b.blockID());
+
+            block.setFirstInstruction(b.firstNode());
+            block.setLastInstruction(b.lastNode());
             lirBlocks.add(block);
         }
 

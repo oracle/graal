@@ -1466,12 +1466,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected LIRDebugInfo stateFor(Instruction x) {
+    protected LIRDebugInfo stateFor(Value x) {
         assert lastState != null : "must have state before instruction for " + x;
         return stateFor(x, lastState);
     }
 
-    protected LIRDebugInfo stateFor(Instruction x, FrameState state) {
+    protected LIRDebugInfo stateFor(Value x, FrameState state) {
         if (compilation.placeholderState != null) {
             state = compilation.placeholderState;
         }
@@ -1540,7 +1540,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         // the value must be a constant or have a valid operand
-        assert operand.isLegal() : "this root has not been visited yet";
+        assert operand.isLegal() : "this root has not been visited yet; instruction=" + instruction;
         return operand;
     }
 

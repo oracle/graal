@@ -68,7 +68,16 @@ public class Schedule {
     private Block assignBlock(Node n, Block b) {
         assert nodeToBlock.get(n) == null;
         nodeToBlock.set(n, b);
-        b.getInstructions().add(n);
+        if (b.firstNode() == null) {
+            b.setFirstNode(n);
+            b.setLastNode(n);
+        } else {
+            if (b.lastNode() != null) {
+                b.getInstructions().add(b.lastNode());
+            }
+            b.setLastNode(n);
+        }
+        b.setLastNode(n);
         return b;
     }
 
@@ -164,9 +173,23 @@ public class Schedule {
             }
         }
 
+        for (Node n : graph.getNodes()) {
+            if (n instanceof FrameState) {
+                FrameState f = (FrameState) n;
+                if (f.predecessors().size() == 1) {
+                    Block predBlock = nodeToBlock.get(f.predecessors().get(0));
+                    assert predBlock != null;
+                    nodeToBlock.set(f, predBlock);
+                    predBlock.getInstructions().add(f);
+                } else {
+                    assert f.predecessors().size() == 0;
+                }
+            }
+        }
+
         computeDominators();
-        assignLatestPossibleBlockToNodes();
-        sortNodesWithinBlocks();
+
+
 
         // Add successors of loop end nodes. Makes the graph cyclic.
         for (Node n : blockBeginNodes) {
@@ -176,6 +199,9 @@ public class Schedule {
                 nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
             }
         }
+
+        assignLatestPossibleBlockToNodes();
+        sortNodesWithinBlocks();
 
         //print();
     }
@@ -195,16 +221,34 @@ public class Schedule {
         if (prevBlock != null) {
             return prevBlock;
         }
+        TTY.println("handling " + n);
 
         Block block = null;
         for (Node succ : n.successors()) {
             block = getCommonDominator(block, assignLatestPossibleBlockToNode(succ));
         }
         for (Node usage : n.usages()) {
-            block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
+            TTY.println("usaged at: " + usage.id() + ", " + nodeToBlock.get(usage));
+            if (usage instanceof Phi) {
+                Phi phi = (Phi) usage;
+                Merge merge = phi.block();
+                Block mergeBlock = nodeToBlock.get(merge);
+                assert mergeBlock != null;
+                for (int i = 0; i < phi.valueCount(); ++i) {
+                    if (phi.valueAt(i) == n) {
+                        block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
+                    }
+                }
+            } else {
+                block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
+            }
         }
 
+        TTY.println("assigning block " + block + " to node " + n);
         nodeToBlock.set(n, block);
+        if (block != null) {
+            block.getInstructions().add(n);
+        }
         return block;
     }
 
@@ -227,22 +271,24 @@ public class Schedule {
 
     private void sortNodesWithinBlocks(Block b, NodeBitMap map) {
         List<Node> instructions = b.getInstructions();
-
-        Collections.shuffle(instructions);
-
         List<Node> sortedInstructions = new ArrayList<Node>();
+        assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
+        addToSorting(b, b.firstNode(), sortedInstructions, map);
         for (Node i : instructions) {
             addToSorting(b, i, sortedInstructions, map);
         }
+        addToSorting(b, b.lastNode(), sortedInstructions, map);
+        //assert b.firstNode() == sortedInstructions.get(0) : b.firstNode();
+    //    assert b.lastNode() == sortedInstructions.get(sortedInstructions.size() - 1);
         b.setInstructions(sortedInstructions);
-//        TTY.println("Block " + b);
-//        for (Node n : sortedInstructions) {
-//            TTY.println("Node: " + n);
-//        }
+        TTY.println("Block " + b);
+        for (Node n : sortedInstructions) {
+            TTY.println("Node: " + n);
+        }
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
-        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof FrameState || i instanceof Local) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local) {
             return;
         }
 
@@ -254,9 +300,18 @@ public class Schedule {
             addToSorting(b, pred, sortedInstructions, map);
         }
 
-        // Now predecessors and inputs are scheduled => we can add this node.
-        sortedInstructions.add(i);
         map.mark(i);
+
+        for (Node succ : i.successors()) {
+            if (succ instanceof FrameState) {
+                addToSorting(b, succ, sortedInstructions, map);
+            }
+        }
+
+        // Now predecessors and inputs are scheduled => we can add this node.
+        if (!(i instanceof FrameState)) {
+            sortedInstructions.add(i);
+        }
     }
 
     private void computeDominators() {

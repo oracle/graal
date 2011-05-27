@@ -56,8 +56,6 @@ public abstract class Value extends Node {
 
     protected CiValue operand = CiValue.IllegalValue;
 
-    public abstract Merge block();
-
     /**
      * Creates a new value with the specified kind.
      * @param kind the type of this value
@@ -263,6 +261,28 @@ public abstract class Value extends Node {
 
     public final boolean isDeadPhi() {
         return checkFlag(Flag.PhiDead);
+    }
+
+    /**
+     * Compute the value number of this Instruction. Local and global value numbering
+     * optimizations use a hash map, and the value number provides a hash code.
+     * If the instruction cannot be value numbered, then this method should return
+     * {@code 0}.
+     * @return the hashcode of this instruction
+     */
+    public int valueNumber() {
+        return 0;
+    }
+
+    /**
+     * Checks that this instruction is equal to another instruction for the purposes
+     * of value numbering.
+     * @param i the other instruction
+     * @return {@code true} if this instruction is equivalent to the specified
+     * instruction w.r.t. value numbering
+     */
+    public boolean valueEqual(Node i) {
+        return false;
     }
 
     /**

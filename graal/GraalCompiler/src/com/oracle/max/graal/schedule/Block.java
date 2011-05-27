@@ -38,6 +38,25 @@ public class Block {
     private Block dominator;
     private final List<Block> dominators = new ArrayList<Block>();
 
+    private Node firstNode;
+    private Node lastNode;
+
+    public Node firstNode() {
+        return firstNode;
+    }
+
+    public void setFirstNode(Node node) {
+        this.firstNode = node;
+    }
+
+    public Node lastNode() {
+        return lastNode;
+    }
+
+    public void setLastNode(Node node) {
+        this.lastNode = node;
+    }
+
     public List<Block> getSuccessors() {
         return Collections.unmodifiableList(successors);
     }

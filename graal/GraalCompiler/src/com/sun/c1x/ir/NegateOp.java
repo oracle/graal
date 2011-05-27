@@ -79,7 +79,7 @@ public final class NegateOp extends Instruction {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof NegateOp) {
             NegateOp o = (NegateOp) i;
             return x() == o.x();

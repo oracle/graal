@@ -445,11 +445,6 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     @Override
-    public Merge block() {
-        return null;
-    }
-
-    @Override
     public void accept(ValueVisitor v) {
         v.visitFrameState(this);
     }

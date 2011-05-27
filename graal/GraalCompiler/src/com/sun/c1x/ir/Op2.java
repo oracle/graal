@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
  */
-public abstract class Op2 extends Instruction {
+public abstract class Op2 extends Value {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;
@@ -105,7 +105,7 @@ public abstract class Op2 extends Instruction {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof Op2) {
             Op2 o = (Op2) i;
             return opcode == o.opcode && x() == o.x() && y() == o.y();

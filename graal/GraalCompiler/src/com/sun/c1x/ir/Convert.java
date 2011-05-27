@@ -88,7 +88,7 @@ public final class Convert extends Instruction {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof Convert) {
             Convert o = (Convert) i;
             return opcode == o.opcode && value() == o.value();

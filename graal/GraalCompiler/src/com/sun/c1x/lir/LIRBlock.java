@@ -277,4 +277,25 @@ public final class LIRBlock {
     public FrameState lastState() {
         return lastState;
     }
+
+    private Node first;
+    private Node last;
+
+    public Node firstInstruction() {
+        return first;
+    }
+
+
+    public Node lastInstruction() {
+        return last;
+    }
+
+    public void setFirstInstruction(Node n) {
+        first = n;
+    }
+
+
+    public void setLastInstruction(Node n) {
+        last = n;
+    }
 }

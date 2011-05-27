@@ -126,12 +126,12 @@ public class Merge extends StateSplit {
         //}
 
         // print predecessors
-        if (!blockPredecessors().isEmpty()) {
-            out.print(" pred:");
-            for (Instruction pred : blockPredecessors()) {
-                out.print(pred.block());
-            }
-        }
+//        if (!blockPredecessors().isEmpty()) {
+//            out.print(" pred:");
+//            for (Instruction pred : blockPredecessors()) {
+//                out.print(pred.block());
+//            }
+//        }
     }
 
     @Override
