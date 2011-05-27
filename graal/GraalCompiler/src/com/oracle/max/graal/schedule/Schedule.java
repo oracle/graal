@@ -148,9 +148,48 @@ public class Schedule {
             }
         }
 
-        //computeDominators();
-        //sortNodesWithinBlocks();
+        computeDominators();
+        assignLatestPossibleBlockToNodes();
+        sortNodesWithinBlocks();
         //print();
+    }
+
+    private void assignLatestPossibleBlockToNodes() {
+        for (Node n : graph.getNodes()) {
+            assignLatestPossibleBlockToNode(n);
+        }
+    }
+
+    private Block assignLatestPossibleBlockToNode(Node n) {
+        if (n == null) {
+            return null;
+        }
+
+        Block prevBlock = nodeToBlock.get(n);
+        if (prevBlock != null) {
+            return prevBlock;
+        }
+
+        Block block = null;
+        for (Node succ : n.successors()) {
+            block = getCommonDominator(block, assignLatestPossibleBlockToNode(succ));
+        }
+        for (Node usage : n.usages()) {
+            block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
+        }
+
+        nodeToBlock.set(n, block);
+        return block;
+    }
+
+    private Block getCommonDominator(Block a, Block b) {
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
+        return commonDominator(a, b);
     }
 
     private void sortNodesWithinBlocks() {
@@ -165,14 +204,30 @@ public class Schedule {
         Collections.shuffle(instructions);
 
         List<Node> sortedInstructions = new ArrayList<Node>();
-        sortedInstructions.addAll(instructions);
-        b.setInstructions(sortedInstructions);
-
         for (Node i : instructions) {
-            if (!map.isMarked(i)) {
-
-            }
+            addToSorting(b, i, sortedInstructions, map);
         }
+        b.setInstructions(sortedInstructions);
+    }
+
+    private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b) {
+            return;
+        }
+        TTY.println("addToSorting " + i.id() + " " + i.getClass().getName());
+
+        for (Node input : i.inputs()) {
+            if (input != null) TTY.println("visiting input " + input.id() + " " + input.getClass().getName());
+            addToSorting(b, input, sortedInstructions, map);
+        }
+
+        for (Node pred : i.predecessors()) {
+            addToSorting(b, pred, sortedInstructions, map);
+        }
+
+        // Now predecessors and inputs are scheduled => we can add this node.
+        sortedInstructions.add(i);
+        map.mark(i);
     }
 
     private void computeDominators() {
