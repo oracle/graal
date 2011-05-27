@@ -224,8 +224,11 @@ public abstract class LIRGenerator extends ValueVisitor {
             TTY.println("BEGIN Generating LIR for block B" + block.blockID());
         }
 
-        for (Instruction instr : block.getInstructions()) {
-            FrameState stateAfter = instr.stateAfter();
+        for (Node instr : block.getInstructions()) {
+            FrameState stateAfter = null;
+            if (instr instanceof Instruction) {
+                stateAfter = ((Instruction) instr).stateAfter();
+            }
             FrameState stateBefore = null;
             if (instr instanceof StateSplit && ((StateSplit) instr).stateBefore() != null) {
                 stateBefore = ((StateSplit) instr).stateBefore();
@@ -239,9 +242,9 @@ public abstract class LIRGenerator extends ValueVisitor {
                     }
                 }
             }
-            if (!(instr instanceof Merge)) {
+            if (!(instr instanceof Merge) && instr != instr.graph().start()) {
                 walkState(instr, stateAfter);
-                doRoot(instr);
+                doRoot((Value) instr);
             }
             if (stateAfter != null) {
                 lastState = stateAfter;
@@ -1215,12 +1218,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         return res.toArray(new SwitchRange[res.size()]);
     }
 
-    void doRoot(Instruction instr) {
+    void doRoot(Value instr) {
         if (C1XOptions.TraceLIRGeneratorLevel >= 2) {
-            TTY.println("Emitting LIR for instruction " + instr.toString());
+            TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;
-        assert !instr.hasSubst() : "shouldn't have missed substitution";
 
         if (C1XOptions.TraceLIRVisit) {
             TTY.println("Visiting    " + instr);
@@ -1289,7 +1291,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     private List<Phi> getPhis(LIRBlock block) {
         if (block.getInstructions().size() > 0) {
-            Instruction i = block.getInstructions().get(0);
+            Node i = block.getInstructions().get(0);
             if (i instanceof Merge) {
                 List<Phi> result = new ArrayList<Phi>();
                 for (Node n : i.usages()) {
@@ -1431,7 +1433,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected void walkState(Instruction x, FrameState state) {
+    protected void walkState(Node x, FrameState state) {
         if (state == null) {
             return;
         }
@@ -1453,7 +1455,6 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     private void walkStateValue(Value value) {
         if (value != null) {
-            assert !value.hasSubst() : "missed substitution on " + value.toString();
             if (value instanceof Phi && !value.isIllegal()) {
                 // phi's are special
                 operandForPhi((Phi) value);

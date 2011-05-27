@@ -24,6 +24,7 @@ package com.oracle.max.graal.schedule;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.ir.*;
 
 
@@ -32,7 +33,7 @@ public class Block {
     private int blockID;
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
-    private List<Instruction> instructions = new ArrayList<Instruction>();
+    private List<Node> instructions = new ArrayList<Node>();
     private boolean exceptionEntry;
     private Block dominator;
     private final List<Block> dominators = new ArrayList<Block>();
@@ -52,7 +53,7 @@ public class Block {
         return Collections.unmodifiableList(dominators);
     }
 
-    public List<Instruction> getInstructions() {
+    public List<Node> getInstructions() {
         return instructions;
     }
 
@@ -115,7 +116,7 @@ public class Block {
         return dominator;
     }
 
-    public void setInstructions(List<Instruction> instructions) {
+    public void setInstructions(List<Node> instructions) {
         this.instructions = instructions;
     }
 }

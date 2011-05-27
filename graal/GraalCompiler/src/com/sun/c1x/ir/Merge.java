@@ -262,9 +262,6 @@ public final class Merge extends StateSplit {
                 sb.append("] ");
             }
         }
-        if (value != null && value.hasSubst()) {
-            sb.append("alias ").append(Util.valueString(value.subst()));
-        }
         return sb.toString();
     }
 

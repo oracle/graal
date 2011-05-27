@@ -24,10 +24,10 @@ package com.sun.c1x.lir;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.max.asm.*;
 import com.sun.c1x.alloc.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.ci.*;
@@ -41,7 +41,7 @@ public final class LIRBlock {
     private LIRList lir;
     private final int blockID;
     private FrameState lastState;
-    private List<Instruction> instructions = new ArrayList<Instruction>(4);
+    private List<Node> instructions = new ArrayList<Node>(4);
     private List<LIRBlock> predecessors = new ArrayList<LIRBlock>(4);
     private List<LIRBlock> successors = new ArrayList<LIRBlock>(4);
     private List<LIRBlock> exceptionHandlerSuccessors = new ArrayList<LIRBlock>(4);
@@ -89,7 +89,7 @@ public final class LIRBlock {
         linearScanNumber = blockID;
     }
 
-    public List<Instruction> getInstructions() {
+    public List<Node> getInstructions() {
         return instructions;
     }
 
@@ -248,7 +248,7 @@ public final class LIRBlock {
         predecessors.clear();
     }
 
-    public void setInstructions(List<Instruction> list) {
+    public void setInstructions(List<Node> list) {
         instructions = list;
     }
 

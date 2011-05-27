@@ -105,8 +105,8 @@ public class CriticalEdgeFinder {
 
         // This goto is not a safepoint.
         Anchor e = new Anchor(null, graph);
-        Instruction sourceInstruction = source.getInstructions().get(source.getInstructions().size() - 1);
-        Instruction targetInstruction = target.getInstructions().get(0);
+        Node sourceInstruction = source.getInstructions().get(source.getInstructions().size() - 1);
+        Node targetInstruction = target.getInstructions().get(0);
         int sourceInstructionPredIndex = targetInstruction.predecessors().indexOf(sourceInstruction);
         int replacedIndex = targetInstruction.predecessorsIndex().get(sourceInstructionPredIndex);
         assert replacedIndex != -1 && sourceInstruction.successors().get(replacedIndex) != null;
