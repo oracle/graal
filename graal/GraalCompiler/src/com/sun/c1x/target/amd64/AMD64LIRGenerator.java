@@ -531,4 +531,20 @@ public class AMD64LIRGenerator extends LIRGenerator {
         lir.jump(getLIRBlock(x.otherSuccessor()));
     }
 
+    @Override
+    public void visitLoopBegin(LoopBegin x) {
+        visitMerge(x);
+    }
+
+    @Override
+    public void visitLoopEnd(LoopEnd x) {
+        setNoResult(x);
+
+        // emit phi-instruction moves after safepoint since this simplifies
+        // describing the state at the safepoint.
+
+        moveToPhi();
+        lir.jump(getLIRBlock(x.loopBegin()));
+    }
+
 }

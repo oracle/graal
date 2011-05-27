@@ -46,7 +46,7 @@ public abstract class Instruction extends Value {
     private static final int INPUT_COUNT = 0;
 
     private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_NEXT = 0;
+    public static final int SUCCESSOR_NEXT = 0;
 
     @Override
     protected int inputCount() {
@@ -68,6 +68,10 @@ public abstract class Instruction extends Value {
 
     private Node setNext(Instruction next) {
         return successors().set(super.successorCount() + SUCCESSOR_NEXT, next);
+    }
+
+    public int nextIndex() {
+        return super.successorCount() + SUCCESSOR_NEXT;
     }
 
 

@@ -85,6 +85,13 @@ public class Schedule {
                     return false;
                 }
 
+                if (n instanceof LoopBegin) {
+                    // a LoopBegin is always a merge
+                    assignBlock(n);
+                    blockBeginNodes.add(n);
+                    return true;
+                }
+
                 Node singlePred = null;
                 for (Node pred : n.predecessors()) {
                     if (isCFG(pred)) {
@@ -145,6 +152,11 @@ public class Schedule {
                     Block predBlock = nodeToBlock.get(pred);
                     predBlock.addSuccessor(block);
                 }
+            }
+            if (n instanceof LoopBegin) {
+                LoopBegin loopBegin = (LoopBegin) n;
+                nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+//                System.out.println("added LoopEnd to LoopBegin successor 2: " + loopBegin.loopEnd() + "->" + loopBegin);
             }
         }
 
