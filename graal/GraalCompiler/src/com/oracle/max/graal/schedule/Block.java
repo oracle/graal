@@ -32,11 +32,24 @@ public class Block {
     private int blockID;
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
-    private final List<Instruction> instructions = new ArrayList<Instruction>();
+    private List<Instruction> instructions = new ArrayList<Instruction>();
     private boolean exceptionEntry;
+    private Block dominator;
+    private final List<Block> dominators = new ArrayList<Block>();
 
     public List<Block> getSuccessors() {
         return Collections.unmodifiableList(successors);
+    }
+
+    public void setDominator(Block dominator) {
+        assert this.dominator == null;
+        assert dominator != null;
+        this.dominator = dominator;
+        dominator.dominators.add(this);
+    }
+
+    public List<Block> getDominators() {
+        return Collections.unmodifiableList(dominators);
     }
 
     public List<Instruction> getInstructions() {
@@ -96,5 +109,13 @@ public class Block {
     @Override
     public String toString() {
         return "B" + blockID;
+    }
+
+    public Block dominator() {
+        return dominator;
+    }
+
+    public void setInstructions(List<Instruction> instructions) {
+        this.instructions = instructions;
     }
 }

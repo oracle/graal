@@ -27,6 +27,8 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
+import com.sun.cri.ci.*;
+import com.sun.jmx.remote.util.*;
 
 
 public class Schedule {
@@ -149,20 +151,94 @@ public class Schedule {
             }
         }
 
-        orderBlocks();
+        //computeDominators();
+        //sortNodesWithinBlocks();
         //print();
     }
 
-    private void orderBlocks() {
-       /* List<Block> orderedBlocks = new ArrayList<Block>();
-        Block startBlock = nodeToBlock.get(graph.start().start());
-        List<Block> toSchedule = new ArrayList<Block>();
-        toSchedule.add(startBlock);
+    private void sortNodesWithinBlocks() {
+        for (Block b : blocks) {
+            sortNodesWithinBlocks(b);
+        }
+    }
 
-        while (toSchedule.size() != 0) {
+    private void sortNodesWithinBlocks(Block b) {
+        List<Instruction> instructions = b.getInstructions();
+        Collections.shuffle(instructions);
 
+        List<Instruction> sortedInstructions = new ArrayList<Instruction>();
+        sortedInstructions.addAll(instructions);
+        b.setInstructions(sortedInstructions);
+    }
 
-        }*/
+    private void computeDominators() {
+        Block dominatorRoot = nodeToBlock.get(graph.start());
+        assert dominatorRoot.getPredecessors().size() == 0;
+        CiBitMap visited = new CiBitMap(blocks.size());
+        visited.set(dominatorRoot.blockID());
+        LinkedList<Block> workList = new LinkedList<Block>();
+        workList.add(dominatorRoot);
+
+        while (!workList.isEmpty()) {
+            Block b = workList.remove();
+
+            TTY.println("processing" + b);
+            List<Block> predecessors = b.getPredecessors();
+            if (predecessors.size() == 1) {
+                b.setDominator(predecessors.get(0));
+            } else if (predecessors.size() > 0) {
+                boolean delay = false;
+                for (Block pred : predecessors) {
+                    if (pred != dominatorRoot && pred.dominator() == null) {
+                        delay = true;
+                        break;
+                    }
+                }
+
+                if (delay) {
+                    workList.add(b);
+                    continue;
+                }
+
+                Block dominator = null;
+                for (Block pred : predecessors) {
+                    if (dominator == null) {
+                        dominator = pred;
+                    } else {
+                        dominator = commonDominator(dominator, pred);
+                    }
+                }
+                b.setDominator(dominator);
+            }
+
+            for (Block succ : b.getSuccessors()) {
+                if (!visited.get(succ.blockID())) {
+                    visited.set(succ.blockID());
+                    workList.add(succ);
+                }
+            }
+        }
+    }
+
+    public Block commonDominator(Block a, Block b) {
+        CiBitMap bitMap = new CiBitMap(blocks.size());
+        Block cur = a;
+        while (cur != null) {
+            bitMap.set(cur.blockID());
+            cur = cur.dominator();
+        }
+
+        cur = b;
+        while (cur != null) {
+            if (bitMap.get(cur.blockID())) {
+                return cur;
+            }
+            cur = cur.dominator();
+        }
+
+        print();
+        assert false : "no common dominator between " + a + " and " + b;
+        return null;
     }
 
     private void print() {
@@ -184,6 +260,10 @@ public class Schedule {
            TTY.print(" preds=");
            for (Block pred : b.getPredecessors()) {
                TTY.print(pred + ";");
+           }
+
+           if (b.dominator() != null) {
+               TTY.print(" dom=" + b.dominator());
            }
            TTY.println();
 
