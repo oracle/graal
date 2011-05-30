@@ -30,7 +30,7 @@ import com.sun.cri.bytecode.*;
 /**
  * The {@code NegateOp} instruction negates its operand.
  */
-public final class NegateOp extends Instruction {
+public final class NegateOp extends Value {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;

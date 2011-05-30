@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * Instruction that is used to refer to the address of an on-stack monitor.
  */
-public final class MonitorAddress extends Instruction {
+public final class MonitorAddress extends Value {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
