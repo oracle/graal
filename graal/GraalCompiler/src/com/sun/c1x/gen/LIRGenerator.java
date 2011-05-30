@@ -222,6 +222,10 @@ public abstract class LIRGenerator extends ValueVisitor {
             TTY.println("BEGIN Generating LIR for block B" + block.blockID());
         }
 
+        if (block.blockPredecessors().size() > 1) {
+            lastState = null;
+        }
+
         for (Node instr : block.getInstructions()) {
             FrameState stateAfter = null;
             if (instr instanceof Instruction) {
@@ -686,11 +690,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected CiValue emitXir(XirSnippet snippet, Instruction x, LIRDebugInfo info, RiMethod method, boolean setInstructionResult) {
+    protected CiValue emitXir(XirSnippet snippet, Value x, LIRDebugInfo info, RiMethod method, boolean setInstructionResult) {
         return emitXir(snippet, x, info, null, method, setInstructionResult, null);
     }
 
-    protected CiValue emitXir(XirSnippet snippet, Instruction instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, RiMethod method, boolean setInstructionResult, List<CiValue> pointerSlots) {
+    protected CiValue emitXir(XirSnippet snippet, Value instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, RiMethod method, boolean setInstructionResult, List<CiValue> pointerSlots) {
         if (C1XOptions.PrintXirTemplates) {
             TTY.println("Emit XIR template " + snippet.template.name);
         }

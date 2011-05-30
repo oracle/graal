@@ -31,10 +31,33 @@ import com.sun.cri.ci.*;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class ArrayLength extends AccessArray {
+public final class ArrayLength extends Value {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_ARRAY = 0;
+
     private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The instruction that produces the array object.
+     */
+     public Value array() {
+        return (Value) inputs().get(super.inputCount() + INPUT_ARRAY);
+    }
+
+    public Value setArray(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_ARRAY, n);
+    }
 
     /**
      * Constructs a new ArrayLength instruction.
@@ -42,7 +65,8 @@ public final class ArrayLength extends AccessArray {
      * @param newFrameState the state after executing this instruction
      */
     public ArrayLength(Value array, Graph graph) {
-        super(CiKind.Int, array, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setArray(array);
     }
 
     @Override
