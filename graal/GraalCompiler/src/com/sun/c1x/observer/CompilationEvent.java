@@ -24,10 +24,10 @@ package com.sun.c1x.observer;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.*;
 import com.sun.c1x.graph.*;
-import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -43,7 +43,7 @@ public class CompilationEvent {
 
     private final C1XCompilation compilation;
     private final String label;
-    private Instruction startBlock;
+    private Graph graph;
 
     private BlockMap blockMap;
     private int codeSize = -1;
@@ -67,15 +67,15 @@ public class CompilationEvent {
         this.compilation = compilation;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, Instruction startBlock, boolean hirValid, boolean lirValid) {
+    public CompilationEvent(C1XCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid) {
         this(compilation, label);
-        this.startBlock = startBlock;
+        this.graph = graph;
         this.hirValid = hirValid;
         this.lirValid = lirValid;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, Instruction startBlock, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
-        this(compilation, label, startBlock, hirValid, lirValid);
+    public CompilationEvent(C1XCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
+        this(compilation, label, graph, hirValid, lirValid);
         this.targetMethod = targetMethod;
     }
 
@@ -108,8 +108,8 @@ public class CompilationEvent {
         return blockMap;
     }
 
-    public Instruction getStartBlock() {
-        return startBlock;
+    public Graph getGraph() {
+        return graph;
     }
 
     public LinearScan getAllocator() {

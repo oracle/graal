@@ -57,8 +57,8 @@ public class GraphvizPrinterObserver implements CompilationObserver {
     }
 
     public void compilationEvent(CompilationEvent event) {
-        if (event.getStartBlock() != null && !TTY.isSuppressed()) {
-            Graph graph = event.getStartBlock().graph();
+        if (event.getGraph() != null && !TTY.isSuppressed()) {
+            Graph graph = event.getGraph();
 
             String name = event.getMethod().holder().name();
             name = name.substring(1, name.length() - 1).replace('/', '.');
