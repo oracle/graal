@@ -381,6 +381,16 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
     }
 
+    public Merge block() {
+        if (usages().size() > 0) {
+            assert usages().size() == 1;
+            Node node = usages().get(0);
+            if (node instanceof Merge) {
+                return (Merge) node;
+            }
+        }
+        return null;
+    }
 
     /**
      * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
