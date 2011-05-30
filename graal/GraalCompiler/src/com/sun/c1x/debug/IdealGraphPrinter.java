@@ -28,6 +28,7 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.graph.*;
 import com.oracle.max.graal.schedule.*;
+import com.sun.c1x.ir.*;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
@@ -199,7 +200,11 @@ public class IdealGraphPrinter {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
-            stream.printf("     <successor name='%d'/>%n", sux.blockID());
+            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) {
+                // Skip back edges.
+            } else {
+                stream.printf("     <successor name='%d'/>%n", sux.blockID());
+            }
         }
         stream.printf("    </successors>%n");
         stream.printf("    <nodes>%n");
