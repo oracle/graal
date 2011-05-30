@@ -254,4 +254,12 @@ public class Merge extends StateSplit {
         }
         return sb.toString();
     }
+
+    @Override
+    public Node copy(Graph into) {
+        assert getClass() == Merge.class : "copy of " + getClass();
+        Merge x = new Merge(into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

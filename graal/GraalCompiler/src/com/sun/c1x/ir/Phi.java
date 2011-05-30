@@ -37,10 +37,17 @@ public final class Phi extends Value {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_BLOCK = 0;
 
+    private final int maxValues;
+
     private static final int SUCCESSOR_COUNT = 0;
 
     private int usedInputCount;
     private boolean isDead;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT + maxValues;
+    }
 
     @Override
     protected int successorCount() {
@@ -62,7 +69,6 @@ public final class Phi extends Value {
      * Create a new Phi for the specified join block and local variable (or operand stack) slot.
      * @param kind the type of the variable
      * @param block the join point
-     * @param index the index into the stack (if < 0) or local variables
      * @param graph
      */
     public Phi(CiKind kind, Merge block, Graph graph) {
@@ -71,6 +77,7 @@ public final class Phi extends Value {
 
     public Phi(CiKind kind, Merge block, int maxValues, Graph graph) {
         super(kind, INPUT_COUNT + maxValues, SUCCESSOR_COUNT, graph);
+        this.maxValues = maxValues;
         usedInputCount = 1;
         setBlock(block);
     }
@@ -159,5 +166,14 @@ public final class Phi extends Value {
             inputs().set(i - 1, inputs().get(i));
         }
         usedInputCount--;
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        Phi x = new Phi(kind, null, maxValues, into);
+        x.usedInputCount = usedInputCount;
+        x.isDead = isDead;
+        x.setNonNull(isNonNull());
+        return x;
     }
 }

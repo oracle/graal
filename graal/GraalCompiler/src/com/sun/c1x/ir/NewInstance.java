@@ -81,4 +81,11 @@ public final class NewInstance extends Value {
     public void print(LogStream out) {
         out.print("new instance ").print(CiUtil.toJavaName(instanceClass()));
     }
+
+    @Override
+    public Node copy(Graph into) {
+        NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

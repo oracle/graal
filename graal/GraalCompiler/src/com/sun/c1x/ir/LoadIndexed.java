@@ -85,4 +85,11 @@ public final class LoadIndexed extends AccessIndexed {
     public boolean needsStateAfter() {
         return false;
     }
+
+    @Override
+    public Node copy(Graph into) {
+        LoadIndexed x = new LoadIndexed(null, null, null, kind, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

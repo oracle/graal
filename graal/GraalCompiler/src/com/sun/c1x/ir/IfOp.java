@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
+import com.sun.cri.ci.*;
 
 /**
  * The {@code IfOp} class represents a comparison that yields one of two values.
@@ -74,7 +75,7 @@ public final class IfOp extends Op2 {
     }
 
 
-    Condition cond;
+    Condition condition;
 
     /**
      * Constructs a new IfOp.
@@ -87,9 +88,14 @@ public final class IfOp extends Op2 {
     public IfOp(Value x, Condition cond, Value y, Value trueValue, Value falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
         super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.cond = cond;
+        this.condition = cond;
         setTrueValue(trueValue);
         setFalseValue(falseValue);
+    }
+
+    private IfOp(CiKind kind, Condition cond, Graph graph) {
+        super(kind, Bytecodes.ILLEGAL, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.condition = cond;
     }
 
     /**
@@ -97,7 +103,7 @@ public final class IfOp extends Op2 {
      * @return the condition
      */
     public Condition condition() {
-        return cond;
+        return condition;
     }
 
     /**
@@ -105,7 +111,7 @@ public final class IfOp extends Op2 {
      * @return {@code true} if this comparison is commutative
      */
     public boolean isCommutative() {
-        return cond == Condition.EQ || cond == Condition.NE;
+        return condition == Condition.EQ || condition == Condition.NE;
     }
 
     @Override
@@ -115,7 +121,7 @@ public final class IfOp extends Op2 {
 
     @Override
     public int valueNumber() {
-        return Util.hash4(cond.hashCode(), x(), y(), trueValue(), falseValue());
+        return Util.hash4(condition.hashCode(), x(), y(), trueValue(), falseValue());
     }
 
     @Override
@@ -138,5 +144,12 @@ public final class IfOp extends Op2 {
         print(trueValue()).
         print(" : ").
         print(falseValue());
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        IfOp x = new IfOp(kind, condition, into);
+        x.setNonNull(isNonNull());
+        return x;
     }
 }

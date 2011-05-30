@@ -106,4 +106,11 @@ public final class NullCheck extends Value {
     public void print(LogStream out) {
         out.print("null_check(").print(object()).print(')');
     }
+
+    @Override
+    public Node copy(Graph into) {
+        NullCheck x = new NullCheck(null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

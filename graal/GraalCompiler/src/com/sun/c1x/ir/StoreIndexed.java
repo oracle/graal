@@ -62,13 +62,13 @@ public final class StoreIndexed extends AccessIndexed {
      * @param array the instruction producing the array
      * @param index the instruction producing the index
      * @param length the instruction producing the length
-     * @param elementType the element type
+     * @param elementKind the element type
      * @param value the value to store into the array
      * @param stateAfter the state after executing this instruction
      * @param graph
      */
-    public StoreIndexed(Value array, Value index, Value length, CiKind elementType, Value value, Graph graph) {
-        super(CiKind.Void, array, index, length, elementType, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public StoreIndexed(Value array, Value index, Value length, CiKind elementKind, Value value, Graph graph) {
+        super(CiKind.Void, array, index, length, elementKind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 
@@ -80,5 +80,12 @@ public final class StoreIndexed extends AccessIndexed {
     @Override
     public void print(LogStream out) {
         out.print(array()).print('[').print(index()).print("] := ").print(value()).print(" (").print(kind.typeChar).print(')');
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        StoreIndexed x = new StoreIndexed(null, null, null, elementKind(), null, into);
+        x.setNonNull(isNonNull());
+        return x;
     }
 }

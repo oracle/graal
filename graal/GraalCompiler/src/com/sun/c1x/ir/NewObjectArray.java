@@ -76,4 +76,11 @@ public final class NewObjectArray extends NewArray {
     public void print(LogStream out) {
         out.print("new object array [").print(length()).print("] ").print(CiUtil.toJavaName(elementClass()));
     }
+
+    @Override
+    public Node copy(Graph into) {
+        NewObjectArray x = new NewObjectArray(elementClass, null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

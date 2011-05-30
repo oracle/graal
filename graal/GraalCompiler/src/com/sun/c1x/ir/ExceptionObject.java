@@ -53,4 +53,11 @@ public final class ExceptionObject extends Instruction {
     public void print(LogStream out) {
         out.print("incoming exception");
     }
+
+    @Override
+    public Node copy(Graph into) {
+        ExceptionObject x = new ExceptionObject(into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

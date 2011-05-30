@@ -55,4 +55,11 @@ public final class MonitorAddress extends Value {
     public void print(LogStream out) {
         out.print("monitor_address (").print(monitor()).print(")");
     }
+
+    @Override
+    public Node copy(Graph into) {
+        MonitorAddress x = new MonitorAddress(monitor, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

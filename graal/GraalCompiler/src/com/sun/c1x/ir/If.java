@@ -84,7 +84,7 @@ public final class If extends BlockEnd {
      */
     public If(Value x, Condition cond, Value y, Graph graph) {
         super(CiKind.Illegal, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        assert Util.archKindsEqual(x, y);
+        assert (x == null && y == null) || Util.archKindsEqual(x, y);
         condition = cond;
         setX(x);
         setY(y);
@@ -187,5 +187,11 @@ public final class If extends BlockEnd {
         return "If " + condition.operator;
     }
 
-
+    @Override
+    public Node copy(Graph into) {
+        If x = new If(null, condition, null, into);
+        x.unorderedIsTrue = unorderedIsTrue;
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

@@ -79,4 +79,11 @@ public final class Unwind extends BlockEnd {
     public void print(LogStream out) {
         out.print(kind.typeChar).print("unwind ").print(exception());
     }
+
+    @Override
+    public Node copy(Graph into) {
+        Unwind x = new Unwind(null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

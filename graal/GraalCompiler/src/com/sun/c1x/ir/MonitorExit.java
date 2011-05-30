@@ -55,4 +55,11 @@ public final class MonitorExit extends AccessMonitor {
     public void print(LogStream out) {
         out.print("exit monitor[").print(lockNumber).print("](").print(object()).print(')');
     }
+
+    @Override
+    public Node copy(Graph into) {
+        MonitorExit x = new MonitorExit(null, null, lockNumber, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

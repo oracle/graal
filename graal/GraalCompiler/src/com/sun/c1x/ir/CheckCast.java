@@ -95,4 +95,11 @@ public final class CheckCast extends TypeCheck {
         print(") ").
         print(CiUtil.toJavaName(targetClass()));
     }
+
+    @Override
+    public Node copy(Graph into) {
+        CheckCast x = new CheckCast(targetClass, null, null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

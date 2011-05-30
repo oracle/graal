@@ -59,4 +59,11 @@ public final class CompareOp extends Op2 {
             print(' ').
             print(y());
     }
+
+    @Override
+    public Node copy(Graph into) {
+        CompareOp x = new CompareOp(opcode, kind, null, null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

@@ -25,6 +25,9 @@ package com.oracle.graal.graph;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class Graph {
 
@@ -67,5 +70,50 @@ public class Graph {
 
     public <T> NodeMap<T> createNodeMap() {
         return new NodeMap<T>(this);
+    }
+
+    public void addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
+        Map<Node, Node> newNodes = new HashMap<Node, Node>();
+        for (Node node : nodes) {
+            if (node != null && !replacements.containsKey(node)) {
+                newNodes.put(node, node.copy(this));
+            }
+        }
+        for (Entry<Node, Node> entry : newNodes.entrySet()) {
+            Node oldNode = entry.getKey();
+            Node node = entry.getValue();
+            for (int i = 0; i < oldNode.successors().size(); i++) {
+                Node succ = oldNode.successors().get(i);
+                Node target = replacements.get(succ);
+                if (target == null) {
+                    target = newNodes.get(succ);
+                }
+                node.successors().set(i, target);
+            }
+            for (int i = 0; i < oldNode.inputs().size(); i++) {
+                Node input = oldNode.inputs().get(i);
+                Node target = replacements.get(input);
+                if (target == null) {
+                    target = newNodes.get(input);
+                }
+                node.inputs().set(i, target);
+            }
+        }
+        for (Entry<Node, Node> entry : replacements.entrySet()) {
+            Node oldNode = entry.getKey();
+            Node node = entry.getValue();
+            for (int i = 0; i < oldNode.successors().size(); i++) {
+                Node succ = oldNode.successors().get(i);
+                if (newNodes.containsKey(succ)) {
+                    node.successors().set(i, newNodes.get(succ));
+                }
+            }
+            for (int i = 0; i < oldNode.inputs().size(); i++) {
+                Node input = oldNode.inputs().get(i);
+                if (newNodes.containsKey(input)) {
+                    node.inputs().set(i, newNodes.get(input));
+                }
+            }
+        }
     }
 }

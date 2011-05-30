@@ -104,4 +104,11 @@ public final class Throw extends BlockEnd implements ExceptionEdgeInstruction {
     public void print(LogStream out) {
         out.print("throw ").print(exception());
     }
+
+    @Override
+    public Node copy(Graph into) {
+        Throw x = new Throw(null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

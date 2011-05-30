@@ -100,4 +100,11 @@ public final class Convert extends Value {
     public void print(LogStream out) {
         out.print(Bytecodes.nameOf(opcode)).print('(').print(value()).print(')');
     }
+
+    @Override
+    public Node copy(Graph into) {
+        Convert x = new Convert(opcode, null, kind, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

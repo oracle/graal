@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
+import com.sun.cri.ci.*;
 
 /**
  * The {@code NegateOp} instruction negates its operand.
@@ -68,6 +69,10 @@ public final class NegateOp extends Value {
         setX(x);
     }
 
+    private NegateOp(CiKind kind, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
+
     @Override
     public void accept(ValueVisitor v) {
         v.visitNegateOp(this);
@@ -90,5 +95,12 @@ public final class NegateOp extends Value {
     @Override
     public void print(LogStream out) {
         out.print("- ").print(x());
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        NegateOp x = new NegateOp(kind, into);
+        x.setNonNull(isNonNull());
+        return x;
     }
 }

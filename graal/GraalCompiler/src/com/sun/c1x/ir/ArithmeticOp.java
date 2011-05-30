@@ -79,4 +79,11 @@ public final class ArithmeticOp extends Op2 {
     public String shortName() {
         return Bytecodes.operator(opcode);
     }
+
+    @Override
+    public Node copy(Graph into) {
+        ArithmeticOp x = new ArithmeticOp(opcode, kind, null, null, isStrictFP, canTrap, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

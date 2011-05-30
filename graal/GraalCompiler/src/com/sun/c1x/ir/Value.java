@@ -60,11 +60,6 @@ public abstract class Value extends Node {
     // TODO: remove when Value class changes are completed
 
     @Override
-    public Node copy(Graph into) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     protected Object clone() throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
     }

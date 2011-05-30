@@ -92,4 +92,11 @@ public final class ArrayLength extends Value {
     public void print(LogStream out) {
         out.print(array()).print(".length");
     }
+
+    @Override
+    public Node copy(Graph into) {
+        ArrayLength x = new ArrayLength(null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

@@ -71,4 +71,11 @@ public final class InstanceOf extends TypeCheck {
     public void print(LogStream out) {
         out.print("instanceof(").print(object()).print(") ").print(CiUtil.toJavaName(targetClass()));
     }
+
+    @Override
+    public Node copy(Graph into) {
+        InstanceOf x = new InstanceOf(targetClass, null, null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

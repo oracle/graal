@@ -54,4 +54,11 @@ public final class Anchor extends BlockEnd {
     public void print(LogStream out) {
         out.print("goto ").print(defaultSuccessor());
     }
+
+    @Override
+    public Node copy(Graph into) {
+        Anchor x = new Anchor(null, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

@@ -180,4 +180,11 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
         }
         out.print(CiUtil.format(") [method: %H.%n(%p):%r]", target, false));
     }
+
+    @Override
+    public Node copy(Graph into) {
+        Invoke x = new Invoke(opcode, kind, new Value[argumentCount], target, returnType, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

@@ -116,4 +116,11 @@ public final class NewMultiArray extends NewArray {
         }
         out.print("] ").print(CiUtil.toJavaName(elementKind));
     }
+
+    @Override
+    public Node copy(Graph into) {
+        NewMultiArray x = new NewMultiArray(elementKind, new Value[dimensionCount], cpi, constantPool, into);
+        x.setNonNull(isNonNull());
+        return x;
+    }
 }

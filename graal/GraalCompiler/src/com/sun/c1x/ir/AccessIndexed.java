@@ -77,17 +77,17 @@ public abstract class AccessIndexed extends AccessArray {
      * @param array the instruction producing the array
      * @param index the instruction producing the index
      * @param length the instruction producing the length (used in bounds check elimination?)
-     * @param elementType the type of the elements of the array
+     * @param elementKind the type of the elements of the array
      * @param stateBefore the state before executing this instruction
      * @param inputCount
      * @param successorCount
      * @param graph
      */
-    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementType, int inputCount, int successorCount, Graph graph) {
+    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementKind, int inputCount, int successorCount, Graph graph) {
         super(kind, array, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setIndex(index);
         setLength(length);
-        this.elementType = elementType;
+        this.elementType = elementKind;
     }
 
     /**
