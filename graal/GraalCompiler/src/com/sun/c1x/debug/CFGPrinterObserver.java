@@ -39,8 +39,14 @@ public class CFGPrinterObserver implements CompilationObserver {
     private C1XCompilation currentCompilation;
     private CFGPrinter cfgPrinter;
     private ByteArrayOutputStream buffer = null;
+    private final OutputStream stream;
 
     public CFGPrinterObserver() {
+        this(CFGPrinter.cfgFileStream());
+    }
+
+    public CFGPrinterObserver(OutputStream stream) {
+        this.stream = stream;
     }
 
     @Override
@@ -96,13 +102,13 @@ public class CFGPrinterObserver implements CompilationObserver {
 
         cfgPrinter.flush();
 
-        OutputStream cfgFileStream = CFGPrinter.cfgFileStream();
-        if (cfgFileStream != null) {
-            synchronized (cfgFileStream) {
+        if (stream != null) {
+            synchronized (stream) {
                 try {
-                    cfgFileStream.write(buffer.toByteArray());
+                    stream.write(buffer.toByteArray());
+                    stream.flush();
                 } catch (IOException e) {
-                    TTY.println("WARNING: Error writing CFGPrinter output for %s to disk: %s", event.getMethod(), e);
+                    TTY.println("WARNING: Error writing CFGPrinter output for %s: %s", event.getMethod(), e);
                 }
             }
         }
