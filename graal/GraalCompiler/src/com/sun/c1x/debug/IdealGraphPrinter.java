@@ -126,7 +126,7 @@ public class IdealGraphPrinter {
 
         stream.println("  <controlFlow>");
         for (Block block : schedule.getBlocks()) {
-            printBlock(block);
+            printBlock(graph, block);
         }
         printNoBlock();
         stream.println("  </controlFlow>");
@@ -138,7 +138,7 @@ public class IdealGraphPrinter {
         ArrayList<Edge> edges = new ArrayList<Edge>();
 
         for (Node node : nodes) {
-            if (node == Node.Null || omittedClasses.contains(node)) {
+            if (node == Node.Null || omittedClasses.contains(node.getClass())) {
                 continue;
             }
 
@@ -196,7 +196,7 @@ public class IdealGraphPrinter {
         stream.printf("   <edge from='%d' fromIndex='%d' to='%d' toIndex='%d'/>%n", edge.from, edge.fromIndex, edge.to, edge.toIndex);
     }
 
-    private void printBlock(Block block) {
+    private void printBlock(Graph graph, Block block) {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
@@ -208,8 +208,38 @@ public class IdealGraphPrinter {
         }
         stream.printf("    </successors>%n");
         stream.printf("    <nodes>%n");
+
+        ArrayList<Node> nodes = new ArrayList<Node>(block.getInstructions());
+        // if this is the first block: add all locals to this block
+        if (nodes.get(0) == graph.start()) {
+            for (Node node : graph.getNodes()) {
+                if (node instanceof Local) {
+                    nodes.add(node);
+                }
+            }
+        }
+        // add all framestates and phis to their blocks
         for (Node node : block.getInstructions()) {
-            stream.printf("     <node id='%d'/>%n", node.id());
+            if (node instanceof Instruction && ((Instruction) node).stateAfter() != null) {
+                nodes.add(((Instruction) node).stateAfter());
+            }
+            if (node instanceof Merge) {
+                Merge merge = (Merge) node;
+                if (merge.stateBefore() != null) {
+                    nodes.add(merge.stateBefore());
+                }
+                for (Node usage : merge.usages()) {
+                    if (usage instanceof Phi) {
+                        nodes.add(usage);
+                    }
+                }
+            }
+        }
+
+        for (Node node : nodes) {
+            if (!omittedClasses.contains(node.getClass())) {
+                stream.printf("     <node id='%d'/>%n", node.id());
+            }
         }
         stream.printf("    </nodes>%n");
         stream.printf("   </block>%n", block.blockID());
