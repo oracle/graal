@@ -66,7 +66,7 @@ public abstract class Instruction extends Value {
         return (Instruction) successors().get(super.successorCount() + SUCCESSOR_NEXT);
     }
 
-    private Node setNext(Instruction next) {
+    public Node setNext(Instruction next) {
         return successors().set(super.successorCount() + SUCCESSOR_NEXT, next);
     }
 
@@ -76,8 +76,6 @@ public abstract class Instruction extends Value {
 
 
     public static final int SYNCHRONIZATION_ENTRY_BCI = -1;
-
-    private boolean isAppended = false;
 
     /**
      * Constructs a new instruction with the specified value type.
@@ -90,30 +88,6 @@ public abstract class Instruction extends Value {
         C1XMetrics.HIRInstructions++;
     }
 
-    /**
-     * Checks whether this instruction has already been added to its basic block.
-     * @return {@code true} if this instruction has been added to the basic block containing it
-     */
-    public final boolean isAppended() {
-        return isAppended;
-    }
-
-
-    /**
-     * Sets the next instruction for this instruction. Note that it is illegal to
-     * set the next field of a phi, block end, or local instruction.
-     * @param next the next instruction
-     * @param bci the bytecode index of the next instruction
-     * @return the new next instruction
-     */
-    public final Instruction appendNext(Instruction next) {
-        setNext(next);
-        if (next != null) {
-            assert !(this instanceof BlockEnd);
-            next.isAppended = true;
-        }
-        return next;
-    }
 
     /**
      * Gets the list of predecessors of this block.
@@ -121,11 +95,7 @@ public abstract class Instruction extends Value {
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public List<Instruction> blockPredecessors() {
-        /*if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
-            return Collections.EMPTY_LIST;
-        } else {)*/
-            return (List) Collections.unmodifiableList(predecessors());
-        //}
+        return (List) Collections.unmodifiableList(predecessors());
     }
 
     /**
@@ -133,12 +103,7 @@ public abstract class Instruction extends Value {
      * @return the number of predecessors
      */
     public int numberOfPreds() {
-        // ignore the graph root
-        /*if (predecessors().size() == 1 && predecessors().get(0) == graph().start()) {
-            return 0;
-        } else {*/
-            return predecessors().size();
-        //}
+        return predecessors().size();
     }
 
     public Instruction predAt(int j) {

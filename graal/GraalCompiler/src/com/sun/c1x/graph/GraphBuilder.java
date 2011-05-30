@@ -59,25 +59,6 @@ public final class GraphBuilder {
      */
     public static final int TRACELEVEL_STATE = 2;
 
-    /**
-     * An enumeration of flags describing scope attributes.
-     */
-    public enum Flag {
-        /**
-         * Scope is protected by an exception handler.
-         * This attribute is inherited by nested scopes.
-         */
-        HasHandler,
-
-        /**
-         * Code in scope cannot contain safepoints.
-         * This attribute is inherited by nested scopes.
-         */
-        NoSafepoints;
-
-        public final int mask = 1 << ordinal();
-    }
-
     private final IR ir;
     private final C1XCompilation compilation;
     private final CiStatistics stats;
@@ -97,11 +78,6 @@ public final class GraphBuilder {
         }
     });
 
-    /**
-     * Mask of {@link Flag} values.
-     */
-    private int flags;
-
     // Exception handler list
     private List<ExceptionHandler> exceptionHandlers;
 
@@ -113,8 +89,6 @@ public final class GraphBuilder {
     private Value rootMethodSynchronizedObject;
 
     private final Graph graph;
-
-    private Merge unwindBlock;
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -146,10 +120,6 @@ public final class GraphBuilder {
             log.println("Compiling " + compilation.method);
         }
 
-        if (rootMethod.noSafepoints()) {
-            flags |= Flag.NoSafepoints.mask;
-        }
-
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(rootMethod);
 
@@ -177,8 +147,6 @@ public final class GraphBuilder {
                     exceptionHandlers.add(h);
                 }
             }
-            flags |= Flag.HasHandler.mask;
-
         }
 
         // 1. create the start block
@@ -297,8 +265,6 @@ public final class GraphBuilder {
         FrameState existingState = ((StateSplit) first).stateBefore();
 
         if (existingState == null) {
-//            assert first instanceof Merge ^ !target.isLoopHeader : "isLoopHeader: " + target.isLoopHeader;
-
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci);
 
@@ -422,13 +388,12 @@ public final class GraphBuilder {
             StateSplit entry = new Placeholder(graph);
             entry.setStateBefore(entryState);
             ExceptionObject exception = new ExceptionObject(graph);
-            entry.appendNext(exception);
+            entry.setNext(exception);
             FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
 
             Instruction successor = createTarget(dispatchBlock, stateWithException);
             BlockEnd end = new Anchor(successor, graph);
-            exception.appendNext(end);
-
+            exception.setNext(end);
             if (x instanceof Invoke) {
                 ((Invoke) x).setExceptionEdge(entry);
             } else {
@@ -1043,15 +1008,11 @@ public final class GraphBuilder {
     }
 
     private Value appendWithBCI(Instruction x) {
-        if (x.isAppended()) {
-            // the instruction has already been added
-            return x;
-        }
-
-        assert x.next() == null : "instruction should not have been appended yet";
+        assert x.next() == null && x.predecessors().size() == 0 : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
+        lastInstr.setNext(x);
 
-        lastInstr = lastInstr.appendNext(x);
+        lastInstr = x;
         if (++stats.nodeCount >= C1XOptions.MaximumInstructionCount) {
             // bailout if we've exceeded the maximum inlining size
             throw new CiBailout("Method and/or inlining is too large");
@@ -1114,12 +1075,7 @@ public final class GraphBuilder {
 
         assert lock != null;
         assert frameState.locksSize() > 0 && frameState.lockAt(frameState.locksSize() - 1) == lock;
-        if (lock instanceof Instruction) {
-            Instruction l = (Instruction) lock;
-            if (!l.isAppended()) {
-                lock = appendWithBCI(l);
-            }
-        }
+
         // Exit the monitor and unwind the stack.
         genMonitorExit(lock);
         append(new Unwind(frameState.apop(), graph));
@@ -1210,13 +1166,7 @@ public final class GraphBuilder {
     }
 
     private void appendGoto(Instruction target) {
-        //if (target instanceof BlockBegin && !((BlockBegin)target).isLoopHeader) {
-        //    System.out.println("NOTOMITTED");
-            //append(new Goto(target, graph));
-        //} else {
-        //    System.out.println("omitted");
-            lastInstr.appendNext(target);
-        //}
+        lastInstr.setNext(target);
     }
 
     private void iterateBytecodesForBlock(Block block) {
@@ -1525,7 +1475,6 @@ public final class GraphBuilder {
             exceptionHandlers = new ArrayList<ExceptionHandler>();
         }
         exceptionHandlers.add(handler);
-        flags |= Flag.HasHandler.mask;
     }
 
     /**
@@ -1560,13 +1509,6 @@ public final class GraphBuilder {
      * @return {@code true} if there are any exception handlers
      */
     private boolean hasHandler() {
-        return (flags & Flag.HasHandler.mask) != 0;
-    }
-
-    /**
-     * Checks whether this graph can contain safepoints.
-     */
-    private boolean noSafepoints() {
-        return (flags & Flag.NoSafepoints.mask) != 0;
+        return Modifier.isSynchronized(compilation.method.accessFlags()) || (compilation.method.exceptionHandlers() != null && compilation.method.exceptionHandlers().length > 0);
     }
 }
