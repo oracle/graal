@@ -54,7 +54,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
             Local local = new Local(method.holder().kind(), javaIndex, graph);
-            local.setFlag(Value.Flag.NonNull, true);
+            local.setNonNull(true);
             local.setDeclaredType(method.holder());
             storeLocal(javaIndex, local);
             javaIndex = 1;
@@ -322,7 +322,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     public Value loadLocal(int i) {
         Value x = locals[i];
         if (x != null) {
-            if (x.isIllegal()) {
+            if (x instanceof Phi && ((Phi) x).isDead()) {
                 return null;
             }
             assert x.kind.isSingleWord() || locals[i + 1] == null || locals[i + 1] instanceof Phi;

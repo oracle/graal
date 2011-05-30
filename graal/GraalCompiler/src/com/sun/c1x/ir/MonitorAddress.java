@@ -39,7 +39,7 @@ public final class MonitorAddress extends Value {
     public MonitorAddress(int monitor, Graph graph) {
         super(CiKind.Word, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.monitor = monitor;
-        setFlag(Flag.NonNull);
+        setNonNull(true);
     }
 
     @Override

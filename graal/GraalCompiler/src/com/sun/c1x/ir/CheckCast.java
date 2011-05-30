@@ -46,7 +46,7 @@ public final class CheckCast extends TypeCheck {
      */
     public CheckCast(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {
         super(targetClass, targetClassInstruction, object, CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        initFlag(Flag.NonNull, object.isNonNull());
+        setNonNull(true);
     }
 
     /**
