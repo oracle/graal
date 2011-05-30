@@ -28,7 +28,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code NewArray} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArray extends StateSplit {
+public abstract class NewArray extends Instruction {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_LENGTH = 0;
@@ -68,10 +68,5 @@ public abstract class NewArray extends StateSplit {
         super(CiKind.Object, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setFlag(Flag.NonNull);
         setLength(length);
-    }
-
-    @Override
-    public boolean needsStateAfter() {
-        return false;
     }
 }

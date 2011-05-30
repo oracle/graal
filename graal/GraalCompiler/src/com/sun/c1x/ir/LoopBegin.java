@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,37 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.cri.ci.*;
 
-/**
- * Instruction that is used to refer to the address of an on-stack monitor.
- */
-public final class MonitorAddress extends Value {
+public class LoopBegin extends Merge {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private int monitor;
+    public LoopBegin(Graph graph) {
+        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
 
-    public MonitorAddress(int monitor, Graph graph) {
-        super(CiKind.Word, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.monitor = monitor;
-        setFlag(Flag.NonNull);
+    public LoopEnd loopEnd() {
+        for (Node usage : usages()) {
+            if (usage instanceof LoopEnd) {
+                LoopEnd end = (LoopEnd) usage;
+                if (end.loopBegin() == this) {
+                    return end;
+                }
+            }
+        }
+        assert false : "Begin should always have a LoopEnd";
+        return null;
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitMonitorAddress(this);
-    }
-
-    public int monitor() {
-        return monitor;
+        v.visitLoopBegin(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("monitor_address (").print(monitor()).print(")");
+        out.print("loopBegin");
     }
+
 }

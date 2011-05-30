@@ -24,9 +24,11 @@ package com.sun.c1x.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
+import com.sun.c1x.gen.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
@@ -62,7 +64,7 @@ public class IR {
         this.compilation = compilation;
     }
 
-    public Map<Value, LIRBlock> valueToBlock;
+    public Map<Node, LIRBlock> valueToBlock;
 
     /**
      * Builds the graph, optimizes it, and computes the linear scan block order.
@@ -79,6 +81,7 @@ public class IR {
             C1XTimers.HIR_OPTIMIZE.start();
         }
 
+        new PhiSimplifier(this);
         Schedule schedule = new Schedule(this.compilation.graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
@@ -89,6 +92,9 @@ public class IR {
             map.put(b, block);
             block.setInstructions(b.getInstructions());
             block.setLinearScanNumber(b.blockID());
+
+            block.setFirstInstruction(b.firstNode());
+            block.setLastInstruction(b.lastNode());
             lirBlocks.add(block);
         }
 
@@ -116,9 +122,9 @@ public class IR {
 
         orderedBlocks = lirBlocks;
 
-        valueToBlock = new HashMap<Value, LIRBlock>();
+        valueToBlock = new HashMap<Node, LIRBlock>();
         for (LIRBlock b : orderedBlocks) {
-            for (Instruction i : b.getInstructions()) {
+            for (Node i : b.getInstructions()) {
                 valueToBlock.put(i, b);
             }
         }
@@ -188,7 +194,7 @@ public class IR {
         }
 
         if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, getHIRStartBlock(), true, false));
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, compilation.graph, true, false));
         }
     }
 

@@ -33,7 +33,7 @@ import com.sun.cri.ri.*;
  * The {@code Constant} instruction represents a constant such as an integer value,
  * long, float, object reference, address, etc.
  */
-public final class Constant extends Instruction {
+public final class Constant extends Value {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -164,7 +164,7 @@ public final class Constant extends Instruction {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         return i instanceof Constant && ((Constant) i).value.equivalent(this.value);
     }
 

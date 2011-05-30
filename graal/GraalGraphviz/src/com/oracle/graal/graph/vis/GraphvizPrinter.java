@@ -25,6 +25,7 @@ package com.oracle.graal.graph.vis;
 import java.awt.Color;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import com.oracle.graal.graph.Graph;
@@ -46,6 +47,7 @@ public class GraphvizPrinter {
 
     private final PrintStream out;
     private final HashSet<Class<?>> omittedClasses = new HashSet<Class<?>>();
+    private final HashMap<Class<?>, String> classColors = new HashMap<Class<?>, String>();
 
     /**
      * Creates a new {@link GraphvizPrinter} that writes to the specified output stream.
@@ -56,6 +58,10 @@ public class GraphvizPrinter {
 
     public void addOmittedClass(Class<?> clazz) {
         omittedClasses.add(clazz);
+    }
+
+    public void addClassColor(Class<?> clazz, String color) {
+        classColors.put(clazz, color);
     }
 
     /**
@@ -104,10 +110,12 @@ public class GraphvizPrinter {
         NodeArray inputs = node.inputs();
         NodeArray successors = node.successors();
 
+        String color = classColors.get(node.getClass());
+
         if (shortNames) {
-            printNode(name, node.shortName(), inputs.size(), successors.size());
+            printNode(name, node.id(), excapeLabel(node.shortName()), color, inputs.size(), successors.size());
         } else {
-            printNode(name, node.toString(), inputs.size(), successors.size());
+            printNode(name, node.id(), excapeLabel(node.toString()), color, inputs.size(), successors.size());
         }
 
         for (int i = 0; i < successors.size(); ++i) {
@@ -128,8 +136,8 @@ public class GraphvizPrinter {
         }
     }
 
-    private void printNode(String name, String label, int ninputs, int nsuccessors) {
-        int minWidth = Math.min(label.length() / 3, 10);
+    private void printNode(String name, Number number, String label, String color, int ninputs, int nsuccessors) {
+        int minWidth = Math.min(1 + label.length() / 3, 10);
         minWidth = Math.max(minWidth, Math.max(ninputs + 1, nsuccessors + 1));
         out.println(name + "  [shape=plaintext,");
         out.println("   label=< <TABLE BORDER=\"0\" CELLSPACING=\"0\"><TR>");
@@ -144,11 +152,11 @@ public class GraphvizPrinter {
             printPort("in" + i, "lightgrey");
         }
 
-        label = label.replace("&", "&amp;");
-        label = label.replace("<", "&lt;");
-        label = label.replace(">", "&gt;");
-        label = label.replace("\"", "&quot;");
-        out.println("    </TR><TR><TD BORDER=\"1\" COLSPAN=\"" + minWidth + "\" BGCOLOR=\"" + NODE_BGCOLOR_STRING + "\">" + label + "</TD></TR><TR>");
+        if (number != null) {
+            label = "<FONT POINT-SIZE=\"8\">" + number + "</FONT> " + label;
+        }
+
+        out.println("    </TR><TR><TD BORDER=\"1\" COLSPAN=\"" + minWidth + "\" BGCOLOR=\"" + (color != null ? color : NODE_BGCOLOR_STRING) + "\">" + label + "</TD></TR><TR>");
 
         for (int i = 0; i < nsuccessors; i++) {
             printPort("succ" + i, "rosybrown1");
@@ -161,6 +169,14 @@ public class GraphvizPrinter {
         printPort("usages", "lightgrey");
 
         out.println("    </TR></TABLE>>]; ");
+    }
+
+    private static String excapeLabel(String label) {
+        label = label.replace("&", "&amp;");
+        label = label.replace("<", "&lt;");
+        label = label.replace(">", "&gt;");
+        label = label.replace("\"", "&quot;");
+        return label;
     }
 
     private void printPort(String name, String color) {
@@ -176,7 +192,7 @@ public class GraphvizPrinter {
     }
 
     private void printControlEdge(int from, int fromPort, int to) {
-        out.println("n" + from + ":succ" + fromPort + " -> n" + to + ":predecessors:n [color=red, weight=2];");
+        out.println("n" + from + ":succ" + fromPort + ":s -> n" + to + ":predecessors:n [color=red, weight=2];");
     }
 
     private void printDataEdge(int from, int fromPort, int to) {

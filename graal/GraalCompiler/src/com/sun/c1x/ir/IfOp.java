@@ -119,7 +119,7 @@ public final class IfOp extends Op2 {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof IfOp) {
             IfOp o = (IfOp) i;
             return opcode == o.opcode && x() == o.x() && y() == o.y() && trueValue() == o.trueValue() && falseValue() == o.falseValue();

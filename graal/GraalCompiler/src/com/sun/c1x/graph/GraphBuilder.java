@@ -288,6 +288,9 @@ public final class GraphBuilder {
 
     public void mergeOrClone(Block target, FrameStateAccess newState) {
         Instruction first = target.firstInstruction;
+        if (target.isLoopHeader && isVisited(target)) {
+            first = ((LoopBegin) first).loopEnd();
+        }
         assert first instanceof StateSplit;
 
         int bci = target.startBci;
@@ -295,13 +298,13 @@ public final class GraphBuilder {
         FrameState existingState = ((StateSplit) first).stateBefore();
 
         if (existingState == null) {
-            assert first instanceof Merge ^ !target.isLoopHeader : "isLoopHeader: " + target.isLoopHeader;
+//            assert first instanceof Merge ^ !target.isLoopHeader : "isLoopHeader: " + target.isLoopHeader;
 
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci);
 
             // if the block is a loop header, insert all necessary phis
-            if (target.isLoopHeader) {
+            if (first instanceof LoopBegin && target.isLoopHeader) {
                 assert first instanceof Merge;
                 insertLoopPhis((Merge) first, duplicate);
                 ((Merge) first).setStateBefore(duplicate);
@@ -319,16 +322,18 @@ public final class GraphBuilder {
             assert existingState.stackSize() == newState.stackSize();
 
             if (first instanceof Placeholder) {
-                Merge merge = new Merge(existingState.bci, target.isLoopHeader, graph);
+                assert !target.isLoopHeader;
+                Merge merge = new Merge(graph);
 
                 Placeholder p = (Placeholder) first;
                 assert p.next() == null;
                 p.replace(merge);
                 target.firstInstruction = merge;
                 merge.setStateBefore(existingState);
+                first = merge;
             }
 
-            existingState.merge((Merge) target.firstInstruction, newState);
+            existingState.merge((Merge) first, newState);
         }
 
         for (int j = 0; j < frameState.localsSize() + frameState.stackSize(); ++j) {
@@ -1027,11 +1032,15 @@ public final class GraphBuilder {
     }
 
     private Value appendConstant(CiConstant constant) {
-        return appendWithBCI(new Constant(constant, graph));
+        return append(new Constant(constant, graph));
     }
 
     private Value append(Instruction x) {
         return appendWithBCI(x);
+    }
+
+    private Value append(Value v) {
+        return v;
     }
 
     private Value appendWithBCI(Instruction x) {
@@ -1057,7 +1066,6 @@ public final class GraphBuilder {
     }
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
-
         assert block != null && stateAfter != null;
         assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null : "non-loop block must be iterated after all its predecessors";
 
@@ -1067,20 +1075,30 @@ public final class GraphBuilder {
 
         if (block.firstInstruction == null) {
             if (block.isLoopHeader) {
-                block.firstInstruction = new Merge(block.startBci, block.isLoopHeader, graph);
+//                block.firstInstruction = new Merge(block.startBci, graph);
+
+                LoopBegin loopBegin = new LoopBegin(graph);
+                LoopEnd loopEnd = new LoopEnd(graph);
+                loopEnd.setLoopBegin(loopBegin);
+                block.firstInstruction = loopBegin;
             } else {
                 block.firstInstruction = new Placeholder(graph);
             }
         }
         mergeOrClone(block, stateAfter);
         addToWorkList(block);
-        return block.firstInstruction;
+
+        if (block.firstInstruction instanceof LoopBegin && isVisited(block)) {
+            return ((LoopBegin) block.firstInstruction).loopEnd();
+        } else {
+            return block.firstInstruction;
+        }
     }
 
     private Value synchronizedObject(FrameStateAccess state, RiMethod target) {
         if (isStatic(target.accessFlags())) {
             Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass), graph);
-            return appendWithBCI(classConstant);
+            return append(classConstant);
         } else {
             return state.localAt(0);
         }
@@ -1133,6 +1151,28 @@ public final class GraphBuilder {
                     createExceptionDispatch((ExceptionBlock) block);
                 } else {
                     iterateBytecodesForBlock(block);
+                }
+            }
+        }
+        for (Block b : blocksVisited) {
+            if (b.isLoopHeader) {
+                LoopBegin begin = (LoopBegin) b.firstInstruction;
+                LoopEnd end = begin.loopEnd();
+
+//              This can happen with degenerated loops like this one:
+//                for (;;) {
+//                    try {
+//                        break;
+//                    } catch (UnresolvedException iioe) {
+//                    }
+//                }
+                if (end.stateBefore() != null) {
+                    begin.stateBefore().merge(begin, end.stateBefore());
+                } else {
+                    end.delete();
+                    Merge merge = new Merge(graph);
+                    merge.successors().setAndClear(merge.nextIndex(), begin, begin.nextIndex());
+                    begin.replace(merge);
                 }
             }
         }

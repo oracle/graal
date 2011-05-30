@@ -46,7 +46,7 @@ public abstract class Instruction extends Value {
     private static final int INPUT_COUNT = 0;
 
     private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_NEXT = 0;
+    public static final int SUCCESSOR_NEXT = 0;
 
     @Override
     protected int inputCount() {
@@ -68,6 +68,10 @@ public abstract class Instruction extends Value {
 
     private Node setNext(Instruction next) {
         return successors().set(super.successorCount() + SUCCESSOR_NEXT, next);
+    }
+
+    public int nextIndex() {
+        return super.successorCount() + SUCCESSOR_NEXT;
     }
 
 
@@ -105,7 +109,7 @@ public abstract class Instruction extends Value {
     public final Instruction appendNext(Instruction next) {
         setNext(next);
         if (next != null) {
-            assert !(this instanceof BlockEnd);
+            //assert !(this instanceof BlockEnd);
             next.isAppended = true;
         }
         return next;
@@ -139,38 +143,6 @@ public abstract class Instruction extends Value {
 
     public Instruction predAt(int j) {
         return (Instruction) predecessors().get(j);
-    }
-
-    @Override
-    public Merge block() {
-        Instruction cur = this;
-        while (!(cur instanceof Merge)) {
-            List<Node> preds = cur.predecessors();
-            cur = (Instruction) preds.get(0);
-        }
-        return (Merge) cur;
-    }
-
-    /**
-     * Compute the value number of this Instruction. Local and global value numbering
-     * optimizations use a hash map, and the value number provides a hash code.
-     * If the instruction cannot be value numbered, then this method should return
-     * {@code 0}.
-     * @return the hashcode of this instruction
-     */
-    public int valueNumber() {
-        return 0;
-    }
-
-    /**
-     * Checks that this instruction is equal to another instruction for the purposes
-     * of value numbering.
-     * @param i the other instruction
-     * @return {@code true} if this instruction is equivalent to the specified
-     * instruction w.r.t. value numbering
-     */
-    public boolean valueEqual(Instruction i) {
-        return false;
     }
 
     /**

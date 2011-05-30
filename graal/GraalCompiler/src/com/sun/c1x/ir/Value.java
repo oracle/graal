@@ -57,13 +57,6 @@ public abstract class Value extends Node {
     protected CiValue operand = CiValue.IllegalValue;
 
     /**
-     * Used by {@link InstructionSubstituter}.
-     */
-    public Value subst;
-
-    public abstract Merge block();
-
-    /**
      * Creates a new value with the specified kind.
      * @param kind the type of this value
      * @param inputCount
@@ -87,30 +80,6 @@ public abstract class Value extends Node {
     @Override
     protected Object clone() throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
-    }
-
-    /////////////////
-
-    /**
-     * Gets the instruction that should be substituted for this one. Note that this
-     * method is recursive; if the substituted instruction has a substitution, then
-     * the final substituted instruction will be returned. If there is no substitution
-     * for this instruction, {@code this} will be returned.
-     * @return the substitution for this instruction
-     */
-    public final Value subst() {
-        if (subst == null) {
-            return this;
-        }
-        return subst.subst();
-    }
-
-    /**
-     * Checks whether this instruction has a substitute.
-     * @return {@code true} if this instruction has a substitution.
-     */
-    public final boolean hasSubst() {
-        return subst != null;
     }
 
     /**
@@ -292,6 +261,28 @@ public abstract class Value extends Node {
 
     public final boolean isDeadPhi() {
         return checkFlag(Flag.PhiDead);
+    }
+
+    /**
+     * Compute the value number of this Instruction. Local and global value numbering
+     * optimizations use a hash map, and the value number provides a hash code.
+     * If the instruction cannot be value numbered, then this method should return
+     * {@code 0}.
+     * @return the hashcode of this instruction
+     */
+    public int valueNumber() {
+        return 0;
+    }
+
+    /**
+     * Checks that this instruction is equal to another instruction for the purposes
+     * of value numbering.
+     * @param i the other instruction
+     * @return {@code true} if this instruction is equivalent to the specified
+     * instruction w.r.t. value numbering
+     */
+    public boolean valueEqual(Node i) {
+        return false;
     }
 
     /**

@@ -24,6 +24,7 @@ package com.oracle.max.graal.schedule;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.sun.c1x.ir.*;
 
 
@@ -32,14 +33,46 @@ public class Block {
     private int blockID;
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
-    private final List<Instruction> instructions = new ArrayList<Instruction>();
+    private List<Node> instructions = new ArrayList<Node>();
     private boolean exceptionEntry;
+    private Block dominator;
+    private final List<Block> dominators = new ArrayList<Block>();
+
+    private Node firstNode;
+    private Node lastNode;
+
+    public Node firstNode() {
+        return firstNode;
+    }
+
+    public void setFirstNode(Node node) {
+        this.firstNode = node;
+    }
+
+    public Node lastNode() {
+        return lastNode;
+    }
+
+    public void setLastNode(Node node) {
+        this.lastNode = node;
+    }
 
     public List<Block> getSuccessors() {
         return Collections.unmodifiableList(successors);
     }
 
-    public List<Instruction> getInstructions() {
+    public void setDominator(Block dominator) {
+        assert this.dominator == null;
+        assert dominator != null;
+        this.dominator = dominator;
+        dominator.dominators.add(this);
+    }
+
+    public List<Block> getDominators() {
+        return Collections.unmodifiableList(dominators);
+    }
+
+    public List<Node> getInstructions() {
         return instructions;
     }
 
@@ -96,5 +129,13 @@ public class Block {
     @Override
     public String toString() {
         return "B" + blockID;
+    }
+
+    public Block dominator() {
+        return dominator;
+    }
+
+    public void setInstructions(List<Node> instructions) {
+        this.instructions = instructions;
     }
 }

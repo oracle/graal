@@ -849,9 +849,15 @@ public final class LinearScan {
                     LIRBlock block = blockAt(j);
                     if (block.liveGen.get(operandNum)) {
                         TTY.println("  used in block B%d", block.blockID());
+                        for (LIRInstruction ins : block.lir().instructionsList()) {
+                            TTY.println(ins.id + ": " + ins.result() + " " + ins.toString());
+                        }
                     }
                     if (block.liveKill.get(operandNum)) {
                         TTY.println("  defined in block B%d", block.blockID());
+                        for (LIRInstruction ins : block.lir().instructionsList()) {
+                            TTY.println(ins.id + ": " + ins.result() + " " + ins.toString());
+                        }
                     }
                 }
             }
@@ -2146,7 +2152,7 @@ public final class LinearScan {
         }
 
         if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, label, compilation.hir().getHIRStartBlock(), hirValid, true));
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, label, compilation.graph, hirValid, true));
         }
     }
 

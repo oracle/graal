@@ -49,7 +49,6 @@ public final class Phi extends Value {
     /**
      * The join block for this phi.
      */
-     @Override
     public Merge block() {
         return (Merge) inputs().get(super.inputCount() + INPUT_BLOCK);
     }
@@ -120,7 +119,18 @@ public final class Phi extends Value {
 
     @Override
     public String shortName() {
-        return "Phi: (" + valueCount() + ")";
+        StringBuilder str = new StringBuilder();
+        for (int i = 1; i < inputs().size(); ++i) {
+            if (i != 1) {
+                str.append(' ');
+            }
+            if (inputs().get(i) != null) {
+                str.append(inputs().get(i).id());
+            } else {
+                str.append("-");
+            }
+        }
+        return "Phi: (" + str + ")";
     }
 
     public Phi addInput(Node y) {

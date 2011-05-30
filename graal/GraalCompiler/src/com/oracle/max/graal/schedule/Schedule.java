@@ -27,6 +27,8 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
+import com.sun.c1x.value.*;
+import com.sun.cri.ci.*;
 
 
 public class Schedule {
@@ -66,9 +68,16 @@ public class Schedule {
     private Block assignBlock(Node n, Block b) {
         assert nodeToBlock.get(n) == null;
         nodeToBlock.set(n, b);
-        if (n != n.graph().start()) {
-            b.getInstructions().add((Instruction) n);
+        if (b.firstNode() == null) {
+            b.setFirstNode(n);
+            b.setLastNode(n);
+        } else {
+            if (b.lastNode() != null) {
+                b.getInstructions().add(b.lastNode());
+            }
+            b.setLastNode(n);
         }
+        b.setLastNode(n);
         return b;
     }
 
@@ -88,6 +97,13 @@ public class Schedule {
             public boolean visit(Node n) {
                 if (!isCFG(n)) {
                     return false;
+                }
+
+                if (n instanceof LoopBegin) {
+                    // a LoopBegin is always a merge
+                    assignBlock(n);
+                    blockBeginNodes.add(n);
+                    return true;
                 }
 
                 Node singlePred = null;
@@ -131,22 +147,245 @@ public class Schedule {
                     predBlock.addSuccessor(block);
                 }
             }
+
+            if (n instanceof Merge) {
+                for (Node usage : n.usages()) {
+                    if (usage instanceof Phi) {
+                        nodeToBlock.set(usage, block);
+                    }
+                }
+            }
         }
 
-        orderBlocks();
+        for (Node n : graph.getNodes()) {
+            if (n instanceof FrameState) {
+                FrameState f = (FrameState) n;
+                if (f.predecessors().size() == 1) {
+                    Block predBlock = nodeToBlock.get(f.predecessors().get(0));
+                    assert predBlock != null;
+                    nodeToBlock.set(f, predBlock);
+                    predBlock.getInstructions().add(f);
+                } else {
+                    assert f.predecessors().size() == 0;
+                }
+            }
+        }
+
+        computeDominators();
+
+
+
+        // Add successors of loop end nodes. Makes the graph cyclic.
+        for (Node n : blockBeginNodes) {
+            Block block = nodeToBlock.get(n);
+            if (n instanceof LoopBegin) {
+                LoopBegin loopBegin = (LoopBegin) n;
+                nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+            }
+        }
+
+        assignLatestPossibleBlockToNodes();
+        sortNodesWithinBlocks();
+
         //print();
     }
 
-    private void orderBlocks() {
-       /* List<Block> orderedBlocks = new ArrayList<Block>();
-        Block startBlock = nodeToBlock.get(graph.start().start());
-        List<Block> toSchedule = new ArrayList<Block>();
-        toSchedule.add(startBlock);
+    private void assignLatestPossibleBlockToNodes() {
+        for (Node n : graph.getNodes()) {
+            assignLatestPossibleBlockToNode(n);
+        }
+    }
 
-        while (toSchedule.size() != 0) {
+    private Block assignLatestPossibleBlockToNode(Node n) {
+        if (n == null) {
+            return null;
+        }
 
+        Block prevBlock = nodeToBlock.get(n);
+        if (prevBlock != null) {
+            return prevBlock;
+        }
 
-        }*/
+        Block block = null;
+        for (Node succ : n.successors()) {
+            block = getCommonDominator(block, assignLatestPossibleBlockToNode(succ));
+        }
+        for (Node usage : n.usages()) {
+            if (usage instanceof Phi) {
+                Phi phi = (Phi) usage;
+                Merge merge = phi.block();
+                Block mergeBlock = nodeToBlock.get(merge);
+                assert mergeBlock != null;
+                for (int i = 0; i < phi.valueCount(); ++i) {
+                    if (phi.valueAt(i) == n) {
+                        if (mergeBlock.getPredecessors().size() == 0) {
+                            TTY.println(merge.toString());
+                            TTY.println(phi.toString());
+                            TTY.println(merge.predecessors().toString());
+                            TTY.println("value count: " + phi.valueCount());
+                        }
+                        block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
+                    }
+                }
+            } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
+                Merge merge = ((FrameState) usage).block();
+                for (Node pred : merge.predecessors()) {
+                    if (isCFG(pred)) {
+                        block = getCommonDominator(block, nodeToBlock.get(pred));
+                    }
+                }
+            } else {
+                block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
+            }
+        }
+
+        nodeToBlock.set(n, block);
+        if (block != null) {
+            block.getInstructions().add(n);
+        }
+        return block;
+    }
+
+    private Block getCommonDominator(Block a, Block b) {
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
+        return commonDominator(a, b);
+    }
+
+    private void sortNodesWithinBlocks() {
+        NodeBitMap map = graph.createNodeBitMap();
+        for (Block b : blocks) {
+            sortNodesWithinBlocks(b, map);
+        }
+    }
+
+    private void sortNodesWithinBlocks(Block b, NodeBitMap map) {
+        List<Node> instructions = b.getInstructions();
+        List<Node> sortedInstructions = new ArrayList<Node>();
+        assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
+
+        boolean scheduleFirst = true;
+
+        if (b.firstNode() == b.lastNode()) {
+            Node node = b.firstNode();
+            if (!(node instanceof Merge)) {
+                scheduleFirst = false;
+            }
+        }
+        if (scheduleFirst) {
+            addToSorting(b, b.firstNode(), sortedInstructions, map);
+        }
+        for (Node i : instructions) {
+            addToSorting(b, i, sortedInstructions, map);
+        }
+        addToSorting(b, b.lastNode(), sortedInstructions, map);
+        //assert b.firstNode() == sortedInstructions.get(0) : b.firstNode();
+    //    assert b.lastNode() == sortedInstructions.get(sortedInstructions.size() - 1);
+        b.setInstructions(sortedInstructions);
+//        TTY.println("Block " + b);
+//        for (Node n : sortedInstructions) {
+//            TTY.println("Node: " + n);
+//        }
+    }
+
+    private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local) {
+            return;
+        }
+
+        for (Node input : i.inputs()) {
+            addToSorting(b, input, sortedInstructions, map);
+        }
+
+        for (Node pred : i.predecessors()) {
+            addToSorting(b, pred, sortedInstructions, map);
+        }
+
+        map.mark(i);
+
+        for (Node succ : i.successors()) {
+            if (succ instanceof FrameState) {
+                addToSorting(b, succ, sortedInstructions, map);
+            }
+        }
+
+        // Now predecessors and inputs are scheduled => we can add this node.
+        if (!(i instanceof FrameState)) {
+            sortedInstructions.add(i);
+        }
+    }
+
+    private void computeDominators() {
+        Block dominatorRoot = nodeToBlock.get(graph.start());
+        assert dominatorRoot.getPredecessors().size() == 0;
+        CiBitMap visited = new CiBitMap(blocks.size());
+        visited.set(dominatorRoot.blockID());
+        LinkedList<Block> workList = new LinkedList<Block>();
+        workList.add(dominatorRoot);
+
+        while (!workList.isEmpty()) {
+            Block b = workList.remove();
+
+            List<Block> predecessors = b.getPredecessors();
+            if (predecessors.size() == 1) {
+                b.setDominator(predecessors.get(0));
+            } else if (predecessors.size() > 0) {
+                boolean delay = false;
+                for (Block pred : predecessors) {
+                    if (pred != dominatorRoot && pred.dominator() == null) {
+                        delay = true;
+                        break;
+                    }
+                }
+
+                if (delay) {
+                    workList.add(b);
+                    continue;
+                }
+
+                Block dominator = null;
+                for (Block pred : predecessors) {
+                    if (dominator == null) {
+                        dominator = pred;
+                    } else {
+                        dominator = commonDominator(dominator, pred);
+                    }
+                }
+                b.setDominator(dominator);
+            }
+
+            for (Block succ : b.getSuccessors()) {
+                if (!visited.get(succ.blockID())) {
+                    visited.set(succ.blockID());
+                    workList.add(succ);
+                }
+            }
+        }
+    }
+
+    public Block commonDominator(Block a, Block b) {
+        CiBitMap bitMap = new CiBitMap(blocks.size());
+        Block cur = a;
+        while (cur != null) {
+            bitMap.set(cur.blockID());
+            cur = cur.dominator();
+        }
+
+        cur = b;
+        while (cur != null) {
+            if (bitMap.get(cur.blockID())) {
+                return cur;
+            }
+            cur = cur.dominator();
+        }
+
+        print();
+        assert false : "no common dominator between " + a + " and " + b;
+        return null;
     }
 
     private void print() {
@@ -168,6 +407,10 @@ public class Schedule {
            TTY.print(" preds=");
            for (Block pred : b.getPredecessors()) {
                TTY.print(pred + ";");
+           }
+
+           if (b.dominator() != null) {
+               TTY.print(" dom=" + b.dominator());
            }
            TTY.println();
 

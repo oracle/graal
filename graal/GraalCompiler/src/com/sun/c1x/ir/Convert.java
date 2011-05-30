@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Convert} class represents a conversion between primitive types.
  */
-public final class Convert extends Instruction {
+public final class Convert extends Value {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VALUE = 0;
@@ -88,7 +88,7 @@ public final class Convert extends Instruction {
     }
 
     @Override
-    public boolean valueEqual(Instruction i) {
+    public boolean valueEqual(Node i) {
         if (i instanceof Convert) {
             Convert o = (Convert) i;
             return opcode == o.opcode && value() == o.value();

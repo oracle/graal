@@ -371,12 +371,26 @@ public final class FrameState extends Value implements FrameStateAccess {
                         }
                     }
 
-                    assert phi.valueCount() == block.predecessors().size() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
+                    if (block instanceof LoopBegin) {
+//                        assert phi.valueCount() == ((LoopBegin) block).loopEnd().predecessors().size() + 1 : "loop, valueCount=" + phi.valueCount() + " predSize= " + ((LoopBegin) block).loopEnd().predecessors().size();
+                    } else {
+                        assert phi.valueCount() == block.predecessors().size() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
+                    }
                }
             }
         }
     }
 
+    public Merge block() {
+        if (usages().size() > 0) {
+            assert usages().size() == 1;
+            Node node = usages().get(0);
+            if (node instanceof Merge) {
+                return (Merge) node;
+            }
+        }
+        return null;
+    }
 
     /**
      * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
@@ -438,11 +452,6 @@ public final class FrameState extends Value implements FrameStateAccess {
             sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
         return sb.toString();
-    }
-
-    @Override
-    public Merge block() {
-        return null;
     }
 
     @Override

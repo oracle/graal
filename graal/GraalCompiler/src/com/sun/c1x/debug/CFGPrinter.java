@@ -25,6 +25,7 @@ package com.sun.c1x.debug;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.*;
@@ -407,8 +408,10 @@ public class CFGPrinter {
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
-        for (Instruction i : block.getInstructions()) {
-            printInstructionHIR(i);
+        for (Node i : block.getInstructions()) {
+            if (i instanceof Instruction) {
+                printInstructionHIR((Instruction) i);
+            }
         }
         out.enableIndentation();
         end("IR");

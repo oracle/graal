@@ -287,7 +287,7 @@ public final class C1XCompilation {
             }
 
             if (compiler.isObserved()) {
-                compiler.fireCompilationEvent(new CompilationEvent(this, "After code generation", hir.getHIRStartBlock(), false, true, targetMethod));
+                compiler.fireCompilationEvent(new CompilationEvent(this, "After code generation", graph, false, true, targetMethod));
             }
 
             if (C1XOptions.PrintTimers) {

@@ -30,7 +30,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
-public final class NewInstance extends StateSplit {
+public final class NewInstance extends Value {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -80,10 +80,5 @@ public final class NewInstance extends StateSplit {
     @Override
     public void print(LogStream out) {
         out.print("new instance ").print(CiUtil.toJavaName(instanceClass()));
-    }
-
-    @Override
-    public boolean needsStateAfter() {
-        return false;
     }
 }

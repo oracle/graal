@@ -29,7 +29,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code TypeCheck} instruction is the base class of casts and instanceof tests.
  */
-public abstract class TypeCheck extends Instruction {
+public abstract class TypeCheck extends Value {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_OBJECT = 0;
