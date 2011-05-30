@@ -34,7 +34,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.max.asm.*;
 import com.sun.c1x.*;
 import com.sun.c1x.alloc.*;
-import com.sun.c1x.alloc.OperandPool.*;
+import com.sun.c1x.alloc.OperandPool.VariableFlag;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.globalstub.*;
 import com.sun.c1x.graph.*;
@@ -43,10 +43,16 @@ import com.sun.c1x.lir.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
+import com.sun.cri.bytecode.Bytecodes.MemoryBarriers;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
+import com.sun.cri.xir.CiXirAssembler.XirConstant;
+import com.sun.cri.xir.CiXirAssembler.XirInstruction;
+import com.sun.cri.xir.CiXirAssembler.XirOperand;
+import com.sun.cri.xir.CiXirAssembler.XirParameter;
+import com.sun.cri.xir.CiXirAssembler.XirRegister;
+import com.sun.cri.xir.CiXirAssembler.XirTemp;
 import com.sun.cri.xir.*;
-import com.sun.cri.xir.CiXirAssembler.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -258,7 +264,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
             }
         }
-        if (block.blockSuccessors().size() == 1 && (block.getInstructions().size() == 0  || !(block.getInstructions().get(block.getInstructions().size() - 1) instanceof BlockEnd))) {
+        if (block.blockSuccessors().size() >= 1 && (block.getInstructions().size() == 0  || !jumpsToNextBlock(block.getInstructions().get(block.getInstructions().size() - 1)))) {
             moveToPhi();
             block.lir().jump(block.blockSuccessors().get(0));
         }
@@ -270,6 +276,10 @@ public abstract class LIRGenerator extends ValueVisitor {
         block.setLastState(lastState);
         this.currentBlock = null;
         blockDoEpilog();
+    }
+
+    private static boolean jumpsToNextBlock(Node node) {
+        return node instanceof BlockEnd;
     }
 
     @Override
@@ -405,7 +415,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitGoto(Anchor x) {
+    public void visitAnchor(Anchor x) {
         setNoResult(x);
 
         // emit phi-instruction moves after safepoint since this simplifies
@@ -454,11 +464,12 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private int getBeforeInvokeBci(Invoke invoke) {
-        int length = 3;
+        /*int length = 3;
         if (invoke.opcode() == Bytecodes.INVOKEINTERFACE) {
             length += 2;
         }
-        return invoke.stateAfter().bci - length;
+        return invoke.stateAfter().bci - length;*/
+        return invoke.bci;
     }
 
     @Override
