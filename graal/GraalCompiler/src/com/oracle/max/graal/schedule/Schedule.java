@@ -283,7 +283,16 @@ public class Schedule {
         List<Node> instructions = b.getInstructions();
         List<Node> sortedInstructions = new ArrayList<Node>();
         assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
-        if (b.firstNode() != b.lastNode()) {
+
+        boolean scheduleFirst = true;
+
+        if (b.firstNode() == b.lastNode()) {
+            Node node = b.firstNode();
+            if (!(node instanceof Merge)) {
+                scheduleFirst = false;
+            }
+        }
+        if (scheduleFirst) {
             addToSorting(b, b.firstNode(), sortedInstructions, map);
         }
         for (Node i : instructions) {

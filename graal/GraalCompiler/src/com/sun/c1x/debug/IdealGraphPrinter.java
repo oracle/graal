@@ -200,7 +200,11 @@ public class IdealGraphPrinter {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
-            stream.printf("     <successor name='%d'/>%n", sux.blockID());
+            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) {
+                // Skip back edges.
+            } else {
+                stream.printf("     <successor name='%d'/>%n", sux.blockID());
+            }
         }
         stream.printf("    </successors>%n");
         stream.printf("    <nodes>%n");
