@@ -31,7 +31,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NullCheck} class represents an explicit null check instruction.
  */
-public final class NullCheck extends Instruction {
+public final class NullCheck extends Value {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
