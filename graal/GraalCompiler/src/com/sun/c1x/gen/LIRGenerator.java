@@ -464,11 +464,12 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private int getBeforeInvokeBci(Invoke invoke) {
-        int length = 3;
+        /*int length = 3;
         if (invoke.opcode() == Bytecodes.INVOKEINTERFACE) {
             length += 2;
         }
-        return invoke.stateAfter().bci - length;
+        return invoke.stateAfter().bci - length;*/
+        return invoke.bci;
     }
 
     @Override
