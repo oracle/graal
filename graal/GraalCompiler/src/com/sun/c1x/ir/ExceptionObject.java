@@ -41,7 +41,7 @@ public final class ExceptionObject extends Instruction {
      */
     public ExceptionObject(Graph graph) {
         super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setFlag(Flag.NonNull);
+        setNonNull(true);
     }
 
     @Override

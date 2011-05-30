@@ -1269,7 +1269,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             Phi phi = (Phi) suxVal;
 
             // curVal can be null without phi being null in conjunction with inlining
-            if (!phi.isDeadPhi() && curVal != null && curVal != phi) {
+            if (!phi.isDead() && curVal != null && curVal != phi) {
 
                 assert phis.contains(phi);
                 if (phi.valueAt(predIndex) != curVal) {
@@ -1277,7 +1277,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
                 assert phi.valueAt(predIndex) == curVal : "curVal=" + curVal + "valueAt(" + predIndex + ")=" + phi.valueAt(predIndex);
 
-                assert !phi.isIllegal() : "illegal phi cannot be marked as live";
+                assert !phi.isDead() : "illegal phi cannot be marked as live";
                 if (curVal instanceof Phi) {
                     operandForPhi((Phi) curVal);
                 }
@@ -1332,7 +1332,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
                     PhiResolver resolver = new PhiResolver(this);
                     for (Phi phi : phis) {
-                        if (!phi.isDeadPhi()) {
+                        if (!phi.isDead()) {
                             Value curVal = phi.valueAt(predIndex);
                             if (curVal != null && curVal != phi) {
                                 if (curVal instanceof Phi) {
@@ -1378,7 +1378,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private CiValue operandForPhi(Phi phi) {
-        assert !phi.isDeadPhi();
+        assert !phi.isDead();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
             CiVariable operand = newVariable(phi.kind);
@@ -1448,7 +1448,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         for (int index = 0; index < state.localsSize(); index++) {
             final Value value = state.localAt(index);
             if (value != null) {
-                if (!value.isIllegal()) {
+                if (!(value instanceof Phi && ((Phi) value).isDead())) {
                     walkStateValue(value);
                 }
             }
@@ -1457,7 +1457,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     private void walkStateValue(Value value) {
         if (value != null) {
-            if (value instanceof Phi && !value.isIllegal()) {
+            if (value instanceof Phi && !((Phi) value).isDead()) {
                 // phi's are special
                 operandForPhi((Phi) value);
             } else if (value.operand().isIllegal()) {

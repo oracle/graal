@@ -67,7 +67,7 @@ public final class NullCheck extends Value {
      */
     public NullCheck(Value object, Graph graph) {
         super(object.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setFlag(Flag.NonNull);
+        setNonNull(true);
         setObject(object);
     }
 

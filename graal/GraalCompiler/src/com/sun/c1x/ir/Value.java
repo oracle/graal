@@ -33,26 +33,13 @@ import com.sun.cri.ri.*;
  */
 public abstract class Value extends Node {
 
-    public enum Flag {
-        NonNull,            // this value is non-null
-
-        PhiDead,            // phi is illegal because local is dead
-        PhiCannotSimplify,  // phi cannot be simplified
-        PhiVisited;         // phi has been visited during simplification
-
-        public final int mask = 1 << ordinal();
-    }
-
     /**
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain CiKind#stackKind() stack kind}.
      */
     public final CiKind kind;
 
-    /**
-     * A mask of {@linkplain Flag flags} denoting extra properties of this value.
-     */
-    private int flags;
+    private boolean isNonNull;
 
     protected CiValue operand = CiValue.IllegalValue;
 
@@ -83,61 +70,15 @@ public abstract class Value extends Node {
     }
 
     /**
-     * Check whether this instruction has the specified flag set.
-     * @param flag the flag to test
-     * @return {@code true} if this instruction has the flag
-     */
-    public final boolean checkFlag(Flag flag) {
-        return (flags & flag.mask) != 0;
-    }
-
-    /**
-     * Set a flag on this instruction.
-     * @param flag the flag to set
-     */
-    public final void setFlag(Flag flag) {
-        flags |= flag.mask;
-    }
-
-    /**
-     * Clear a flag on this instruction.
-     * @param flag the flag to set
-     */
-    public final void clearFlag(Flag flag) {
-        flags &= ~flag.mask;
-    }
-
-    /**
-     * Set or clear a flag on this instruction.
-     * @param flag the flag to set
-     * @param val if {@code true}, set the flag, otherwise clear it
-     */
-    public final void setFlag(Flag flag, boolean val) {
-        if (val) {
-            setFlag(flag);
-        } else {
-            clearFlag(flag);
-        }
-    }
-
-    /**
-     * Initialize a flag on this instruction. Assumes the flag is not initially set,
-     * e.g. in the constructor of an instruction.
-     * @param flag the flag to set
-     * @param val if {@code true}, set the flag, otherwise do nothing
-     */
-    public final void initFlag(Flag flag, boolean val) {
-        if (val) {
-            setFlag(flag);
-        }
-    }
-
-    /**
      * Checks whether this instruction produces a value which is guaranteed to be non-null.
      * @return {@code true} if this instruction's value is not null
      */
-    public final boolean isNonNull() {
-        return checkFlag(Flag.NonNull);
+    public boolean isNonNull() {
+        return isNonNull;
+    }
+
+    public void setNonNull(boolean isNonNull) {
+        this.isNonNull = isNonNull;
     }
 
     /**
@@ -154,15 +95,6 @@ public abstract class Value extends Node {
      */
     public final boolean isNullConstant() {
         return this instanceof Constant && ((Constant) this).value.isNull();
-    }
-
-    /**
-     * Checks whether this instruction "is illegal"--i.e. it represents a dead
-     * phi or an instruction which does not produce a value.
-     * @return {@code true} if this instruction is illegal as an input value to another instruction
-     */
-    public final boolean isIllegal() {
-        return checkFlag(Flag.PhiDead);
     }
 
     /**
@@ -248,19 +180,10 @@ public abstract class Value extends Node {
 
     public String flagsToString() {
         StringBuilder sb = new StringBuilder();
-        for (Flag f : Flag.values()) {
-            if (checkFlag(f)) {
-                if (sb.length() != 0) {
-                    sb.append(' ');
-                }
-                sb.append(f.name());
-            }
+        if (isNonNull()) {
+            sb.append("NonNull");
         }
         return sb.toString();
-    }
-
-    public final boolean isDeadPhi() {
-        return checkFlag(Flag.PhiDead);
     }
 
     /**
