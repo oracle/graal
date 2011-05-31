@@ -80,7 +80,7 @@ public abstract class Node {
         return graph;
     }
 
-    public <T> T lookup(Class<T> clazz) {
+    public <T extends Op> T lookup(Class<T> clazz) {
         return null;
     }
 

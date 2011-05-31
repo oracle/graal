@@ -432,11 +432,31 @@ public class Schedule {
     }
 
     public static int trueSuccessorCount(Node n) {
+        if (n == null) {
+            return 0;
+        }
         int i = 0;
         for (Node s : n.successors()) {
             if (isCFG(s)) {
                 i++;
             }
+        }
+        return i;
+    }
+
+    public static int truePredecessorCount(Node n) {
+        if (n == null) {
+            return 0;
+        }
+        int i = 0;
+        for (Node s : n.predecessors()) {
+            if (isCFG(s)) {
+                i++;
+            }
+        }
+
+        if (n instanceof LoopBegin) {
+            i++;
         }
         return i;
     }

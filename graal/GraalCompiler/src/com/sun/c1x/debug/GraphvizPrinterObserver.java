@@ -99,7 +99,6 @@ public class GraphvizPrinterObserver implements CompilationObserver {
             printer.addOmittedClass(FrameState.class);
         }
         printer.addClassColor(StartNode.class, "snow3");
-        printer.addClassColor(EndNode.class, "snow3");
         printer.addClassColor(LoopBegin.class, "skyblue");
         printer.addClassColor(LoopEnd.class, "skyblue3");
         printer.addClassColor(Unwind.class, "red");
