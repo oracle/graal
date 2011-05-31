@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Throw} instruction represents a throw of an exception.
  */
-public final class Throw extends BlockEnd implements ExceptionEdgeInstruction {
+public final class Throw extends Instruction implements ExceptionEdgeInstruction {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_EXCEPTION = 0;
@@ -91,7 +91,7 @@ public final class Throw extends BlockEnd implements ExceptionEdgeInstruction {
      * @param graph
      */
     public Throw(Value exception, Graph graph) {
-        super(CiKind.Illegal, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
     }
 

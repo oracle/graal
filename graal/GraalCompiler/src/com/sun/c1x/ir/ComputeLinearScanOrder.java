@@ -195,9 +195,6 @@ public final class ComputeLinearScanOrder {
         for (i = cur.numberOfSux() - 1; i >= 0; i--) {
             countEdges(cur.suxAt(i), cur);
         }
-        for (LIRBlock ex : cur.getExceptionHandlerSuccessors()) {
-            countEdges(ex, cur);
-        }
 
         clearActive(cur);
 
@@ -327,9 +324,6 @@ public final class ComputeLinearScanOrder {
                 // append all unvisited successors to work list
                 for (i = cur.numberOfSux() - 1; i >= 0; i--) {
                     workList.add(cur.suxAt(i));
-                }
-                for (LIRBlock ex : cur.getExceptionHandlerSuccessors()) {
-                    workList.add(ex);
                 }
             }
         } while (!workList.isEmpty());
@@ -486,11 +480,6 @@ public final class ComputeLinearScanOrder {
                 LIRBlock sux = cur.suxAt(i);
                 if (readyForProcessing(sux)) {
                     sortIntoWorkList(sux);
-                }
-            }
-            for (LIRBlock ex : cur.getExceptionHandlerSuccessors()) {
-                if (readyForProcessing(ex)) {
-                    sortIntoWorkList(ex);
                 }
             }
         } while (workList.size() > 0);

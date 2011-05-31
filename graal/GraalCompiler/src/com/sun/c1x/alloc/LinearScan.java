@@ -1284,23 +1284,6 @@ public final class LinearScan {
                 addRegisterHints(op);
 
             } // end of instruction iteration
-
-
-            // (tw) TODO: Check if this matters..
-            // (tw) Make sure that no spill store optimization is applied for phi instructions that flow into exception handlers.
-//            if (block.isExceptionEntry()) {
-//                Instruction firstInstruction = block.getInstructions().get(0);
-//                for (Node n : firstInstruction.usages()) {
-//                    if (n instanceof Phi) {
-//                        Phi phi = (Phi) n;
-//                        Interval interval = intervalFor(phi.operand());
-//                        if (interval != null) {
-//                            interval.setSpillState(SpillState.NoOptimization);
-//                        }
-//                    }
-//                }
-//            }
-
         } // end of block iteration
 
         // add the range [0, 1] to all fixed intervals.

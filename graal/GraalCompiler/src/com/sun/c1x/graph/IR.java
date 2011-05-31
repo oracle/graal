@@ -100,11 +100,11 @@ public class IR {
 
         for (Block b : blocks) {
             for (Block succ : b.getSuccessors()) {
-                if (succ.isExceptionEntry()) {
-                    map.get(b).getExceptionHandlerSuccessors().add(map.get(succ));
-                } else {
+//                if (succ.isExceptionEntry()) {
+//                    map.get(b).getExceptionHandlerSuccessors().add(map.get(succ));
+//                } else {
                     map.get(b).blockSuccessors().add(map.get(succ));
-                }
+//                }
             }
 
             for (Block pred : b.getPredecessors()) {

@@ -44,7 +44,6 @@ public final class LIRBlock {
     private List<Node> instructions = new ArrayList<Node>(4);
     private List<LIRBlock> predecessors = new ArrayList<LIRBlock>(4);
     private List<LIRBlock> successors = new ArrayList<LIRBlock>(4);
-    private List<LIRBlock> exceptionHandlerSuccessors = new ArrayList<LIRBlock>(4);
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.
@@ -78,10 +77,6 @@ public final class LIRBlock {
     private int firstLirInstructionID;
     private int lastLirInstructionID;
     public int blockEntryPco;
-
-    public List<LIRBlock> getExceptionHandlerSuccessors() {
-        return exceptionHandlerSuccessors;
-    }
 
     public LIRBlock(int blockID) {
         this.blockID = blockID;
