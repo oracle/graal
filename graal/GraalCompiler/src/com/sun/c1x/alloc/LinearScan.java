@@ -746,8 +746,6 @@ public final class LinearScan {
 
         // Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
         // The loop is executed until a fixpoint is reached (no changes in an iteration)
-        // Exception handlers must be processed because not all live values are
-        // present in the state array, e.g. because of global value numbering
         do {
             changeOccurred = false;
 
@@ -1974,13 +1972,6 @@ public final class LinearScan {
             }
 
             if (op.info != null) {
-                // exception handling
-//                if (compilation.hasExceptionHandlers()) {
-//                    if (op.exceptionEdge() != null && op.exceptionEdge().lir() != null) {
-//                        assignLocations(op.exceptionEdge().lir().instructionsList(), iw);
-//                    }
-//                }
-
                 // compute reference map and debug information
                 computeDebugInfo(iw, op);
             }

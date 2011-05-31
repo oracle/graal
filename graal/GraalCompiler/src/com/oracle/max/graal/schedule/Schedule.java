@@ -86,7 +86,7 @@ public class Schedule {
     }
 
     public static boolean isBlockEnd(Node n) {
-        return trueSuccessorCount(n) > 1 || n instanceof Anchor || n instanceof Return || n instanceof Throw;
+        return trueSuccessorCount(n) > 1 || n instanceof Anchor || n instanceof Return || n instanceof Unwind;
     }
 
     private void identifyBlocks() {
@@ -128,7 +128,6 @@ public class Schedule {
                     // We have a single predecessor => check its successor count.
                     if (isBlockEnd(singlePred)) {
                         Block b = assignBlock(n);
-                        b.setExceptionEntry(singlePred instanceof Throw);
                         blockBeginNodes.add(n);
                     } else {
                         assignBlock(n, nodeToBlock.get(singlePred));
@@ -395,9 +394,6 @@ public class Schedule {
         for (Block b : blocks) {
            TTY.println();
            TTY.print(b.toString());
-           if (b.isExceptionEntry()) {
-               TTY.print(" (ex)");
-           }
 
            TTY.print(" succs=");
            for (Block succ : b.getSuccessors()) {

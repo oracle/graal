@@ -172,10 +172,6 @@ public final class LIRList {
         append(new LIROp1(LIROpcode.NullCheck, opr, info));
     }
 
-    public void throwException(CiValue exceptionPC, CiValue exceptionOop, LIRDebugInfo info) {
-        append(new LIROp2(LIROpcode.Throw, exceptionPC, exceptionOop, CiValue.IllegalValue, info, CiKind.Illegal, true));
-    }
-
     public void compareTo(CiValue left, CiValue right, CiValue dst) {
         append(new LIROp2(LIROpcode.CompareTo, left, right, dst));
     }

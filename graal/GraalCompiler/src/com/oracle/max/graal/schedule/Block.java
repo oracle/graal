@@ -34,7 +34,6 @@ public class Block {
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
     private List<Node> instructions = new ArrayList<Node>();
-    private boolean exceptionEntry;
     private Block dominator;
     private final List<Block> dominators = new ArrayList<Block>();
 
@@ -91,14 +90,6 @@ public class Block {
 
     public int blockID() {
         return blockID;
-    }
-
-    public void setExceptionEntry(boolean b) {
-        exceptionEntry = b;
-    }
-
-    public boolean isExceptionEntry() {
-        return exceptionEntry;
     }
 
     /**

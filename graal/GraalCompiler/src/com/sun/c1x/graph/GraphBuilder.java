@@ -337,11 +337,7 @@ public final class GraphBuilder {
         return handler.catchTypeCPI() == 0;
     }
 
-    private void handleException(Instruction x, int bci) {
-        if (!hasHandler()) {
-            return;
-        }
-
+    private Instruction handleException(Value exceptionObject, int bci) {
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         RiExceptionHandler firstHandler = null;
@@ -388,19 +384,23 @@ public final class GraphBuilder {
 
             StateSplit entry = new Placeholder(graph);
             entry.setStateBefore(entryState);
-            ExceptionObject exception = new ExceptionObject(graph);
-            entry.setNext(exception);
-            FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, exception);
+
+            Instruction currentNext = entry;
+            Value currentExceptionObject = exceptionObject;
+            if (currentExceptionObject == null) {
+                ExceptionObject exception = new ExceptionObject(graph);
+                entry.setNext(exception);
+                currentNext = exception;
+                currentExceptionObject = exception;
+            }
+            FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, currentExceptionObject);
 
             Instruction successor = createTarget(dispatchBlock, stateWithException);
             Anchor end = new Anchor(successor, graph);
-            exception.setNext(end);
-            if (x instanceof Invoke) {
-                ((Invoke) x).setExceptionEdge(entry);
-            } else {
-                ((Throw) x).setExceptionEdge(entry);
-            }
+            currentNext.setNext(end);
+            return entry;
         }
+        return null;
     }
 
     private void genLoadConstant(int cpi) {
@@ -608,11 +608,13 @@ public final class GraphBuilder {
     }
 
     private void genThrow(int bci) {
-        FrameState stateBefore = frameState.create(bci);
-        Throw t = new Throw(frameState.apop(), graph);
-        t.setStateBefore(stateBefore);
-        appendWithBCI(t);
-        handleException(t, bci);
+        Value exception = frameState.apop();
+        append(new NullCheck(exception, graph));
+        Instruction entry = handleException(exception, bci);
+        if (entry == null) {
+            entry = new Unwind(exception, graph);
+        }
+        append(entry);
     }
 
     private void genCheckCast() {
@@ -831,7 +833,7 @@ public final class GraphBuilder {
         CiKind resultType = returnKind(target);
         Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), graph);
         Value result = appendWithBCI(invoke);
-        handleException(invoke, bci());
+        invoke.setExceptionEdge(handleException(null, bci()));
         frameState.pushReturn(resultType, result);
     }
 
@@ -1009,7 +1011,7 @@ public final class GraphBuilder {
     }
 
     private Value appendWithBCI(Instruction x) {
-        assert x.next() == null && x.predecessors().size() == 0 : "instruction should not have been appended yet";
+        assert x.predecessors().size() == 0 : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
         lastInstr.setNext(x);
 
@@ -1492,13 +1494,5 @@ public final class GraphBuilder {
      */
     private Block removeFromWorkList() {
         return workList.poll();
-    }
-
-    /**
-     * Checks whether this graph has any handlers.
-     * @return {@code true} if there are any exception handlers
-     */
-    private boolean hasHandler() {
-        return Modifier.isSynchronized(compilation.method.accessFlags()) || (compilation.method.exceptionHandlers() != null && compilation.method.exceptionHandlers().length > 0);
     }
 }

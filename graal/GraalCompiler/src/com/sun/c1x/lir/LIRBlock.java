@@ -185,17 +185,7 @@ public final class LIRBlock {
     private int linearScanNumber = -1;
     private boolean linearScanLoopEnd;
     private boolean linearScanLoopHeader;
-    private boolean exceptionEntry;
     private boolean backwardBranchTarget;
-
-
-    public void setExceptionEntry(boolean b) {
-        this.exceptionEntry = b;
-    }
-
-    public boolean isExceptionEntry() {
-        return exceptionEntry;
-    }
 
     public void setBackwardBranchTarget(boolean b) {
         this.backwardBranchTarget = b;

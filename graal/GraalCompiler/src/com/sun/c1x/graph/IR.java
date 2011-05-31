@@ -88,7 +88,6 @@ public class IR {
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
         for (Block b : blocks) {
             LIRBlock block = new LIRBlock(b.blockID());
-            block.setExceptionEntry(b.isExceptionEntry());
             map.put(b, block);
             block.setInstructions(b.getInstructions());
             block.setLinearScanNumber(b.blockID());
@@ -100,11 +99,7 @@ public class IR {
 
         for (Block b : blocks) {
             for (Block succ : b.getSuccessors()) {
-//                if (succ.isExceptionEntry()) {
-//                    map.get(b).getExceptionHandlerSuccessors().add(map.get(succ));
-//                } else {
-                    map.get(b).blockSuccessors().add(map.get(succ));
-//                }
+                map.get(b).blockSuccessors().add(map.get(succ));
             }
 
             for (Block pred : b.getPredecessors()) {
@@ -112,16 +107,10 @@ public class IR {
             }
         }
 
-
-     // TODO(tw): Schedule nodes within a block.
-
-
         CriticalEdgeFinder finder = new CriticalEdgeFinder(lirBlocks, compilation.graph);
         finder.splitCriticalEdges();
 
-
         orderedBlocks = lirBlocks;
-
         valueToBlock = new HashMap<Node, LIRBlock>();
         for (LIRBlock b : orderedBlocks) {
             for (Node i : b.getInstructions()) {
