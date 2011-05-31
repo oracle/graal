@@ -829,7 +829,7 @@ public final class GraphBuilder {
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
-        Invoke invoke = new Invoke(opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), graph, bci());
+        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), graph);
         Value result = appendWithBCI(invoke);
         handleException(invoke, bci());
         frameState.pushReturn(resultType, result);
