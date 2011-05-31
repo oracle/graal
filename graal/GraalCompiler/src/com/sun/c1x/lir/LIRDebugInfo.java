@@ -37,12 +37,19 @@ public class LIRDebugInfo {
     }
 
     public final FrameState state;
-    public final LIRBlock exceptionEdge;
+    private LIRBlock exceptionEdge;
     public CiDebugInfo debugInfo;
 
-    public LIRDebugInfo(FrameState state, LIRBlock exceptionEdge) {
+    public LIRDebugInfo(FrameState state) {
         assert state != null;
         this.state = state;
+    }
+
+    public LIRBlock exceptionEdge() {
+        return exceptionEdge;
+    }
+
+    public void setExceptionEdge(LIRBlock exceptionEdge) {
         this.exceptionEdge = exceptionEdge;
     }
 

@@ -101,7 +101,7 @@ final class RegisterVerifier {
         } while (!workList.isEmpty());
     }
 
-    void processBlock(LIRBlock block) {
+    private void processBlock(LIRBlock block) {
         if (C1XOptions.TraceLinearScanLevel >= 2) {
             TTY.println();
             TTY.println("processBlock B%d", block.blockID());
@@ -133,21 +133,7 @@ final class RegisterVerifier {
         }
     }
 
-    void processXhandler(LIRBlock xhandler, Interval[] inputState) {
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
-            TTY.println("processXhandler B%d", xhandler.blockID());
-        }
-
-        // must copy state because it is modified
-        inputState = copy(inputState);
-
-        if (xhandler.lir() != null) {
-            processOperations(xhandler.lir(), inputState);
-        }
-        processSuccessor(xhandler, inputState);
-    }
-
-    void processSuccessor(LIRBlock block, Interval[] inputState) {
+    private void processSuccessor(LIRBlock block, Interval[] inputState) {
         Interval[] savedState = stateForBlock(block);
 
         if (savedState != null) {
@@ -256,11 +242,6 @@ final class RegisterVerifier {
                 for (CiRegister r : allocator.compilation.registerConfig.getCallerSaveRegisters()) {
                     statePut(inputState, r.asValue(), null);
                 }
-            }
-
-            // process xhandler before output and temp operands
-            if (op.exceptionEdge() != null) {
-                processXhandler(op.exceptionEdge(), inputState);
             }
 
             // set temp operands (some operations use temp operands also as output operands, so can't set them null)

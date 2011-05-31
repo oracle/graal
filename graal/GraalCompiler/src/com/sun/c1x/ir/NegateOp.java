@@ -69,6 +69,7 @@ public final class NegateOp extends FloatingNode {
         setX(x);
     }
 
+    // for copying
     private NegateOp(CiKind kind, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }

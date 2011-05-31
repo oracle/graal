@@ -39,7 +39,6 @@ public final class MonitorExit extends AccessMonitor {
      * @param object the instruction produces the object value
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param lockNumber the number of the lock
-     * @param stateBefore the state after executing this instruction
      * @param graph
      */
     public MonitorExit(Value object, Value lockAddress, int lockNumber, Graph graph) {

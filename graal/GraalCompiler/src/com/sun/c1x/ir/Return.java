@@ -75,6 +75,11 @@ public final class Return extends BlockEnd {
         successors().set(SUCCESSOR_END, graph.end());
     }
 
+    // for copying
+    private Return(CiKind kind, Graph graph) {
+        super(kind, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
+
     @Override
     public void accept(ValueVisitor v) {
         v.visitReturn(this);
@@ -91,7 +96,7 @@ public final class Return extends BlockEnd {
 
     @Override
     public Node copy(Graph into) {
-        Return x = new Return(null, into);
+        Return x = new Return(kind, into);
         x.setNonNull(isNonNull());
         return x;
     }

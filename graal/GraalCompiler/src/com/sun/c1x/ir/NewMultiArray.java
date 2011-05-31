@@ -67,23 +67,23 @@ public final class NewMultiArray extends NewArray {
         return dimensionCount;
     }
 
-    public final RiType elementKind;
+    public final RiType elementType;
     public final int cpi;
     public final RiConstantPool constantPool;
 
     /**
      * Constructs a new NewMultiArray instruction.
-     * @param elementKind the element type of the array
+     * @param elementType the element type of the array
      * @param dimensions the instructions which produce the dimensions for this array
      * @param stateBefore the state before this instruction
      * @param cpi the constant pool index for resolution
      * @param riConstantPool the constant pool for resolution
      * @param graph
      */
-    public NewMultiArray(RiType elementKind, Value[] dimensions, int cpi, RiConstantPool riConstantPool, Graph graph) {
+    public NewMultiArray(RiType elementType, Value[] dimensions, int cpi, RiConstantPool riConstantPool, Graph graph) {
         super(null, dimensions.length, SUCCESSOR_COUNT, graph);
         this.constantPool = riConstantPool;
-        this.elementKind = elementKind;
+        this.elementType = elementType;
         this.cpi = cpi;
 
         this.dimensionCount = dimensions.length;
@@ -102,7 +102,7 @@ public final class NewMultiArray extends NewArray {
      * @return the element type of the array
      */
     public RiType elementType() {
-        return elementKind;
+        return elementType;
     }
 
     @Override
@@ -114,12 +114,12 @@ public final class NewMultiArray extends NewArray {
           }
           out.print(dimension(i));
         }
-        out.print("] ").print(CiUtil.toJavaName(elementKind));
+        out.print("] ").print(CiUtil.toJavaName(elementType));
     }
 
     @Override
     public Node copy(Graph into) {
-        NewMultiArray x = new NewMultiArray(elementKind, new Value[dimensionCount], cpi, constantPool, into);
+        NewMultiArray x = new NewMultiArray(elementType, new Value[dimensionCount], cpi, constantPool, into);
         x.setNonNull(isNonNull());
         return x;
     }

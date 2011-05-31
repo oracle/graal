@@ -45,7 +45,8 @@ public final class LogicOp extends Op2 {
         super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
-    public LogicOp(CiKind kind, int opcode, Graph graph) {
+    // for copying
+    private LogicOp(CiKind kind, int opcode, Graph graph) {
         super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 

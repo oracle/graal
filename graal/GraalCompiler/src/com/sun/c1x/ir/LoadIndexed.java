@@ -40,12 +40,11 @@ public final class LoadIndexed extends AccessIndexed {
      * @param array the instruction producing the array
      * @param index the instruction producing the index
      * @param length the instruction producing the length
-     * @param elementType the element type
-     * @param stateAfter the after before executing this instruction
+     * @param elementKind the element type
      * @param graph
      */
-    public LoadIndexed(Value array, Value index, Value length, CiKind elementType, Graph graph) {
-        super(elementType.stackKind(), array, index, length, elementType, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LoadIndexed(Value array, Value index, Value length, CiKind elementKind, Graph graph) {
+        super(elementKind.stackKind(), array, index, length, elementKind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**
@@ -88,7 +87,7 @@ public final class LoadIndexed extends AccessIndexed {
 
     @Override
     public Node copy(Graph into) {
-        LoadIndexed x = new LoadIndexed(null, null, null, kind, into);
+        LoadIndexed x = new LoadIndexed(null, null, null, elementKind(), into);
         x.setNonNull(isNonNull());
         return x;
     }

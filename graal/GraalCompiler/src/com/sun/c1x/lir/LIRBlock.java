@@ -185,17 +185,7 @@ public final class LIRBlock {
     private int linearScanNumber = -1;
     private boolean linearScanLoopEnd;
     private boolean linearScanLoopHeader;
-    private boolean exceptionEntry;
     private boolean backwardBranchTarget;
-
-
-    public void setExceptionEntry(boolean b) {
-        this.exceptionEntry = b;
-    }
-
-    public boolean isExceptionEntry() {
-        return exceptionEntry;
-    }
 
     public void setBackwardBranchTarget(boolean b) {
         this.backwardBranchTarget = b;
@@ -245,24 +235,6 @@ public final class LIRBlock {
 
     public void setInstructions(List<Node> list) {
         instructions = list;
-    }
-
-    public void substituteSuccessor(LIRBlock target, LIRBlock newSucc) {
-        for (int i = 0; i < successors.size(); ++i) {
-            if (successors.get(i) == target) {
-                successors.set(i, newSucc);
-                break;
-            }
-        }
-    }
-
-    public void substitutePredecessor(LIRBlock source, LIRBlock newSucc) {
-        for (int i = 0; i < predecessors.size(); ++i) {
-            if (predecessors.get(i) == source) {
-                predecessors.set(i, newSucc);
-                break;
-            }
-        }
     }
 
     public void setLastState(FrameState fs) {

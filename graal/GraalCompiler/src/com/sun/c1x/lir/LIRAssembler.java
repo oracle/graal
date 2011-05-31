@@ -311,10 +311,6 @@ public abstract class LIRAssembler {
                 emitLogicOp(op.code, op.operand1(), op.operand2(), op.result());
                 break;
 
-            case Throw:
-                emitThrow(op.operand1(), op.operand2(), op.info);
-                break;
-
             default:
                 throw Util.shouldNotReachHere();
         }
@@ -406,8 +402,6 @@ public abstract class LIRAssembler {
     protected abstract void emitReadPrefetch(CiValue inOpr);
 
     protected abstract void emitVolatileMove(CiValue inOpr, CiValue result, CiKind kind, LIRDebugInfo info);
-
-    protected abstract void emitThrow(CiValue inOpr1, CiValue inOpr2, LIRDebugInfo info);
 
     protected abstract void emitLogicOp(LIROpcode code, CiValue inOpr1, CiValue inOpr2, CiValue dst);
 

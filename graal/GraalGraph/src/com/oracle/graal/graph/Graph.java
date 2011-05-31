@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -42,8 +43,8 @@ public class Graph {
         end = new EndNode(this);
     }
 
-    public Collection<Node> getNodes() {
-        return Collections.unmodifiableCollection(nodes);
+    public List<Node> getNodes() {
+        return Collections.unmodifiableList(nodes);
     }
 
     int register(Node node) {
@@ -74,22 +75,18 @@ public class Graph {
 
     public void addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
         Map<Node, Node> newNodes = new HashMap<Node, Node>();
+        // create node duplicates
         for (Node node : nodes) {
             if (node != null && !replacements.containsKey(node)) {
-                newNodes.put(node, node.copy(this));
+                Node newNode = node.copy(this);
+                assert newNode.getClass() == node.getClass();
+                newNodes.put(node, newNode);
             }
         }
+        // re-wire inputs
         for (Entry<Node, Node> entry : newNodes.entrySet()) {
             Node oldNode = entry.getKey();
             Node node = entry.getValue();
-            for (int i = 0; i < oldNode.successors().size(); i++) {
-                Node succ = oldNode.successors().get(i);
-                Node target = replacements.get(succ);
-                if (target == null) {
-                    target = newNodes.get(succ);
-                }
-                node.successors().set(i, target);
-            }
             for (int i = 0; i < oldNode.inputs().size(); i++) {
                 Node input = oldNode.inputs().get(i);
                 Node target = replacements.get(input);
@@ -102,16 +99,35 @@ public class Graph {
         for (Entry<Node, Node> entry : replacements.entrySet()) {
             Node oldNode = entry.getKey();
             Node node = entry.getValue();
-            for (int i = 0; i < oldNode.successors().size(); i++) {
-                Node succ = oldNode.successors().get(i);
-                if (newNodes.containsKey(succ)) {
-                    node.successors().set(i, newNodes.get(succ));
-                }
-            }
             for (int i = 0; i < oldNode.inputs().size(); i++) {
                 Node input = oldNode.inputs().get(i);
                 if (newNodes.containsKey(input)) {
                     node.inputs().set(i, newNodes.get(input));
+                }
+            }
+        }
+        // re-wire successors
+        for (Entry<Node, Node> entry : newNodes.entrySet()) {
+            Node oldNode = entry.getKey();
+            Node node = entry.getValue();
+            for (int i = 0; i < oldNode.predecessors().size(); i++) {
+                Node pred = oldNode.predecessors().get(i);
+                int predIndex = oldNode.predecessorsIndex().get(i);
+                Node source = replacements.get(pred);
+                if (source == null) {
+                    source = newNodes.get(pred);
+                }
+                source.successors().set(predIndex,  node);
+            }
+        }
+        for (Entry<Node, Node> entry : replacements.entrySet()) {
+            Node oldNode = entry.getKey();
+            Node node = entry.getValue();
+            for (int i = 0; i < oldNode.predecessors().size(); i++) {
+                Node pred = oldNode.predecessors().get(i);
+                int predIndex = oldNode.predecessorsIndex().get(i);
+                if (newNodes.containsKey(pred)) {
+                    newNodes.get(pred).successors().set(predIndex, node);
                 }
             }
         }

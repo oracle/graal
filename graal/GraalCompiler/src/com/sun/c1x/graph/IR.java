@@ -82,13 +82,38 @@ public class IR {
         }
 
         new PhiSimplifier(this);
-        Schedule schedule = new Schedule(this.compilation.graph);
+
+//        Graph newGraph = new Graph();
+//        HashMap<Node, Node> replacement = new HashMap<Node, Node>();
+//        replacement.put(compilation.graph.start(), newGraph.start());
+//        replacement.put(compilation.graph.end(), newGraph.end());
+//        newGraph.addDuplicate(compilation.graph.getNodes(), replacement);
+//        compilation.graph = newGraph;
+
+        Graph graph = compilation.graph;
+
+        // Split critical edges.
+        List<Node> nodes = graph.getNodes();
+        for (int i = 0; i < nodes.size(); ++i) {
+            Node n = nodes.get(i);
+            if (Schedule.trueSuccessorCount(n) > 1) {
+                for (int j = 0; j < n.successors().size(); ++j) {
+                    Node succ = n.successors().get(j);
+                    if (Schedule.truePredecessorCount(succ) > 1) {
+                        Anchor a = new Anchor(null, graph);
+                        a.successors().setAndClear(1, n, j);
+                        n.successors().set(j, a);
+                    }
+                }
+            }
+        }
+
+        Schedule schedule = new Schedule(graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
         for (Block b : blocks) {
             LIRBlock block = new LIRBlock(b.blockID());
-            block.setExceptionEntry(b.isExceptionEntry());
             map.put(b, block);
             block.setInstructions(b.getInstructions());
             block.setLinearScanNumber(b.blockID());
@@ -100,11 +125,7 @@ public class IR {
 
         for (Block b : blocks) {
             for (Block succ : b.getSuccessors()) {
-//                if (succ.isExceptionEntry()) {
-//                    map.get(b).getExceptionHandlerSuccessors().add(map.get(succ));
-//                } else {
-                    map.get(b).blockSuccessors().add(map.get(succ));
-//                }
+                map.get(b).blockSuccessors().add(map.get(succ));
             }
 
             for (Block pred : b.getPredecessors()) {
@@ -112,16 +133,7 @@ public class IR {
             }
         }
 
-
-     // TODO(tw): Schedule nodes within a block.
-
-
-        CriticalEdgeFinder finder = new CriticalEdgeFinder(lirBlocks, compilation.graph);
-        finder.splitCriticalEdges();
-
-
         orderedBlocks = lirBlocks;
-
         valueToBlock = new HashMap<Node, LIRBlock>();
         for (LIRBlock b : orderedBlocks) {
             for (Node i : b.getInstructions()) {
@@ -131,14 +143,6 @@ public class IR {
         startBlock = lirBlocks.get(0);
         assert startBlock != null;
         assert startBlock.blockPredecessors().size() == 0;
-
-/*        if (startBlock.blockPredecessors().size() > 0) {
-            LIRBlock oldStartBlock = startBlock;
-            startBlock = new LIRBlock(orderedBlocks.size());
-            startBlock.blockSuccessors().add(oldStartBlock);
-
-            orderedBlocks.add(startBlock);
-        }*/
 
         ComputeLinearScanOrder clso = new ComputeLinearScanOrder(lirBlocks.size(), startBlock);
         orderedBlocks = clso.linearScanOrder();
@@ -159,14 +163,6 @@ public class IR {
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
         new GraphBuilder(compilation, this, compilation.graph).build();
-
-//        Graph newGraph = new Graph();
-//        HashMap<Node, Node> replacement = new HashMap<Node, Node>();
-//        replacement.put(compilation.graph.start(), newGraph.start());
-//        replacement.put(compilation.graph.end(), newGraph.end());
-//        newGraph.addDuplicate(compilation.graph.getNodes(), replacement);
-//
-//        compilation.graph = newGraph;
 
         verifyAndPrint("After graph building");
 
