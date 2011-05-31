@@ -131,7 +131,6 @@ public final class BlockMap {
     public static class ExceptionBlock  extends Block {
         public RiExceptionHandler handler;
         public Block next;
-        public Block handlerBlock;
     }
 
     private static final Block[] NO_SUCCESSORS = new Block[0];
@@ -423,7 +422,6 @@ public final class BlockMap {
             block.endBci = -1;
             block.handler = handler;
             block.successors.add(blockMap[handler.handlerBCI()]);
-            block.handlerBlock = blockMap[handler.handlerBCI()];
             Block next;
             if (index < handlers.size() - 1) {
                 next = makeExceptionDispatch(handlers, index + 1);

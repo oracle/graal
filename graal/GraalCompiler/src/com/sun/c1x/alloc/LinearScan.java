@@ -1181,14 +1181,6 @@ public final class LinearScan {
             final int blockFrom = block.firstLirInstructionId();
             int blockTo = block.lastLirInstructionId();
 
-            // (tw) Destroy all registers on exception handler entry.
-            if (block.isExceptionEntry()) {
-                for (CiRegister r : callerSaveRegs) {
-                    if (attributes(r).isAllocatable) {
-                        addTemp(r.asValue(), block.firstLirInstructionId(), RegisterPriority.None, CiKind.Illegal);
-                    }
-                }
-            }
             assert blockFrom == instructions.get(0).id;
             assert blockTo == instructions.get(instructions.size() - 1).id;
 

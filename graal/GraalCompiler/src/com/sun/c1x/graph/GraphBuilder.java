@@ -69,6 +69,9 @@ public final class GraphBuilder {
     private Block[] blockFromBci;
     private ArrayList<Block> blockList;
 
+    private Block syncBlock;
+    private CiExceptionHandler syncHandler;
+
     // the constant pool
     private final RiConstantPool constantPool;
 
@@ -78,9 +81,6 @@ public final class GraphBuilder {
             return o1.blockID - o2.blockID;
         }
     });
-
-    // Exception handler list
-    private List<ExceptionHandler> exceptionHandlers;
 
     private FrameStateBuilder frameState;          // the current execution state
     private Instruction lastInstr;                 // the last instruction added
@@ -133,21 +133,6 @@ public final class GraphBuilder {
             if (block.startBci >= 0) {
                 blockFromBci[block.startBci] = block;
             }
-//            System.out.println("block " + blockID + " @ " + block.startBci);
-        }
-
-        RiExceptionHandler[] handlers = rootMethod.exceptionHandlers();
-        if (handlers != null && handlers.length > 0) {
-            exceptionHandlers = new ArrayList<ExceptionHandler>(handlers.length);
-            for (RiExceptionHandler ch : handlers) {
-                Block entry = blockFromBci[ch.handlerBCI()];
-                // entry == null means that the exception handler is unreachable according to the BlockMap conservative analysis
-                if (entry != null) {
-                    ExceptionHandler h = new ExceptionHandler(ch);
-                    h.setEntryBlock(entry);
-                    exceptionHandlers.add(h);
-                }
-            }
         }
 
         // 1. create the start block
@@ -156,7 +141,6 @@ public final class GraphBuilder {
         lastInstr = createTarget(startBlock, frameState);
         graph.start().setStart(lastInstr);
 
-        Block syncBlock = null;
         if (isSynchronized(rootMethod.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
             rootMethodSynchronizedObject = synchronizedObject(frameState, compilation.method);
@@ -168,9 +152,7 @@ public final class GraphBuilder {
             syncBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
             markOnWorkList(syncBlock);
 
-            ExceptionHandler h = new ExceptionHandler(new CiExceptionHandler(0, rootMethod.code().length, -1, 0, null));
-            h.setEntryBlock(syncBlock);
-            addExceptionHandler(h);
+            syncHandler = new CiExceptionHandler(0, rootMethod.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
         } else {
             // 4B.1 simply finish the start block
             finishStartBlock(startBlock);
@@ -347,6 +329,14 @@ public final class GraphBuilder {
         frameState.storeLocal(index, frameState.pop(kind));
     }
 
+    public boolean covers(RiExceptionHandler handler, int bci) {
+        return handler.startBCI() <= bci && bci < handler.endBCI();
+    }
+
+    public boolean isCatchAll(RiExceptionHandler handler) {
+        return handler.catchTypeCPI() == 0;
+    }
+
     private void handleException(Instruction x, int bci) {
         if (!hasHandler()) {
             return;
@@ -354,16 +344,21 @@ public final class GraphBuilder {
 
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
-        ExceptionHandler firstHandler = null;
+        RiExceptionHandler firstHandler = null;
+        RiExceptionHandler[] exceptionHandlers = compilation.method.exceptionHandlers();
         // join with all potential exception handlers
-        if (this.exceptionHandlers != null) {
-            for (ExceptionHandler handler : this.exceptionHandlers) {
+        if (exceptionHandlers != null) {
+            for (RiExceptionHandler handler : exceptionHandlers) {
                 // if the handler covers this bytecode index, add it to the list
-                if (handler.covers(bci)) {
-                    firstHandler = new ExceptionHandler(handler);
+                if (covers(handler, bci)) {
+                    firstHandler = handler;
                     break;
                 }
             }
+        }
+
+        if (firstHandler == null) {
+            firstHandler = syncHandler;
         }
 
         if (firstHandler != null) {
@@ -373,7 +368,7 @@ public final class GraphBuilder {
             for (Block block : blockList) {
                 if (block instanceof ExceptionBlock) {
                     ExceptionBlock excBlock = (ExceptionBlock) block;
-                    if (excBlock.handler == firstHandler.handler) {
+                    if (excBlock.handler == firstHandler) {
                         dispatchBlock = block;
                         break;
                     }
@@ -381,8 +376,13 @@ public final class GraphBuilder {
             }
             // if there's no dispatch block then the catch block needs to be a catch all
             if (dispatchBlock == null) {
-                assert firstHandler.isCatchAll();
-                dispatchBlock = firstHandler.entryBlock();
+                assert isCatchAll(firstHandler);
+                int handlerBCI = firstHandler.handlerBCI();
+                if (handlerBCI == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
+                    dispatchBlock = syncBlock;
+                } else {
+                    dispatchBlock = blockFromBci[handlerBCI];
+                }
             }
             FrameState entryState = frameState.duplicateWithEmptyStack(bci);
 
@@ -1153,7 +1153,7 @@ public final class GraphBuilder {
             assert frameState.stackSize() == 1;
 
             if (block.handler.catchType().isResolved()) {
-                Instruction catchSuccessor = createTarget(block.handlerBlock, frameState);
+                Instruction catchSuccessor = createTarget(blockFromBci[block.handler.handlerBCI()], frameState);
                 Instruction nextDispatch = createTarget(block.next, frameState);
                 append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
             } else {
@@ -1465,17 +1465,6 @@ public final class GraphBuilder {
 
     private RiConstantPool constantPool() {
         return constantPool;
-    }
-
-    /**
-     * Adds an exception handler.
-     * @param handler the handler to add
-     */
-    private void addExceptionHandler(ExceptionHandler handler) {
-        if (exceptionHandlers == null) {
-            exceptionHandlers = new ArrayList<ExceptionHandler>();
-        }
-        exceptionHandlers.add(handler);
     }
 
     /**
