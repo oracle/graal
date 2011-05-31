@@ -162,16 +162,6 @@ public final class ComputeLinearScanOrder {
             cur.setBackwardBranchTarget(true);
             parent.setLinearScanLoopEnd();
 
-            // When a loop header is also the start of an exception handler, then the backward branch is
-            // an exception edge. Because such edges are usually critical edges which cannot be split, the
-            // loop must be excluded here from processing.
-            if (cur.isExceptionEntry()) {
-                // Make sure that dominators are correct in this weird situation
-                iterativeDominators = true;
-                return;
-            }
-//            assert parent.numberOfSux() == 1 && parent.suxAt(0) == cur : "loop end blocks must have one successor (critical edges are split)";
-
             loopEndBlocks.add(parent);
             return;
         }
@@ -194,9 +184,6 @@ public final class ComputeLinearScanOrder {
         int i;
         for (i = cur.numberOfSux() - 1; i >= 0; i--) {
             countEdges(cur.suxAt(i), cur);
-        }
-        for (LIRBlock ex : cur.getExceptionHandlerSuccessors()) {
-            countEdges(ex, cur);
         }
 
         clearActive(cur);
@@ -328,9 +315,6 @@ public final class ComputeLinearScanOrder {
                 for (i = cur.numberOfSux() - 1; i >= 0; i--) {
                     workList.add(cur.suxAt(i));
                 }
-                for (LIRBlock ex : cur.getExceptionHandlerSuccessors()) {
-                    workList.add(ex);
-                }
             }
         } while (!workList.isEmpty());
     }
@@ -380,10 +364,10 @@ public final class ComputeLinearScanOrder {
 //        curBit--;
 
         // exceptions handlers are added as late as possible
-        if (!cur.isExceptionEntry()) {
-            weight |= 1 << curBit;
-        }
-        curBit--;
+//        if (!cur.isExceptionEntry()) {
+//            weight |= 1 << curBit;
+//        }
+//        curBit--;
 
         // guarantee that weight is > 0
         weight |= 1;
@@ -488,11 +472,6 @@ public final class ComputeLinearScanOrder {
                     sortIntoWorkList(sux);
                 }
             }
-            for (LIRBlock ex : cur.getExceptionHandlerSuccessors()) {
-                if (readyForProcessing(ex)) {
-                    sortIntoWorkList(ex);
-                }
-            }
         } while (workList.size() > 0);
     }
 
@@ -513,7 +492,6 @@ public final class ComputeLinearScanOrder {
             for (LIRBlock cur : linearScanOrder) {
                 TTY.print(String.format("%4d: B%02d    loop: %2d  depth: %2d", cur.linearScanNumber(), cur.blockID(), cur.loopIndex(), cur.loopDepth()));
 
-                TTY.print(cur.isExceptionEntry() ? " ex" : "   ");
                 TTY.print(cur.isLinearScanLoopHeader() ? " lh" : "   ");
                 TTY.print(cur.isLinearScanLoopEnd() ? " le" : "   ");
 

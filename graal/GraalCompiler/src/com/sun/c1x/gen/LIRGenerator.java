@@ -216,7 +216,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         public final LIRDebugInfo info;
 
         public DeoptimizationStub(FrameState state) {
-            info = new LIRDebugInfo(state, null);
+            info = new LIRDebugInfo(state);
         }
     }
 
@@ -477,6 +477,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         RiMethod target = x.target();
         LIRDebugInfo info = stateFor(x, stateBeforeInvokeWithArguments(x));
         LIRDebugInfo info2 = stateFor(x, stateBeforeInvokeReturn(x));
+        if (x.exceptionEdge() != null) {
+            info2.setExceptionEdge(getLIRBlock(x.exceptionEdge()));
+        }
 
         XirSnippet snippet = null;
 
@@ -877,20 +880,6 @@ public abstract class LIRGenerator extends ValueVisitor {
                 lir.tableswitch(tag, x.lowKey(), getLIRBlock(x.defaultSuccessor()), targets);
             }
         }
-    }
-
-    @Override
-    public void visitThrow(Throw x) {
-        setNoResult(x);
-        CiValue exceptionOpr = load(x.exception());
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
-
-        // move exception oop into fixed register
-        CiCallingConvention callingConvention = compilation.frameMap().getCallingConvention(new CiKind[]{CiKind.Object}, RuntimeCall);
-        CiValue argumentOperand = callingConvention.locations[0];
-        lir.move(exceptionOpr, argumentOperand);
-
-        lir.throwException(CiValue.IllegalValue, argumentOperand, info);
     }
 
     @Override
@@ -1488,16 +1477,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (compilation.placeholderState != null) {
             state = compilation.placeholderState;
         }
-
-        assert state != null;
-        LIRBlock exceptionEdge = null;
-        if (x instanceof ExceptionEdgeInstruction) {
-            Instruction begin = ((ExceptionEdgeInstruction) x).exceptionEdge();
-            if (begin != null) {
-                exceptionEdge = getLIRBlock(begin);
-            }
-        }
-        return new LIRDebugInfo(state, exceptionEdge);
+        return new LIRDebugInfo(state);
     }
 
     List<CiValue> visitInvokeArguments(CiCallingConvention cc, Invoke x, List<CiValue> pointerSlots) {

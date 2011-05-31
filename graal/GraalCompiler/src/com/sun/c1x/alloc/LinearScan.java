@@ -746,8 +746,6 @@ public final class LinearScan {
 
         // Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
         // The loop is executed until a fixpoint is reached (no changes in an iteration)
-        // Exception handlers must be processed because not all live values are
-        // present in the state array, e.g. because of global value numbering
         do {
             changeOccurred = false;
 
@@ -1181,14 +1179,6 @@ public final class LinearScan {
             final int blockFrom = block.firstLirInstructionId();
             int blockTo = block.lastLirInstructionId();
 
-            // (tw) Destroy all registers on exception handler entry.
-            if (block.isExceptionEntry()) {
-                for (CiRegister r : callerSaveRegs) {
-                    if (attributes(r).isAllocatable) {
-                        addTemp(r.asValue(), block.firstLirInstructionId(), RegisterPriority.None, CiKind.Illegal);
-                    }
-                }
-            }
             assert blockFrom == instructions.get(0).id;
             assert blockTo == instructions.get(instructions.size() - 1).id;
 
@@ -1292,23 +1282,6 @@ public final class LinearScan {
                 addRegisterHints(op);
 
             } // end of instruction iteration
-
-
-            // (tw) TODO: Check if this matters..
-            // (tw) Make sure that no spill store optimization is applied for phi instructions that flow into exception handlers.
-//            if (block.isExceptionEntry()) {
-//                Instruction firstInstruction = block.getInstructions().get(0);
-//                for (Node n : firstInstruction.usages()) {
-//                    if (n instanceof Phi) {
-//                        Phi phi = (Phi) n;
-//                        Interval interval = intervalFor(phi.operand());
-//                        if (interval != null) {
-//                            interval.setSpillState(SpillState.NoOptimization);
-//                        }
-//                    }
-//                }
-//            }
-
         } // end of block iteration
 
         // add the range [0, 1] to all fixed intervals.
@@ -1999,13 +1972,6 @@ public final class LinearScan {
             }
 
             if (op.info != null) {
-                // exception handling
-//                if (compilation.hasExceptionHandlers()) {
-//                    if (op.exceptionEdge() != null && op.exceptionEdge().lir() != null) {
-//                        assignLocations(op.exceptionEdge().lir().instructionsList(), iw);
-//                    }
-//                }
-
                 // compute reference map and debug information
                 computeDebugInfo(iw, op);
             }
