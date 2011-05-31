@@ -22,6 +22,8 @@
  */
 package com.sun.c1x.ir;
 
+import java.util.*;
+
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
@@ -212,5 +214,15 @@ public abstract class Value extends Node {
     public abstract void accept(ValueVisitor v);
 
     public abstract void print(LogStream out);
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("kind", kind.toString());
+        properties.put("nonNull", isNonNull);
+        properties.put("operand", operand == null ? "null" : operand.toString());
+        return properties;
+    }
+
 
 }

@@ -54,6 +54,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
             Local local = new Local(method.holder().kind(), javaIndex, graph);
+            local.inputs().set(0, graph.start());
             local.setNonNull(true);
             local.setDeclaredType(method.holder());
             storeLocal(javaIndex, local);
@@ -67,6 +68,7 @@ public class FrameStateBuilder implements FrameStateAccess {
             RiType type = sig.argumentTypeAt(i, accessingClass);
             CiKind kind = type.kind().stackKind();
             Local local = new Local(kind, index, graph);
+            local.inputs().set(0, graph.start());
             if (type.isResolved()) {
                 local.setDeclaredType(type);
             }

@@ -41,7 +41,6 @@ public final class InstanceOf extends TypeCheck {
      * Constructs a new InstanceOf instruction.
      * @param targetClass the target class of the instanceof check
      * @param object the instruction producing the object input to this instruction
-     * @param stateBefore the state before this instruction
      * @param graph
      */
     public InstanceOf(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {

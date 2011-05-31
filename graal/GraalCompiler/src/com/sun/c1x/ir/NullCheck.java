@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.bytecode.*;
+import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
 /**
@@ -71,6 +72,12 @@ public final class NullCheck extends Instruction {
         setObject(object);
     }
 
+    // for copying
+    private NullCheck(CiKind kind, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setNonNull(true);
+    }
+
     @Override
     public void accept(ValueVisitor v) {
         v.visitNullCheck(this);
@@ -109,7 +116,7 @@ public final class NullCheck extends Instruction {
 
     @Override
     public Node copy(Graph into) {
-        NullCheck x = new NullCheck(null, into);
+        NullCheck x = new NullCheck(kind, into);
         x.setNonNull(isNonNull());
         return x;
     }

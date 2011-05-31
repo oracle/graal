@@ -80,19 +80,20 @@ public final class IfOp extends Op2 {
     /**
      * Constructs a new IfOp.
      * @param x the instruction producing the first value to be compared
-     * @param cond the condition of the comparison
+     * @param condition the condition of the comparison
      * @param y the instruction producing the second value to be compared
      * @param trueValue the value produced if the condition is true
      * @param falseValue the value produced if the condition is false
      */
-    public IfOp(Value x, Condition cond, Value y, Value trueValue, Value falseValue, Graph graph) {
+    public IfOp(Value x, Condition condition, Value y, Value trueValue, Value falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
         super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.condition = cond;
+        this.condition = condition;
         setTrueValue(trueValue);
         setFalseValue(falseValue);
     }
 
+    // for copying
     private IfOp(CiKind kind, Condition cond, Graph graph) {
         super(kind, Bytecodes.ILLEGAL, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.condition = cond;

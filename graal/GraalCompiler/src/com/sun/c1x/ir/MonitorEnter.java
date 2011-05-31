@@ -45,7 +45,6 @@ public final class MonitorEnter extends AccessMonitor {
      * @param object the instruction producing the object
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param lockNumber the number of the lock
-     * @param stateAfter the state after
      * @param graph
      */
     public MonitorEnter(Value object, Value lockAddress, int lockNumber, Graph graph) {

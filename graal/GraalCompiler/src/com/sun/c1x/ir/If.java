@@ -77,15 +77,14 @@ public final class If extends BlockEnd {
     /**
      * Constructs a new If instruction.
      * @param x the instruction producing the first input to the instruction
-     * @param cond the condition (comparison operation)
+     * @param condition the condition (comparison operation)
      * @param y the instruction that produces the second input to this instruction
-     * @param stateAfter the state before the branch but after the input values have been popped
      * @param graph
      */
-    public If(Value x, Condition cond, Value y, Graph graph) {
+    public If(Value x, Condition condition, Value y, Graph graph) {
         super(CiKind.Illegal, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert (x == null && y == null) || Util.archKindsEqual(x, y);
-        condition = cond;
+        this.condition = condition;
         setX(x);
         setY(y);
     }
