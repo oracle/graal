@@ -102,7 +102,9 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     @Override
     public FrameState duplicateWithEmptyStack(int bci) {
-        return new FrameState(bci, locals, new Value[0], 0, locks, graph);
+        FrameState frameState = new FrameState(bci, locals, new Value[0], 0, locks, graph);
+        frameState.setOuterFrameState(outerFrameState());
+        return frameState;
     }
 
     /**
@@ -361,7 +363,6 @@ public class FrameStateBuilder implements FrameStateAccess {
      */
     public void lock(IR ir, Value obj, int totalNumberOfLocks) {
         locks.add(obj);
-        ir.updateMaxLocks(totalNumberOfLocks);
     }
 
     /**
@@ -496,4 +497,8 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
     }
 
+    @Override
+    public Value outerFrameState() {
+        return null;
+    }
 }

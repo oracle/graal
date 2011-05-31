@@ -20,40 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.sun.c1x.graph;
 
-public class EndNode extends Node {
+import com.oracle.graal.graph.*;
+import com.sun.c1x.ir.*;
 
-    private static final int INPUT_COUNT = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+public class CompilerGraph extends Graph {
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    private Return returnSingleton;
+    private Unwind unwindSingleton;
+
+    public Return createReturn(Value result) {
+        assert returnSingleton == null;
+        returnSingleton = new Return(result, this);
+        return returnSingleton;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public Return getReturn() {
+        return returnSingleton;
     }
 
-    EndNode(Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Unwind createUnwind(Value exception) {
+        assert unwindSingleton == null;
+        unwindSingleton = new Unwind(exception, this);
+        return unwindSingleton;
     }
 
-    @Override
-    public Node replace(Node other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void delete() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        throw new UnsupportedOperationException();
+    public Unwind getUnwind() {
+        return unwindSingleton;
     }
 }

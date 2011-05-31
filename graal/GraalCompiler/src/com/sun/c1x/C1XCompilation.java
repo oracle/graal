@@ -56,7 +56,7 @@ public final class C1XCompilation {
     public final CiAssumptions assumptions = new CiAssumptions();
     public final FrameState placeholderState;
 
-    public Graph graph = new Graph();
+    public CompilerGraph graph = new CompilerGraph();
 
     private boolean hasExceptionHandlers;
     private final C1XCompilation parent;

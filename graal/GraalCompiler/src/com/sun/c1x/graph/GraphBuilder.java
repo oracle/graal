@@ -29,17 +29,18 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
-import com.oracle.max.graal.schedule.Schedule;
+import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
-import com.sun.c1x.graph.BlockMap.*;
+import com.sun.c1x.graph.BlockMap.Block;
+import com.sun.c1x.graph.BlockMap.ExceptionBlock;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.util.*;
 import com.sun.c1x.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.*;
+import com.sun.cri.ri.RiType.Representation;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -72,6 +73,9 @@ public final class GraphBuilder {
     private Block syncBlock;
     private CiExceptionHandler syncHandler;
 
+    private Block unwindBlock;
+    private Block returnBlock;
+
     // the constant pool
     private final RiConstantPool constantPool;
 
@@ -89,7 +93,7 @@ public final class GraphBuilder {
 
     private Value rootMethodSynchronizedObject;
 
-    private final Graph graph;
+    private final CompilerGraph graph;
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -98,7 +102,7 @@ public final class GraphBuilder {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilder(C1XCompilation compilation, IR ir, Graph graph) {
+    public GraphBuilder(C1XCompilation compilation, IR ir, CompilerGraph graph) {
         this.compilation = compilation;
         this.ir = ir;
         this.stats = compilation.stats;
@@ -149,9 +153,6 @@ public final class GraphBuilder {
             finishStartBlock(startBlock);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
-            syncBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
-            markOnWorkList(syncBlock);
-
             syncHandler = new CiExceptionHandler(0, rootMethod.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
         } else {
             // 4B.1 simply finish the start block
@@ -163,11 +164,6 @@ public final class GraphBuilder {
         // 6B.1 do the normal parsing
         addToWorkList(blockFromBci[0]);
         iterateAllBlocks();
-
-        if (syncBlock != null && syncBlock.firstInstruction != null) {
-            // generate unlocking code if the exception handler is reachable
-            fillSyncHandler(rootMethodSynchronizedObject, syncBlock);
-        }
 
         for (Node n : graph.getNodes()) {
             if (n instanceof Placeholder) {
@@ -209,6 +205,29 @@ public final class GraphBuilder {
         block.blockID = ir.nextBlockNumber();
         return block;
     }
+
+    private Block unwindBlock() {
+        if (unwindBlock == null) {
+            unwindBlock = new Block();
+            unwindBlock.startBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            unwindBlock.endBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            unwindBlock.blockID = ir.nextBlockNumber();
+            addToWorkList(unwindBlock);
+        }
+        return unwindBlock;
+    }
+
+    private Block returnBlock() {
+        if (returnBlock == null) {
+            returnBlock = new Block();
+            returnBlock.startBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            returnBlock.endBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            returnBlock.blockID = ir.nextBlockNumber();
+            addToWorkList(returnBlock);
+        }
+        return returnBlock;
+    }
+
 
     private Set<Block> blocksOnWorklist = new HashSet<Block>();
 
@@ -375,7 +394,7 @@ public final class GraphBuilder {
                 assert isCatchAll(firstHandler);
                 int handlerBCI = firstHandler.handlerBCI();
                 if (handlerBCI == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
-                    dispatchBlock = syncBlock;
+                    dispatchBlock = unwindBlock();
                 } else {
                     dispatchBlock = blockFromBci[handlerBCI];
                 }
@@ -609,11 +628,15 @@ public final class GraphBuilder {
     private void genThrow(int bci) {
         Value exception = frameState.apop();
         append(new NullCheck(exception, graph));
+
         Instruction entry = handleException(exception, bci);
-        if (entry == null) {
-            entry = new Unwind(exception, graph.end(), graph);
+        if (entry != null) {
+            append(entry);
+        } else {
+            frameState.clearStack();
+            frameState.apush(exception);
+            appendGoto(createTarget(unwindBlock(), frameState));
         }
-        append(entry);
     }
 
     private void genCheckCast() {
@@ -893,23 +916,11 @@ public final class GraphBuilder {
     }
 
     private void genReturn(Value x) {
-        if (method().isConstructor() && method().holder().superType() == null) {
-            callRegisterFinalizer();
-        }
-
         frameState.clearStack();
-        if (Modifier.isSynchronized(method().accessFlags())) {
-            // unlock before exiting the method
-            int lockNumber = frameState.locksSize() - 1;
-            MonitorAddress lockAddress = null;
-            if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-                lockAddress = new MonitorAddress(lockNumber, graph);
-                append(lockAddress);
-            }
-            append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
-            frameState.unlock();
+        if (x != null) {
+            frameState.push(x.kind, x);
         }
-        append(new Return(x, graph));
+        appendGoto(createTarget(returnBlock(), frameState));
     }
 
     private void genMonitorEnter(Value x, int bci) {
@@ -1066,27 +1077,6 @@ public final class GraphBuilder {
         }
     }
 
-    private void fillSyncHandler(Value lock, Block syncHandler) {
-        lastInstr = syncHandler.firstInstruction;
-        while (lastInstr.next() != null) {
-            // go forward to the end of the block
-            lastInstr = lastInstr.next();
-        }
-
-        frameState.initializeFrom(((StateSplit) syncHandler.firstInstruction).stateBefore());
-
-        assert lock != null;
-        assert frameState.locksSize() > 0 && frameState.lockAt(frameState.locksSize() - 1) == lock;
-
-        // Exit the monitor and unwind the stack.
-        genMonitorExit(lock);
-        append(new Unwind(frameState.apop(), graph.end(), graph));
-
-        // The sync handler is always the last thing to add => we can clear the frameState.
-        frameState = null;
-        lastInstr = null;
-    }
-
     private void iterateAllBlocks() {
         Block block;
         while ((block = removeFromWorkList()) != null) {
@@ -1104,7 +1094,11 @@ public final class GraphBuilder {
                 lastInstr = block.firstInstruction;
                 assert block.firstInstruction.next() == null : "instructions already appended at block " + block.blockID;
 
-                if (block instanceof ExceptionBlock) {
+                if (block == returnBlock) {
+                    createReturnBlock(block);
+                } else if (block == unwindBlock) {
+                    createUnwindBlock(block);
+                } else if (block instanceof ExceptionBlock) {
                     createExceptionDispatch((ExceptionBlock) block);
                 } else {
                     iterateBytecodesForBlock(block);
@@ -1135,33 +1129,44 @@ public final class GraphBuilder {
         }
     }
 
+    private void createUnwindBlock(Block block) {
+        if (Modifier.isSynchronized(method().accessFlags())) {
+            genMonitorExit(rootMethodSynchronizedObject);
+        }
+        append(graph.createUnwind(frameState.apop()));
+    }
+
+    private void createReturnBlock(Block block) {
+        if (method().isConstructor() && method().holder().superType() == null) {
+            callRegisterFinalizer();
+        }
+        CiKind returnKind = method().signature().returnKind().stackKind();
+        Value x = returnKind == CiKind.Void ? null : frameState.pop(returnKind);
+        assert frameState.stackSize() == 0;
+
+        if (Modifier.isSynchronized(method().accessFlags())) {
+            genMonitorExit(rootMethodSynchronizedObject);
+        }
+        append(graph.createReturn(x));
+    }
+
     private void createExceptionDispatch(ExceptionBlock block) {
         if (block.handler == null) {
             assert frameState.stackSize() == 1 : "only exception object expected on stack, actual size: " + frameState.stackSize();
-            if (Modifier.isSynchronized(method().accessFlags())) {
-                // unlock before exiting the method
-                int lockNumber = frameState.locksSize() - 1;
-                MonitorAddress lockAddress = null;
-                if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-                    lockAddress = new MonitorAddress(lockNumber, graph);
-                    append(lockAddress);
-                }
-                append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
-                frameState.unlock();
-            }
-            append(new Unwind(frameState.apop(), graph.end(), graph));
+            createUnwindBlock(block);
         } else {
             assert frameState.stackSize() == 1;
 
+            Block nextBlock = block.next == null ? unwindBlock() : block.next;
             if (block.handler.catchType().isResolved()) {
                 Instruction catchSuccessor = createTarget(blockFromBci[block.handler.handlerBCI()], frameState);
-                Instruction nextDispatch = createTarget(block.next, frameState);
+                Instruction nextDispatch = createTarget(nextBlock, frameState);
                 append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
             } else {
                 Deoptimize deopt = new Deoptimize(graph);
                 deopt.setMessage("unresolved " + block.handler.catchType().name());
                 append(deopt);
-                Instruction nextDispatch = createTarget(block.next, frameState);
+                Instruction nextDispatch = createTarget(nextBlock, frameState);
                 appendGoto(nextDispatch);
             }
         }
@@ -1185,8 +1190,7 @@ public final class GraphBuilder {
             if (nextBlock != null && nextBlock != block) {
                 assert !nextBlock.isExceptionEntry;
                 // we fell through to the next block, add a goto and break
-                Instruction next = createTarget(nextBlock, frameState);
-                appendGoto(next);
+                appendGoto(createTarget(nextBlock, frameState));
                 break;
             }
             // read the opcode

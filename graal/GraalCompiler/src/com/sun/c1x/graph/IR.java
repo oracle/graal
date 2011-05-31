@@ -32,6 +32,7 @@ import com.sun.c1x.gen.*;
 import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
+import com.sun.c1x.value.*;
 
 /**
  * This class implements the overall container for the HIR (high-level IR) graph
@@ -48,8 +49,6 @@ public class IR {
      * The start block of this IR.
      */
     public LIRBlock startBlock;
-
-    private int maxLocks;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -210,21 +209,18 @@ public class IR {
     }
 
     /**
-     * Updates the maximum number of locks held at any one time.
-     *
-     * @param locks a lock count that will replace the current {@linkplain #maxLocks() max locks} if it is greater
-     */
-    public void updateMaxLocks(int locks) {
-        if (locks > maxLocks) {
-            maxLocks = locks;
-        }
-    }
-
-    /**
-     * Gets the number of locks.
-     * @return the number of locks
+     * Gets the maximum number of locks in the graph's frame states.
      */
     public final int maxLocks() {
+        int maxLocks = 0;
+        for (Node node : compilation.graph.getNodes()) {
+            if (node instanceof FrameState) {
+                int lockCount = ((FrameState) node).locksSize();
+                if (lockCount > maxLocks) {
+                    maxLocks = lockCount;
+                }
+            }
+        }
         return maxLocks;
     }
 

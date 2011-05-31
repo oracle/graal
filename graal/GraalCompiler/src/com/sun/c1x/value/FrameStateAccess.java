@@ -46,4 +46,6 @@ public interface FrameStateAccess {
 
     void setValueAt(int j, Value v);
 
+    Value outerFrameState();
+
 }
