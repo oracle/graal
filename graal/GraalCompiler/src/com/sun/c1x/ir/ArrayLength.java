@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class ArrayLength extends Value {
+public final class ArrayLength extends FloatingNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_ARRAY = 0;

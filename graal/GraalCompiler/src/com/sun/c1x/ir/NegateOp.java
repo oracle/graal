@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code NegateOp} instruction negates its operand.
  */
-public final class NegateOp extends Value {
+public final class NegateOp extends FloatingNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;

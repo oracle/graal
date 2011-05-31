@@ -33,7 +33,7 @@ import com.sun.cri.ri.*;
  * The {@code Constant} instruction represents a constant such as an integer value,
  * long, float, object reference, address, etc.
  */
-public final class Constant extends Value {
+public final class Constant extends FloatingNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;

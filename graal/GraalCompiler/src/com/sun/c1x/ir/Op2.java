@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
  */
-public abstract class Op2 extends Value {
+public abstract class Op2 extends FloatingNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;
