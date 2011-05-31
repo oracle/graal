@@ -80,6 +80,10 @@ public abstract class Node {
         return graph;
     }
 
+    public <T> T lookup(Class<T> clazz) {
+        return null;
+    }
+
     public String shortName() {
         return getClass().getSimpleName();
     }
