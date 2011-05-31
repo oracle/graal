@@ -22,6 +22,8 @@
  */
 package com.sun.c1x.ir;
 
+import java.util.*;
+
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
@@ -181,6 +183,15 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
             out.print(argument(i));
         }
         out.print(CiUtil.format(") [method: %H.%n(%p):%r]", target, false));
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("opcode", Bytecodes.nameOf(opcode));
+        properties.put("target", CiUtil.format("%H.%n(%p):%r", target, false));
+        properties.put("bci", bci);
+        return properties;
     }
 
     @Override

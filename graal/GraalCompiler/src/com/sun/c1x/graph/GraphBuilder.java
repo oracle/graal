@@ -1079,7 +1079,7 @@ public final class GraphBuilder {
 
         // Exit the monitor and unwind the stack.
         genMonitorExit(lock);
-        append(new Unwind(frameState.apop(), graph));
+        append(new Unwind(frameState.apop(), graph.end(), graph));
 
         // The sync handler is always the last thing to add => we can clear the frameState.
         frameState = null;
@@ -1148,7 +1148,7 @@ public final class GraphBuilder {
                 append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
                 frameState.unlock();
             }
-            append(new Unwind(frameState.apop(), graph));
+            append(new Unwind(frameState.apop(), graph.end(), graph));
         } else {
             assert frameState.stackSize() == 1;
 

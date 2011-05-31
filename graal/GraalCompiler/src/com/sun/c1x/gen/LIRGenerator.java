@@ -388,7 +388,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             dims[i] = toXirArgument(x.dimension(i));
         }
 
-        XirSnippet snippet = xir.genNewMultiArray(site(x), dims, x.elementKind);
+        XirSnippet snippet = xir.genNewMultiArray(site(x), dims, x.elementType);
         emitXir(snippet, x, stateFor(x), null, true);
     }
 

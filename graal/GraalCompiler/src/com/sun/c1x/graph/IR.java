@@ -82,6 +82,14 @@ public class IR {
         }
 
         new PhiSimplifier(this);
+
+//        Graph newGraph = new Graph();
+//        HashMap<Node, Node> replacement = new HashMap<Node, Node>();
+//        replacement.put(compilation.graph.start(), newGraph.start());
+//        replacement.put(compilation.graph.end(), newGraph.end());
+//        newGraph.addDuplicate(compilation.graph.getNodes(), replacement);
+//        compilation.graph = newGraph;
+
         Schedule schedule = new Schedule(this.compilation.graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
@@ -159,14 +167,6 @@ public class IR {
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
         new GraphBuilder(compilation, this, compilation.graph).build();
-
-//        Graph newGraph = new Graph();
-//        HashMap<Node, Node> replacement = new HashMap<Node, Node>();
-//        replacement.put(compilation.graph.start(), newGraph.start());
-//        replacement.put(compilation.graph.end(), newGraph.end());
-//        newGraph.addDuplicate(compilation.graph.getNodes(), replacement);
-//
-//        compilation.graph = newGraph;
 
         verifyAndPrint("After graph building");
 
