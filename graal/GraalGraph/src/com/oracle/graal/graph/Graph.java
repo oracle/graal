@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -42,8 +43,8 @@ public class Graph {
         end = new EndNode(this);
     }
 
-    public Collection<Node> getNodes() {
-        return Collections.unmodifiableCollection(nodes);
+    public List<Node> getNodes() {
+        return Collections.unmodifiableList(nodes);
     }
 
     int register(Node node) {
