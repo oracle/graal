@@ -67,7 +67,7 @@ public class Graph {
         return new NodeMap<T>(this);
     }
 
-    public void addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
+    public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
         Map<Node, Node> newNodes = new HashMap<Node, Node>();
         // create node duplicates
         for (Node node : nodes) {
@@ -125,5 +125,6 @@ public class Graph {
                 }
             }
         }
+        return newNodes;
     }
 }

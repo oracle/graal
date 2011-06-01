@@ -22,6 +22,7 @@
  */
 package com.sun.c1x.graph;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -33,6 +34,8 @@ import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.value.*;
+import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 /**
  * This class implements the overall container for the HIR (high-level IR) graph
@@ -161,12 +164,227 @@ public class IR {
 
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilder(compilation, this, compilation.graph).build();
+        new GraphBuilder(compilation, compilation.method, compilation.graph).build();
 
         verifyAndPrint("After graph building");
 
+        List<Invoke> trivialInline = new ArrayList<Invoke>();
+        List<Invoke> deoptInline = new ArrayList<Invoke>();
+        List<RiMethod> deoptMethods = new ArrayList<RiMethod>();
+        for (Node node : compilation.graph.getNodes()) {
+            if (node instanceof Invoke) {
+                Invoke invoke = (Invoke) node;
+                RiMethod target = invoke.target;
+                if (target.isResolved() && !Modifier.isNative(target.accessFlags())) {
+                    if (target.canBeStaticallyBound()) {
+                        trivialInline.add(invoke);
+                    } else {
+                        RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
+                        if (concrete != null) {
+                            deoptInline.add(invoke);
+                            deoptMethods.add(concrete);
+                        }
+                    }
+                }
+            }
+        }
+
+        int allowedInlinings = 50;
+        for (Invoke invoke : trivialInline) {
+            if (inlineMethod(invoke, invoke.target)) {
+                if (--allowedInlinings <= 0) {
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i < deoptInline.size(); i++) {
+            Invoke invoke = deoptInline.get(i);
+            RiMethod method = deoptMethods.get(i);
+            if (inlineMethod(invoke, method)) {
+                if (C1XOptions.TraceInlining) {
+                    System.out.println("registering concrete method assumption...");
+                }
+                compilation.assumptions.recordConcreteMethod(invoke.target, method);
+                if (--allowedInlinings <= 0) {
+                    break;
+                }
+            }
+        }
+
         if (C1XOptions.PrintCompilation) {
-            TTY.print(String.format("%3d blocks | ", this.numberOfBlocks()));
+            TTY.print(String.format("%3d blocks | ", compilation.stats.blockCount));
+        }
+    }
+
+    private boolean inlineMethod(Invoke invoke, RiMethod method) {
+        String name = invoke.id() + ": " + CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.code().length + " bytes)";
+
+        if (method.code().length > 50) {
+            if (C1XOptions.TraceInlining) {
+                System.out.println("not inlining " + name + " because of code size");
+            }
+            return false;
+        }
+
+        Instruction exceptionEdge = invoke.exceptionEdge();
+        if (exceptionEdge != null) {
+            if (C1XOptions.TraceInlining) {
+                System.out.println("not inlining " + name + " because of exceptionEdge");
+            }
+            return false;
+        }
+        if (!method.holder().isInitialized()) {
+            if (C1XOptions.TraceInlining) {
+                System.out.println("not inlining " + name + " because of non-initialized class");
+            }
+            return false;
+        }
+
+        if (C1XOptions.TraceInlining) {
+            System.out.println("building graph: " + name);
+        }
+        CompilerGraph graph = new CompilerGraph();
+        new GraphBuilder(compilation, method, graph).build();
+
+        boolean withReceiver = !Modifier.isStatic(method.accessFlags());
+
+        int argumentCount = method.signature().argumentCount(false);
+        Value[] parameters = new Value[argumentCount + (withReceiver ? 1 : 0)];
+        int slot = withReceiver ? 1 : 0;
+        int param = withReceiver ? 1 : 0;
+        for (int i = 0; i < argumentCount; i++) {
+            parameters[param++] = invoke.argument(slot);
+            slot += method.signature().argumentKindAt(i).sizeInSlots();
+        }
+        if (withReceiver) {
+            parameters[0] = invoke.argument(0);
+        }
+
+        HashMap<Node, Node> replacements = new HashMap<Node, Node>();
+        ArrayList<Node> nodes = new ArrayList<Node>();
+        ArrayList<Node> frameStates = new ArrayList<Node>();
+        Return returnNode = null;
+        Unwind unwindNode = null;
+        StartNode startNode = null;
+        boolean invokes = false;
+        for (Node node : graph.getNodes()) {
+            if (node != null) {
+                if (node instanceof StartNode) {
+                    startNode = (StartNode) node;
+                } else if (node instanceof Local) {
+                    replacements.put(node, parameters[((Local) node).index()]);
+                } else {
+                    nodes.add(node);
+                    if (node instanceof Return) {
+                        returnNode = (Return) node;
+                    } else if (node instanceof Unwind) {
+                        unwindNode = (Unwind) node;
+                    } else if (node instanceof FrameState) {
+                        frameStates.add(node);
+                    }
+                }
+            }
+        }
+        if (unwindNode != null) {
+            if (C1XOptions.TraceInlining) {
+                System.out.println("not inlining " + name + " because of unwind node");
+            }
+            return false;
+        }
+        if (invokes) {
+            if (C1XOptions.TraceInlining) {
+                System.out.println("not inlining " + name + " because of invokes");
+            }
+            return false;
+        }
+
+        if (C1XOptions.TraceInlining) {
+            System.out.println("inlining " + name + ": " + frameStates.size() + " frame states, " + nodes.size() + " nodes");
+        }
+
+        Instruction pred;
+        if (withReceiver) {
+            pred = new NullCheck(parameters[0], compilation.graph);
+        } else {
+            pred = new Merge(compilation.graph);
+        }
+        assert invoke.predecessors().size() == 1;
+        invoke.predecessors().get(0).successors().replace(invoke, pred);
+        replacements.put(startNode, pred);
+
+        Map<Node, Node> duplicates = compilation.graph.addDuplicate(nodes, replacements);
+
+        if (returnNode != null) {
+            List<Node> usages = new ArrayList<Node>(invoke.usages());
+            for (Node usage : usages) {
+                if (returnNode.result() instanceof Local) {
+                    usage.inputs().replace(invoke, replacements.get(returnNode.result()));
+                } else {
+                    usage.inputs().replace(invoke, duplicates.get(returnNode.result()));
+                }
+            }
+            Node returnDuplicate = duplicates.get(returnNode);
+            returnDuplicate.inputs().clearAll();
+
+            assert returnDuplicate.predecessors().size() == 1;
+            Node returnPred = returnDuplicate.predecessors().get(0);
+            int index = returnDuplicate.predecessorsIndex().get(0);
+            returnPred.successors().setAndClear(index, invoke, 0);
+
+            returnDuplicate.delete();
+        }
+        FrameState stateAfter = invoke.stateAfter();
+        if (frameStates.size() > 0) {
+            FrameState outerFrameState = stateAfter.duplicateModified(invoke.bci, invoke.kind);
+            for (Node frameState : frameStates) {
+                ((FrameState) duplicates.get(frameState)).setOuterFrameState(outerFrameState);
+            }
+        }
+
+        invoke.successors().clearAll();
+        invoke.inputs().clearAll();
+        invoke.delete();
+
+        stateAfter.delete();
+
+        deleteUnused(exceptionEdge);
+
+        verifyAndPrint("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false));
+        return true;
+    }
+
+    private void deleteUnused(Node node) {
+        if (node != null && node.predecessors().size() == 0) {
+            if (node instanceof ExceptionObject) {
+                Node successor = node.successors().get(0);
+                node.successors().clearAll();
+                if (successor instanceof ExceptionDispatch) {
+                    ExceptionDispatch dispatch = (ExceptionDispatch) successor;
+                    Node succ1 = dispatch.catchSuccessor();
+                    Node succ2 = dispatch.otherSuccessor();
+                    if (succ1 instanceof Merge) {
+                        ((Merge) succ1).removePhiPredecessor(dispatch);
+                    }
+                    if (succ2 instanceof Merge) {
+                        ((Merge) succ2).removePhiPredecessor(dispatch);
+                    }
+                    dispatch.successors().clearAll();
+                    deleteUnused(succ1);
+                    deleteUnused(succ2);
+                    dispatch.delete();
+                } else {
+                    assert successor instanceof Merge;
+                    System.out.println("succ: " + successor.successors().get(0));
+                    Node next = successor.successors().get(0);
+                    successor.successors().clearAll();
+                    deleteUnused(next);
+                    successor.delete();
+                }
+                node.delete();
+            } else if (node instanceof Unwind) {
+                node.delete();
+            }
         }
     }
 
@@ -200,15 +418,6 @@ public class IR {
         if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, compilation.graph, true, false));
         }
-    }
-
-
-    public int nextBlockNumber() {
-        return compilation.stats.blockCount++;
-    }
-
-    public int numberOfBlocks() {
-        return compilation.stats.blockCount;
     }
 
     public int numLoops() {

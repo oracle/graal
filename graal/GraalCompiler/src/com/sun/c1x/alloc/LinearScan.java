@@ -1884,7 +1884,7 @@ public final class LinearScan {
         }
     }
 
-    CiFrame computeFrameForState(int opId, FrameState state, CiBitMap frameRefMap) {
+    CiFrame computeFrameForState(FrameState state, int opId, CiBitMap frameRefMap) {
         CiValue[] values = new CiValue[state.valuesSize() + state.locksSize()];
         int valueIndex = 0;
 
@@ -1909,8 +1909,11 @@ public final class LinearScan {
                 }
             }
         }
-
-        return new CiFrame(null, ir.compilation.method, state.bci, values, state.localsSize(), state.stackSize(), state.locksSize());
+        CiFrame caller = null;
+        if (state.outerFrameState() != null) {
+            caller = computeFrameForState(state.outerFrameState(), opId, frameRefMap);
+        }
+        return new CiFrame(caller, state.method, state.bci, values, state.localsSize(), state.stackSize(), state.locksSize());
     }
 
     private void computeDebugInfo(IntervalWalker iw, LIRInstruction op) {
@@ -1946,7 +1949,7 @@ public final class LinearScan {
         if (C1XOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating debug information at opId %d", opId);
         }
-        return computeFrameForState(opId, state, frameRefMap);
+        return computeFrameForState(state, opId, frameRefMap);
     }
 
     private void assignLocations(List<LIRInstruction> instructions, IntervalWalker iw) {

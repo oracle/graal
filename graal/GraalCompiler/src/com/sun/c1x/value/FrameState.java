@@ -31,6 +31,7 @@ import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
@@ -60,13 +61,12 @@ public final class FrameState extends Value implements FrameStateAccess {
         return super.successorCount() + SUCCESSOR_COUNT;
     }
 
-    public Value outerFrameState() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OUTER_FRAME_STATE);
+    public FrameState outerFrameState() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_OUTER_FRAME_STATE);
     }
 
-    public Value setOuterFrameState(Value n) {
-        assert n == null || n.kind == CiKind.Object;
-        return (Value) inputs().set(super.inputCount() + INPUT_OUTER_FRAME_STATE, n);
+    public FrameState setOuterFrameState(FrameState n) {
+        return (FrameState) inputs().set(super.inputCount() + INPUT_OUTER_FRAME_STATE, n);
     }
 
     @Override
@@ -80,6 +80,8 @@ public final class FrameState extends Value implements FrameStateAccess {
      */
     public final int bci;
 
+    public final RiMethod method;
+
     /**
      * Creates a {@code FrameState} for the given scope and maximum number of stack and local variables.
      *
@@ -88,8 +90,9 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param stackSize size of the stack
      * @param lockSize number of locks
      */
-    public FrameState(int bci, int localsSize, int stackSize, int locksSize, Graph graph) {
+    public FrameState(RiMethod method, int bci, int localsSize, int stackSize, int locksSize, Graph graph) {
         super(CiKind.Illegal, localsSize + stackSize + locksSize + INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.method = method;
         this.bci = bci;
         this.localsSize = localsSize;
         this.stackSize = stackSize;
@@ -98,8 +101,8 @@ public final class FrameState extends Value implements FrameStateAccess {
         C1XMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
     }
 
-    FrameState(int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks, Graph graph) {
-        this(bci, locals.length, stackSize, locks.size(), graph);
+    FrameState(RiMethod method, int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks, Graph graph) {
+        this(method, bci, locals.length, stackSize, locks.size(), graph);
         for (int i = 0; i < locals.length; i++) {
             setValueAt(i, locals[i]);
         }
@@ -125,7 +128,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      */
     @Override
     public FrameState duplicateWithEmptyStack(int bci) {
-        FrameState other = new FrameState(bci, localsSize, 0, locksSize(), graph());
+        FrameState other = new FrameState(method, bci, localsSize, 0, locksSize(), graph());
         for (int i = 0; i < localsSize; i++) {
             other.setValueAt(i, localAt(i));
         }
@@ -144,7 +147,7 @@ public final class FrameState extends Value implements FrameStateAccess {
     public FrameState duplicateModified(int bci, CiKind popKind, Value... pushedValues) {
         int popSlots = popKind.sizeInSlots();
         int pushSlots = pushedValues.length;
-        FrameState other = new FrameState(bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), graph());
+        FrameState other = new FrameState(method, bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), graph());
         for (int i = 0; i < localsSize; i++) {
             other.setValueAt(i, localAt(i));
         }
@@ -403,11 +406,9 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     public Merge block() {
-        if (usages().size() > 0) {
-            assert usages().size() == 1;
-            Node node = usages().get(0);
-            if (node instanceof Merge) {
-                return (Merge) node;
+        for (Node usage : usages()) {
+            if (usage instanceof Merge) {
+                return (Merge) usage;
             }
         }
         return null;
@@ -453,6 +454,9 @@ public final class FrameState extends Value implements FrameStateAccess {
                 proc.doValue(value);
             }
         }
+        if (outerFrameState() != null) {
+            outerFrameState().forEachLiveStateValue(proc);
+        }
     }
 
     @Override
@@ -487,12 +491,12 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     @Override
     public FrameState copy() {
-        return new FrameState(bci, localsSize, stackSize, locksSize, graph());
+        return new FrameState(method, bci, localsSize, stackSize, locksSize, graph());
     }
 
 
     private FrameState copy(int newBci) {
-        return new FrameState(newBci, localsSize, stackSize, locksSize, graph());
+        return new FrameState(method, newBci, localsSize, stackSize, locksSize, graph());
     }
 
     @Override
@@ -506,7 +510,7 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     @Override
     public Node copy(Graph into) {
-        FrameState x = new FrameState(bci, localsSize, stackSize, locksSize, into);
+        FrameState x = new FrameState(method, bci, localsSize, stackSize, locksSize, into);
         x.setNonNull(isNonNull());
         return x;
     }
