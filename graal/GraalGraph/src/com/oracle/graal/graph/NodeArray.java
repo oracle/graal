@@ -47,7 +47,7 @@ public class NodeArray extends AbstractList<Node> {
 
     @Override
     public Node set(int index, Node node) {
-        assert node == Node.Null || node.graph == self().graph : "node is from different graph";
+        assert node == Node.Null || node.graph == self().graph : "node is from different graph (" + node.graph + " instead of " + self().graph + ")";
         assert node == Node.Null || node.id() != Node.DeletedID : "inserted node must not be deleted";
         Node old = nodes[index];
 

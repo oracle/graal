@@ -1377,7 +1377,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private CiValue operandForPhi(Phi phi) {
-        assert !phi.isDead();
+        assert !phi.isDead() : "dead phi: " + phi.id();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
             CiVariable operand = newVariable(phi.kind);

@@ -46,7 +46,7 @@ public final class Xor extends Logic {
 
     @Override
     public Node copy(Graph into) {
-        Xor x = new Xor(kind, null, null, graph());
+        Xor x = new Xor(kind, null, null, into);
         return x;
     }
 

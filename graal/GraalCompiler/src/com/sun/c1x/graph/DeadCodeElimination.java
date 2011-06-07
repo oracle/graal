@@ -22,10 +22,7 @@
  */
 package com.sun.c1x.graph;
 
-import java.util.*;
-
 import com.oracle.graal.graph.*;
-import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.gen.*;
 import com.sun.c1x.ir.*;
@@ -34,7 +31,7 @@ import com.sun.c1x.ir.*;
 public class DeadCodeElimination extends Phase {
 
     private NodeBitMap alive;
-    private Queue<Node> worklist;
+    private NodeWorklist worklist;
     private Graph graph;
 
     public int deletedNodeCount;
@@ -43,9 +40,9 @@ public class DeadCodeElimination extends Phase {
     protected void run(Graph graph) {
         this.graph = graph;
         this.alive = graph.createNodeBitMap();
-        this.worklist = new ArrayDeque<Node>();
+        this.worklist = graph.createNodeWorklist();
 
-        addToWorklist(graph.start());
+        worklist.add(graph.start());
 
         iterateSuccessors();
         disconnectCFGNodes();
@@ -63,22 +60,25 @@ public class DeadCodeElimination extends Phase {
         }
     }
 
+    private static boolean isCFG(Node n) {
+        return n != null && ((n instanceof Instruction) || n == n.graph().start());
+    }
+
     private void iterateSuccessors() {
-        Node current;
-        while ((current = nextNode()) != null) {
+        for (Node current : worklist) {
             for (Node successor : current.successors()) {
-                addToWorklist(successor);
+                worklist.add(successor);
             }
         }
     }
 
     private void disconnectCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !alive.isMarked(node) && Schedule.isCFG(node)) {
+            if (node != Node.Null && !worklist.isMarked(node) && isCFG(node)) {
                 // iterate backwards so that the predecessor indexes in removePhiPredecessor are correct
                 for (int i = node.successors().size() - 1; i >= 0; i--) {
                     Node successor = node.successors().get(i);
-                    if (successor != Node.Null && alive.isMarked(successor)) {
+                    if (successor != Node.Null && worklist.isMarked(successor)) {
                         if (successor instanceof Merge) {
                             ((Merge) successor).removePhiPredecessor(node);
                         }
@@ -92,7 +92,7 @@ public class DeadCodeElimination extends Phase {
 
     private void deleteCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !alive.isMarked(node) && Schedule.isCFG(node)) {
+            if (node != Node.Null && !worklist.isMarked(node) && isCFG(node)) {
                 node.delete();
                 deletedNodeCount++;
             }
@@ -101,23 +101,22 @@ public class DeadCodeElimination extends Phase {
 
     private void iterateInputs() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && alive.isMarked(node)) {
+            if (node != Node.Null && worklist.isMarked(node)) {
                 for (Node input : node.inputs()) {
-                    addToWorklist(input);
+                    worklist.add(input);
                 }
             }
         }
-        Node current;
-        while ((current = nextNode()) != null) {
+        for (Node current : worklist) {
             for (Node input : current.inputs()) {
-                addToWorklist(input);
+                worklist.add(input);
             }
         }
     }
 
     private void disconnectNonCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !alive.isMarked(node) && !Schedule.isCFG(node)) {
+            if (node != Node.Null && !worklist.isMarked(node) && !isCFG(node)) {
                 node.inputs().clearAll();
             }
         }
@@ -125,21 +124,10 @@ public class DeadCodeElimination extends Phase {
 
     private void deleteNonCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !alive.isMarked(node) && !Schedule.isCFG(node)) {
+            if (node != Node.Null && !worklist.isMarked(node) && !isCFG(node)) {
                 node.delete();
                 deletedNodeCount++;
             }
-        }
-    }
-
-    private Node nextNode() {
-        return worklist.poll();
-    }
-
-    private void addToWorklist(Node node) {
-        if (node != null && !alive.isMarked(node)) {
-            alive.mark(node);
-            worklist.add(node);
         }
     }
 }

@@ -35,6 +35,10 @@ public final class NodeBitMap {
         bitMap = new CiBitMap(graph.nextId);
     }
 
+    public Graph graph() {
+        return graph;
+    }
+
     public boolean setIntersect(NodeBitMap other) {
         return bitMap.setIntersect(other.bitMap);
     }

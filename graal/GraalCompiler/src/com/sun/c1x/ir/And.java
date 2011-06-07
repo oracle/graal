@@ -47,7 +47,7 @@ public final class And extends Logic {
 
     @Override
     public Node copy(Graph into) {
-        And x = new And(kind, null, null, graph());
+        And x = new And(kind, null, null, into);
         return x;
     }
 

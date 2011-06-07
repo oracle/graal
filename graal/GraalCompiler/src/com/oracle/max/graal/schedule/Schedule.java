@@ -81,7 +81,7 @@ public class Schedule {
         return b;
     }
 
-    public static boolean isCFG(Node n) {
+    public static boolean isFixed(Node n) {
         return n != null && ((n instanceof FixedNode) || n == n.graph().start());
     }
 
@@ -95,7 +95,7 @@ public class Schedule {
         NodeIterator.iterate(EdgeType.SUCCESSORS, graph.start(), null, new NodeVisitor() {
             @Override
             public boolean visit(Node n) {
-                if (!isCFG(n)) {
+                if (!isFixed(n)) {
                     return false;
                 }
 
@@ -108,7 +108,7 @@ public class Schedule {
 
                 Node singlePred = null;
                 for (Node pred : n.predecessors()) {
-                    if (isCFG(pred)) {
+                    if (isFixed(pred)) {
                         if (singlePred == null) {
                             singlePred = pred;
                         } else {
@@ -141,7 +141,7 @@ public class Schedule {
         for (Node n : blockBeginNodes) {
             Block block = nodeToBlock.get(n);
             for (Node pred : n.predecessors()) {
-                if (isCFG(pred)) {
+                if (isFixed(pred)) {
                     Block predBlock = nodeToBlock.get(pred);
                     predBlock.addSuccessor(block);
                 }
@@ -229,7 +229,7 @@ public class Schedule {
             } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
                 Merge merge = ((FrameState) usage).block();
                 for (Node pred : merge.predecessors()) {
-                    if (isCFG(pred)) {
+                    if (isFixed(pred)) {
                         block = getCommonDominator(block, nodeToBlock.get(pred));
                     }
                 }
@@ -437,7 +437,7 @@ public class Schedule {
         }
         int i = 0;
         for (Node s : n.successors()) {
-            if (isCFG(s)) {
+            if (isFixed(s)) {
                 i++;
             }
         }
@@ -450,7 +450,7 @@ public class Schedule {
         }
         int i = 0;
         for (Node s : n.predecessors()) {
-            if (isCFG(s)) {
+            if (isFixed(s)) {
                 i++;
             }
         }

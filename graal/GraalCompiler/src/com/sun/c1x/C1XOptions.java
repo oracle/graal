@@ -45,7 +45,7 @@ public final class C1XOptions {
     public static int     MaximumInlineSize                  = 35;
     public static int     MaximumTrivialSize                 = 6;
     public static int     MaximumInlineLevel                 = 9;
-    public static int     MaximumRecursiveInlineLevel        = 1;
+    public static int     MaximumRecursiveInlineLevel        = 2;
     public static int     MaximumDesiredSize                 = 8000;
     public static int     MaximumShortLoopSize               = 5;
 

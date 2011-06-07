@@ -36,6 +36,14 @@ public class Graph {
     private final StartNode start;
     int nextId;
 
+    static int nextGraphId = 0;
+    int id = nextGraphId++;
+
+    @Override
+    public String toString() {
+        return "Graph " + id;
+    }
+
     public Graph() {
         nodes = new ArrayList<Node>();
         start = new StartNode(this);
@@ -65,6 +73,10 @@ public class Graph {
 
     public <T> NodeMap<T> createNodeMap() {
         return new NodeMap<T>(this);
+    }
+
+    public NodeWorklist createNodeWorklist() {
+        return new NodeWorklist(this);
     }
 
     public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
