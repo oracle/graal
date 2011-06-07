@@ -121,9 +121,11 @@ public final class GraphBuilder {
 
     /**
      * Builds the graph for a the specified {@code IRScope}.
-     * @param scope the top IRScope
+     *
+     * @param createUnwind setting this to true will always generate an unwind block, even if there is no exception
+     *            handler and the method is not synchronized
      */
-    public void build() {
+    public void build(boolean createUnwind) {
         if (log != null) {
             log.println();
             log.println("Compiling " + method);
@@ -161,6 +163,10 @@ public final class GraphBuilder {
         } else {
             // 4B.1 simply finish the start block
             finishStartBlock(startBlock);
+
+            if (createUnwind) {
+                syncHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
+            }
         }
 
         // 5. SKIPPED: look for intrinsics
@@ -544,6 +550,7 @@ public final class GraphBuilder {
         Value yValue = frameState.pop(y);
         Value xValue = frameState.pop(x);
         Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method.accessFlags()), canTrap, graph));
+        append(new ValueAnchor(result1, graph));
         frameState.push(result, result1);
     }
 

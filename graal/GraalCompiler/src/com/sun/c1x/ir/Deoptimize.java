@@ -57,7 +57,7 @@ public class Deoptimize extends Instruction {
 
     @Override
     public String shortName() {
-        return "Deopt " + message;
+        return message == null ? "Deopt " : "Deopt " + message;
     }
 
     @Override

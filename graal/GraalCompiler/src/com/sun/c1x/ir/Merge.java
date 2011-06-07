@@ -268,15 +268,15 @@ public class Merge extends StateSplit {
         return x;
     }
 
-    public void removePhiPredecessor(ExceptionDispatch successor) {
-        int predIndex = predecessors().indexOf(successor);
+    public void removePhiPredecessor(Node pred) {
+        int predIndex = predecessors().lastIndexOf(pred);
         assert predIndex != -1;
 
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
-                assert phi.valueCount() == predecessors().size();
-                phi.removeInput(predIndex + 1);
+//                assert phi.valueCount() == predecessors().size();
+                phi.removeInput(predIndex);
             }
         }
     }

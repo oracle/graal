@@ -81,7 +81,7 @@ public class Schedule {
         return b;
     }
 
-    private static boolean isCFG(Node n) {
+    public static boolean isCFG(Node n) {
         return n != null && ((n instanceof Instruction) || n == n.graph().start());
     }
 

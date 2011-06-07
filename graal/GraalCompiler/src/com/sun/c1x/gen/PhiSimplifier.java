@@ -23,7 +23,6 @@
 package com.sun.c1x.gen;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 
 /**
@@ -34,8 +33,7 @@ public final class PhiSimplifier {
     private NodeBitMap visited;
     private NodeBitMap cannotSimplify;
 
-    public PhiSimplifier(IR ir) {
-        Graph graph = ir.compilation.graph;
+    public PhiSimplifier(Graph graph) {
         visited = graph.createNodeBitMap();
         cannotSimplify = graph.createNodeBitMap();
 

@@ -83,15 +83,6 @@ public class IR {
             C1XTimers.HIR_OPTIMIZE.start();
         }
 
-        new PhiSimplifier(this);
-
-//        Graph newGraph = new Graph();
-//        HashMap<Node, Node> replacement = new HashMap<Node, Node>();
-//        replacement.put(compilation.graph.start(), newGraph.start());
-//        replacement.put(compilation.graph.end(), newGraph.end());
-//        newGraph.addDuplicate(compilation.graph.getNodes(), replacement);
-//        compilation.graph = newGraph;
-
         Graph graph = compilation.graph;
 
         // Split critical edges.
@@ -102,7 +93,7 @@ public class IR {
                 for (int j = 0; j < n.successors().size(); ++j) {
                     Node succ = n.successors().get(j);
                     if (Schedule.truePredecessorCount(succ) > 1) {
-                        Anchor a = new Anchor(null, graph);
+                        Anchor a = new Anchor(graph);
                         a.successors().setAndClear(1, n, j);
                         n.successors().set(j, a);
                     }
@@ -164,52 +155,18 @@ public class IR {
 
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilder(compilation, compilation.method, compilation.graph).build();
+        new GraphBuilder(compilation, compilation.method, compilation.graph).build(false);
 
         verifyAndPrint("After graph building");
 
-        List<Invoke> trivialInline = new ArrayList<Invoke>();
-        List<Invoke> deoptInline = new ArrayList<Invoke>();
-        List<RiMethod> deoptMethods = new ArrayList<RiMethod>();
-        for (Node node : compilation.graph.getNodes()) {
-            if (node instanceof Invoke) {
-                Invoke invoke = (Invoke) node;
-                RiMethod target = invoke.target;
-                if (target.isResolved() && !Modifier.isNative(target.accessFlags())) {
-                    if (target.canBeStaticallyBound()) {
-                        trivialInline.add(invoke);
-                    } else {
-                        RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
-                        if (concrete != null) {
-                            deoptInline.add(invoke);
-                            deoptMethods.add(concrete);
-                        }
-                    }
-                }
-            }
+        DeadCodeElimination dce = new DeadCodeElimination();
+        dce.apply(compilation.graph);
+        if (dce.deletedNodeCount > 0) {
+            verifyAndPrint("After dead code elimination");
         }
 
-        int allowedInlinings = 50;
-        for (Invoke invoke : trivialInline) {
-            if (inlineMethod(invoke, invoke.target)) {
-                if (--allowedInlinings <= 0) {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 0; i < deoptInline.size(); i++) {
-            Invoke invoke = deoptInline.get(i);
-            RiMethod method = deoptMethods.get(i);
-            if (inlineMethod(invoke, method)) {
-                if (C1XOptions.TraceInlining) {
-                    System.out.println("registering concrete method assumption...");
-                }
-                compilation.assumptions.recordConcreteMethod(invoke.target, method);
-                if (--allowedInlinings <= 0) {
-                    break;
-                }
-            }
+        if (C1XOptions.Inline) {
+            inlineMethods();
         }
 
         if (C1XOptions.PrintCompilation) {
@@ -217,23 +174,100 @@ public class IR {
         }
     }
 
+    private void inlineMethods() {
+        int inliningSize = compilation.method.code().length;
+        boolean inlined;
+        int iterations = C1XOptions.MaximumRecursiveInlineLevel;
+        do {
+            inlined = false;
+
+            List<Invoke> trivialInline = new ArrayList<Invoke>();
+            List<Invoke> deoptInline = new ArrayList<Invoke>();
+            List<RiMethod> deoptMethods = new ArrayList<RiMethod>();
+            for (Node node : compilation.graph.getNodes()) {
+                if (node instanceof Invoke) {
+                    Invoke invoke = (Invoke) node;
+                    RiMethod target = invoke.target;
+                    if (target.isResolved() && !Modifier.isNative(target.accessFlags())) {
+                        if (target.canBeStaticallyBound()) {
+                            trivialInline.add(invoke);
+                        } else {
+                            RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
+                            if (concrete != null && concrete.isResolved() && !Modifier.isNative(concrete.accessFlags())) {
+                                deoptInline.add(invoke);
+                                deoptMethods.add(concrete);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (Invoke invoke : trivialInline) {
+                if (inlineMethod(invoke, invoke.target)) {
+                    inlined = true;
+                    inliningSize += invoke.target.code().length;
+                    if (inliningSize > C1XOptions.MaximumInstructionCount) {
+                        break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < deoptInline.size(); i++) {
+                Invoke invoke = deoptInline.get(i);
+                RiMethod method = deoptMethods.get(i);
+                if (inlineMethod(invoke, method)) {
+                    if (C1XOptions.TraceInlining) {
+                        System.out.println("registering concrete method assumption...");
+                    }
+                    compilation.assumptions.recordConcreteMethod(invoke.target, method);
+                    inlined = true;
+                    inliningSize += method.code().length;
+                    if (inliningSize > C1XOptions.MaximumInstructionCount) {
+                        break;
+                    }
+                }
+            }
+
+            if (inlined) {
+                DeadCodeElimination dce = new DeadCodeElimination();
+                dce.apply(compilation.graph);
+                if (dce.deletedNodeCount > 0) {
+                    verifyAndPrint("After dead code elimination");
+                }
+                verifyAndPrint("After inlining iteration");
+            }
+
+            if (inliningSize > C1XOptions.MaximumInstructionCount) {
+                break;
+            }
+        } while(inlined && (--iterations > 0));
+    }
+
     private boolean inlineMethod(Invoke invoke, RiMethod method) {
         String name = invoke.id() + ": " + CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.code().length + " bytes)";
+        FrameState stateAfter = invoke.stateAfter();
 
-        if (method.code().length > 50) {
+        if (method.code().length > C1XOptions.MaximumInlineSize) {
             if (C1XOptions.TraceInlining) {
                 System.out.println("not inlining " + name + " because of code size");
             }
             return false;
         }
 
-        Instruction exceptionEdge = invoke.exceptionEdge();
-        if (exceptionEdge != null) {
+        if (invoke.predecessors().size() == 0) {
             if (C1XOptions.TraceInlining) {
-                System.out.println("not inlining " + name + " because of exceptionEdge");
+                System.out.println("not inlining " + name + " because the invoke is dead code");
             }
             return false;
         }
+
+        Instruction exceptionEdge = invoke.exceptionEdge();
+//        if (exceptionEdge != null) {
+//            if (C1XOptions.TraceInlining) {
+//                System.out.println("not inlining " + name + " because of exceptionEdge");
+//            }
+//            return false;
+//        }
         if (!method.holder().isInitialized()) {
             if (C1XOptions.TraceInlining) {
                 System.out.println("not inlining " + name + " because of non-initialized class");
@@ -242,10 +276,11 @@ public class IR {
         }
 
         if (C1XOptions.TraceInlining) {
-            System.out.println("building graph: " + name);
+            System.out.printf("Building graph for %s, locals: %d, stack: %d\n", name, method.maxLocals(), method.maxStackSize());
         }
+
         CompilerGraph graph = new CompilerGraph();
-        new GraphBuilder(compilation, method, graph).build();
+        new GraphBuilder(compilation, method, graph).build(true);
 
         boolean withReceiver = !Modifier.isStatic(method.accessFlags());
 
@@ -266,12 +301,11 @@ public class IR {
         ArrayList<Node> frameStates = new ArrayList<Node>();
         Return returnNode = null;
         Unwind unwindNode = null;
-        StartNode startNode = null;
-        boolean invokes = false;
+        StartNode startNode = graph.start();
         for (Node node : graph.getNodes()) {
             if (node != null) {
                 if (node instanceof StartNode) {
-                    startNode = (StartNode) node;
+                    assert startNode == node;
                 } else if (node instanceof Local) {
                     replacements.put(node, parameters[((Local) node).index()]);
                 } else {
@@ -286,30 +320,19 @@ public class IR {
                 }
             }
         }
-        if (unwindNode != null) {
-            if (C1XOptions.TraceInlining) {
-                System.out.println("not inlining " + name + " because of unwind node");
-            }
-            return false;
-        }
-        if (invokes) {
-            if (C1XOptions.TraceInlining) {
-                System.out.println("not inlining " + name + " because of invokes");
-            }
-            return false;
-        }
 
         if (C1XOptions.TraceInlining) {
+            printGraph("Subgraph " + CiUtil.format("%H.%n(%p):%r", method, false), graph);
             System.out.println("inlining " + name + ": " + frameStates.size() + " frame states, " + nodes.size() + " nodes");
         }
 
+        assert invoke.predecessors().size() == 1 : "size: " + invoke.predecessors().size();
         Instruction pred;
         if (withReceiver) {
             pred = new NullCheck(parameters[0], compilation.graph);
         } else {
             pred = new Merge(compilation.graph);
         }
-        assert invoke.predecessors().size() == 1;
         invoke.predecessors().get(0).successors().replace(invoke, pred);
         replacements.put(startNode, pred);
 
@@ -331,10 +354,48 @@ public class IR {
             Node returnPred = returnDuplicate.predecessors().get(0);
             int index = returnDuplicate.predecessorsIndex().get(0);
             returnPred.successors().setAndClear(index, invoke, 0);
-
             returnDuplicate.delete();
         }
-        FrameState stateAfter = invoke.stateAfter();
+
+//        if (invoke.next() instanceof Merge) {
+//            ((Merge) invoke.next()).removePhiPredecessor(invoke);
+//        }
+//        invoke.successors().clearAll();
+        invoke.inputs().clearAll();
+        invoke.setExceptionEdge(null);
+//        invoke.delete();
+
+
+        if (exceptionEdge != null) {
+            if (unwindNode != null) {
+                assert unwindNode.predecessors().size() == 1;
+                assert exceptionEdge.successors().size() == 1;
+                ExceptionObject obj = (ExceptionObject) exceptionEdge;
+
+                List<Node> usages = new ArrayList<Node>(obj.usages());
+                for (Node usage : usages) {
+                    if (replacements.containsKey(unwindNode.exception())) {
+                        usage.inputs().replace(obj, replacements.get(unwindNode.exception()));
+                    } else {
+                        usage.inputs().replace(obj, duplicates.get(unwindNode.exception()));
+                    }
+                }
+                Node unwindDuplicate = duplicates.get(unwindNode);
+                unwindDuplicate.inputs().clearAll();
+
+                assert unwindDuplicate.predecessors().size() == 1;
+                Node unwindPred = unwindDuplicate.predecessors().get(0);
+                int index = unwindDuplicate.predecessorsIndex().get(0);
+                unwindPred.successors().setAndClear(index, obj, 0);
+
+                obj.inputs().clearAll();
+                obj.delete();
+                unwindDuplicate.delete();
+
+            }
+        }
+
+        // adjust all frame states that were copied
         if (frameStates.size() > 0) {
             FrameState outerFrameState = stateAfter.duplicateModified(invoke.bci, invoke.kind);
             for (Node frameState : frameStates) {
@@ -342,50 +403,10 @@ public class IR {
             }
         }
 
-        invoke.successors().clearAll();
-        invoke.inputs().clearAll();
-        invoke.delete();
-
-        stateAfter.delete();
-
-        deleteUnused(exceptionEdge);
-
-        verifyAndPrint("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false));
-        return true;
-    }
-
-    private void deleteUnused(Node node) {
-        if (node != null && node.predecessors().size() == 0) {
-            if (node instanceof ExceptionObject) {
-                Node successor = node.successors().get(0);
-                node.successors().clearAll();
-                if (successor instanceof ExceptionDispatch) {
-                    ExceptionDispatch dispatch = (ExceptionDispatch) successor;
-                    Node succ1 = dispatch.catchSuccessor();
-                    Node succ2 = dispatch.otherSuccessor();
-                    if (succ1 instanceof Merge) {
-                        ((Merge) succ1).removePhiPredecessor(dispatch);
-                    }
-                    if (succ2 instanceof Merge) {
-                        ((Merge) succ2).removePhiPredecessor(dispatch);
-                    }
-                    dispatch.successors().clearAll();
-                    deleteUnused(succ1);
-                    deleteUnused(succ2);
-                    dispatch.delete();
-                } else {
-                    assert successor instanceof Merge;
-                    System.out.println("succ: " + successor.successors().get(0));
-                    Node next = successor.successors().get(0);
-                    successor.successors().clearAll();
-                    deleteUnused(next);
-                    successor.delete();
-                }
-                node.delete();
-            } else if (node instanceof Unwind) {
-                node.delete();
-            }
+        if (C1XOptions.TraceInlining) {
+            verifyAndPrint("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false));
         }
+        return true;
     }
 
     /**
@@ -417,6 +438,17 @@ public class IR {
 
         if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, compilation.graph, true, false));
+        }
+    }
+
+    public void printGraph(String phase, Graph graph) {
+        if (C1XOptions.PrintHIR && !TTY.isSuppressed()) {
+            TTY.println(phase);
+            print(false);
+        }
+
+        if (compilation.compiler.isObserved()) {
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, graph, true, false));
         }
     }
 

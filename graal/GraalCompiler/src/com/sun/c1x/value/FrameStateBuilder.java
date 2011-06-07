@@ -49,7 +49,9 @@ public class FrameStateBuilder implements FrameStateAccess {
         this.method = method;
         this.graph = graph;
         this.locals = new Value[method.maxLocals()];
-        this.stack = new Value[method.maxStackSize()];
+        // we always need at least one stack slot (for exceptions)
+        int stackSize = Math.max(1, method.maxStackSize());
+        this.stack = new Value[stackSize];
 
         int javaIndex = 0;
         int index = 0;
@@ -82,8 +84,8 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     public void initializeFrom(FrameState other) {
-        assert locals.length == other.localsSize();
-        assert stack.length >= other.stackSize();
+        assert locals.length == other.localsSize() : "expected: " + locals.length + ", actual: " + other.localsSize();
+        assert stack.length >= other.stackSize() : "expected: <=" + stack.length + ", actual: " + other.stackSize();
 
         this.stackIndex = other.stackSize();
         for (int i = 0; i < other.localsSize(); i++) {

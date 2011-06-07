@@ -1898,7 +1898,8 @@ public final class LinearScan {
                 values[valueIndex++] = monitorAddress;
                 assert frameRefMap != null;
                 CiStackSlot objectAddress = frameMap.toMonitorObjectStackAddress(i);
-                LIRDebugInfo.setBit(frameRefMap, objectAddress.index());
+//                LIRDebugInfo.setBit(frameRefMap, objectAddress.index());
+                frameRefMap.set(objectAddress.index());
             } else {
                 Value lock = state.lockAt(i);
                 if (lock.isConstant() && compilation.runtime.asJavaClass(lock.asConstant()) != null) {
