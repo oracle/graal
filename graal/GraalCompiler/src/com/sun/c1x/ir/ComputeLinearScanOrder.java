@@ -159,7 +159,6 @@ public final class ComputeLinearScanOrder {
             assert parent != null : "must have parent";
 
             cur.setLinearScanLoopHeader();
-            cur.setBackwardBranchTarget(true);
             parent.setLinearScanLoopEnd();
 
             loopEndBlocks.add(parent);
