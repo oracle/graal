@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,40 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.c1x.ir;
+package com.oracle.max.graal.opt;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
-import com.sun.cri.ci.*;
 
-/**
- * The {@code LogicOp} class definition.
- */
-public abstract class Logic extends Binary {
+public class CanonicalizerPhase extends Phase {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
-    /**
-     * Constructs a new logic operation instruction.
-     * @param opcode the opcode of the logic operation
-     * @param x the first input into this instruction
-     * @param y the second input into this instruction
-     */
-    public Logic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitLogic(this);
+    protected void run(Graph graph) {
+        // TODO Auto-generated method stub
+
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
+    public interface CanonicalizerOp extends Op {
+        Node canonical(Node node);
     }
-
-    @Override
-    public abstract String shortName();
 }

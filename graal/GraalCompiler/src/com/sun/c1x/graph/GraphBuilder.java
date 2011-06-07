@@ -560,7 +560,18 @@ public final class GraphBuilder {
     private void genLogicOp(CiKind kind, int opcode) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
-        frameState.push(kind, append(new Logic(opcode, x, y, graph)));
+        Logic v;
+        switch(opcode){
+            case IAND:
+            case LAND: v = new And(kind, x, y, graph); break;
+            case IOR:
+            case LOR: v = new Or(kind, x, y, graph); break;
+            case IXOR:
+            case LXOR: v = new Xor(kind, x, y, graph); break;
+            default:
+                throw new CiBailout("should not reach");
+        }
+        frameState.push(kind, append(v));
     }
 
     private void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {

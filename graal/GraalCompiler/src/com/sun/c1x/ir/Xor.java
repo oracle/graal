@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,37 +23,31 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code LogicOp} class definition.
- */
-public abstract class Logic extends Binary {
-
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+public final class Xor extends Logic {
 
     /**
-     * Constructs a new logic operation instruction.
-     * @param opcode the opcode of the logic operation
-     * @param x the first input into this instruction
-     * @param y the second input into this instruction
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
      */
-    public Logic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Xor(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.IXOR : Bytecodes.LXOR, x, y, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitLogic(this);
+    public String shortName() {
+        return "^";
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
+    public Node copy(Graph into) {
+        Xor x = new Xor(kind, null, null, graph());
+        return x;
     }
 
-    @Override
-    public abstract String shortName();
 }
