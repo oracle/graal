@@ -50,7 +50,7 @@ public final class Or extends Logic {
 
     @Override
     public Node copy(Graph into) {
-        Or x = new Or(kind, x(), y(), graph());
+        Or x = new Or(kind, null, null, graph());
         return x;
     }
 
