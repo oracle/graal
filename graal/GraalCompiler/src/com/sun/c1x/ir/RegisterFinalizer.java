@@ -77,7 +77,6 @@ public class RegisterFinalizer extends StateSplit {
     @Override
     public Node copy(Graph into) {
         RegisterFinalizer x = new RegisterFinalizer(null, null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

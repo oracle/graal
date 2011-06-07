@@ -24,46 +24,36 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
+ * The {@code LogicOp} class definition.
  */
-public final class CompareOp extends Op2 {
+public abstract class Logic extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     /**
-     * Creates a new compare operation.
-     * @param opcode the bytecode opcode
-     * @param kind the result kind
-     * @param x the first input
-     * @param y the second input
+     * Constructs a new logic operation instruction.
+     * @param opcode the opcode of the logic operation
+     * @param x the first input into this instruction
+     * @param y the second input into this instruction
      */
-    public CompareOp(int opcode, CiKind kind, Value x, Value y, Graph graph) {
+    public Logic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitCompareOp(this);
+        v.visitLogic(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).
-            print(' ').
-            print(Bytecodes.operator(opcode)).
-            print(' ').
-            print(y());
+        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
     }
 
     @Override
-    public Node copy(Graph into) {
-        CompareOp x = new CompareOp(opcode, kind, null, null, into);
-        x.setNonNull(isNonNull());
-        return x;
-    }
+    public abstract String shortName();
 }

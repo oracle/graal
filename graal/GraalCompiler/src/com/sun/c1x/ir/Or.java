@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,46 +23,35 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
- */
-public final class Compare extends Binary {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+/**
+ *
+ */
+public final class Or extends Logic {
 
     /**
-     * Creates a new compare operation.
-     * @param opcode the bytecode opcode
-     * @param kind the result kind
-     * @param x the first input
-     * @param y the second input
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
      */
-    public Compare(int opcode, CiKind kind, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Or(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.IOR : Bytecodes.LOR, x, y, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitCompare(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).
-            print(' ').
-            print(Bytecodes.operator(opcode)).
-            print(' ').
-            print(y());
+    public String shortName() {
+        return "|";
     }
 
     @Override
     public Node copy(Graph into) {
-        Compare x = new Compare(opcode, kind, null, null, into);
+        Or x = new Or(kind, x(), y(), graph());
         return x;
     }
+
 }

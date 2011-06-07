@@ -76,7 +76,6 @@ public class LoopEnd extends Merge {
     @Override
     public Node copy(Graph into) {
         LoopEnd x = new LoopEnd(into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

@@ -92,7 +92,6 @@ public final class LoadField extends AccessField {
     @Override
     public Node copy(Graph into) {
         LoadField x = new LoadField(null, field, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

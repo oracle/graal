@@ -64,7 +64,6 @@ public final class MonitorEnter extends AccessMonitor {
     @Override
     public Node copy(Graph into) {
         MonitorEnter x = new MonitorEnter(null, null, lockNumber, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

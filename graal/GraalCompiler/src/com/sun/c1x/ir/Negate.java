@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code NegateOp} instruction negates its operand.
  */
-public final class NegateOp extends Value {
+public final class Negate extends FloatingNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;
@@ -64,19 +64,19 @@ public final class NegateOp extends Value {
      * Creates new NegateOp instance.
      * @param x the instruction producing the value that is input to this instruction
      */
-    public NegateOp(Value x, Graph graph) {
+    public Negate(Value x, Graph graph) {
         super(x.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setX(x);
     }
 
     // for copying
-    private NegateOp(CiKind kind, Graph graph) {
+    private Negate(CiKind kind, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitNegateOp(this);
+        v.visitNegate(this);
     }
 
     @Override
@@ -86,8 +86,8 @@ public final class NegateOp extends Value {
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof NegateOp) {
-            NegateOp o = (NegateOp) i;
+        if (i instanceof Negate) {
+            Negate o = (Negate) i;
             return x() == o.x();
         }
         return false;
@@ -100,8 +100,7 @@ public final class NegateOp extends Value {
 
     @Override
     public Node copy(Graph into) {
-        NegateOp x = new NegateOp(kind, into);
-        x.setNonNull(isNonNull());
+        Negate x = new Negate(kind, into);
         return x;
     }
 }

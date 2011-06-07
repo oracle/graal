@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,46 +23,31 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code ShiftOp} class represents shift operations.
- */
-public final class ShiftOp extends Op2 {
-
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+public final class Xor extends Logic {
 
     /**
-     * Creates a new shift operation.
-     * @param opcode the opcode of the shift
-     * @param x the first input value
-     * @param y the second input value
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
      */
-    public ShiftOp(int opcode, Value x, Value y, Graph graph) {
-        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    private ShiftOp(CiKind kind, int opcode, Graph graph) {
-        super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Xor(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.IXOR : Bytecodes.LXOR, x, y, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitShiftOp(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(Bytecodes.operator(opcode)).print(' ').print(y());
+    public String shortName() {
+        return "^";
     }
 
     @Override
     public Node copy(Graph into) {
-        ShiftOp x = new ShiftOp(kind, opcode, into);
-        x.setNonNull(isNonNull());
+        Xor x = new Xor(kind, null, null, graph());
         return x;
     }
+
 }

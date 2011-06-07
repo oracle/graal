@@ -39,7 +39,6 @@ public final class MonitorAddress extends Value {
     public MonitorAddress(int monitor, Graph graph) {
         super(CiKind.Word, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.monitor = monitor;
-        setNonNull(true);
     }
 
     @Override
@@ -59,7 +58,6 @@ public final class MonitorAddress extends Value {
     @Override
     public Node copy(Graph into) {
         MonitorAddress x = new MonitorAddress(monitor, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

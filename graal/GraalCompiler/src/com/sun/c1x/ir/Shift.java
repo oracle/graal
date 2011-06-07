@@ -28,31 +28,30 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code LogicOp} class definition.
+ * The {@code ShiftOp} class represents shift operations.
  */
-public final class LogicOp extends Op2 {
+public final class Shift extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     /**
-     * Constructs a new logic operation instruction.
-     * @param opcode the opcode of the logic operation
-     * @param x the first input into this instruction
-     * @param y the second input into this instruction
+     * Creates a new shift operation.
+     * @param opcode the opcode of the shift
+     * @param x the first input value
+     * @param y the second input value
      */
-    public LogicOp(int opcode, Value x, Value y, Graph graph) {
+    public Shift(int opcode, Value x, Value y, Graph graph) {
         super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
-    // for copying
-    private LogicOp(CiKind kind, int opcode, Graph graph) {
+    private Shift(CiKind kind, int opcode, Graph graph) {
         super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitLogicOp(this);
+        v.visitShift(this);
     }
 
     @Override
@@ -62,8 +61,7 @@ public final class LogicOp extends Op2 {
 
     @Override
     public Node copy(Graph into) {
-        LogicOp x = new LogicOp(kind, opcode, into);
-        x.setNonNull(isNonNull());
+        Shift x = new Shift(kind, opcode, into);
         return x;
     }
 }

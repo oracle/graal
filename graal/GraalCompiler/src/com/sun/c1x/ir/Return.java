@@ -96,7 +96,6 @@ public final class Return extends BlockEnd {
     @Override
     public Node copy(Graph into) {
         Return x = new Return(kind, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

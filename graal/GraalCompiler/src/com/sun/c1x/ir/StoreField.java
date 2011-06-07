@@ -90,7 +90,6 @@ public final class StoreField extends AccessField {
     @Override
     public Node copy(Graph into) {
         StoreField x = new StoreField(null, field, null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

@@ -20,50 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.max.graal.opt;
 
-public class StartNode extends Node {
+import com.oracle.graal.graph.*;
 
-    private static final int INPUT_COUNT = 0;
+public class CanonicalizerPhase extends Phase {
 
-    private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_START = 0;
 
     @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    protected void run(Graph graph) {
+        // TODO Auto-generated method stub
+
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public interface CanonicalizerOp extends Op {
+        Node canonical(Node node);
     }
-
-    public Node start() {
-        return successors().get(super.successorCount() + SUCCESSOR_START);
-    }
-
-    public Node setStart(Node next) {
-        return successors().set(super.successorCount() + SUCCESSOR_START, next);
-    }
-
-    StartNode(Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    @Override
-    public Node replace(Node other) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void delete() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        throw new UnsupportedOperationException();
-    }
-
 }

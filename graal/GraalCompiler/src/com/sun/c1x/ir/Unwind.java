@@ -81,7 +81,6 @@ public final class Unwind extends BlockEnd {
     @Override
     public Node copy(Graph into) {
         Unwind x = new Unwind(null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

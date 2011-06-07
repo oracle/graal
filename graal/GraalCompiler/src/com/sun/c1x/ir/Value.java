@@ -41,8 +41,6 @@ public abstract class Value extends Node {
      */
     public final CiKind kind;
 
-    private boolean isNonNull;
-
     protected CiValue operand = CiValue.IllegalValue;
 
     /**
@@ -64,18 +62,6 @@ public abstract class Value extends Node {
     @Override
     protected Object clone() throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
-    }
-
-    /**
-     * Checks whether this instruction produces a value which is guaranteed to be non-null.
-     * @return {@code true} if this instruction's value is not null
-     */
-    public boolean isNonNull() {
-        return isNonNull;
-    }
-
-    public void setNonNull(boolean isNonNull) {
-        this.isNonNull = isNonNull;
     }
 
     /**
@@ -177,9 +163,6 @@ public abstract class Value extends Node {
 
     public String flagsToString() {
         StringBuilder sb = new StringBuilder();
-        if (isNonNull()) {
-            sb.append("NonNull");
-        }
         return sb.toString();
     }
 
@@ -219,7 +202,6 @@ public abstract class Value extends Node {
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("kind", kind.toString());
-        properties.put("nonNull", isNonNull);
         properties.put("operand", operand == null ? "null" : operand.toString());
         return properties;
     }

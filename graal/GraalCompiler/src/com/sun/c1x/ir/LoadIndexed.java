@@ -88,7 +88,6 @@ public final class LoadIndexed extends AccessIndexed {
     @Override
     public Node copy(Graph into) {
         LoadIndexed x = new LoadIndexed(null, null, null, elementKind(), into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

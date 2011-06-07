@@ -89,7 +89,6 @@ public final class TableSwitch extends Switch {
     @Override
     public Node copy(Graph into) {
         TableSwitch x = new TableSwitch(null, Arrays.asList(new Instruction[numberOfCases() + 1]), lowKey, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

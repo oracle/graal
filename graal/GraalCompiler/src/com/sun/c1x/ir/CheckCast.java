@@ -46,7 +46,6 @@ public final class CheckCast extends TypeCheck {
      */
     public CheckCast(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {
         super(targetClass, targetClassInstruction, object, CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setNonNull(true);
     }
 
     /**
@@ -99,7 +98,6 @@ public final class CheckCast extends TypeCheck {
     @Override
     public Node copy(Graph into) {
         CheckCast x = new CheckCast(targetClass, null, null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

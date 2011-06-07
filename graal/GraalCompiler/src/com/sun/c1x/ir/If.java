@@ -190,7 +190,6 @@ public final class If extends BlockEnd {
     public Node copy(Graph into) {
         If x = new If(null, condition, null, into);
         x.unorderedIsTrue = unorderedIsTrue;
-        x.setNonNull(isNonNull());
         return x;
     }
 }

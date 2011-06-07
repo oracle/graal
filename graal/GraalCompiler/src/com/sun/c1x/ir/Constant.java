@@ -33,7 +33,7 @@ import com.sun.cri.ri.*;
  * The {@code Constant} instruction represents a constant such as an integer value,
  * long, float, object reference, address, etc.
  */
-public final class Constant extends Value {
+public final class Constant extends FloatingNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -48,7 +48,6 @@ public final class Constant extends Value {
     public Constant(CiConstant value, Graph graph) {
         super(value.kind.stackKind(), INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.value = value;
-        setNonNull(true);
     }
 
     @Override
@@ -195,7 +194,6 @@ public final class Constant extends Value {
     @Override
     public Node copy(Graph into) {
         Constant x = new Constant(value, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

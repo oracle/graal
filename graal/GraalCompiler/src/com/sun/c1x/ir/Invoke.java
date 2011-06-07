@@ -197,7 +197,6 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
     @Override
     public Node copy(Graph into) {
         Invoke x = new Invoke(bci, opcode, kind, new Value[argumentCount], target, returnType, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }
