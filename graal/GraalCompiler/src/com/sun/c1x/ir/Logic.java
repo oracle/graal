@@ -28,46 +28,31 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code ArithmeticOp} class represents arithmetic operations such as addition, subtraction, etc.
+ * The {@code LogicOp} class definition.
  */
-public final class ArithmeticOp extends Op2 {
+public final class Logic extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private final boolean canTrap;
-    private final boolean isStrictFP;
-
     /**
-     * Creates a new arithmetic operation.
-     * @param opcode the bytecode opcode
-     * @param kind the result kind of the operation
-     * @param x the first input instruction
-     * @param y the second input instruction
-     * @param isStrictFP indicates this operation has strict rounding semantics
-     * @param stateBefore the state for instructions that may trap
+     * Constructs a new logic operation instruction.
+     * @param opcode the opcode of the logic operation
+     * @param x the first input into this instruction
+     * @param y the second input into this instruction
      */
-    public ArithmeticOp(int opcode, CiKind kind, Value x, Value y, boolean isStrictFP, boolean canTrap, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.isStrictFP = isStrictFP;
-        this.canTrap = canTrap;
+    public Logic(int opcode, Value x, Value y, Graph graph) {
+        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
-    /**
-     * Checks whether this instruction has strict fp semantics.
-     * @return {@code true} if this instruction has strict fp semantics
-     */
-    public boolean isStrictFP() {
-        return isStrictFP;
+    // for copying
+    private Logic(CiKind kind, int opcode, Graph graph) {
+        super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitArithmeticOp(this);
-    }
-
-    public boolean isCommutative() {
-        return Bytecodes.isCommutative(opcode);
+        v.visitLogic(this);
     }
 
     @Override
@@ -76,13 +61,8 @@ public final class ArithmeticOp extends Op2 {
     }
 
     @Override
-    public String shortName() {
-        return Bytecodes.operator(opcode);
-    }
-
-    @Override
     public Node copy(Graph into) {
-        ArithmeticOp x = new ArithmeticOp(opcode, kind, null, null, isStrictFP, canTrap, into);
+        Logic x = new Logic(kind, opcode, into);
         return x;
     }
 }

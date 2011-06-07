@@ -124,7 +124,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitNegateOp(NegateOp x) {
+    public void visitNegate(Negate x) {
         LIRItem value = new LIRItem(x.x(), this);
         value.setDestroysRegister();
         value.loadItem();
@@ -144,7 +144,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         return false;
     }
 
-    public void visitArithmeticOpFloat(ArithmeticOp x) {
+    public void visitArithmeticOpFloat(Arithmetic x) {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         assert !left.isStack() || !right.isStack() : "can't both be memory operands";
@@ -185,7 +185,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         setResult(x, reg);
     }
 
-    public void visitArithmeticOpLong(ArithmeticOp x) {
+    public void visitArithmeticOpLong(Arithmetic x) {
         int opcode = x.opcode;
         if (opcode == Bytecodes.LDIV || opcode == Bytecodes.LREM) {
             // emit inline 64-bit code
@@ -228,7 +228,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public void visitArithmeticOpInt(ArithmeticOp x) {
+    public void visitArithmeticOpInt(Arithmetic x) {
         int opcode = x.opcode;
         if (opcode == Bytecodes.IDIV || opcode == Bytecodes.IREM) {
             // emit code for integer division or modulus
@@ -306,7 +306,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public void visitArithmeticOpWord(ArithmeticOp x) {
+    public void visitArithmeticOpWord(Arithmetic x) {
         int opcode = x.opcode;
         if (opcode == Bytecodes.WDIV || opcode == Bytecodes.WREM || opcode == Bytecodes.WDIVI || opcode == Bytecodes.WREMI) {
             // emit code for long division or modulus
@@ -359,7 +359,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitArithmeticOp(ArithmeticOp x) {
+    public void visitArithmetic(Arithmetic x) {
         trySwap(x);
 
         if (x.kind.isWord() || x.opcode == Bytecodes.WREMI) {
@@ -384,7 +384,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitShiftOp(ShiftOp x) {
+    public void visitShift(Shift x) {
         // count must always be in rcx
         CiValue count = makeOperand(x.y());
         boolean mustLoadCount = !count.isConstant() || x.kind == CiKind.Long;
@@ -400,7 +400,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitLogicOp(LogicOp x) {
+    public void visitLogic(Logic x) {
         trySwap(x);
 
         LIRItem right = new LIRItem(x.y(), this);
@@ -412,12 +412,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
         logicOp(x.opcode, reg, left, right.result());
     }
 
-    private void trySwap(Op2 x) {
+    private void trySwap(Binary x) {
         // (tw) TODO: Check what this is for?
     }
 
     @Override
-    public void visitCompareOp(CompareOp x) {
+    public void visitCompare(Compare x) {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         if (!x.kind.isVoid() && x.x().kind.isLong()) {

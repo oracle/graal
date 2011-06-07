@@ -33,7 +33,7 @@ import com.sun.cri.ci.*;
  * Note that these nodes are not built directly from the bytecode but are introduced
  * by conditional expression elimination.
  */
-public final class IfOp extends Op2 {
+public final class Conditional extends Binary {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_TRUE_VALUE = 0;
@@ -85,7 +85,7 @@ public final class IfOp extends Op2 {
      * @param trueValue the value produced if the condition is true
      * @param falseValue the value produced if the condition is false
      */
-    public IfOp(Value x, Condition condition, Value y, Value trueValue, Value falseValue, Graph graph) {
+    public Conditional(Value x, Condition condition, Value y, Value trueValue, Value falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
         super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.condition = condition;
@@ -94,7 +94,7 @@ public final class IfOp extends Op2 {
     }
 
     // for copying
-    private IfOp(CiKind kind, Condition cond, Graph graph) {
+    private Conditional(CiKind kind, Condition cond, Graph graph) {
         super(kind, Bytecodes.ILLEGAL, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.condition = cond;
     }
@@ -127,8 +127,8 @@ public final class IfOp extends Op2 {
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof IfOp) {
-            IfOp o = (IfOp) i;
+        if (i instanceof Conditional) {
+            Conditional o = (Conditional) i;
             return opcode == o.opcode && x() == o.x() && y() == o.y() && trueValue() == o.trueValue() && falseValue() == o.falseValue();
         }
         return false;
@@ -149,7 +149,7 @@ public final class IfOp extends Op2 {
 
     @Override
     public Node copy(Graph into) {
-        IfOp x = new IfOp(kind, condition, into);
+        Conditional x = new Conditional(kind, condition, into);
         return x;
     }
 }

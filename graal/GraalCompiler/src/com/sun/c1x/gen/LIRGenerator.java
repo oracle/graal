@@ -425,7 +425,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitIfOp(IfOp i) {
+    public void visitIfOp(Conditional i) {
         Value x = i.x();
         Value y = i.y();
         CiKind xtype = x.kind;

@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
  */
-public abstract class Op2 extends FloatingNode {
+public abstract class Binary extends FloatingNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;
@@ -82,7 +82,7 @@ public abstract class Op2 extends FloatingNode {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public Op2(CiKind kind, int opcode, Value x, Value y, int inputCount, int successorCount, Graph graph) {
+    public Binary(CiKind kind, int opcode, Value x, Value y, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
         setX(x);
@@ -106,8 +106,8 @@ public abstract class Op2 extends FloatingNode {
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof Op2) {
-            Op2 o = (Op2) i;
+        if (i instanceof Binary) {
+            Binary o = (Binary) i;
             return opcode == o.opcode && x() == o.x() && y() == o.y();
         }
         return false;

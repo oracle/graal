@@ -28,41 +28,40 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
+ * The {@code ShiftOp} class represents shift operations.
  */
-public final class CompareOp extends Op2 {
+public final class Shift extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     /**
-     * Creates a new compare operation.
-     * @param opcode the bytecode opcode
-     * @param kind the result kind
-     * @param x the first input
-     * @param y the second input
+     * Creates a new shift operation.
+     * @param opcode the opcode of the shift
+     * @param x the first input value
+     * @param y the second input value
      */
-    public CompareOp(int opcode, CiKind kind, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Shift(int opcode, Value x, Value y, Graph graph) {
+        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
+
+    private Shift(CiKind kind, int opcode, Graph graph) {
+        super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitCompareOp(this);
+        v.visitShift(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).
-            print(' ').
-            print(Bytecodes.operator(opcode)).
-            print(' ').
-            print(y());
+        out.print(x()).print(' ').print(Bytecodes.operator(opcode)).print(' ').print(y());
     }
 
     @Override
     public Node copy(Graph into) {
-        CompareOp x = new CompareOp(opcode, kind, null, null, into);
+        Shift x = new Shift(kind, opcode, into);
         return x;
     }
 }
