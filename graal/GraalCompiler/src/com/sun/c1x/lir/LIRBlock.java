@@ -185,15 +185,6 @@ public final class LIRBlock {
     private int linearScanNumber = -1;
     private boolean linearScanLoopEnd;
     private boolean linearScanLoopHeader;
-    private boolean backwardBranchTarget;
-
-    public void setBackwardBranchTarget(boolean b) {
-        this.backwardBranchTarget = b;
-    }
-
-    public boolean backwardBranchTarget() {
-        return backwardBranchTarget;
-    }
 
     public void setLinearScanNumber(int v) {
         linearScanNumber = v;
