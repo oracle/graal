@@ -94,18 +94,12 @@ public final class Xor extends Logic {
             } else if (y.isConstant()) {
                 if (kind == CiKind.Int) {
                     int c = y.asConstant().asInt();
-                    if (c == -1) {
-                        return new Negate(x, graph);
-                    }
                     if (c == 0) {
                         return x;
                     }
                 } else {
                     assert kind == CiKind.Long;
                     long c = y.asConstant().asLong();
-                    if (c == -1) {
-                        return new Negate(x, graph);
-                    }
                     if (c == 0) {
                         return x;
                     }
