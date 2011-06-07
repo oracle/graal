@@ -577,7 +577,7 @@ public final class GraphBuilder {
     private void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
-        Value value = append(new Materialize(opcode, resultKind, x, y, graph));
+        Value value = append(new NormalizeCompare(opcode, resultKind, x, y, graph));
         if (!resultKind.isVoid()) {
             frameState.ipush(value);
         }
@@ -602,7 +602,7 @@ public final class GraphBuilder {
 
     private void ifNode(Value x, Condition cond, Value y) {
         assert !x.isDeleted() && !y.isDeleted();
-        If ifNode = new If(x, cond, y, graph);
+        If ifNode = new If(new Compare(x, cond, y, graph), graph);
         append(ifNode);
         Instruction tsucc = createTargetAt(stream().readBranchDest(), frameState);
         ifNode.setBlockSuccessor(0, tsucc);

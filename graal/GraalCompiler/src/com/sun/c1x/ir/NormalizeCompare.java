@@ -28,9 +28,9 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
+ * Returns -1, 0, or 1 if either x > y, x == y, or x < y.
  */
-public final class Materialize extends Binary {
+public final class NormalizeCompare extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -42,7 +42,7 @@ public final class Materialize extends Binary {
      * @param x the first input
      * @param y the second input
      */
-    public Materialize(int opcode, CiKind kind, Value x, Value y, Graph graph) {
+    public NormalizeCompare(int opcode, CiKind kind, Value x, Value y, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
@@ -62,7 +62,6 @@ public final class Materialize extends Binary {
 
     @Override
     public Node copy(Graph into) {
-        Materialize x = new Materialize(opcode, kind, null, null, into);
-        return x;
+        return new NormalizeCompare(opcode, kind, null, null, into);
     }
 }

@@ -33,9 +33,8 @@ import com.sun.cri.ci.*;
  */
 public final class If extends BlockEnd {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_X = 0;
-    private static final int INPUT_Y = 1;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_COMPARE = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -52,57 +51,17 @@ public final class If extends BlockEnd {
     /**
      * The instruction that produces the first input to this comparison.
      */
-     public Value x() {
-        return (Value) inputs().get(super.inputCount() + INPUT_X);
+     public Compare compare() {
+        return (Compare) inputs().get(super.inputCount() + INPUT_COMPARE);
     }
 
-    public Value setX(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_X, n);
+    public Value setCompare(Compare n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_COMPARE, n);
     }
 
-    /**
-     * The instruction that produces the second input to this comparison.
-     */
-    public Value y() {
-        return (Value) inputs().get(super.inputCount() + INPUT_Y);
-    }
-
-    public Value setY(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_Y, n);
-    }
-
-    Condition condition;
-    boolean unorderedIsTrue;
-
-    /**
-     * Constructs a new If instruction.
-     * @param x the instruction producing the first input to the instruction
-     * @param condition the condition (comparison operation)
-     * @param y the instruction that produces the second input to this instruction
-     * @param graph
-     */
-    public If(Value x, Condition condition, Value y, Graph graph) {
+    public If(Compare compare, Graph graph) {
         super(CiKind.Illegal, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        assert (x == null && y == null) || Util.archKindsEqual(x, y);
-        this.condition = condition;
-        setX(x);
-        setY(y);
-    }
-
-    /**
-     * Gets the condition (comparison operation) for this instruction.
-     * @return the condition
-     */
-    public Condition condition() {
-        return condition;
-    }
-
-    /**
-     * Checks whether unordered inputs mean true or false.
-     * @return {@code true} if unordered inputs produce true
-     */
-    public boolean unorderedIsTrue() {
-        return unorderedIsTrue;
+        setCompare(compare);
     }
 
     /**
@@ -130,38 +89,6 @@ public final class If extends BlockEnd {
         return blockSuccessor(istrue ? 0 : 1);
     }
 
-    /**
-     * Gets the successor of this instruction for the unordered case.
-     * @return the successor for unordered inputs
-     */
-    public Instruction unorderedSuccessor() {
-        return successor(unorderedIsTrue());
-    }
-
-    /**
-     * Swaps the operands to this if and reverses the condition (e.g. > goes to <=).
-     * @see Condition#mirror()
-     */
-    public void swapOperands() {
-        condition = condition.mirror();
-        Value t = x();
-        setX(y());
-        setY(t);
-    }
-
-    /**
-     * Swaps the successor blocks to this if and negates the condition (e.g. == goes to !=)
-     * @see Condition#negate()
-     */
-    public void swapSuccessors() {
-        unorderedIsTrue = !unorderedIsTrue;
-        condition = condition.negate();
-        Instruction t = blockSuccessor(0);
-        Instruction f = blockSuccessor(1);
-        setBlockSuccessor(0, f);
-        setBlockSuccessor(1, t);
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitIf(this);
@@ -170,11 +97,11 @@ public final class If extends BlockEnd {
     @Override
     public void print(LogStream out) {
         out.print("if ").
-        print(x()).
+        print(compare().x()).
         print(' ').
-        print(condition().operator).
+        print(compare().condition().operator).
         print(' ').
-        print(y()).
+        print(compare().y()).
         print(" then ").
         print(blockSuccessors().get(0)).
         print(" else ").
@@ -183,13 +110,11 @@ public final class If extends BlockEnd {
 
     @Override
     public String shortName() {
-        return "If " + condition.operator;
+        return "If " + compare().condition.operator;
     }
 
     @Override
     public Node copy(Graph into) {
-        If x = new If(null, condition, null, into);
-        x.unorderedIsTrue = unorderedIsTrue;
-        return x;
+        return new If(compare(), into);
     }
 }
