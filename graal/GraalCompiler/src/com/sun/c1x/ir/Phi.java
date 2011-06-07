@@ -169,7 +169,6 @@ public final class Phi extends FixedNode {
         Phi x = new Phi(kind, null, maxValues, into);
         x.usedInputCount = usedInputCount;
         x.isDead = isDead;
-        x.setNonNull(isNonNull());
         return x;
     }
 }

@@ -104,7 +104,6 @@ public final class Convert extends FloatingNode {
     @Override
     public Node copy(Graph into) {
         Convert x = new Convert(opcode, null, kind, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

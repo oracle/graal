@@ -101,7 +101,6 @@ public final class NegateOp extends FloatingNode {
     @Override
     public Node copy(Graph into) {
         NegateOp x = new NegateOp(kind, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

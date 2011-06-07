@@ -96,7 +96,6 @@ public final class ArrayLength extends FloatingNode {
     @Override
     public Node copy(Graph into) {
         ArrayLength x = new ArrayLength(null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

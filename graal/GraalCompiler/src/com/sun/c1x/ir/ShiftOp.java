@@ -62,7 +62,6 @@ public final class ShiftOp extends Op2 {
     @Override
     public Node copy(Graph into) {
         ShiftOp x = new ShiftOp(kind, opcode, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

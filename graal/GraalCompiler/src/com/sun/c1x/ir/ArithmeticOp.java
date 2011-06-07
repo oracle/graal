@@ -83,7 +83,6 @@ public final class ArithmeticOp extends Op2 {
     @Override
     public Node copy(Graph into) {
         ArithmeticOp x = new ArithmeticOp(opcode, kind, null, null, isStrictFP, canTrap, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

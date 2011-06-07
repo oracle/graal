@@ -48,7 +48,6 @@ public final class Constant extends FloatingNode {
     public Constant(CiConstant value, Graph graph) {
         super(value.kind.stackKind(), INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.value = value;
-        setNonNull(true);
     }
 
     @Override
@@ -195,7 +194,6 @@ public final class Constant extends FloatingNode {
     @Override
     public Node copy(Graph into) {
         Constant x = new Constant(value, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

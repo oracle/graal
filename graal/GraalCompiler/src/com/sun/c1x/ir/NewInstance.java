@@ -51,7 +51,6 @@ public final class NewInstance extends FloatingNode {
         this.instanceClass = type;
         this.cpi = cpi;
         this.constantPool = constantPool;
-        setNonNull(true);
     }
 
     /**
@@ -85,7 +84,6 @@ public final class NewInstance extends FloatingNode {
     @Override
     public Node copy(Graph into) {
         NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

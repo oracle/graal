@@ -36,6 +36,7 @@ public class NodeArray extends AbstractList<Node> {
         this.nodes = new Node[length];
     }
 
+    @Override
     public Iterator<Node> iterator() {
         return Arrays.asList(this.nodes).iterator();
     }
@@ -44,6 +45,7 @@ public class NodeArray extends AbstractList<Node> {
         return this.node;
     }
 
+    @Override
     public Node set(int index, Node node) {
         assert node == Node.Null || node.graph == self().graph;
         assert node == Node.Null || node.id() != Node.DeletedID : "inserted node must not be deleted";
@@ -86,10 +88,12 @@ public class NodeArray extends AbstractList<Node> {
         }
     }
 
+    @Override
     public Node get(int index) {
         return nodes[index];
     }
 
+    @Override
     public Node[] toArray() {
         return Arrays.copyOf(nodes, nodes.length);
     }
@@ -133,6 +137,7 @@ public class NodeArray extends AbstractList<Node> {
         assert false;
     }
 
+    @Override
     public int size() {
         return nodes.length;
     }

@@ -64,7 +64,6 @@ public class Deoptimize extends Instruction {
     public Node copy(Graph into) {
         Deoptimize x = new Deoptimize(into);
         x.setMessage(message);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

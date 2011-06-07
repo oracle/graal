@@ -150,7 +150,6 @@ public final class IfOp extends Op2 {
     @Override
     public Node copy(Graph into) {
         IfOp x = new IfOp(kind, condition, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

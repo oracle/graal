@@ -57,7 +57,6 @@ public class FrameStateBuilder implements FrameStateAccess {
             // add the receiver and assume it is non null
             Local local = new Local(method.holder().kind(), javaIndex, graph);
             local.inputs().set(0, graph.start());
-            local.setNonNull(true);
             local.setDeclaredType(method.holder());
             storeLocal(javaIndex, local);
             javaIndex = 1;

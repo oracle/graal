@@ -1589,10 +1589,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         public boolean isNonNull(XirArgument argument) {
-            if (argument.constant == null && argument.object instanceof LIRItem) {
-                // check the flag on the original value
-                return ((LIRItem) argument.object).instruction.isNonNull();
-            }
             return false;
         }
 

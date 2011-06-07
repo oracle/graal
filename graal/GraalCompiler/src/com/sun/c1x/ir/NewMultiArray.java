@@ -120,7 +120,6 @@ public final class NewMultiArray extends NewArray {
     @Override
     public Node copy(Graph into) {
         NewMultiArray x = new NewMultiArray(elementType, new Value[dimensionCount], cpi, constantPool, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

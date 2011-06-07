@@ -74,7 +74,6 @@ public final class InstanceOf extends TypeCheck {
     @Override
     public Node copy(Graph into) {
         InstanceOf x = new InstanceOf(targetClass, null, null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

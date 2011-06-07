@@ -63,7 +63,6 @@ public final class LogicOp extends Op2 {
     @Override
     public Node copy(Graph into) {
         LogicOp x = new LogicOp(kind, opcode, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }
