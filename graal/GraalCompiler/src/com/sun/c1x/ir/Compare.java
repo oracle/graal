@@ -28,7 +28,7 @@ import com.sun.c1x.debug.*;
 import com.sun.c1x.util.*;
 import com.sun.cri.ci.*;
 
-public final class Compare extends Value {
+public final class Compare extends FloatingNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;
