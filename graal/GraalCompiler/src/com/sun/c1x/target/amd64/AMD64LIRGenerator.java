@@ -417,7 +417,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitMaterialize(Materialize x) {
+    public void visitMaterialize(NormalizeCompare x) {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         if (!x.kind.isVoid() && x.x().kind.isLong()) {
@@ -472,12 +472,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitIf(If x) {
-        CiKind kind = x.x().kind;
+        CiKind kind = x.compare().x().kind;
 
-        Condition cond = x.condition();
+        Condition cond = x.compare().condition();
 
-        LIRItem xitem = new LIRItem(x.x(), this);
-        LIRItem yitem = new LIRItem(x.y(), this);
+        LIRItem xitem = new LIRItem(x.compare().x(), this);
+        LIRItem yitem = new LIRItem(x.compare().y(), this);
         LIRItem xin = xitem;
         LIRItem yin = yitem;
 
@@ -504,8 +504,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiValue left = xin.result();
         CiValue right = yin.result();
         lir.cmp(cond, left, right);
-        if (x.x().kind.isFloat() || x.x().kind.isDouble()) {
-            lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()), getLIRBlock(x.unorderedSuccessor()));
+        if (x.compare().x().kind.isFloat() || x.compare().x().kind.isDouble()) {
+            Instruction unorderedSucc = x.falseSuccessor();
+            if (x.compare().unorderedIsTrue()) {
+                unorderedSucc = x.trueSuccessor();
+            }
+            lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()), getLIRBlock(unorderedSucc));
         } else {
             lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()));
         }

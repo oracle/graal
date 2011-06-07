@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,46 +23,32 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
- */
-public final class Materialize extends Binary {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+public final class UnsignedRightShift extends Shift {
 
     /**
-     * Creates a new compare operation.
-     * @param opcode the bytecode opcode
-     * @param kind the result kind
-     * @param x the first input
-     * @param y the second input
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
      */
-    public Materialize(int opcode, CiKind kind, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public UnsignedRightShift(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.IUSHR : Bytecodes.LUSHR, x, y, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitMaterialize(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).
-            print(' ').
-            print(Bytecodes.operator(opcode)).
-            print(' ').
-            print(y());
+    public String shortName() {
+        return ">>>";
     }
 
     @Override
     public Node copy(Graph into) {
-        Materialize x = new Materialize(opcode, kind, null, null, into);
+        UnsignedRightShift x = new UnsignedRightShift(kind, null, null, graph());
         return x;
     }
+
 }

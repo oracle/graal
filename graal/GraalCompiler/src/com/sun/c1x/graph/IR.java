@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.max.graal.opt.*;
 import com.oracle.max.graal.schedule.*;
 import com.sun.c1x.*;
 import com.sun.c1x.debug.*;
@@ -83,6 +84,11 @@ public class IR {
         }
 
         Graph graph = compilation.graph;
+
+        if (C1XOptions.OptCanonicalizer) {
+            new CanonicalizerPhase().apply(graph);
+            verifyAndPrint("After canonicalization");
+        }
 
         // Split critical edges.
         List<Node> nodes = graph.getNodes();

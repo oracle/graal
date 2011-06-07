@@ -24,36 +24,44 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code ShiftOp} class represents shift operations.
+ * Returns -1, 0, or 1 if either x > y, x == y, or x < y.
  */
-public abstract class Shift extends Binary {
+public final class NormalizeCompare extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     /**
-     * Creates a new shift operation.
-     * @param opcode the opcode of the shift
-     * @param x the first input value
-     * @param y the second input value
+     * Creates a new compare operation.
+     * @param opcode the bytecode opcode
+     * @param kind the result kind
+     * @param x the first input
+     * @param y the second input
      */
-    public Shift(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+    public NormalizeCompare(int opcode, CiKind kind, Value x, Value y, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitShift(this);
+        v.visitMaterialize(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
+        out.print(x()).
+            print(' ').
+            print(Bytecodes.operator(opcode)).
+            print(' ').
+            print(y());
     }
 
     @Override
-    public abstract String shortName();
+    public Node copy(Graph into) {
+        return new NormalizeCompare(opcode, kind, null, null, into);
+    }
 }

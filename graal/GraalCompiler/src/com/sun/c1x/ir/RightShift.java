@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,37 +23,32 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code ShiftOp} class represents shift operations.
- */
-public abstract class Shift extends Binary {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+public final class RightShift extends Shift {
 
     /**
-     * Creates a new shift operation.
-     * @param opcode the opcode of the shift
-     * @param x the first input value
-     * @param y the second input value
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
      */
-    public Shift(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public RightShift(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.ISHR : Bytecodes.LSHR, x, y, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitShift(this);
+    public String shortName() {
+        return ">>";
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
+    public Node copy(Graph into) {
+        RightShift rs = new RightShift(kind, null, null, graph());
+        return rs;
     }
 
-    @Override
-    public abstract String shortName();
 }

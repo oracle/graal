@@ -23,10 +23,12 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
+import com.oracle.max.graal.opt.CanonicalizerPhase.CanonicalizerOp;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 public final class Xor extends Logic {
+    private static final XorCanonicalizerOp CANONICALIZER = new XorCanonicalizerOp();
 
     /**
      * @param opcode
@@ -50,4 +52,60 @@ public final class Xor extends Logic {
         return x;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class XorCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            assert node instanceof Xor;
+            Xor xor = (Xor) node;
+            CiKind kind = xor.kind;
+            Graph graph = xor.graph();
+            Value x = xor.x();
+            Value y = xor.y();
+            if (x == y) {
+                if (kind == CiKind.Int) {
+                    return Constant.forInt(0, graph);
+                } else {
+                    assert kind == CiKind.Long;
+                    return Constant.forLong(0L, graph);
+                }
+            }
+            if (x.isConstant() && !y.isConstant()) {
+                xor.swapOperands();
+                Value t = y;
+                y = x;
+                x = t;
+            }
+            if (x.isConstant()) {
+                if (kind == CiKind.Int) {
+                    return Constant.forInt(x.asConstant().asInt() ^ y.asConstant().asInt(), graph);
+                } else {
+                    assert kind == CiKind.Long;
+                    return Constant.forLong(x.asConstant().asLong() ^ y.asConstant().asLong(), graph);
+                }
+            } else if (y.isConstant()) {
+                if (kind == CiKind.Int) {
+                    int c = y.asConstant().asInt();
+                    if (c == 0) {
+                        return x;
+                    }
+                } else {
+                    assert kind == CiKind.Long;
+                    long c = y.asConstant().asLong();
+                    if (c == 0) {
+                        return x;
+                    }
+                }
+            }
+            return xor;
+        }
+    }
 }

@@ -128,4 +128,6 @@ public final class C1XOptions {
     // Assembler settings
     public static boolean CommentedAssembly                  = ____;
     public static boolean PrintLIRWithAssembly               = ____;
+
+    public static boolean OptCanonicalizer                   = true;
 }
