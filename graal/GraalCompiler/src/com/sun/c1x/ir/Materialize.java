@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
  */
-public final class Compare extends Binary {
+public final class Materialize extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -42,13 +42,13 @@ public final class Compare extends Binary {
      * @param x the first input
      * @param y the second input
      */
-    public Compare(int opcode, CiKind kind, Value x, Value y, Graph graph) {
+    public Materialize(int opcode, CiKind kind, Value x, Value y, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitCompare(this);
+        v.visitMaterialize(this);
     }
 
     @Override
@@ -62,7 +62,7 @@ public final class Compare extends Binary {
 
     @Override
     public Node copy(Graph into) {
-        Compare x = new Compare(opcode, kind, null, null, into);
+        Materialize x = new Materialize(opcode, kind, null, null, into);
         return x;
     }
 }

@@ -35,7 +35,7 @@ public abstract class ValueVisitor {
     public abstract void visitArrayLength(ArrayLength i);
     public abstract void visitMerge(Merge i);
     public abstract void visitCheckCast(CheckCast i);
-    public abstract void visitCompare(Compare i);
+    public abstract void visitMaterialize(Materialize i);
     public abstract void visitConstant(Constant i);
     public abstract void visitConvert(Convert i);
     public abstract void visitExceptionObject(ExceptionObject i);

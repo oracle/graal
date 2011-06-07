@@ -417,7 +417,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitCompare(Compare x) {
+    public void visitMaterialize(Materialize x) {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         if (!x.kind.isVoid() && x.x().kind.isLong()) {

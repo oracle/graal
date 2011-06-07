@@ -577,7 +577,7 @@ public final class GraphBuilder {
     private void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
-        Value value = append(new Compare(opcode, resultKind, x, y, graph));
+        Value value = append(new Materialize(opcode, resultKind, x, y, graph));
         if (!resultKind.isVoid()) {
             frameState.ipush(value);
         }

@@ -168,46 +168,48 @@ public class IR {
 
         verifyAndPrint("After graph building");
 
-        List<Invoke> trivialInline = new ArrayList<Invoke>();
-        List<Invoke> deoptInline = new ArrayList<Invoke>();
-        List<RiMethod> deoptMethods = new ArrayList<RiMethod>();
-        for (Node node : compilation.graph.getNodes()) {
-            if (node instanceof Invoke) {
-                Invoke invoke = (Invoke) node;
-                RiMethod target = invoke.target;
-                if (target.isResolved() && !Modifier.isNative(target.accessFlags())) {
-                    if (target.canBeStaticallyBound()) {
-                        trivialInline.add(invoke);
-                    } else {
-                        RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
-                        if (concrete != null) {
-                            deoptInline.add(invoke);
-                            deoptMethods.add(concrete);
+            if (C1XOptions.Inline) {
+            List<Invoke> trivialInline = new ArrayList<Invoke>();
+            List<Invoke> deoptInline = new ArrayList<Invoke>();
+            List<RiMethod> deoptMethods = new ArrayList<RiMethod>();
+            for (Node node : compilation.graph.getNodes()) {
+                if (node instanceof Invoke) {
+                    Invoke invoke = (Invoke) node;
+                    RiMethod target = invoke.target;
+                    if (target.isResolved() && !Modifier.isNative(target.accessFlags())) {
+                        if (target.canBeStaticallyBound()) {
+                            trivialInline.add(invoke);
+                        } else {
+                            RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
+                            if (concrete != null) {
+                                deoptInline.add(invoke);
+                                deoptMethods.add(concrete);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        int allowedInlinings = 50;
-        for (Invoke invoke : trivialInline) {
-            if (inlineMethod(invoke, invoke.target)) {
-                if (--allowedInlinings <= 0) {
-                    break;
+            int allowedInlinings = 50;
+            for (Invoke invoke : trivialInline) {
+                if (inlineMethod(invoke, invoke.target)) {
+                    if (--allowedInlinings <= 0) {
+                        break;
+                    }
                 }
             }
-        }
 
-        for (int i = 0; i < deoptInline.size(); i++) {
-            Invoke invoke = deoptInline.get(i);
-            RiMethod method = deoptMethods.get(i);
-            if (inlineMethod(invoke, method)) {
-                if (C1XOptions.TraceInlining) {
-                    System.out.println("registering concrete method assumption...");
-                }
-                compilation.assumptions.recordConcreteMethod(invoke.target, method);
-                if (--allowedInlinings <= 0) {
-                    break;
+            for (int i = 0; i < deoptInline.size(); i++) {
+                Invoke invoke = deoptInline.get(i);
+                RiMethod method = deoptMethods.get(i);
+                if (inlineMethod(invoke, method)) {
+                    if (C1XOptions.TraceInlining) {
+                        System.out.println("registering concrete method assumption...");
+                    }
+                    compilation.assumptions.recordConcreteMethod(invoke.target, method);
+                    if (--allowedInlinings <= 0) {
+                        break;
+                    }
                 }
             }
         }
