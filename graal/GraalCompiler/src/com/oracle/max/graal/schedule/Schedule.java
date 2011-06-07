@@ -82,7 +82,7 @@ public class Schedule {
     }
 
     public static boolean isCFG(Node n) {
-        return n != null && ((n instanceof Instruction) || n == n.graph().start());
+        return n != null && ((n instanceof FixedNode) || n == n.graph().start());
     }
 
     public static boolean isBlockEnd(Node n) {

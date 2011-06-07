@@ -69,7 +69,6 @@ public final class NewTypeArray extends NewArray {
     @Override
     public Node copy(Graph into) {
         NewTypeArray x = new NewTypeArray(null, elementType, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

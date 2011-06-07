@@ -40,7 +40,7 @@ public class StartNode extends Node {
     }
 
     public Node start() {
-        return (Node) successors().get(super.successorCount() + SUCCESSOR_START);
+        return successors().get(super.successorCount() + SUCCESSOR_START);
     }
 
     public Node setStart(Node next) {

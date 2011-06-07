@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,47 +23,35 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code LogicOp} class definition.
- */
-public final class LogicOp extends Op2 {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+/**
+ *
+ */
+public final class Or extends Logic {
 
     /**
-     * Constructs a new logic operation instruction.
-     * @param opcode the opcode of the logic operation
-     * @param x the first input into this instruction
-     * @param y the second input into this instruction
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
      */
-    public LogicOp(int opcode, Value x, Value y, Graph graph) {
-        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    // for copying
-    private LogicOp(CiKind kind, int opcode, Graph graph) {
-        super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Or(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.IOR : Bytecodes.LOR, x, y, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitLogicOp(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(Bytecodes.operator(opcode)).print(' ').print(y());
+    public String shortName() {
+        return "|";
     }
 
     @Override
     public Node copy(Graph into) {
-        LogicOp x = new LogicOp(kind, opcode, into);
-        x.setNonNull(isNonNull());
+        Or x = new Or(kind, null, null, graph());
         return x;
     }
+
 }

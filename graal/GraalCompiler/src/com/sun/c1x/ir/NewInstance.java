@@ -30,7 +30,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
-public final class NewInstance extends Value {
+public final class NewInstance extends FloatingNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -51,7 +51,6 @@ public final class NewInstance extends Value {
         this.instanceClass = type;
         this.cpi = cpi;
         this.constantPool = constantPool;
-        setNonNull(true);
     }
 
     /**
@@ -85,7 +84,6 @@ public final class NewInstance extends Value {
     @Override
     public Node copy(Graph into) {
         NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

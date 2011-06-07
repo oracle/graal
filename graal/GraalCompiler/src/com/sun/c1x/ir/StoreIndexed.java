@@ -85,7 +85,6 @@ public final class StoreIndexed extends AccessIndexed {
     @Override
     public Node copy(Graph into) {
         StoreIndexed x = new StoreIndexed(null, null, null, elementKind(), null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

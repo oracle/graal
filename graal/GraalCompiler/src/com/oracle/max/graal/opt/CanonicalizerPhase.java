@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,50 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.c1x.ir;
+package com.oracle.max.graal.opt;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
-import com.sun.cri.ci.*;
 
-public class Deoptimize extends Instruction {
+public class CanonicalizerPhase extends Phase {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
-    private String message;
-
-    public Deoptimize(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public String message() {
-        return message;
-    }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitDeoptimize(this);
+    protected void run(Graph graph) {
+        // TODO Auto-generated method stub
+
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print("deoptimize");
-    }
-
-    @Override
-    public String shortName() {
-        return message == null ? "Deopt " : "Deopt " + message;
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        Deoptimize x = new Deoptimize(into);
-        x.setMessage(message);
-        return x;
+    public interface CanonicalizerOp extends Op {
+        Node canonical(Node node);
     }
 }

@@ -68,14 +68,12 @@ public final class NullCheck extends Instruction {
      */
     public NullCheck(Value object, Graph graph) {
         super(object.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setNonNull(true);
         setObject(object);
     }
 
     // for copying
     private NullCheck(CiKind kind, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setNonNull(true);
     }
 
     @Override
@@ -117,7 +115,6 @@ public final class NullCheck extends Instruction {
     @Override
     public Node copy(Graph into) {
         NullCheck x = new NullCheck(kind, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

@@ -87,7 +87,6 @@ public final class LookupSwitch extends Switch {
     @Override
     public Node copy(Graph into) {
         LookupSwitch x = new LookupSwitch(null, Arrays.asList(new Instruction[numberOfCases() + 1]), keys.clone(), into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

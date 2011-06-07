@@ -24,46 +24,45 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-public class Deoptimize extends Instruction {
+/**
+ * The {@code CompareOp} instruction represents comparisons such as equals, not equal, etc.
+ */
+public final class Materialize extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private String message;
-
-    public Deoptimize(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public String message() {
-        return message;
+    /**
+     * Creates a new compare operation.
+     * @param opcode the bytecode opcode
+     * @param kind the result kind
+     * @param x the first input
+     * @param y the second input
+     */
+    public Materialize(int opcode, CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitDeoptimize(this);
+        v.visitMaterialize(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("deoptimize");
-    }
-
-    @Override
-    public String shortName() {
-        return message == null ? "Deopt " : "Deopt " + message;
+        out.print(x()).
+            print(' ').
+            print(Bytecodes.operator(opcode)).
+            print(' ').
+            print(y());
     }
 
     @Override
     public Node copy(Graph into) {
-        Deoptimize x = new Deoptimize(into);
-        x.setMessage(message);
+        Materialize x = new Materialize(opcode, kind, null, null, into);
         return x;
     }
 }

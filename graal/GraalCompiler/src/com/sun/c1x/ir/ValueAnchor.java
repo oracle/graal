@@ -80,7 +80,6 @@ public final class ValueAnchor extends Instruction {
     @Override
     public Node copy(Graph into) {
         ValueAnchor x = new ValueAnchor(null, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

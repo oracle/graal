@@ -55,7 +55,6 @@ public final class Anchor extends BlockEnd {
     @Override
     public Node copy(Graph into) {
         Anchor x = new Anchor(into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

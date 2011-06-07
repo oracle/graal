@@ -24,45 +24,36 @@ package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
 import com.sun.c1x.debug.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code ShiftOp} class represents shift operations.
+ * The {@code LogicOp} class definition.
  */
-public final class ShiftOp extends Op2 {
+public abstract class Logic extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     /**
-     * Creates a new shift operation.
-     * @param opcode the opcode of the shift
-     * @param x the first input value
-     * @param y the second input value
+     * Constructs a new logic operation instruction.
+     * @param opcode the opcode of the logic operation
+     * @param x the first input into this instruction
+     * @param y the second input into this instruction
      */
-    public ShiftOp(int opcode, Value x, Value y, Graph graph) {
-        super(x.kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    private ShiftOp(CiKind kind, int opcode, Graph graph) {
-        super(kind, opcode, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Logic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitShiftOp(this);
+        v.visitLogic(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).print(' ').print(Bytecodes.operator(opcode)).print(' ').print(y());
+        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
     }
 
     @Override
-    public Node copy(Graph into) {
-        ShiftOp x = new ShiftOp(kind, opcode, into);
-        x.setNonNull(isNonNull());
-        return x;
-    }
+    public abstract String shortName();
 }

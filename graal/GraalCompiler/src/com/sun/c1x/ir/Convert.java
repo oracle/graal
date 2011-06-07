@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Convert} class represents a conversion between primitive types.
  */
-public final class Convert extends Value {
+public final class Convert extends FloatingNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VALUE = 0;
@@ -104,7 +104,6 @@ public final class Convert extends Value {
     @Override
     public Node copy(Graph into) {
         Convert x = new Convert(opcode, null, kind, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

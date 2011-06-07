@@ -41,7 +41,6 @@ public final class ExceptionObject extends Instruction {
      */
     public ExceptionObject(Graph graph) {
         super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setNonNull(true);
     }
 
     @Override
@@ -57,7 +56,6 @@ public final class ExceptionObject extends Instruction {
     @Override
     public Node copy(Graph into) {
         ExceptionObject x = new ExceptionObject(into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

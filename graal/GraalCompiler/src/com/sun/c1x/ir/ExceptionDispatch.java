@@ -128,7 +128,6 @@ public final class ExceptionDispatch extends BlockEnd {
     @Override
     public Node copy(Graph into) {
         ExceptionDispatch x = new ExceptionDispatch(null, null, null, catchType, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code ArithmeticOp} class represents arithmetic operations such as addition, subtraction, etc.
  */
-public final class ArithmeticOp extends Op2 {
+public final class Arithmetic extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -47,7 +47,7 @@ public final class ArithmeticOp extends Op2 {
      * @param isStrictFP indicates this operation has strict rounding semantics
      * @param stateBefore the state for instructions that may trap
      */
-    public ArithmeticOp(int opcode, CiKind kind, Value x, Value y, boolean isStrictFP, boolean canTrap, Graph graph) {
+    public Arithmetic(int opcode, CiKind kind, Value x, Value y, boolean isStrictFP, boolean canTrap, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.isStrictFP = isStrictFP;
         this.canTrap = canTrap;
@@ -63,7 +63,7 @@ public final class ArithmeticOp extends Op2 {
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitArithmeticOp(this);
+        v.visitArithmetic(this);
     }
 
     public boolean isCommutative() {
@@ -82,8 +82,7 @@ public final class ArithmeticOp extends Op2 {
 
     @Override
     public Node copy(Graph into) {
-        ArithmeticOp x = new ArithmeticOp(opcode, kind, null, null, isStrictFP, canTrap, into);
-        x.setNonNull(isNonNull());
+        Arithmetic x = new Arithmetic(opcode, kind, null, null, isStrictFP, canTrap, into);
         return x;
     }
 }

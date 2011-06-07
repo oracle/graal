@@ -511,7 +511,6 @@ public final class FrameState extends Value implements FrameStateAccess {
     @Override
     public Node copy(Graph into) {
         FrameState x = new FrameState(method, bci, localsSize, stackSize, locksSize, into);
-        x.setNonNull(isNonNull());
         return x;
     }
 }

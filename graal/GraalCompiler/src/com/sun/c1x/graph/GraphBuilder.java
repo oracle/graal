@@ -549,31 +549,44 @@ public final class GraphBuilder {
     private void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
         Value yValue = frameState.pop(y);
         Value xValue = frameState.pop(x);
-        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method.accessFlags()), canTrap, graph));
-        append(new ValueAnchor(result1, graph));
+        Value result1 = append(new Arithmetic(opcode, result, xValue, yValue, isStrict(method.accessFlags()), canTrap, graph));
+        if (canTrap) {
+            append(new ValueAnchor(result1, graph));
+        }
         frameState.push(result, result1);
     }
 
     private void genNegateOp(CiKind kind) {
-        frameState.push(kind, append(new NegateOp(frameState.pop(kind), graph)));
+        frameState.push(kind, append(new Negate(frameState.pop(kind), graph)));
     }
 
     private void genShiftOp(CiKind kind, int opcode) {
         Value s = frameState.ipop();
         Value x = frameState.pop(kind);
-        frameState.push(kind, append(new ShiftOp(opcode, x, s, graph)));
+        frameState.push(kind, append(new Shift(opcode, x, s, graph)));
     }
 
     private void genLogicOp(CiKind kind, int opcode) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
-        frameState.push(kind, append(new LogicOp(opcode, x, y, graph)));
+        Logic v;
+        switch(opcode){
+            case IAND:
+            case LAND: v = new And(kind, x, y, graph); break;
+            case IOR:
+            case LOR: v = new Or(kind, x, y, graph); break;
+            case IXOR:
+            case LXOR: v = new Xor(kind, x, y, graph); break;
+            default:
+                throw new CiBailout("should not reach");
+        }
+        frameState.push(kind, append(v));
     }
 
     private void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
         Value y = frameState.pop(kind);
         Value x = frameState.pop(kind);
-        Value value = append(new CompareOp(opcode, resultKind, x, y, graph));
+        Value value = append(new Materialize(opcode, resultKind, x, y, graph));
         if (!resultKind.isVoid()) {
             frameState.ipush(value);
         }
@@ -589,7 +602,7 @@ public final class GraphBuilder {
         int delta = stream().readIncrement();
         Value x = frameState.localAt(index);
         Value y = append(Constant.forInt(delta, graph));
-        frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method.accessFlags()), false, graph)));
+        frameState.storeLocal(index, append(new Arithmetic(IADD, CiKind.Int, x, y, isStrict(method.accessFlags()), false, graph)));
     }
 
     private void genGoto(int fromBCI, int toBCI) {

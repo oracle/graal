@@ -31,29 +31,29 @@ import com.sun.c1x.value.*;
  */
 public abstract class ValueVisitor {
     // Checkstyle: stop
-    public abstract void visitArithmeticOp(ArithmeticOp i);
+    public abstract void visitArithmetic(Arithmetic i);
     public abstract void visitArrayLength(ArrayLength i);
     public abstract void visitMerge(Merge i);
     public abstract void visitCheckCast(CheckCast i);
-    public abstract void visitCompareOp(CompareOp i);
+    public abstract void visitMaterialize(Materialize i);
     public abstract void visitConstant(Constant i);
     public abstract void visitConvert(Convert i);
     public abstract void visitExceptionObject(ExceptionObject i);
     public abstract void visitFrameState(FrameState i);
     public abstract void visitAnchor(Anchor i);
     public abstract void visitIf(If i);
-    public abstract void visitIfOp(IfOp i);
+    public abstract void visitIfOp(Conditional i);
     public abstract void visitInstanceOf(InstanceOf i);
     public abstract void visitInvoke(Invoke i);
     public abstract void visitLoadField(LoadField i);
     public abstract void visitLoadIndexed(LoadIndexed i);
     public abstract void visitLocal(Local i);
-    public abstract void visitLogicOp(LogicOp i);
+    public abstract void visitLogic(Logic i);
     public abstract void visitLookupSwitch(LookupSwitch i);
     public abstract void visitMonitorAddress(MonitorAddress monitorAddress);
     public abstract void visitMonitorEnter(MonitorEnter i);
     public abstract void visitMonitorExit(MonitorExit i);
-    public abstract void visitNegateOp(NegateOp i);
+    public abstract void visitNegate(Negate i);
     public abstract void visitNewInstance(NewInstance i);
     public abstract void visitNewMultiArray(NewMultiArray i);
     public abstract void visitNewObjectArray(NewObjectArray i);
@@ -62,7 +62,7 @@ public abstract class ValueVisitor {
     public abstract void visitPhi(Phi i);
     public abstract void visitRegisterFinalizer(RegisterFinalizer i);
     public abstract void visitReturn(Return i);
-    public abstract void visitShiftOp(ShiftOp i);
+    public abstract void visitShift(Shift i);
     public abstract void visitStoreField(StoreField i);
     public abstract void visitStoreIndexed(StoreIndexed i);
     public abstract void visitTableSwitch(TableSwitch i);
