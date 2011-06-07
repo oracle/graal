@@ -48,6 +48,10 @@ public final class NodeBitMap {
         return bitMap.get(node.id());
     }
 
+    public boolean isNew(Node node) {
+        return node.id() >= bitMap.size();
+    }
+
     public void mark(Node node) {
         check(node);
         bitMap.set(node.id());
@@ -60,7 +64,7 @@ public final class NodeBitMap {
 
     private void check(Node node) {
         assert node.graph == graph : "this node is not part of the graph";
-        assert node.id() < bitMap.size() : "this node (" + node.id() + ") was added to the graph after creating the node bitmap (" + bitMap.length() + ")";
+        assert !isNew(node) : "this node (" + node.id() + ") was added to the graph after creating the node bitmap (" + bitMap.length() + ")";
     }
 
     @Override

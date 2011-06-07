@@ -22,15 +22,47 @@
  */
 package com.oracle.max.graal.opt;
 
+import java.util.*;
+
 import com.oracle.graal.graph.*;
+import com.sun.c1x.*;
 
 public class CanonicalizerPhase extends Phase {
 
 
     @Override
     protected void run(Graph graph) {
-        // TODO Auto-generated method stub
+        NodeBitMap visited = graph.createNodeBitMap();
+        List<Node> nodes = new ArrayList<Node>(graph.getNodes());
+        for (Node n : nodes) {
+            if (n == null) {
+                continue;
+            }
+            if (!visited.isMarked(n)) {
+                this.canonicalize(n, visited);
+            }
+        }
+    }
 
+    private void canonicalize(Node n, NodeBitMap visited) {
+        visited.mark(n);
+        for (Node input : n.inputs()) {
+            if (input == null) {
+                continue;
+            }
+            if (!visited.isNew(input) && !visited.isMarked(input)) {
+                canonicalize(input, visited);
+            }
+        }
+
+        CanonicalizerOp op = n.lookup(CanonicalizerOp.class);
+        if (op != null) {
+            Node canonical = op.canonical(n);
+            if (canonical != n) {
+                n.replace(canonical);
+                C1XMetrics.NodesCanonicalized++;
+            }
+        }
     }
 
     public interface CanonicalizerOp extends Op {
