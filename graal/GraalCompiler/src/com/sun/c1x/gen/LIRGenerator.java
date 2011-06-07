@@ -299,7 +299,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (Modifier.isSynchronized(compilation.method.accessFlags())) {
             bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
         }
-        FrameState fs = new FrameState(bci, compilation.method.maxLocals(), 0, 0, compilation.graph);
+        FrameState fs = new FrameState(compilation.method, bci, compilation.method.maxLocals(), 0, 0, compilation.graph);
         for (Node node : compilation.graph.start().usages()) {
             if (node instanceof Local) {
                 Local local = (Local) node;

@@ -80,7 +80,7 @@ public abstract class Node {
         return graph;
     }
 
-    public <T> T lookup(Class<T> clazz) {
+    public <T extends Op> T lookup(Class<T> clazz) {
         return null;
     }
 
@@ -118,7 +118,7 @@ public abstract class Node {
 
     public void delete() {
         assert !isDeleted();
-        assert usages.size() == 0 && predecessors.size() == 0;
+        assert usages.size() == 0 && predecessors.size() == 0 : "usages: " + usages.size() + ", predecessors: " + predecessors().size();
         assert predecessorsIndex.size() == 0;
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);

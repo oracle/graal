@@ -34,13 +34,11 @@ public class Graph {
 
     private final ArrayList<Node> nodes;
     private final StartNode start;
-    private final EndNode end;
     int nextId;
 
     public Graph() {
         nodes = new ArrayList<Node>();
         start = new StartNode(this);
-        end = new EndNode(this);
     }
 
     public List<Node> getNodes() {
@@ -61,10 +59,6 @@ public class Graph {
         return start;
     }
 
-    public EndNode end() {
-        return end;
-    }
-
     public NodeBitMap createNodeBitMap() {
         return new NodeBitMap(this);
     }
@@ -73,7 +67,7 @@ public class Graph {
         return new NodeMap<T>(this);
     }
 
-    public void addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
+    public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
         Map<Node, Node> newNodes = new HashMap<Node, Node>();
         // create node duplicates
         for (Node node : nodes) {
@@ -131,5 +125,6 @@ public class Graph {
                 }
             }
         }
+        return newNodes;
     }
 }

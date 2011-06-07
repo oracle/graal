@@ -401,15 +401,6 @@ public final class BlockMap {
 
     private ExceptionBlock unwindBlock;
 
-    private ExceptionBlock makeUnwind() {
-        if (unwindBlock == null) {
-            unwindBlock = new ExceptionBlock();
-            unwindBlock.startBci = -1;
-            unwindBlock.endBci = -1;
-        }
-        return unwindBlock;
-    }
-
     private Block makeExceptionDispatch(List<RiExceptionHandler> handlers, int index) {
         RiExceptionHandler handler = handlers.get(index);
         if (handler.isCatchAll()) {
@@ -422,14 +413,10 @@ public final class BlockMap {
             block.endBci = -1;
             block.handler = handler;
             block.successors.add(blockMap[handler.handlerBCI()]);
-            Block next;
             if (index < handlers.size() - 1) {
-                next = makeExceptionDispatch(handlers, index + 1);
-            } else {
-                next = makeUnwind();
+                block.next = makeExceptionDispatch(handlers, index + 1);
+                block.successors.add(block.next);
             }
-            block.successors.add(next);
-            block.next = next;
             exceptionDispatch.put(handler, block);
         }
         return block;

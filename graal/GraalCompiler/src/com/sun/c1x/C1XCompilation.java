@@ -25,13 +25,12 @@ package com.sun.c1x;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
 import com.oracle.max.asm.*;
 import com.sun.c1x.alloc.*;
 import com.sun.c1x.asm.*;
 import com.sun.c1x.debug.*;
 import com.sun.c1x.gen.*;
-import com.sun.c1x.gen.LIRGenerator.*;
+import com.sun.c1x.gen.LIRGenerator.DeoptimizationStub;
 import com.sun.c1x.graph.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
@@ -56,7 +55,7 @@ public final class C1XCompilation {
     public final CiAssumptions assumptions = new CiAssumptions();
     public final FrameState placeholderState;
 
-    public Graph graph = new Graph();
+    public CompilerGraph graph = new CompilerGraph();
 
     private boolean hasExceptionHandlers;
     private final C1XCompilation parent;
@@ -96,7 +95,7 @@ public final class C1XCompilation {
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
-        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(0, 0, 0, 0, graph) : null;
+        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(method, 0, 0, 0, 0, graph) : null;
 
         if (compiler.isObserved()) {
             compiler.fireCompilationStarted(new CompilationEvent(this));

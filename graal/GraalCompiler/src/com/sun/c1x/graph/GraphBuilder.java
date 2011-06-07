@@ -61,20 +61,29 @@ public final class GraphBuilder {
      */
     public static final int TRACELEVEL_STATE = 2;
 
-    private final IR ir;
     private final C1XCompilation compilation;
+    private final CompilerGraph graph;
+
     private final CiStatistics stats;
+    private final RiRuntime runtime;
+    private final RiMethod method;
+    private final RiConstantPool constantPool;
 
     private final BytecodeStream stream;           // the bytecode stream
+    private final LogStream log;
+    private final FrameStateBuilder frameState;          // the current execution state
+
     // bci-to-block mapping
     private Block[] blockFromBci;
     private ArrayList<Block> blockList;
 
-    private Block syncBlock;
+    private int nextBlockNumber;
+
+    private Value methodSynchronizedObject;
     private CiExceptionHandler syncHandler;
 
-    // the constant pool
-    private final RiConstantPool constantPool;
+    private Block unwindBlock;
+    private Block returnBlock;
 
     // the worklist of blocks, sorted by depth first number
     private final PriorityQueue<Block> workList = new PriorityQueue<Block>(10, new Comparator<Block>() {
@@ -83,14 +92,11 @@ public final class GraphBuilder {
         }
     });
 
-    private FrameStateBuilder frameState;          // the current execution state
     private Instruction lastInstr;                 // the last instruction added
 
-    private final LogStream log;
+    private final Set<Block> blocksOnWorklist = new HashSet<Block>();
+    private final Set<Block> blocksVisited = new HashSet<Block>();
 
-    private Value rootMethodSynchronizedObject;
-
-    private final Graph graph;
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -99,15 +105,18 @@ public final class GraphBuilder {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilder(C1XCompilation compilation, IR ir, Graph graph) {
+    public GraphBuilder(C1XCompilation compilation, RiMethod method, CompilerGraph graph) {
         this.compilation = compilation;
-        this.ir = ir;
-        this.stats = compilation.stats;
-        log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
-        stream = new BytecodeStream(compilation.method.code());
-        constantPool = compilation.runtime.getConstantPool(compilation.method);
         this.graph = graph;
-        this.frameState = new FrameStateBuilder(compilation.method, graph);
+
+        this.runtime = compilation.runtime;
+        this.method = method;
+        this.stats = compilation.stats;
+        this.log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
+        this.stream = new BytecodeStream(method.code());
+
+        this.constantPool = runtime.getConstantPool(method);
+        this.frameState = new FrameStateBuilder(method, graph);
     }
 
     /**
@@ -115,20 +124,18 @@ public final class GraphBuilder {
      * @param scope the top IRScope
      */
     public void build() {
-        RiMethod rootMethod = compilation.method;
-
         if (log != null) {
             log.println();
-            log.println("Compiling " + compilation.method);
+            log.println("Compiling " + method);
         }
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
-        BlockMap blockMap = compilation.getBlockMap(rootMethod);
+        BlockMap blockMap = compilation.getBlockMap(method);
 
         blockList = new ArrayList<Block>(blockMap.blocks);
-        blockFromBci = new Block[rootMethod.code().length];
+        blockFromBci = new Block[method.code().length];
         for (int i = 0; i < blockList.size(); i++) {
-            int blockID = ir.nextBlockNumber();
+            int blockID = nextBlockNumber();
             assert blockID == i;
             Block block = blockList.get(i);
             if (block.startBci >= 0) {
@@ -142,18 +149,15 @@ public final class GraphBuilder {
         lastInstr = createTarget(startBlock, frameState);
         graph.start().setStart(lastInstr);
 
-        if (isSynchronized(rootMethod.accessFlags())) {
+        if (isSynchronized(method.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
-            rootMethodSynchronizedObject = synchronizedObject(frameState, compilation.method);
-            genMonitorEnter(rootMethodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
+            methodSynchronizedObject = synchronizedObject(frameState, method);
+            genMonitorEnter(methodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
             // 4A.2 finish the start block
             finishStartBlock(startBlock);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
-            syncBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
-            markOnWorkList(syncBlock);
-
-            syncHandler = new CiExceptionHandler(0, rootMethod.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
+            syncHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
         } else {
             // 4B.1 simply finish the start block
             finishStartBlock(startBlock);
@@ -165,11 +169,7 @@ public final class GraphBuilder {
         addToWorkList(blockFromBci[0]);
         iterateAllBlocks();
 
-        if (syncBlock != null && syncBlock.firstInstruction != null) {
-            // generate unlocking code if the exception handler is reachable
-            fillSyncHandler(rootMethodSynchronizedObject, syncBlock);
-        }
-
+        // remove Placeholders
         for (Node n : graph.getNodes()) {
             if (n instanceof Placeholder) {
                 Placeholder p = (Placeholder) n;
@@ -181,21 +181,13 @@ public final class GraphBuilder {
             }
         }
 
-        for (Node n : graph.getNodes()) {
-            assert !(n instanceof Placeholder);
-        }
-
-
+        // remove FrameStates
         for (Node n : graph.getNodes()) {
             if (n instanceof FrameState) {
                 boolean delete = false;
                 if (n.usages().size() == 0 && n.predecessors().size() == 0) {
                     delete = true;
                 }
-//                if (n.predecessors().size() == 0 && n.usages().size() == 1 && n.usages().get(0) instanceof BlockBegin) {
-//                    n.usages().get(0).inputs().replace(n, null);
-//                    delete = true;
-//                }
                 if (delete) {
                     n.delete();
                 }
@@ -203,15 +195,40 @@ public final class GraphBuilder {
         }
     }
 
+    private int nextBlockNumber() {
+        stats.blockCount++;
+        return nextBlockNumber++;
+    }
+
     private Block nextBlock(int bci) {
         Block block = new Block();
         block.startBci = bci;
         block.endBci = bci;
-        block.blockID = ir.nextBlockNumber();
+        block.blockID = nextBlockNumber();
         return block;
     }
 
-    private Set<Block> blocksOnWorklist = new HashSet<Block>();
+    private Block unwindBlock() {
+        if (unwindBlock == null) {
+            unwindBlock = new Block();
+            unwindBlock.startBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            unwindBlock.endBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            unwindBlock.blockID = nextBlockNumber();
+            addToWorkList(unwindBlock);
+        }
+        return unwindBlock;
+    }
+
+    private Block returnBlock() {
+        if (returnBlock == null) {
+            returnBlock = new Block();
+            returnBlock.startBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            returnBlock.endBci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            returnBlock.blockID = nextBlockNumber();
+            addToWorkList(returnBlock);
+        }
+        return returnBlock;
+    }
 
     private void markOnWorkList(Block block) {
         blocksOnWorklist.add(block);
@@ -220,8 +237,6 @@ public final class GraphBuilder {
     private boolean isOnWorkList(Block block) {
         return blocksOnWorklist.contains(block);
     }
-
-    private Set<Block> blocksVisited = new HashSet<Block>();
 
     private void markVisited(Block block) {
         blocksVisited.add(block);
@@ -310,10 +325,6 @@ public final class GraphBuilder {
         }
     }
 
-    public RiMethod method() {
-        return compilation.method;
-    }
-
     public BytecodeStream stream() {
         return stream;
     }
@@ -342,7 +353,7 @@ public final class GraphBuilder {
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         RiExceptionHandler firstHandler = null;
-        RiExceptionHandler[] exceptionHandlers = compilation.method.exceptionHandlers();
+        RiExceptionHandler[] exceptionHandlers = method.exceptionHandlers();
         // join with all potential exception handlers
         if (exceptionHandlers != null) {
             for (RiExceptionHandler handler : exceptionHandlers) {
@@ -376,7 +387,7 @@ public final class GraphBuilder {
                 assert isCatchAll(firstHandler);
                 int handlerBCI = firstHandler.handlerBCI();
                 if (handlerBCI == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
-                    dispatchBlock = syncBlock;
+                    dispatchBlock = unwindBlock();
                 } else {
                     dispatchBlock = blockFromBci[handlerBCI];
                 }
@@ -404,7 +415,7 @@ public final class GraphBuilder {
     }
 
     private void genLoadConstant(int cpi) {
-        Object con = constantPool().lookupConstant(cpi);
+        Object con = constantPool.lookupConstant(cpi);
 
         if (con instanceof RiType) {
             // this is a load of class constant which might be unresolved
@@ -532,7 +543,7 @@ public final class GraphBuilder {
     private void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
         Value yValue = frameState.pop(y);
         Value xValue = frameState.pop(x);
-        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method().accessFlags()), canTrap, graph));
+        Value result1 = append(new ArithmeticOp(opcode, result, xValue, yValue, isStrict(method.accessFlags()), canTrap, graph));
         frameState.push(result, result1);
     }
 
@@ -571,7 +582,7 @@ public final class GraphBuilder {
         int delta = stream().readIncrement();
         Value x = frameState.localAt(index);
         Value y = append(Constant.forInt(delta, graph));
-        frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method().accessFlags()), false, graph)));
+        frameState.storeLocal(index, append(new ArithmeticOp(IADD, CiKind.Int, x, y, isStrict(method.accessFlags()), false, graph)));
     }
 
     private void genGoto(int fromBCI, int toBCI) {
@@ -610,16 +621,20 @@ public final class GraphBuilder {
     private void genThrow(int bci) {
         Value exception = frameState.apop();
         append(new NullCheck(exception, graph));
+
         Instruction entry = handleException(exception, bci);
-        if (entry == null) {
-            entry = new Unwind(exception, graph.end(), graph);
+        if (entry != null) {
+            append(entry);
+        } else {
+            frameState.clearStack();
+            frameState.apush(exception);
+            appendGoto(createTarget(unwindBlock(), frameState));
         }
-        append(entry);
     }
 
     private void genCheckCast() {
         int cpi = stream().readCPI();
-        RiType type = constantPool().lookupType(cpi, CHECKCAST);
+        RiType type = constantPool.lookupType(cpi, CHECKCAST);
         boolean isInitialized = type.isResolved();
         Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
@@ -632,7 +647,7 @@ public final class GraphBuilder {
 
     private void genInstanceOf() {
         int cpi = stream().readCPI();
-        RiType type = constantPool().lookupType(cpi, INSTANCEOF);
+        RiType type = constantPool.lookupType(cpi, INSTANCEOF);
         boolean isInitialized = type.isResolved();
         Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
@@ -644,9 +659,9 @@ public final class GraphBuilder {
     }
 
     void genNewInstance(int cpi) {
-        RiType type = constantPool().lookupType(cpi, NEW);
+        RiType type = constantPool.lookupType(cpi, NEW);
         if (type.isResolved()) {
-            NewInstance n = new NewInstance(type, cpi, constantPool(), graph);
+            NewInstance n = new NewInstance(type, cpi, constantPool, graph);
             frameState.apush(append(n));
         } else {
             append(new Deoptimize(graph));
@@ -656,13 +671,13 @@ public final class GraphBuilder {
 
     private void genNewTypeArray(int typeCode) {
         CiKind kind = CiKind.fromArrayTypeCode(typeCode);
-        RiType elementType = compilation.runtime.asRiType(kind);
+        RiType elementType = runtime.asRiType(kind);
         NewTypeArray nta = new NewTypeArray(frameState.ipop(), elementType, graph);
         frameState.apush(append(nta));
     }
 
     private void genNewObjectArray(int cpi) {
-        RiType type = constantPool().lookupType(cpi, ANEWARRAY);
+        RiType type = constantPool.lookupType(cpi, ANEWARRAY);
         Value length = frameState.ipop();
         if (type.isResolved()) {
             NewArray n = new NewObjectArray(type, length, graph);
@@ -675,14 +690,14 @@ public final class GraphBuilder {
     }
 
     private void genNewMultiArray(int cpi) {
-        RiType type = constantPool().lookupType(cpi, MULTIANEWARRAY);
+        RiType type = constantPool.lookupType(cpi, MULTIANEWARRAY);
         int rank = stream().readUByte(bci() + 3);
         Value[] dims = new Value[rank];
         for (int i = rank - 1; i >= 0; i--) {
             dims[i] = frameState.ipop();
         }
         if (type.isResolved()) {
-            NewArray n = new NewMultiArray(type, dims, cpi, constantPool(), graph);
+            NewArray n = new NewMultiArray(type, dims, cpi, constantPool, graph);
             frameState.apush(append(n));
         } else {
             append(new Deoptimize(graph));
@@ -831,7 +846,7 @@ public final class GraphBuilder {
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
-        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(compilation.method.holder()), graph);
+        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
         Value result = appendWithBCI(invoke);
         invoke.setExceptionEdge(handleException(null, bci()));
         frameState.pushReturn(resultType, result);
@@ -843,7 +858,7 @@ public final class GraphBuilder {
             exact = receiver.exactType();
             if (exact == null) {
                 if (receiver.isConstant()) {
-                    exact = compilation.runtime.getTypeOf(receiver.asConstant());
+                    exact = runtime.getTypeOf(receiver.asConstant());
                 }
                 if (exact == null) {
                     RiType declared = receiver.declaredType();
@@ -864,7 +879,7 @@ public final class GraphBuilder {
         }
         if (exactType == null && receiver instanceof Local && ((Local) receiver).index() == 0) {
             // the exact type isn't known, but the receiver is parameter 0 => use holder
-            receiverType = compilation.method.holder();
+            receiverType = method.holder();
             exactType = receiverType.exactType();
         }
         boolean needsCheck = true;
@@ -894,35 +909,23 @@ public final class GraphBuilder {
     }
 
     private void genReturn(Value x) {
-        if (method().isConstructor() && method().holder().superType() == null) {
-            callRegisterFinalizer();
-        }
-
         frameState.clearStack();
-        if (Modifier.isSynchronized(method().accessFlags())) {
-            // unlock before exiting the method
-            int lockNumber = frameState.locksSize() - 1;
-            MonitorAddress lockAddress = null;
-            if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-                lockAddress = new MonitorAddress(lockNumber, graph);
-                append(lockAddress);
-            }
-            append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
-            frameState.unlock();
+        if (x != null) {
+            frameState.push(x.kind, x);
         }
-        append(new Return(x, graph));
+        appendGoto(createTarget(returnBlock(), frameState));
     }
 
     private void genMonitorEnter(Value x, int bci) {
         int lockNumber = frameState.locksSize();
         MonitorAddress lockAddress = null;
-        if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
+        if (runtime.sizeOfBasicObjectLock() != 0) {
             lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
         MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, graph);
         appendWithBCI(monitorEnter);
-        frameState.lock(ir, x, lockNumber + 1);
+        frameState.lock(x);
         if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
             monitorEnter.setStateAfter(frameState.create(0));
         }
@@ -934,7 +937,7 @@ public final class GraphBuilder {
             throw new CiBailout("monitor stack underflow");
         }
         MonitorAddress lockAddress = null;
-        if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
+        if (runtime.sizeOfBasicObjectLock() != 0) {
             lockAddress = new MonitorAddress(lockNumber, graph);
             append(lockAddress);
         }
@@ -1067,27 +1070,6 @@ public final class GraphBuilder {
         }
     }
 
-    private void fillSyncHandler(Value lock, Block syncHandler) {
-        lastInstr = syncHandler.firstInstruction;
-        while (lastInstr.next() != null) {
-            // go forward to the end of the block
-            lastInstr = lastInstr.next();
-        }
-
-        frameState.initializeFrom(((StateSplit) syncHandler.firstInstruction).stateBefore());
-
-        assert lock != null;
-        assert frameState.locksSize() > 0 && frameState.lockAt(frameState.locksSize() - 1) == lock;
-
-        // Exit the monitor and unwind the stack.
-        genMonitorExit(lock);
-        append(new Unwind(frameState.apop(), graph.end(), graph));
-
-        // The sync handler is always the last thing to add => we can clear the frameState.
-        frameState = null;
-        lastInstr = null;
-    }
-
     private void iterateAllBlocks() {
         Block block;
         while ((block = removeFromWorkList()) != null) {
@@ -1105,7 +1087,11 @@ public final class GraphBuilder {
                 lastInstr = block.firstInstruction;
                 assert block.firstInstruction.next() == null : "instructions already appended at block " + block.blockID;
 
-                if (block instanceof ExceptionBlock) {
+                if (block == returnBlock) {
+                    createReturnBlock(block);
+                } else if (block == unwindBlock) {
+                    createUnwindBlock(block);
+                } else if (block instanceof ExceptionBlock) {
                     createExceptionDispatch((ExceptionBlock) block);
                 } else {
                     iterateBytecodesForBlock(block);
@@ -1136,33 +1122,44 @@ public final class GraphBuilder {
         }
     }
 
+    private void createUnwindBlock(Block block) {
+        if (Modifier.isSynchronized(method.accessFlags())) {
+            genMonitorExit(methodSynchronizedObject);
+        }
+        append(graph.createUnwind(frameState.apop()));
+    }
+
+    private void createReturnBlock(Block block) {
+        if (method.isConstructor() && method.holder().superType() == null) {
+            callRegisterFinalizer();
+        }
+        CiKind returnKind = method.signature().returnKind().stackKind();
+        Value x = returnKind == CiKind.Void ? null : frameState.pop(returnKind);
+        assert frameState.stackSize() == 0;
+
+        if (Modifier.isSynchronized(method.accessFlags())) {
+            genMonitorExit(methodSynchronizedObject);
+        }
+        append(graph.createReturn(x));
+    }
+
     private void createExceptionDispatch(ExceptionBlock block) {
         if (block.handler == null) {
             assert frameState.stackSize() == 1 : "only exception object expected on stack, actual size: " + frameState.stackSize();
-            if (Modifier.isSynchronized(method().accessFlags())) {
-                // unlock before exiting the method
-                int lockNumber = frameState.locksSize() - 1;
-                MonitorAddress lockAddress = null;
-                if (compilation.runtime.sizeOfBasicObjectLock() != 0) {
-                    lockAddress = new MonitorAddress(lockNumber, graph);
-                    append(lockAddress);
-                }
-                append(new MonitorExit(rootMethodSynchronizedObject, lockAddress, lockNumber, graph));
-                frameState.unlock();
-            }
-            append(new Unwind(frameState.apop(), graph.end(), graph));
+            createUnwindBlock(block);
         } else {
             assert frameState.stackSize() == 1;
 
+            Block nextBlock = block.next == null ? unwindBlock() : block.next;
             if (block.handler.catchType().isResolved()) {
                 Instruction catchSuccessor = createTarget(blockFromBci[block.handler.handlerBCI()], frameState);
-                Instruction nextDispatch = createTarget(block.next, frameState);
+                Instruction nextDispatch = createTarget(nextBlock, frameState);
                 append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
             } else {
                 Deoptimize deopt = new Deoptimize(graph);
                 deopt.setMessage("unresolved " + block.handler.catchType().name());
                 append(deopt);
-                Instruction nextDispatch = createTarget(block.next, frameState);
+                Instruction nextDispatch = createTarget(nextBlock, frameState);
                 appendGoto(nextDispatch);
             }
         }
@@ -1186,8 +1183,7 @@ public final class GraphBuilder {
             if (nextBlock != null && nextBlock != block) {
                 assert !nextBlock.isExceptionEntry;
                 // we fell through to the next block, add a goto and break
-                Instruction next = createTarget(nextBlock, frameState);
-                appendGoto(next);
+                appendGoto(createTarget(nextBlock, frameState));
                 break;
             }
             // read the opcode
@@ -1215,7 +1211,7 @@ public final class GraphBuilder {
 
     private void traceState() {
         if (C1XOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
-            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method()));
+            log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
             for (int i = 0; i < frameState.localsSize(); ++i) {
                 Value value = frameState.localAt(i);
                 log.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
@@ -1414,14 +1410,14 @@ public final class GraphBuilder {
             case DRETURN        : genReturn(frameState.dpop()); break;
             case ARETURN        : genReturn(frameState.apop()); break;
             case RETURN         : genReturn(null  ); break;
-            case GETSTATIC      : cpi = stream.readCPI(); genGetStatic(cpi, constantPool().lookupField(cpi, opcode)); break;
-            case PUTSTATIC      : cpi = stream.readCPI(); genPutStatic(cpi, constantPool().lookupField(cpi, opcode)); break;
-            case GETFIELD       : cpi = stream.readCPI(); genGetField(cpi, constantPool().lookupField(cpi, opcode)); break;
-            case PUTFIELD       : cpi = stream.readCPI(); genPutField(cpi, constantPool().lookupField(cpi, opcode)); break;
-            case INVOKEVIRTUAL  : cpi = stream.readCPI(); genInvokeVirtual(constantPool().lookupMethod(cpi, opcode), cpi, constantPool()); break;
-            case INVOKESPECIAL  : cpi = stream.readCPI(); genInvokeSpecial(constantPool().lookupMethod(cpi, opcode), null, cpi, constantPool()); break;
-            case INVOKESTATIC   : cpi = stream.readCPI(); genInvokeStatic(constantPool().lookupMethod(cpi, opcode), cpi, constantPool()); break;
-            case INVOKEINTERFACE: cpi = stream.readCPI(); genInvokeInterface(constantPool().lookupMethod(cpi, opcode), cpi, constantPool()); break;
+            case GETSTATIC      : cpi = stream.readCPI(); genGetStatic(cpi, constantPool.lookupField(cpi, opcode)); break;
+            case PUTSTATIC      : cpi = stream.readCPI(); genPutStatic(cpi, constantPool.lookupField(cpi, opcode)); break;
+            case GETFIELD       : cpi = stream.readCPI(); genGetField(cpi, constantPool.lookupField(cpi, opcode)); break;
+            case PUTFIELD       : cpi = stream.readCPI(); genPutField(cpi, constantPool.lookupField(cpi, opcode)); break;
+            case INVOKEVIRTUAL  : cpi = stream.readCPI(); genInvokeVirtual(constantPool.lookupMethod(cpi, opcode), cpi, constantPool); break;
+            case INVOKESPECIAL  : cpi = stream.readCPI(); genInvokeSpecial(constantPool.lookupMethod(cpi, opcode), null, cpi, constantPool); break;
+            case INVOKESTATIC   : cpi = stream.readCPI(); genInvokeStatic(constantPool.lookupMethod(cpi, opcode), cpi, constantPool); break;
+            case INVOKEINTERFACE: cpi = stream.readCPI(); genInvokeInterface(constantPool.lookupMethod(cpi, opcode), cpi, constantPool); break;
             case NEW            : genNewInstance(stream.readCPI()); break;
             case NEWARRAY       : genNewTypeArray(stream.readLocalIndex()); break;
             case ANEWARRAY      : genNewObjectArray(stream.readCPI()); break;
@@ -1463,10 +1459,6 @@ public final class GraphBuilder {
 
     private void genArrayLength() {
         frameState.ipush(append(new ArrayLength(frameState.apop(), graph)));
-    }
-
-    private RiConstantPool constantPool() {
-        return constantPool;
     }
 
     /**

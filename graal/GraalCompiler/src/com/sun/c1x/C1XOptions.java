@@ -90,6 +90,7 @@ public final class C1XOptions {
     public static boolean TraceRelocation                    = ____;
     public static boolean TraceLIRVisit                      = ____;
     public static boolean TraceAssembler                     = ____;
+    public static boolean TraceInlining                      = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean QuietBailout                       = ____;
 

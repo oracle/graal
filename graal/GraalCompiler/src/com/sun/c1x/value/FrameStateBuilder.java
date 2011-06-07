@@ -28,7 +28,6 @@ import static java.lang.reflect.Modifier.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.graph.*;
 import com.sun.c1x.ir.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -44,7 +43,10 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     private int stackIndex;
 
+    private final RiMethod method;
+
     public FrameStateBuilder(RiMethod method, Graph graph) {
+        this.method = method;
         this.graph = graph;
         this.locals = new Value[method.maxLocals()];
         this.stack = new Value[method.maxStackSize()];
@@ -97,12 +99,14 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     public FrameState create(int bci) {
-        return new FrameState(bci, locals, stack, stackIndex, locks, graph);
+        return new FrameState(method, bci, locals, stack, stackIndex, locks, graph);
     }
 
     @Override
     public FrameState duplicateWithEmptyStack(int bci) {
-        return new FrameState(bci, locals, new Value[0], 0, locks, graph);
+        FrameState frameState = new FrameState(method, bci, locals, new Value[0], 0, locks, graph);
+        frameState.setOuterFrameState(outerFrameState());
+        return frameState;
     }
 
     /**
@@ -359,9 +363,8 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param scope the IRScope in which this locking operation occurs
      * @param obj the object being locked
      */
-    public void lock(IR ir, Value obj, int totalNumberOfLocks) {
+    public void lock(Value obj) {
         locks.add(obj);
-        ir.updateMaxLocks(totalNumberOfLocks);
     }
 
     /**
@@ -496,4 +499,8 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
     }
 
+    @Override
+    public FrameState outerFrameState() {
+        return null;
+    }
 }
