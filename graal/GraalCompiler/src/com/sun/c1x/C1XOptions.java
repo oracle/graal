@@ -39,7 +39,7 @@ public final class C1XOptions {
     // Checkstyle: resume
 
     // inlining settings
-    public static boolean Inline                             = true;
+    public static boolean Inline                             = ____;
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
