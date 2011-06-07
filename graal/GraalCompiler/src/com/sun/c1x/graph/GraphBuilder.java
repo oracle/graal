@@ -532,18 +532,36 @@ public final class GraphBuilder {
 
     }
 
-    private void genArithmeticOp(CiKind kind, int opcode) {
-        genArithmeticOp(kind, opcode, false);
-    }
-
-    private void genArithmeticOp(CiKind kind, int opcode, boolean canTrap) {
-        genArithmeticOp(kind, opcode, kind, kind, canTrap);
-    }
-
-    private void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
-        Value yValue = frameState.pop(y);
-        Value xValue = frameState.pop(x);
-        Value result1 = append(new Arithmetic(opcode, result, xValue, yValue, isStrict(method.accessFlags()), canTrap, graph));
+    private void genArithmeticOp(CiKind result, int opcode) {
+        Value y = frameState.pop(result);
+        Value x = frameState.pop(result);
+        boolean isStrictFP = isStrict(method.accessFlags());
+        Arithmetic v;
+        switch(opcode){
+            case IADD:
+            case LADD: v = new IntegerAdd(result, x, y, graph); break;
+            case FADD:
+            case DADD: v = new FloatAdd(result, x, y, isStrictFP, graph); break;
+            case ISUB:
+            case LSUB: v = new IntegerSub(result, x, y, graph); break;
+            case FSUB:
+            case DSUB: v = new FloatSub(result, x, y, isStrictFP, graph); break;
+            case IMUL:
+            case LMUL: v = new IntegerMul(result, x, y, graph); break;
+            case FMUL:
+            case DMUL: v = new FloatMul(result, x, y, isStrictFP, graph); break;
+            case IDIV:
+            case LDIV: v = new IntegerDiv(result, x, y, graph); break;
+            case FDIV:
+            case DDIV: v = new FloatDiv(result, x, y, isStrictFP, graph); break;
+            case IREM:
+            case LREM: v = new IntegerRem(result, x, y, graph); break;
+            case FREM:
+            case DREM: v = new FloatRem(result, x, y, isStrictFP, graph); break;
+            default:
+                throw new CiBailout("should not reach");
+        }
+        Value result1 = append(v);
         frameState.push(result, result1);
     }
 
@@ -604,7 +622,7 @@ public final class GraphBuilder {
         int delta = stream().readIncrement();
         Value x = frameState.localAt(index);
         Value y = append(Constant.forInt(delta, graph));
-        frameState.storeLocal(index, append(new Arithmetic(IADD, CiKind.Int, x, y, isStrict(method.accessFlags()), false, graph)));
+        frameState.storeLocal(index, append(new IntegerAdd(CiKind.Int, x, y, graph)));
     }
 
     private void genGoto(int fromBCI, int toBCI) {
@@ -1354,12 +1372,12 @@ public final class GraphBuilder {
             case ISUB           : // fall through
             case IMUL           : genArithmeticOp(CiKind.Int, opcode); break;
             case IDIV           : // fall through
-            case IREM           : genArithmeticOp(CiKind.Int, opcode, true); break;
+            case IREM           : genArithmeticOp(CiKind.Int, opcode); break;
             case LADD           : // fall through
             case LSUB           : // fall through
             case LMUL           : genArithmeticOp(CiKind.Long, opcode); break;
             case LDIV           : // fall through
-            case LREM           : genArithmeticOp(CiKind.Long, opcode, true); break;
+            case LREM           : genArithmeticOp(CiKind.Long, opcode); break;
             case FADD           : // fall through
             case FSUB           : // fall through
             case FMUL           : // fall through

@@ -30,12 +30,11 @@ import com.sun.cri.ci.*;
 /**
  * The {@code ArithmeticOp} class represents arithmetic operations such as addition, subtraction, etc.
  */
-public final class Arithmetic extends Binary {
+public abstract class Arithmetic extends Binary {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private final boolean canTrap;
     private final boolean isStrictFP;
 
     /**
@@ -47,10 +46,9 @@ public final class Arithmetic extends Binary {
      * @param isStrictFP indicates this operation has strict rounding semantics
      * @param stateBefore the state for instructions that may trap
      */
-    public Arithmetic(int opcode, CiKind kind, Value x, Value y, boolean isStrictFP, boolean canTrap, Graph graph) {
+    public Arithmetic(CiKind kind, int opcode, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.isStrictFP = isStrictFP;
-        this.canTrap = canTrap;
     }
 
     /**
@@ -72,17 +70,9 @@ public final class Arithmetic extends Binary {
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).print(' ').print(Bytecodes.operator(opcode)).print(' ').print(y());
+        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
     }
 
     @Override
-    public String shortName() {
-        return Bytecodes.operator(opcode);
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        Arithmetic x = new Arithmetic(opcode, kind, null, null, isStrictFP, canTrap, into);
-        return x;
-    }
+    public abstract String shortName();
 }
