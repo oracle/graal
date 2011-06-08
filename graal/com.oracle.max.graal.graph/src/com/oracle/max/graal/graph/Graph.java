@@ -54,6 +54,10 @@ public class Graph {
         return deletedNodeCount;
     }
 
+    public int getNodeCount() {
+        return nodes.size() - getDeletedNodeCount();
+    }
+
     public List<Node> getNodes() {
         return Collections.unmodifiableList(nodes);
     }

@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.Map.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 
@@ -32,7 +33,7 @@ import com.oracle.max.graal.compiler.debug.*;
  * This class contains a number of fields that collect metrics about compilation, particularly
  * the number of times certain optimizations are performed.
  */
-public class GraalMetrics {
+public final class GraalMetrics {
     public static int CompiledMethods;
     public static int TargetMethods;
     public static int LocalValueNumberHits;
@@ -66,6 +67,33 @@ public class GraalMetrics {
     public static void print() {
         printClassFields(GraalMetrics.class);
 
+        for (Entry<String, GraalMetrics> m : map.entrySet()) {
+            printField(m.getKey(), m.getValue().value);
+        }
+    }
+
+    private static LinkedHashMap<String, GraalMetrics> map = new LinkedHashMap<String, GraalMetrics>();
+
+    public static GraalMetrics get(String name) {
+        if (!map.containsKey(name)) {
+            map.put(name, new GraalMetrics(name));
+        }
+        return map.get(name);
+    }
+
+    private GraalMetrics(String name) {
+        this.name = name;
+    }
+
+    private int value;
+    private String name;
+
+    public void increment() {
+        increment(1);
+    }
+
+    public void increment(int val) {
+        value += val;
     }
 
     public static void printClassFields(Class<?> javaClass) {
