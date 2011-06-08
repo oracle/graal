@@ -552,14 +552,36 @@ public final class GraphBuilderPhase extends Phase {
         genArithmeticOp(kind, opcode, false);
     }
 
-    private void genArithmeticOp(CiKind kind, int opcode, boolean canTrap) {
-        genArithmeticOp(kind, opcode, kind, kind, canTrap);
-    }
-
-    private void genArithmeticOp(CiKind result, int opcode, CiKind x, CiKind y, boolean canTrap) {
-        Value yValue = frameState.pop(y);
-        Value xValue = frameState.pop(x);
-        Value result1 = append(new Arithmetic(opcode, result, xValue, yValue, isStrict(method.accessFlags()), canTrap, graph));
+    private void genArithmeticOp(CiKind result, int opcode, boolean canTrap) {
+        Value y = frameState.pop(result);
+        Value x = frameState.pop(result);
+        boolean isStrictFP = isStrict(method.accessFlags());
+        Arithmetic v;
+        switch(opcode){
+            case IADD:
+            case LADD: v = new IntegerAdd(result, x, y, graph); break;
+            case FADD:
+            case DADD: v = new FloatAdd(result, x, y, isStrictFP, graph); break;
+            case ISUB:
+            case LSUB: v = new IntegerSub(result, x, y, graph); break;
+            case FSUB:
+            case DSUB: v = new FloatSub(result, x, y, isStrictFP, graph); break;
+            case IMUL:
+            case LMUL: v = new IntegerMul(result, x, y, graph); break;
+            case FMUL:
+            case DMUL: v = new FloatMul(result, x, y, isStrictFP, graph); break;
+            case IDIV:
+            case LDIV: v = new IntegerDiv(result, x, y, graph); break;
+            case FDIV:
+            case DDIV: v = new FloatDiv(result, x, y, isStrictFP, graph); break;
+            case IREM:
+            case LREM: v = new IntegerRem(result, x, y, graph); break;
+            case FREM:
+            case DREM: v = new FloatRem(result, x, y, isStrictFP, graph); break;
+            default:
+                throw new CiBailout("should not reach");
+        }
+        Value result1 = append(v);
         if (canTrap) {
             append(new ValueAnchor(result1, graph));
         }
@@ -623,7 +645,7 @@ public final class GraphBuilderPhase extends Phase {
         int delta = stream().readIncrement();
         Value x = frameState.localAt(index);
         Value y = append(Constant.forInt(delta, graph));
-        frameState.storeLocal(index, append(new Arithmetic(IADD, CiKind.Int, x, y, isStrict(method.accessFlags()), false, graph)));
+        frameState.storeLocal(index, append(new IntegerAdd(CiKind.Int, x, y, graph)));
     }
 
     private void genGoto(int fromBCI, int toBCI) {
