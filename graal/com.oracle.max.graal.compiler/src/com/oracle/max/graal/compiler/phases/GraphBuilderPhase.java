@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.graph;
+package com.oracle.max.graal.compiler.phases;
 
 import static com.sun.cri.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
@@ -30,6 +30,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.graph.BlockMap.*;
 import com.oracle.max.graal.compiler.graph.BlockMap.Block;
 import com.oracle.max.graal.compiler.ir.*;
@@ -47,7 +48,7 @@ import com.sun.cri.ri.RiType.*;
  * A number of optimizations may be performed during parsing of the bytecode, including value
  * numbering, inlining, constant folding, strength reduction, etc.
  */
-public final class GraphBuilder extends Phase {
+public final class GraphBuilderPhase extends Phase {
 
     /**
      * The minimum value to which {@link C1XOptions#TraceBytecodeParserLevel} must be set to trace
@@ -107,7 +108,7 @@ public final class GraphBuilder extends Phase {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilder(C1XCompilation compilation, RiMethod method, boolean createUnwind) {
+    public GraphBuilderPhase(C1XCompilation compilation, RiMethod method, boolean createUnwind) {
         this.compilation = compilation;
 
         this.runtime = compilation.runtime;

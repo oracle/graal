@@ -62,7 +62,6 @@ public final class C1XOptions {
     public static String  PrintFilter                        = null;
 
     // printing settings
-    public static boolean PrintHIR                           = ____;
     public static boolean PrintLIR                           = ____;
     public static boolean PrintCFGToFile                     = ____;
 

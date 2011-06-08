@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.graph;
+package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
@@ -28,7 +28,7 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 
 
-public class DeadCodeElimination extends Phase {
+public class DeadCodeEliminationPhase extends Phase {
 
     private NodeBitMap alive;
     private NodeWorklist worklist;

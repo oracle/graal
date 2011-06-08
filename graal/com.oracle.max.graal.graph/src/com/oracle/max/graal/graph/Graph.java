@@ -84,6 +84,7 @@ public class Graph {
         // create node duplicates
         for (Node node : nodes) {
             if (node != null && !replacements.containsKey(node)) {
+                assert node.graph != this;
                 Node newNode = node.copy(this);
                 assert newNode.getClass() == node.getClass();
                 newNodes.put(node, newNode);
