@@ -109,9 +109,10 @@ public class InliningPhase extends Phase {
                     methodCount.put(method, methodCount.get(method) + 1);
                 }
             }
+            ir.verifyAndPrint("After inlining iteration");
             DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
-            ir.verifyAndPrint("After inlining iteration");
+            ir.verifyAndPrint("After inlining iteration DCE");
 
             if (inliningSize > GraalOptions.MaximumInstructionCount) {
                 if (trace) {
@@ -199,6 +200,8 @@ public class InliningPhase extends Phase {
             parameters[0] = invoke.argument(0);
         }
 
+        invoke.inputs().clearAll();
+
         HashMap<Node, Node> replacements = new HashMap<Node, Node>();
         ArrayList<Node> nodes = new ArrayList<Node>();
         ArrayList<Node> frameStates = new ArrayList<Node>();
@@ -271,30 +274,17 @@ public class InliningPhase extends Phase {
             returnDuplicate.delete();
         }
 
-//        if (invoke.next() instanceof Merge) {
-//            ((Merge) invoke.next()).removePhiPredecessor(invoke);
-//        }
-//        invoke.successors().clearAll();
-        invoke.inputs().clearAll();
-        invoke.setExceptionEdge(null);
-//        invoke.delete();
-
-
         if (exceptionEdge != null) {
             if (unwindNode != null) {
                 assert unwindNode.predecessors().size() == 1;
                 assert exceptionEdge.successors().size() == 1;
                 ExceptionObject obj = (ExceptionObject) exceptionEdge;
 
+                Unwind unwindDuplicate = (Unwind) duplicates.get(unwindNode);
                 List<Node> usages = new ArrayList<Node>(obj.usages());
                 for (Node usage : usages) {
-                    if (replacements.containsKey(unwindNode.exception())) {
-                        usage.inputs().replace(obj, replacements.get(unwindNode.exception()));
-                    } else {
-                        usage.inputs().replace(obj, duplicates.get(unwindNode.exception()));
-                    }
+                    usage.inputs().replace(obj, unwindDuplicate.exception());
                 }
-                Node unwindDuplicate = duplicates.get(unwindNode);
                 unwindDuplicate.inputs().clearAll();
 
                 assert unwindDuplicate.predecessors().size() == 1;
@@ -303,9 +293,7 @@ public class InliningPhase extends Phase {
                 unwindPred.successors().setAndClear(index, obj, 0);
 
                 obj.inputs().clearAll();
-                obj.delete();
                 unwindDuplicate.delete();
-
             }
         }
 

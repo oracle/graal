@@ -30,14 +30,12 @@ import com.oracle.max.graal.graph.*;
 
 public class DeadCodeEliminationPhase extends Phase {
 
-    private NodeBitMap alive;
     private NodeFlood flood;
     private Graph graph;
 
     @Override
     protected void run(Graph graph) {
         this.graph = graph;
-        this.alive = graph.createNodeBitMap();
         this.flood = graph.createNodeFlood();
 
         flood.add(graph.start());
@@ -100,13 +98,17 @@ public class DeadCodeEliminationPhase extends Phase {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
-                    flood.add(input);
+                    if (!isCFG(input)) {
+                        flood.add(input);
+                    }
                 }
             }
         }
         for (Node current : flood) {
             for (Node input : current.inputs()) {
-                flood.add(input);
+                if (!isCFG(input)) {
+                    flood.add(input);
+                }
             }
         }
     }

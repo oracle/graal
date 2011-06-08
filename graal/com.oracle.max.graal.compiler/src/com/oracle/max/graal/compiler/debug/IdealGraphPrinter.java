@@ -135,8 +135,8 @@ public class IdealGraphPrinter {
             for (Block block : schedule.getBlocks()) {
                 printBlock(graph, block);
             }
-            printNoBlock();
         }
+        printNoBlock();
         stream.println("  </controlFlow>");
 
         stream.println(" </graph>");
@@ -163,14 +163,12 @@ public class IdealGraphPrinter {
                 }
                 stream.printf("    <p name='name'>%s</p>%n", escape(name));
             }
-            if (nodeToBlock != null) {
-                Block block = nodeToBlock.get(node);
-                if (block != null) {
-                    stream.printf("    <p name='block'>%d</p>%n", block.blockID());
-                } else {
-                    stream.printf("    <p name='block'>noBlock</p>%n");
-                    noBlockNodes.add(node);
-                }
+            Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
+            if (block != null) {
+                stream.printf("    <p name='block'>%d</p>%n", block.blockID());
+            } else {
+                stream.printf("    <p name='block'>noBlock</p>%n");
+                noBlockNodes.add(node);
             }
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();
@@ -220,35 +218,37 @@ public class IdealGraphPrinter {
         stream.printf("    <nodes>%n");
 
         ArrayList<Node> nodes = new ArrayList<Node>(block.getInstructions());
-        // if this is the first block: add all locals to this block
-        if (nodes.get(0) == graph.start()) {
-            for (Node node : graph.getNodes()) {
-                if (node instanceof Local) {
-                    nodes.add(node);
-                }
-            }
-        }
-        // add all framestates and phis to their blocks
-        for (Node node : block.getInstructions()) {
-            if (node instanceof Instruction && ((Instruction) node).stateAfter() != null) {
-                nodes.add(((Instruction) node).stateAfter());
-            }
-            if (node instanceof Merge) {
-                Merge merge = (Merge) node;
-                if (merge.stateBefore() != null) {
-                    nodes.add(merge.stateBefore());
-                }
-                for (Node usage : merge.usages()) {
-                    if (usage instanceof Phi) {
-                        nodes.add(usage);
+        if (nodes.size() > 0) {
+            // if this is the first block: add all locals to this block
+            if (nodes.get(0) == graph.start()) {
+                for (Node node : graph.getNodes()) {
+                    if (node instanceof Local) {
+                        nodes.add(node);
                     }
                 }
             }
-        }
+            // add all framestates and phis to their blocks
+            for (Node node : block.getInstructions()) {
+                if (node instanceof Instruction && ((Instruction) node).stateAfter() != null) {
+                    nodes.add(((Instruction) node).stateAfter());
+                }
+                if (node instanceof Merge) {
+                    Merge merge = (Merge) node;
+                    if (merge.stateBefore() != null) {
+                        nodes.add(merge.stateBefore());
+                    }
+                    for (Node usage : merge.usages()) {
+                        if (usage instanceof Phi) {
+                            nodes.add(usage);
+                        }
+                    }
+                }
+            }
 
-        for (Node node : nodes) {
-            if (!omittedClasses.contains(node.getClass())) {
-                stream.printf("     <node id='%d'/>%n", node.id());
+            for (Node node : nodes) {
+                if (!omittedClasses.contains(node.getClass())) {
+                    stream.printf("     <node id='%d'/>%n", node.id());
+                }
             }
         }
         stream.printf("    </nodes>%n");

@@ -214,7 +214,11 @@ public final class GraalCompilation {
             if (GraalOptions.BailoutOnException) {
                 return new CiResult(null, new CiBailout("Exception while compiling: " + method, t), stats);
             } else {
-                throw new RuntimeException(t);
+                if (t instanceof RuntimeException) {
+                    throw (RuntimeException) t;
+                } else {
+                    throw new RuntimeException(t);
+                }
             }
         } finally {
             if (compiler.isObserved()) {
