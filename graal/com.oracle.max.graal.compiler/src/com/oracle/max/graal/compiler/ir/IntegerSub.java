@@ -22,12 +22,14 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
 public final class IntegerSub extends IntegerArithmetic {
+    private static final IntegerSubCanonicalizerOp CANONICALIZER = new IntegerSubCanonicalizerOp();
 
     public IntegerSub(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.ISUB : Bytecodes.LSUB, x, y, graph);
@@ -41,5 +43,60 @@ public final class IntegerSub extends IntegerArithmetic {
     @Override
     public String shortName() {
         return "-";
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class IntegerSubCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            IntegerSub sub = (IntegerSub) node;
+            Value x = sub.x();
+            Value y = sub.y();
+            CiKind kind = sub.kind;
+            Graph graph = sub.graph();
+            if (x == y) {
+                if (kind == CiKind.Int) {
+                    return Constant.forInt(0, graph);
+                } else {
+                    assert kind == CiKind.Long;
+                    return Constant.forLong(0, graph);
+                }
+            }
+            if (x.isConstant() && y.isConstant()) {
+                if (kind == CiKind.Int) {
+                    return Constant.forInt(x.asConstant().asInt() - y.asConstant().asInt(), graph);
+                } else {
+                    assert kind == CiKind.Long;
+                    return Constant.forLong(x.asConstant().asLong() - y.asConstant().asLong(), graph);
+                }
+            } else if (y.isConstant()) {
+                if (kind == CiKind.Int) {
+                    int c = y.asConstant().asInt();
+                    if (c == 0) {
+                        return x;
+                    }
+                } else {
+                    assert kind == CiKind.Long;
+                    long c = y.asConstant().asLong();
+                    if (c == 0) {
+                        return x;
+                    }
+                }
+            } else if (x.isConstant()) {
+                long c = x.asConstant().asLong();
+                if (c == 0) {
+                    return new Negate(y, graph);
+                }
+            }
+            return sub;
+        }
     }
 }
