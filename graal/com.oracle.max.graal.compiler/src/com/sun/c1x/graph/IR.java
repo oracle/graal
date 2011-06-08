@@ -22,7 +22,6 @@
  */
 package com.sun.c1x.graph;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -34,8 +33,6 @@ import com.sun.c1x.ir.*;
 import com.sun.c1x.lir.*;
 import com.sun.c1x.observer.*;
 import com.sun.c1x.value.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * This class implements the overall container for the HIR (high-level IR) graph

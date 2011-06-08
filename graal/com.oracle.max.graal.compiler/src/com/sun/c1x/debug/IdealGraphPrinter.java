@@ -24,7 +24,7 @@ package com.sun.c1x.debug;
 
 import java.io.*;
 import java.util.*;
-import java.util.Map.Entry;
+import java.util.Map.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.max.graal.schedule.*;

@@ -23,7 +23,7 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.oracle.max.graal.opt.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.opt.CanonicalizerPhase.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
