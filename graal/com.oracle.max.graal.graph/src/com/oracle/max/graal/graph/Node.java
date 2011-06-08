@@ -42,7 +42,7 @@ public abstract class Node {
     final ArrayList<Integer> predecessorsIndex;
 
     public Node(int inputCount, int successorCount, Graph graph) {
-        assert graph != null;
+        assert graph != null : "cannot create a node for a null graph";
         this.graph = graph;
         this.id = graph.register(this);
         this.inputs = new NodeArray(this, inputCount);

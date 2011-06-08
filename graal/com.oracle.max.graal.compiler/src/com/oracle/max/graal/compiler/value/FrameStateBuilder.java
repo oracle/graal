@@ -46,6 +46,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     private final RiMethod method;
 
     public FrameStateBuilder(RiMethod method, Graph graph) {
+        assert graph != null;
         this.method = method;
         this.graph = graph;
         this.locals = new Value[method.maxLocals()];
