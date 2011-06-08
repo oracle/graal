@@ -38,10 +38,11 @@ public abstract class Shift extends Binary {
      * Creates a new shift operation.
      * @param opcode the opcode of the shift
      * @param x the first input value
-     * @param y the second input value
+     * @param s the second input value
      */
-    public Shift(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Shift(CiKind kind, int opcode, Value x, Value s, Graph graph) {
+        super(kind, opcode, x, s, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        assert x == null || x.kind == kind;
     }
 
     @Override

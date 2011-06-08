@@ -115,7 +115,7 @@ public abstract class Node {
     public boolean isDeleted() {
         return id == DeletedID;
     }
-    
+
     public void forceDelete() {
         for (Node n : usages) {
             n.inputs.silentRemove(this);

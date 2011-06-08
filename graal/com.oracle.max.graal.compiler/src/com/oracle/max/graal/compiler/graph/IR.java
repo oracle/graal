@@ -84,6 +84,7 @@ public class IR {
 
         if (C1XOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
+            verifyAndPrint("After Canonicalization");
         }
 
         new SplitCriticalEdgesPhase().apply(graph);
