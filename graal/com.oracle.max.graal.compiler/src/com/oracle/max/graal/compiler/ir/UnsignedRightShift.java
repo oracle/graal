@@ -47,7 +47,7 @@ public final class UnsignedRightShift extends Shift {
 
     @Override
     public Node copy(Graph into) {
-        UnsignedRightShift x = new UnsignedRightShift(kind, null, null, graph());
+        UnsignedRightShift x = new UnsignedRightShift(kind, null, null, into);
         return x;
     }
 

@@ -35,7 +35,7 @@ public final class IntegerSub extends IntegerArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        IntegerSub x = new IntegerSub(kind, null, null, graph());
+        IntegerSub x = new IntegerSub(kind, null, null, into);
         return x;
     }
 

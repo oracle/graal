@@ -51,7 +51,7 @@ public final class FloatRem extends FloatArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        FloatRem x = new FloatRem(kind, null, null, isStrictFP(), graph());
+        FloatRem x = new FloatRem(kind, null, null, isStrictFP(), into);
         return x;
     }
 

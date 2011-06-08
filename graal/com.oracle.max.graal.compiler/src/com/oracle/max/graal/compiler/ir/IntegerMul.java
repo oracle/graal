@@ -40,7 +40,7 @@ public final class IntegerMul extends IntegerArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        IntegerMul x = new IntegerMul(kind, null, null, graph());
+        IntegerMul x = new IntegerMul(kind, null, null, into);
         return x;
     }
 

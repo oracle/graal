@@ -40,7 +40,7 @@ public final class FloatSub extends FloatArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        FloatSub x = new FloatSub(kind, null, null, isStrictFP(), graph());
+        FloatSub x = new FloatSub(kind, null, null, isStrictFP(), into);
         return x;
     }
 

@@ -51,7 +51,7 @@ public final class FloatDiv extends FloatArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        FloatDiv x = new FloatDiv(kind, null, null, isStrictFP(), graph());
+        FloatDiv x = new FloatDiv(kind, null, null, isStrictFP(), into);
         return x;
     }
 

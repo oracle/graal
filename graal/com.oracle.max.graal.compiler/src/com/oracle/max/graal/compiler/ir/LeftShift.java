@@ -47,7 +47,7 @@ public final class LeftShift extends Shift {
 
     @Override
     public Node copy(Graph into) {
-        LeftShift ls = new LeftShift(kind, null, null, graph());
+        LeftShift ls = new LeftShift(kind, null, null, into);
         return ls;
     }
 

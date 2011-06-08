@@ -40,7 +40,7 @@ public final class FloatAdd extends FloatArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        FloatAdd x = new FloatAdd(kind, null, null, isStrictFP(), graph());
+        FloatAdd x = new FloatAdd(kind, null, null, isStrictFP(), into);
         return x;
     }
 
