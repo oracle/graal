@@ -74,7 +74,7 @@ public class VMExitsNative implements VMExits, Remote {
     public void shutdownCompiler() {
         compileMethods = false;
 
-        if (GraalOptions.PrintMetrics) {
+        if (GraalOptions.Meter) {
             GraalMetrics.print();
         }
         if (GraalOptions.Time) {

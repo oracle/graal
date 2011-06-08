@@ -109,7 +109,7 @@ public final class GraphBuilderPhase extends Phase {
      * @param graph
      */
     public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean createUnwind, boolean inline) {
-        super(inline ? "Build Inline Graph" : "Build Graph");
+        super(inline ? "BuildInlineGraph" : "BuildGraph");
         this.compilation = compilation;
 
         this.runtime = compilation.runtime;
@@ -201,11 +201,7 @@ public final class GraphBuilderPhase extends Phase {
         // remove FrameStates
         for (Node n : graph.getNodes()) {
             if (n instanceof FrameState) {
-                boolean delete = false;
                 if (n.usages().size() == 0 && n.predecessors().size() == 0) {
-                    delete = true;
-                }
-                if (delete) {
                     n.delete();
                 }
             }

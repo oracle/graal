@@ -77,7 +77,7 @@ public final class GraalOptions {
     public static int     PrintIdealGraphPort                = 4444;
 
     // Other printing settings
-    public static boolean PrintMetrics                       = ____;
+    public static boolean Meter                              = ____;
     public static boolean Time                               = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintXirTemplates                  = ____;
