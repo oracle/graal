@@ -31,7 +31,7 @@ import com.oracle.max.graal.graph.*;
 public class DeadCodeEliminationPhase extends Phase {
 
     private NodeBitMap alive;
-    private NodeWorklist worklist;
+    private NodeFlood flood;
     private Graph graph;
 
     public int deletedNodeCount;
@@ -40,9 +40,9 @@ public class DeadCodeEliminationPhase extends Phase {
     protected void run(Graph graph) {
         this.graph = graph;
         this.alive = graph.createNodeBitMap();
-        this.worklist = graph.createNodeWorklist();
+        this.flood = graph.createNodeFlood();
 
-        worklist.add(graph.start());
+        flood.add(graph.start());
 
         iterateSuccessors();
         disconnectCFGNodes();
@@ -65,20 +65,20 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private void iterateSuccessors() {
-        for (Node current : worklist) {
+        for (Node current : flood) {
             for (Node successor : current.successors()) {
-                worklist.add(successor);
+                flood.add(successor);
             }
         }
     }
 
     private void disconnectCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !worklist.isMarked(node) && isCFG(node)) {
+            if (node != Node.Null && !flood.isMarked(node) && isCFG(node)) {
                 // iterate backwards so that the predecessor indexes in removePhiPredecessor are correct
                 for (int i = node.successors().size() - 1; i >= 0; i--) {
                     Node successor = node.successors().get(i);
-                    if (successor != Node.Null && worklist.isMarked(successor)) {
+                    if (successor != Node.Null && flood.isMarked(successor)) {
                         if (successor instanceof Merge) {
                             ((Merge) successor).removePhiPredecessor(node);
                         }
@@ -92,7 +92,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void deleteCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !worklist.isMarked(node) && isCFG(node)) {
+            if (node != Node.Null && !flood.isMarked(node) && isCFG(node)) {
                 node.delete();
                 deletedNodeCount++;
             }
@@ -101,22 +101,22 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void iterateInputs() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && worklist.isMarked(node)) {
+            if (node != Node.Null && flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
-                    worklist.add(input);
+                    flood.add(input);
                 }
             }
         }
-        for (Node current : worklist) {
+        for (Node current : flood) {
             for (Node input : current.inputs()) {
-                worklist.add(input);
+                flood.add(input);
             }
         }
     }
 
     private void disconnectNonCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !worklist.isMarked(node) && !isCFG(node)) {
+            if (node != Node.Null && !flood.isMarked(node) && !isCFG(node)) {
                 node.inputs().clearAll();
             }
         }
@@ -124,7 +124,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void deleteNonCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !worklist.isMarked(node) && !isCFG(node)) {
+            if (node != Node.Null && !flood.isMarked(node) && !isCFG(node)) {
                 node.delete();
                 deletedNodeCount++;
             }

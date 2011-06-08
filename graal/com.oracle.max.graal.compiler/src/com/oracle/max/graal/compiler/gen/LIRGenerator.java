@@ -532,7 +532,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitMonitorAddress(MonitorAddress x) {
         CiValue result = createResultVariable(x);
-        lir.monitorAddress(x.monitor(), result);
+        lir.monitorAddress(x.monitorIndex(), result);
     }
 
     /**

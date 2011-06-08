@@ -202,7 +202,12 @@ public class IR {
         int maxLocks = 0;
         for (Node node : compilation.graph.getNodes()) {
             if (node instanceof FrameState) {
-                int lockCount = ((FrameState) node).locksSize();
+                FrameState current = (FrameState) node;
+                int lockCount = 0;
+                while (current != null) {
+                    lockCount += current.locksSize();
+                    current = current.outerFrameState();
+                }
                 if (lockCount > maxLocks) {
                     maxLocks = lockCount;
                 }

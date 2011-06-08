@@ -54,37 +54,37 @@ public class InliningPhase extends Phase {
         inliningSize += method.code().length;
     }
 
+    static HashMap<RiMethod, Integer> methodCount = new HashMap<RiMethod, Integer>();
     @Override
     protected void run(Graph graph) {
         inliningSize = compilation.method.code().length;
         int iterations = C1XOptions.MaximumRecursiveInlineLevel;
+
+
         do {
-            for (Node node : graph.getNodes()) {
-                if (node instanceof Invoke) {
-                    Invoke invoke = (Invoke) node;
-                    RiMethod target = invoke.target;
-                    if (!checkInliningConditions(invoke) || !target.isResolved() || Modifier.isNative(target.accessFlags())) {
-                        continue;
+            for (Invoke invoke : graph.getNodes(Invoke.class)) {
+                RiMethod target = invoke.target;
+                if (!checkInliningConditions(invoke) || !target.isResolved() || Modifier.isNative(target.accessFlags())) {
+                    continue;
+                }
+                if (target.canBeStaticallyBound()) {
+                    if (checkInliningConditions(invoke.target)) {
+                        addToQueue(invoke, invoke.target);
                     }
-                    if (target.canBeStaticallyBound()) {
-                        if (checkInliningConditions(invoke.target)) {
-                            addToQueue(invoke, invoke.target);
-                        }
-                    } else {
-                        RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
-                        if (concrete != null && concrete.isResolved() && !Modifier.isNative(concrete.accessFlags())) {
-                            if (checkInliningConditions(concrete)) {
-                                if (C1XOptions.TraceInlining) {
-                                    System.out.println("registering concrete method assumption...");
-                                }
-                                compilation.assumptions.recordConcreteMethod(invoke.target, concrete);
-                                addToQueue(invoke, concrete);
+                } else {
+                    RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
+                    if (concrete != null && concrete.isResolved() && !Modifier.isNative(concrete.accessFlags())) {
+                        if (checkInliningConditions(concrete)) {
+                            if (C1XOptions.TraceInlining) {
+                                System.out.println("registering concrete method assumption...");
                             }
+                            compilation.assumptions.recordConcreteMethod(invoke.target, concrete);
+                            addToQueue(invoke, concrete);
                         }
                     }
-                    if (inliningSize > C1XOptions.MaximumInstructionCount) {
-                        break;
-                    }
+                }
+                if (inliningSize > C1XOptions.MaximumInstructionCount) {
+                    break;
                 }
             }
 
@@ -97,6 +97,12 @@ public class InliningPhase extends Phase {
             while ((invoke = invokes.poll()) != null) {
                 RiMethod method = methods.remove();
                 inlineMethod(invoke, method);
+
+                if (methodCount.get(method) == null) {
+                    methodCount.put(method, 1);
+                } else {
+                    methodCount.put(method, methodCount.get(method) + 1);
+                }
             }
             DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
@@ -112,6 +118,16 @@ public class InliningPhase extends Phase {
                 break;
             }
         } while(--iterations > 0);
+
+        int inlined = 0;
+        int duplicate = 0;
+        for (Map.Entry<RiMethod, Integer> entry : methodCount.entrySet()) {
+            inlined += entry.getValue();
+            duplicate += entry.getValue() - 1;
+        }
+        if (inlined > 0) {
+            System.out.printf("overhead_: %d (%5.3f %%)\n", duplicate, duplicate * 100.0 / inlined);
+        }
     }
 
     private boolean checkInliningConditions(Invoke invoke) {
@@ -212,6 +228,17 @@ public class InliningPhase extends Phase {
         replacements.put(startNode, pred);
 
         Map<Node, Node> duplicates = compilation.graph.addDuplicate(nodes, replacements);
+
+        int monitorIndexDelta = stateAfter.locksSize();
+        if (monitorIndexDelta > 0) {
+            System.out.println("Adjusting locks");
+            for (Map.Entry<Node, Node> entry : duplicates.entrySet()) {
+                if (entry.getValue() instanceof MonitorAddress) {
+                    MonitorAddress address = (MonitorAddress) entry.getValue();
+                    address.setMonitorIndex(address.monitorIndex() + monitorIndexDelta);
+                }
+            }
+        }
 
         if (returnNode != null) {
             List<Node> usages = new ArrayList<Node>(invoke.usages());
