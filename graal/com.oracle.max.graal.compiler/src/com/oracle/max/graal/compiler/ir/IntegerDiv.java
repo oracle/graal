@@ -40,8 +40,7 @@ public final class IntegerDiv extends IntegerArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        IntegerDiv x = new IntegerDiv(kind, null, null, graph());
-        return x;
+        return new IntegerDiv(kind, null, null, into);
     }
 
 }

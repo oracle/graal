@@ -51,8 +51,7 @@ public final class FloatMul extends FloatArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        FloatMul x = new FloatMul(kind, null, null, isStrictFP(), graph());
-        return x;
+        return new FloatMul(kind, null, null, isStrictFP(), into);
     }
 
 }

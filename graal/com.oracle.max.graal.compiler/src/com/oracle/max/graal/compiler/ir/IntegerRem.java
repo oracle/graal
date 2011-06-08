@@ -40,8 +40,7 @@ public final class IntegerRem extends IntegerArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        IntegerRem x = new IntegerRem(kind, null, null, graph());
-        return x;
+        return new IntegerRem(kind, null, null, into);
     }
 
 }

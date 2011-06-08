@@ -35,8 +35,7 @@ public final class IntegerAdd extends IntegerArithmetic {
 
     @Override
     public Node copy(Graph into) {
-        IntegerAdd x = new IntegerAdd(kind, null, null, graph());
-        return x;
+        return new IntegerAdd(kind, null, null, into);
     }
 
     @Override
