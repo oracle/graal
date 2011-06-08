@@ -31,9 +31,9 @@ import com.oracle.max.graal.runtime.logging.*;
 public class HotSpotOptions {
 
     public static void setDefaultOptions() {
-        C1XOptions.CommentedAssembly = false;
-        C1XOptions.MethodEndBreakpointGuards = 2;
-        C1XOptions.ResolveClassBeforeStaticInvoke = false;
+        GraalOptions.CommentedAssembly = false;
+        GraalOptions.MethodEndBreakpointGuards = 2;
+        GraalOptions.ResolveClassBeforeStaticInvoke = false;
     }
 
     public static boolean setOption(String option) {
@@ -60,7 +60,7 @@ public class HotSpotOptions {
 
         Field f;
         try {
-            f = C1XOptions.class.getField(fieldName);
+            f = GraalOptions.class.getField(fieldName);
 
             if (value == null) {
                 if (f.getType() == Float.TYPE) {

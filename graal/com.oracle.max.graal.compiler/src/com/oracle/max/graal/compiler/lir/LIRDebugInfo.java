@@ -62,7 +62,7 @@ public class LIRDebugInfo {
         return new LIRDebugInfo(this);
     }
 
-    public void setOop(CiValue location, C1XCompilation compilation, CiBitMap frameRefMap, CiBitMap regRefMap) {
+    public void setOop(CiValue location, GraalCompilation compilation, CiBitMap frameRefMap, CiBitMap regRefMap) {
         CiTarget target = compilation.target;
         if (location.isAddress()) {
             CiAddress stackLocation = (CiAddress) location;

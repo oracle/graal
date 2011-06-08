@@ -34,22 +34,22 @@ import com.sun.cri.ri.*;
 import com.sun.cri.xir.*;
 
 /**
- * The {@code Backend} class represents a compiler backend for C1X.
+ * The {@code Backend} class represents a compiler backend for Graal.
  *
  * @author Ben L. Titzer
  */
 public abstract class Backend {
-    public final C1XCompiler compiler;
+    public final GraalCompiler compiler;
 
-    protected Backend(C1XCompiler compiler) {
+    protected Backend(GraalCompiler compiler) {
         this.compiler = compiler;
     }
 
-    public static Backend create(CiArchitecture arch, C1XCompiler compiler) {
+    public static Backend create(CiArchitecture arch, GraalCompiler compiler) {
         String className = arch.getClass().getName().replace("com.oracle.max.asm", "com.oracle.max.graal.compiler") + "Backend";
         try {
             Class<?> c = Class.forName(className);
-            Constructor<?> cons = c.getDeclaredConstructor(C1XCompiler.class);
+            Constructor<?> cons = c.getDeclaredConstructor(GraalCompiler.class);
             return (Backend) cons.newInstance(compiler);
         } catch (Exception e) {
             throw new Error("Could not instantiate " + className, e);
@@ -57,8 +57,8 @@ public abstract class Backend {
     }
 
     public abstract FrameMap newFrameMap(RiMethod method, int numberOfLocks);
-    public abstract LIRGenerator newLIRGenerator(C1XCompilation compilation);
-    public abstract LIRAssembler newLIRAssembler(C1XCompilation compilation);
+    public abstract LIRGenerator newLIRGenerator(GraalCompilation compilation);
+    public abstract LIRAssembler newLIRAssembler(GraalCompilation compilation);
     public abstract AbstractAssembler newAssembler(RiRegisterConfig registerConfig);
     public abstract GlobalStubEmitter newGlobalStubEmitter();
     public abstract CiXirAssembler newXirAssembler();

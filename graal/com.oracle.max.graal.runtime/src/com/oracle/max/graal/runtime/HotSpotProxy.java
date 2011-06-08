@@ -31,7 +31,7 @@ public final class HotSpotProxy {
     }
 
     private enum CompilerObjectType {
-        // this enum needs to have the same values as the one in c1x_Compiler.hpp
+        // this enum needs to have the same values as the one in graal_Compiler.hpp
         STUB(0x100000000000000L),
         METHOD(0x200000000000000L),
         CLASS(0x300000000000000L),

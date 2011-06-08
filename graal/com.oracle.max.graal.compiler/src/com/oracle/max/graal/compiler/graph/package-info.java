@@ -35,7 +35,7 @@
  *
  * {@code IR.buildGraph} creates an {@link com.oracle.max.graal.compiler.ir.IRScope topScope} object,
  * that represents a context for inlining, and then invokes the constructor for the
- * {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase} class, passing the {@link com.oracle.max.graal.compiler.C1XCompilation}, and {@code IR}
+ * {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase} class, passing the {@link com.oracle.max.graal.compiler.GraalCompilation}, and {@code IR}
  * instances, which are cached. The following support objects are created in the constructor:
  *
  * <ul>
@@ -51,11 +51,11 @@
  * <ol>
  * <li>The {@link com.oracle.max.graal.compiler.graph.IR#startBlock} field of the cached {@link com.oracle.max.graal.compiler.graph.IR} instance is set to a newly created
  * {@link com.oracle.max.graal.compiler.ir.BlockBegin} node, with bytecode index 0 and then the {@link com.oracle.max.graal.compiler.graph.BlockMap} is
- * constructed by calling {@link com.oracle.max.graal.compiler.C1XCompilation#getBlockMap}. This behaves slightly differently depending on
+ * constructed by calling {@link com.oracle.max.graal.compiler.GraalCompilation#getBlockMap}. This behaves slightly differently depending on
  * whether this is an OSR compilation. If so, a new {@link com.oracle.max.graal.compiler.ir.BlockBegin} node is added to the map at the OSR bytecode
  * index. The map is then built by the{@link com.oracle.max.graal.compiler.graph.BlockMap#build}, which takes a boolean argument that
  * controls whether a second pass is made over the bytecodes to compute stores in loops. This always false for an OSR
- * compilation (why?). Otherwise, it is only true if enabled by the {@link com.oracle.max.graal.compiler.C1XOptions#PhiLoopStores}
+ * compilation (why?). Otherwise, it is only true if enabled by the {@link com.oracle.max.graal.compiler.GraalOptions#PhiLoopStores}
  * compilation option. FInally some unneeded state from the map is removed by the {@link com.oracle.max.graal.compiler.graph.BlockMap#cleanup} method, and
  * the statistics are updated.
  * </li>
@@ -68,7 +68,7 @@
  * {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase#pushRootScope} initializes the {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase#scopeData} field with a
  * {@link com.oracle.max.graal.compiler.graph.ScopeData} instance, with null parent. The
  * {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase#compilation} instance is called to get an {@link com.sun.cri.ri.RiConstantPool}
- * , which is C1X's interface to constant pool information. The {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase#curBlock} field is
+ * , which is Graal's interface to constant pool information. The {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase#curBlock} field is
  * set to the {@code startBlock}.
  * <p>
  *
@@ -99,8 +99,8 @@
  * Then the {@link com.oracle.max.graal.compiler.ir.IRScope#lockStackSize} is computed. (TBD)
  * </li>
  * <li>
- * Then the method is checked for being intrinsic, i.e., one that has a hard-wired implementation known to C1X. If so,
- * and {@link com.oracle.max.graal.compiler.C1XOptions#OptIntrinsify} is set, an attempt is made to inline it (TBD). Otherwise, or if the
+ * Then the method is checked for being intrinsic, i.e., one that has a hard-wired implementation known to Graal. If so,
+ * and {@link com.oracle.max.graal.compiler.GraalOptions#OptIntrinsify} is set, an attempt is made to inline it (TBD). Otherwise, or if the
  * intrinsification fails, normal processing continues by adding the entry block to the
  * {@link com.oracle.max.graal.compiler.graph.ScopeData} work list (kept topologically sorted) and calling
  * {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase#iterateAllBlocks}.

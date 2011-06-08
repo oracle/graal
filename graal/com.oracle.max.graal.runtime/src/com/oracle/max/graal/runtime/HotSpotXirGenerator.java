@@ -40,7 +40,7 @@ import com.sun.cri.xir.CiXirAssembler.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 
-    // this needs to correspond to c1x_CodeInstaller.hpp
+    // this needs to correspond to graal_CodeInstaller.hpp
     // @formatter:off
     private static final Integer MARK_VERIFIED_ENTRY            = 0x0001;
     private static final Integer MARK_UNVERIFIED_ENTRY          = 0x0002;

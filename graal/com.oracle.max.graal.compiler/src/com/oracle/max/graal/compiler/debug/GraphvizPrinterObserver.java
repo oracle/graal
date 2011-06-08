@@ -95,7 +95,7 @@ public class GraphvizPrinterObserver implements CompilationObserver {
 
     private static void printGraph(Graph graph, String name, OutputStream buffer) {
         GraphvizPrinter printer = new GraphvizPrinter(buffer);
-        if (C1XOptions.OmitDOTFrameStates) {
+        if (GraalOptions.OmitDOTFrameStates) {
             printer.addOmittedClass(FrameState.class);
         }
         printer.addClassColor(StartNode.class, "snow3");

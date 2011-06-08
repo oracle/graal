@@ -127,7 +127,7 @@ public class Schedule {
                 } else {
                     // We have a single predecessor => check its successor count.
                     if (isBlockEnd(singlePred)) {
-                        Block b = assignBlock(n);
+                        assignBlock(n);
                         blockBeginNodes.add(n);
                     } else {
                         assignBlock(n, nodeToBlock.get(singlePred));

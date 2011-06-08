@@ -36,6 +36,7 @@ public class Graph {
     private final ArrayList<Node> nodes;
     private final StartNode start;
     int nextId;
+    int deletedNodeCount;
 
     static int nextGraphId = 0;
     int id = nextGraphId++;
@@ -48,6 +49,10 @@ public class Graph {
     public Graph() {
         nodes = new ArrayList<Node>();
         start = new StartNode(this);
+    }
+
+    public int getDeletedNodeCount() {
+        return deletedNodeCount;
     }
 
     public List<Node> getNodes() {
@@ -109,6 +114,7 @@ public class Graph {
 
     void unregister(Node node) {
         nodes.set(node.id(), Node.Null);
+        deletedNodeCount++;
     }
 
     public StartNode start() {

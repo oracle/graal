@@ -51,18 +51,18 @@ import com.sun.cri.ri.RiType.*;
 public final class GraphBuilderPhase extends Phase {
 
     /**
-     * The minimum value to which {@link C1XOptions#TraceBytecodeParserLevel} must be set to trace
+     * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
      * the bytecode instructions as they are parsed.
      */
     public static final int TRACELEVEL_INSTRUCTIONS = 1;
 
     /**
-     * The minimum value to which {@link C1XOptions#TraceBytecodeParserLevel} must be set to trace
+     * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
      * the frame state before each bytecode instruction as it is parsed.
      */
     public static final int TRACELEVEL_STATE = 2;
 
-    private final C1XCompilation compilation;
+    private final GraalCompilation compilation;
     private CompilerGraph graph;
 
     private final CiStatistics stats;
@@ -108,13 +108,13 @@ public final class GraphBuilderPhase extends Phase {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilderPhase(C1XCompilation compilation, RiMethod method, boolean createUnwind) {
+    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean createUnwind) {
         this.compilation = compilation;
 
         this.runtime = compilation.runtime;
         this.method = method;
         this.stats = compilation.stats;
-        this.log = C1XOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
+        this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
         this.stream = new BytecodeStream(method.code());
 
         this.constantPool = runtime.getConstantPool(method);
@@ -292,7 +292,7 @@ public final class GraphBuilderPhase extends Phase {
                 ((StateSplit) first).setStateBefore(duplicate);
             }
         } else {
-            if (!C1XOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
+            if (!GraalOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
                 // stacks or locks do not match--bytecodes would not verify
                 TTY.println(existingState.toString());
                 TTY.println(newState.duplicate(0).toString());
@@ -847,7 +847,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genInvokeStatic(RiMethod target, int cpi, RiConstantPool constantPool) {
         RiType holder = target.holder();
         boolean isInitialized = target.isResolved() && holder.isInitialized();
-        if (!isInitialized && C1XOptions.ResolveClassBeforeStaticInvoke) {
+        if (!isInitialized && GraalOptions.ResolveClassBeforeStaticInvoke) {
             // Re-use the same resolution code as for accessing a static field. Even though
             // the result of resolution is not used by the invocation (only the side effect
             // of initialization is required), it can be commoned with static field accesses.
@@ -967,7 +967,7 @@ public final class GraphBuilderPhase extends Phase {
         if (needsCheck) {
             // append a call to the finalizer registration
             append(new RegisterFinalizer(frameState.loadLocal(0), frameState.create(bci()), graph));
-            C1XMetrics.InlinedFinalizerChecks++;
+            GraalMetrics.InlinedFinalizerChecks++;
         }
     }
 
@@ -1082,7 +1082,7 @@ public final class GraphBuilderPhase extends Phase {
         lastInstr.setNext(x);
 
         lastInstr = x;
-        if (++stats.nodeCount >= C1XOptions.MaximumInstructionCount) {
+        if (++stats.nodeCount >= GraalOptions.MaximumInstructionCount) {
             // bailout if we've exceeded the maximum inlining size
             throw new CiBailout("Method and/or inlining is too large");
         }
@@ -1273,7 +1273,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void traceState() {
-        if (C1XOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
+        if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
             log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
             for (int i = 0; i < frameState.localsSize(); ++i) {
                 Value value = frameState.localAt(i);
@@ -1504,7 +1504,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (C1XOptions.TraceBytecodeParserLevel >= TRACELEVEL_INSTRUCTIONS && !TTY.isSuppressed()) {
+        if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_INSTRUCTIONS && !TTY.isSuppressed()) {
             StringBuilder sb = new StringBuilder(40);
             sb.append(blockStart ? '+' : '|');
             if (bci < 10) {

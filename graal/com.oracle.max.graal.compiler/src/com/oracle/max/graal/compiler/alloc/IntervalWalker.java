@@ -32,7 +32,7 @@ import com.oracle.max.graal.compiler.debug.*;
  */
 public class IntervalWalker {
 
-    protected final C1XCompilation compilation;
+    protected final GraalCompilation compilation;
     protected final LinearScan allocator;
 
     /**
@@ -206,7 +206,7 @@ public class IntervalWalker {
             boolean isActive = current.from() <= toOpId;
             int opId = isActive ? current.from() : toOpId;
 
-            if (C1XOptions.TraceLinearScanLevel >= 2 && !TTY.isSuppressed()) {
+            if (GraalOptions.TraceLinearScanLevel >= 2 && !TTY.isSuppressed()) {
                 if (currentPosition < opId) {
                     TTY.println();
                     TTY.println("walkTo(%d) *", opId);
@@ -237,7 +237,7 @@ public class IntervalWalker {
     private void intervalMoved(Interval interval, RegisterBinding kind, State from, State to) {
         // intervalMoved() is called whenever an interval moves from one interval list to another.
         // In the implementation of this method it is prohibited to move the interval to any list.
-        if (C1XOptions.TraceLinearScanLevel >= 4 && !TTY.isSuppressed()) {
+        if (GraalOptions.TraceLinearScanLevel >= 4 && !TTY.isSuppressed()) {
             TTY.print(from.toString() + " to " + to.toString());
             TTY.fillTo(23);
             TTY.out().println(interval.logString(allocator));

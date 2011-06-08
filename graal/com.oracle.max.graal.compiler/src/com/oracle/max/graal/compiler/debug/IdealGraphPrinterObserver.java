@@ -87,7 +87,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
         try {
             stream = new FileOutputStream(filename);
             printer = new IdealGraphPrinter(stream);
-            if (C1XOptions.OmitDOTFrameStates) {
+            if (GraalOptions.OmitDOTFrameStates) {
                 printer.addOmittedClass(FrameState.class);
             }
             printer.begin();
@@ -110,7 +110,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
             }
 
             printer = new IdealGraphPrinter(stream);
-            if (C1XOptions.OmitDOTFrameStates) {
+            if (GraalOptions.OmitDOTFrameStates) {
                 printer.addOmittedClass(FrameState.class);
             }
             printer.begin();

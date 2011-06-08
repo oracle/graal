@@ -42,11 +42,11 @@ import com.sun.cri.ri.*;
  * This class encapsulates global information about the compilation of a particular method,
  * including a reference to the runtime, statistics about the compiled code, etc.
  */
-public final class C1XCompilation {
+public final class GraalCompilation {
 
-    private static ThreadLocal<C1XCompilation> currentCompilation = new ThreadLocal<C1XCompilation>();
+    private static ThreadLocal<GraalCompilation> currentCompilation = new ThreadLocal<GraalCompilation>();
 
-    public final C1XCompiler compiler;
+    public final GraalCompiler compiler;
     public final CiTarget target;
     public final RiRuntime runtime;
     public final RiMethod method;
@@ -58,7 +58,7 @@ public final class C1XCompilation {
     public CompilerGraph graph = new CompilerGraph();
 
     private boolean hasExceptionHandlers;
-    private final C1XCompilation parent;
+    private final GraalCompilation parent;
 
     /**
      * @see #setNotTypesafe()
@@ -83,7 +83,7 @@ public final class C1XCompilation {
      * @param osrBCI the bytecode index for on-stack replacement, if requested
      * @param stats externally supplied statistics object to be used if not {@code null}
      */
-    public C1XCompilation(C1XCompiler compiler, RiMethod method, int osrBCI, CiStatistics stats) {
+    public GraalCompilation(GraalCompiler compiler, RiMethod method, int osrBCI, CiStatistics stats) {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
@@ -205,13 +205,13 @@ public final class C1XCompilation {
             emitLIR();
             targetMethod = emitCode();
 
-            if (C1XOptions.PrintMetrics) {
-                C1XMetrics.BytecodesCompiled += method.code().length;
+            if (GraalOptions.PrintMetrics) {
+                GraalMetrics.BytecodesCompiled += method.code().length;
             }
         } catch (CiBailout b) {
             return new CiResult(null, b, stats);
         } catch (Throwable t) {
-            if (C1XOptions.BailoutOnException) {
+            if (GraalOptions.BailoutOnException) {
                 return new CiResult(null, new CiBailout("Exception while compiling: " + method, t), stats);
             } else {
                 throw new RuntimeException(t);
@@ -236,9 +236,9 @@ public final class C1XCompilation {
     }
 
     private void emitLIR() {
-        if (C1XOptions.GenLIR) {
-            if (C1XOptions.PrintTimers) {
-                C1XTimers.LIR_CREATE.start();
+        if (GraalOptions.GenLIR) {
+            if (GraalOptions.PrintTimers) {
+                GraalTimers.LIR_CREATE.start();
             }
 
             initFrameMap(hir.maxLocks());
@@ -249,11 +249,11 @@ public final class C1XCompilation {
                 lirGenerator.doBlock(begin);
             }
 
-            if (C1XOptions.PrintTimers) {
-                C1XTimers.LIR_CREATE.stop();
+            if (GraalOptions.PrintTimers) {
+                GraalTimers.LIR_CREATE.stop();
             }
 
-            if (C1XOptions.PrintLIR && !TTY.isSuppressed()) {
+            if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
                 LIRList.printLIR(hir.linearScanOrder());
             }
 
@@ -262,7 +262,7 @@ public final class C1XCompilation {
     }
 
     private CiTargetMethod emitCode() {
-        if (C1XOptions.GenLIR && C1XOptions.GenCode) {
+        if (GraalOptions.GenLIR && GraalOptions.GenCode) {
             final LIRAssembler lirAssembler = compiler.backend.newLIRAssembler(this);
             lirAssembler.emitCode(hir.linearScanOrder());
 
@@ -289,8 +289,8 @@ public final class C1XCompilation {
                 compiler.fireCompilationEvent(new CompilationEvent(this, "After code generation", graph, false, true, targetMethod));
             }
 
-            if (C1XOptions.PrintTimers) {
-                C1XTimers.CODE_CREATE.stop();
+            if (GraalOptions.PrintTimers) {
+                GraalTimers.CODE_CREATE.stop();
             }
             return targetMethod;
         }
@@ -302,8 +302,8 @@ public final class C1XCompilation {
         return nextID++;
     }
 
-    public static C1XCompilation compilation() {
-        C1XCompilation compilation = currentCompilation.get();
+    public static GraalCompilation compilation() {
+        GraalCompilation compilation = currentCompilation.get();
         assert compilation != null;
         return compilation;
     }

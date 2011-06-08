@@ -81,7 +81,7 @@ import com.sun.cri.util.*;
  */
 public final class FrameMap {
 
-    private final C1XCompilation compilation;
+    private final GraalCompilation compilation;
     private final CiCallingConvention incomingArguments;
 
     /**
@@ -123,7 +123,7 @@ public final class FrameMap {
      * @param method the outermost method being compiled
      * @param monitors the number of monitors allocated on the stack for this method
      */
-    public FrameMap(C1XCompilation compilation, RiMethod method, int monitors) {
+    public FrameMap(GraalCompilation compilation, RiMethod method, int monitors) {
         this.compilation = compilation;
         this.frameSize = -1;
         this.spillSlotCount = -2;

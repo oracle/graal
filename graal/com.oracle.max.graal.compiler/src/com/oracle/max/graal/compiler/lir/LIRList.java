@@ -49,17 +49,17 @@ public final class LIRList {
     private final LIROpcode runtimeCallOp;
 
     private LIROpcode directCallOp(RiMethod method) {
-        return C1XOptions.UseConstDirectCall && method.hasCompiledCode() ? LIROpcode.ConstDirectCall : LIROpcode.DirectCall;
+        return GraalOptions.UseConstDirectCall && method.hasCompiledCode() ? LIROpcode.ConstDirectCall : LIROpcode.DirectCall;
     }
 
     public LIRList(LIRGenerator generator) {
         this.generator = generator;
         this.operations = new ArrayList<LIRInstruction>(8);
-        runtimeCallOp = C1XOptions.UseConstDirectCall ? LIROpcode.ConstDirectCall : LIROpcode.DirectCall;
+        runtimeCallOp = GraalOptions.UseConstDirectCall ? LIROpcode.ConstDirectCall : LIROpcode.DirectCall;
     }
 
     private void append(LIRInstruction op) {
-        if (C1XOptions.PrintIRWithLIR && !TTY.isSuppressed()) {
+        if (GraalOptions.PrintIRWithLIR && !TTY.isSuppressed()) {
             generator.maybePrintCurrentInstruction();
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();

@@ -68,7 +68,7 @@ public class LIRXirInstruction extends LIRInstruction {
         this.tempCount = tempCount;
         this.inputCount = operands.length - inputTempCount - tempCount;
 
-        C1XMetrics.LIRXIRInstructions++;
+        GraalMetrics.LIRXIRInstructions++;
     }
 
     public CiValue[] getOperands() {

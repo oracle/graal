@@ -64,7 +64,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     final int wordSize;
     final CiRegister rscratch1;
 
-    public AMD64LIRAssembler(C1XCompilation compilation) {
+    public AMD64LIRAssembler(GraalCompilation compilation) {
         super(compilation);
         masm = (AMD64MacroAssembler) asm;
         target = compilation.target;
@@ -148,7 +148,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
     @Override
     public void emitTraps() {
-        for (int i = 0; i < C1XOptions.MethodEndBreakpointGuards; ++i) {
+        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
             masm.int3();
         }
     }
@@ -411,7 +411,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     protected void emitReadPrefetch(CiValue src) {
         CiAddress addr = (CiAddress) src;
         // Checkstyle: off
-        switch (C1XOptions.ReadPrefetchInstr) {
+        switch (GraalOptions.ReadPrefetchInstr) {
             case 0  : masm.prefetchnta(addr); break;
             case 1  : masm.prefetcht0(addr); break;
             case 2  : masm.prefetcht2(addr); break;
@@ -1092,7 +1092,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
             Label continuation = new Label();
 
-            if (C1XOptions.GenSpecialDivChecks) {
+            if (GraalOptions.GenSpecialDivChecks) {
                 // check for special case of Integer.MIN_VALUE / -1
                 Label normalCase = new Label();
                 masm.cmpl(AMD64.rax, Integer.MIN_VALUE);
@@ -1140,7 +1140,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
         Label continuation = new Label();
 
-        if (C1XOptions.GenSpecialDivChecks) {
+        if (GraalOptions.GenSpecialDivChecks) {
             // check for special case of Long.MIN_VALUE / -1
             Label normalCase = new Label();
             masm.movq(AMD64.rdx, java.lang.Long.MIN_VALUE);
@@ -1344,7 +1344,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
     @Override
     protected void emitCallAlignment(LIROpcode code) {
-        if (C1XOptions.AlignCallsForPatching) {
+        if (GraalOptions.AlignCallsForPatching) {
             // make sure that the displacement word of the call ends up word aligned
             int offset = masm.codeBuffer.position();
             offset += compilation.target.arch.machineCodeCallDisplacementOffset;
@@ -1541,7 +1541,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     @Override
     protected void emitNullCheck(CiValue src, LIRDebugInfo info) {
         assert src.isRegister();
-        if (C1XOptions.NullCheckUniquePc) {
+        if (GraalOptions.NullCheckUniquePc) {
             masm.nop();
         }
         tasm.recordImplicitException(codePos(), info);
@@ -1610,13 +1610,13 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     @Override
     protected void emitSlowPath(SlowPath sp) {
         int start = -1;
-        if (C1XOptions.TraceAssembler) {
+        if (GraalOptions.TraceAssembler) {
             TTY.println("Emitting slow path for XIR instruction " + sp.instruction.snippet.template.name);
             start = masm.codeBuffer.position();
         }
         emitXirInstructions(sp.instruction, sp.instruction.snippet.template.slowPath, sp.labels, sp.instruction.getOperands(), sp.marks);
         masm.nop();
-        if (C1XOptions.TraceAssembler) {
+        if (GraalOptions.TraceAssembler) {
             TTY.println("From " + start + " to " + masm.codeBuffer.position());
         }
     }
@@ -1950,7 +1950,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                     int lastFramePage = frameSize / target.pageSize;
                     // emit multiple stack bangs for methods with frames larger than a page
                     for (int i = 0; i <= lastFramePage; i++) {
-                        int offset = (i + C1XOptions.StackShadowPages) * target.pageSize;
+                        int offset = (i + GraalOptions.StackShadowPages) * target.pageSize;
                         // Deduct 'frameSize' to handle frames larger than the shadow
                         bangStackWithOffset(offset - frameSize);
                     }
@@ -1959,7 +1959,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                 case PushFrame: {
                     int frameSize = initialFrameSizeInBytes();
                     masm.decrementq(AMD64.rsp, frameSize); // does not emit code for frameSize == 0
-                    if (C1XOptions.ZapStackOnMethodEntry) {
+                    if (GraalOptions.ZapStackOnMethodEntry) {
                         final int intSize = 4;
                         for (int i = 0; i < frameSize / intSize; ++i) {
                             masm.movl(new CiAddress(CiKind.Int, AMD64.rsp.asValue(), i * intSize), 0xC1C1C1C1);
@@ -2100,7 +2100,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
         }
 
         // Clear out parameters
-        if (C1XOptions.GenAssertionCode) {
+        if (GraalOptions.GenAssertionCode) {
             for (int i = 0; i < args.length; i++) {
                 masm.movptr(new CiAddress(CiKind.Word, AMD64.RSP, stub.argOffsets[i]), 0);
             }
@@ -2184,7 +2184,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     }
 
     protected void stop(String msg) {
-        if (C1XOptions.GenAssertionCode) {
+        if (GraalOptions.GenAssertionCode) {
             // TODO: pass a pointer to the message
             directCall(CiRuntimeCall.Debug, null);
             masm.hlt();

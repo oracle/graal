@@ -32,13 +32,7 @@ import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.xir.*;
 
-/**
- * This class implements the compiler interface for C1X.
- *
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
- */
-public class C1XCompiler extends ObservableCompiler {
+public class GraalCompiler extends ObservableCompiler {
 
     public final Map<Object, GlobalStub> stubs = new HashMap<Object, GlobalStub>();
 
@@ -64,7 +58,7 @@ public class C1XCompiler extends ObservableCompiler {
 
     public final RiRegisterConfig globalStubRegisterConfig;
 
-    public C1XCompiler(RiRuntime runtime, CiTarget target, RiXirGenerator xirGen, RiRegisterConfig globalStubRegisterConfig) {
+    public GraalCompiler(RiRuntime runtime, CiTarget target, RiXirGenerator xirGen, RiRegisterConfig globalStubRegisterConfig) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
@@ -75,21 +69,21 @@ public class C1XCompiler extends ObservableCompiler {
 
     public CiResult compileMethod(RiMethod method, int osrBCI, RiXirGenerator xirGenerator, CiStatistics stats) {
         long startTime = 0;
-        int index = C1XMetrics.CompiledMethods++;
-        if (C1XOptions.PrintCompilation) {
-            TTY.print(String.format("C1X %4d %-70s %-45s | ", index, method.holder().name(), method.name()));
+        int index = GraalMetrics.CompiledMethods++;
+        if (GraalOptions.PrintCompilation) {
+            TTY.print(String.format("Graal %4d %-70s %-45s | ", index, method.holder().name(), method.name()));
             startTime = System.nanoTime();
         }
 
         CiResult result = null;
-        TTY.Filter filter = new TTY.Filter(C1XOptions.PrintFilter, method);
-        C1XCompilation compilation = new C1XCompilation(this, method, osrBCI, stats);
+        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+        GraalCompilation compilation = new GraalCompilation(this, method, osrBCI, stats);
         try {
             result = compilation.compile();
         } finally {
             filter.remove();
             compilation.close();
-            if (C1XOptions.PrintCompilation && !TTY.isSuppressed()) {
+            if (GraalOptions.PrintCompilation && !TTY.isSuppressed()) {
                 long time = (System.nanoTime() - startTime) / 100000;
                 TTY.println(String.format("%3d.%dms", time / 10, time % 10));
             }
@@ -104,7 +98,7 @@ public class C1XCompiler extends ObservableCompiler {
 
         if (xirTemplateStubs != null) {
             for (XirTemplate template : xirTemplateStubs) {
-                TTY.Filter filter = new TTY.Filter(C1XOptions.PrintFilter, template.name);
+                TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, template.name);
                 try {
                     stubs.put(template, emitter.emit(template, runtime));
                 } finally {
@@ -114,7 +108,7 @@ public class C1XCompiler extends ObservableCompiler {
         }
 
         for (GlobalStub.Id id : GlobalStub.Id.values()) {
-            TTY.Filter suppressor = new TTY.Filter(C1XOptions.PrintFilter, id);
+            TTY.Filter suppressor = new TTY.Filter(GraalOptions.PrintFilter, id);
             try {
                 stubs.put(id, emitter.emit(id, runtime));
             } finally {
@@ -122,21 +116,21 @@ public class C1XCompiler extends ObservableCompiler {
             }
         }
 
-        if (C1XOptions.PrintCFGToFile) {
+        if (GraalOptions.PrintCFGToFile) {
             addCompilationObserver(new CFGPrinterObserver());
         }
-        if (C1XOptions.PrintDOTGraphToFile) {
+        if (GraalOptions.PrintDOTGraphToFile) {
             addCompilationObserver(new GraphvizPrinterObserver(false));
         }
-        if (C1XOptions.PrintDOTGraphToPdf) {
+        if (GraalOptions.PrintDOTGraphToPdf) {
             addCompilationObserver(new GraphvizPrinterObserver(true));
         }
-        if (C1XOptions.PrintIdealGraphLevel != 0) {
+        if (GraalOptions.PrintIdealGraphLevel != 0) {
             CompilationObserver observer;
-            if (C1XOptions.PrintIdealGraphFile) {
+            if (GraalOptions.PrintIdealGraphFile) {
                 observer = new IdealGraphPrinterObserver();
             } else {
-                observer = new IdealGraphPrinterObserver(C1XOptions.PrintIdealGraphAddress, C1XOptions.PrintIdealGraphPort);
+                observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
             }
             addCompilationObserver(observer);
         }

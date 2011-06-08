@@ -54,7 +54,7 @@ import com.sun.cri.ri.*;
  */
 public final class LinearScan {
 
-    final C1XCompilation compilation;
+    final GraalCompilation compilation;
     final IR ir;
     final LIRGenerator gen;
     final FrameMap frameMap;
@@ -119,7 +119,7 @@ public final class LinearScan {
      */
     BitMap2D intervalInLoop;
 
-    public LinearScan(C1XCompilation compilation, IR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(GraalCompilation compilation, IR ir, LIRGenerator gen, FrameMap frameMap) {
         this.compilation = compilation;
         this.ir = ir;
         this.gen = gen;
@@ -437,7 +437,7 @@ public final class LinearScan {
 
     // called once before assignment of register numbers
     void eliminateSpillMoves() {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println(" Eliminating unnecessary spill moves");
         }
 
@@ -445,7 +445,7 @@ public final class LinearScan {
         // the list is sorted by Interval.spillDefinitionPos
         Interval interval;
         interval = createUnhandledLists(mustStoreAtDefinition, null).first;
-        if (C1XOptions.DetailedAsserts) {
+        if (GraalOptions.DetailedAsserts) {
             checkIntervals(interval);
         }
 
@@ -474,7 +474,7 @@ public final class LinearScan {
 
                     if (!curInterval.location().isRegister() && curInterval.alwaysInMemory()) {
                         // move target is a stack slot that is always correct, so eliminate instruction
-                        if (C1XOptions.TraceLinearScanLevel >= 4) {
+                        if (GraalOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("eliminating move from interval %d to %d", operandNumber(op1.operand()), operandNumber(op1.result()));
                         }
                         instructions.set(j, null); // null-instructions are deleted by assignRegNum
@@ -500,7 +500,7 @@ public final class LinearScan {
 
                         insertionBuffer.move(j, fromLocation, toLocation, null);
 
-                        if (C1XOptions.TraceLinearScanLevel >= 4) {
+                        if (GraalOptions.TraceLinearScanLevel >= 4) {
                             CiStackSlot slot = interval.spillSlot();
                             TTY.println("inserting move after definition of interval %d to stack slot %d%s at opId %d",
                                             interval.operandNumber, slot.index(), slot.inCallerFrame() ? " in caller frame" : "", opId);
@@ -533,7 +533,7 @@ public final class LinearScan {
             assert temp.spillDefinitionPos() >= temp.from() : "invalid order";
             assert temp.spillDefinitionPos() <= temp.from() + 2 : "only intervals defined once at their start-pos can be optimized";
 
-            if (C1XOptions.TraceLinearScanLevel >= 4) {
+            if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("interval %d (from %d to %d) must be stored at %d", temp.operandNumber, temp.from(), temp.to(), temp.spillDefinitionPos());
             }
 
@@ -615,7 +615,7 @@ public final class LinearScan {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
-                            if (C1XOptions.TraceLinearScanLevel >= 4) {
+                            if (GraalOptions.TraceLinearScanLevel >= 4) {
                                 TTY.println("  Setting liveGen for operand %d at instruction %d", operandNum, op.id);
                             }
                         }
@@ -624,7 +624,7 @@ public final class LinearScan {
                         }
                     }
 
-                    if (C1XOptions.DetailedAsserts) {
+                    if (GraalOptions.DetailedAsserts) {
                         assert operand.isVariableOrRegister() : "visitor should only return register operands";
                         verifyInput(block, liveKill, operand);
                     }
@@ -640,7 +640,7 @@ public final class LinearScan {
                                 int operandNum = operandNumber(operand);
                                 if (!liveKill.get(operandNum)) {
                                     liveGen.set(operandNum);
-                                    if (C1XOptions.TraceLinearScanLevel >= 4) {
+                                    if (GraalOptions.TraceLinearScanLevel >= 4) {
                                         TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d because of state for " + op.toString(), Util.valueString(value), op.id, operandNum);
                                     }
                                 }
@@ -666,7 +666,7 @@ public final class LinearScan {
                         }
                     }
 
-                    if (C1XOptions.DetailedAsserts) {
+                    if (GraalOptions.DetailedAsserts) {
                         assert operand.isVariableOrRegister() : "visitor should only return register operands";
                         verifyTemp(liveKill, operand);
                     }
@@ -685,7 +685,7 @@ public final class LinearScan {
                         }
                     }
 
-                    if (C1XOptions.DetailedAsserts) {
+                    if (GraalOptions.DetailedAsserts) {
                         assert operand.isVariableOrRegister() : "visitor should only return register operands";
                         // fixed intervals are never live at block boundaries, so
                         // they need not be processed in live sets
@@ -700,7 +700,7 @@ public final class LinearScan {
             block.liveIn = new CiBitMap(liveSize);
             block.liveOut = new CiBitMap(liveSize);
 
-            if (C1XOptions.TraceLinearScanLevel >= 4) {
+            if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("liveGen  B%d %s", block.blockID(), block.liveGen);
                 TTY.println("liveKill B%d %s", block.blockID(), block.liveKill);
             }
@@ -788,7 +788,7 @@ public final class LinearScan {
                     liveIn.setUnion(block.liveGen);
                 }
 
-                if (C1XOptions.TraceLinearScanLevel >= 4) {
+                if (GraalOptions.TraceLinearScanLevel >= 4) {
                     traceLiveness(changeOccurredInBlock, iterationCount, block);
                 }
             }
@@ -799,7 +799,7 @@ public final class LinearScan {
             }
         } while (changeOccurred);
 
-        if (C1XOptions.DetailedAsserts) {
+        if (GraalOptions.DetailedAsserts) {
             verifyLiveness(numBlocks);
         }
 
@@ -807,7 +807,7 @@ public final class LinearScan {
         LIRBlock startBlock = ir.startBlock;
         CiBitMap liveInArgs = new CiBitMap(startBlock.liveIn.size());
         if (!startBlock.liveIn.isSame(liveInArgs)) {
-            if (C1XOptions.DetailedAsserts) {
+            if (GraalOptions.DetailedAsserts) {
                 reportFailure(numBlocks);
             }
 
@@ -887,7 +887,7 @@ public final class LinearScan {
         if (!isProcessed(operand)) {
             return null;
         }
-        if (C1XOptions.TraceLinearScanLevel >= 2 && kind == null) {
+        if (GraalOptions.TraceLinearScanLevel >= 2 && kind == null) {
             TTY.println(" use %s from %d to %d (%s)", operand, from, to, registerPriority.name());
         }
 
@@ -938,7 +938,7 @@ public final class LinearScan {
         if (!isProcessed(operand)) {
             return;
         }
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" def %s defPos %d (%s)", operand, defPos, registerPriority.name());
         }
         Interval interval = intervalFor(operand);
@@ -960,7 +960,7 @@ public final class LinearScan {
                 // also add register priority for dead intervals
                 interval.addRange(defPos, defPos + 1);
                 interval.addUsePos(defPos, registerPriority);
-                if (C1XOptions.TraceLinearScanLevel >= 2) {
+                if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("Warning: def of operand %s at %d occurs without use", operand, defPos);
                 }
             }
@@ -975,7 +975,7 @@ public final class LinearScan {
 
             interval.addRange(defPos, defPos + 1);
             interval.addUsePos(defPos, registerPriority);
-            if (C1XOptions.TraceLinearScanLevel >= 2) {
+            if (GraalOptions.TraceLinearScanLevel >= 2) {
                 TTY.println("Warning: dead value %s at %d in live intervals", operand, defPos);
             }
         }
@@ -1099,21 +1099,21 @@ public final class LinearScan {
 
             if (move.operand().isStackSlot()) {
                 CiStackSlot slot = (CiStackSlot) move.operand();
-                if (C1XOptions.DetailedAsserts) {
+                if (GraalOptions.DetailedAsserts) {
                     int argSlots = compilation.method.signature().argumentSlots(!isStatic(compilation.method.accessFlags()));
                     assert slot.index() >= 0 && slot.index() < argSlots;
                     assert move.id > 0 : "invalid id";
                     assert blockForId(move.id).numberOfPreds() == 0 : "move from stack must be in first block";
                     assert move.result().isVariable() : "result of move must be a variable";
 
-                    if (C1XOptions.TraceLinearScanLevel >= 4) {
+                    if (GraalOptions.TraceLinearScanLevel >= 4) {
                         TTY.println("found move from stack slot %s to %s", slot, move.result());
                     }
                 }
 
                 Interval interval = intervalFor(move.result());
                 CiStackSlot copySlot = slot;
-                if (C1XOptions.CopyPointerStackArguments && slot.kind == CiKind.Object) {
+                if (GraalOptions.CopyPointerStackArguments && slot.kind == CiKind.Object) {
                     copySlot = allocateSpillSlot(slot.kind);
                 }
                 interval.setSpillSlot(copySlot);
@@ -1136,7 +1136,7 @@ public final class LinearScan {
                     Interval to = intervalFor(moveTo);
                     if (from != null && to != null) {
                         to.setLocationHint(from);
-                        if (C1XOptions.TraceLinearScanLevel >= 4) {
+                        if (GraalOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("operation at opId %d: added hint from interval %d to %d", move.id, from.operandNumber, to.operandNumber);
                         }
                     }
@@ -1154,7 +1154,7 @@ public final class LinearScan {
                     Interval to = intervalFor(moveTo);
                     if (from != null && to != null) {
                         to.setLocationHint(from);
-                        if (C1XOptions.TraceLinearScanLevel >= 4) {
+                        if (GraalOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("operation at opId %d: added hint from interval %d to %d", cmove.id, from.operandNumber, to.operandNumber);
                         }
                     }
@@ -1187,7 +1187,7 @@ public final class LinearScan {
             for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                 assert live.get(operandNum) : "should not stop here otherwise";
                 CiValue operand = operands.operandFor(operandNum);
-                if (C1XOptions.TraceLinearScanLevel >= 2) {
+                if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("live in %s to %d", operand, blockTo + 2);
                 }
 
@@ -1217,7 +1217,7 @@ public final class LinearScan {
                             addTemp(r.asValue(), opId, RegisterPriority.None, CiKind.Illegal);
                         }
                     }
-                    if (C1XOptions.TraceLinearScanLevel >= 4) {
+                    if (GraalOptions.TraceLinearScanLevel >= 4) {
                         TTY.println("operation destroys all caller-save registers");
                     }
                 }
@@ -1239,7 +1239,7 @@ public final class LinearScan {
                 for (k = 0; k < n; k++) {
                     CiValue operand = op.operandAt(LIRInstruction.OperandMode.Temp, k);
                     assert operand.isVariableOrRegister();
-                    if (C1XOptions.TraceLinearScanLevel >= 2) {
+                    if (GraalOptions.TraceLinearScanLevel >= 2) {
                         TTY.println(" temp %s tempPos %d (%s)", operand, opId, RegisterPriority.MustHaveRegister.name());
                     }
                     addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.kind.stackKind());
@@ -1312,7 +1312,7 @@ public final class LinearScan {
                 // could also consider not killing all xmm registers if we
                 // assume that slow paths are uncommon but it's not clear that
                 // would be a good idea.
-                if (C1XOptions.TraceLinearScanLevel >= 2) {
+                if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("killing XMMs for trig");
                 }
                 int opId = op.id;
@@ -1500,7 +1500,7 @@ public final class LinearScan {
         Interval result = interval.getSplitChildAtOpId(opId, mode, this);
 
         if (result != null) {
-            if (C1XOptions.TraceLinearScanLevel >= 4) {
+            if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("Split child at pos " + opId + " of interval " + interval.toString() + " is " + result.toString());
             }
             return result;
@@ -1554,7 +1554,7 @@ public final class LinearScan {
 
     void resolveFindInsertPos(LIRBlock fromBlock, LIRBlock toBlock, MoveResolver moveResolver) {
         if (fromBlock.numberOfSux() <= 1) {
-            if (C1XOptions.TraceLinearScanLevel >= 4) {
+            if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("inserting moves at end of fromBlock B%d", fromBlock.blockID());
             }
 
@@ -1570,11 +1570,11 @@ public final class LinearScan {
             }
 
         } else {
-            if (C1XOptions.TraceLinearScanLevel >= 4) {
+            if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("inserting moves at beginning of toBlock B%d", toBlock.blockID());
             }
 
-            if (C1XOptions.DetailedAsserts) {
+            if (GraalOptions.DetailedAsserts) {
                 assert fromBlock.lir().instructionsList().get(0) instanceof LIRLabel : "block does not start with a label";
 
                 // because the number of predecessor edges matches the number of
@@ -1618,7 +1618,7 @@ public final class LinearScan {
 
                     // prevent optimization of two consecutive blocks
                     if (!blockCompleted.get(pred.linearScanNumber()) && !blockCompleted.get(sux.linearScanNumber())) {
-                        if (C1XOptions.TraceLinearScanLevel >= 3) {
+                        if (GraalOptions.TraceLinearScanLevel >= 3) {
                             TTY.println(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.blockID(), pred.blockID(), sux.blockID());
                         }
                         blockCompleted.set(block.linearScanNumber());
@@ -1645,7 +1645,7 @@ public final class LinearScan {
 
                     // check for duplicate edges between the same blocks (can happen with switch blocks)
                     if (!alreadyResolved.get(toBlock.linearScanNumber())) {
-                        if (C1XOptions.TraceLinearScanLevel >= 3) {
+                        if (GraalOptions.TraceLinearScanLevel >= 3) {
                             TTY.println(" processing edge between B%d and B%d", fromBlock.blockID(), toBlock.blockID());
                         }
                         alreadyResolved.set(toBlock.linearScanNumber());
@@ -1727,7 +1727,7 @@ public final class LinearScan {
         assert interval != null : "interval must exist";
 
         if (opId != -1) {
-            if (C1XOptions.DetailedAsserts) {
+            if (GraalOptions.DetailedAsserts) {
                 LIRBlock block = blockForId(opId);
                 if (block.numberOfSux() <= 1 && opId == block.lastLirInstructionId()) {
                     // check if spill moves could have been appended at the end of this block, but
@@ -1769,7 +1769,7 @@ public final class LinearScan {
     }
 
     void computeOopMap(IntervalWalker iw, LIRInstruction op, LIRDebugInfo info, boolean isCallSite, CiBitMap frameRefMap, CiBitMap regRefMap) {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating oop map at opId %d", op.id);
         }
 
@@ -1940,14 +1940,14 @@ public final class LinearScan {
                 CiFrame frame = compilation.placeholderState != null ? null : computeFrame(info.state, op.id, frameRefMap);
                 computeOopMap(iw, op, info, frameRefMap, regRefMap);
                 info.debugInfo = new CiDebugInfo(frame, regRefMap, frameRefMap);
-            } else if (C1XOptions.DetailedAsserts) {
+            } else if (GraalOptions.DetailedAsserts) {
                 assert info.debugInfo.frame().equals(computeFrame(info.state, op.id, new CiBitMap(info.debugInfo.frameRefMap.size())));
             }
         }
     }
 
     CiFrame computeFrame(FrameState state, int opId, CiBitMap frameRefMap) {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating debug information at opId %d", opId);
         }
         return computeFrameForState(state, opId, frameRefMap);
@@ -2019,8 +2019,8 @@ public final class LinearScan {
     }
 
     public void allocate() {
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.LIFETIME_ANALYSIS.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.LIFETIME_ANALYSIS.start();
         }
 
         numberInstructions();
@@ -2033,28 +2033,28 @@ public final class LinearScan {
         buildIntervals();
         sortIntervalsBeforeAllocation();
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.LIFETIME_ANALYSIS.stop();
-            C1XTimers.LINEAR_SCAN.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.LIFETIME_ANALYSIS.stop();
+            GraalTimers.LINEAR_SCAN.start();
         }
 
         printIntervals("Before register allocation");
 
         allocateRegisters();
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.LINEAR_SCAN.stop();
-            C1XTimers.RESOLUTION.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.LINEAR_SCAN.stop();
+            GraalTimers.RESOLUTION.start();
         }
 
         resolveDataFlow();
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.RESOLUTION.stop();
-            C1XTimers.DEBUG_INFO.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.RESOLUTION.stop();
+            GraalTimers.DEBUG_INFO.start();
         }
 
-        C1XMetrics.LSRASpills += (maxSpills - frameMap.initialSpillSlot());
+        GraalMetrics.LSRASpills += (maxSpills - frameMap.initialSpillSlot());
 
         // fill in number of spill slots into frameMap
         frameMap.finalizeFrame(maxSpills);
@@ -2064,20 +2064,20 @@ public final class LinearScan {
 
         sortIntervalsAfterAllocation();
 
-        if (C1XOptions.DetailedAsserts) {
+        if (GraalOptions.DetailedAsserts) {
             verify();
         }
 
         eliminateSpillMoves();
         assignLocations();
 
-        if (C1XOptions.DetailedAsserts) {
+        if (GraalOptions.DetailedAsserts) {
             verifyIntervals();
         }
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.DEBUG_INFO.stop();
-            C1XTimers.CODE_CREATE.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.DEBUG_INFO.stop();
+            GraalTimers.CODE_CREATE.start();
         }
 
         printLir("After register number assignment", true);
@@ -2087,7 +2087,7 @@ public final class LinearScan {
     }
 
     void printIntervals(String label) {
-        if (C1XOptions.TraceLinearScanLevel >= 1) {
+        if (GraalOptions.TraceLinearScanLevel >= 1) {
             int i;
             TTY.println();
             TTY.println(label);
@@ -2114,7 +2114,7 @@ public final class LinearScan {
     }
 
     void printLir(String label, boolean hirValid) {
-        if (C1XOptions.TraceLinearScanLevel >= 1 && !TTY.isSuppressed()) {
+        if (GraalOptions.TraceLinearScanLevel >= 1 && !TTY.isSuppressed()) {
             TTY.println();
             TTY.println(label);
             LIRList.printLIR(ir.linearScanOrder());
@@ -2128,27 +2128,27 @@ public final class LinearScan {
 
     boolean verify() {
         // (check that all intervals have a correct register and that no registers are overwritten)
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" verifying intervals *");
         }
         verifyIntervals();
 
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" verifying that no oops are in fixed intervals *");
         }
         //verifyNoOopsInFixedIntervals();
 
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" verifying that unpinned constants are not alive across block boundaries");
         }
         verifyConstants();
 
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" verifying register allocation *");
         }
         verifyRegisters();
 
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println(" no errors found *");
         }
 
@@ -2226,7 +2226,7 @@ public final class LinearScan {
                 CiValue l1 = i1.location();
                 CiValue l2 = i2.location();
                 if (i1.intersects(i2) && (l1.equals(l2))) {
-                    if (C1XOptions.DetailedAsserts) {
+                    if (GraalOptions.DetailedAsserts) {
                         TTY.println("Intervals %d and %d overlap and have the same register assigned", i1.operandNumber, i2.operandNumber);
                         TTY.println(i1.logString(this));
                         TTY.println(i2.logString(this));
@@ -2298,7 +2298,7 @@ public final class LinearScan {
 
             // visit all operands where the liveAtEdge bit is set
             for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
-                if (C1XOptions.TraceLinearScanLevel >= 4) {
+                if (GraalOptions.TraceLinearScanLevel >= 4) {
                     TTY.println("checking interval %d of block B%d", operandNum, block.blockID());
                 }
                 CiValue operand = operands.operandFor(operandNum);
