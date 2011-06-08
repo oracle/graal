@@ -147,12 +147,12 @@ public final class ComputeLinearScanOrder {
      * 4. Create a list with all loop end blocks.
      */
     void countEdges(LIRBlock cur, LIRBlock parent) {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("Counting edges for block B%d%s", cur.blockID(), parent == null ? "" : " coming from B" + parent.blockID());
         }
 
         if (isActive(cur)) {
-            if (C1XOptions.TraceLinearScanLevel >= 3) {
+            if (GraalOptions.TraceLinearScanLevel >= 3) {
                 TTY.println("backward branch");
             }
             assert isVisited(cur) : "block must be visited when block is active";
@@ -169,7 +169,7 @@ public final class ComputeLinearScanOrder {
         incForwardBranches(cur);
 
         if (isVisited(cur)) {
-            if (C1XOptions.TraceLinearScanLevel >= 3) {
+            if (GraalOptions.TraceLinearScanLevel >= 3) {
                 TTY.println("block already visited");
             }
             return;
@@ -194,7 +194,7 @@ public final class ComputeLinearScanOrder {
         // have returned.
         if (cur.isLinearScanLoopHeader()) {
             assert cur.loopIndex() == -1 : "cannot set loop-index twice";
-            if (C1XOptions.TraceLinearScanLevel >= 3) {
+            if (GraalOptions.TraceLinearScanLevel >= 3) {
                 TTY.println("Block B%d is loop header of loop %d", cur.blockID(), numLoops);
             }
 
@@ -202,13 +202,13 @@ public final class ComputeLinearScanOrder {
             numLoops++;
         }
 
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("Finished counting edges for block B%d", cur.blockID());
         }
     }
 
     void markLoops() {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("----- marking loops");
         }
 
@@ -219,7 +219,7 @@ public final class ComputeLinearScanOrder {
             LIRBlock loopStart = loopEnd.suxAt(0);
             int loopIdx = loopStart.loopIndex();
 
-            if (C1XOptions.TraceLinearScanLevel >= 3) {
+            if (GraalOptions.TraceLinearScanLevel >= 3) {
                 TTY.println("Processing loop from B%d to B%d (loop %d):", loopStart.blockID(), loopEnd.blockID(), loopIdx);
             }
             assert loopEnd.isLinearScanLoopEnd() : "loop end flag must be set";
@@ -234,7 +234,7 @@ public final class ComputeLinearScanOrder {
             do {
                 LIRBlock cur = workList.remove(workList.size() - 1);
 
-                if (C1XOptions.TraceLinearScanLevel >= 3) {
+                if (GraalOptions.TraceLinearScanLevel >= 3) {
                     TTY.println("    processing B%d", cur.blockID());
                 }
                 assert isBlockInLoop(loopIdx, cur) : "bit in loop map must be set when block is in work list";
@@ -246,7 +246,7 @@ public final class ComputeLinearScanOrder {
 
                         if (!isBlockInLoop(loopIdx, pred)) {
                             // this predecessor has not been processed yet, so add it to work list
-                            if (C1XOptions.TraceLinearScanLevel >= 3) {
+                            if (GraalOptions.TraceLinearScanLevel >= 3) {
                                 TTY.println("    pushing B%d", pred.blockID());
                             }
                             workList.add(pred);
@@ -266,7 +266,7 @@ public final class ComputeLinearScanOrder {
             if (isBlockInLoop(i, startBlock)) {
                 // loop i contains the entry block of the method.
                 // this is not a natural loop, so ignore it
-                if (C1XOptions.TraceLinearScanLevel >= 2) {
+                if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("Loop %d is non-natural, so it is ignored", i);
                 }
 
@@ -279,7 +279,7 @@ public final class ComputeLinearScanOrder {
     }
 
     void assignLoopDepth(LIRBlock startBlock) {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("----- computing loop-depth and weight");
         }
         initVisited();
@@ -292,7 +292,7 @@ public final class ComputeLinearScanOrder {
 
             if (!isVisited(cur)) {
                 setVisited(cur);
-                if (C1XOptions.TraceLinearScanLevel >= 4) {
+                if (GraalOptions.TraceLinearScanLevel >= 4) {
                     TTY.println("Computing loop depth for block B%d", cur.blockID());
                 }
 
@@ -393,7 +393,7 @@ public final class ComputeLinearScanOrder {
         // the linearScanNumber is used to cache the weight of a block
         cur.setLinearScanNumber(curWeight);
 
-        if (C1XOptions.StressLinearScan) {
+        if (GraalOptions.StressLinearScan) {
             workList.add(0, cur);
             return;
         }
@@ -407,7 +407,7 @@ public final class ComputeLinearScanOrder {
         }
         workList.set(insertIdx, cur);
 
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("Sorted B%d into worklist. new worklist:", cur.blockID());
             for (int i = 0; i < workList.size(); i++) {
                 TTY.println(String.format("%8d B%02d  weight:%6x", i, workList.get(i).blockID(), workList.get(i).linearScanNumber()));
@@ -421,7 +421,7 @@ public final class ComputeLinearScanOrder {
     }
 
     void appendBlock(LIRBlock cur) {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("appending block B%d (weight 0x%06x) to linear-scan order", cur.blockID(), cur.linearScanNumber());
         }
         assert !linearScanOrder.contains(cur) : "cannot add the same block twice";
@@ -434,7 +434,7 @@ public final class ComputeLinearScanOrder {
     }
 
     void computeOrder(LIRBlock startBlock) {
-        if (C1XOptions.TraceLinearScanLevel >= 3) {
+        if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("----- computing final block order");
         }
 
@@ -471,7 +471,7 @@ public final class ComputeLinearScanOrder {
     }
 
     public void printBlocks() {
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println("----- loop information:");
             for (LIRBlock cur : linearScanOrder) {
                 TTY.print(String.format("%4d: B%02d: ", cur.linearScanNumber(), cur.blockID()));
@@ -482,7 +482,7 @@ public final class ComputeLinearScanOrder {
             }
         }
 
-        if (C1XOptions.TraceLinearScanLevel >= 1) {
+        if (GraalOptions.TraceLinearScanLevel >= 1) {
             TTY.println("----- linear-scan block order:");
             for (LIRBlock cur : linearScanOrder) {
                 TTY.print(String.format("%4d: B%02d    loop: %2d  depth: %2d", cur.linearScanNumber(), cur.blockID(), cur.loopIndex(), cur.loopDepth()));
@@ -515,7 +515,7 @@ public final class ComputeLinearScanOrder {
     boolean verify() {
        /* assert linearScanOrder.size() == numBlocks : "wrong number of blocks in list";
 
-        if (C1XOptions.StressLinearScan) {
+        if (GraalOptions.StressLinearScan) {
             // blocks are scrambled when StressLinearScan is used
             return true;
         }

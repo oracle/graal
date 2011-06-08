@@ -59,12 +59,12 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     private int registerRestoreEpilogueOffset;
 
     private RiRuntime runtime;
-    private C1XCompiler compiler;
+    private GraalCompiler compiler;
     private CiRegister[] registersSaved;
 
     private boolean savedAllRegisters;
 
-    public AMD64GlobalStubEmitter(C1XCompiler compiler) {
+    public AMD64GlobalStubEmitter(GraalCompiler compiler) {
         this.compiler = compiler;
         this.target = compiler.target;
         this.runtime = compiler.runtime;
@@ -156,7 +156,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     }
 
     public GlobalStub emit(XirTemplate template, RiRuntime runtime) {
-        C1XCompilation compilation = new C1XCompilation(compiler, null, -1, null);
+        GraalCompilation compilation = new GraalCompilation(compiler, null, -1, null);
         try {
             return emit(template, compilation);
         } finally {
@@ -164,7 +164,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         }
     }
 
-    public GlobalStub emit(XirTemplate template, C1XCompilation compilation) {
+    public GlobalStub emit(XirTemplate template, GraalCompilation compilation) {
         reset(template.resultOperand.kind, getArgumentKinds(template));
         compilation.initFrameMap(0);
         compilation.frameMap().setFrameSize(frameSize());

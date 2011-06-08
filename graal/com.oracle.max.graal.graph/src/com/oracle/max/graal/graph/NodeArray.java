@@ -44,7 +44,7 @@ public class NodeArray extends AbstractList<Node> {
     private Node self() {
         return this.node;
     }
-    
+
     Node silentSet(int index, Node node) {
         Node result = nodes[index];
         nodes[index] = node;
@@ -113,7 +113,7 @@ public class NodeArray extends AbstractList<Node> {
         }
         return false;
     }
-    
+
     public int remove(Node n) {
         return replace(n, null);
     }
@@ -128,7 +128,7 @@ public class NodeArray extends AbstractList<Node> {
         }
         return result;
     }
-    
+
     int silentRemove(Node n) {
         return silentReplace(n, null);
     }

@@ -53,7 +53,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
         new PhiSimplifier(graph);
 
-        if (C1XOptions.TraceDeadCodeElimination) {
+        if (GraalOptions.TraceDeadCodeElimination) {
             System.out.printf("dead code elimination finished\n");
         }
     }

@@ -28,6 +28,6 @@ public interface Compiler {
 
     VMEntries getVMEntries();
     VMExits getVMExits();
-    C1XCompiler getCompiler();
+    GraalCompiler getCompiler();
 
 }

@@ -60,7 +60,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     protected static final CiValue ILLEGAL = CiValue.IllegalValue;
 
-    public AMD64LIRGenerator(C1XCompilation compilation) {
+    public AMD64LIRGenerator(GraalCompilation compilation) {
         super(compilation);
     }
 

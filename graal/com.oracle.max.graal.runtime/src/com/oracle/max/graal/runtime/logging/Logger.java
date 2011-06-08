@@ -31,7 +31,7 @@ import java.util.*;
  */
 public class Logger {
 
-    public static final boolean ENABLED = Boolean.valueOf(System.getProperty("c1x.debug"));
+    public static final boolean ENABLED = Boolean.valueOf(System.getProperty("graal.debug"));
     private static final int SPACING = 4;
     private static Deque<Boolean> openStack = new LinkedList<Boolean>();
     private static boolean open = false;
@@ -41,7 +41,7 @@ public class Logger {
 
     static {
         PrintStream ps = null;
-        String filename = System.getProperty("c1x.info_file");
+        String filename = System.getProperty("graal.info_file");
         if (filename != null && !"".equals(filename)) {
             try {
                 ps = new PrintStream(new FileOutputStream(filename));

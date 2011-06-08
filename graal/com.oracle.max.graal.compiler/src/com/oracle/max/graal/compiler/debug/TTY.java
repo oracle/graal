@@ -84,12 +84,12 @@ public class TTY {
         }
     }
 
-    public static final String C1X_TTY_LOG_FILE_PROPERTY = "c1x.tty.file";
+    public static final String GRAAL_TTY_LOG_FILE_PROPERTY = "graal.tty.file";
 
     private static final LogStream log;
     static {
         PrintStream out = System.out;
-        String value = System.getProperty(C1X_TTY_LOG_FILE_PROPERTY);
+        String value = System.getProperty(GRAAL_TTY_LOG_FILE_PROPERTY);
         if (value != null) {
             try {
                 out = new PrintStream(new FileOutputStream(value));

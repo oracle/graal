@@ -85,7 +85,7 @@ public abstract class Instruction extends FixedNode {
      */
     public Instruction(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
-        C1XMetrics.HIRInstructions++;
+        GraalMetrics.HIRInstructions++;
     }
 
 

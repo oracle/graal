@@ -30,7 +30,7 @@ import com.oracle.max.graal.compiler.debug.*;
  *
  * @author Christian Wimmer
  */
-public enum C1XTimers {
+public enum GraalTimers {
     HIR_CREATE("Create HIR"),
     HIR_OPTIMIZE("Optimize HIR"),
     NCE("Nullcheck elimination"),
@@ -45,7 +45,7 @@ public enum C1XTimers {
     private long start;
     private long total;
 
-    private C1XTimers(String name) {
+    private GraalTimers(String name) {
         this.name = name;
     }
 
@@ -58,14 +58,14 @@ public enum C1XTimers {
     }
 
     public static void reset() {
-        for (C1XTimers t : values()) {
+        for (GraalTimers t : values()) {
             t.total = 0;
         }
     }
 
     public static void print() {
         long total = 0;
-        for (C1XTimers timer : C1XTimers.values()) {
+        for (GraalTimers timer : GraalTimers.values()) {
             total += timer.total;
         }
         if (total == 0) {
@@ -73,7 +73,7 @@ public enum C1XTimers {
         }
 
         TTY.println();
-        for (C1XTimers timer : C1XTimers.values()) {
+        for (GraalTimers timer : GraalTimers.values()) {
             TTY.println("%-20s: %7.4f s (%5.2f%%)", timer.name, timer.total / 1000000000.0, timer.total * 100.0 / total);
             timer.total = 0;
         }

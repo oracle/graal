@@ -60,7 +60,7 @@ public class CanonicalizerPhase extends Phase {
             Node canonical = op.canonical(n);
             if (canonical != n) {
                 n.replace(canonical);
-                C1XMetrics.NodesCanonicalized++;
+                GraalMetrics.NodesCanonicalized++;
             }
         }
     }

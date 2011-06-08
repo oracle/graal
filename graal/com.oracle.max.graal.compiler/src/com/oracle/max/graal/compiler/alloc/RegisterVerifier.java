@@ -41,7 +41,7 @@ final class RegisterVerifier {
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
-    C1XCompilation compilation() {
+    GraalCompilation compilation() {
         return allocator.compilation;
     }
 
@@ -102,7 +102,7 @@ final class RegisterVerifier {
     }
 
     private void processBlock(LIRBlock block) {
-        if (C1XOptions.TraceLinearScanLevel >= 2) {
+        if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println();
             TTY.println("processBlock B%d", block.blockID());
         }
@@ -110,7 +110,7 @@ final class RegisterVerifier {
         // must copy state because it is modified
         Interval[] inputState = copy(stateForBlock(block));
 
-        if (C1XOptions.TraceLinearScanLevel >= 4) {
+        if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.println("Input-State of intervals:");
             TTY.print("    ");
             for (int i = 0; i < stateSize(); i++) {
@@ -152,7 +152,7 @@ final class RegisterVerifier {
                         savedStateCorrect = false;
                         savedState[i] = null;
 
-                        if (C1XOptions.TraceLinearScanLevel >= 4) {
+                        if (GraalOptions.TraceLinearScanLevel >= 4) {
                             TTY.println("processSuccessor B%d: invalidating slot %d", block.blockID(), i);
                         }
                     }
@@ -161,12 +161,12 @@ final class RegisterVerifier {
 
             if (savedStateCorrect) {
                 // already processed block with correct inputState
-                if (C1XOptions.TraceLinearScanLevel >= 2) {
+                if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("processSuccessor B%d: previous visit already correct", block.blockID());
                 }
             } else {
                 // must re-visit this block
-                if (C1XOptions.TraceLinearScanLevel >= 2) {
+                if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("processSuccessor B%d: must re-visit because input state changed", block.blockID());
                 }
                 addToWorkList(block);
@@ -174,7 +174,7 @@ final class RegisterVerifier {
 
         } else {
             // block was not processed before, so set initial inputState
-            if (C1XOptions.TraceLinearScanLevel >= 2) {
+            if (GraalOptions.TraceLinearScanLevel >= 2) {
                 TTY.println("processSuccessor B%d: initial visit", block.blockID());
             }
 
@@ -192,11 +192,11 @@ final class RegisterVerifier {
             CiRegister reg = location.asRegister();
             int regNum = reg.number;
             if (interval != null) {
-                if (C1XOptions.TraceLinearScanLevel >= 4) {
+                if (GraalOptions.TraceLinearScanLevel >= 4) {
                     TTY.println("        %s = %s", reg, interval.operand);
                 }
             } else if (inputState[regNum] != null) {
-                if (C1XOptions.TraceLinearScanLevel >= 4) {
+                if (GraalOptions.TraceLinearScanLevel >= 4) {
                     TTY.println("        %s = null", reg);
                 }
             }
@@ -219,7 +219,7 @@ final class RegisterVerifier {
         for (int i = 0; i < ops.length(); i++) {
             LIRInstruction op = ops.at(i);
 
-            if (C1XOptions.TraceLinearScanLevel >= 4) {
+            if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println(op.toStringWithIdPrefix());
             }
 

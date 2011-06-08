@@ -42,7 +42,7 @@ public class IR {
     /**
      * The compilation associated with this IR.
      */
-    public final C1XCompilation compilation;
+    public final GraalCompilation compilation;
 
     /**
      * The start block of this IR.
@@ -58,7 +58,7 @@ public class IR {
      * Creates a new IR instance for the specified compilation.
      * @param compilation the compilation
      */
-    public IR(C1XCompilation compilation) {
+    public IR(GraalCompilation compilation) {
         this.compilation = compilation;
     }
 
@@ -68,26 +68,26 @@ public class IR {
      * Builds the graph, optimizes it, and computes the linear scan block order.
      */
     public void build() {
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.HIR_CREATE.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.HIR_CREATE.start();
         }
 
         new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
         new DuplicationPhase().apply(compilation.graph);
         new DeadCodeEliminationPhase().apply(compilation.graph);
 
-        if (C1XOptions.Inline) {
+        if (GraalOptions.Inline) {
             new InliningPhase(compilation, this).apply(compilation.graph);
         }
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.HIR_CREATE.stop();
-            C1XTimers.HIR_OPTIMIZE.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.HIR_CREATE.stop();
+            GraalTimers.HIR_OPTIMIZE.start();
         }
 
         Graph graph = compilation.graph;
 
-        if (C1XOptions.OptCanonicalizer) {
+        if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
         }
 
@@ -140,8 +140,8 @@ public class IR {
 
         verifyAndPrint("After linear scan order");
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.HIR_OPTIMIZE.stop();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.HIR_OPTIMIZE.stop();
         }
     }
 

@@ -33,7 +33,7 @@ import com.oracle.max.graal.runtime.server.*;
  */
 public class CountingProxy<T> implements InvocationHandler {
 
-    public static final boolean ENABLED = Boolean.valueOf(System.getProperty("c1x.countcalls"));
+    public static final boolean ENABLED = Boolean.valueOf(System.getProperty("graal.countcalls"));
 
     private T delegate;
 

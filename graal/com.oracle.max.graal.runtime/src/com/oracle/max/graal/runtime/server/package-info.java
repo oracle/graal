@@ -21,9 +21,6 @@
  * questions.
  */
 /**
- * Implementation of a compilation server socket that delegates incoming requests to C1X.
- *
- * @author Lukas Stadler
- * @author Thomas Wuerthinger
+ * Implementation of a compilation server socket that delegates incoming requests to Graal.
  */
 package com.oracle.max.graal.runtime.server;

@@ -25,7 +25,7 @@ package com.oracle.max.graal.runtime;
 import com.sun.cri.ci.*;
 
 /**
- * Used to communicate configuration details, runtime offsets, etc. to c1x upon compileMethod.
+ * Used to communicate configuration details, runtime offsets, etc. to graal upon compileMethod.
  */
 public final class HotSpotVMConfig extends CompilerObject {
 

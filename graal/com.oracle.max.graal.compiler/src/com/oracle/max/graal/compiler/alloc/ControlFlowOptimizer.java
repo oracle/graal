@@ -57,7 +57,7 @@ final class ControlFlowOptimizer {
 
     private void reorderShortLoop(List<LIRBlock> code, LIRBlock headerBlock, int headerIdx) {
         int i = headerIdx + 1;
-        int maxEnd = Math.min(headerIdx + C1XOptions.MaximumShortLoopSize, code.size());
+        int maxEnd = Math.min(headerIdx + GraalOptions.MaximumShortLoopSize, code.size());
         while (i < maxEnd && code.get(i).loopDepth() >= headerBlock.loopDepth()) {
             i++;
         }
@@ -136,7 +136,7 @@ final class ControlFlowOptimizer {
 
                 // adjust successor and predecessor lists
                 block.replaceWith(newTarget);
-                C1XMetrics.BlocksDeleted++;
+                GraalMetrics.BlocksDeleted++;
             } else {
                 // adjust position of this block in the block list if blocks before
                 // have been deleted

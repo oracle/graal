@@ -25,14 +25,14 @@ package com.oracle.max.graal.compiler;
 import com.oracle.max.graal.compiler.debug.TTY.*;
 
 /**
- * This class encapsulates options that control the behavior of the C1X compiler.
+ * This class encapsulates options that control the behavior of the Graal compiler.
  * The help message for each option is specified by a {@linkplain #helpMap help map}.
  *
  * (tw) WARNING: Fields of this class are treated as final by Graal.
  *
  * @author Ben L. Titzer
  */
-public final class C1XOptions {
+public final class GraalOptions {
 
     // Checkstyle: stop
     private static final boolean ____ = false;

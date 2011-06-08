@@ -36,7 +36,7 @@ import com.sun.cri.ri.*;
  */
 public class CFGPrinterObserver implements CompilationObserver {
 
-    private C1XCompilation currentCompilation;
+    private GraalCompilation currentCompilation;
     private CFGPrinter cfgPrinter;
     private ByteArrayOutputStream buffer = null;
     private final OutputStream stream;
