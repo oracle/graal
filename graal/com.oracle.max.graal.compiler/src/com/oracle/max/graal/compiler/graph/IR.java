@@ -93,7 +93,8 @@ public class IR {
 
         new SplitCriticalEdgesPhase().apply(graph);
 
-        Schedule schedule = new Schedule(graph);
+        Schedule schedule = new Schedule();
+        schedule.apply(graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
