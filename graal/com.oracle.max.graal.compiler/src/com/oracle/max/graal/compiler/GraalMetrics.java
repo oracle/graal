@@ -40,7 +40,6 @@ public class GraalMetrics {
     public static int InlinedFinalizerChecks;
     public static int InlineForcedMethods;
     public static int InlineForbiddenMethods;
-    public static int InlinedJsrs;
     public static int BlocksDeleted;
     public static int BytecodesCompiled;
     public static int CodeBytesEmitted;

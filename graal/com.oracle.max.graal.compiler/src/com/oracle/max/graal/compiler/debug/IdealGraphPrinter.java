@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.debug;
 
 import java.io.*;
 import java.util.*;
-import java.util.Map.*;
+import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -52,7 +52,7 @@ public class IdealGraphPrinter {
 
     private final HashSet<Class<?>> omittedClasses = new HashSet<Class<?>>();
     private final PrintStream stream;
-    private final List<Node> noBlockNodes = new LinkedList<Node>();
+    private final Set<Node> noBlockNodes = new HashSet<Node>();
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
@@ -111,7 +111,7 @@ public class IdealGraphPrinter {
      */
     public void print(Graph graph, String title, boolean shortNames) {
         stream.printf(" <graph name='%s'>%n", escape(title));
-
+        noBlockNodes.clear();
         Schedule schedule = null;
         try {
             schedule = new Schedule();
@@ -228,6 +228,7 @@ public class IdealGraphPrinter {
                 }
             }
         }
+
         // add all framestates and phis to their blocks
         for (Node node : block.getInstructions()) {
             if (node instanceof Instruction && ((Instruction) node).stateAfter() != null) {

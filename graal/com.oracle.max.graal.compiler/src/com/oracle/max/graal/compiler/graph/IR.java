@@ -73,8 +73,10 @@ public class IR {
         }
 
         new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
-        new DuplicationPhase().apply(compilation.graph);
+        verifyAndPrint("After GraphBuilder");
+        //new DuplicationPhase().apply(compilation.graph);
         new DeadCodeEliminationPhase().apply(compilation.graph);
+        verifyAndPrint("After DeadCodeElimination");
 
         if (GraalOptions.Inline) {
             new InliningPhase(compilation, this).apply(compilation.graph);
@@ -90,6 +92,8 @@ public class IR {
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
             verifyAndPrint("After Canonicalization");
+            new DeadCodeEliminationPhase().apply(compilation.graph);
+            verifyAndPrint("After DeadCodeElimination");
         }
 
         new SplitCriticalEdgesPhase().apply(graph);
