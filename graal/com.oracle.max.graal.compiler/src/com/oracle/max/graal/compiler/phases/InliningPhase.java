@@ -100,7 +100,6 @@ public class InliningPhase extends Phase {
             }
             DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
-            ir.verifyAndPrint("After inlining iteration");
 
             if (inliningSize > GraalOptions.MaximumInstructionCount) {
                 if (GraalOptions.TraceInlining) {
@@ -276,7 +275,7 @@ public class InliningPhase extends Phase {
         }
 
         if (GraalOptions.TraceInlining) {
-            ir.verifyAndPrint("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false));
+            ir.printGraph("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false), compilation.graph);
         }
     }
 }

@@ -78,7 +78,7 @@ public final class GraalOptions {
 
     // Other printing settings
     public static boolean PrintMetrics                       = ____;
-    public static boolean PrintTimers                        = ____;
+    public static boolean Time                               = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintXirTemplates                  = ____;
     public static boolean PrintIRWithLIR                     = ____;

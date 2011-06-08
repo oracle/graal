@@ -20,25 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.max.graal.compiler.phases;
+
+import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.graph.Graph;
 
 public abstract class Phase {
-    
+
     private final String name;
-    
+
     public Phase() {
         this.name = this.getClass().getSimpleName();
     }
-    
+
     public Phase(String name) {
         this.name = name;
     }
 
     public final void apply(Graph graph) {
         assert graph != null;
+
+        int startDeletedNodeCount = graph.getDeletedNodeCount();
+        int startNodeCount = graph.getNodeCount();
+        if (GraalOptions.Time) {
+            GraalTimers.get(getName()).start();
+        }
         run(graph);
+        if (GraalOptions.Time) {
+            GraalTimers.get(getName()).stop();
+        }
+        int deletedNodeCount = graph.getDeletedNodeCount() - startDeletedNodeCount;
+        int nodeCount = graph.getNodeCount() - startNodeCount;
+
+        // (Item|Graph|Phase|Value)
     }
-    
+
     public final String getName() {
         return name;
     }

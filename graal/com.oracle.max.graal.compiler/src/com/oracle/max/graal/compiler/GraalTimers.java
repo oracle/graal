@@ -22,24 +22,25 @@
  */
 package com.oracle.max.graal.compiler;
 
+import java.util.*;
+import java.util.Map.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 
 /**
  * This class contains timers that record the amount of time spent in various
  * parts of the compiler.
- *
- * @author Christian Wimmer
  */
-public enum GraalTimers {
-    HIR_CREATE("Create HIR"),
-    HIR_OPTIMIZE("Optimize HIR"),
-    NCE("Nullcheck elimination"),
-    LIR_CREATE("Create LIR"),
-    LIFETIME_ANALYSIS("Lifetime Analysis"),
-    LINEAR_SCAN("Linear Scan"),
-    RESOLUTION("Resolution"),
-    DEBUG_INFO("Create Debug Info"),
-    CODE_CREATE("Create Code");
+public final class GraalTimers {
+    private static LinkedHashMap<String, GraalTimers> map = new LinkedHashMap<String, GraalTimers>();
+
+    public static final GraalTimers COMPUTE_LINEAR_SCAN_ORDER = get("Compute Linear Scan Order");
+    public static final GraalTimers LIR_CREATE = get("Create LIR");
+    public static final GraalTimers LIFETIME_ANALYSIS = get("Lifetime Analysis");
+    public static final GraalTimers LINEAR_SCAN = get("Linear Scan");
+    public static final GraalTimers RESOLUTION = get("Resolution");
+    public static final GraalTimers DEBUG_INFO = get("Create Debug Info");
+    public static final GraalTimers CODE_CREATE = get("Create Code");
 
     private final String name;
     private long start;
@@ -47,6 +48,14 @@ public enum GraalTimers {
 
     private GraalTimers(String name) {
         this.name = name;
+    }
+
+
+    public static GraalTimers get(String name) {
+        if (!map.containsKey(name)) {
+            map.put(name, new GraalTimers(name));
+        }
+        return map.get(name);
     }
 
     public void start() {
@@ -58,23 +67,24 @@ public enum GraalTimers {
     }
 
     public static void reset() {
-        for (GraalTimers t : values()) {
-            t.total = 0;
+        for (Entry<String, GraalTimers> e : map.entrySet()) {
+            e.getValue().total = 0;
         }
     }
 
     public static void print() {
         long total = 0;
-        for (GraalTimers timer : GraalTimers.values()) {
-            total += timer.total;
+        for (Entry<String, GraalTimers> e : map.entrySet()) {
+            total += e.getValue().total;
         }
         if (total == 0) {
             return;
         }
 
         TTY.println();
-        for (GraalTimers timer : GraalTimers.values()) {
-            TTY.println("%-20s: %7.4f s (%5.2f%%)", timer.name, timer.total / 1000000000.0, timer.total * 100.0 / total);
+        for (Entry<String, GraalTimers> e : map.entrySet()) {
+            GraalTimers timer = e.getValue();
+            TTY.println("%-30s: %7.4f s (%5.2f%%)", timer.name, timer.total / 1000000000.0, timer.total * 100.0 / total);
             timer.total = 0;
         }
         TTY.println();

@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;

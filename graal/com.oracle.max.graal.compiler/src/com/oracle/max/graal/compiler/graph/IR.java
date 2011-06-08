@@ -68,10 +68,6 @@ public class IR {
      * Builds the graph, optimizes it, and computes the linear scan block order.
      */
     public void build() {
-        if (GraalOptions.PrintTimers) {
-            GraalTimers.HIR_CREATE.start();
-        }
-
         new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
         new DuplicationPhase().apply(compilation.graph);
         new DeadCodeEliminationPhase().apply(compilation.graph);
@@ -80,9 +76,8 @@ public class IR {
             new InliningPhase(compilation, this).apply(compilation.graph);
         }
 
-        if (GraalOptions.PrintTimers) {
-            GraalTimers.HIR_CREATE.stop();
-            GraalTimers.HIR_OPTIMIZE.start();
+        if (GraalOptions.Time) {
+            GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.start();
         }
 
         Graph graph = compilation.graph;
@@ -95,6 +90,8 @@ public class IR {
 
         Schedule schedule = new Schedule();
         schedule.apply(graph);
+
+
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
@@ -139,10 +136,10 @@ public class IR {
             b.setLinearScanNumber(z++);
         }
 
-        verifyAndPrint("After linear scan order");
+        printGraph("After linear scan order", compilation.graph);
 
-        if (GraalOptions.PrintTimers) {
-            GraalTimers.HIR_OPTIMIZE.stop();
+        if (GraalOptions.Time) {
+            GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.stop();
         }
     }
 
@@ -152,16 +149,6 @@ public class IR {
      */
     public List<LIRBlock> linearScanOrder() {
         return orderedBlocks;
-    }
-
-    /**
-     * Verifies the IR and prints it out if the relevant options are set.
-     * @param phase the name of the phase for printing
-     */
-    public void verifyAndPrint(String phase) {
-        if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, compilation.graph, true, false));
-        }
     }
 
     public void printGraph(String phase, Graph graph) {

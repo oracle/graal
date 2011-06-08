@@ -23,7 +23,6 @@
 package com.oracle.max.graal.runtime;
 
 import java.io.*;
-import java.lang.management.*;
 import java.net.*;
 
 import com.oracle.max.asm.target.amd64.*;
@@ -40,7 +39,6 @@ import com.sun.cri.xir.*;
 public final class CompilerImpl implements Compiler, Remote {
 
     private static Compiler theInstance;
-    private static boolean PrintGCStats = false;
 
     public static Compiler getInstance() {
         return theInstance;
@@ -71,52 +69,13 @@ public final class CompilerImpl implements Compiler, Remote {
         } else {
             // ordinary local compilation
             theInstance = new CompilerImpl(null);
-            Runtime.getRuntime().addShutdownHook(new ShutdownThread());
         }
     }
 
     public static Compiler initializeServer(VMEntries entries) {
         assert theInstance == null;
         theInstance = new CompilerImpl(entries);
-        Runtime.getRuntime().addShutdownHook(new ShutdownThread());
         return theInstance;
-    }
-
-    public static class ShutdownThread extends Thread {
-
-        @Override
-        public void run() {
-            VMExitsNative.compileMethods = false;
-            if (GraalOptions.PrintMetrics) {
-                GraalMetrics.print();
-            }
-            if (GraalOptions.PrintTimers) {
-                GraalTimers.print();
-            }
-            if (PrintGCStats) {
-                printGCStats();
-            }
-        }
-    }
-
-    public static void printGCStats() {
-        long totalGarbageCollections = 0;
-        long garbageCollectionTime = 0;
-
-        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
-            long count = gc.getCollectionCount();
-            if (count >= 0) {
-                totalGarbageCollections += count;
-            }
-
-            long time = gc.getCollectionTime();
-            if (time >= 0) {
-                garbageCollectionTime += time;
-            }
-        }
-
-        System.out.println("Total Garbage Collections: " + totalGarbageCollections);
-        System.out.println("Total Garbage Collection Time (ms): " + garbageCollectionTime);
     }
 
     private final VMEntries vmEntries;
