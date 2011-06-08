@@ -52,8 +52,7 @@ public final class Or extends Logic {
 
     @Override
     public Node copy(Graph into) {
-        Or x = new Or(kind, null, null, into);
-        return x;
+        return new Or(kind, null, null, into);
     }
 
     @SuppressWarnings("unchecked")
@@ -68,7 +67,6 @@ public final class Or extends Logic {
     private static class OrCanonicalizerOp implements CanonicalizerOp {
         @Override
         public Node canonical(Node node) {
-            assert node instanceof Or;
             Or or = (Or) node;
             CiKind kind = or.kind;
             Graph graph = or.graph();

@@ -157,7 +157,7 @@ public class IR {
 
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilder(compilation, compilation.method, compilation.graph).build(false);
+        new GraphBuilder(compilation, compilation.method, false).apply(compilation.graph);
 
 //        CompilerGraph duplicate = new CompilerGraph();
 //        Map<Node, Node> replacements = new HashMap<Node, Node>();

@@ -47,7 +47,7 @@ import com.sun.cri.ri.RiType.*;
  * A number of optimizations may be performed during parsing of the bytecode, including value
  * numbering, inlining, constant folding, strength reduction, etc.
  */
-public final class GraphBuilder {
+public final class GraphBuilder extends Phase {
 
     /**
      * The minimum value to which {@link C1XOptions#TraceBytecodeParserLevel} must be set to trace
@@ -62,7 +62,7 @@ public final class GraphBuilder {
     public static final int TRACELEVEL_STATE = 2;
 
     private final C1XCompilation compilation;
-    private final CompilerGraph graph;
+    private CompilerGraph graph;
 
     private final CiStatistics stats;
     private final RiRuntime runtime;
@@ -71,7 +71,7 @@ public final class GraphBuilder {
 
     private final BytecodeStream stream;           // the bytecode stream
     private final LogStream log;
-    private final FrameStateBuilder frameState;          // the current execution state
+    private FrameStateBuilder frameState;          // the current execution state
 
     // bci-to-block mapping
     private Block[] blockFromBci;
@@ -97,6 +97,8 @@ public final class GraphBuilder {
     private final Set<Block> blocksOnWorklist = new HashSet<Block>();
     private final Set<Block> blocksVisited = new HashSet<Block>();
 
+    private final boolean createUnwind;
+
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -105,9 +107,8 @@ public final class GraphBuilder {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilder(C1XCompilation compilation, RiMethod method, CompilerGraph graph) {
+    public GraphBuilder(C1XCompilation compilation, RiMethod method, boolean createUnwind) {
         this.compilation = compilation;
-        this.graph = graph;
 
         this.runtime = compilation.runtime;
         this.method = method;
@@ -116,7 +117,15 @@ public final class GraphBuilder {
         this.stream = new BytecodeStream(method.code());
 
         this.constantPool = runtime.getConstantPool(method);
+        this.createUnwind = createUnwind;
+    }
+
+    @Override
+    protected void run(Graph graph) {
+        assert graph != null;
+        this.graph = (CompilerGraph) graph;
         this.frameState = new FrameStateBuilder(method, graph);
+        build();
     }
 
     /**
@@ -125,7 +134,7 @@ public final class GraphBuilder {
      * @param createUnwind setting this to true will always generate an unwind block, even if there is no exception
      *            handler and the method is not synchronized
      */
-    public void build(boolean createUnwind) {
+    private void build() {
         if (log != null) {
             log.println();
             log.println("Compiling " + method);
