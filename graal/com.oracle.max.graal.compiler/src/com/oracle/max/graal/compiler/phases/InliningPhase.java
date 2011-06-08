@@ -100,9 +100,6 @@ public class InliningPhase extends Phase {
             }
             DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
-            if (dce.deletedNodeCount > 0) {
-                ir.verifyAndPrint("After dead code elimination");
-            }
             ir.verifyAndPrint("After inlining iteration");
 
             if (inliningSize > C1XOptions.MaximumInstructionCount) {

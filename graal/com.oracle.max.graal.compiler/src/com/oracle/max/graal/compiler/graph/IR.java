@@ -73,7 +73,13 @@ public class IR {
             C1XTimers.HIR_CREATE.start();
         }
 
-        buildGraph();
+        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
+        new DuplicationPhase().apply(compilation.graph);
+        new DeadCodeEliminationPhase().apply(compilation.graph);
+
+        if (C1XOptions.Inline) {
+            new InliningPhase(compilation, this).apply(compilation.graph);
+        }
 
         if (C1XOptions.PrintTimers) {
             C1XTimers.HIR_CREATE.stop();
@@ -137,33 +143,6 @@ public class IR {
 
         if (C1XOptions.PrintTimers) {
             C1XTimers.HIR_OPTIMIZE.stop();
-        }
-    }
-
-    private void buildGraph() {
-        // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
-
-//        CompilerGraph duplicate = new CompilerGraph();
-//        Map<Node, Node> replacements = new HashMap<Node, Node>();
-//        replacements.put(compilation.graph.start(), duplicate.start());
-//        duplicate.addDuplicate(compilation.graph.getNodes(), replacements);
-//        compilation.graph = duplicate;
-
-        new DuplicationPhase().apply(compilation.graph);
-
-        DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
-        dce.apply(compilation.graph);
-        if (dce.deletedNodeCount > 0) {
-            verifyAndPrint("After dead code elimination");
-        }
-
-        if (C1XOptions.Inline) {
-            new InliningPhase(compilation, this).apply(compilation.graph);
-        }
-
-        if (C1XOptions.PrintCompilation) {
-            TTY.print(String.format("%3d blocks | ", compilation.stats.blockCount));
         }
     }
 
