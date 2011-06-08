@@ -26,6 +26,9 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import com.oracle.max.graal.graph.Graph;
+import com.oracle.max.graal.graph.Node;
+
 public class NodeTest {
 
     @Test

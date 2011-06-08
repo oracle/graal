@@ -31,8 +31,10 @@ import java.io.OutputStream;
 
 import org.junit.Test;
 
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
+import com.oracle.max.graal.graph.Graph;
+import com.oracle.max.graal.graph.Node;
+import com.oracle.max.graal.graphviz.GraphvizPrinter;
+import com.oracle.max.graal.graphviz.GraphvizRunner;
 
 /**
  * Tests for the Graphviz graph generator. Needs Graphviz (more specifically, dot) installed to verify produced output.
