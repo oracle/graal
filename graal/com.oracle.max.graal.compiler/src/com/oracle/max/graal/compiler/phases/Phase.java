@@ -28,6 +28,7 @@ import com.oracle.max.graal.graph.Graph;
 public abstract class Phase {
 
     private final String name;
+    private static final ThreadLocal<Phase> currentPhase = new ThreadLocal<Phase>();
 
     public Phase() {
         this.name = this.getClass().getSimpleName();
@@ -42,13 +43,22 @@ public abstract class Phase {
 
         int startDeletedNodeCount = graph.getDeletedNodeCount();
         int startNodeCount = graph.getNodeCount();
+        Phase oldCurrentPhase = currentPhase.get();
+        currentPhase.set(this);
         if (GraalOptions.Time) {
+            if (oldCurrentPhase != null) {
+                GraalTimers.get(oldCurrentPhase.getName()).stop();
+            }
             GraalTimers.get(getName()).start();
         }
         run(graph);
         if (GraalOptions.Time) {
             GraalTimers.get(getName()).stop();
+            if (oldCurrentPhase != null) {
+                GraalTimers.get(oldCurrentPhase.getName()).start();
+            }
         }
+        currentPhase.set(oldCurrentPhase);
         int deletedNodeCount = graph.getDeletedNodeCount() - startDeletedNodeCount;
         int nodeCount = graph.getNodeCount() - startNodeCount;
 

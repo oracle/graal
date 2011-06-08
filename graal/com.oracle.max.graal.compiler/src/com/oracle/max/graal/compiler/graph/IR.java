@@ -68,7 +68,7 @@ public class IR {
      * Builds the graph, optimizes it, and computes the linear scan block order.
      */
     public void build() {
-        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
+        new GraphBuilderPhase(compilation, compilation.method, false, false).apply(compilation.graph);
         new DuplicationPhase().apply(compilation.graph);
         new DeadCodeEliminationPhase().apply(compilation.graph);
 

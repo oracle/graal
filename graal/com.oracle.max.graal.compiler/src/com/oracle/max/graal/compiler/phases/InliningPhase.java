@@ -151,7 +151,7 @@ public class InliningPhase extends Phase {
         }
 
         CompilerGraph graph = new CompilerGraph();
-        new GraphBuilderPhase(compilation, method, true).apply(graph);
+        new GraphBuilderPhase(compilation, method, true, true).apply(graph);
 
         boolean withReceiver = !Modifier.isStatic(method.accessFlags());
 

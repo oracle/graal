@@ -39,7 +39,7 @@ public final class GraalOptions {
     // Checkstyle: resume
 
     // inlining settings
-    public static boolean Inline                             = ____;
+    public static boolean Inline                             = true;
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;

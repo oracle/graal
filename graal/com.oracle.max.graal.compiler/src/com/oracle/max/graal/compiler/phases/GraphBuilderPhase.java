@@ -108,7 +108,8 @@ public final class GraphBuilderPhase extends Phase {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean createUnwind) {
+    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean createUnwind, boolean inline) {
+        super(inline ? "Build Inline Graph" : "Build Graph");
         this.compilation = compilation;
 
         this.runtime = compilation.runtime;
