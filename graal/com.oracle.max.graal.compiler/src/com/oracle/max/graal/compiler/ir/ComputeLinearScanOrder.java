@@ -319,10 +319,6 @@ public final class ComputeLinearScanOrder {
     }
 
     int computeWeight(LIRBlock cur) {
-        LIRBlock singleSux = null;
-        if (cur.numberOfSux() == 1) {
-            singleSux = cur.suxAt(0);
-        }
 
         // limit loop-depth to 15 bit (only for security reason, it will never be so big)
         int weight = (cur.loopDepth() & 0x7FFF) << 16;
