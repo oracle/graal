@@ -150,7 +150,7 @@ public class InliningPhase extends Phase {
             System.out.printf("Building graph for %s, locals: %d, stack: %d\n", name, method.maxLocals(), method.maxStackSize());
         }
 
-        CompilerGraph graph = new CompilerGraph();
+        CompilerGraph graph = new CompilerGraph(compilation);
         new GraphBuilderPhase(compilation, method, true, true).apply(graph);
 
         boolean withReceiver = !Modifier.isStatic(method.accessFlags());

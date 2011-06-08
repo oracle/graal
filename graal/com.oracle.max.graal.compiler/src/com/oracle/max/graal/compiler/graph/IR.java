@@ -69,12 +69,14 @@ public class IR {
      */
     public void build() {
         new GraphBuilderPhase(compilation, compilation.method, false, false).apply(compilation.graph);
-        new DuplicationPhase().apply(compilation.graph);
-        new DeadCodeEliminationPhase().apply(compilation.graph);
         printGraph("After GraphBuilding", compilation.graph);
+        //new DuplicationPhase().apply(compilation.graph);
+        new DeadCodeEliminationPhase().apply(compilation.graph);
+        printGraph("After DeadCodeElimination", compilation.graph);
 
         if (GraalOptions.Inline) {
             new InliningPhase(compilation, this).apply(compilation.graph);
+            printGraph("After Ininling", compilation.graph);
         }
 
         if (GraalOptions.Time) {

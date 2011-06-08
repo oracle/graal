@@ -55,7 +55,7 @@ public final class GraalCompilation {
     public final CiAssumptions assumptions = new CiAssumptions();
     public final FrameState placeholderState;
 
-    public CompilerGraph graph = new CompilerGraph();
+    public CompilerGraph graph = new CompilerGraph(this);
 
     private boolean hasExceptionHandlers;
     private final GraalCompilation parent;

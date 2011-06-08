@@ -23,6 +23,8 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -31,6 +33,7 @@ import com.sun.cri.ri.*;
  * The {@code LoadField} instruction represents a read of a static or instance field.
  */
 public final class LoadField extends AccessField {
+    private static final LoadFieldCanonicalizerOp CANONICALIZER = new LoadFieldCanonicalizerOp();
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -89,9 +92,57 @@ public final class LoadField extends AccessField {
         return false;
     }
 
+    /**
+     * Gets a constant value to which this load can be reduced.
+     *
+     * @return {@code null} if this load cannot be reduced to a constant
+     */
+    public CiConstant constantValue() {
+        if (isStatic()) {
+            return field.constantValue(null);
+        } else if (object().isConstant()) {
+            return field.constantValue(object().asConstant());
+        }
+        return null;
+    }
+
     @Override
     public Node copy(Graph into) {
         LoadField x = new LoadField(null, field, into);
         return x;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class LoadFieldCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            LoadField loadField = (LoadField) node;
+            Graph graph = node.graph();
+            CiConstant constant = null;
+            if (graph instanceof CompilerGraph) {
+                RiMethod method = ((CompilerGraph) graph).getCompilation().method;
+                if (loadField.isStatic() && !method.isClassInitializer()) {
+                    constant = loadField.field().constantValue(null);
+                }
+            }
+            if (!loadField.isStatic()) {
+                Value object = loadField.object();
+                if (object.isConstant()) {
+                    constant = loadField.field().constantValue(object.asConstant());
+                }
+            }
+            if (constant != null) {
+                return new Constant(constant, graph);
+            }
+            return loadField;
+        }
     }
 }

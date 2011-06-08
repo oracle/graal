@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.graph;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 
@@ -30,6 +31,12 @@ public class CompilerGraph extends Graph {
 
     private Return returnSingleton;
     private Unwind unwindSingleton;
+    private GraalCompilation compilation;
+
+
+    public CompilerGraph(GraalCompilation compilation) {
+        this.compilation = compilation;
+    }
 
     public Return createReturn(Value result) {
         assert returnSingleton == null;
@@ -49,5 +56,10 @@ public class CompilerGraph extends Graph {
 
     public Unwind getUnwind() {
         return unwindSingleton;
+    }
+
+
+    public GraalCompilation getCompilation() {
+        return compilation;
     }
 }
