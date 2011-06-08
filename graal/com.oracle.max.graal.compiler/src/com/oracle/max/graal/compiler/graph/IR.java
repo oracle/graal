@@ -84,7 +84,7 @@ public class IR {
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
-            verifyAndPrint("After Canonicalization");
+            printGraph("After Canonicalization", graph);
         }
 
         new SplitCriticalEdgesPhase().apply(graph);
