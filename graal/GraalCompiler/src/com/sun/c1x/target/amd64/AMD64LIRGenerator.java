@@ -551,4 +551,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
         lir.jump(getLIRBlock(x.loopBegin()));
     }
 
+    @Override
+    public void visitValueAnchor(ValueAnchor valueAnchor) {
+        // nothing to do for ValueAnchors
+    }
+
 }

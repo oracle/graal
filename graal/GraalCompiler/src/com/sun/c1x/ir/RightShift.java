@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,47 +23,32 @@
 package com.sun.c1x.ir;
 
 import com.oracle.graal.graph.*;
-import com.sun.c1x.debug.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-public class Deoptimize extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+public final class RightShift extends Shift {
 
-    private String message;
-
-    public Deoptimize(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public String message() {
-        return message;
-    }
-
-    @Override
-    public void accept(ValueVisitor v) {
-        v.visitDeoptimize(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("deoptimize");
+    /**
+     * @param opcode
+     * @param kind
+     * @param x
+     * @param y
+     * @param graph
+     */
+    public RightShift(CiKind kind, Value x, Value y, Graph graph) {
+        super(kind, kind == CiKind.Int ? Bytecodes.ISHR : Bytecodes.LSHR, x, y, graph);
     }
 
     @Override
     public String shortName() {
-        return message == null ? "Deopt " : "Deopt " + message;
+        return ">>";
     }
 
     @Override
     public Node copy(Graph into) {
-        Deoptimize x = new Deoptimize(into);
-        x.setMessage(message);
-        return x;
+        RightShift rs = new RightShift(kind, null, null, graph());
+        return rs;
     }
+
 }

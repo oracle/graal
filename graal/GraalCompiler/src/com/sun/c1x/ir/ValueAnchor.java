@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,33 +27,59 @@ import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code ShiftOp} class represents shift operations.
+ * The ValueAnchor instruction keeps non-CFG nodes above a certain point in the graph.
  */
-public abstract class Shift extends Binary {
+public final class ValueAnchor extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_OBJECT = 0;
+
     private static final int SUCCESSOR_COUNT = 0;
 
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
     /**
-     * Creates a new shift operation.
-     * @param opcode the opcode of the shift
-     * @param x the first input value
-     * @param y the second input value
+     * The instruction that should be scheduled before this anchor.
      */
-    public Shift(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+     public Value object() {
+        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    }
+
+    public Value setObject(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    }
+
+    /**
+     * Constructs a new Anchor instruction.
+     * @param succ the successor block of the anchor
+     * @param graph
+     */
+    public ValueAnchor(Value object, Graph graph) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setObject(object);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitShift(this);
+        v.visitValueAnchor(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
+        out.print("value_anchor ").print(object());
     }
 
     @Override
-    public abstract String shortName();
+    public Node copy(Graph into) {
+        ValueAnchor x = new ValueAnchor(null, into);
+        return x;
+    }
 }

@@ -112,7 +112,7 @@ public class VMExitsNative implements VMExits, Remote {
         } catch (Throwable t) {
             StringWriter out = new StringWriter();
             t.printStackTrace(new PrintWriter(out));
-            TTY.println("Compilation interrupted:\n" + out.toString());
+            TTY.println("Compilation interrupted: (" + name + ")\n" + out.toString());
             throw t;
         }
     }

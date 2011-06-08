@@ -45,7 +45,7 @@ public final class C1XOptions {
     public static int     MaximumInlineSize                  = 35;
     public static int     MaximumTrivialSize                 = 6;
     public static int     MaximumInlineLevel                 = 9;
-    public static int     MaximumRecursiveInlineLevel        = 1;
+    public static int     MaximumRecursiveInlineLevel        = 2;
     public static int     MaximumDesiredSize                 = 8000;
     public static int     MaximumShortLoopSize               = 5;
 
@@ -69,7 +69,7 @@ public final class C1XOptions {
     // DOT output settings
     public static boolean PrintDOTGraphToFile                = ____;
     public static boolean PrintDOTGraphToPdf                 = ____;
-    public static boolean OmitDOTFrameStates                 = true;
+    public static boolean OmitDOTFrameStates                 = ____;
 
     // Ideal graph visualizer output settings
     public static int     PrintIdealGraphLevel               = 0;
@@ -92,6 +92,7 @@ public final class C1XOptions {
     public static boolean TraceLIRVisit                      = ____;
     public static boolean TraceAssembler                     = ____;
     public static boolean TraceInlining                      = ____;
+    public static boolean TraceDeadCodeElimination           = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean QuietBailout                       = ____;
 
@@ -127,4 +128,6 @@ public final class C1XOptions {
     // Assembler settings
     public static boolean CommentedAssembly                  = ____;
     public static boolean PrintLIRWithAssembly               = ____;
+
+    public static boolean OptCanonicalizer                   = true;
 }

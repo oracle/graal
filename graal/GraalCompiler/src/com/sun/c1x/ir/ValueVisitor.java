@@ -71,4 +71,5 @@ public abstract class ValueVisitor {
     public abstract void visitUnwind(Unwind unwind);
     public abstract void visitLoopBegin(LoopBegin loopBegin);
     public abstract void visitLoopEnd(LoopEnd loopEnd);
+    public abstract void visitValueAnchor(ValueAnchor valueAnchor);
 }

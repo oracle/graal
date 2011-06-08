@@ -78,7 +78,7 @@ public final class Phi extends FixedNode {
     public Phi(CiKind kind, Merge block, int maxValues, Graph graph) {
         super(kind, INPUT_COUNT + maxValues, SUCCESSOR_COUNT, graph);
         this.maxValues = maxValues;
-        usedInputCount = 1;
+        usedInputCount = 0;
         setBlock(block);
     }
 
@@ -89,7 +89,11 @@ public final class Phi extends FixedNode {
      * @return the instruction that produced the value in the i'th predecessor
      */
     public Value valueAt(int i) {
-        return (Value) inputs().get(i + INPUT_COUNT);
+        return (Value) inputs().get(INPUT_COUNT + i);
+    }
+
+    public Node setValueAt(int i, Node x) {
+        return inputs().set(INPUT_COUNT + i, x);
     }
 
     /**
@@ -97,7 +101,7 @@ public final class Phi extends FixedNode {
      * @return the number of inputs in this phi
      */
     public int valueCount() {
-        return usedInputCount - 1;
+        return usedInputCount;
     }
 
     @Override
@@ -119,11 +123,11 @@ public final class Phi extends FixedNode {
     @Override
     public void print(LogStream out) {
         out.print("phi function (");
-        for (int i = 0; i < inputs().size(); ++i) {
+        for (int i = 0; i < valueCount(); ++i) {
             if (i != 0) {
                 out.print(' ');
             }
-            out.print((Value) inputs().get(i));
+            out.print(valueAt(i));
         }
         out.print(')');
     }
@@ -143,23 +147,24 @@ public final class Phi extends FixedNode {
     public Phi addInput(Node y) {
         assert !this.isDeleted() && !y.isDeleted();
         Phi phi = this;
-        if (usedInputCount == inputs().size()) {
-            phi = new Phi(kind, block(), usedInputCount * 2, graph());
+        if (usedInputCount == maxValues) {
+            phi = new Phi(kind, block(), maxValues * 2, graph());
             for (int i = 0; i < valueCount(); ++i) {
                 phi.addInput(valueAt(i));
             }
             phi.addInput(y);
             this.replace(phi);
         } else {
-            phi.inputs().set(usedInputCount++, y);
+            setValueAt(usedInputCount++, y);
         }
         return phi;
     }
 
     public void removeInput(int index) {
-        inputs().set(index, null);
-        for (int i = index + 1; i < usedInputCount; ++i) {
-            inputs().set(i - 1, inputs().get(i));
+        assert index < valueCount() : "index: " + index + ", valueCount: " + valueCount() + "@phi " + id();
+        setValueAt(index, Node.Null);
+        for (int i = index + 1; i < valueCount(); ++i) {
+            setValueAt(i - 1, valueAt(i));
         }
         usedInputCount--;
     }

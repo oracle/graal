@@ -27,7 +27,7 @@ import com.sun.c1x.debug.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code Goto} instruction represents the end of a block with an unconditional jump to another block.
+ * The {@code Anchor} instruction represents the end of a block with an unconditional jump to another block.
  */
 public final class Anchor extends BlockEnd {
 
@@ -35,14 +35,11 @@ public final class Anchor extends BlockEnd {
     private static final int SUCCESSOR_COUNT = 0;
 
     /**
-     * Constructs a new Goto instruction.
-     * @param succ the successor block of the goto
-     * @param stateAfter the frame state at the end of this block
+     * Constructs a new Anchor instruction.
      * @param graph
      */
-    public Anchor(Instruction succ, Graph graph) {
+    public Anchor(Graph graph) {
         super(CiKind.Illegal, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setBlockSuccessor(0, succ);
     }
 
     @Override
@@ -57,7 +54,7 @@ public final class Anchor extends BlockEnd {
 
     @Override
     public Node copy(Graph into) {
-        Anchor x = new Anchor(null, into);
+        Anchor x = new Anchor(into);
         return x;
     }
 }

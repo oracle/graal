@@ -112,10 +112,15 @@ public class IdealGraphPrinter {
     public void print(Graph graph, String title, boolean shortNames) {
         stream.printf(" <graph name='%s'>%n", escape(title));
 
-        Schedule schedule = new Schedule(graph);
+        Schedule schedule = null;
+        try {
+            schedule = new Schedule(graph);
+        } catch (Throwable t) {
+            // nothing to do here...
+        }
 
         stream.println("  <nodes>");
-        List<Edge> edges = printNodes(graph.getNodes(), shortNames, schedule.getNodeToBlock());
+        List<Edge> edges = printNodes(graph.getNodes(), shortNames, schedule == null ? null : schedule.getNodeToBlock());
         stream.println("  </nodes>");
 
         stream.println("  <edges>");
@@ -125,10 +130,12 @@ public class IdealGraphPrinter {
         stream.println("  </edges>");
 
         stream.println("  <controlFlow>");
-        for (Block block : schedule.getBlocks()) {
-            printBlock(graph, block);
+        if (schedule != null) {
+            for (Block block : schedule.getBlocks()) {
+                printBlock(graph, block);
+            }
+            printNoBlock();
         }
-        printNoBlock();
         stream.println("  </controlFlow>");
 
         stream.println(" </graph>");
@@ -155,12 +162,14 @@ public class IdealGraphPrinter {
                 }
                 stream.printf("    <p name='name'>%s</p>%n", escape(name));
             }
-            Block block = nodeToBlock.get(node);
-            if (block != null) {
-                stream.printf("    <p name='block'>%d</p>%n", block.blockID());
-            } else {
-                stream.printf("    <p name='block'>noBlock</p>%n");
-                noBlockNodes.add(node);
+            if (nodeToBlock != null) {
+                Block block = nodeToBlock.get(node);
+                if (block != null) {
+                    stream.printf("    <p name='block'>%d</p>%n", block.blockID());
+                } else {
+                    stream.printf("    <p name='block'>noBlock</p>%n");
+                    noBlockNodes.add(node);
+                }
             }
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();

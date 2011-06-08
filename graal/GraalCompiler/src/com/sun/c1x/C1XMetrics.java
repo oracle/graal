@@ -62,6 +62,7 @@ public class C1XMetrics {
     public static int UniqueValueIdsAssigned;
     public static int FrameStatesCreated;
     public static int FrameStateValuesCreated;
+    public static int NodesCanonicalized;
 
     public static void print() {
         printClassFields(C1XMetrics.class);
