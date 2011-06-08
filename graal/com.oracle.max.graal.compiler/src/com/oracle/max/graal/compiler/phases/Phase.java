@@ -62,7 +62,7 @@ public abstract class Phase {
         }
         if (GraalOptions.Meter) {
             int deletedNodeCount = graph.getDeletedNodeCount() - startDeletedNodeCount;
-            int createdNodeCount = graph.getNodeCount() - startNodeCount;
+            int createdNodeCount = graph.getNodeCount() - startNodeCount + deletedNodeCount;
             GraalMetrics.get(getName().concat(".executed")).increment();
             GraalMetrics.get(getName().concat(".deletedNodes")).increment(deletedNodeCount);
             GraalMetrics.get(getName().concat(".createdNodes")).increment(createdNodeCount);

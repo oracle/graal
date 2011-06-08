@@ -83,7 +83,7 @@ public final class FloatAdd extends FloatArithmetic {
                         return x;
                     }
                 } else {
-                    assert kind == CiKind.Long;
+                    assert kind == CiKind.Double;
                     double c = y.asConstant().asDouble();
                     if (c == 0.0) {
                         return x;
