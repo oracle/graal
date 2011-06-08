@@ -34,8 +34,6 @@ public class DeadCodeEliminationPhase extends Phase {
     private NodeWorklist worklist;
     private Graph graph;
 
-    public int deletedNodeCount;
-
     @Override
     protected void run(Graph graph) {
         this.graph = graph;
@@ -55,8 +53,8 @@ public class DeadCodeEliminationPhase extends Phase {
 
         new PhiSimplifier(graph);
 
-        if (C1XOptions.TraceDeadCodeElimination) {
-            System.out.printf("dead code elimination: deleted %d nodes\n", deletedNodeCount);
+        if (GraalOptions.TraceDeadCodeElimination) {
+            System.out.printf("dead code elimination finished\n");
         }
     }
 
@@ -94,7 +92,6 @@ public class DeadCodeEliminationPhase extends Phase {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && !worklist.isMarked(node) && isCFG(node)) {
                 node.delete();
-                deletedNodeCount++;
             }
         }
     }
@@ -126,7 +123,6 @@ public class DeadCodeEliminationPhase extends Phase {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && !worklist.isMarked(node) && !isCFG(node)) {
                 node.delete();
-                deletedNodeCount++;
             }
         }
     }

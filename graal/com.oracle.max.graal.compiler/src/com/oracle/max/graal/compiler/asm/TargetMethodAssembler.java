@@ -68,26 +68,26 @@ public class TargetMethodAssembler {
             }
         }
 
-        if (C1XOptions.PrintMetrics) {
-            C1XMetrics.TargetMethods++;
-            C1XMetrics.CodeBytesEmitted += targetMethod.targetCodeSize();
-            C1XMetrics.SafepointsEmitted += targetMethod.safepoints.size();
-            C1XMetrics.DirectCallSitesEmitted += targetMethod.directCalls.size();
-            C1XMetrics.IndirectCallSitesEmitted += targetMethod.indirectCalls.size();
-            C1XMetrics.DataPatches += targetMethod.dataReferences.size();
-            C1XMetrics.ExceptionHandlersEmitted += targetMethod.exceptionHandlers.size();
+        if (GraalOptions.PrintMetrics) {
+            GraalMetrics.TargetMethods++;
+            GraalMetrics.CodeBytesEmitted += targetMethod.targetCodeSize();
+            GraalMetrics.SafepointsEmitted += targetMethod.safepoints.size();
+            GraalMetrics.DirectCallSitesEmitted += targetMethod.directCalls.size();
+            GraalMetrics.IndirectCallSitesEmitted += targetMethod.indirectCalls.size();
+            GraalMetrics.DataPatches += targetMethod.dataReferences.size();
+            GraalMetrics.ExceptionHandlersEmitted += targetMethod.exceptionHandlers.size();
         }
 
-        if (C1XOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
+        if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
             Util.printSection("Target Method", Util.SECTION_CHARACTER);
             TTY.println("Name: " + name);
             TTY.println("Frame size: " + targetMethod.frameSize());
             TTY.println("Register size: " + asm.target.arch.registerReferenceMapBitCount);
 
-            if (C1XOptions.PrintCodeBytes) {
+            if (GraalOptions.PrintCodeBytes) {
                 Util.printSection("Code", Util.SUB_SECTION_CHARACTER);
                 TTY.println("Code: %d bytes", targetMethod.targetCodeSize());
-                Util.printBytes(0L, targetMethod.targetCode(), 0, targetMethod.targetCodeSize(), C1XOptions.PrintAssemblyBytesPerLine);
+                Util.printBytes(0L, targetMethod.targetCode(), 0, targetMethod.targetCodeSize(), GraalOptions.PrintAssemblyBytesPerLine);
             }
 
             Util.printSection("Disassembly", Util.SUB_SECTION_CHARACTER);
@@ -186,7 +186,7 @@ public class TargetMethodAssembler {
 
         int pos = asm.codeBuffer.position();
 
-        if (C1XOptions.TraceRelocation) {
+        if (GraalOptions.TraceRelocation) {
             TTY.print("Data reference in code: pos = %d, data = %s", pos, data.toString());
         }
 

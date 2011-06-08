@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
-import static com.oracle.max.graal.compiler.C1XCompilation.*;
+import static com.oracle.max.graal.compiler.GraalCompilation.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
@@ -41,7 +41,7 @@ import com.sun.cri.xir.*;
  */
 public class AMD64Backend extends Backend {
 
-    public AMD64Backend(C1XCompiler compiler) {
+    public AMD64Backend(GraalCompiler compiler) {
         super(compiler);
     }
     /**
@@ -50,7 +50,7 @@ public class AMD64Backend extends Backend {
      * @return an appropriate LIR generator instance
      */
     @Override
-    public LIRGenerator newLIRGenerator(C1XCompilation compilation) {
+    public LIRGenerator newLIRGenerator(GraalCompilation compilation) {
         return new AMD64LIRGenerator(compilation);
     }
 
@@ -60,7 +60,7 @@ public class AMD64Backend extends Backend {
      * @return an appropriate LIR assembler instance
      */
     @Override
-    public LIRAssembler newLIRAssembler(C1XCompilation compilation) {
+    public LIRAssembler newLIRAssembler(GraalCompilation compilation) {
         return new AMD64LIRAssembler(compilation);
     }
 

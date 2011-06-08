@@ -22,37 +22,37 @@
  */
 
 /**
- * The top-level package in C1X containing options, metrics, timers and the main compiler class
- * {@link com.oracle.max.graal.compiler.C1XCompiler}.
+ * The top-level package in Graal containing options, metrics, timers and the main compiler class
+ * {@link com.oracle.max.graal.compiler.GraalCompiler}.
  *
- * <H2>{@code C1XCompiler} Overview</H2>
+ * <H2>{@code GraalCompiler} Overview</H2>
  *
- * C1X is intended to be used with multiple JVM's so makes no use of or reference to classes for a specific JVM, for
+ * Graal is intended to be used with multiple JVM's so makes no use of or reference to classes for a specific JVM, for
  * example Maxine.
  *
- * The compiler is represented by the class {@code C1XCompiler}. {@code C1XCompiler} binds a specific target
+ * The compiler is represented by the class {@code GraalCompiler}. {@code GraalCompiler} binds a specific target
  * architecture and JVM interface to produce a usable compiler object. There are
  * two variants of {@code compileMethod}, one of which is used when doing <i>on stack replacement</i> (OSR), discussed
  * later. The main variant takes {@link com.sun.cri.ri.RiMethod} and {@link com.sun.cri.xir.RiXirGenerator} arguments.
- * {@code RiMethod} is C1X's representation of a Java method and {@code RiXirGenerator} represents the interface through
+ * {@code RiMethod} is Graal's representation of a Java method and {@code RiXirGenerator} represents the interface through
  * which the compiler requests the XIR for a given bytecode from the runtime system.
  *
- * <H3>The C1X Compilation Process</H3>
+ * <H3>The Graal Compilation Process</H3>
  *
- * {@link com.oracle.max.graal.compiler.C1XCompiler#compileMethod} creates a {@link C1XCompilation} instance and then returns the result of calling its
- * {@link com.oracle.max.graal.compiler.C1XCompilation#compile} method. The {@code C1XCompilation} instance records whether {@code compileMethod} was invoked with
+ * {@link com.oracle.max.graal.compiler.GraalCompiler#compileMethod} creates a {@link GraalCompilation} instance and then returns the result of calling its
+ * {@link com.oracle.max.graal.compiler.GraalCompilation#compile} method. The {@code GraalCompilation} instance records whether {@code compileMethod} was invoked with
  * the OSR variant, which is used later in the IR generation.
  * <p>
- * While there is only one {@code C1XCompiler} instance, there may be several compilations proceeding concurrently, each of
- * which is represented by a unique {@code C1XCompilation} instance. The static method {@link com.oracle.max.graal.compiler.C1XCompilation#current}} returns the
- * {@code C1XCompilation} instance associated with the current thread, and is managed using a {@link java.lang.ThreadLocal} variable. It
- * is used when assigning the unique id that is used for tracing  output to an HIR node. Each {@code C1XCompilation} instance
+ * While there is only one {@code GraalCompiler} instance, there may be several compilations proceeding concurrently, each of
+ * which is represented by a unique {@code GraalCompilation} instance. The static method {@link com.oracle.max.graal.compiler.GraalCompilation#current}} returns the
+ * {@code GraalCompilation} instance associated with the current thread, and is managed using a {@link java.lang.ThreadLocal} variable. It
+ * is used when assigning the unique id that is used for tracing  output to an HIR node. Each {@code GraalCompilation} instance
  * has an associated {@link com.sun.cri.ci.CiStatistics} object that accumulates information about the compilation process, but is also
  * used as a generator of, for example, basic block identifiers.
  * <p>
- * The compilation begins by calling {@link com.oracle.max.graal.compiler.C1XCompilation#emitHIR}, which creates the high-level intermediate representation (HIR) from the
+ * The compilation begins by calling {@link com.oracle.max.graal.compiler.GraalCompilation#emitHIR}, which creates the high-level intermediate representation (HIR) from the
  * bytecodes of the method. The HIR is managed by the {@link com.oracle.max.graal.compiler.graph.IR} class, an instance of which is created by
- * {@code emitHR}, which then calls the {{@link com.oracle.max.graal.compiler.graph.IR#build}} method and returns the result. The {@code C1XCompilation} and {@code IR}
+ * {@code emitHR}, which then calls the {{@link com.oracle.max.graal.compiler.graph.IR#build}} method and returns the result. The {@code GraalCompilation} and {@code IR}
  * instances are are bi-directionally linked.
  *
  * <H3>Supported backends</H3>
@@ -61,7 +61,7 @@
  * <li>AMD64/x64 with SSE2</li>
  * </ul>
  *
- * <H2>Notes and Todos</H2> This is a collection of notes about the C1X compiler, including future directions,
+ * <H2>Notes and Todos</H2> This is a collection of notes about the Graal compiler, including future directions,
  * refactorings, missing features, broken features, etc.
  *
  *
@@ -94,7 +94,7 @@
  *
  * <h3>Missing or incomplete features</h3>
  *
- * There are some features of C1 that were not ported forward or finished given the time constraints for the C1X port. A
+ * There are some features of C1 that were not ported forward or finished given the time constraints for the Graal port. A
  * list appears below.
  *
  * <ul>
@@ -126,7 +126,7 @@
  * backend ({@link com.oracle.max.graal.compiler.target.amd64.AMD64Backend}, {@link com.oracle.max.graal.compiler.target.amd64.AMD64LIRGenerator}, {@link com.oracle.max.graal.compiler.target.amd64.AMD64LIRAssembler}, etc).</li>
  *
  * <li>
- * XIR for safepoints. The C1X backend should use XIR to get the code for safepoints, but currently it still uses the
+ * XIR for safepoints. The Graal backend should use XIR to get the code for safepoints, but currently it still uses the
  * handwritten logic (currently only compatible with Maxine).</li>
  *
  * </ul>
@@ -136,28 +136,28 @@
  * <ul>
  *
  * <li>
- * Reference map for outgoing overflow arguments. If a C1X method calls another method that has overflow arguments, it
+ * Reference map for outgoing overflow arguments. If a Graal method calls another method that has overflow arguments, it
  * is not clear if the outgoing overflow argument area, which may contain references, has the appropriate bits set in
- * the reference map for the C1X method's frame. Such arguments may be live in the called method.</li>
+ * the reference map for the Graal method's frame. Such arguments may be live in the called method.</li>
  *
  * <li>
  * Although it should work, inlining synchronized methods or methods with exception handlers hasn't been tested.</li>
  * <li>
- * On-stack replacement. C1X retains all of the special logic for performing an OSR compilation. This is basically a
+ * On-stack replacement. Graal retains all of the special logic for performing an OSR compilation. This is basically a
  * compilation with a second entrypoint for entry from the interpreter. However, the generation of a runtime-specific
  * entry sequence was never tested.</li>
  *
  * <li>
- * {@link com.oracle.max.graal.compiler.C1XIntrinsic Intrinsification} is the mechanism by which the compiler recognizes calls to special JDK or
- * runtime methods and replaces them with custom code. It is enabled by the {@link com.oracle.max.graal.compiler.C1XOptions#OptIntrinsify} compiler
- * option. The C1X backend has never been tested with intrinsified arithmetic or floating point operations. For best
+ * {@link com.oracle.max.graal.compiler.GraalIntrinsic Intrinsification} is the mechanism by which the compiler recognizes calls to special JDK or
+ * runtime methods and replaces them with custom code. It is enabled by the {@link com.oracle.max.graal.compiler.GraalOptions#OptIntrinsify} compiler
+ * option. The Graal backend has never been tested with intrinsified arithmetic or floating point operations. For best
  * performance, it should generate specialized machine code for arithmetic and floating point, perhaps using global
  * stubs for complex floating point operations. <br>
  * <i>Note</i>: Folding of special intrinsified methods is supported, tested, and working. The runtime system may
  * register methods to be folded by using the
- * {@link com.oracle.max.graal.compiler.C1XIntrinsic#registerFoldableMethod(RiMethod, java.lang.reflect.Method)} call. When the compiler encounters a
+ * {@link com.oracle.max.graal.compiler.GraalIntrinsic#registerFoldableMethod(RiMethod, java.lang.reflect.Method)} call. When the compiler encounters a
  * call to such a registered method where the parameters are all constants, it invokes the supplied method with
- * reflection. If the reflective call produces a value and does not throw an exception, C1X replaces the call to the
+ * reflection. If the reflective call produces a value and does not throw an exception, Graal replaces the call to the
  * method with the result.</li>
  * </ul>
  *
@@ -166,7 +166,7 @@
  * <ul>
  * <li>
  * {@link com.oracle.max.graal.compiler.opt.LoopPeeler Loop peeling} was written by Marcelo Cintra near the end of his internship. It was never completed
- * and should be considered broken. It only remains as a sketch of how loop peeling would be implemented in C1X, or in
+ * and should be considered broken. It only remains as a sketch of how loop peeling would be implemented in Graal, or in
  * case he would finish the implementation and test it.</li>
  *
  * <li>

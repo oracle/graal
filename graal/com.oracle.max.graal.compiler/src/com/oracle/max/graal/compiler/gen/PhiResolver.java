@@ -46,17 +46,13 @@ import com.sun.cri.ci.*;
  *  r2 := r3  becomes  r1 := r2
  *  r1 := r2           r2 := r3
  * </pre>
- *
- * @author Marcelo Cintra
- * @author Thomas Wuerthinger
- * @author Doug Simon
  */
 public class PhiResolver {
 
     /**
      * Tracks a data flow dependency between a source operand and any number of the destination operands.
      */
-    static class Node {
+    static class PhiResolverNode {
 
         /**
          * A source operand whose value flows into the {@linkplain #destinations destination} operands.
@@ -66,7 +62,7 @@ public class PhiResolver {
         /**
          * The operands whose values are defined by the {@linkplain #operand source} operand.
          */
-        final ArrayList<Node> destinations;
+        final ArrayList<PhiResolverNode> destinations;
 
         /**
          * Denotes if a move instruction has already been emitted to initialize the value of {@link #operand}.
@@ -83,9 +79,9 @@ public class PhiResolver {
          */
         boolean startNode;
 
-        Node(CiValue operand) {
+        PhiResolverNode(CiValue operand) {
             this.operand = operand;
-            destinations = new ArrayList<Node>(4);
+            destinations = new ArrayList<PhiResolverNode>(4);
         }
 
         @Override
@@ -93,7 +89,7 @@ public class PhiResolver {
             StringBuilder buf = new StringBuilder(operand.toString());
             if (!destinations.isEmpty()) {
                 buf.append(" ->");
-                for (Node node : destinations) {
+                for (PhiResolverNode node : destinations) {
                     buf.append(' ').append(node.operand);
                 }
             }
@@ -106,17 +102,17 @@ public class PhiResolver {
     /**
      * The operand loop header phi for the operand currently being process in {@link #dispose()}.
      */
-    private Node loop;
+    private PhiResolverNode loop;
 
     private CiValue temp;
 
-    private final ArrayList<Node> variableOperands = new ArrayList<Node>(3);
-    private final ArrayList<Node> otherOperands = new ArrayList<Node>(3);
+    private final ArrayList<PhiResolverNode> variableOperands = new ArrayList<PhiResolverNode>(3);
+    private final ArrayList<PhiResolverNode> otherOperands = new ArrayList<PhiResolverNode>(3);
 
     /**
      * Maps operands to nodes.
      */
-    private final HashMap<CiValue, Node> operandToNodeMap = new HashMap<CiValue, Node>();
+    private final HashMap<CiValue, PhiResolverNode> operandToNodeMap = new HashMap<CiValue, PhiResolverNode>();
 
     public PhiResolver(LIRGenerator gen) {
         this.gen = gen;
@@ -126,7 +122,7 @@ public class PhiResolver {
     public void dispose() {
         // resolve any cycles in moves from and to variables
         for (int i = variableOperands.size() - 1; i >= 0; i--) {
-            Node node = variableOperands.get(i);
+            PhiResolverNode node = variableOperands.get(i);
             if (!node.visited) {
                 loop = null;
                 move(null, node);
@@ -137,7 +133,7 @@ public class PhiResolver {
 
         // generate move for move from non variable to arbitrary destination
         for (int i = otherOperands.size() - 1; i >= 0; i--) {
-            Node node = otherOperands.get(i);
+            PhiResolverNode node = otherOperands.get(i);
             for (int j = node.destinations.size() - 1; j >= 0; j--) {
                 emitMove(node.operand, node.destinations.get(j).operand);
             }
@@ -149,18 +145,18 @@ public class PhiResolver {
         // tty.print("move "); src.print(); tty.print(" to "); dest.print(); tty.cr();
         assert src.isLegal() : "source for phi move is illegal";
         assert dest.isLegal() : "destination for phi move is illegal";
-        Node srcNode = sourceNode(src);
-        Node destNode = destinationNode(dest);
+        PhiResolverNode srcNode = sourceNode(src);
+        PhiResolverNode destNode = destinationNode(dest);
         srcNode.destinations.add(destNode);
       }
 
-    private Node createNode(CiValue operand, boolean source) {
-        Node node;
+    private PhiResolverNode createNode(CiValue operand, boolean source) {
+        PhiResolverNode node;
         if (operand.isVariable()) {
             node = operandToNodeMap.get(operand);
             assert node == null || node.operand.equals(operand);
             if (node == null) {
-                node = new Node(operand);
+                node = new PhiResolverNode(operand);
                 operandToNodeMap.put(operand, node);
             }
             // Make sure that all variables show up in the list when
@@ -172,13 +168,13 @@ public class PhiResolver {
             }
         } else {
             assert source;
-            node = new Node(operand);
+            node = new PhiResolverNode(operand);
             otherOperands.add(node);
         }
         return node;
     }
 
-    private Node destinationNode(CiValue opr) {
+    private PhiResolverNode destinationNode(CiValue opr) {
         return createNode(opr, false);
     }
 
@@ -195,7 +191,7 @@ public class PhiResolver {
     // ie. cycle a := b, b := a start with node a
     // Call graph: move(NULL, a) -> move(a, b) -> move(b, a)
     // Generates moves in this order: move b to temp, move a to b, move temp to a
-    private void move(Node src, Node dest) {
+    private void move(PhiResolverNode src, PhiResolverNode dest) {
         if (!dest.visited) {
             dest.visited = true;
             for (int i = dest.destinations.size() - 1; i >= 0; i--) {
@@ -232,7 +228,7 @@ public class PhiResolver {
         emitMove(src, temp);
     }
 
-    private Node sourceNode(CiValue opr) {
+    private PhiResolverNode sourceNode(CiValue opr) {
         return createNode(opr, true);
     }
 }

@@ -36,14 +36,14 @@ import com.sun.cri.ri.*;
 
 public class InliningPhase extends Phase {
 
-    private final C1XCompilation compilation;
+    private final GraalCompilation compilation;
     private final IR ir;
 
     private final Queue<Invoke> invokes = new ArrayDeque<Invoke>();
     private final Queue<RiMethod> methods = new ArrayDeque<RiMethod>();
     private int inliningSize;
 
-    public InliningPhase(C1XCompilation compilation, IR ir) {
+    public InliningPhase(GraalCompilation compilation, IR ir) {
         this.compilation = compilation;
         this.ir = ir;
     }
@@ -57,7 +57,7 @@ public class InliningPhase extends Phase {
     @Override
     protected void run(Graph graph) {
         inliningSize = compilation.method.code().length;
-        int iterations = C1XOptions.MaximumRecursiveInlineLevel;
+        int iterations = GraalOptions.MaximumRecursiveInlineLevel;
         do {
             for (Node node : graph.getNodes()) {
                 if (node instanceof Invoke) {
@@ -74,7 +74,7 @@ public class InliningPhase extends Phase {
                         RiMethod concrete = invoke.target.holder().uniqueConcreteMethod(invoke.target);
                         if (concrete != null && concrete.isResolved() && !Modifier.isNative(concrete.accessFlags())) {
                             if (checkInliningConditions(concrete)) {
-                                if (C1XOptions.TraceInlining) {
+                                if (GraalOptions.TraceInlining) {
                                     System.out.println("registering concrete method assumption...");
                                 }
                                 compilation.assumptions.recordConcreteMethod(invoke.target, concrete);
@@ -82,7 +82,7 @@ public class InliningPhase extends Phase {
                             }
                         }
                     }
-                    if (inliningSize > C1XOptions.MaximumInstructionCount) {
+                    if (inliningSize > GraalOptions.MaximumInstructionCount) {
                         break;
                     }
                 }
@@ -100,13 +100,10 @@ public class InliningPhase extends Phase {
             }
             DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
-            if (dce.deletedNodeCount > 0) {
-                ir.verifyAndPrint("After dead code elimination");
-            }
             ir.verifyAndPrint("After inlining iteration");
 
-            if (inliningSize > C1XOptions.MaximumInstructionCount) {
-                if (C1XOptions.TraceInlining) {
+            if (inliningSize > GraalOptions.MaximumInstructionCount) {
+                if (GraalOptions.TraceInlining) {
                     System.out.println("inlining stopped: MaximumInstructionCount reached");
                 }
                 break;
@@ -117,7 +114,7 @@ public class InliningPhase extends Phase {
     private boolean checkInliningConditions(Invoke invoke) {
         String name = invoke.id() + ": " + CiUtil.format("%H.%n(%p):%r", invoke.target, false);
         if (invoke.predecessors().size() == 0) {
-            if (C1XOptions.TraceInlining) {
+            if (GraalOptions.TraceInlining) {
                 System.out.println("not inlining " + name + " because the invoke is dead code");
             }
             return false;
@@ -127,17 +124,17 @@ public class InliningPhase extends Phase {
 
     private boolean checkInliningConditions(RiMethod method) {
         String name = null;
-        if (C1XOptions.TraceInlining) {
+        if (GraalOptions.TraceInlining) {
             name = CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.code().length + " bytes)";
         }
-        if (method.code().length > C1XOptions.MaximumInlineSize) {
-            if (C1XOptions.TraceInlining) {
+        if (method.code().length > GraalOptions.MaximumInlineSize) {
+            if (GraalOptions.TraceInlining) {
                 System.out.println("not inlining " + name + " because of code size");
             }
             return false;
         }
         if (!method.holder().isInitialized()) {
-            if (C1XOptions.TraceInlining) {
+            if (GraalOptions.TraceInlining) {
                 System.out.println("not inlining " + name + " because of non-initialized class");
             }
             return false;
@@ -150,7 +147,7 @@ public class InliningPhase extends Phase {
         FrameState stateAfter = invoke.stateAfter();
         Instruction exceptionEdge = invoke.exceptionEdge();
 
-        if (C1XOptions.TraceInlining) {
+        if (GraalOptions.TraceInlining) {
             System.out.printf("Building graph for %s, locals: %d, stack: %d\n", name, method.maxLocals(), method.maxStackSize());
         }
 
@@ -196,7 +193,7 @@ public class InliningPhase extends Phase {
             }
         }
 
-        if (C1XOptions.TraceInlining) {
+        if (GraalOptions.TraceInlining) {
             ir.printGraph("Subgraph " + CiUtil.format("%H.%n(%p):%r", method, false), graph);
             System.out.println("inlining " + name + ": " + frameStates.size() + " frame states, " + nodes.size() + " nodes");
         }
@@ -278,7 +275,7 @@ public class InliningPhase extends Phase {
             }
         }
 
-        if (C1XOptions.TraceInlining) {
+        if (GraalOptions.TraceInlining) {
             ir.verifyAndPrint("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false));
         }
     }

@@ -41,7 +41,7 @@ import com.sun.cri.ri.*;
  */
 public class CompilationEvent {
 
-    private final C1XCompilation compilation;
+    private final GraalCompilation compilation;
     private final String label;
     private Graph graph;
 
@@ -57,42 +57,42 @@ public class CompilationEvent {
     private int intervalsSize;
     private Interval[] intervalsCopy = null;
 
-    public CompilationEvent(C1XCompilation compilation) {
+    public CompilationEvent(GraalCompilation compilation) {
         this(compilation, null);
     }
 
-    private CompilationEvent(C1XCompilation compilation, String label) {
+    private CompilationEvent(GraalCompilation compilation, String label) {
         assert compilation != null;
         this.label = label;
         this.compilation = compilation;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid) {
+    public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid) {
         this(compilation, label);
         this.graph = graph;
         this.hirValid = hirValid;
         this.lirValid = lirValid;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
+    public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
         this(compilation, label, graph, hirValid, lirValid);
         this.targetMethod = targetMethod;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, BlockMap blockMap, int codeSize) {
+    public CompilationEvent(GraalCompilation compilation, String label, BlockMap blockMap, int codeSize) {
         this(compilation, label);
         this.blockMap = blockMap;
         this.codeSize = codeSize;
     }
 
-    public CompilationEvent(C1XCompilation compilation, String label, LinearScan allocator, Interval[] intervals, int intervalsSize) {
+    public CompilationEvent(GraalCompilation compilation, String label, LinearScan allocator, Interval[] intervals, int intervalsSize) {
         this(compilation, label);
         this.allocator = allocator;
         this.intervals = intervals;
         this.intervalsSize = intervalsSize;
     }
 
-    public C1XCompilation getCompilation() {
+    public GraalCompilation getCompilation() {
         return compilation;
     }
 

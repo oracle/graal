@@ -35,6 +35,7 @@ public class Graph {
     private final ArrayList<Node> nodes;
     private final StartNode start;
     int nextId;
+    int deletedNodeCount;
 
     static int nextGraphId = 0;
     int id = nextGraphId++;
@@ -49,6 +50,10 @@ public class Graph {
         start = new StartNode(this);
     }
 
+    public int getDeletedNodeCount() {
+        return deletedNodeCount;
+    }
+
     public List<Node> getNodes() {
         return Collections.unmodifiableList(nodes);
     }
@@ -61,6 +66,7 @@ public class Graph {
 
     void unregister(Node node) {
         nodes.set(node.id(), Node.Null);
+        deletedNodeCount++;
     }
 
     public StartNode start() {

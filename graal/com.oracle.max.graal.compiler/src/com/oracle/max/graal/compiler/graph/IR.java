@@ -25,7 +25,6 @@ package com.oracle.max.graal.compiler.graph;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
@@ -43,7 +42,7 @@ public class IR {
     /**
      * The compilation associated with this IR.
      */
-    public final C1XCompilation compilation;
+    public final GraalCompilation compilation;
 
     /**
      * The start block of this IR.
@@ -59,7 +58,7 @@ public class IR {
      * Creates a new IR instance for the specified compilation.
      * @param compilation the compilation
      */
-    public IR(C1XCompilation compilation) {
+    public IR(GraalCompilation compilation) {
         this.compilation = compilation;
     }
 
@@ -69,27 +68,34 @@ public class IR {
      * Builds the graph, optimizes it, and computes the linear scan block order.
      */
     public void build() {
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.HIR_CREATE.start();
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.HIR_CREATE.start();
         }
 
-        buildGraph();
+        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
+        new DuplicationPhase().apply(compilation.graph);
+        new DeadCodeEliminationPhase().apply(compilation.graph);
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.HIR_CREATE.stop();
-            C1XTimers.HIR_OPTIMIZE.start();
+        if (GraalOptions.Inline) {
+            new InliningPhase(compilation, this).apply(compilation.graph);
+        }
+
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.HIR_CREATE.stop();
+            GraalTimers.HIR_OPTIMIZE.start();
         }
 
         Graph graph = compilation.graph;
 
-        if (C1XOptions.OptCanonicalizer) {
+        if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
             verifyAndPrint("After Canonicalization");
         }
 
         new SplitCriticalEdgesPhase().apply(graph);
 
-        Schedule schedule = new Schedule(graph);
+        Schedule schedule = new Schedule();
+        schedule.apply(graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();
@@ -136,35 +142,8 @@ public class IR {
 
         verifyAndPrint("After linear scan order");
 
-        if (C1XOptions.PrintTimers) {
-            C1XTimers.HIR_OPTIMIZE.stop();
-        }
-    }
-
-    private void buildGraph() {
-        // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
-
-//        CompilerGraph duplicate = new CompilerGraph();
-//        Map<Node, Node> replacements = new HashMap<Node, Node>();
-//        replacements.put(compilation.graph.start(), duplicate.start());
-//        duplicate.addDuplicate(compilation.graph.getNodes(), replacements);
-//        compilation.graph = duplicate;
-
-        new DuplicationPhase().apply(compilation.graph);
-
-        DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
-        dce.apply(compilation.graph);
-        if (dce.deletedNodeCount > 0) {
-            verifyAndPrint("After dead code elimination");
-        }
-
-        if (C1XOptions.Inline) {
-            new InliningPhase(compilation, this).apply(compilation.graph);
-        }
-
-        if (C1XOptions.PrintCompilation) {
-            TTY.print(String.format("%3d blocks | ", compilation.stats.blockCount));
+        if (GraalOptions.PrintTimers) {
+            GraalTimers.HIR_OPTIMIZE.stop();
         }
     }
 

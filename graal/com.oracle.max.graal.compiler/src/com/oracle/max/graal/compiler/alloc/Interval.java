@@ -661,7 +661,7 @@ public final class Interval {
     static final Interval EndMarker = new Interval(CiValue.IllegalValue, -1);
 
     Interval(CiValue operand, int operandNumber) {
-        C1XMetrics.LSRAIntervalsCreated++;
+        GraalMetrics.LSRAIntervalsCreated++;
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
@@ -910,7 +910,7 @@ public final class Interval {
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && operand.isVariable()) {
-            if (C1XOptions.DetailedAsserts) {
+            if (GraalOptions.DetailedAsserts) {
                 for (int i = 0; i < usePosList.size(); i++) {
                     assert pos <= usePosList.usePos(i) : "already added a use-position with lower position";
                     if (i > 0) {
@@ -1014,7 +1014,7 @@ public final class Interval {
         // split list of use positions
         result.usePosList = usePosList.splitAt(splitPos);
 
-        if (C1XOptions.DetailedAsserts) {
+        if (GraalOptions.DetailedAsserts) {
             for (int i = 0; i < usePosList.size(); i++) {
                 assert usePosList.usePos(i) < splitPos;
             }

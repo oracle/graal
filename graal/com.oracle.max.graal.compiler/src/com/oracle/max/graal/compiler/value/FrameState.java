@@ -97,8 +97,8 @@ public final class FrameState extends Value implements FrameStateAccess {
         this.localsSize = localsSize;
         this.stackSize = stackSize;
         this.locksSize = locksSize;
-        C1XMetrics.FrameStatesCreated++;
-        C1XMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
+        GraalMetrics.FrameStatesCreated++;
+        GraalMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
     }
 
     FrameState(RiMethod method, int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks, Graph graph) {

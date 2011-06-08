@@ -128,7 +128,7 @@ public class NodeArray extends AbstractList<Node> {
         }
         return result;
     }
-    
+
     int silentRemove(Node n) {
         return silentReplace(n, null);
     }

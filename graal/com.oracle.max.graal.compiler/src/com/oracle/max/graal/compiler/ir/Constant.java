@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import static com.oracle.max.graal.compiler.C1XCompilation.*;
+import static com.oracle.max.graal.compiler.GraalCompilation.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;

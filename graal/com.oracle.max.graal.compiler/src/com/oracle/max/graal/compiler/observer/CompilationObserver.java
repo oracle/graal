@@ -33,7 +33,7 @@ public interface CompilationObserver {
 
     /**
      * Called when compilation of a method has started. This is always the first event raised for a particular
-     * {@link C1XCompilation}.
+     * {@link GraalCompilation}.
      *
      * @param event Information associated with the event and current state of the compilation.
      */
@@ -48,7 +48,7 @@ public interface CompilationObserver {
 
     /**
      * Called when compilation of a method has completed (successfully or not). This is always the last event raised for
-     * a particular {@link C1XCompilation}.
+     * a particular {@link GraalCompilation}.
      *
      * @param event Information associated with the event and current state of the compilation.
      */

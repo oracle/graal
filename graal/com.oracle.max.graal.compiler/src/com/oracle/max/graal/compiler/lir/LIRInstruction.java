@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
-import static com.oracle.max.graal.compiler.C1XCompilation.*;
+import static com.oracle.max.graal.compiler.GraalCompilation.*;
 
 import java.util.*;
 
@@ -185,10 +185,10 @@ public abstract class LIRInstruction {
         allocatorOperands = new ArrayList<CiValue>(operands.length + 3);
         this.result = initOutput(result);
 
-        C1XMetrics.LIRInstructions++;
+        GraalMetrics.LIRInstructions++;
 
         if (opcode == LIROpcode.Move) {
-            C1XMetrics.LIRMoveInstructions++;
+            GraalMetrics.LIRMoveInstructions++;
         }
         id = -1;
         this.operands = new LIROperand[operands.length];

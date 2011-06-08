@@ -59,7 +59,7 @@ public final class OperandPool {
 
     /**
      * Map from a {@linkplain CiVariable#index variable index} to the instruction whose result is stored in the denoted variable.
-     * This map is only populated and used if {@link C1XOptions#DetailedAsserts} is {@code true}.
+     * This map is only populated and used if {@link GraalOptions#DetailedAsserts} is {@code true}.
      */
     private final ArrayList<Value> variableDefs;
 
@@ -137,7 +137,7 @@ public final class OperandPool {
         this.firstVariableNumber = registers.length;
         this.registers = registers;
         variables = new ArrayList<CiVariable>(INITIAL_VARIABLE_CAPACITY);
-        variableDefs = C1XOptions.DetailedAsserts ? new ArrayList<Value>(INITIAL_VARIABLE_CAPACITY) : null;
+        variableDefs = GraalOptions.DetailedAsserts ? new ArrayList<Value>(INITIAL_VARIABLE_CAPACITY) : null;
     }
 
     /**

@@ -31,16 +31,19 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public class Schedule {
+public class Schedule extends Phase {
     private final List<Block> blocks = new ArrayList<Block>();
-    private final NodeMap<Block> nodeToBlock;
-    private final Graph graph;
+    private NodeMap<Block> nodeToBlock;
+    private Graph graph;
 
-    public Schedule(Graph graph) {
+
+    @Override
+    protected void run(Graph graph) {
         this.graph = graph;
         nodeToBlock = graph.createNodeMap();
         identifyBlocks();
     }
+
     public List<Block> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
@@ -127,7 +130,7 @@ public class Schedule {
                 } else {
                     // We have a single predecessor => check its successor count.
                     if (isBlockEnd(singlePred)) {
-                        Block b = assignBlock(n);
+                        assignBlock(n);
                         blockBeginNodes.add(n);
                     } else {
                         assignBlock(n, nodeToBlock.get(singlePred));

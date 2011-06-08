@@ -32,7 +32,7 @@ import com.oracle.max.graal.compiler.debug.*;
  * This class contains a number of fields that collect metrics about compilation, particularly
  * the number of times certain optimizations are performed.
  */
-public class C1XMetrics {
+public class GraalMetrics {
     public static int CompiledMethods;
     public static int TargetMethods;
     public static int LocalValueNumberHits;
@@ -65,7 +65,7 @@ public class C1XMetrics {
     public static int NodesCanonicalized;
 
     public static void print() {
-        printClassFields(C1XMetrics.class);
+        printClassFields(GraalMetrics.class);
 
     }
 

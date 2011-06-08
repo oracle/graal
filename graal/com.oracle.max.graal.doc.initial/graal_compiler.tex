@@ -29,6 +29,11 @@
 \newcommand\ls[1]{\mynote{LS}{#1}}
 \newcommand\nodename[1]{\texttt{#1}}
 
+\hyphenpenalty=0
+\doublehyphendemerits=0
+\finalhyphendemerits=0
+\clubpenalty10000
+\widowpenalty10000
 
 
 \smartqed  % flush right qed marks, e.g. at end of proof
@@ -166,7 +171,7 @@ The nodes of the graph have the following properties:
     \item The edges of a node also define \textit{happens-before} and \textit{happens-after} relationships as shown in Figure~\ref{fig:directions}.
 \end{itemize}
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{graphdirections}
 \node{node1}{Node}
@@ -211,6 +216,7 @@ An \texttt{If} instruction can directly point to its true and false successors w
 This makes the graph more compact and simplifies graph traversal.
 
 Listing~\ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any instruction with side effects.
+Figure~\ref{fig:loopexits} shows the corresponding compiler graph.
 The \texttt{If} instruction can directly point its true and false successors to a \texttt{Merge} instruction.
 A \texttt{Phi} node that selects the appropriate value is appended to the \texttt{Merge} instruction.
 The \texttt{Return} instruction then has a data dependency on the \texttt{Phi} node.
@@ -220,7 +226,7 @@ if (condition) { return 0; }
 else { return 1; }
 \end{lstlisting}
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{cfg2}
 \textnode{entry}{Entry}
@@ -242,13 +248,13 @@ else { return 1; }
 \control{merge}{return}
 \end{digraphenv}
   \caption{A simple loop with two exits.}
-  \label{fig:exc1}
+  \label{fig:loopexits}
 \end{figure}
 
 \section{Exceptions}
 \label{sec:Exceptions}
 
-We do not throw runtime exceptions (e.g., \texttt{IndexOutOf\-BoundsException}, \texttt{NullPointerException}, or \texttt{Out\-Of\-MemoryException}), but deoptimize instead.
+We do not throw runtime exceptions (e.g., \texttt{IndexOutOf\-BoundsException}, \texttt{Null\-Pointer\-Exception}, or \texttt{Out\-Of\-Memory\-Exception}), but deoptimize instead.
 This reduces the places in the compiled code where an exact bytecode location and debug information must be known.
 Additionally, this greatly reduces the number of exception handler edges in the compiled code.
 The main advantage of this technique is however, that we are free in moving around bounds checks, memory allocation, memory accesses with implicit null checks, etc.
@@ -268,7 +274,7 @@ try { m1();
 } catch(Exception e) { ... }
 \end{lstlisting}
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{exc1}
 \textnode{entry}{Entry}
@@ -309,7 +315,7 @@ It goes from the beginning to the end in order to make the graph acyclic.
 An algorithm that traverses the control flow has to explicitely decide whether it wants to incorporate backedges (i.e., special case of the treatment of \nodename{LoopEnd}) or ignore them.
 Figure \ref{fig:loop1} shows a simple example with a loop with a single entry and two exits.
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{layout1}
 \textnode{BeforeLoop}{Loop entry}
@@ -342,7 +348,7 @@ Figure~\ref{fig:loop2} shows how the loop is modelled immediately after building
 for(int i=0; i<n; ++i) { }
 \end{lstlisting}
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{layout2}
 \textnode{BeforeLoop}{Loop entry}
@@ -383,7 +389,7 @@ A potential overflow of such a variable is prohibited with a guard before the lo
 Figure \ref{fig:loop3} shows the compiler graph of the example loop after the loop counter transformation.
 
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{layout3}
 \textnode{BeforeLoop}{Loop entry}
@@ -420,7 +426,7 @@ If the total number of iterations is reached, the loop is exited directly from t
 In the example, we can infer from the loop exit with the comparison on the loop counter that the total number of iterations of the loop is limited to n.
 Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bounded loop transformation.
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{layout4}
 \textnode{BeforeLoop}{Loop entry}
@@ -454,7 +460,7 @@ Figure \ref{fig:loop5} shows the compiler graph of the example loop after vector
 The vector nodes all work on an ordered list of integer values and are subject to canonicalization and global value numbering like any other node.
 
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{layout5}
 \textnode{Entry}{Entry}
@@ -504,7 +510,7 @@ The frame state at the method beginning does not have to be explicitely in the g
 We save the frame state at control flow merges if there is at least one frame state on any control flow path between a node and its immediate dominator.
 
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{fs1}
     \nodetrisplit{store1}{ArrayStore}
@@ -578,7 +584,7 @@ void init(Point p) {
 }
 \end{lstlisting}
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard0}
 	\textnode{entry}{Entry}
@@ -615,7 +621,7 @@ Figure~\ref{fig:guard1} shows the example graph at a later compilation phase whe
 The guards are attached to anchor instructions that delimit their possible schedule.
 The first guard must not be moved outside the \texttt{if} block; the second guard may be moved before the \texttt{If} instruction, because at this point it is already guaranteed that the second store is executed.
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard1}
 	\textnode{entry}{Entry}
@@ -666,7 +672,7 @@ Therefore we can remove the guard and the anchor from the graph and this gives u
 There is another optimization for guard instructions: If two guards that are anchored to the true and false branch of the same \texttt{If} instruction have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} instruction is a postdominator.
 
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard2}
 	\textnode{entry}{Entry}
@@ -710,7 +716,7 @@ From this point on, the guard can however no longer be moved below the first mem
 We use a control dependency from the guard to the field store to express this condition.
 The link between the second store and the guard and the control flow merge instruction is no longer necessary.
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard3}
 	\textnode{entry}{Entry}
@@ -750,7 +756,7 @@ A simple algorithm for this removal of frame states would be to move all guards 
 In our example, the guard is already fixed, so there is no deoptimization point that uses any of the memory store frame states.
 Therefore we can delete the frame states from the graph (see Figure \ref{fig:guard4}).
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard4}
 	\textnode{entry}{Entry}
@@ -785,7 +791,7 @@ This is only possible if the first store does not have a frame state.
 Figure \ref{fig:guard5} shows the resulting graph.
 
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard5}
 	\textnode{entry}{Entry}
@@ -814,7 +820,7 @@ A memory store that immediately follows a null check guard instruction on the sa
 Therefore, we can remove the guard again and also the anchor is no longer necessary.
 Figure~\ref{fig:guard6} shows now that fully optimized graph that is generated for Listing~\ref{lst:guard1}.
 
-\begin{figure}[h]
+\begin{figure}[ht]
   \centering
 \begin{digraphenv}{scale=0.5}{guard6}
 	\textnode{entry}{Entry}
