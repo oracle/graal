@@ -72,7 +72,7 @@ public class IR {
             GraalTimers.HIR_CREATE.start();
         }
 
-        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
+        new GraphBuilderPhase(compilation, compilation.method, true).apply(compilation.graph);
         new DuplicationPhase().apply(compilation.graph);
         new DeadCodeEliminationPhase().apply(compilation.graph);
 
@@ -89,11 +89,13 @@ public class IR {
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
+            verifyAndPrint("After Canonicalization");
         }
 
         new SplitCriticalEdgesPhase().apply(graph);
 
-        Schedule schedule = new Schedule(graph);
+        Schedule schedule = new Schedule();
+        schedule.apply(graph);
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();
         Map<Block, LIRBlock> map = new HashMap<Block, LIRBlock>();

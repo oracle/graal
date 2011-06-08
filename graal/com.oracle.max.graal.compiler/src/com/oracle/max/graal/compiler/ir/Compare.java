@@ -27,6 +27,13 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
+/* (tw/gd) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
+ * But in the back-end the comparison should not always be materialized (for example in x86 the comparison result will not be in a register but in a flag)
+ *
+ * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
+ * into variants that do not materialize the value (CompareIf, CompareGuard...)
+ *
+ */
 public final class Compare extends FloatingNode {
 
     private static final int INPUT_COUNT = 2;

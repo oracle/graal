@@ -38,7 +38,7 @@ public class CanonicalizerPhase extends Phase {
             if (n == null) {
                 continue;
             }
-            if (!visited.isMarked(n)) {
+            if (!n.isDeleted() && !visited.isMarked(n)) {
                 this.canonicalize(n, visited);
             }
         }

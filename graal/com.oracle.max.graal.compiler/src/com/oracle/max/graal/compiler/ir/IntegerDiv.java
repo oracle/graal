@@ -22,12 +22,14 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
 public final class IntegerDiv extends IntegerArithmetic {
+    private static final IntegerDivCanonicalizerOp CANONICALIZER = new IntegerDivCanonicalizerOp();
 
     public IntegerDiv(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IDIV : Bytecodes.LDIV, x, y, graph);
@@ -43,4 +45,41 @@ public final class IntegerDiv extends IntegerArithmetic {
         return new IntegerDiv(kind, null, null, into);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class IntegerDivCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            IntegerDiv div = (IntegerDiv) node;
+            Value x = div.x();
+            Value y = div.y();
+            CiKind kind = div.kind;
+            Graph graph = div.graph();
+            if (x.isConstant() && y.isConstant()) {
+                long yConst = y.asConstant().asLong();
+                if (yConst == 0) {
+                    return div; // this will trap, can not canonicalize
+                }
+                if (kind == CiKind.Int) {
+                    return Constant.forInt(x.asConstant().asInt() / (int) yConst, graph);
+                } else {
+                    assert kind == CiKind.Long;
+                    return Constant.forLong(x.asConstant().asLong() / yConst, graph);
+                }
+            } else if (y.isConstant()) {
+                long c = y.asConstant().asLong();
+                if (c == 1) {
+                    return x;
+                }
+            }
+            return div;
+        }
+    }
 }

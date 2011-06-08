@@ -114,7 +114,8 @@ public class IdealGraphPrinter {
 
         Schedule schedule = null;
         try {
-            schedule = new Schedule(graph);
+            schedule = new Schedule();
+            schedule.apply(graph);
         } catch (Throwable t) {
             // nothing to do here...
         }
