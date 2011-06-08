@@ -115,6 +115,18 @@ public abstract class Node {
     public boolean isDeleted() {
         return id == DeletedID;
     }
+    
+    public void forceDelete() {
+        for (Node n : usages) {
+            n.inputs.silentRemove(this);
+        }
+        for (Node n : predecessors) {
+            n.successors.silentRemove(this);
+        }
+        usages.clear();
+        predecessors.clear();
+        predecessorsIndex.clear();
+    }
 
     public void delete() {
         assert !isDeleted();

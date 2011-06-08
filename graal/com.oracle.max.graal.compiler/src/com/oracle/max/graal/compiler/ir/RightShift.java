@@ -47,7 +47,7 @@ public final class RightShift extends Shift {
 
     @Override
     public Node copy(Graph into) {
-        RightShift rs = new RightShift(kind, null, null, graph());
+        RightShift rs = new RightShift(kind, null, null, into);
         return rs;
     }
 

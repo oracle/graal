@@ -114,6 +114,6 @@ public final class If extends BlockEnd {
 
     @Override
     public Node copy(Graph into) {
-        return new If(compare(), into);
+        return new If(null, into);
     }
 }

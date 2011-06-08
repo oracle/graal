@@ -84,7 +84,6 @@ public class IR {
 
         if (C1XOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
-            verifyAndPrint("After canonicalization");
         }
 
         // Split critical edges.
@@ -165,7 +164,7 @@ public class IR {
 //        duplicate.addDuplicate(compilation.graph.getNodes(), replacements);
 //        compilation.graph = duplicate;
 
-        verifyAndPrint("After graph building");
+        new DuplicationPhase().apply(compilation.graph);
 
         DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
         dce.apply(compilation.graph);
@@ -190,36 +189,17 @@ public class IR {
         return orderedBlocks;
     }
 
-    private void print(boolean cfgOnly) {
-        if (!TTY.isSuppressed()) {
-            TTY.println("IR for " + compilation.method);
-            final InstructionPrinter ip = new InstructionPrinter(TTY.out());
-            final BlockPrinter bp = new BlockPrinter(this, ip, cfgOnly);
-            //getHIRStartBlock().iteratePreOrder(bp);
-        }
-    }
-
     /**
      * Verifies the IR and prints it out if the relevant options are set.
      * @param phase the name of the phase for printing
      */
     public void verifyAndPrint(String phase) {
-        if (C1XOptions.PrintHIR && !TTY.isSuppressed()) {
-            TTY.println(phase);
-            print(false);
-        }
-
         if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, compilation.graph, true, false));
         }
     }
 
     public void printGraph(String phase, Graph graph) {
-        if (C1XOptions.PrintHIR && !TTY.isSuppressed()) {
-            TTY.println(phase);
-            print(false);
-        }
-
         if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, phase, graph, true, false));
         }
