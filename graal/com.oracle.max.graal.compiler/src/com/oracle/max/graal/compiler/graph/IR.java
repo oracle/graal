@@ -29,7 +29,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
-import com.oracle.max.graal.compiler.opt.*;
+import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
@@ -157,7 +157,7 @@ public class IR {
 
     private void buildGraph() {
         // Graph builder must set the startBlock and the osrEntryBlock
-        new GraphBuilder(compilation, compilation.method, false).apply(compilation.graph);
+        new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
 
 //        CompilerGraph duplicate = new CompilerGraph();
 //        Map<Node, Node> replacements = new HashMap<Node, Node>();
@@ -167,14 +167,14 @@ public class IR {
 
         verifyAndPrint("After graph building");
 
-        DeadCodeElimination dce = new DeadCodeElimination();
+        DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
         dce.apply(compilation.graph);
         if (dce.deletedNodeCount > 0) {
             verifyAndPrint("After dead code elimination");
         }
 
         if (C1XOptions.Inline) {
-            new Inlining(compilation, this).apply(compilation.graph);
+            new InliningPhase(compilation, this).apply(compilation.graph);
         }
 
         if (C1XOptions.PrintCompilation) {

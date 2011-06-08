@@ -23,10 +23,24 @@
 package com.oracle.max.graal.graph;
 
 public abstract class Phase {
+    
+    private final String name;
+    
+    public Phase() {
+        this.name = this.getClass().getSimpleName();
+    }
+    
+    public Phase(String name) {
+        this.name = name;
+    }
 
     public final void apply(Graph graph) {
         assert graph != null;
         run(graph);
+    }
+    
+    public final String getName() {
+        return name;
     }
 
     protected abstract void run(Graph graph);

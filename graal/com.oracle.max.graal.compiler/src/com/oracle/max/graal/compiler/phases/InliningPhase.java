@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.graph;
+package com.oracle.max.graal.compiler.phases;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
@@ -33,7 +34,7 @@ import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
 
-public class Inlining extends Phase {
+public class InliningPhase extends Phase {
 
     private final C1XCompilation compilation;
     private final IR ir;
@@ -42,7 +43,7 @@ public class Inlining extends Phase {
     private final Queue<RiMethod> methods = new ArrayDeque<RiMethod>();
     private int inliningSize;
 
-    public Inlining(C1XCompilation compilation, IR ir) {
+    public InliningPhase(C1XCompilation compilation, IR ir) {
         this.compilation = compilation;
         this.ir = ir;
     }
@@ -55,10 +56,6 @@ public class Inlining extends Phase {
 
     @Override
     protected void run(Graph graph) {
-        if (!C1XOptions.Inline) {
-            return;
-        }
-
         inliningSize = compilation.method.code().length;
         int iterations = C1XOptions.MaximumRecursiveInlineLevel;
         do {
@@ -101,7 +98,7 @@ public class Inlining extends Phase {
                 RiMethod method = methods.remove();
                 inlineMethod(invoke, method);
             }
-            DeadCodeElimination dce = new DeadCodeElimination();
+            DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
             if (dce.deletedNodeCount > 0) {
                 ir.verifyAndPrint("After dead code elimination");
@@ -158,7 +155,7 @@ public class Inlining extends Phase {
         }
 
         CompilerGraph graph = new CompilerGraph();
-        new GraphBuilder(compilation, method, true).apply(graph);
+        new GraphBuilderPhase(compilation, method, true).apply(graph);
 
         boolean withReceiver = !Modifier.isStatic(method.accessFlags());
 

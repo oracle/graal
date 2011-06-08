@@ -86,7 +86,7 @@
  * the IR graph prevent many bugs due to the mutability of {@code FrameState}.</li>
  *
  * <li>
- * Move the {@code FrameState} class to an inner class, or combine entirely, with the {@link com.oracle.max.graal.compiler.graph.GraphBuilder} class. After
+ * Move the {@code FrameState} class to an inner class, or combine entirely, with the {@link com.oracle.max.graal.compiler.phases.GraphBuilderPhase} class. After
  * the introduction of the {@code FrameStateInfo} into HIR nodes, the mutable value stack should only need to be
  * accessed from the graph builder.</li>
  *
