@@ -58,7 +58,7 @@ public abstract class ValueVisitor {
     public abstract void visitNewMultiArray(NewMultiArray i);
     public abstract void visitNewObjectArray(NewObjectArray i);
     public abstract void visitNewTypeArray(NewTypeArray i);
-    public abstract void visitNullCheck(NullCheck i);
+    public abstract void visitNullCheck(FixedNullCheck i);
     public abstract void visitPhi(Phi i);
     public abstract void visitRegisterFinalizer(RegisterFinalizer i);
     public abstract void visitReturn(Return i);
@@ -72,4 +72,5 @@ public abstract class ValueVisitor {
     public abstract void visitLoopBegin(LoopBegin loopBegin);
     public abstract void visitLoopEnd(LoopEnd loopEnd);
     public abstract void visitValueAnchor(ValueAnchor valueAnchor);
+    public abstract void visitGuardNode(GuardNode guardNode);
 }
