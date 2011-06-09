@@ -68,8 +68,8 @@ public final class LoadField extends AccessField {
      */
     @Override
     public RiType exactType() {
-        RiType declaredType = declaredType();
-        return declaredType.isResolved() ? declaredType.exactType() : null;
+        RiType declared = declaredType();
+        return declared != null && declared.isResolved() ? declared.exactType() : null;
     }
 
     @Override
@@ -97,7 +97,7 @@ public final class LoadField extends AccessField {
      *
      * @return {@code null} if this load cannot be reduced to a constant
      */
-    public CiConstant constantValue() {
+    private CiConstant constantValue() {
         if (isStatic()) {
             return field.constantValue(null);
         } else if (object().isConstant()) {
@@ -108,8 +108,7 @@ public final class LoadField extends AccessField {
 
     @Override
     public Node copy(Graph into) {
-        LoadField x = new LoadField(null, field, into);
-        return x;
+        return new LoadField(null, field, into);
     }
 
     @SuppressWarnings("unchecked")

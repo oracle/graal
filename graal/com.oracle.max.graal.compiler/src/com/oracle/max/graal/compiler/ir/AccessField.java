@@ -74,6 +74,8 @@ public abstract class AccessField extends StateSplit {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         this.field = field;
         setObject(object);
+        assert field.isResolved();
+        assert field.holder().isResolved();
     }
 
     /**
@@ -93,18 +95,10 @@ public abstract class AccessField extends StateSplit {
     }
 
     /**
-     * Checks whether the class of the field of this access is loaded.
-     * @return {@code true} if the class is loaded
-     */
-    public boolean isLoaded() {
-        return field.isResolved();
-    }
-
-    /**
      * Checks whether this field is declared volatile.
      * @return {@code true} if the field is resolved and declared volatile
      */
     public boolean isVolatile() {
-        return isLoaded() && Modifier.isVolatile(field.accessFlags());
+        return Modifier.isVolatile(field.accessFlags());
     }
 }

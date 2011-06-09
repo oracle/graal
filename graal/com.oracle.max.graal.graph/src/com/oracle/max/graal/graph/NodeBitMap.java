@@ -65,6 +65,10 @@ public final class NodeBitMap {
         check(node);
         bitMap.clear(node.id());
     }
+    
+    public void clearAll() {
+        bitMap.clearAll();
+    }
 
     private void check(Node node) {
         assert node.graph == graph : "this node is not part of the graph";

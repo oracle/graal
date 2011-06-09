@@ -397,6 +397,9 @@ public abstract class LIRGenerator extends ValueVisitor {
 
         DeoptimizationStub stub = new DeoptimizationStub(state);
         deoptimizationStubs.add(stub);
+
+        emitCompare(x.node());
+        //emitBranch(x.node(), stub.label)
         throw new RuntimeException();
         //lir.branch(x.condition.negate(), stub.label, stub.info);
     }

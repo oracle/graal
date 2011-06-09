@@ -36,12 +36,12 @@ public final class GuardNode extends Instruction {
     /**
      * The instruction that produces the object tested against null.
      */
-     public FloatingNode node() {
-        return (FloatingNode) inputs().get(super.inputCount() + INPUT_NODE);
+     public Compare node() {
+        return (Compare) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public FloatingNode setNode(FloatingNode n) {
-        return (FloatingNode) inputs().set(super.inputCount() + INPUT_NODE, n);
+    public Compare setNode(Compare n) {
+        return (Compare) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
     public GuardNode(Graph graph) {
