@@ -27,11 +27,11 @@ import java.util.Iterator;
 import java.util.Queue;
 
 
-public class NodeWorklist implements Iterable<Node> {
+public class NodeFlood implements Iterable<Node> {
     private final NodeBitMap visited;
     private final Queue<Node> worklist;
 
-    NodeWorklist(Graph graph) {
+    NodeFlood(Graph graph) {
         visited = graph.createNodeBitMap();
         worklist = new ArrayDeque<Node>();
     }

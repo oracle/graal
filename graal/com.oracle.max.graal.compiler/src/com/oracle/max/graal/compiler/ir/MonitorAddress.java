@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -34,11 +36,11 @@ public final class MonitorAddress extends Value {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private int monitor;
+    private int monitorIndex;
 
-    public MonitorAddress(int monitor, Graph graph) {
+    public MonitorAddress(int monitorIndex, Graph graph) {
         super(CiKind.Word, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.monitor = monitor;
+        this.monitorIndex = monitorIndex;
     }
 
     @Override
@@ -46,18 +48,31 @@ public final class MonitorAddress extends Value {
         v.visitMonitorAddress(this);
     }
 
-    public int monitor() {
-        return monitor;
+    public int monitorIndex() {
+        return monitorIndex;
+    }
+
+    public void setMonitorIndex(int monitorIndex) {
+        this.monitorIndex = monitorIndex;
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("monitor_address (").print(monitor()).print(")");
+        out.print("monitor_address (").print(monitorIndex()).print(")");
+    }
+
+
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("monitorIndex", monitorIndex);
+        return properties;
     }
 
     @Override
     public Node copy(Graph into) {
-        MonitorAddress x = new MonitorAddress(monitor, into);
+        MonitorAddress x = new MonitorAddress(monitorIndex, into);
         return x;
     }
 }

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -62,6 +63,53 @@ public class Graph {
         return Collections.unmodifiableList(nodes);
     }
 
+    public static class TypedNodeIterator<T> implements Iterator<T> {
+        private final Class<T> type;
+        private final Iterator<Node> iter;
+        private Node nextNode;
+
+        public TypedNodeIterator(Class<T> type, Iterator<Node> iter) {
+            this.type = type;
+            this.iter = iter;
+            forward();
+        }
+
+        private void forward() {
+            do {
+                if (!iter.hasNext()) {
+                    nextNode = null;
+                    return;
+                }
+                nextNode = iter.next();
+            } while (nextNode == null || !type.isInstance(nextNode));
+        }
+
+        public boolean hasNext() {
+            return nextNode != null;
+        }
+
+        @SuppressWarnings("unchecked")
+        public T next() {
+            try {
+                return (T) nextNode;
+            } finally {
+                forward();
+            }
+        }
+
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    public <T extends Node> Iterable<T> getNodes(final Class<T> type) {
+        return new Iterable<T>() {
+            public Iterator<T> iterator() {
+                return new TypedNodeIterator<T>(type, nodes.iterator());
+            }
+        };
+    }
+
     int register(Node node) {
         int id = nextId++;
         nodes.add(id, node);
@@ -85,8 +133,8 @@ public class Graph {
         return new NodeMap<T>(this);
     }
 
-    public NodeWorklist createNodeWorklist() {
-        return new NodeWorklist(this);
+    public NodeFlood createNodeFlood() {
+        return new NodeFlood(this);
     }
 
     public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {

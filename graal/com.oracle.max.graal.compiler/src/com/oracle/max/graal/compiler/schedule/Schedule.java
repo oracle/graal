@@ -216,9 +216,9 @@ public class Schedule extends Phase {
         for (Node usage : n.usages()) {
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
-                Merge merge = phi.block();
+                Merge merge = phi.merge();
                 Block mergeBlock = nodeToBlock.get(merge);
-                assert mergeBlock != null;
+                assert mergeBlock != null : "no block for merge " + merge.id();
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == n) {
                         if (mergeBlock.getPredecessors().size() == 0) {

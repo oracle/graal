@@ -287,7 +287,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         if (p != null) {
             if (p instanceof Phi) {
                 Phi phi = (Phi) p;
-                if (phi.block() == block) {
+                if (phi.merge() == block) {
                     return phi;
                 }
             }
@@ -307,7 +307,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         Value p = localAt(i);
         if (p instanceof Phi) {
             Phi phi = (Phi) p;
-            if (phi.block() == block) {
+            if (phi.merge() == block) {
                 return phi;
             }
         }
@@ -357,11 +357,11 @@ public final class FrameState extends Value implements FrameStateAccess {
             Value x = valueAt(i);
             if (x != null) {
                 Value y = other.valueAt(i);
-                if (x != y || ((x instanceof Phi) && ((Phi) x).block() == block)) {
+                if (x != y || ((x instanceof Phi) && ((Phi) x).merge() == block)) {
                     if (typeMismatch(x, y)) {
                         if (x instanceof Phi) {
                             Phi phi = (Phi) x;
-                            if (phi.block() == block) {
+                            if (phi.merge() == block) {
                                 phi.makeDead();
                             }
                         }

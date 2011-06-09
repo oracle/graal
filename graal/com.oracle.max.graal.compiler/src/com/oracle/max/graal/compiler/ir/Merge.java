@@ -211,14 +211,14 @@ public class Merge extends StateSplit {
     }
 
     /**
-     * Determines if a given instruction is a phi whose {@linkplain Phi#block() join block} is a given block.
+     * Determines if a given instruction is a phi whose {@linkplain Phi#merge() join block} is a given block.
      *
      * @param value the instruction to test
      * @param block the block that may be the join block of {@code value} if {@code value} is a phi
      * @return {@code true} if {@code value} is a phi and its join block is {@code block}
      */
     private boolean isPhiAtBlock(Value value) {
-        return value instanceof Phi && ((Phi) value).block() == this;
+        return value instanceof Phi && ((Phi) value).merge() == this;
     }
 
 
@@ -229,7 +229,7 @@ public class Merge extends StateSplit {
      * @param index the index of the value in the frame state
      * @param value the frame state value
      * @param block if {@code value} is a phi, then its inputs are formatted if {@code block} is its
-     *            {@linkplain Phi#block() join point}
+     *            {@linkplain Phi#merge() join point}
      * @return the instruction representation as a string
      */
     public String stateString(int index, Value value) {
@@ -238,7 +238,7 @@ public class Merge extends StateSplit {
         if (value instanceof Phi) {
             Phi phi = (Phi) value;
             // print phi operands
-            if (phi.block() == this) {
+            if (phi.merge() == this) {
                 sb.append(" [");
                 for (int j = 0; j < phi.valueCount(); j++) {
                     sb.append(' ');
