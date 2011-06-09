@@ -133,6 +133,9 @@ public final class BlockMap {
         public Block next;
     }
 
+    public static class DeoptBlock  extends Block {
+    }
+
     private static final Block[] NO_SUCCESSORS = new Block[0];
 
     /**
@@ -257,9 +260,15 @@ public final class BlockMap {
                 case IF_ACMPNE: // fall through
                 case IFNULL:    // fall through
                 case IFNONNULL: {
+                    int probability = method.branchProbability(bci);
+//                    if (probability == 0 || probability == 100) {
+//                        System.out.println("prob: " + probability);
+//                    }
                     current = null;
                     Block b1 = makeBlock(bci + 3);
                     Block b2 = makeBlock(bci + Bytes.beS2(code, bci + 1));
+//                    Block b1 = probability == 100 ? makeDeoptBlock(bci + 3) : makeBlock(bci + 3);
+//                    Block b2 = probability == 0 ? makeDeoptBlock(bci + Bytes.beS2(code, bci + 1)) : makeBlock(bci + Bytes.beS2(code, bci + 1));
                     setSuccessors(bci, b1, b2);
 
                     assert lengthOf(code, bci) == 3;
@@ -374,6 +383,14 @@ public final class BlockMap {
         } else {
             return oldBlock;
         }
+    }
+
+    private Block makeDeoptBlock(int startBci) {
+        System.out.println("Deopt block created");
+        DeoptBlock newBlock = new DeoptBlock();
+        newBlock.startBci = startBci;
+        blockMap[startBci] = newBlock;
+        return newBlock;
     }
 
     private Block[] makeSwitchSuccessors(BytecodeSwitch tswitch) {

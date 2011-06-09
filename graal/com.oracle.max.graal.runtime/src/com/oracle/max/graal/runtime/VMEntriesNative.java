@@ -144,5 +144,8 @@ public class VMEntriesNative implements VMEntries, Remote {
     @Override
     public native RiTypeProfile RiMethod_typeProfile(long vmId, int bci);
 
+    @Override
+    public native int RiMethod_branchProbability(long vmId, int bci);
+
     // Checkstyle: resume
 }
