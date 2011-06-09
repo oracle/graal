@@ -67,13 +67,9 @@ public final class FixedNullCheck extends Instruction {
      * @param graph
      */
     public FixedNullCheck(Value object, Graph graph) {
-        super(object.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        assert object == null || object.kind == CiKind.Object;
         setObject(object);
-    }
-
-    // for copying
-    private FixedNullCheck(CiKind kind, Graph graph) {
-        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -114,7 +110,6 @@ public final class FixedNullCheck extends Instruction {
 
     @Override
     public Node copy(Graph into) {
-        FixedNullCheck x = new FixedNullCheck(kind, into);
-        return x;
+        return new FixedNullCheck(null, into);
     }
 }
