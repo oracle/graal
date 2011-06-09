@@ -71,20 +71,48 @@ public class VMExitsNative implements VMExits, Remote {
 
     private static Set<String> compiledMethods = new HashSet<String>();
 
-    public void shutdownCompiler() {
-        compileMethods = false;
+    private static PrintStream originalOut;
+    private static PrintStream originalErr;
 
-        if (GraalOptions.Meter) {
-            GraalMetrics.print();
-        }
-        if (GraalOptions.Time) {
-            GraalTimers.print();
-        }
-        if (PrintGCStats) {
-            printGCStats();
-        }
+    public void startCompiler() {
+        originalOut = System.out;
+        originalErr = System.err;
+        TTY.println("startCompiler: " + originalOut);
     }
 
+    public void shutdownCompiler() throws Throwable {
+        compileMethods = false;
+
+        new Sandbox() {
+
+            @Override
+            public void run() {
+                if (GraalOptions.Meter) {
+
+                    GraalMetrics.print();
+                }
+                if (GraalOptions.Time) {
+                    GraalTimers.print();
+                }
+                if (PrintGCStats) {
+                    printGCStats();
+                }
+            }
+        }.start();
+    }
+
+    public abstract class Sandbox {
+
+        public void start() throws Throwable {
+            PrintStream oldOut = System.out;
+            PrintStream oldErr = System.err;
+            run();
+            System.setOut(oldOut);
+            System.setErr(oldErr);
+        }
+
+        protected abstract void run() throws Throwable;
+    }
 
     public static void printGCStats() {
         long totalGarbageCollections = 0;
@@ -107,51 +135,56 @@ public class VMExitsNative implements VMExits, Remote {
     }
 
     @Override
-    public void compileMethod(long methodVmId, String name, int entryBCI) throws Throwable {
+    public void compileMethod(final long methodVmId, final String name, final int entryBCI) throws Throwable {
         if (!compileMethods) {
             return;
         }
 
-        try {
-            HotSpotMethodResolved riMethod = new HotSpotMethodResolved(compiler, methodVmId, name);
-            CiResult result = compiler.getCompiler().compileMethod(riMethod, -1, null, null);
-            if (LogCompiledMethods) {
-                String qualifiedName = CiUtil.toJavaName(riMethod.holder()) + "::" + riMethod.name();
-                compiledMethods.add(qualifiedName);
-            }
-
-            if (result.bailout() != null) {
-                Throwable cause = result.bailout().getCause();
-                if (!GraalOptions.QuietBailout) {
-                    StringWriter out = new StringWriter();
-                    result.bailout().printStackTrace(new PrintWriter(out));
-                    TTY.println("Bailout:\n" + out.toString());
-                    if (cause != null) {
-                        Logger.info("Trace for cause: ");
-                        for (StackTraceElement e : cause.getStackTrace()) {
-                            String current = e.getClassName() + "::" + e.getMethodName();
-                            String type = "";
-                            if (compiledMethods.contains(current)) {
-                                type = "compiled";
-                            }
-                            Logger.info(String.format("%-10s %3d %s", type, e.getLineNumber(), current));
-                        }
+        new Sandbox() {
+            @Override
+            public void run() throws Throwable {
+                try {
+                    HotSpotMethodResolved riMethod = new HotSpotMethodResolved(compiler, methodVmId, name);
+                    CiResult result = compiler.getCompiler().compileMethod(riMethod, -1, null, null);
+                    if (LogCompiledMethods) {
+                        String qualifiedName = CiUtil.toJavaName(riMethod.holder()) + "::" + riMethod.name();
+                        compiledMethods.add(qualifiedName);
                     }
+
+                    if (result.bailout() != null) {
+                        Throwable cause = result.bailout().getCause();
+                        if (!GraalOptions.QuietBailout) {
+                            StringWriter out = new StringWriter();
+                            result.bailout().printStackTrace(new PrintWriter(out));
+                            TTY.println("Bailout:\n" + out.toString());
+                            if (cause != null) {
+                                Logger.info("Trace for cause: ");
+                                for (StackTraceElement e : cause.getStackTrace()) {
+                                    String current = e.getClassName() + "::" + e.getMethodName();
+                                    String type = "";
+                                    if (compiledMethods.contains(current)) {
+                                        type = "compiled";
+                                    }
+                                    Logger.info(String.format("%-10s %3d %s", type, e.getLineNumber(), current));
+                                }
+                            }
+                        }
+                        String s = result.bailout().getMessage();
+                        if (cause != null) {
+                            s = cause.getMessage();
+                        }
+                        compiler.getVMEntries().recordBailout(s);
+                    } else {
+                        HotSpotTargetMethod.installMethod(compiler, riMethod, result.targetMethod());
+                    }
+                } catch (Throwable t) {
+                    StringWriter out = new StringWriter();
+                    t.printStackTrace(new PrintWriter(out));
+                    TTY.println("Compilation interrupted: (" + name + ")\n" + out.toString());
+                    throw t;
                 }
-                String s = result.bailout().getMessage();
-                if (cause != null) {
-                    s = cause.getMessage();
-                }
-                compiler.getVMEntries().recordBailout(s);
-            } else {
-                HotSpotTargetMethod.installMethod(compiler, riMethod, result.targetMethod());
             }
-        } catch (Throwable t) {
-            StringWriter out = new StringWriter();
-            t.printStackTrace(new PrintWriter(out));
-            TTY.println("Compilation interrupted: (" + name + ")\n" + out.toString());
-            throw t;
-        }
+        }.start();
     }
 
     @Override
