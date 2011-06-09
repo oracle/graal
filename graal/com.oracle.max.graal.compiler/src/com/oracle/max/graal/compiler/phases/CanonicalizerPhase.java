@@ -25,6 +25,11 @@ package com.oracle.max.graal.compiler.phases;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.graph.*;
 
+/* TODO (gd) Canonicalize :
+ * - Compare & If
+ * - InstanceOf (if it's not transformed into a Condition for Compare)
+ * - Switches
+ */
 public class CanonicalizerPhase extends Phase {
     private static final int MAX_ITERATION_PER_NODE = 10;
 
