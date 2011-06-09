@@ -471,56 +471,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitIf(If x) {
-        emitCompare(x.compare());
-        Condition cond = x.compare().condition();
-        if (x.compare().x().kind.isFloat() || x.compare().x().kind.isDouble()) {
-            Instruction unorderedSucc = x.falseSuccessor();
-            if (x.compare().unorderedIsTrue()) {
-                unorderedSucc = x.trueSuccessor();
-            }
-            lir.branch(cond, getLIRBlock(x.trueSuccessor()), getLIRBlock(unorderedSucc));
-        } else {
-            lir.branch(cond, getLIRBlock(x.trueSuccessor()));
-        }
-        assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
-        lir.jump(getLIRBlock(x.defaultSuccessor()));
-    }
-
-    public void emitCompare(Compare compare) {
-        CiKind kind = compare.x().kind;
-
-        Condition cond = compare.condition();
-
-        LIRItem xitem = new LIRItem(compare.x(), this);
-        LIRItem yitem = new LIRItem(compare.y(), this);
-        LIRItem xin = xitem;
-        LIRItem yin = yitem;
-
-        if (kind.isLong()) {
-            // for longs, only conditions "eql", "neq", "lss", "geq" are valid;
-            // mirror for other conditions
-            if (cond == Condition.GT || cond == Condition.LE) {
-                cond = cond.mirror();
-                xin = yitem;
-                yin = xitem;
-            }
-            xin.setDestroysRegister();
-        }
-        xin.loadItem();
-        if (kind.isLong() && yin.result().isConstant() && yin.instruction.asConstant().asLong() == 0 && (cond == Condition.EQ || cond == Condition.NE)) {
-            // dont load item
-        } else if (kind.isLong() || kind.isFloat() || kind.isDouble()) {
-            // longs cannot handle constants at right side
-            yin.loadItem();
-        }
-
-        CiValue left = xin.result();
-        CiValue right = yin.result();
-        lir.cmp(cond, left, right);
-    }
-
-    @Override
     public void visitExceptionDispatch(ExceptionDispatch x) {
         // TODO ls: this needs some more work...
 

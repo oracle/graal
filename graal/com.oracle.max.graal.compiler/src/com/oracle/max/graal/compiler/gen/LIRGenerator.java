@@ -436,6 +436,60 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
+    public void visitIf(If x) {
+        emitCompare(x.compare());
+        emitBranch(x.compare(), getLIRBlock(x.trueSuccessor()), getLIRBlock(x.falseSuccessor()));
+        assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
+        lir.jump(getLIRBlock(x.defaultSuccessor()));
+    }
+
+    public void emitBranch(Compare compare, LIRBlock trueSuccessor, LIRBlock falseSucc) {
+        Condition cond = compare.condition();
+        if (compare.x().kind.isFloat() || compare.x().kind.isDouble()) {
+            LIRBlock unorderedSuccBlock = falseSucc;
+            if (compare.unorderedIsTrue()) {
+                unorderedSuccBlock = trueSuccessor;
+            }
+            lir.branch(cond, trueSuccessor, unorderedSuccBlock);
+        } else {
+            lir.branch(cond, trueSuccessor);
+        }
+    }
+
+    public void emitCompare(Compare compare) {
+        CiKind kind = compare.x().kind;
+
+        Condition cond = compare.condition();
+
+        LIRItem xitem = new LIRItem(compare.x(), this);
+        LIRItem yitem = new LIRItem(compare.y(), this);
+        LIRItem xin = xitem;
+        LIRItem yin = yitem;
+
+        if (kind.isLong()) {
+            // for longs, only conditions "eql", "neq", "lss", "geq" are valid;
+            // mirror for other conditions
+            if (cond == Condition.GT || cond == Condition.LE) {
+                cond = cond.mirror();
+                xin = yitem;
+                yin = xitem;
+            }
+            xin.setDestroysRegister();
+        }
+        xin.loadItem();
+        if (kind.isLong() && yin.result().isConstant() && yin.instruction.asConstant().asLong() == 0 && (cond == Condition.EQ || cond == Condition.NE)) {
+            // dont load item
+        } else if (kind.isLong() || kind.isFloat() || kind.isDouble()) {
+            // longs cannot handle constants at right side
+            yin.loadItem();
+        }
+
+        CiValue left = xin.result();
+        CiValue right = yin.result();
+        lir.cmp(cond, left, right);
+    }
+
+    @Override
     public void visitIfOp(Conditional i) {
         Value x = i.x();
         Value y = i.y();
@@ -474,11 +528,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private int getBeforeInvokeBci(Invoke invoke) {
-        /*int length = 3;
-        if (invoke.opcode() == Bytecodes.INVOKEINTERFACE) {
-            length += 2;
-        }
-        return invoke.stateAfter().bci - length;*/
+        // Cannot calculate BCI, because the invoke can have changed from e.g. invokeinterface to invokespecial because of optimizations.
         return invoke.bci;
     }
 
@@ -620,6 +670,9 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected LIRBlock getLIRBlock(Instruction b) {
+        if (b == null) {
+            return null;
+        }
         LIRBlock result = ir.valueToBlock.get(b);
         if (result == null) {
             TTY.println("instruction without lir block: " + b);
