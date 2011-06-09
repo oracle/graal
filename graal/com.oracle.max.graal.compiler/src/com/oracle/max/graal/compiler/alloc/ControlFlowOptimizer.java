@@ -164,7 +164,12 @@ final class ControlFlowOptimizer {
                 assert lastOp instanceof LIRBranch : "branch must be of type LIRBranch";
                 LIRBranch lastBranch = (LIRBranch) lastOp;
 
-                assert lastBranch.block() != null : "last branch must always have a block as target";
+                if (lastBranch.block() == null) {
+                    // this might target a deoptimization stub...
+                    // TODO check if the target is really a deopt stub...
+//                    assert lastBranch.block() != null : "last branch must always have a block as target, current block #" + block.blockID();
+                    continue;
+                }
                 assert lastBranch.label() == lastBranch.block().label() : "must be equal";
 
                 if (lastBranch.info == null) {

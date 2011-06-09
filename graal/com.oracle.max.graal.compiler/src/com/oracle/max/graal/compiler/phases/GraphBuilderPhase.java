@@ -31,7 +31,6 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.graph.BlockMap.DeoptBlock;
 import com.oracle.max.graal.compiler.graph.BlockMap.*;
 import com.oracle.max.graal.compiler.graph.BlockMap.Block;
 import com.oracle.max.graal.compiler.ir.*;
@@ -78,6 +77,7 @@ public final class GraphBuilderPhase extends Phase {
     // bci-to-block mapping
     private Block[] blockFromBci;
     private ArrayList<Block> blockList;
+    private HashMap<Integer, BranchOverride> branchOverride;
 
     private int nextBlockNumber;
 
@@ -145,6 +145,7 @@ public final class GraphBuilderPhase extends Phase {
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(method);
+        this.branchOverride = blockMap.branchOverride;
 
         blockList = new ArrayList<Block>(blockMap.blocks);
         blockFromBci = new Block[method.code().length];
@@ -152,7 +153,7 @@ public final class GraphBuilderPhase extends Phase {
             int blockID = nextBlockNumber();
             assert blockID == i;
             Block block = blockList.get(i);
-            if (block.startBci >= 0) {
+            if (block.startBci >= 0 && !(block instanceof BlockMap.DeoptBlock)) {
                 blockFromBci[block.startBci] = block;
             }
         }
@@ -654,9 +655,20 @@ public final class GraphBuilderPhase extends Phase {
         assert !x.isDeleted() && !y.isDeleted();
         If ifNode = new If(new Compare(x, cond, y, graph), graph);
         append(ifNode);
-        Instruction tsucc = createTargetAt(stream().readBranchDest(), frameState);
+        BlockMap.BranchOverride override = branchOverride.get(bci());
+        Instruction tsucc;
+        if (override == null || override.taken == false) {
+            tsucc = createTargetAt(stream().readBranchDest(), frameState);
+        } else {
+            tsucc = createTarget(override.block, frameState);
+        }
         ifNode.setBlockSuccessor(0, tsucc);
-        Instruction fsucc = createTargetAt(stream().nextBCI(), frameState);
+        Instruction fsucc;
+        if (override == null || override.taken == true) {
+            fsucc = createTargetAt(stream().nextBCI(), frameState);
+        } else {
+            fsucc = createTarget(override.block, frameState);
+        }
         ifNode.setBlockSuccessor(1, fsucc);
     }
 
@@ -1094,7 +1106,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
         assert block != null && stateAfter != null;
-        assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null : "non-loop block must be iterated after all its predecessors";
+        assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null :
+            "non-loop block must be iterated after all its predecessors. startBci=" + block.startBci + ", " + block.getClass().getSimpleName() + ", " + block.firstInstruction.next();
 
         if (block.isExceptionEntry) {
             assert stateAfter.stackSize() == 1;
@@ -1186,6 +1199,9 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void createDeoptBlock(DeoptBlock block) {
+//        Merge x = new Merge(graph);
+//        x.setStateBefore(((StateSplit) block.firstInstruction).stateBefore());
+//        append(x);
         append(new Deoptimize(graph));
     }
 
