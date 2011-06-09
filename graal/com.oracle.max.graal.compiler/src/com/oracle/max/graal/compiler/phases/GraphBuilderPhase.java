@@ -906,7 +906,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
-        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
+        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
         Value result = appendWithBCI(invoke);
         invoke.setExceptionEdge(handleException(null, bci()));
         frameState.pushReturn(resultType, result);

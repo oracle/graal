@@ -155,4 +155,12 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     public int intrinsic() {
         return 0;
     }
+
+    public int invocationCount() {
+        return -1;
+    }
+
+    public RiTypeProfile typeProfile(int bci) {
+        return null;
+    }
 }
