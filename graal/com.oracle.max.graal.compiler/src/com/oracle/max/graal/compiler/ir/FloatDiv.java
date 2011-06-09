@@ -22,24 +22,14 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
-/**
- *
- */
 public final class FloatDiv extends FloatArithmetic {
+    private static final FloatDivCanonicalizerOp CANONICALIZER = new FloatDivCanonicalizerOp();
 
-    /**
-     * @param opcode
-     * @param kind
-     * @param x
-     * @param y
-     * @param isStrictFP
-     * @param graph
-     */
     public FloatDiv(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DDIV : Bytecodes.FDIV, x, y, isStrictFP, graph);
     }
@@ -53,6 +43,35 @@ public final class FloatDiv extends FloatArithmetic {
     public Node copy(Graph into) {
         FloatDiv x = new FloatDiv(kind, null, null, isStrictFP(), into);
         return x;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class FloatDivCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            FloatDiv div = (FloatDiv) node;
+            Value x = div.x();
+            Value y = div.y();
+            if (x.isConstant() && y.isConstant()) {
+                CiKind kind = div.kind;
+                Graph graph = div.graph();
+                if (kind == CiKind.Float) {
+                    return Constant.forFloat(x.asConstant().asFloat() / y.asConstant().asFloat(), graph);
+                } else {
+                    assert kind == CiKind.Double;
+                    return Constant.forDouble(x.asConstant().asDouble() / y.asConstant().asDouble(), graph);
+                }
+            }
+            return div;
+        }
     }
 
 }

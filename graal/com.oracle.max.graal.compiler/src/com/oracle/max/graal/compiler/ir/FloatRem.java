@@ -22,24 +22,15 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
-/**
- *
- */
 public final class FloatRem extends FloatArithmetic {
+    private static final FloatRemCanonicalizerOp CANONICALIZER = new FloatRemCanonicalizerOp();
 
-    /**
-     * @param opcode
-     * @param kind
-     * @param x
-     * @param y
-     * @param isStrictFP
-     * @param graph
-     */
     public FloatRem(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DREM : Bytecodes.FREM, x, y, isStrictFP, graph);
     }
@@ -54,4 +45,32 @@ public final class FloatRem extends FloatArithmetic {
         return new FloatRem(kind, null, null, isStrictFP(), into);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class FloatRemCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            FloatRem rem = (FloatRem) node;
+            Value x = rem.x();
+            Value y = rem.y();
+            if (x.isConstant() && y.isConstant()) {
+                CiKind kind = rem.kind;
+                Graph graph = rem.graph();
+                if (kind == CiKind.Float) {
+                    return Constant.forFloat(x.asConstant().asFloat() % y.asConstant().asFloat(), graph);
+                } else {
+                    assert kind == CiKind.Double;
+                    return Constant.forDouble(x.asConstant().asDouble() % y.asConstant().asDouble(), graph);
+                }
+            }
+            return rem;
+        }
+    }
 }
