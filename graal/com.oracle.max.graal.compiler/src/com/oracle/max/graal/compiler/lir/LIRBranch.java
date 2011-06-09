@@ -34,7 +34,6 @@ import com.sun.cri.ci.*;
 public class LIRBranch extends LIRInstruction {
 
     private Condition cond;
-    private CiKind kind;
     private Label label;
 
     /**
@@ -73,19 +72,17 @@ public class LIRBranch extends LIRInstruction {
      * @param block
      *
      */
-    public LIRBranch(Condition cond, CiKind kind, LIRBlock block) {
+    public LIRBranch(Condition cond, LIRBlock block) {
         super(LIROpcode.Branch, CiValue.IllegalValue, null, false);
         this.cond = cond;
-        this.kind = kind;
         this.label = block.label();
         this.block = block;
         this.unorderedBlock = null;
     }
 
-    public LIRBranch(Condition cond, CiKind kind, LIRBlock block, LIRBlock ublock) {
+    public LIRBranch(Condition cond, LIRBlock block, LIRBlock ublock) {
         super(LIROpcode.CondFloatBranch, CiValue.IllegalValue, null, false);
         this.cond = cond;
-        this.kind = kind;
         this.label = block.label();
         this.block = block;
         this.unorderedBlock = ublock;

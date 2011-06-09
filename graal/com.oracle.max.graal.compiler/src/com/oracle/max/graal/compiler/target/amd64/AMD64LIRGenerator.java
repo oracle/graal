@@ -472,12 +472,28 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitIf(If x) {
-        CiKind kind = x.compare().x().kind;
-
+        emitCompare(x.compare());
         Condition cond = x.compare().condition();
+        if (x.compare().x().kind.isFloat() || x.compare().x().kind.isDouble()) {
+            Instruction unorderedSucc = x.falseSuccessor();
+            if (x.compare().unorderedIsTrue()) {
+                unorderedSucc = x.trueSuccessor();
+            }
+            lir.branch(cond, getLIRBlock(x.trueSuccessor()), getLIRBlock(unorderedSucc));
+        } else {
+            lir.branch(cond, getLIRBlock(x.trueSuccessor()));
+        }
+        assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
+        lir.jump(getLIRBlock(x.defaultSuccessor()));
+    }
 
-        LIRItem xitem = new LIRItem(x.compare().x(), this);
-        LIRItem yitem = new LIRItem(x.compare().y(), this);
+    public void emitCompare(Compare compare) {
+        CiKind kind = compare.x().kind;
+
+        Condition cond = compare.condition();
+
+        LIRItem xitem = new LIRItem(compare.x(), this);
+        LIRItem yitem = new LIRItem(compare.y(), this);
         LIRItem xin = xitem;
         LIRItem yin = yitem;
 
@@ -499,22 +515,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
             yin.loadItem();
         }
 
-        setNoResult(x);
-
         CiValue left = xin.result();
         CiValue right = yin.result();
         lir.cmp(cond, left, right);
-        if (x.compare().x().kind.isFloat() || x.compare().x().kind.isDouble()) {
-            Instruction unorderedSucc = x.falseSuccessor();
-            if (x.compare().unorderedIsTrue()) {
-                unorderedSucc = x.trueSuccessor();
-            }
-            lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()), getLIRBlock(unorderedSucc));
-        } else {
-            lir.branch(cond, right.kind, getLIRBlock(x.trueSuccessor()));
-        }
-        assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination above";
-        lir.jump(getLIRBlock(x.defaultSuccessor()));
     }
 
     @Override
@@ -530,7 +533,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiValue result = emitXir(snippet, x, stateFor(x), null, true);
 
         lir.cmp(Condition.EQ, result, CiConstant.TRUE);
-        lir.branch(Condition.EQ, CiKind.Boolean, getLIRBlock(x.catchSuccessor()));
+        lir.branch(Condition.EQ, getLIRBlock(x.catchSuccessor()));
 
         lir.jump(getLIRBlock(x.otherSuccessor()));
     }

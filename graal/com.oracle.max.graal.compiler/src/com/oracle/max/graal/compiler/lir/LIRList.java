@@ -245,7 +245,7 @@ public final class LIRList {
     }
 
     public void jump(LIRBlock block) {
-        append(new LIRBranch(Condition.TRUE, CiKind.Illegal, block));
+        append(new LIRBranch(Condition.TRUE, block));
     }
 
     public void branch(Condition cond, Label lbl) {
@@ -256,14 +256,12 @@ public final class LIRList {
         append(new LIRBranch(cond, lbl, info));
     }
 
-    public void branch(Condition cond, CiKind kind, LIRBlock block) {
-        assert kind != CiKind.Float && kind != CiKind.Double : "no fp comparisons";
-        append(new LIRBranch(cond, kind, block));
+    public void branch(Condition cond, LIRBlock block) {
+        append(new LIRBranch(cond, block));
     }
 
-    public void branch(Condition cond, CiKind kind, LIRBlock block, LIRBlock unordered) {
-        assert kind == CiKind.Float || kind == CiKind.Double : "fp comparisons only";
-        append(new LIRBranch(cond, kind, block, unordered));
+    public void branch(Condition cond, LIRBlock block, LIRBlock unordered) {
+        append(new LIRBranch(cond, block, unordered));
     }
 
     public void tableswitch(CiValue index, int lowKey, LIRBlock defaultTargets, LIRBlock[] targets) {

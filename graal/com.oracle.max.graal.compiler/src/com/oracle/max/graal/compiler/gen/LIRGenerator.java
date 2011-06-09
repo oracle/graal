@@ -385,6 +385,23 @@ public abstract class LIRGenerator extends ValueVisitor {
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
+
+    @Override
+    public void visitGuardNode(GuardNode x) {
+        FrameState state = lastState;
+        assert state != null : "deoptimize instruction always needs a state";
+
+        if (deoptimizationStubs == null) {
+            deoptimizationStubs = new ArrayList<DeoptimizationStub>();
+        }
+
+        DeoptimizationStub stub = new DeoptimizationStub(state);
+        deoptimizationStubs.add(stub);
+        throw new RuntimeException();
+        //lir.branch(x.condition.negate(), stub.label, stub.info);
+    }
+
+
     @Override
     public void visitConstant(Constant x) {
         if (!canInlineAsConstant(x)) {
@@ -594,7 +611,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
                 lir.cmp(Condition.EQ, tag, x.keyAt(i));
-                lir.branch(Condition.EQ, CiKind.Int, getLIRBlock(x.blockSuccessor(i)));
+                lir.branch(Condition.EQ, getLIRBlock(x.blockSuccessor(i)));
             }
             lir.jump(getLIRBlock(x.defaultSuccessor()));
         } else {
@@ -856,7 +873,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
                 lir.cmp(Condition.EQ, tag, i + loKey);
-                lir.branch(Condition.EQ, CiKind.Int, getLIRBlock(x.blockSuccessor(i)));
+                lir.branch(Condition.EQ, getLIRBlock(x.blockSuccessor(i)));
             }
             lir.jump(getLIRBlock(x.defaultSuccessor()));
         } else {
@@ -991,18 +1008,18 @@ public abstract class LIRGenerator extends ValueVisitor {
             LIRBlock dest = oneRange.sux;
             if (lowKey == highKey) {
                 lir.cmp(Condition.EQ, value, lowKey);
-                lir.branch(Condition.EQ, CiKind.Int, dest);
+                lir.branch(Condition.EQ, dest);
             } else if (highKey - lowKey == 1) {
                 lir.cmp(Condition.EQ, value, lowKey);
-                lir.branch(Condition.EQ, CiKind.Int, dest);
+                lir.branch(Condition.EQ, dest);
                 lir.cmp(Condition.EQ, value, highKey);
-                lir.branch(Condition.EQ, CiKind.Int, dest);
+                lir.branch(Condition.EQ, dest);
             } else {
                 Label l = new Label();
                 lir.cmp(Condition.LT, value, lowKey);
                 lir.branch(Condition.LT, l);
                 lir.cmp(Condition.LE, value, highKey);
-                lir.branch(Condition.LE, CiKind.Int, dest);
+                lir.branch(Condition.LE, dest);
                 lir.branchDestination(l);
             }
         }
