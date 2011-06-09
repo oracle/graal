@@ -41,7 +41,7 @@ public class SplitCriticalEdgesPhase extends Phase {
                     Node succ = n.successors().get(j);
                     if (IdentifyBlocksPhase.truePredecessorCount(succ) > 1) {
                         Anchor a = new Anchor(graph);
-                        a.successors().setAndClear(1, n, j);
+                        a.successors().setAndClear(Instruction.SUCCESSOR_NEXT, n, j);
                         n.successors().set(j, a);
                     }
                 }

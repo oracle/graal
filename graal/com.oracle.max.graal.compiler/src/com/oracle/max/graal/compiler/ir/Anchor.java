@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Anchor} instruction represents the end of a block with an unconditional jump to another block.
  */
-public final class Anchor extends BlockEnd {
+public final class Anchor extends Instruction {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -39,7 +39,7 @@ public final class Anchor extends BlockEnd {
      * @param graph
      */
     public Anchor(Graph graph) {
-        super(CiKind.Illegal, 1, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -49,12 +49,11 @@ public final class Anchor extends BlockEnd {
 
     @Override
     public void print(LogStream out) {
-        out.print("anchor ").print(defaultSuccessor());
+        out.print("anchor ").print(next());
     }
 
     @Override
     public Node copy(Graph into) {
-        Anchor x = new Anchor(into);
-        return x;
+        return new Anchor(into);
     }
 }

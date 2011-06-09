@@ -272,7 +272,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private static boolean jumpsToNextBlock(Node node) {
-        return node instanceof BlockEnd;
+        return node instanceof BlockEnd || node instanceof Anchor;
     }
 
     @Override
@@ -435,7 +435,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         // describing the state at the safepoint.
 
         moveToPhi();
-        lir.jump(getLIRBlock(x.defaultSuccessor()));
+        lir.jump(getLIRBlock(x.next()));
     }
 
     @Override

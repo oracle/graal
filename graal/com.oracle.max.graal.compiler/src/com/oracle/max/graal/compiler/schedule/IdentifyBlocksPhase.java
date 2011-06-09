@@ -199,8 +199,6 @@ public class IdentifyBlocksPhase extends Phase {
         } else {
             computeJavaBlocks();
         }
-
-        //print();
     }
 
     private void computeJavaBlocks() {
@@ -351,13 +349,7 @@ public class IdentifyBlocksPhase extends Phase {
             addToSorting(b, i, sortedInstructions, map);
         }
         addToSorting(b, b.lastNode(), sortedInstructions, map);
-        //assert b.firstNode() == sortedInstructions.get(0) : b.firstNode();
-    //    assert b.lastNode() == sortedInstructions.get(sortedInstructions.size() - 1);
         b.setInstructions(sortedInstructions);
-//        TTY.println("Block " + b);
-//        for (Node n : sortedInstructions) {
-//            TTY.println("Node: " + n);
-//        }
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
@@ -452,50 +444,6 @@ public class IdentifyBlocksPhase extends Phase {
         }
 
         throw new IllegalStateException("no common dominator between " + a + " and " + b);
-    }
-
-    private void print() {
-        TTY.println("============================================");
-        TTY.println("%d blocks", blocks.size());
-
-        for (Block b : blocks) {
-           TTY.println();
-           TTY.print(b.toString());
-
-           TTY.print(" succs=");
-           for (Block succ : b.getSuccessors()) {
-               TTY.print(succ + ";");
-           }
-
-           TTY.print(" preds=");
-           for (Block pred : b.getPredecessors()) {
-               TTY.print(pred + ";");
-           }
-
-           if (b.dominator() != null) {
-               TTY.print(" dom=" + b.dominator());
-           }
-           TTY.println();
-
-           if (b.getInstructions().size() > 0) {
-               TTY.print("first instr: " + b.getInstructions().get(0));
-               TTY.print("last instr: " + b.getInstructions().get(b.getInstructions().size() - 1));
-           }
-        }
-
-/*
-        TTY.println("============================================");
-        TTY.println("%d nodes", nodeToBlock.size());
-        for (Node n : graph.getNodes()) {
-            if (n != null) {
-                TTY.print("Node %d: %s", n.id(), n.getClass().toString());
-                Block curBlock = nodeToBlock.get(n);
-                if (curBlock != null) {
-                    TTY.print(" %s", curBlock);
-                }
-                TTY.println();
-            }
-        }*/
     }
 
     public static int trueSuccessorCount(Node n) {
