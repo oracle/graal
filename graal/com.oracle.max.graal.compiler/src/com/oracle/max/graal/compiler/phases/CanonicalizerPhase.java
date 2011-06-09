@@ -22,46 +22,25 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import java.util.*;
-
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.graph.*;
 
 public class CanonicalizerPhase extends Phase {
-
+    private static final int MAX_ITERATION_PER_NODE = 10;
 
     @Override
     protected void run(Graph graph) {
-        NodeBitMap visited = graph.createNodeBitMap();
-        List<Node> nodes = new ArrayList<Node>(graph.getNodes());
-        for (Node n : nodes) {
-            if (n == null) {
-                continue;
-            }
-            if (!n.isDeleted() && !visited.isMarked(n)) {
-                this.canonicalize(n, visited);
-            }
-        }
-    }
-
-    private void canonicalize(Node n, NodeBitMap visited) {
-        visited.mark(n);
-        for (Node input : n.inputs()) {
-            if (input == null) {
-                continue;
-            }
-            if (!visited.isNew(input) && !visited.isMarked(input)) {
-                canonicalize(input, visited);
-            }
-        }
-
-        CanonicalizerOp op = n.lookup(CanonicalizerOp.class);
-        if (op != null) {
-            Node canonical = op.canonical(n);
-            if (canonical != n) {
-                n.replace(canonical);
-                //System.out.println("-->" + n + " canonicalized to " + canonical);
-                GraalMetrics.NodesCanonicalized++;
+        NodeWorkList nodeWorkList = graph.createNodeWorkList(true, MAX_ITERATION_PER_NODE);
+        for (Node node : nodeWorkList) {
+            CanonicalizerOp op = node.lookup(CanonicalizerOp.class);
+            if (op != null) {
+                Node canonical = op.canonical(node);
+                if (canonical != node) {
+                    node.replace(canonical);
+                    nodeWorkList.replaced(canonical, node, EdgeType.USAGES);
+                    //System.out.println("-->" + n + " canonicalized to " + canonical);
+                    GraalMetrics.NodesCanonicalized++;
+                }
             }
         }
     }

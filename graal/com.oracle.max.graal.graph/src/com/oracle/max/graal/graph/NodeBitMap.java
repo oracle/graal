@@ -66,6 +66,10 @@ public final class NodeBitMap {
         bitMap.clear(node.id());
     }
 
+    public void grow(Node node) {
+        bitMap.grow(node.id() + 1);
+    }
+
     private void check(Node node) {
         assert node.graph == graph : "this node is not part of the graph";
         assert !isNew(node) : "this node (" + node.id() + ") was added to the graph after creating the node bitmap (" + bitMap.length() + ")";
