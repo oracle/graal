@@ -31,6 +31,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.graph.BlockMap.DeoptBlock;
 import com.oracle.max.graal.compiler.graph.BlockMap.*;
 import com.oracle.max.graal.compiler.graph.BlockMap.Block;
 import com.oracle.max.graal.compiler.ir.*;
@@ -1153,6 +1154,8 @@ public final class GraphBuilderPhase extends Phase {
                     createUnwindBlock(block);
                 } else if (block instanceof ExceptionBlock) {
                     createExceptionDispatch((ExceptionBlock) block);
+                } else if (block instanceof DeoptBlock) {
+                    createDeoptBlock((DeoptBlock) block);
                 } else {
                     iterateBytecodesForBlock(block);
                 }
@@ -1180,6 +1183,10 @@ public final class GraphBuilderPhase extends Phase {
                 }
             }
         }
+    }
+
+    private void createDeoptBlock(DeoptBlock block) {
+        append(new Deoptimize(graph));
     }
 
     private void createUnwindBlock(Block block) {
