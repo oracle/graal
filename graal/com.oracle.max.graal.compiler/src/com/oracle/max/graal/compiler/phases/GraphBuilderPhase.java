@@ -680,7 +680,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genThrow(int bci) {
         Value exception = frameState.apop();
-        append(new NullCheck(exception, graph));
+        append(new FixedNullCheck(exception, graph));
 
         Instruction entry = handleException(exception, bci);
         if (entry != null) {
