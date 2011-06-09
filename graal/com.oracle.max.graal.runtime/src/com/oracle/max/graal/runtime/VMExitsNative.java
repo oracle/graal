@@ -77,7 +77,6 @@ public class VMExitsNative implements VMExits, Remote {
     public void startCompiler() {
         originalOut = System.out;
         originalErr = System.err;
-        TTY.println("startCompiler: " + originalOut);
     }
 
     public void shutdownCompiler() throws Throwable {

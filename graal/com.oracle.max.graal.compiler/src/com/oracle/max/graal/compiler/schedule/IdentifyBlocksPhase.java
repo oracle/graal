@@ -32,10 +32,16 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public class Schedule extends Phase {
+public class IdentifyBlocksPhase extends Phase {
     private final List<Block> blocks = new ArrayList<Block>();
     private NodeMap<Block> nodeToBlock;
     private Graph graph;
+    private boolean scheduleAllNodes;
+
+    public IdentifyBlocksPhase(boolean scheduleAllNodes) {
+        super(scheduleAllNodes ? "FullSchedule" : "PartSchedule");
+        this.scheduleAllNodes = scheduleAllNodes;
+    }
 
 
     @Override
@@ -177,20 +183,79 @@ public class Schedule extends Phase {
         computeDominators();
 
 
+        if (scheduleAllNodes) {
 
-        // Add successors of loop end nodes. Makes the graph cyclic.
-        for (Node n : blockBeginNodes) {
-            Block block = nodeToBlock.get(n);
-            if (n instanceof LoopBegin) {
-                LoopBegin loopBegin = (LoopBegin) n;
-                nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+            // Add successors of loop end nodes. Makes the graph cyclic.
+            for (Node n : blockBeginNodes) {
+                Block block = nodeToBlock.get(n);
+                if (n instanceof LoopBegin) {
+                    LoopBegin loopBegin = (LoopBegin) n;
+                    nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+                }
             }
+
+            assignLatestPossibleBlockToNodes();
+            sortNodesWithinBlocks();
+        } else {
+            computeJavaBlocks();
         }
 
-        assignLatestPossibleBlockToNodes();
-        sortNodesWithinBlocks();
-
         //print();
+    }
+
+    private void computeJavaBlocks() {
+
+        for (Block b : blocks) {
+            computeJavaBlock(b);
+        }
+    }
+
+    private Block computeJavaBlock(Block b) {
+        if (b.javaBlock() == null) {
+            if (b.getPredecessors().size() == 0) {
+                b.setJavaBlock(b);
+            } else if (b.getPredecessors().size() == 1) {
+                Block pred = b.getPredecessors().get(0);
+                if (pred.getSuccessors().size() > 1) {
+                    b.setJavaBlock(b);
+                } else {
+                    b.setJavaBlock(computeJavaBlock(pred));
+                }
+            } else {
+                Block dominatorBlock = b.getPredecessors().get(0);
+                for (int i=1; i<b.getPredecessors().size(); ++i) {
+                    dominatorBlock = getCommonDominator(dominatorBlock, b.getPredecessors().get(i));
+                }
+                CiBitMap blockMap = new CiBitMap(blocks.size());
+                markPredecessors(b, dominatorBlock, blockMap);
+
+                Block result = dominatorBlock;
+                L1: for (Block curBlock : blocks) {
+                    if (curBlock != b && blockMap.get(curBlock.blockID())) {
+                        for (Block succ : curBlock.getSuccessors()) {
+                            if (!blockMap.get(succ.blockID())) {
+                                result = b;
+                                break L1;
+                            }
+                        }
+                    }
+                }
+                b.setJavaBlock(result);
+            }
+        }
+        return b.javaBlock();
+    }
+
+    private void markPredecessors(Block b, Block stopBlock, CiBitMap blockMap) {
+        if (blockMap.get(b.blockID())) {
+            return;
+        }
+        blockMap.set(b.blockID());
+        if (b != stopBlock) {
+            for (Block pred : b.getPredecessors()) {
+                markPredecessors(pred, stopBlock, blockMap);
+            }
+        }
     }
 
     private void assignLatestPossibleBlockToNodes() {
@@ -386,9 +451,7 @@ public class Schedule extends Phase {
             cur = cur.dominator();
         }
 
-        print();
-        assert false : "no common dominator between " + a + " and " + b;
-        return null;
+        throw new IllegalStateException("no common dominator between " + a + " and " + b);
     }
 
     private void print() {

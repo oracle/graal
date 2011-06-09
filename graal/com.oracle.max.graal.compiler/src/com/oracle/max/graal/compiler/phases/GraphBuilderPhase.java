@@ -1262,7 +1262,7 @@ public final class GraphBuilderPhase extends Phase {
             traceInstruction(bci, opcode, blockStart);
             processBytecode(bci, opcode);
 
-            if (Schedule.isBlockEnd(lastInstr) || lastInstr.next() != null) {
+            if (IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
                 break;
             }
 

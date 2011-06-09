@@ -91,9 +91,11 @@ public class IR {
             new DeadCodeEliminationPhase().apply(compilation.graph);
         }
 
+        new LoweringPhase().apply(graph);
+
         new SplitCriticalEdgesPhase().apply(graph);
 
-        Schedule schedule = new Schedule();
+        IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);
 
 
