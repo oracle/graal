@@ -52,10 +52,12 @@ public class HotSpotOptions {
         } else {
             int index = option.indexOf('=');
             if (index == -1) {
-                return false;
+                fieldName = option;
+                valueString = null;
+            } else {
+                fieldName = option.substring(0, index);
+                valueString = option.substring(index + 1);
             }
-            fieldName = option.substring(0, index);
-            valueString = option.substring(index + 1);
         }
 
         Field f;
@@ -70,7 +72,11 @@ public class HotSpotOptions {
                 } else if (f.getType() == Integer.TYPE) {
                     value = Integer.parseInt(valueString);
                 } else if (f.getType() == Boolean.TYPE) {
-                    value = Boolean.parseBoolean(valueString);
+                    if (valueString == null || valueString.length() == 0) {
+                        value = true;
+                    } else {
+                        value = Boolean.parseBoolean(valueString);
+                    }
                 } else if (f.getType() == String.class) {
                     value = valueString;
                 }

@@ -205,7 +205,7 @@ public final class GraalCompilation {
             emitLIR();
             targetMethod = emitCode();
 
-            if (GraalOptions.PrintMetrics) {
+            if (GraalOptions.Meter) {
                 GraalMetrics.BytecodesCompiled += method.code().length;
             }
         } catch (CiBailout b) {
@@ -241,7 +241,7 @@ public final class GraalCompilation {
 
     private void emitLIR() {
         if (GraalOptions.GenLIR) {
-            if (GraalOptions.PrintTimers) {
+            if (GraalOptions.Time) {
                 GraalTimers.LIR_CREATE.start();
             }
 
@@ -253,7 +253,7 @@ public final class GraalCompilation {
                 lirGenerator.doBlock(begin);
             }
 
-            if (GraalOptions.PrintTimers) {
+            if (GraalOptions.Time) {
                 GraalTimers.LIR_CREATE.stop();
             }
 
@@ -293,7 +293,7 @@ public final class GraalCompilation {
                 compiler.fireCompilationEvent(new CompilationEvent(this, "After code generation", graph, false, true, targetMethod));
             }
 
-            if (GraalOptions.PrintTimers) {
+            if (GraalOptions.Time) {
                 GraalTimers.CODE_CREATE.stop();
             }
             return targetMethod;

@@ -109,10 +109,8 @@ public class InliningPhase extends Phase {
                     methodCount.put(method, methodCount.get(method) + 1);
                 }
             }
-            ir.verifyAndPrint("After inlining iteration");
             DeadCodeEliminationPhase dce = new DeadCodeEliminationPhase();
             dce.apply(graph);
-            ir.verifyAndPrint("After inlining iteration DCE");
 
             if (inliningSize > GraalOptions.MaximumInstructionCount) {
                 if (trace) {
@@ -184,7 +182,7 @@ public class InliningPhase extends Phase {
         }
 
         CompilerGraph graph = new CompilerGraph();
-        new GraphBuilderPhase(compilation, method, true).apply(graph);
+        new GraphBuilderPhase(compilation, method, true, true).apply(graph);
 
         boolean withReceiver = !Modifier.isStatic(method.accessFlags());
 
@@ -306,7 +304,7 @@ public class InliningPhase extends Phase {
         }
 
         if (trace) {
-            ir.verifyAndPrint("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false));
+            ir.printGraph("After inlining " + CiUtil.format("%H.%n(%p):%r", method, false), compilation.graph);
         }
     }
 }

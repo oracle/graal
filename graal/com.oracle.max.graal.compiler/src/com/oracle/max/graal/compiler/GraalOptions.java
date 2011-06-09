@@ -39,7 +39,7 @@ public final class GraalOptions {
     // Checkstyle: resume
 
     // inlining settings
-    public static boolean Inline                             = ____;
+    public static boolean Inline                             = true;
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
@@ -77,8 +77,8 @@ public final class GraalOptions {
     public static int     PrintIdealGraphPort                = 4444;
 
     // Other printing settings
-    public static boolean PrintMetrics                       = ____;
-    public static boolean PrintTimers                        = ____;
+    public static boolean Meter                              = ____;
+    public static boolean Time                               = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintXirTemplates                  = ____;
     public static boolean PrintIRWithLIR                     = ____;

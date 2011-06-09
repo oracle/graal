@@ -68,7 +68,7 @@ public class TargetMethodAssembler {
             }
         }
 
-        if (GraalOptions.PrintMetrics) {
+        if (GraalOptions.Meter) {
             GraalMetrics.TargetMethods++;
             GraalMetrics.CodeBytesEmitted += targetMethod.targetCodeSize();
             GraalMetrics.SafepointsEmitted += targetMethod.safepoints.size();

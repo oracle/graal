@@ -24,6 +24,7 @@
 package com.oracle.max.graal.runtime;
 
 import java.io.*;
+import java.lang.management.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
@@ -40,6 +41,7 @@ public class VMExitsNative implements VMExits, Remote {
 
     public static final boolean LogCompiledMethods = false;
     public static boolean compileMethods = true;
+    private static boolean PrintGCStats = false;
 
     private final Compiler compiler;
 
@@ -68,6 +70,41 @@ public class VMExitsNative implements VMExits, Remote {
     }
 
     private static Set<String> compiledMethods = new HashSet<String>();
+
+    public void shutdownCompiler() {
+        compileMethods = false;
+
+        if (GraalOptions.Meter) {
+            GraalMetrics.print();
+        }
+        if (GraalOptions.Time) {
+            GraalTimers.print();
+        }
+        if (PrintGCStats) {
+            printGCStats();
+        }
+    }
+
+
+    public static void printGCStats() {
+        long totalGarbageCollections = 0;
+        long garbageCollectionTime = 0;
+
+        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+            long count = gc.getCollectionCount();
+            if (count >= 0) {
+                totalGarbageCollections += count;
+            }
+
+            long time = gc.getCollectionTime();
+            if (time >= 0) {
+                garbageCollectionTime += time;
+            }
+        }
+
+        System.out.println("Total Garbage Collections: " + totalGarbageCollections);
+        System.out.println("Total Garbage Collection Time (ms): " + garbageCollectionTime);
+    }
 
     @Override
     public void compileMethod(long methodVmId, String name, int entryBCI) throws Throwable {

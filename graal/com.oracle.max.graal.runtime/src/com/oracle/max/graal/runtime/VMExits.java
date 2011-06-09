@@ -57,4 +57,6 @@ public interface VMExits {
 
     CiConstant createCiConstantObject(Object object);
 
+    void shutdownCompiler();
+
 }
