@@ -39,6 +39,7 @@ public final class HotSpotMethodResolved extends HotSpotMethod {
     private int accessFlags = -1;
     private int maxLocals = -1;
     private int maxStackSize = -1;
+    private int invocationCount = -1;
     private RiExceptionHandler[] exceptionHandlers;
     private RiSignature signature;
     private Boolean hasBalancedMonitors;
@@ -89,12 +90,12 @@ public final class HotSpotMethodResolved extends HotSpotMethod {
 
     @Override
     public boolean isClassInitializer() {
-        return "<clinit>".equals(name);
+        return "<clinit>".equals(name) && Modifier.isStatic(accessFlags());
     }
 
     @Override
     public boolean isConstructor() {
-        return "<init>".equals(name);
+        return "<init>".equals(name) && !Modifier.isStatic(accessFlags());
     }
 
     @Override
@@ -188,5 +189,16 @@ public final class HotSpotMethodResolved extends HotSpotMethod {
     @Override
     public boolean minimalDebugInfo() {
         return false;
+    }
+
+    public int invocationCount() {
+        if (invocationCount == -1) {
+            invocationCount = compiler.getVMEntries().RiMethod_invocationCount(vmId);
+        }
+        return invocationCount;
+    }
+
+    public RiTypeProfile typeProfile(int bci) {
+        return compiler.getVMEntries().RiMethod_typeProfile(vmId, bci);
     }
 }
