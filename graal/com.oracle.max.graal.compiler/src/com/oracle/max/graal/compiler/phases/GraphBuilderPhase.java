@@ -680,7 +680,9 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genThrow(int bci) {
         Value exception = frameState.apop();
-        append(new FixedNullCheck(exception, graph));
+        FixedGuard node = new FixedGuard(graph);
+        node.setNode(new IsNonNull(exception, graph));
+        append(node);
 
         Instruction entry = handleException(exception, bci);
         if (entry != null) {

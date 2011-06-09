@@ -32,7 +32,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NullCheck} class represents an explicit null check instruction.
  */
-public final class FixedNullCheck extends Instruction {
+public final class IsNonNull extends FloatingNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
@@ -66,7 +66,7 @@ public final class FixedNullCheck extends Instruction {
      * @param stateBefore the state before executing the null check
      * @param graph
      */
-    public FixedNullCheck(Value object, Graph graph) {
+    public IsNonNull(Value object, Graph graph) {
         super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         assert object == null || object.kind == CiKind.Object;
         setObject(object);
@@ -74,7 +74,7 @@ public final class FixedNullCheck extends Instruction {
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitNullCheck(this);
+        // Nothing to do.
     }
 
     @Override
@@ -84,8 +84,8 @@ public final class FixedNullCheck extends Instruction {
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof FixedNullCheck) {
-            FixedNullCheck o = (FixedNullCheck) i;
+        if (i instanceof IsNonNull) {
+            IsNonNull o = (IsNonNull) i;
             return object() == o.object();
         }
         return false;
@@ -110,6 +110,6 @@ public final class FixedNullCheck extends Instruction {
 
     @Override
     public Node copy(Graph into) {
-        return new FixedNullCheck(null, into);
+        return new IsNonNull(null, into);
     }
 }
