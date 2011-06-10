@@ -296,12 +296,22 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (Modifier.isSynchronized(compilation.method.accessFlags())) {
             bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
         }
+
+        boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
+        CiKind[] arguments = Util.signatureToKinds(compilation.method.signature(), withReceiver ? CiKind.Object : null);
+        int[] argumentSlots = new int[arguments.length];
+        int slot = 0;
+        for (int arg = 0; arg < arguments.length; arg++) {
+            argumentSlots[arg] = slot;
+            slot += arguments[arg].sizeInSlots();
+        }
+
         FrameState fs = new FrameState(compilation.method, bci, compilation.method.maxLocals(), 0, 0, compilation.graph);
         for (Node node : compilation.graph.start().usages()) {
             if (node instanceof Local) {
                 Local local = (Local) node;
                 int i = local.index();
-                fs.storeLocal(i, local);
+                fs.storeLocal(argumentSlots[i], local);
 
                 CiValue src = args.locations[i];
                 assert src.isLegal() : "check";
@@ -313,7 +323,19 @@ public abstract class LIRGenerator extends ValueVisitor {
                 setResult(local, dest);
             }
         }
+        assert checkOperands(fs);
         return fs;
+    }
+
+    private boolean checkOperands(FrameState fs) {
+        boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
+        CiKind[] arguments = Util.signatureToKinds(compilation.method.signature(), withReceiver ? CiKind.Object : null);
+        int slot = 0;
+        for (CiKind kind : arguments) {
+            assert fs.localAt(slot) != null : "slot: " + slot;
+            slot += kind.sizeInSlots();
+        }
+        return true;
     }
 
     @Override
