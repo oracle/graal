@@ -38,6 +38,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -207,8 +208,10 @@ public abstract class LIRGenerator extends ValueVisitor {
     public static class DeoptimizationStub {
         public final Label label = new Label();
         public final LIRDebugInfo info;
+        public final DeoptAction action;
 
-        public DeoptimizationStub(FrameState state) {
+        public DeoptimizationStub(DeoptAction action, FrameState state) {
+            this.action = action;
             info = new LIRDebugInfo(state);
         }
     }
@@ -395,7 +398,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             deoptimizationStubs = new ArrayList<DeoptimizationStub>();
         }
 
-        DeoptimizationStub stub = new DeoptimizationStub(state);
+        DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
         deoptimizationStubs.add(stub);
         throw new RuntimeException();
         //lir.branch(x.condition.negate(), stub.label, stub.info);
@@ -947,7 +950,8 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitDeoptimize(Deoptimize deoptimize) {
-        DeoptimizationStub stub = new DeoptimizationStub(lastState);
+        assert lastState != null : "deoptimize always needs a state";
+        DeoptimizationStub stub = new DeoptimizationStub(deoptimize.action(), lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);
     }

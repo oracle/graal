@@ -205,6 +205,4 @@ public abstract class Value extends Node {
         properties.put("operand", operand == null ? "null" : operand.toString());
         return properties;
     }
-
-
 }

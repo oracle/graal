@@ -621,8 +621,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.bindOutOfLine(slowPath);
             checkSubtype(asm, objHub, objHub, hub);
             asm.jneq(end, objHub, asm.o(null));
-            XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
-            asm.mov(scratch, object);
+            XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Word, AMD64.r10);
+            asm.mov(scratch, asm.createConstant(CiConstant.forWord(0)));
 
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
@@ -711,6 +711,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.pload(kind, result, array, index, config.getArrayOffset(kind), Scale.fromInt(elemSize), implicitNullException);
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
+                XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Word, AMD64.r10);
+                asm.mov(scratch, asm.createConstant(CiConstant.forWord(0)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
@@ -902,8 +904,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.bindOutOfLine(slowStoreCheck);
                 checkSubtype(asm, temp, valueHub, compHub);
                 asm.jneq(store, temp, asm.w(0));
-                XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
-                asm.mov(scratch, valueHub);
+                XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Word, AMD64.r10);
+                asm.mov(scratch, asm.createConstant(CiConstant.forWord(0)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.jmp(store);
             }
@@ -986,6 +988,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             // -- out of line -------------------------------------------------------
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
+                XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Word, AMD64.r10);
+                asm.mov(scratch, asm.createConstant(CiConstant.forWord(0)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }

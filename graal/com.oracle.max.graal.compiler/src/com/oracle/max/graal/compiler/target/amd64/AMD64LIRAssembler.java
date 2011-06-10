@@ -2070,6 +2070,27 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     @Override
     public void emitDeoptizationStub(DeoptimizationStub stub) {
         masm.bind(stub.label);
+        int code;
+        switch(stub.action) {
+            case None:
+                code = 0;
+                break;
+            case Recompile:
+                code = 1;
+                break;
+            case InvalidateReprofile:
+                code = 2;
+                break;
+            case InvalidateRecompile:
+                code = 3;
+                break;
+            case InvalidateStopCompiling:
+                code = 4;
+                break;
+            default:
+                throw Util.shouldNotReachHere();
+        }
+        masm.movq(rscratch1, code);
         directCall(CiRuntimeCall.Deoptimize, stub.info);
         shouldNotReachHere();
     }

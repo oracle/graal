@@ -143,6 +143,7 @@ public class Graph {
         for (Node node : nodes) {
             if (node != null && !replacements.containsKey(node)) {
                 assert node.graph != this;
+                assert !node.isDeleted() : "trying to duplicate deleted node";
                 Node newNode = node.copy(this);
                 assert newNode.getClass() == node.getClass();
                 newNodes.put(node, newNode);
