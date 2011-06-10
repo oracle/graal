@@ -31,10 +31,20 @@ public class Deoptimize extends Instruction {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private String message;
+    public static enum DeoptAction {
+        None,                           // just interpret, do not invalidate nmethod
+        Recompile,                      // recompile the nmethod; need not invalidate
+        InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
+        InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
+        InvalidateStopCompiling,        // invalidate the nmethod and do not compile
+    }
 
-    public Deoptimize(Graph graph) {
+    private String message;
+    private final DeoptAction action;
+
+    public Deoptimize(DeoptAction action, Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.action = action;
     }
 
     public void setMessage(String message) {
@@ -43,6 +53,10 @@ public class Deoptimize extends Instruction {
 
     public String message() {
         return message;
+    }
+
+    public DeoptAction action() {
+        return action;
     }
 
     @Override
@@ -62,7 +76,7 @@ public class Deoptimize extends Instruction {
 
     @Override
     public Node copy(Graph into) {
-        Deoptimize x = new Deoptimize(into);
+        Deoptimize x = new Deoptimize(action, into);
         x.setMessage(message);
         return x;
     }

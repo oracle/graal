@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -32,6 +33,7 @@ import com.sun.cri.ci.*;
  * The {@code NegateOp} instruction negates its operand.
  */
 public final class Negate extends FloatingNode {
+    private static final NegateCanonicalizerOp CANONICALIZER = new NegateCanonicalizerOp();
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;
@@ -102,5 +104,32 @@ public final class Negate extends FloatingNode {
     public Node copy(Graph into) {
         Negate x = new Negate(kind, into);
         return x;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class NegateCanonicalizerOp implements CanonicalizerOp {
+        @Override
+        public Node canonical(Node node) {
+            Negate negate = (Negate) node;
+            Value x = negate.x();
+            Graph graph = negate.graph();
+            if (x.isConstant()) {
+                switch (x.kind) {
+                    case Int: return Constant.forInt(-x.asConstant().asInt(), graph);
+                    case Long: return Constant.forLong(-x.asConstant().asLong(), graph);
+                    case Float: return Constant.forFloat(-x.asConstant().asFloat(), graph);
+                    case Double: return Constant.forDouble(-x.asConstant().asDouble(), graph);
+                }
+            }
+            return negate;
+        }
     }
 }

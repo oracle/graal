@@ -38,6 +38,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -207,8 +208,10 @@ public abstract class LIRGenerator extends ValueVisitor {
     public static class DeoptimizationStub {
         public final Label label = new Label();
         public final LIRDebugInfo info;
+        public final DeoptAction action;
 
-        public DeoptimizationStub(FrameState state) {
+        public DeoptimizationStub(DeoptAction action, FrameState state) {
+            this.action = action;
             info = new LIRDebugInfo(state);
         }
     }
@@ -293,12 +296,22 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (Modifier.isSynchronized(compilation.method.accessFlags())) {
             bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
         }
+
+        boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
+        CiKind[] arguments = Util.signatureToKinds(compilation.method.signature(), withReceiver ? CiKind.Object : null);
+        int[] argumentSlots = new int[arguments.length];
+        int slot = 0;
+        for (int arg = 0; arg < arguments.length; arg++) {
+            argumentSlots[arg] = slot;
+            slot += arguments[arg].sizeInSlots();
+        }
+
         FrameState fs = new FrameState(compilation.method, bci, compilation.method.maxLocals(), 0, 0, compilation.graph);
         for (Node node : compilation.graph.start().usages()) {
             if (node instanceof Local) {
                 Local local = (Local) node;
                 int i = local.index();
-                fs.storeLocal(i, local);
+                fs.storeLocal(argumentSlots[i], local);
 
                 CiValue src = args.locations[i];
                 assert src.isLegal() : "check";
@@ -310,7 +323,19 @@ public abstract class LIRGenerator extends ValueVisitor {
                 setResult(local, dest);
             }
         }
+        assert checkOperands(fs);
         return fs;
+    }
+
+    private boolean checkOperands(FrameState fs) {
+        boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
+        CiKind[] arguments = Util.signatureToKinds(compilation.method.signature(), withReceiver ? CiKind.Object : null);
+        int slot = 0;
+        for (CiKind kind : arguments) {
+            assert fs.localAt(slot) != null : "slot: " + slot;
+            slot += kind.sizeInSlots();
+        }
+        return true;
     }
 
     @Override
@@ -395,7 +420,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             deoptimizationStubs = new ArrayList<DeoptimizationStub>();
         }
 
-        DeoptimizationStub stub = new DeoptimizationStub(state);
+        DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
         deoptimizationStubs.add(stub);
 
         emitCompare(x.node());
@@ -954,7 +979,8 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitDeoptimize(Deoptimize deoptimize) {
-        DeoptimizationStub stub = new DeoptimizationStub(lastState);
+        assert lastState != null : "deoptimize always needs a state";
+        DeoptimizationStub stub = new DeoptimizationStub(deoptimize.action(), lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);
     }

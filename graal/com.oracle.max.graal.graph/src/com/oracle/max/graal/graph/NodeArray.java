@@ -53,6 +53,7 @@ public class NodeArray extends AbstractList<Node> {
 
     @Override
     public Node set(int index, Node node) {
+        assert !self().isDeleted() : "trying to set input/successor of deleted node: " + self().shortName();
         assert node == Node.Null || node.graph == self().graph : "node is from different graph: (this=" + self() + ") and (node=" + node + ")";
         assert node == Node.Null || node.id() != Node.DeletedID : "inserted node must not be deleted";
         Node old = nodes[index];
@@ -145,6 +146,7 @@ public class NodeArray extends AbstractList<Node> {
     }
 
     public void setAndClear(int index, Node clearedNode, int clearedIndex) {
+        assert !self().isDeleted() : "trying to setAndClear successor of deleted node: " + self().shortName();
         assert self().successors == this;
         Node value = clearedNode.successors.get(clearedIndex);
         assert value != Node.Null;

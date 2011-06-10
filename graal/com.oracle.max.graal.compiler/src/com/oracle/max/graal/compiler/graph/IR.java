@@ -70,7 +70,7 @@ public class IR {
     public void build() {
         new GraphBuilderPhase(compilation, compilation.method, false, false).apply(compilation.graph);
         printGraph("After GraphBuilding", compilation.graph);
-        new DuplicationPhase().apply(compilation.graph);
+        //new DuplicationPhase().apply(compilation.graph);
         new DeadCodeEliminationPhase().apply(compilation.graph);
         printGraph("After DeadCodeElimination", compilation.graph);
 
@@ -87,8 +87,8 @@ public class IR {
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
-            printGraph("After Canonicalization", graph);
             new DeadCodeEliminationPhase().apply(compilation.graph);
+            printGraph("After Canonicalization", graph);
         }
 
         new LoweringPhase().apply(graph);

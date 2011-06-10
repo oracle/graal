@@ -509,6 +509,29 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("bci", bci);
+        properties.put("method", CiUtil.format("%H.%n(%p):%r", method, false));
+        StringBuilder str = new StringBuilder();
+        for (int i = 0; i < localsSize(); i++) {
+            str.append(i == 0 ? "" : ", ").append(localAt(i) == null ? "_" : localAt(i).id());
+        }
+        properties.put("locals", str.toString());
+        str = new StringBuilder();
+        for (int i = 0; i < stackSize(); i++) {
+            str.append(i == 0 ? "" : ", ").append(stackAt(i) == null ? "_" : stackAt(i).id());
+        }
+        properties.put("stack", str.toString());
+        str = new StringBuilder();
+        for (int i = 0; i < locksSize(); i++) {
+            str.append(i == 0 ? "" : ", ").append(lockAt(i) == null ? "_" : lockAt(i).id());
+        }
+        properties.put("locks", str.toString());
+        return properties;
+    }
+
+    @Override
     public Node copy(Graph into) {
         FrameState x = new FrameState(method, bci, localsSize, stackSize, locksSize, into);
         return x;

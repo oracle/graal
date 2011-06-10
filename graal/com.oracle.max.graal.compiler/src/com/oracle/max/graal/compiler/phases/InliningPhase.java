@@ -273,11 +273,17 @@ public class InliningPhase extends Phase {
             Node returnDuplicate = duplicates.get(returnNode);
             returnDuplicate.inputs().clearAll();
 
+            Merge mergeAfter = new Merge(compilation.graph);
+
             assert returnDuplicate.predecessors().size() == 1;
             Node returnPred = returnDuplicate.predecessors().get(0);
             int index = returnDuplicate.predecessorsIndex().get(0);
-            returnPred.successors().setAndClear(index, invoke, 0);
+            mergeAfter.successors().setAndClear(0, invoke, 0);
+            returnPred.successors().set(index, mergeAfter);
+
             returnDuplicate.delete();
+
+            mergeAfter.setStateBefore(stateAfter);
         }
 
         if (exceptionEdge != null) {
@@ -306,8 +312,11 @@ public class InliningPhase extends Phase {
         // adjust all frame states that were copied
         if (frameStates.size() > 0) {
             FrameState outerFrameState = stateAfter.duplicateModified(invoke.bci, invoke.kind);
-            for (Node frameState : frameStates) {
-                ((FrameState) duplicates.get(frameState)).setOuterFrameState(outerFrameState);
+            for (Node node : frameStates) {
+                FrameState frameState = (FrameState) duplicates.get(node);
+                if (!frameState.isDeleted()) {
+                    frameState.setOuterFrameState(outerFrameState);
+                }
             }
         }
 

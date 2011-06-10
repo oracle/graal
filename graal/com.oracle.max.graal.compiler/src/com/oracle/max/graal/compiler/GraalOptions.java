@@ -55,6 +55,7 @@ public final class GraalOptions {
     public static boolean ZapStackOnMethodEntry              = ____;
     public static boolean StressLinearScan                   = ____;
     public static boolean BailoutOnException                 = ____;
+    public static boolean DeoptALot                          = ____;
 
     /**
      * See {@link Filter#Filter(String, Object)}.
@@ -104,8 +105,9 @@ public final class GraalOptions {
     // Code generator settings
     public static boolean GenLIR                             = true;
     public static boolean GenCode                            = true;
+    public static boolean UseBranchPrediction                = ____;
 
-    public static boolean UseConstDirectCall                 = false;
+    public static boolean UseConstDirectCall                 = ____;
 
     public static boolean GenSpecialDivChecks                = ____;
     public static boolean GenAssertionCode                   = ____;

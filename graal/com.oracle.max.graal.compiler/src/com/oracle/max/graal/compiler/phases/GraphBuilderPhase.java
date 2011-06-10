@@ -31,10 +31,10 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.graph.BlockMap.DeoptBlock;
 import com.oracle.max.graal.compiler.graph.BlockMap.*;
 import com.oracle.max.graal.compiler.graph.BlockMap.Block;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -78,11 +78,12 @@ public final class GraphBuilderPhase extends Phase {
     // bci-to-block mapping
     private Block[] blockFromBci;
     private ArrayList<Block> blockList;
+    private HashMap<Integer, BranchOverride> branchOverride;
 
     private int nextBlockNumber;
 
     private Value methodSynchronizedObject;
-    private CiExceptionHandler syncHandler;
+    private CiExceptionHandler unwindHandler;
 
     private Block unwindBlock;
     private Block returnBlock;
@@ -145,6 +146,7 @@ public final class GraphBuilderPhase extends Phase {
 
         // 2. compute the block map, setup exception handlers and get the entrypoint(s)
         BlockMap blockMap = compilation.getBlockMap(method);
+        this.branchOverride = blockMap.branchOverride;
 
         blockList = new ArrayList<Block>(blockMap.blocks);
         blockFromBci = new Block[method.code().length];
@@ -152,7 +154,7 @@ public final class GraphBuilderPhase extends Phase {
             int blockID = nextBlockNumber();
             assert blockID == i;
             Block block = blockList.get(i);
-            if (block.startBci >= 0) {
+            if (block.startBci >= 0 && !(block instanceof BlockMap.DeoptBlock)) {
                 blockFromBci[block.startBci] = block;
             }
         }
@@ -171,13 +173,13 @@ public final class GraphBuilderPhase extends Phase {
             finishStartBlock(startBlock);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
-            syncHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
+            unwindHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
         } else {
             // 4B.1 simply finish the start block
             finishStartBlock(startBlock);
 
             if (createUnwind) {
-                syncHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
+                unwindHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
             }
         }
 
@@ -380,7 +382,7 @@ public final class GraphBuilderPhase extends Phase {
         }
 
         if (firstHandler == null) {
-            firstHandler = syncHandler;
+            firstHandler = unwindHandler;
         }
 
         if (firstHandler != null) {
@@ -435,7 +437,7 @@ public final class GraphBuilderPhase extends Phase {
             // this is a load of class constant which might be unresolved
             RiType riType = (RiType) con;
             if (!riType.isResolved()) {
-                append(new Deoptimize(graph));
+                append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
                 frameState.push(CiKind.Object, append(Constant.forObject(null, graph)));
             } else {
                 frameState.push(CiKind.Object, append(new Constant(riType.getEncoding(Representation.JavaClass), graph)));
@@ -654,9 +656,20 @@ public final class GraphBuilderPhase extends Phase {
         assert !x.isDeleted() && !y.isDeleted();
         If ifNode = new If(new Compare(x, cond, y, graph), graph);
         append(ifNode);
-        Instruction tsucc = createTargetAt(stream().readBranchDest(), frameState);
+        BlockMap.BranchOverride override = branchOverride.get(bci());
+        Instruction tsucc;
+        if (override == null || override.taken == false) {
+            tsucc = createTargetAt(stream().readBranchDest(), frameState);
+        } else {
+            tsucc = createTarget(override.block, frameState);
+        }
         ifNode.setBlockSuccessor(0, tsucc);
-        Instruction fsucc = createTargetAt(stream().nextBCI(), frameState);
+        Instruction fsucc;
+        if (override == null || override.taken == true) {
+            fsucc = createTargetAt(stream().nextBCI(), frameState);
+        } else {
+            fsucc = createTarget(override.block, frameState);
+        }
         ifNode.setBlockSuccessor(1, fsucc);
     }
 
@@ -727,7 +740,7 @@ public final class GraphBuilderPhase extends Phase {
             NewInstance n = new NewInstance(type, cpi, constantPool, graph);
             frameState.apush(append(n));
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
     }
@@ -746,7 +759,7 @@ public final class GraphBuilderPhase extends Phase {
             NewArray n = new NewObjectArray(type, length, graph);
             frameState.apush(append(n));
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
 
@@ -763,7 +776,7 @@ public final class GraphBuilderPhase extends Phase {
             NewArray n = new NewMultiArray(type, dims, cpi, constantPool, graph);
             frameState.apush(append(n));
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
     }
@@ -775,7 +788,7 @@ public final class GraphBuilderPhase extends Phase {
             LoadField load = new LoadField(receiver, field, graph);
             appendOptimizedLoadField(kind, load);
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
             frameState.push(kind.stackKind(), append(Constant.defaultForKind(kind, graph)));
         }
     }
@@ -787,7 +800,7 @@ public final class GraphBuilderPhase extends Phase {
             StoreField store = new StoreField(receiver, field, value, graph);
             appendOptimizedStoreField(store);
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
         }
     }
 
@@ -807,7 +820,7 @@ public final class GraphBuilderPhase extends Phase {
                 LoadField load = new LoadField(container, field, graph);
                 appendOptimizedLoadField(kind, load);
             } else {
-                append(new Deoptimize(graph));
+                append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
                 frameState.push(kind.stackKind(), append(Constant.defaultForKind(kind, graph)));
             }
         }
@@ -821,7 +834,7 @@ public final class GraphBuilderPhase extends Phase {
             StoreField store = new StoreField(container, field, value, graph);
             appendOptimizedStoreField(store);
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
         }
     }
 
@@ -829,7 +842,7 @@ public final class GraphBuilderPhase extends Phase {
         if (initialized) {
             return appendConstant(holder.getEncoding(representation));
         } else {
-            append(new Deoptimize(graph));
+            append(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
             return null;
         }
     }
@@ -909,10 +922,15 @@ public final class GraphBuilderPhase extends Phase {
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
-        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
-        Value result = appendWithBCI(invoke);
-        invoke.setExceptionEdge(handleException(null, bci()));
-        frameState.pushReturn(resultType, result);
+        if (GraalOptions.DeoptALot) {
+            append(new Deoptimize(DeoptAction.None, graph));
+            frameState.pushReturn(resultType, Constant.defaultForKind(resultType, graph));
+        } else {
+            Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
+            Value result = appendWithBCI(invoke);
+            invoke.setExceptionEdge(handleException(null, bci()));
+            frameState.pushReturn(resultType, result);
+        }
     }
 
     private RiType getExactType(RiType staticType, Value receiver) {
@@ -1096,7 +1114,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private Instruction createTarget(Block block, FrameStateAccess stateAfter) {
         assert block != null && stateAfter != null;
-        assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null : "non-loop block must be iterated after all its predecessors";
+        assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null :
+            "non-loop block must be iterated after all its predecessors. startBci=" + block.startBci + ", " + block.getClass().getSimpleName() + ", " + block.firstInstruction.next();
 
         if (block.isExceptionEntry) {
             assert stateAfter.stackSize() == 1;
@@ -1188,7 +1207,10 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void createDeoptBlock(DeoptBlock block) {
-        append(new Deoptimize(graph));
+//        Merge x = new Merge(graph);
+//        x.setStateBefore(((StateSplit) block.firstInstruction).stateBefore());
+//        append(x);
+        append(new Deoptimize(DeoptAction.InvalidateReprofile, graph));
     }
 
     private void createUnwindBlock(Block block) {
@@ -1225,7 +1247,7 @@ public final class GraphBuilderPhase extends Phase {
                 Instruction nextDispatch = createTarget(nextBlock, frameState);
                 append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
             } else {
-                Deoptimize deopt = new Deoptimize(graph);
+                Deoptimize deopt = new Deoptimize(DeoptAction.InvalidateRecompile, graph);
                 deopt.setMessage("unresolved " + block.handler.catchType().name());
                 append(deopt);
                 Instruction nextDispatch = createTarget(nextBlock, frameState);

@@ -84,10 +84,12 @@ public class Graph {
             } while (nextNode == null || !type.isInstance(nextNode));
         }
 
+        @Override
         public boolean hasNext() {
             return nextNode != null;
         }
 
+        @Override
         @SuppressWarnings("unchecked")
         public T next() {
             try {
@@ -97,6 +99,7 @@ public class Graph {
             }
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException();
         }
@@ -104,6 +107,7 @@ public class Graph {
 
     public <T extends Node> Iterable<T> getNodes(final Class<T> type) {
         return new Iterable<T>() {
+            @Override
             public Iterator<T> iterator() {
                 return new TypedNodeIterator<T>(type, nodes.iterator());
             }
@@ -137,12 +141,21 @@ public class Graph {
         return new NodeFlood(this);
     }
 
+    public NodeWorkList createNodeWorkList() {
+        return new NodeWorkList(this);
+    }
+
+    public NodeWorkList createNodeWorkList(boolean fill, int iterationLimitPerNode) {
+        return new NodeWorkList(this, fill, iterationLimitPerNode);
+    }
+
     public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
         Map<Node, Node> newNodes = new HashMap<Node, Node>();
         // create node duplicates
         for (Node node : nodes) {
             if (node != null && !replacements.containsKey(node)) {
                 assert node.graph != this;
+                assert !node.isDeleted() : "trying to duplicate deleted node";
                 Node newNode = node.copy(this);
                 assert newNode.getClass() == node.getClass();
                 newNodes.put(node, newNode);

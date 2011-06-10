@@ -130,7 +130,7 @@ public abstract class Node {
 
     public void delete() {
         assert !isDeleted();
-        assert usages.size() == 0 && predecessors.size() == 0 : "id: " + id + ", usages: " + usages.size() + ", predecessors: " + predecessors().size();
+        assert checkDeletion();
         assert predecessorsIndex.size() == 0;
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);
@@ -143,6 +143,23 @@ public abstract class Node {
         graph.unregister(this);
         id = DeletedID;
         assert isDeleted();
+    }
+
+    private boolean checkDeletion() {
+        if (usages.size() != 0 || predecessors.size() != 0) {
+            System.out.println(this.shortName() + ", id: " + id + ", usages: " + usages.size() + ", predecessors: " + predecessors().size());
+            System.out.println("usages:");
+            for (Node n : usages()) {
+                System.out.print(n.id() + " (" + n.shortName() + ") ");
+            }
+            System.out.println("\npreds:");
+            for (Node n : predecessors()) {
+                System.out.print(n.id() + " (" + n.shortName() + ") ");
+            }
+            System.out.println();
+            return false;
+        }
+        return true;
     }
 
     public Node copy() {
