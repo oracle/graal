@@ -140,6 +140,7 @@ public class IdealGraphPrinter {
         stream.println("  </controlFlow>");
 
         stream.println(" </graph>");
+        flush();
     }
 
     private List<Edge> printNodes(Collection<Node> nodes, boolean shortNames, NodeMap<Block> nodeToBlock) {

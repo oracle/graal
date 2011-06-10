@@ -135,6 +135,12 @@ public class InliningPhase extends Phase {
 
     private boolean checkInliningConditions(Invoke invoke) {
         String name = !trace ? null : invoke.id() + ": " + CiUtil.format("%H.%n(%p):%r", invoke.target, false);
+        if (invoke.profile() != null && invoke.profile().count < compilation.method.invocationCount() / 2) {
+            if (trace) {
+                System.out.println("not inlining " + name + " because the invocation counter is too low");
+            }
+            return false;
+        }
         if (invoke.predecessors().size() == 0) {
             if (trace) {
                 System.out.println("not inlining " + name + " because the invoke is dead code");

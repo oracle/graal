@@ -26,6 +26,7 @@ import static com.sun.cri.bytecode.Bytecodes.*;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.sun.cri.bytecode.*;
@@ -133,6 +134,14 @@ public final class BlockMap {
         public Block next;
     }
 
+    public static class DeoptBlock  extends Block {
+    }
+
+    public static class BranchOverride {
+        public DeoptBlock block;
+        public boolean taken;
+    }
+
     private static final Block[] NO_SUCCESSORS = new Block[0];
 
     /**
@@ -147,6 +156,8 @@ public final class BlockMap {
     public final BitSet storesInLoops;
 
     private final RiMethod method;
+
+    public final HashMap<Integer, BranchOverride> branchOverride;
 
     private Block[] blockMap;
 
@@ -164,6 +175,7 @@ public final class BlockMap {
         }
         this.blocks = new ArrayList<Block>();
         this.storesInLoops = new BitSet(method.maxLocals());
+        branchOverride = new HashMap<Integer, BranchOverride>();
     }
 
     /**
@@ -258,8 +270,11 @@ public final class BlockMap {
                 case IFNULL:    // fall through
                 case IFNONNULL: {
                     current = null;
-                    Block b1 = makeBlock(bci + 3);
-                    Block b2 = makeBlock(bci + Bytes.beS2(code, bci + 1));
+
+                    int probability = GraalOptions.UseBranchPrediction ? method.branchProbability(bci) : -1;
+
+                    Block b1 = probability == 100 ? makeBranchOverrideBlock(bci, bci + 3, false) : makeBlock(bci + 3);
+                    Block b2 = probability == 0 ? makeBranchOverrideBlock(bci, bci + Bytes.beS2(code, bci + 1), true) : makeBlock(bci + Bytes.beS2(code, bci + 1));
                     setSuccessors(bci, b1, b2);
 
                     assert lengthOf(code, bci) == 3;
@@ -374,6 +389,17 @@ public final class BlockMap {
         } else {
             return oldBlock;
         }
+    }
+
+    private Block makeBranchOverrideBlock(int branchBci, int startBci, boolean taken) {
+        DeoptBlock newBlock = new DeoptBlock();
+        newBlock.startBci = startBci;
+        BranchOverride override = new BranchOverride();
+        override.block = newBlock;
+        override.taken = taken;
+        assert branchOverride.get(branchBci) == null;
+        branchOverride.put(branchBci, override);
+        return newBlock;
     }
 
     private Block[] makeSwitchSuccessors(BytecodeSwitch tswitch) {

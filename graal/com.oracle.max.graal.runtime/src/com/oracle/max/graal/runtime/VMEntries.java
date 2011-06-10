@@ -95,5 +95,11 @@ public interface VMEntries {
 
     RiType getRiType(CiConstant constant);
 
+    int RiMethod_invocationCount(long vmId);
+
+    RiTypeProfile RiMethod_typeProfile(long vmId, int bci);
+
+    int RiMethod_branchProbability(long vmId, int bci);
+
     // Checkstyle: resume
 }
