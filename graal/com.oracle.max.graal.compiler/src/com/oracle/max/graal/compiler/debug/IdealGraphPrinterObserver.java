@@ -140,7 +140,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
 
     @Override
     public void compilationEvent(CompilationEvent event) {
-        if (printer != null && event.getGraph() != null) {
+        if (printer != null && event.getGraph() != null && event.isHIRValid()) {
             Graph graph = event.getGraph();
             printer.print(graph, event.getLabel(), true);
         }
