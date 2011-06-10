@@ -77,6 +77,7 @@ public class NodeWorkList implements Iterable<Node> {
 
     public void replaced(Node newNode, Node oldNode, boolean add, EdgeType... edges) {
         visited.grow(newNode);
+        inQueue.grow(newNode);
         worklist.remove(oldNode);
         assert !worklist.contains(oldNode);
         if (add) {
