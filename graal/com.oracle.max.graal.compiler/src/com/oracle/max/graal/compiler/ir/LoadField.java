@@ -25,6 +25,8 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringTool;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -118,6 +120,16 @@ public final class LoadField extends AccessField {
             return (T) CANONICALIZER;
         }
         return super.lookup(clazz);
+    }
+
+    private static class LoadFieldLoweringOp implements LoweringOp {
+
+        @Override
+        public Node lower(Node n, LoweringTool tool) {
+            LoadField field = (LoadField) n;
+            return null;//field.field().createLoad(tool);
+        }
+
     }
 
     private static class LoadFieldCanonicalizerOp implements CanonicalizerOp {
