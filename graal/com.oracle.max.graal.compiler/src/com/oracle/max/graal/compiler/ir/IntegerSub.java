@@ -82,6 +82,12 @@ public final class IntegerSub extends IntegerArithmetic {
                 if (c == 0) {
                     return x;
                 }
+                if (kind == CiKind.Int) {
+                    return new IntegerAdd(kind, x, Constant.forInt((int) -c, graph), graph);
+                } else {
+                    assert kind ==  CiKind.Long;
+                    return new IntegerAdd(kind, x, Constant.forLong(-c, graph), graph);
+                }
             } else if (x.isConstant()) {
                 long c = x.asConstant().asLong();
                 if (c == 0) {
