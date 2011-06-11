@@ -23,8 +23,8 @@
 
 \NewEnviron{digraphenv}[2]{\digraph[#1]{#2}{ nodesep="0.1"; ranksep="0.08 equally"; \BODY }}
 
-\newcommand{\control}[2]{#1:successors:s -> #2:predecessors:n [color=red];}
-\newcommand{\controllabel}[2]{#1:s -> #2:predecessors:n [color=red];}
+\newcommand{\control}[2]{#1:successors:s -> #2:predecessors:n [color=red,style=solid];}
+\newcommand{\controllabel}[2]{#1:s -> #2:predecessors:n [color=red,style=solid];}
 \newcommand{\data}[2]{#2:usages:s -> #1:inputs [color=black,dir=back];}
 \newcommand{\datalabel}[2]{#2:usages:s -> #1:n [color=black,dir=back];}
 \newcommand{\datalabeltext}[3]{#2:usages:s -> #1:n [color=black,dir=back,label="#3"];}
