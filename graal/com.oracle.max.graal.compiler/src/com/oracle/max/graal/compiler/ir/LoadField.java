@@ -127,7 +127,7 @@ public final class LoadField extends AccessField {
         @Override
         public Node lower(Node n, LoweringTool tool) {
             LoadField field = (LoadField) n;
-            return null;//field.field().createLoad(tool);
+            return null; //field.field().createLoad(tool);
         }
 
     }

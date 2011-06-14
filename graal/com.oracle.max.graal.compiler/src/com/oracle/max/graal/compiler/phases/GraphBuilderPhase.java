@@ -923,7 +923,9 @@ public final class GraphBuilderPhase extends Phase {
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
         if (GraalOptions.DeoptALot) {
-            append(new Deoptimize(DeoptAction.None, graph));
+            Deoptimize deoptimize = new Deoptimize(DeoptAction.None, graph);
+            deoptimize.setMessage("invoke " + target.name());
+            append(deoptimize);
             frameState.pushReturn(resultType, Constant.defaultForKind(resultType, graph));
         } else {
             Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
