@@ -22,8 +22,11 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -34,15 +37,38 @@ import com.sun.cri.ri.*;
 public final class Local extends FloatingNode {
 
     private static final int INPUT_COUNT = 1;
+    private static final int INPUT_START = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
+
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    @Override
+    protected int successorCount() {
+        return super.successorCount() + SUCCESSOR_COUNT;
+    }
+
+    /**
+     * The start node of the graph that this local belongs to. This is used for correctly scheduling the locals.
+     */
+     private StartNode start() {
+        return (StartNode) inputs().get(super.inputCount() + INPUT_START);
+    }
+
+     private void setStart(StartNode n) {
+         inputs().set(super.inputCount() + INPUT_START, n);
+     }
 
     private final int index;
     private RiType declaredType;
 
-    public Local(CiKind kind, int javaIndex, Graph graph) {
+    public Local(CiKind kind, int javaIndex, StartNode start, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.index = javaIndex;
+        setStart(start);
     }
 
     /**
@@ -81,18 +107,15 @@ public final class Local extends FloatingNode {
     }
 
     @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("index", index());
+        return properties;
     }
 
     @Override
     public Node copy(Graph into) {
-        Local x = new Local(kind, index, into);
+        Local x = new Local(kind, index, start(), into);
         x.setDeclaredType(declaredType());
         return x;
     }

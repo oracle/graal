@@ -25,6 +25,8 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringTool;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -68,8 +70,8 @@ public final class LoadField extends AccessField {
      */
     @Override
     public RiType exactType() {
-        RiType declaredType = declaredType();
-        return declaredType.isResolved() ? declaredType.exactType() : null;
+        RiType declared = declaredType();
+        return declared != null && declared.isResolved() ? declared.exactType() : null;
     }
 
     @Override
@@ -97,7 +99,7 @@ public final class LoadField extends AccessField {
      *
      * @return {@code null} if this load cannot be reduced to a constant
      */
-    public CiConstant constantValue() {
+    private CiConstant constantValue() {
         if (isStatic()) {
             return field.constantValue(null);
         } else if (object().isConstant()) {
@@ -108,8 +110,7 @@ public final class LoadField extends AccessField {
 
     @Override
     public Node copy(Graph into) {
-        LoadField x = new LoadField(null, field, into);
-        return x;
+        return new LoadField(null, field, into);
     }
 
     @SuppressWarnings("unchecked")
@@ -119,6 +120,16 @@ public final class LoadField extends AccessField {
             return (T) CANONICALIZER;
         }
         return super.lookup(clazz);
+    }
+
+    private static class LoadFieldLoweringOp implements LoweringOp {
+
+        @Override
+        public Node lower(Node n, LoweringTool tool) {
+            LoadField field = (LoadField) n;
+            return null;//field.field().createLoad(tool);
+        }
+
     }
 
     private static class LoadFieldCanonicalizerOp implements CanonicalizerOp {

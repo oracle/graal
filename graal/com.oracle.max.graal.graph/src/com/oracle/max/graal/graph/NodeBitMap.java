@@ -65,6 +65,10 @@ public final class NodeBitMap {
         check(node);
         bitMap.clear(node.id());
     }
+    
+    public void clearAll() {
+        bitMap.clearAll();
+    }
 
     public void grow(Node node) {
         bitMap.grow(node.id() + 1);

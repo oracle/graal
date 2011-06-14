@@ -126,9 +126,7 @@ public final class ArrayLength extends FloatingNode {
                 return length;
             }
             CiConstant constantValue = null;
-            if (array instanceof LoadField) {
-                constantValue = ((LoadField) array).constantValue();
-            } else if (array.isConstant()) {
+            if (array.isConstant()) {
                 constantValue = array.asConstant();
             }
             if (constantValue != null && constantValue.isNonNull()) {

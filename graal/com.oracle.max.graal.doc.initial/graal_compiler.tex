@@ -74,8 +74,11 @@ Currently, the Graal~VM is fully functional and runs benchmarks (SciMark, DaCapo
 \section{Goals}
 The compiler effort aims at rewriting the high-level intermediate representation of C1X with two main goals:
 \begin{description}
-\item[Modularity:] A modular design of the compiler should simplify the implementation of new languages, new back-ends, and new optimizations.
-\item[Peak Performance:] A more powerful intermediate representation should enable the implementation of aggressive optimizations that impact the peak performance of the resulting machine code.
+\item[Modularity:]
+A modular design of the compiler should simplify the implementation of new languages, new back-ends, and new optimizations.
+\item[Peak Performance:]
+A more powerful intermediate representation should enable the implementation of aggressive optimizations that impact the peak performance of the resulting machine code.
+In terms of startup performance, we want to orientate ourselves to the HotSpot server compiler configuration.
 \end{description}
 
 \section{Design}
@@ -103,6 +106,7 @@ The compiler does not require Java as its input.
 This is achieved by having a graph as the starting point of the compilation and not a Java bytecode array.
 Building the graph from the Java bytecodes must happen before giving a method to the compiler.
 This enables front-ends for different languages (e.g., Ruby or JavaScript) to provide their own graph.
+The support for different languages is constrained by the following two conditions: We only support structured control flow, and the dynamic type system of the language must be expressible using the RiType class.
 Also, there is no dependency on a specific back-end, but the output of the compiler is a graph that can then be converted to a different representation in a final compiler phase.
 \end{description}
 
@@ -168,7 +172,8 @@ The nodes of the graph have the following properties:
     \end{itemize}
     \item Only inputs and successors can be changed, and changes to them will update the usages and predecessors.
     \item Every node must be able to support cloning and serialization.
-    \item The edges of a node also define \textit{happens-before} and \textit{happens-after} relationships as shown in Figure~\ref{fig:directions}.
+    \item The edges of a node also define \textit{emitted-before} and \textit{emitted-after} relationships as shown in Figure~\ref{fig:directions}.
+    They mean that the machine code for one node is emitted before or after the machine code of another node.
 \end{itemize}
 
 \begin{figure}[ht]
@@ -184,8 +189,8 @@ The nodes of the graph have the following properties:
 \data{usages}{node1}
 \control{predecessors}{node1}
 \node{node2}{Node}
-\textnode{before}{happens-before}
-\textnode{after}{happens-after}
+\textnode{before}{emitted-before}
+\textnode{after}{emitted-after}
 \data{node2}{before}
 \control{node2}{after}
 \data{after}{node2}
@@ -208,18 +213,18 @@ In this case, we can chose to nevertheless inline the method in order to increas
 
 \section{Control Flow}
 
-Control flow is managed in way where the predecessor node contains direct pointers to its successor nodes.
-We reserve the term \textit{instruction} for nodes that are embedded in the control flow.
+Control flow is managed in a way where the predecessor node contains direct pointers to its successor nodes.
 This is opposite to the approach taken in the server compiler, where control flow and data flow edges point in the same direction.
 The advantage that we see in our approach is that there is no need for projection nodes in case of control flow splits.
-An \texttt{If} instruction can directly point to its true and false successors without any intermediate nodes.
+An \texttt{If} node can directly point to its true and false successors without any intermediate nodes.
 This makes the graph more compact and simplifies graph traversal.
+We distinguish between \textit{fixed nodes} that are directly embedded in the control flow and \textit{floating nodes} whose position in the control flow may vary.
 
-Listing~\ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any instruction with side effects.
+Listing~\ref{lst:cfg2} shows an example Java program with an if statement where both paths do not contain any node with side effects.
 Figure~\ref{fig:loopexits} shows the corresponding compiler graph.
-The \texttt{If} instruction can directly point its true and false successors to a \texttt{Merge} instruction.
-A \texttt{Phi} node that selects the appropriate value is appended to the \texttt{Merge} instruction.
-The \texttt{Return} instruction then has a data dependency on the \texttt{Phi} node.
+The \texttt{If} node can directly point its true and false successors to a \texttt{Merge} node.
+A \texttt{Phi} node that selects the appropriate value is appended to the \texttt{Merge} node.
+The \texttt{Return} node then has a data dependency on the \texttt{Phi} node.
 
 \begin{lstlisting}[label=lst:cfg2, caption=Control flow in the graph., captionpos=b]
 if (condition) { return 0; }
@@ -259,10 +264,10 @@ This reduces the places in the compiled code where an exact bytecode location an
 Additionally, this greatly reduces the number of exception handler edges in the compiled code.
 The main advantage of this technique is however, that we are free in moving around bounds checks, memory allocation, memory accesses with implicit null checks, etc.
 
-There are only two kinds of instruction that need explicit exception edges, because they are the only instructions that can throw exceptions in compiled code: \texttt{Throw} instructions and \texttt{Invoke} instructions.
-They are modelled as instructions with an additional control flow continuation that points to an \texttt{ExceptionDispatch} instruction.
-The exception dispatch instruction decides based on the type of the exception object whether the control should flow to the catch handler or to another exception dispatch.
-If there is no catch handler in the currently compiled method, then the control flows into the \texttt{Unwind} instruction that handles the exception by forwarding it to the caller.
+There are only two kinds of nodes that need explicit exception edges, because they are the only nodes that can throw exceptions in compiled code: \texttt{Throw} nodes and \texttt{Invoke} nodes.
+They are modelled as nodes with an additional control flow continuation that points to an \texttt{ExceptionDispatch} node.
+The exception dispatch node decides based on the type of the exception object whether the control should flow to the catch handler or to another exception dispatch.
+If there is no catch handler in the currently compiled method, then the control flows into the \texttt{Unwind} node that handles the exception by forwarding it to the caller.
 Listing~\ref{lst:exc1} shows an example Java program with nested try blocks and Figure \ref{fig:exc1} shows the corresponding compiler graph.
 
 \begin{lstlisting}[label=lst:exc1, caption=Exception dispatch in the compiler graph., captionpos=b]
@@ -308,8 +313,8 @@ try { m1();
 \label{sec:loops}
 Loops form a first-class construct in the IR that is expressed by specialized IR nodes during all optimization phases.
 We only compile methods with a control flow where every loop has a single entry point.
-This entry point is a \nodename{LoopBegin} instruction.
-This instruction is connected to a \nodename{LoopEnd} instruction that merges all control flow paths that do not exit the loop.
+This entry point is a \nodename{LoopBegin} node.
+This node is connected to a \nodename{LoopEnd} node that merges all control flow paths that do not exit the loop.
 The edge between the \nodename{LoopBegin} and the \nodename{LoopEnd} is the backedge of the loop.
 It goes from the beginning to the end in order to make the graph acyclic.
 An algorithm that traverses the control flow has to explicitely decide whether it wants to incorporate backedges (i.e., special case of the treatment of \nodename{LoopEnd}) or ignore them.
@@ -321,14 +326,16 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 \textnode{BeforeLoop}{Loop entry}
 \textnode{Exit1}{First loop exit}
 \textnode{Exit2}{Second loop exit}
-\nodesplit{LoopBegin}{LoopBegin}
+\node{LoopBegin}{LoopBegin}
 \node{LoopEnd}{LoopEnd}
 \nodesplit{If1}{If}
 \nodesplit{If2}{If}
-\controllabel{LoopBegin:succ1}{LoopEnd}
-\controllabel{LoopBegin:succ2}{If1}
+\data{LoopEnd}{LoopBegin}
+\control{LoopBegin}{If1}
 \controllabel{If1:succ1}{If2}
-\controllabel{If2:succ1}{LoopEnd}
+\controllabel{If2:succ1}{LoopBody}
+\textnode{LoopBody}{Loop body}
+\control{LoopBody}{LoopEnd}
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit1}
 \controllabel{If2:succ2}{Exit2}
@@ -339,7 +346,7 @@ Figure \ref{fig:loop1} shows a simple example with a loop with a single entry an
 
 \subsection{Loop Phis}
 Data flow in loops is modeled with special phi nodes at the beginning and the end of the loop.
-The \nodename{LoopEnd} instruction merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
+The \nodename{LoopEnd} node merges every value that flows into the next loop iteration in associated \nodename{LoopEndPhi} nodes.
 A corresponding \nodename{LoopBeginPhi} node that is associated with the loop header has a control flow dependency on the \nodename{LoopEndPhi} node.
 Listing~\ref{lst:loop} shows a simple counting loop that is used as an example in the rest of this section.
 Figure~\ref{fig:loop2} shows how the loop is modelled immediately after building the graph.
@@ -356,11 +363,11 @@ for(int i=0; i<n; ++i) { }
 \textnode{n}{n}
 \textnode{Constant0}{0}
 \textnode{Constant1}{1}
-\nodesplit{LoopBegin}{LoopBegin}
+\node{LoopBegin}{LoopBegin}
 \node{LoopEnd}{LoopEnd}
 \nodesplit{If1}{If}
-\controllabel{LoopBegin:succ1}{LoopEnd}
-\controllabel{LoopBegin:succ2}{If1}
+\data{LoopEnd}{LoopBegin}
+\control{LoopBegin}{If1}
 \nodebi{Compare}{&lt;}
 \nodebi{LoopBeginPhi}{LoopBeginPhi}
 \nodebi{Add}{+}
@@ -375,7 +382,9 @@ for(int i=0; i<n; ++i) { }
 \datalabel{Compare:in1}{LoopBeginPhi}
 \datalabel{Compare:in2}{n}
 \data{If1}{Compare}
-\controllabel{If1:succ1}{LoopEnd}
+\controllabel{If1:succ1}{LoopBody}
+\textnode{LoopBody}{Loop body}
+\control{LoopBody}{LoopEnd}
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
@@ -397,11 +406,11 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 \textnode{n}{n}
 \textnode{Constant0}{0}
 \textnode{Constant1}{1}
-\nodesplit{LoopBegin}{LoopBegin}
+\node{LoopBegin}{LoopBegin}
 \node{LoopEnd}{LoopEnd}
 \nodesplit{If1}{If}
-\controllabel{LoopBegin:succ1}{LoopEnd}
-\controllabel{LoopBegin:succ2}{If1}
+\data{LoopEnd}{LoopBegin}
+\control{LoopBegin}{If1}
 \nodebi{Compare}{&lt;}
 \nodetri{LoopCounter}{LoopCounter}
 \datalabel{LoopCounter:in1}{LoopBegin}
@@ -410,7 +419,9 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 \datalabel{Compare:in1}{LoopCounter}
 \datalabel{Compare:in2}{n}
 \data{If1}{Compare}
-\controllabel{If1:succ1}{LoopEnd}
+\controllabel{If1:succ1}{LoopBody}
+\textnode{LoopBody}{Loop body}
+\control{LoopBody}{LoopEnd}
 \controllabel{BeforeLoop}{LoopBegin}
 \controllabel{If1:succ2}{Exit}
 \end{digraphenv}
@@ -423,8 +434,12 @@ Figure \ref{fig:loop3} shows the compiler graph of the example loop after the lo
 If the total maximum number of iterations of a loop is fixed, then the loop is converted into a bounded loop.
 The total number of iterations always denotes the number of full iterations of the loop with the control flowing from the loop begin to the loop end.
 If the total number of iterations is reached, the loop is exited directly from the loop header.
+The representation of the bounded loop in the graph should support reasoning about the loop, but does not specify how the loop will later be converted to machine code.
 In the example, we can infer from the loop exit with the comparison on the loop counter that the total number of iterations of the loop is limited to n.
 Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bounded loop transformation.
+If there are no other exits out of the loop, then the number of iterations specified as the input to the bounded loop node is also the exact number of loop iterations.
+Loops with the same number of iterations can be merged into a single loop.
+We also want to support loop splitting in order to find simple loops that are candidates for vectorization.
 
 \begin{figure}[ht]
   \centering
@@ -434,11 +449,13 @@ Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bo
 \textnode{n}{n}
 \textnode{Constant0}{0}
 \textnode{Constant1}{1}
-\nodesplittri{LoopBegin}{BoundedLoopBegin}
+\nodesplit{LoopBegin}{BoundedLoopBegin}
 \node{LoopEnd}{LoopEnd}
-\controllabel{LoopBegin:succ1}{LoopEnd}
-\controllabel{LoopBegin:succ2}{LoopEnd}
-\controllabel{LoopBegin:succ3}{Exit}
+\data{LoopEnd}{LoopBegin}
+\controllabel{LoopBegin:succ1}{LoopBody}
+\textnode{LoopBody}{Loop body}
+\control{LoopBody}{LoopEnd}
+\controllabel{LoopBegin:succ2}{Exit}
 \nodetri{LoopCounter}{LoopCounter}
 \datalabel{LoopCounter:in1}{LoopBegin}
 \datalabeltext{LoopCounter:in2}{Constant0}{init}
@@ -453,7 +470,7 @@ Figure \ref{fig:loop4} shows the compiler graph of the example loop after the bo
 \subsection{Vectorization}
 
 If we have now a bounded loop with no additional loop exit and no associated phi nodes (only associated loop counters), we can vectorize the loop.
-We replace the loop header with a normal instruction that produces a vector of values from 0 to the number of loop iterations minus 1.
+We replace the loop header with a normal node that produces a vector of values from 0 to the number of loop iterations minus 1.
 The loop counters are replaced with \texttt{VectorAdd} and \texttt{VectorMul} nodes.
 The vectorization is only possible if every node of the loop can be replaced with a corresponding vector node.
 Figure \ref{fig:loop5} shows the compiler graph of the example loop after vectorization.
@@ -492,9 +509,9 @@ However, a frame state is not a concept specific to Java (e.g., the Crankshaft J
 
 Frame states are necessary to support the deoptimization of the program, which is the precondition for performing aggressive optimizations that use optimistic assumptions.
 Therefore every point in the optimizing compiler that may revert execution back to the interpreter needs a valid frame state.
-However, the point where the interpreter continues execution need not correspond exactly to the execution position of the compiled code, because many Java bytecode instructions can be safely reexecuted.
-Thus, frame states need only be generated for the states after instructions that cannot be reexecuted, because they modify the state of the program.
-Examples for such instructions are:
+However, the point where the interpreter continues execution need not correspond exactly to the execution position of the compiled code, because many Java bytecode nodes can be safely reexecuted.
+Thus, frame states need only be generated for the states after nodes that cannot be reexecuted, because they modify the state of the program.
+Examples for such nodes are:
 
 \begin{itemize}
     \item Array stores (in Java bytecodes {\tt IASTORE, LASTORE, FASTORE, \\DASTORE, AASTORE, BASTORE, CASTORE, SASTORE})
@@ -503,7 +520,7 @@ Examples for such instructions are:
     \item Synchronization (in Java bytecodes {\tt MONITORENTER, MONITOREXIT})
 \end{itemize}
 
-Within the graph a frame state is represented as a node that is attached to the instruction that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
+Within the graph a frame state is represented as a node that is attached to the node that caused it to be generated using a control dependency (see Figure~\ref{fig:fs1}).
 Frame states also have data dependencies on the contents of the state: the local variables and the expression stack.
 
 The frame state at the method beginning does not have to be explicitely in the graph, because it can always be reconstructed at a later stage.
@@ -532,8 +549,8 @@ We save the frame state at control flow merges if there is at least one frame st
 
 
 A deoptimization node needs a valid frame state that specifies the location and state where the interpreter should continue.
-The algorithm for constructing frame states makes sure that every possible location in the graph has a well-defined frame state that can be used by a deoptimization instruction.
-Therefore, there are no direct links between the deoptimization instruction and its frame state thus allowing the deoptimization instructions to move freely around.
+The algorithm for constructing frame states makes sure that every possible location in the graph has a well-defined frame state that can be used by a deoptimization node.
+Therefore, there are no direct links between the deoptimization node and its frame state thus allowing the deoptimization nodes to move freely around.
 
 \subsection{Partial Escape Analysis}
 
@@ -565,15 +582,15 @@ We believe that this reduction on frame states is the key to effective vectoriza
 A guard is a node that deoptimizes based on a conditional expression.
 Guards are not attached to a certain frame state, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e., the last emitted frame state).
 The node that is guarded by the deoptimization has a data dependency on the guard and the guard in turn has a data dependency on the condition.
-A guard must not be moved above any \texttt{If} nodes.
-Therefore, we use \texttt{Anchor} instructions after a control flow split and a data dependency from the guard to this anchor.
-The anchor is the most distant instruction that is postdominated by the guarded instruction and the guard can be scheduled anywhere between those two nodes.
-This ensures maximum flexibility for the guard instruction and guarantees that we only deoptimize if the control flow would have reached the guarded instruction (without taking exceptions into account).
+A guard may only be executed if it is guaranteed that the guarded node is executed too (if no exceptions are thrown).
+Therefore, we use \texttt{Anchor} nodes after a control flow split and a data dependency from the guard to this anchor.
+The anchor is the most distant node that is postdominated by the guarded node and the guard can be scheduled anywhere between those two nodes.
+This ensures maximum flexibility for the guard node and guarantees that we only deoptimize if the control flow would have reached the guarded node (without taking exceptions into account).
 
 To illustrate the strengths of this approach, we show the graph for the Java code snippet shown in \ref{lst:guard1}.
 The example looks artificial, but in case of method inlining, this is a pattern that is not unlikely to be present in a normal Java program.
 Figure \ref{fig:guard0} shows the compiler graph for the example method after graph building.
-The field stores are both represented by a single instruction and the null check that is implicitely incorporated in the field store.
+The field stores are both represented by a single node and the null check that is implicitely incorporated in the field store.
 
 \begin{lstlisting}[label=lst:guard1, caption=Example method that demonstrates the strengths of modelling the guards explicitely., captionpos=b]
 void init(Point p) {
@@ -617,9 +634,9 @@ void init(Point p) {
   \label{fig:guard0}
 \end{figure}
 
-Figure~\ref{fig:guard1} shows the example graph at a later compilation phase when the field store instructions are lowered to memory store instructions and explicitely modelled null check guards.
-The guards are attached to anchor instructions that delimit their possible schedule.
-The first guard must not be moved outside the \texttt{if} block; the second guard may be moved before the \texttt{If} instruction, because at this point it is already guaranteed that the second store is executed.
+Figure~\ref{fig:guard1} shows the example graph at a later compilation phase when the field store nodes are lowered to memory store nodes and explicitely modelled null check guards.
+The guards are attached to anchor nodes that delimit their possible schedule.
+The first guard must not be moved outside the \texttt{if} block; the second guard may be moved before the \texttt{If} node, because at this point it is already guaranteed that the second store is executed.
 
 \begin{figure}[ht]
   \centering
@@ -635,8 +652,8 @@ The first guard must not be moved outside the \texttt{if} block; the second guar
 	\textnode{const0}{0}
     \nodeguard{guard1}{Guard}
     \nodeguard{guard2}{Guard}
-    \nodetrisplit{store1}{MemStore 16 (int)}
-    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodetrisplit{store1}{MemStore 16 (4 bytes)}
+    \nodetrisplit{store2}{MemStore 20 (4 bytes)}
     \nodeframestate{fs1}{FrameState}
     \nodeframestate{fs2}{FrameState}
     \data{store1:in1}{p}
@@ -666,10 +683,10 @@ The first guard must not be moved outside the \texttt{if} block; the second guar
   \label{fig:guard1}
 \end{figure}
 
-The first guard can be easily removed, because it is guarded by an \texttt{If} instruction that checks the same condition.
+The first guard can be easily removed, because it is guarded by an \texttt{If} node that checks the same condition.
 Therefore we can remove the guard and the anchor from the graph and this gives us the graph shown in Figure \ref{fig:guard2}.
 
-There is another optimization for guard instructions: If two guards that are anchored to the true and false branch of the same \texttt{If} instruction have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} instruction is a postdominator.
+There is another optimization for guard nodes: If two guards that are anchored to the true and false branch of the same \texttt{If} node have the same condition, they can be merged, so that the resulting guard is anchored at the most distant node of which the \texttt{If} node is a postdominator.
 
 
 \begin{figure}[ht]
@@ -684,8 +701,8 @@ There is another optimization for guard instructions: If two guards that are anc
     \textnode{p}{p}
 	\textnode{const0}{0}
     \nodeguard{guard2}{Guard}
-    \nodetrisplit{store1}{MemStore 16 (int)}
-    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodetrisplit{store1}{MemStore 16 (4 bytes)}
+    \nodetrisplit{store2}{MemStore 20 (4 bytes)}
     \nodeframestate{fs1}{FrameState}
     \nodeframestate{fs2}{FrameState}
     \data{store1:in1}{p}
@@ -714,7 +731,7 @@ There is another optimization for guard instructions: If two guards that are anc
 The remaining guard can now be moved above the \texttt{If} condition and be used to eliminate the need for the \texttt{If} node.
 From this point on, the guard can however no longer be moved below the first memory store.
 We use a control dependency from the guard to the field store to express this condition.
-The link between the second store and the guard and the control flow merge instruction is no longer necessary.
+The link between the second store and the guard and the control flow merge node is no longer necessary.
 
 \begin{figure}[ht]
   \centering
@@ -726,8 +743,8 @@ The link between the second store and the guard and the control flow merge instr
     \textnode{p}{p}
 	\textnode{const0}{0}
     \nodeguard{guard2}{Guard}
-    \nodetrisplit{store1}{MemStore 16 (int)}
-    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodetrisplit{store1}{MemStore 16 (4 bytes)}
+    \nodetrisplit{store2}{MemStore 20 (4 bytes)}
     \nodeframestate{fs1}{FrameState}
     \nodeframestate{fs2}{FrameState}
     \data{store1:in1}{p}
@@ -766,8 +783,8 @@ Therefore we can delete the frame states from the graph (see Figure \ref{fig:gua
     \textnode{p}{p}
 	\textnode{const0}{0}
     \nodeguard{guard2}{Guard}
-    \nodetrisplit{store1}{MemStore 16 (int)}
-    \nodetrisplit{store2}{MemStore 20 (int)}
+    \nodetrisplit{store1}{MemStore 16 (4 bytes)}
+    \nodetrisplit{store2}{MemStore 20 (4 bytes)}
     \data{store1:in1}{p}
     \data{store2:in1}{p}
     \data{store1:in2}{const0}
@@ -801,7 +818,7 @@ Figure \ref{fig:guard5} shows the resulting graph.
     \textnode{p}{p}
 	\textnode{const0}{0}
     \nodeguard{guard2}{Guard}
-    \nodetrisplit{store1}{MemStore 16 (long)}
+    \nodetrisplit{store1}{MemStore 16 (8 bytes)}
     \data{store1:in1}{p}
     \data{store1:in2}{const0}
     \data{guard2:in1}{anchor1}
@@ -816,18 +833,18 @@ Figure \ref{fig:guard5} shows the resulting graph.
   \label{fig:guard5}
 \end{figure}
 
-A memory store that immediately follows a null check guard instruction on the same object, can be combined into a store with an implicit null check (that deoptimizes instead of throwing the exception).
+A memory store that immediately follows a null check guard node on the same object, can be combined into a store with an implicit null check (that deoptimizes instead of throwing the exception).
 Therefore, we can remove the guard again and also the anchor is no longer necessary.
 Figure~\ref{fig:guard6} shows now that fully optimized graph that is generated for Listing~\ref{lst:guard1}.
 
 \begin{figure}[ht]
   \centering
-\begin{digraphenv}{scale=0.5}{guard6}
+\begin{digraphenv}{scale=0.5}{guard6} 
 	\textnode{entry}{Entry}
     \node{return}{Return}
     \textnode{p}{p}
 	\textnode{const0}{0}
-    \nodetrisplit{store1}{DeoptimizingMemStore 16 (long)}
+    \nodetrisplit{store1}{DeoptimizingMemStore 16 (8 bytes)}
     \data{store1:in1}{p}
     \data{store1:in2}{const0}
     \control{entry}{store1}
@@ -841,8 +858,9 @@ Figure~\ref{fig:guard6} shows now that fully optimized graph that is generated f
 \section{Conclusions}
 \label{sec:conclusions}
 This document sketched the strategy for the Graph compiler.
-We already reached M1 (as defined in Section~\ref{sec:mile}) and have the following plans for M2 to M4:
+We have the following plans for M1 to M4:
 \begin{description}
+\item[M1:] May 15th, 2011
 \item[M2:] June 30th, 2011
 \item[M3:] August 15th, 2011
 \item[M4:] September 30th, 2011

@@ -694,7 +694,9 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genThrow(int bci) {
         Value exception = frameState.apop();
-        append(new FixedNullCheck(exception, graph));
+        FixedGuard node = new FixedGuard(graph);
+        node.setNode(new IsNonNull(exception, graph));
+        append(node);
 
         Instruction entry = handleException(exception, bci);
         if (entry != null) {
@@ -920,10 +922,15 @@ public final class GraphBuilderPhase extends Phase {
 
     private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
-        Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
-        Value result = appendWithBCI(invoke);
-        invoke.setExceptionEdge(handleException(null, bci()));
-        frameState.pushReturn(resultType, result);
+        if (GraalOptions.DeoptALot) {
+            append(new Deoptimize(DeoptAction.None, graph));
+            frameState.pushReturn(resultType, Constant.defaultForKind(resultType, graph));
+        } else {
+            Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
+            Value result = appendWithBCI(invoke);
+            invoke.setExceptionEdge(handleException(null, bci()));
+            frameState.pushReturn(resultType, result);
+        }
     }
 
     private RiType getExactType(RiType staticType, Value receiver) {
@@ -1277,7 +1284,7 @@ public final class GraphBuilderPhase extends Phase {
             traceInstruction(bci, opcode, blockStart);
             processBytecode(bci, opcode);
 
-            if (Schedule.isBlockEnd(lastInstr) || lastInstr.next() != null) {
+            if (IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
                 break;
             }
 

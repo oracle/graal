@@ -35,6 +35,7 @@ public class Block {
     private final List<Block> predecessors = new ArrayList<Block>();
     private List<Node> instructions = new ArrayList<Node>();
     private Block dominator;
+    private Block javaBlock;
     private final List<Block> dominators = new ArrayList<Block>();
 
     private Node firstNode;
@@ -46,6 +47,14 @@ public class Block {
 
     public void setFirstNode(Node node) {
         this.firstNode = node;
+    }
+
+    public Block javaBlock() {
+        return javaBlock;
+    }
+
+    public void setJavaBlock(Block javaBlock) {
+        this.javaBlock = javaBlock;
     }
 
     public Node lastNode() {

@@ -239,7 +239,9 @@ public class InliningPhase extends Phase {
         assert invoke.predecessors().size() == 1 : "size: " + invoke.predecessors().size();
         Instruction pred;
         if (withReceiver) {
-            pred = new FixedNullCheck(parameters[0], compilation.graph);
+            FixedGuard clipNode = new FixedGuard(compilation.graph);
+            clipNode.setNode(new IsNonNull(parameters[0], compilation.graph));
+            pred = clipNode;
         } else {
             pred = new Merge(compilation.graph);
         }

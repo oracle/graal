@@ -87,13 +87,15 @@ public class IR {
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
-            printGraph("After Canonicalization", graph);
             new DeadCodeEliminationPhase().apply(compilation.graph);
+            printGraph("After Canonicalization", graph);
         }
+
+        new LoweringPhase().apply(graph);
 
         new SplitCriticalEdgesPhase().apply(graph);
 
-        Schedule schedule = new Schedule();
+        IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);
 
 

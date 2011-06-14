@@ -27,7 +27,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class ClipNode extends Instruction {
+public final class FixedGuard extends Instruction {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_NODE = 0;
 
@@ -44,13 +44,13 @@ public final class ClipNode extends Instruction {
         return (FloatingNode) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    public ClipNode(Graph graph) {
+    public FixedGuard(Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        // Do nothing.
+        v.visitFixedGuard(this);
     }
 
     @Override
@@ -60,6 +60,6 @@ public final class ClipNode extends Instruction {
 
     @Override
     public Node copy(Graph into) {
-        return new ClipNode(into);
+        return new FixedGuard(into);
     }
 }

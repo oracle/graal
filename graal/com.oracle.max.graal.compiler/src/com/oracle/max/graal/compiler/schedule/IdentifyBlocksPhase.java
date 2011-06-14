@@ -32,10 +32,16 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public class Schedule extends Phase {
+public class IdentifyBlocksPhase extends Phase {
     private final List<Block> blocks = new ArrayList<Block>();
     private NodeMap<Block> nodeToBlock;
     private Graph graph;
+    private boolean scheduleAllNodes;
+
+    public IdentifyBlocksPhase(boolean scheduleAllNodes) {
+        super(scheduleAllNodes ? "FullSchedule" : "PartSchedule");
+        this.scheduleAllNodes = scheduleAllNodes;
+    }
 
 
     @Override
@@ -177,20 +183,77 @@ public class Schedule extends Phase {
         computeDominators();
 
 
+        if (scheduleAllNodes) {
 
-        // Add successors of loop end nodes. Makes the graph cyclic.
-        for (Node n : blockBeginNodes) {
-            Block block = nodeToBlock.get(n);
-            if (n instanceof LoopBegin) {
-                LoopBegin loopBegin = (LoopBegin) n;
-                nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+            // Add successors of loop end nodes. Makes the graph cyclic.
+            for (Node n : blockBeginNodes) {
+                Block block = nodeToBlock.get(n);
+                if (n instanceof LoopBegin) {
+                    LoopBegin loopBegin = (LoopBegin) n;
+                    nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+                }
+            }
+
+            assignLatestPossibleBlockToNodes();
+            sortNodesWithinBlocks();
+        } else {
+            computeJavaBlocks();
+        }
+    }
+
+    private void computeJavaBlocks() {
+
+        for (Block b : blocks) {
+            computeJavaBlock(b);
+        }
+    }
+
+    private Block computeJavaBlock(Block b) {
+        if (b.javaBlock() == null) {
+            if (b.getPredecessors().size() == 0) {
+                b.setJavaBlock(b);
+            } else if (b.getPredecessors().size() == 1) {
+                Block pred = b.getPredecessors().get(0);
+                if (pred.getSuccessors().size() > 1) {
+                    b.setJavaBlock(b);
+                } else {
+                    b.setJavaBlock(computeJavaBlock(pred));
+                }
+            } else {
+                Block dominatorBlock = b.getPredecessors().get(0);
+                for (int i=1; i<b.getPredecessors().size(); ++i) {
+                    dominatorBlock = getCommonDominator(dominatorBlock, b.getPredecessors().get(i));
+                }
+                CiBitMap blockMap = new CiBitMap(blocks.size());
+                markPredecessors(b, dominatorBlock, blockMap);
+
+                Block result = dominatorBlock;
+                L1: for (Block curBlock : blocks) {
+                    if (curBlock != b && blockMap.get(curBlock.blockID())) {
+                        for (Block succ : curBlock.getSuccessors()) {
+                            if (!blockMap.get(succ.blockID())) {
+                                result = b;
+                                break L1;
+                            }
+                        }
+                    }
+                }
+                b.setJavaBlock(result);
             }
         }
+        return b.javaBlock();
+    }
 
-        assignLatestPossibleBlockToNodes();
-        sortNodesWithinBlocks();
-
-        //print();
+    private void markPredecessors(Block b, Block stopBlock, CiBitMap blockMap) {
+        if (blockMap.get(b.blockID())) {
+            return;
+        }
+        blockMap.set(b.blockID());
+        if (b != stopBlock) {
+            for (Block pred : b.getPredecessors()) {
+                markPredecessors(pred, stopBlock, blockMap);
+            }
+        }
     }
 
     private void assignLatestPossibleBlockToNodes() {
@@ -286,13 +349,7 @@ public class Schedule extends Phase {
             addToSorting(b, i, sortedInstructions, map);
         }
         addToSorting(b, b.lastNode(), sortedInstructions, map);
-        //assert b.firstNode() == sortedInstructions.get(0) : b.firstNode();
-    //    assert b.lastNode() == sortedInstructions.get(sortedInstructions.size() - 1);
         b.setInstructions(sortedInstructions);
-//        TTY.println("Block " + b);
-//        for (Node n : sortedInstructions) {
-//            TTY.println("Node: " + n);
-//        }
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
@@ -386,53 +443,7 @@ public class Schedule extends Phase {
             cur = cur.dominator();
         }
 
-        print();
-        assert false : "no common dominator between " + a + " and " + b;
-        return null;
-    }
-
-    private void print() {
-        TTY.println("============================================");
-        TTY.println("%d blocks", blocks.size());
-
-        for (Block b : blocks) {
-           TTY.println();
-           TTY.print(b.toString());
-
-           TTY.print(" succs=");
-           for (Block succ : b.getSuccessors()) {
-               TTY.print(succ + ";");
-           }
-
-           TTY.print(" preds=");
-           for (Block pred : b.getPredecessors()) {
-               TTY.print(pred + ";");
-           }
-
-           if (b.dominator() != null) {
-               TTY.print(" dom=" + b.dominator());
-           }
-           TTY.println();
-
-           if (b.getInstructions().size() > 0) {
-               TTY.print("first instr: " + b.getInstructions().get(0));
-               TTY.print("last instr: " + b.getInstructions().get(b.getInstructions().size() - 1));
-           }
-        }
-
-/*
-        TTY.println("============================================");
-        TTY.println("%d nodes", nodeToBlock.size());
-        for (Node n : graph.getNodes()) {
-            if (n != null) {
-                TTY.print("Node %d: %s", n.id(), n.getClass().toString());
-                Block curBlock = nodeToBlock.get(n);
-                if (curBlock != null) {
-                    TTY.print(" %s", curBlock);
-                }
-                TTY.println();
-            }
-        }*/
+        throw new IllegalStateException("no common dominator between " + a + " and " + b);
     }
 
     public static int trueSuccessorCount(Node n) {

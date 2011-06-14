@@ -38,6 +38,27 @@ public class DeadCodeEliminationPhase extends Phase {
         this.graph = graph;
         this.flood = graph.createNodeFlood();
 
+        // remove chained Merges
+//        for (Merge merge : graph.getNodes(Merge.class)) {
+//            if (merge.predecessors().size() == 1 && merge.usages().size() == 0) {
+//                if (merge.successors().get(0) instanceof Merge) {
+//                    Node pred = merge.predecessors().get(0);
+//                    int predIndex = merge.predecessorsIndex().get(0);
+//                    pred.successors().setAndClear(predIndex, merge, 0);
+//                    merge.delete();
+//                }
+//            }
+//        }
+//        Node startSuccessor = graph.start().successors().get(0);
+//        if (startSuccessor instanceof Merge) {
+//            Merge startMerge = (Merge) startSuccessor;
+//            if (startMerge.predecessors().size() == 1 && startMerge.usages().size() == 0) {
+//                int predIndex = startMerge.predecessorsIndex().get(0);
+//                graph.start().successors().setAndClear(predIndex, startMerge, 0);
+//                startMerge.delete();
+//            }
+//        }
+
         flood.add(graph.start());
 
         iterateSuccessors();
@@ -96,6 +117,9 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void iterateInputs() {
         for (Node node : graph.getNodes()) {
+            if (node instanceof Local) {
+                flood.add(node);
+            }
             if (node != Node.Null && flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
                     if (!isCFG(input)) {

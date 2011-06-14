@@ -112,9 +112,9 @@ public class IdealGraphPrinter {
     public void print(Graph graph, String title, boolean shortNames) {
         stream.printf(" <graph name='%s'>%n", escape(title));
         noBlockNodes.clear();
-        Schedule schedule = null;
+        IdentifyBlocksPhase schedule = null;
         try {
-            schedule = new Schedule();
+            schedule = new IdentifyBlocksPhase(true);
             schedule.apply(graph);
         } catch (Throwable t) {
             // nothing to do here...
