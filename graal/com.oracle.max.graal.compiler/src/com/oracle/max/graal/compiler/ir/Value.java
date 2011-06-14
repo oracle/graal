@@ -134,19 +134,6 @@ public abstract class Value extends Node {
         return null; // default: unknown declared type
     }
 
-    /**
-     * Apply the specified closure to all the input values of this instruction.
-     * @param closure the closure to apply
-     */
-    public void inputValuesDo(ValueClosure closure) {
-        for (int i = 0; i < inputs().size(); i++) {
-            inputs().set(i, closure.apply((Value) inputs().get(i)));
-        }
-        for (int i = 0; i < successors().size(); i++) {
-            successors().set(i, closure.apply((Value) successors().get(i)));
-        }
-    }
-
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();

@@ -1407,6 +1407,50 @@ public abstract class LIRGenerator extends ValueVisitor {
         // Moves all stack values into their phi position
         LIRBlock bb = currentBlock;
         if (bb.numberOfSux() == 1) {
+
+            Node lastNode = bb.lastInstruction();
+            if (lastNode instanceof Instruction || lastNode == lastNode.graph().start()) {
+                Node nextInstr = lastNode.successors().get(Instruction.SUCCESSOR_NEXT);
+                int nextSuccIndex = lastNode.successorTags()[Instruction.SUCCESSOR_NEXT];
+
+                if (lastNode instanceof LoopEnd) {
+                    LoopEnd loopEnd = (LoopEnd) lastNode;
+                    nextInstr = loopEnd.loopBegin();
+                    nextSuccIndex = loopEnd.loopBegin().predecessors().size() + 1;
+                }
+                if (nextInstr instanceof Merge) {
+                    Merge merge = (Merge) nextInstr;
+                    assert nextSuccIndex > 0 : "nextSuccIndex=" + nextSuccIndex + ", lastNode=" + lastNode + ", nextInstr=" + nextInstr + "; preds=" + nextInstr.predecessors() + "; predIndex=" + nextInstr.predecessorsIndex();
+
+                    PhiResolver resolver = new PhiResolver(this);
+                    for (Node n : merge.usages()) {
+                        if (n instanceof Phi) {
+                            Phi phi = (Phi) n;
+                            if (!phi.isDead()) {
+                                Value curVal = phi.valueAt(nextSuccIndex - 1);
+                                if (curVal != null && curVal != phi) {
+                                    if (curVal instanceof Phi) {
+                                        operandForPhi((Phi) curVal);
+                                    }
+                                    CiValue operand = curVal.operand();
+                                    if (operand.isIllegal()) {
+                                        assert curVal instanceof Constant || curVal instanceof Local : "these can be produced lazily" + curVal + "/" + phi;
+                                        operand = operandForInstruction(curVal);
+                                    }
+                                    resolver.move(operand, operandForPhi(phi));
+                                }
+                            }
+                        }
+                    }
+                    resolver.dispose();
+                }
+                return;
+            }
+
+            assert false : "lastNode=" + lastNode + " instr=" + bb.getInstructions();
+
+
+
             LIRBlock sux = bb.suxAt(0);
             assert sux.numberOfPreds() > 0 : "invalid CFG";
 

@@ -43,6 +43,7 @@ public class SplitCriticalEdgesPhase extends Phase {
                         Anchor a = new Anchor(graph);
                         a.successors().setAndClear(Instruction.SUCCESSOR_NEXT, n, j);
                         n.successors().set(j, a);
+                        n.successorTags()[j] = 1;
                     }
                 }
             }

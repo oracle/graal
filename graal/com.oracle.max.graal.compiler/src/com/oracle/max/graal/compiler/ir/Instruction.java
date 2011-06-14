@@ -22,8 +22,6 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import java.util.*;
-
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
@@ -86,16 +84,6 @@ public abstract class Instruction extends FixedNode {
     public Instruction(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         GraalMetrics.HIRInstructions++;
-    }
-
-
-    /**
-     * Gets the list of predecessors of this block.
-     * @return the predecessor list
-     */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public List<Instruction> blockPredecessors() {
-        return (List) Collections.unmodifiableList(predecessors());
     }
 
     /**

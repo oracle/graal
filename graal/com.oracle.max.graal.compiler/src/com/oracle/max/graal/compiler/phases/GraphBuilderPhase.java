@@ -193,8 +193,8 @@ public final class GraphBuilderPhase extends Phase {
         for (Node n : graph.getNodes()) {
             if (n instanceof Placeholder) {
                 Placeholder p = (Placeholder) n;
-                assert p.blockPredecessors().size() == 1;
-                Node pred = p.blockPredecessors().get(0);
+                assert p.predecessors().size() == 1;
+                Node pred = p.predecessors().get(0);
                 int predIndex = p.predecessorsIndex().get(0);
                 pred.successors().setAndClear(predIndex, p, 0);
                 p.delete();
@@ -1123,8 +1123,6 @@ public final class GraphBuilderPhase extends Phase {
 
         if (block.firstInstruction == null) {
             if (block.isLoopHeader) {
-//                block.firstInstruction = new Merge(block.startBci, graph);
-
                 LoopBegin loopBegin = new LoopBegin(graph);
                 LoopEnd loopEnd = new LoopEnd(graph);
                 loopEnd.setLoopBegin(loopBegin);
