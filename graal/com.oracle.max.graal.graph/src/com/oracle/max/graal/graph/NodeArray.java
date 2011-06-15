@@ -128,6 +128,7 @@ public class NodeArray extends AbstractList<Node> {
         assert !self().isDeleted() : "trying to set input/successor of deleted node: " + self().shortName();
         assert node == Node.Null || node.graph == self().graph : "node is from different graph: (this=" + self() + ") and (node=" + node + ")";
         assert node == Node.Null || node.id() != Node.DeletedID : "inserted node must not be deleted";
+        assert node != self() || node.getClass().toString().contains("Phi") : "No direct circles allowed in the graph! " + node;
         
         Node old = get(index);
         if (old != node) {
@@ -229,7 +230,7 @@ public class NodeArray extends AbstractList<Node> {
         assert self().successors == this;
         Node value = clearedNode.successors.get(clearedIndex);
         self().successorTags[index] = clearedNode.successorTags[clearedIndex];
-        assert value != Node.Null;
+        assert value != Node.Null : "cannot clear null value";
         clearedNode.successors.nodes[clearedIndex] = Node.Null;
         set(index, Node.Null);
         nodes[index] = value;

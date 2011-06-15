@@ -67,7 +67,7 @@ public final class If extends BlockEnd {
      * Gets the block corresponding to the true successor.
      * @return the true successor
      */
-    public Instruction trueSuccessor() {
+    public FixedNode trueSuccessor() {
         return blockSuccessor(0);
     }
 
@@ -75,7 +75,7 @@ public final class If extends BlockEnd {
      * Gets the block corresponding to the false successor.
      * @return the false successor
      */
-    public Instruction falseSuccessor() {
+    public FixedNode falseSuccessor() {
         return blockSuccessor(1);
     }
 
@@ -84,7 +84,7 @@ public final class If extends BlockEnd {
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
-    public Instruction successor(boolean istrue) {
+    public FixedNode successor(boolean istrue) {
         return blockSuccessor(istrue ? 0 : 1);
     }
 

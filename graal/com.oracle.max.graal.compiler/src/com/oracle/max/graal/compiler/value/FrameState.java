@@ -378,7 +378,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                     }
 
                     if (phi.valueCount() == 0) {
-                        int size = block.predecessors().size();
+                        int size = block.endCount();
                         for (int j = 0; j < size; ++j) {
                             phi.addInput(x);
                         }
@@ -390,7 +390,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                     if (block instanceof LoopBegin) {
 //                        assert phi.valueCount() == ((LoopBegin) block).loopEnd().predecessors().size() + 1 : "loop, valueCount=" + phi.valueCount() + " predSize= " + ((LoopBegin) block).loopEnd().predecessors().size();
                     } else {
-                        assert phi.valueCount() == block.predecessors().size() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.predecessors().size();
+                        assert phi.valueCount() == block.endCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.endCount();
                     }
                }
             }

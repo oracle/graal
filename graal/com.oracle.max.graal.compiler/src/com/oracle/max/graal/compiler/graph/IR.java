@@ -141,7 +141,7 @@ public class IR {
                 valueToBlock.put(i, b);
             }
         }
-        startBlock = lirBlocks.get(0);
+        startBlock = valueToBlock.get(graph.start());
         assert startBlock != null;
         assert startBlock.blockPredecessors().size() == 0;
 

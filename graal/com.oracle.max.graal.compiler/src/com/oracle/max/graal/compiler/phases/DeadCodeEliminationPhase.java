@@ -83,8 +83,13 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void iterateSuccessors() {
         for (Node current : flood) {
-            for (Node successor : current.successors()) {
-                flood.add(successor);
+            if (current instanceof EndNode) {
+                EndNode end = (EndNode) current;
+                flood.add(end.merge());
+            } else {
+                for (Node successor : current.successors()) {
+                    flood.add(successor);
+                }
             }
         }
     }

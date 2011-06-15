@@ -260,9 +260,19 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
             }
         }
-        if (block.blockSuccessors().size() >= 1 && (block.getInstructions().size() == 0  || !jumpsToNextBlock(block.getInstructions().get(block.getInstructions().size() - 1)))) {
+        if (block.blockSuccessors().size() >= 1 && !jumpsToNextBlock(block.lastInstruction())) {
             moveToPhi();
-            block.lir().jump(block.blockSuccessors().get(0));
+            Node last = block.lastInstruction();
+            if (last instanceof EndNode) {
+                EndNode end = (EndNode) last;
+                block.lir().jump(getLIRBlock(end.merge()));
+            } else if (last instanceof LoopEnd) {
+                LoopEnd loopEnd = (LoopEnd) last;
+                block.lir().jump(getLIRBlock(loopEnd.loopBegin()));
+            } else {
+//                TTY.println("lastInstr: " + block.lastInstruction() + ", block=" + block.blockID());
+                block.lir().jump(getLIRBlock((FixedNode) block.lastInstruction().successors().get(0)));
+            }
         }
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
@@ -697,7 +707,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected LIRBlock getLIRBlock(Instruction b) {
+    protected LIRBlock getLIRBlock(FixedNode b) {
         if (b == null) {
             return null;
         }
@@ -1409,25 +1419,33 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (bb.numberOfSux() == 1) {
 
             Node lastNode = bb.lastInstruction();
-            if (lastNode instanceof Instruction || lastNode == lastNode.graph().start()) {
-                Node nextInstr = lastNode.successors().get(Instruction.SUCCESSOR_NEXT);
-                int nextSuccIndex = lastNode.successorTags()[Instruction.SUCCESSOR_NEXT];
+            if (lastNode instanceof EndNode || lastNode instanceof LoopEnd || lastNode instanceof Anchor) {
+                Node nextInstr = null;
+                int nextSuccIndex;
 
                 if (lastNode instanceof LoopEnd) {
                     LoopEnd loopEnd = (LoopEnd) lastNode;
                     nextInstr = loopEnd.loopBegin();
-                    nextSuccIndex = loopEnd.loopBegin().predecessors().size() + 1;
+                    nextSuccIndex = loopEnd.loopBegin().endCount();
+                } else if (lastNode instanceof Anchor) {
+                    assert false;
+                    nextSuccIndex = -1;
+                } else {
+                    assert lastNode instanceof EndNode;
+                    nextInstr = ((EndNode) lastNode).merge();
+                    nextSuccIndex = nextInstr.inputs().variablePart().indexOf(lastNode);
                 }
+
                 if (nextInstr instanceof Merge) {
                     Merge merge = (Merge) nextInstr;
-                    assert nextSuccIndex > 0 : "nextSuccIndex=" + nextSuccIndex + ", lastNode=" + lastNode + ", nextInstr=" + nextInstr + "; preds=" + nextInstr.predecessors() + "; predIndex=" + nextInstr.predecessorsIndex();
+                    assert nextSuccIndex >= 0 : "nextSuccIndex=" + nextSuccIndex + ", lastNode=" + lastNode + ", nextInstr=" + nextInstr + "; preds=" + nextInstr.predecessors() + "; predIndex=" + nextInstr.predecessorsIndex();
 
                     PhiResolver resolver = new PhiResolver(this);
                     for (Node n : merge.usages()) {
                         if (n instanceof Phi) {
                             Phi phi = (Phi) n;
                             if (!phi.isDead()) {
-                                Value curVal = phi.valueAt(nextSuccIndex - 1);
+                                Value curVal = phi.valueAt(nextSuccIndex);
                                 if (curVal != null && curVal != phi) {
                                     if (curVal instanceof Phi) {
                                         operandForPhi((Phi) curVal);
@@ -1446,6 +1464,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
                 return;
             }
+            /*
 
             assert false : "lastNode=" + lastNode + " instr=" + bb.getInstructions();
 
@@ -1489,7 +1508,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                     }
                     resolver.dispose();
                 }
-            }
+            }*/
         }
     }
 

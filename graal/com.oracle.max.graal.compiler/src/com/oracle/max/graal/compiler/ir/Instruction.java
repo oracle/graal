@@ -60,11 +60,11 @@ public abstract class Instruction extends FixedNode {
      * Links to next instruction in a basic block, to {@code null} if this instruction is the end of a basic block or to
      * itself if not in a block.
      */
-    public Instruction next() {
-        return (Instruction) successors().get(super.successorCount() + SUCCESSOR_NEXT);
+    public FixedNode next() {
+        return (FixedNode) successors().get(super.successorCount() + SUCCESSOR_NEXT);
     }
 
-    public Node setNext(Instruction next) {
+    public Node setNext(FixedNode next) {
         return successors().set(super.successorCount() + SUCCESSOR_NEXT, next);
     }
 
@@ -84,18 +84,6 @@ public abstract class Instruction extends FixedNode {
     public Instruction(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         GraalMetrics.HIRInstructions++;
-    }
-
-    /**
-     * Get the number of predecessors.
-     * @return the number of predecessors
-     */
-    public int numberOfPreds() {
-        return predecessors().size();
-    }
-
-    public Instruction predAt(int j) {
-        return (Instruction) predecessors().get(j);
     }
 
     /**
