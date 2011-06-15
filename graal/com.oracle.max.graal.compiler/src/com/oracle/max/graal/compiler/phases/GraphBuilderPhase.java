@@ -305,9 +305,16 @@ public final class GraphBuilderPhase extends Phase {
                 assert !target.isLoopHeader;
                 Merge merge = new Merge(graph);
 
+
+
                 Placeholder p = (Placeholder) first;
+                assert p.predecessors().size() == 1;
                 assert p.next() == null;
-                p.replace(merge);
+
+                Node pred = p.predecessors().get(0);
+                EndNode end = new EndNode(graph);
+                p.replace(end);
+                end.setNext(merge);
                 target.firstInstruction = merge;
                 merge.setStateBefore(existingState);
                 first = merge;
@@ -1134,11 +1141,21 @@ public final class GraphBuilderPhase extends Phase {
         mergeOrClone(block, stateAfter);
         addToWorkList(block);
 
+        Instruction result = null;
         if (block.firstInstruction instanceof LoopBegin && isVisited(block)) {
-            return ((LoopBegin) block.firstInstruction).loopEnd();
+            result = ((LoopBegin) block.firstInstruction).loopEnd();
         } else {
-            return block.firstInstruction;
+            result = block.firstInstruction;
         }
+
+        assert result instanceof Merge || result instanceof Placeholder : result;
+
+        if (result instanceof Merge) {
+            EndNode end = new EndNode(graph);
+            end.setNext(result);
+            result = end;
+        }
+        return result;
     }
 
     private Value synchronizedObject(FrameStateAccess state, RiMethod target) {
