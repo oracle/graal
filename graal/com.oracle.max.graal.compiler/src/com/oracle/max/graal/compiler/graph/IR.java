@@ -106,8 +106,6 @@ public class IR {
 
         new LoweringPhase().apply(graph);
 
-        new SplitCriticalEdgesPhase().apply(graph);
-
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);
 
