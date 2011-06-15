@@ -74,11 +74,11 @@ public final class Phi extends FloatingNode {
      * @return the instruction that produced the value in the i'th predecessor
      */
     public Value valueAt(int i) {
-        return (Value) inputs().get(INPUT_COUNT + i);
+        return (Value) inputs().variablePart().get(i);
     }
 
-    public Node setValueAt(int i, Node x) {
-        return inputs().set(INPUT_COUNT + i, x);
+    public void setValueAt(int i, Value x) {
+        inputs().set(INPUT_COUNT + i, x);
     }
 
     /**
