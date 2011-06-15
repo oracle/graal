@@ -126,6 +126,7 @@ public abstract class Node {
         usages.clear();
         predecessors.clear();
         predecessorsIndex.clear();
+        delete();
     }
 
     public void delete() {

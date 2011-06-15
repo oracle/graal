@@ -74,10 +74,6 @@ import com.sun.cri.util.*;
  * </pre>
  * Note that the size {@link Bytecodes#ALLOCA ALLOCA} blocks and {@code monitor}s in the frame may be greater
  * than the size of a {@linkplain CiTarget#spillSlotSize spill slot}.
- *
- * @author Thomas Wuerthinger
- * @author Ben L. Titzer
- * @author Doug Simon
  */
 public final class FrameMap {
 

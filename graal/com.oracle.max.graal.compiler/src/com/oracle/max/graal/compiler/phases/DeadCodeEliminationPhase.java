@@ -100,6 +100,7 @@ public class DeadCodeEliminationPhase extends Phase {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && !flood.isMarked(node) && isCFG(node)) {
                 if (node instanceof LoopEnd) {
+                    assert ((LoopEnd) node).loopBegin() != null : "node " + node;
                     brokenLoops.add(((LoopEnd) node).loopBegin());
                 }
                 // iterate backwards so that the predecessor indexes in removePhiPredecessor are correct
