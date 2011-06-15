@@ -355,7 +355,7 @@ public class IdentifyBlocksPhase extends Phase {
 
         if (b.firstNode() == b.lastNode()) {
             Node node = b.firstNode();
-            if (!(node instanceof Merge)) {
+            if (!(node instanceof Merge) || node instanceof LoopEnd) {
                 scheduleFirst = false;
             }
         }
