@@ -225,10 +225,16 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         if (block.blockPredecessors().size() > 1) {
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE RESET");
+            }
             lastState = null;
         }
 
         for (Node instr : block.getInstructions()) {
+            if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                TTY.println("LIRGen for " + instr);
+            }
             FrameState stateAfter = null;
             if (instr instanceof Instruction) {
                 stateAfter = ((Instruction) instr).stateAfter();
@@ -277,7 +283,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private static boolean jumpsToNextBlock(Node node) {
-        return node instanceof BlockEnd || node instanceof Anchor || node instanceof LoopEnd;
+        return node instanceof BlockEnd || node instanceof Anchor;
     }
 
     @Override
@@ -1013,10 +1019,22 @@ public abstract class LIRGenerator extends ValueVisitor {
                 emitXir(prologue, null, null, null, false);
             }
             FrameState fs = setOperandsForLocals();
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE CHANGE (setOperandsForLocals)");
+                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    TTY.println(fs.toString());
+                }
+            }
             lastState = fs;
         } else if (block.blockPredecessors().size() == 1) {
             FrameState fs = block.blockPredecessors().get(0).lastState();
             assert fs != null;
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE CHANGE (singlePred)");
+                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    TTY.println(fs.toString());
+                }
+            }
             lastState = fs;
         }
     }

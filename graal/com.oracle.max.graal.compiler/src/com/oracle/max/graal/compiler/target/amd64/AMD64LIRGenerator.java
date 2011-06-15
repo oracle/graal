@@ -496,8 +496,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void visitLoopEnd(LoopEnd x) {
         setNoResult(x);
-        moveToPhi();
-        lir.jump(getLIRBlock(x.loopBegin()));
+        //moveToPhi();
+        //lir.jump(getLIRBlock(x.loopBegin()));
     }
 
     @Override
