@@ -91,16 +91,15 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void disconnectCFGNodes() {
         for (Node node : graph.getNodes()) {
+            if (node != Node.Null && !flood.isMarked(node) && node instanceof EndNode) {
+                EndNode end = (EndNode) node;
+                Merge merge = end.merge();
+                merge.removeEnd(end);
+            }
+        }
+
+        for (Node node : graph.getNodes()) {
             if (node != Node.Null && !flood.isMarked(node) && isCFG(node)) {
-                // iterate backwards so that the predecessor indexes in removePhiPredecessor are correct
-                for (int i = node.successors().size() - 1; i >= 0; i--) {
-                    Node successor = node.successors().get(i);
-                    if (successor != Node.Null && flood.isMarked(successor)) {
-                        if (successor instanceof Merge) {
-                            ((Merge) successor).removePhiPredecessor(node);
-                        }
-                    }
-                }
                 node.successors().clearAll();
                 node.inputs().clearAll();
             }

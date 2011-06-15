@@ -97,7 +97,9 @@ public class NodeArray extends AbstractList<Node> {
                 for (int i=index; i < size() - 1; i++) {
                     NodeArray.this.nodes[fixedLength + i] = NodeArray.this.nodes[fixedLength + i + 1];
                 }
+                NodeArray.this.nodes[fixedLength + size() - 1] = Node.Null;
                 variableLength--;
+                assert variableLength >= 0;
                 return n;
             }
         };
@@ -179,7 +181,7 @@ public class NodeArray extends AbstractList<Node> {
 
     @Override
     public Node[] toArray() {
-        return Arrays.copyOf(nodes, nodes.length);
+        return Arrays.copyOf(nodes, size());
     }
 
     boolean replaceFirstOccurrence(Node toReplace, Node replacement) {

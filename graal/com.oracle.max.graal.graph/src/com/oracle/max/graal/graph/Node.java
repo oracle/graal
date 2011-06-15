@@ -136,7 +136,7 @@ public abstract class Node {
 
     public void delete() {
         assert !isDeleted();
-        assert checkDeletion();
+        assert checkDeletion() : "Could not delete " + this;
         assert predecessorsIndex.size() == 0;
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);

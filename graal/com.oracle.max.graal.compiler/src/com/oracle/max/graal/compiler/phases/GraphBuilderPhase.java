@@ -314,6 +314,7 @@ public final class GraphBuilderPhase extends Phase {
                 Node pred = p.predecessors().get(0);
                 EndNode end = new EndNode(graph);
                 p.replace(end);
+                merge.addEnd(end);
                 end.setNext(merge);
                 target.firstInstruction = merge;
                 merge.setStateBefore(existingState);
@@ -1153,6 +1154,7 @@ public final class GraphBuilderPhase extends Phase {
         if (result instanceof Merge) {
             EndNode end = new EndNode(graph);
             end.setNext(result);
+            ((Merge) result).addEnd(end);
             result = end;
         }
         return result;

@@ -73,6 +73,18 @@ public class Merge extends StateSplit {
         v.visitMerge(this);
     }
 
+    public void addEnd(EndNode end) {
+        inputs().variablePart().add(end);
+    }
+
+    public int endCount() {
+        return inputs().variablePart().size();
+    }
+
+    public EndNode endAt(int index) {
+        return (EndNode) inputs().variablePart().get(index);
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -263,18 +275,17 @@ public class Merge extends StateSplit {
     @Override
     public Node copy(Graph into) {
         assert getClass() == Merge.class : "copy of " + getClass();
-        Merge x = new Merge(into);
-        return x;
+        return new Merge(into);
     }
 
-    public void removePhiPredecessor(Node pred) {
-        int predIndex = predecessors().lastIndexOf(pred);
+    public void removeEnd(EndNode pred) {
+        int predIndex = inputs().variablePart().indexOf(pred);
         assert predIndex != -1;
+        inputs().variablePart().remove(predIndex);
 
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
-//                assert phi.valueCount() == predecessors().size();
                 phi.removeInput(predIndex);
             }
         }

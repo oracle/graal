@@ -48,4 +48,13 @@ public final class EndNode extends Instruction {
     public Node copy(Graph into) {
         return new EndNode(into);
     }
+
+    public Merge merge() {
+        if (usages().size() == 0) {
+            return null;
+        } else {
+            assert usages().size() == 1;
+            return (Merge) usages().get(0);
+        }
+    }
 }
