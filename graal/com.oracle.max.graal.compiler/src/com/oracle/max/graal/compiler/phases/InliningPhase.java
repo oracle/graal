@@ -277,19 +277,8 @@ public class InliningPhase extends Phase {
             }
             Node returnDuplicate = duplicates.get(returnNode);
             returnDuplicate.inputs().clearAll();
-
-            assert returnDuplicate.predecessors().size() == 1;
-            Node returnPred = returnDuplicate.predecessors().get(0);
-
-//            Merge mergeAfter = new Merge(compilation.graph);
-//            mergeAfter.setStateBefore(stateAfter);
-//            int index = returnDuplicate.predecessorsIndex().get(0);
-//            mergeAfter.successors().setAndClear(0, invoke, 0);
-//            returnPred.successors().set(index, mergeAfter);
-
-            int index = returnDuplicate.predecessorsIndex().get(0);
-            returnPred.successors().setAndClear(index, invoke, 0);
-            returnDuplicate.delete();
+            returnDuplicate.replace(invoke.next());
+            invoke.setNext(null);
         }
 
         if (exceptionEdge != null) {
@@ -304,14 +293,7 @@ public class InliningPhase extends Phase {
                     usage.inputs().replace(obj, unwindDuplicate.exception());
                 }
                 unwindDuplicate.inputs().clearAll();
-
-                assert unwindDuplicate.predecessors().size() == 1;
-                Node unwindPred = unwindDuplicate.predecessors().get(0);
-                int index = unwindDuplicate.predecessorsIndex().get(0);
-                unwindPred.successors().setAndClear(index, obj, 0);
-
-                obj.inputs().clearAll();
-                unwindDuplicate.delete();
+                unwindDuplicate.replace(obj.next());
             }
         }
 

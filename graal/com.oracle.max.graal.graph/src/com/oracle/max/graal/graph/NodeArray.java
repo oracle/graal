@@ -225,25 +225,6 @@ public class NodeArray extends AbstractList<Node> {
         return result;
     }
 
-    public void setAndClear(int index, Node clearedNode, int clearedIndex) {
-        assert !self().isDeleted() : "trying to setAndClear successor of deleted node: " + self().shortName();
-        assert self().successors == this;
-        Node value = clearedNode.successors.get(clearedIndex);
-        assert value != Node.Null : "cannot clear null value";
-        clearedNode.successors.nodes[clearedIndex] = Node.Null;
-        set(index, Node.Null);
-        nodes[index] = value;
-
-        for (int i = 0; i < value.predecessors.size(); ++i) {
-            if (value.predecessors.get(i) == clearedNode && value.predecessorsIndex.get(i) == clearedIndex) {
-                value.predecessors.set(i, self());
-                value.predecessorsIndex.set(i, index);
-                return;
-            }
-        }
-        assert false;
-    }
-
     @Override
     public int size() {
         return fixedLength + variableLength;

@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 
 public class LoweringPhase extends Phase {
@@ -33,21 +34,22 @@ public class LoweringPhase extends Phase {
         s.apply(graph);
 
         for (Block b : s.getBlocks()) {
-            final Node firstNode = b.firstNode();
+            //final Node firstNode = b.firstNode();
 
             final LoweringTool loweringTool = new LoweringTool() {
                 @Override
                 public Node createStructuredBlockAnchor() {
-                    if (!(firstNode instanceof Anchor) && !(firstNode instanceof Merge)) {
-                        Anchor a = new Anchor(graph);
-                        assert firstNode.predecessors().size() == 1;
-                        Node pred = firstNode.predecessors().get(0);
-                        int predIndex = firstNode.predecessorsIndex().get(0);
-                        a.successors().setAndClear(Instruction.SUCCESSOR_NEXT, pred, predIndex);
-                        pred.successors().set(predIndex, a);
-                        return a;
-                    }
-                    return firstNode;
+                    throw Util.unimplemented();
+//                    if (!(firstNode instanceof Anchor) && !(firstNode instanceof Merge)) {
+//                        Anchor a = new Anchor(graph);
+//                        assert firstNode.predecessors().size() == 1;
+//                        Node pred = firstNode.predecessors().get(0);
+//                        int predIndex = firstNode.predecessorsIndex().get(0);
+//                        a.successors().setAndClear(Instruction.SUCCESSOR_NEXT, pred, predIndex);
+//                        pred.successors().set(predIndex, a);
+//                        return a;
+//                    }
+//                    return firstNode;
                 }
             };
 
