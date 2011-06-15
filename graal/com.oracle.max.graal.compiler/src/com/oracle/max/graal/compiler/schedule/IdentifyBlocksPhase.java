@@ -199,6 +199,7 @@ public class IdentifyBlocksPhase extends Phase {
                 Node n = block.firstNode();
                 if (n instanceof LoopBegin) {
                     LoopBegin loopBegin = (LoopBegin) n;
+                    assert loopBegin.loopEnd() != null;
                     nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
                 }
             }
