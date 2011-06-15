@@ -46,8 +46,8 @@ public abstract class Node {
         this.id = graph.register(this);
         this.inputs = new NodeArray(this, inputCount);
         this.successors = new NodeArray(this, successorCount);
-        this.predecessors = new ArrayList<Node>();
-        this.usages = new ArrayList<Node>();
+        this.predecessors = new ArrayList<Node>(1);
+        this.usages = new ArrayList<Node>(4);
     }
 
     public List<Node> predecessors() {
