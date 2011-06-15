@@ -24,14 +24,24 @@ package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 
-public class LoopEnd extends Merge {
+public final class LoopCounter extends FloatingNode {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_LOOP_BEGIN = 0;
+    private static final int INPUT_COUNT = 3;
+    private static final int INPUT_MERGE = 0;
+    private static final int INPUT_INIT = 1;
+    private static final int INPUT_STRIDE = 2;
 
     private static final int SUCCESSOR_COUNT = 0;
+
+    public LoopCounter(CiKind kind, Value init, Value stride, LoopBegin loop, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setInit(init);
+        setStride(stride);
+        setLoopBegin(loop);
+    }
 
     @Override
     protected int inputCount() {
@@ -43,44 +53,45 @@ public class LoopEnd extends Merge {
         return super.successorCount() + SUCCESSOR_COUNT;
     }
 
-    /**
-     * The instruction which produces the input value to this instruction.
-     */
-     public LoopBegin loopBegin() {
-        return (LoopBegin) inputs().get(super.inputCount() + INPUT_LOOP_BEGIN);
+    public Value init() {
+        return (Value) inputs().get(super.inputCount() + INPUT_INIT);
     }
 
-    public LoopBegin setLoopBegin(LoopBegin n) {
-        return (LoopBegin) inputs().set(super.inputCount() + INPUT_LOOP_BEGIN, n);
+    public Value setInit(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_INIT, n);
     }
 
-    public LoopEnd(Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public Value stride() {
+        return (Value) inputs().get(super.inputCount() + INPUT_STRIDE);
+    }
+
+    public Value setStride(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_STRIDE, n);
+    }
+
+    public LoopBegin loopBegin() {
+        return (LoopBegin) inputs().get(super.inputCount() + INPUT_MERGE);
+    }
+
+    public Value setLoopBegin(LoopBegin n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_MERGE, n);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitLoopEnd(this);
+        // TODO Auto-generated method stub
+
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("loopEnd ").print(loopBegin());
-    }
+        out.print("loopcounter [").print(init()).print(",+").print(stride()).print("]");
 
-    @Override
-    public String shortName() {
-        return "LoopEnd";
     }
 
     @Override
     public Node copy(Graph into) {
-        LoopEnd x = new LoopEnd(into);
-        return x;
+        return new LoopCounter(kind, null, null, null, into);
     }
 
-    @Override
-    public String toString() {
-        return "LoopEnd:" + super.toString();
-    }
 }
