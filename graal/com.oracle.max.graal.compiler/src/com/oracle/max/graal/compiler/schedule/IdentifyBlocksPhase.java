@@ -159,7 +159,7 @@ public class IdentifyBlocksPhase extends Phase {
 
             if (n instanceof Merge) {
                 for (Node usage : n.usages()) {
-                    if (usage instanceof Phi) {
+                    if (usage instanceof Phi || usage instanceof LoopCounter) {
                         nodeToBlock.set(usage, block);
                     }
                 }
@@ -221,7 +221,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else {
                 Block dominatorBlock = b.getPredecessors().get(0);
-                for (int i=1; i<b.getPredecessors().size(); ++i) {
+                for (int i = 1; i < b.getPredecessors().size(); ++i) {
                     dominatorBlock = getCommonDominator(dominatorBlock, b.getPredecessors().get(i));
                 }
                 CiBitMap blockMap = new CiBitMap(blocks.size());
@@ -300,6 +300,13 @@ public class IdentifyBlocksPhase extends Phase {
                         block = getCommonDominator(block, nodeToBlock.get(pred));
                     }
                 }
+            } else if (usage instanceof LoopCounter) {
+                LoopCounter counter = (LoopCounter) usage;
+                if (n == counter.init()) {
+                    LoopBegin loopBegin = counter.loopBegin();
+                    Block mergeBlock = nodeToBlock.get(loopBegin);
+                    block = getCommonDominator(block, mergeBlock.getPredecessors().get(0)); // TODO (gd) nasty 0 constant
+                }
             } else {
                 block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
             }
@@ -353,7 +360,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
-        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local || i instanceof LoopCounter) {
             return;
         }
 

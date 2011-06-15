@@ -248,6 +248,8 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
             if (!(instr instanceof Merge) && instr != instr.graph().start()) {
                 walkState(instr, stateAfter);
+            }
+            if (instr instanceof Value) {
                 doRoot((Value) instr);
             }
             if (stateAfter != null) {
@@ -275,7 +277,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private static boolean jumpsToNextBlock(Node node) {
-        return node instanceof BlockEnd || node instanceof Anchor;
+        return node instanceof BlockEnd || node instanceof Anchor || node instanceof LoopEnd;
     }
 
     @Override
@@ -1183,7 +1185,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected void arithmeticOpLong(int code, CiValue result, CiValue left, CiValue right, LIRDebugInfo info) {
+    protected void arithmeticOpLong(int code, CiValue result, CiValue left, CiValue right) {
         CiValue leftOp = left;
 
         if (isTwoOperand && leftOp != result) {
@@ -1444,6 +1446,29 @@ public abstract class LIRGenerator extends ValueVisitor {
                         }
                     }
                     resolver.dispose();
+
+                    //TODO (gd) remove that later
+                    Node suxFirstInstr = sux.firstInstruction();
+                    if (suxFirstInstr instanceof LoopBegin) {
+                        for (Node n : suxFirstInstr.usages()) {
+                            if (n instanceof LoopCounter) {
+                                LoopCounter counter = (LoopCounter) n;
+                                if (counter.operand().isIllegal()) {
+                                    createResultVariable(counter);
+                                }
+                                if (predIndex == 0) {
+                                    lir.move(operandForInstruction(counter.init()), counter.operand());
+                                } else {
+                                    if (counter.kind == CiKind.Int) {
+                                        this.arithmeticOpInt(IADD, counter.operand(), counter.operand(), operandForInstruction(counter.stride()), CiValue.IllegalValue);
+                                    } else {
+                                        assert counter.kind == CiKind.Long;
+                                        this.arithmeticOpLong(LADD, counter.operand(), counter.operand(), operandForInstruction(counter.stride()));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1465,7 +1490,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (x instanceof Constant) {
                 x.setOperand(x.asConstant());
             } else {
-                assert x instanceof Phi || x instanceof Local : "only for Phi and Local";
+                assert x instanceof Phi || x instanceof Local : "only for Phi and Local : " + x;
                 // allocate a variable for this local or phi
                 createResultVariable(x);
             }
@@ -1477,8 +1502,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         assert !phi.isDead() : "dead phi: " + phi.id();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
-            CiVariable operand = newVariable(phi.kind);
-            setResult(phi, operand);
+            createResultVariable(phi);
         }
         return phi.operand();
     }
