@@ -229,7 +229,6 @@ public class NodeArray extends AbstractList<Node> {
         assert !self().isDeleted() : "trying to setAndClear successor of deleted node: " + self().shortName();
         assert self().successors == this;
         Node value = clearedNode.successors.get(clearedIndex);
-        self().successorTags[index] = clearedNode.successorTags[clearedIndex];
         assert value != Node.Null : "cannot clear null value";
         clearedNode.successors.nodes[clearedIndex] = Node.Null;
         set(index, Node.Null);

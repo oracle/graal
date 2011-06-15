@@ -1464,51 +1464,6 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
                 return;
             }
-            /*
-
-            assert false : "lastNode=" + lastNode + " instr=" + bb.getInstructions();
-
-
-
-            LIRBlock sux = bb.suxAt(0);
-            assert sux.numberOfPreds() > 0 : "invalid CFG";
-
-            // a block with only one predecessor never has phi functions
-            if (sux.numberOfPreds() > 1) {
-
-
-                List<Phi> phis = getPhis(sux);
-
-                if (phis != null) {
-
-                    int predIndex = 0;
-                    for (; predIndex < sux.numberOfPreds(); ++predIndex) {
-                        if (sux.predAt(predIndex) == bb) {
-                            break;
-                        }
-                    }
-                    assert predIndex < sux.numberOfPreds();
-
-                    PhiResolver resolver = new PhiResolver(this);
-                    for (Phi phi : phis) {
-                        if (!phi.isDead()) {
-                            Value curVal = phi.valueAt(predIndex);
-                            if (curVal != null && curVal != phi) {
-                                if (curVal instanceof Phi) {
-                                    operandForPhi((Phi) curVal);
-                                }
-                                CiValue operand = curVal.operand();
-                                if (operand.isIllegal()) {
-                                    assert curVal instanceof Constant || curVal instanceof Local : "these can be produced lazily" + curVal + "/" + phi;
-                                    operand = operandForInstruction(curVal);
-                                }
-                                resolver.move(operand, operandForPhi(phi));
-                            }
-                        }
-                    }
-                    resolver.dispose();
-                }
-            }*/
         }
     }
 

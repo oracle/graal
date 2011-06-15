@@ -40,7 +40,6 @@ public abstract class Node {
     final ArrayList<Node> usages;
     final ArrayList<Node> predecessors;
     final ArrayList<Integer> predecessorsIndex;
-    final int[] successorTags;
 
     public Node(int inputCount, int successorCount, Graph graph) {
         assert graph != null : "cannot create a node for a null graph";
@@ -48,7 +47,6 @@ public abstract class Node {
         this.id = graph.register(this);
         this.inputs = new NodeArray(this, inputCount);
         this.successors = new NodeArray(this, successorCount);
-        this.successorTags = new int[successorCount];
         this.predecessors = new ArrayList<Node>();
         this.usages = new ArrayList<Node>();
         this.predecessorsIndex = new ArrayList<Integer>();
@@ -72,10 +70,6 @@ public abstract class Node {
 
     public NodeArray successors() {
         return successors;
-    }
-    
-    public int[] successorTags() {
-        return successorTags;
     }
 
     public int id() {
