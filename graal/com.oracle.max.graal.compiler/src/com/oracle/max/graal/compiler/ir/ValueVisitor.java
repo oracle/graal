@@ -39,6 +39,7 @@ public abstract class ValueVisitor {
     public abstract void visitConstant(Constant i);
     public abstract void visitConvert(Convert i);
     public abstract void visitExceptionObject(ExceptionObject i);
+    public abstract void visitEndNode(EndNode i);
     public abstract void visitFrameState(FrameState i);
     public abstract void visitAnchor(Anchor i);
     public abstract void visitIf(If i);
