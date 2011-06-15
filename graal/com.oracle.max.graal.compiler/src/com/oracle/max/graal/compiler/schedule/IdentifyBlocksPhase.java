@@ -131,7 +131,7 @@ public class IdentifyBlocksPhase extends Phase {
         // Identify blocks.
         for (Node n : graph.getNodes()) {
             if (n != null) {
-                if (n instanceof EndNode || n instanceof Return || n instanceof Unwind || n instanceof LoopEnd) {
+                if (n instanceof EndNode || n instanceof Return || n instanceof Unwind || n instanceof LoopEnd || n instanceof Deoptimize) {
                     Block block = null;
                     while (nodeToBlock.get(n) == null) {
                         if (block != null && IdentifyBlocksPhase.trueSuccessorCount(n) > 1) {
