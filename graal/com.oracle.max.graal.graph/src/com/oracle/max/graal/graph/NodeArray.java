@@ -26,16 +26,17 @@ import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.omg.PortableInterceptor.SUCCESSFUL;
-
 public class NodeArray extends AbstractList<Node> {
 
     private final Node node;
-    final Node[] nodes;
+    private Node[] nodes;
+    private final int fixedLength;
+    private int variableLength;
 
     public NodeArray(Node node, int length) {
         this.node = node;
         this.nodes = new Node[length];
+        this.fixedLength = length;
     }
 
     @Override
@@ -52,14 +53,81 @@ public class NodeArray extends AbstractList<Node> {
         nodes[index] = node;
         return result;
     }
+    
+    public AbstractList<Node> variablePart() {
+        return new AbstractList<Node>() {
+
+            @Override
+            public Node get(int index) {
+                checkIndex(index);
+                return NodeArray.this.get(fixedLength + index);
+            }
+
+            @Override
+            public int size() {
+                return variableLength;
+            }
+
+            public Node set(int index, Node element) {
+                checkIndex(index);
+                return NodeArray.this.set(fixedLength + index, element);
+            }
+
+            public void add(int index, Node element) {
+                variableLength++;
+                checkIndex(index);
+                NodeArray.this.ensureSize();
+                for (int i=size() - 1; i > index; i--) {
+                    NodeArray.this.nodes[fixedLength + i] = NodeArray.this.nodes[fixedLength + i-1];
+                }
+                set(index, element);
+            }
+            
+            private void checkIndex(int index) {
+                if (index < 0 || index >= size()) {
+                    throw new IndexOutOfBoundsException();
+                }
+            }
+            
+            @Override
+            public Node remove(int index) {
+                checkIndex(index);
+                Node n = get(index);
+                set(index, Node.Null);
+                for (int i=index; i < size() - 1; i++) {
+                    NodeArray.this.nodes[fixedLength + i] = NodeArray.this.nodes[fixedLength + i + 1];
+                }
+                variableLength--;
+                return n;
+            }
+        };
+    }
+
+    private void ensureSize() {
+        if (size() > nodes.length) {
+            nodes = Arrays.copyOf(nodes, (nodes.length + 1)*2);
+        }
+    }
+    
+    public void setOrExpand(int index, Node node) {
+        if (index < 0) {
+            throw new IndexOutOfBoundsException();
+        }
+        
+        while (index >= size()) {
+            variablePart().add(Node.Null);
+        }
+        
+        set(index, node);
+    }
 
     @Override
     public Node set(int index, Node node) {
         assert !self().isDeleted() : "trying to set input/successor of deleted node: " + self().shortName();
         assert node == Node.Null || node.graph == self().graph : "node is from different graph: (this=" + self() + ") and (node=" + node + ")";
         assert node == Node.Null || node.id() != Node.DeletedID : "inserted node must not be deleted";
-        Node old = nodes[index];
-
+        
+        Node old = get(index);
         if (old != node) {
             silentSet(index, node);
             if (self().inputs == this) {
@@ -96,9 +164,16 @@ public class NodeArray extends AbstractList<Node> {
             set(i, other.get(i));
         }
     }
+    
+    private void checkIndex(int index) {
+        if (index < 0 || index >= size()) {
+            throw new IndexOutOfBoundsException();
+        }
+    }
 
     @Override
     public Node get(int index) {
+        checkIndex(index);
         return nodes[index];
     }
 
@@ -108,7 +183,7 @@ public class NodeArray extends AbstractList<Node> {
     }
 
     boolean replaceFirstOccurrence(Node toReplace, Node replacement) {
-        for (int i = 0; i < nodes.length; i++) {
+        for (int i = 0; i < size(); i++) {
             if (nodes[i] == toReplace) {
                 nodes[i] = replacement;
                 return true;
@@ -123,7 +198,7 @@ public class NodeArray extends AbstractList<Node> {
 
     public int replace(Node toReplace, Node replacement) {
         int result = 0;
-        for (int i = 0; i < nodes.length; i++) {
+        for (int i = 0; i < size(); i++) {
             if (nodes[i] == toReplace) {
                 set(i, replacement);
                 result++;
@@ -138,7 +213,7 @@ public class NodeArray extends AbstractList<Node> {
 
     int silentReplace(Node toReplace, Node replacement) {
         int result = 0;
-        for (int i = 0; i < nodes.length; i++) {
+        for (int i = 0; i < size(); i++) {
             if (nodes[i] == toReplace) {
                 silentSet(i, replacement);
                 result++;
@@ -169,11 +244,11 @@ public class NodeArray extends AbstractList<Node> {
 
     @Override
     public int size() {
-        return nodes.length;
+        return fixedLength + variableLength;
     }
 
     public void clearAll() {
-        for (int i = 0; i < nodes.length; i++) {
+        for (int i = 0; i < size(); i++) {
             set(i, Node.Null);
         }
     }

@@ -171,7 +171,7 @@ public class Graph {
                 if (target == null) {
                     target = newNodes.get(input);
                 }
-                node.inputs().set(i, target);
+                node.inputs().setOrExpand(i, target);
             }
         }
         for (Entry<Node, Node> entry : replacements.entrySet()) {
@@ -180,7 +180,7 @@ public class Graph {
             for (int i = 0; i < oldNode.inputs().size(); i++) {
                 Node input = oldNode.inputs().get(i);
                 if (newNodes.containsKey(input)) {
-                    node.inputs().set(i, newNodes.get(input));
+                    node.inputs().setOrExpand(i, newNodes.get(input));
                 }
             }
         }

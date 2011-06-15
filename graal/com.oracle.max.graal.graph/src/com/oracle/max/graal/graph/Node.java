@@ -103,7 +103,7 @@ public abstract class Node {
         int z = 0;
         for (Node predecessor : predecessors) {
             int predIndex = predecessorsIndex.get(z);
-            predecessor.successors.nodes[predIndex] = other;
+            predecessor.successors.silentSet(predIndex, other);
             ++z;
         }
         if (other != null) {
