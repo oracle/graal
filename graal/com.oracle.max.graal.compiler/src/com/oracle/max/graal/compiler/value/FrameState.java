@@ -377,22 +377,14 @@ public final class FrameState extends Value implements FrameStateAccess {
                         phi = setupPhiForStack(block, i - localsSize);
                     }
 
-                    Phi originalPhi = phi;
                     if (phi.valueCount() == 0) {
                         int size = block.predecessors().size();
                         for (int j = 0; j < size; ++j) {
-                            phi = phi.addInput(x);
+                            phi.addInput(x);
                         }
-                        phi = phi.addInput((x == y) ? phi : y);
+                        phi.addInput((x == y) ? phi : y);
                     } else {
-                        phi = phi.addInput((x == y) ? phi : y);
-                    }
-                    if (originalPhi != phi) {
-                        for (int j = 0; j < other.localsSize() + other.stackSize(); ++j) {
-                            if (other.valueAt(j) == originalPhi) {
-                                other.setValueAt(j, phi);
-                            }
-                        }
+                        phi.addInput((x == y) ? phi : y);
                     }
 
                     if (block instanceof LoopBegin) {

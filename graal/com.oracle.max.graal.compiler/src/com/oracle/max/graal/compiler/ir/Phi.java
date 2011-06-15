@@ -129,9 +129,8 @@ public final class Phi extends FloatingNode {
         return "Phi: (" + str + ")";
     }
 
-    public Phi addInput(Node y) {
+    public void addInput(Node y) {
         inputs().variablePart().add(y);
-        return this;
     }
 
     public void removeInput(int index) {
