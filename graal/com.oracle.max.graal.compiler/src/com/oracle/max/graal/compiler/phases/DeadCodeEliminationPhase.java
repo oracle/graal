@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
@@ -67,19 +68,15 @@ public class DeadCodeEliminationPhase extends Phase {
 
         iterateSuccessors();
         disconnectCFGNodes();
-
         deleteBrokenLoops();
-
         iterateInputs();
         disconnectNonCFGNodes();
-
-        deleteCFGNodes();
-        deleteNonCFGNodes();
+        deleteNodes();
 
         new PhiSimplifier(graph);
 
         if (GraalOptions.TraceDeadCodeElimination) {
-            System.out.printf("dead code elimination finished\n");
+            TTY.println("dead code elimination finished");
         }
     }
 
@@ -102,17 +99,18 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void disconnectCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node) && node instanceof EndNode) {
-                EndNode end = (EndNode) node;
-                Merge merge = end.merge();
-                merge.removeEnd(end);
-            }
-        }
-
-        for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node) && isCFG(node)) {
-                node.successors().clearAll();
-                node.inputs().clearAll();
+            if (node != Node.Null && !flood.isMarked(node)) {
+                if (isCFG(node)) {
+                    node.successors().clearAll();
+                    node.inputs().clearAll();
+                } else if (node instanceof EndNode) {
+                    EndNode end = (EndNode) node;
+                    Merge merge = end.merge();
+                    if (merge != null && flood.isMarked(merge)) {
+                        // We are a dead end node leading to a live merge.
+                        merge.removeEnd(end);
+                    }
+                }
             }
         }
     }
@@ -125,17 +123,13 @@ public class DeadCodeEliminationPhase extends Phase {
                 usage.replace(((Phi) usage).valueAt(0));
             }
 
-//            Node pred = loop.predecessors().get(0);
-//            int predIndex = loop.predecessorsIndex().get(0);
-//            pred.successors().setAndClear(predIndex, loop, 0);
-//            loop.delete();
             loop.replace(loop.next());
         }
     }
 
-    private void deleteCFGNodes() {
+    private void deleteNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node) && isCFG(node)) {
+            if (node != Node.Null && !flood.isMarked(node)) {
                 node.delete();
             }
         }
@@ -167,14 +161,6 @@ public class DeadCodeEliminationPhase extends Phase {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && !flood.isMarked(node) && !isCFG(node)) {
                 node.inputs().clearAll();
-            }
-        }
-    }
-
-    private void deleteNonCFGNodes() {
-        for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node) && !isCFG(node)) {
-                node.delete();
             }
         }
     }
