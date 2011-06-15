@@ -36,6 +36,7 @@ import com.sun.cri.ci.CiRegister.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.ri.RiType.*;
 import com.sun.cri.xir.*;
+import com.sun.cri.xir.CiXirAssembler.XirLabel;
 import com.sun.cri.xir.CiXirAssembler.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
@@ -627,7 +628,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
 
-            return asm.finishTemplate(object, "instanceof");
+            return asm.finishTemplate(object, "checkcast");
         }
     };
 
@@ -730,7 +731,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
            }
            asm.pload(CiKind.Object, result, object, asm.i(config.hubOffset), is(NULL_CHECK, flags));
            asm.pload(CiKind.Object, result, result, asm.i(config.classMirrorOffset), false);
-           return asm.finishTemplate("currentThread");
+           return asm.finishTemplate("getClass");
        }
     };
 
@@ -1023,6 +1024,39 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     };
 
+    private SimpleTemplates typeCheckTemplates = new SimpleTemplates(NULL_CHECK) {
+       @Override
+       protected XirTemplate create(CiXirAssembler asm, long flags) {
+           asm.restart();
+           XirParameter object = asm.createInputParameter("object", CiKind.Object);
+           XirOperand hub = asm.createConstantInputParameter("hub", CiKind.Object);
+
+           XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
+
+           XirLabel slowPath = asm.createOutOfLineLabel("deopt");
+
+           if (is(NULL_CHECK, flags)) {
+               asm.nop(1);
+               asm.mark(MARK_IMPLICIT_NULL);
+           }
+
+           asm.pload(CiKind.Object, objHub, object, asm.i(config.hubOffset), false);
+           // if we get an exact match: continue
+           asm.jneq(slowPath, objHub, hub);
+           asm.shouldNotReachHere();
+
+           // -- out of line -------------------------------------------------------
+           asm.bindOutOfLine(slowPath);
+           XirOperand scratch = asm.createRegisterTemp("scratch", CiKind.Word, AMD64.r10);
+           asm.mov(scratch, asm.createConstant(CiConstant.forWord(2)));
+
+           asm.callRuntime(CiRuntimeCall.Deoptimize, null);
+           asm.shouldNotReachHere();
+
+           return asm.finishTemplate(object, "typeCheck");
+       }
+    };
+
     @Override
     public XirSnippet genPrologue(XirSite site, RiMethod method) {
         boolean staticMethod = Modifier.isStatic(method.accessFlags());
@@ -1192,6 +1226,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     @Override
     public XirSnippet genArrayLength(XirSite site, XirArgument array) {
         return new XirSnippet(arrayLengthTemplates.get(site), array);
+    }
+
+    @Override
+    public XirSnippet genTypeCheck(XirSite site, XirArgument object, XirArgument hub, RiType type) {
+        assert type.isResolved();
+        return new XirSnippet(typeCheckTemplates.get(site), object, hub);
     }
 
     @Override
