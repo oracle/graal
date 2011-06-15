@@ -208,32 +208,6 @@ public class Graph {
                 }
             }
         }
-        /*
-        // re-wire successors
-        for (Entry<Node, Node> entry : newNodes.entrySet()) {
-            Node oldNode = entry.getKey();
-            Node node = entry.getValue();
-            for (int i = 0; i < oldNode.predecessors().size(); i++) {
-                Node pred = oldNode.predecessors().get(i);
-                int predIndex = oldNode.predecessorsIndex().get(i);
-                Node source = replacements.get(pred);
-                if (source == null) {
-                    source = newNodes.get(pred);
-                }
-                source.successors().set(predIndex,  node);
-            }
-        }
-        for (Entry<Node, Node> entry : replacements.entrySet()) {
-            Node oldNode = entry.getKey();
-            Node node = entry.getValue();
-            for (int i = 0; i < oldNode.predecessors().size(); i++) {
-                Node pred = oldNode.predecessors().get(i);
-                int predIndex = oldNode.predecessorsIndex().get(i);
-                if (newNodes.containsKey(pred)) {
-                    newNodes.get(pred).successors().set(predIndex, node);
-                }
-            }
-        }*/
         return newNodes;
     }
 }

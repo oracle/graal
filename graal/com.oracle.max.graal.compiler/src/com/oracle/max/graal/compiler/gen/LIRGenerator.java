@@ -1438,7 +1438,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
                 if (nextInstr instanceof Merge) {
                     Merge merge = (Merge) nextInstr;
-                    assert nextSuccIndex >= 0 : "nextSuccIndex=" + nextSuccIndex + ", lastNode=" + lastNode + ", nextInstr=" + nextInstr + "; preds=" + nextInstr.predecessors() + "; predIndex=" + nextInstr.predecessorsIndex();
+                    assert nextSuccIndex >= 0 : "nextSuccIndex=" + nextSuccIndex + ", lastNode=" + lastNode + ", nextInstr=" + nextInstr + "; preds=" + nextInstr.predecessors() + ";";
 
                     PhiResolver resolver = new PhiResolver(this);
                     for (Node n : merge.usages()) {

@@ -145,15 +145,14 @@ public class NodeArray extends AbstractList<Node> {
                 if (old != null) {
                     for (int i = 0; i < old.predecessors.size(); ++i) {
                         Node cur = old.predecessors.get(i);
-                        if (cur == self() && old.predecessorsIndex.get(i) == index) {
+                        if (cur == self()) {
                             old.predecessors.remove(i);
-                            old.predecessorsIndex.remove(i);
+                            break;
                         }
                     }
                 }
                 if (node != null) {
                     node.predecessors.add(self());
-                    node.predecessorsIndex.add(index);
                 }
             }
         }
