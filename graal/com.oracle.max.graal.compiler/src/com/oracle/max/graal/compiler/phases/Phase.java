@@ -23,6 +23,8 @@
 package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.observer.*;
+import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.Graph;
 
 public abstract class Phase {
@@ -66,6 +68,10 @@ public abstract class Phase {
             GraalMetrics.get(getName().concat(".executed")).increment();
             GraalMetrics.get(getName().concat(".deletedNodes")).increment(deletedNodeCount);
             GraalMetrics.get(getName().concat(".createdNodes")).increment(createdNodeCount);
+        }
+        GraalCompilation compilation = GraalCompilation.compilation();
+        if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class) {
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After " + getName(), graph, true, false));
         }
 
         // (Item|Graph|Phase|Value)

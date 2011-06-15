@@ -83,12 +83,14 @@ public final class FloatSub extends FloatArithmetic {
                     if (c == 0.0f) {
                         return x;
                     }
+                    return new FloatAdd(kind, x, Constant.forFloat(-c, graph), sub.isStrictFP(), graph);
                 } else {
                     assert kind == CiKind.Double;
                     double c = y.asConstant().asDouble();
                     if (c == 0.0) {
                         return x;
                     }
+                    return new FloatAdd(kind, x, Constant.forDouble(-c, graph), sub.isStrictFP(), graph);
                 }
             } else if (x.isConstant()) {
                 // TODO (gd) check that Negate impl for floating point is really faster/better than 0.0 - x

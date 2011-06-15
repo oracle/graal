@@ -214,7 +214,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             CiValue left = load(x.x());
             right.loadItem();
 
-            arithmeticOpLong(opcode, LMUL_OUT, left, right.result(), null);
+            arithmeticOpLong(opcode, LMUL_OUT, left, right.result());
             CiValue result = createResultVariable(x);
             lir.move(LMUL_OUT, result);
         } else {
@@ -224,7 +224,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             // don't load constants to save register
             right.loadNonconstant();
             createResultVariable(x);
-            arithmeticOpLong(opcode, x.operand(), left, right.result(), null);
+            arithmeticOpLong(opcode, x.operand(), left, right.result());
         }
     }
 
@@ -344,7 +344,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             right.loadItem();
 
             CiValue reg = LMUL_OUT;
-            arithmeticOpLong(opcode, reg, left, right.result(), null);
+            arithmeticOpLong(opcode, reg, left, right.result());
             CiValue result = createResultVariable(x);
             lir.move(reg, result);
         } else {
@@ -354,7 +354,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             // don't load constants to save register
             right.loadNonconstant();
             createResultVariable(x);
-            arithmeticOpLong(opcode, x.operand(), left, right.result(), null);
+            arithmeticOpLong(opcode, x.operand(), left, right.result());
         }
     }
 

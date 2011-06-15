@@ -155,12 +155,12 @@ public class IdentifyBlocksPhase extends Phase {
             Node n = block.firstNode();
             if (n instanceof Merge) {
                 for (Node usage : n.usages()) {
-                    if (usage instanceof Phi) {
+                    if (usage instanceof Phi || usage instanceof LoopCounter) {
                         nodeToBlock.set(usage, block);
                     }
                 }
                 Merge m = (Merge) n;
-                for (int i=0; i<m.endCount(); ++i) {
+                for (int i = 0; i < m.endCount(); ++i) {
                     EndNode end = m.endAt(i);
                     Block predBlock = nodeToBlock.get(end);
                     predBlock.addSuccessor(block);
@@ -304,9 +304,16 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
                 Merge merge = ((FrameState) usage).block();
-                for (int i=0; i<merge.endCount(); ++i) {
+                for (int i = 0; i < merge.endCount(); ++i) {
                     EndNode pred = merge.endAt(i);
                     block = getCommonDominator(block, nodeToBlock.get(pred));
+                }
+            } else if (usage instanceof LoopCounter) {
+                LoopCounter counter = (LoopCounter) usage;
+                if (n == counter.init()) {
+                    LoopBegin loopBegin = counter.loopBegin();
+                    Block mergeBlock = nodeToBlock.get(loopBegin);
+                    block = getCommonDominator(block, mergeBlock.dominator());
                 }
             } else {
                 block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
@@ -359,12 +366,12 @@ public class IdentifyBlocksPhase extends Phase {
             addToSorting(b, i, sortedInstructions, map);
         }
         addToSorting(b, b.lastNode(), sortedInstructions, map);
-        assert sortedInstructions.get(sortedInstructions.size() - 1) == b.lastNode() : "lastNode=" + b.lastNode() + ", firstNode=" + b.firstNode();
+        assert sortedInstructions.get(sortedInstructions.size() - 1) == b.lastNode() : "lastNode=" + b.lastNode() + ", firstNode=" + b.firstNode() + ", sorted(sz-1)=" + sortedInstructions.get(sortedInstructions.size() - 1);
         b.setInstructions(sortedInstructions);
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
-        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local || i instanceof LoopCounter) {
             return;
         }
 

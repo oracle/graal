@@ -225,10 +225,16 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         if (block.blockPredecessors().size() > 1) {
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE RESET");
+            }
             lastState = null;
         }
 
         for (Node instr : block.getInstructions()) {
+            if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                TTY.println("LIRGen for " + instr);
+            }
             FrameState stateAfter = null;
             if (instr instanceof Instruction) {
                 stateAfter = ((Instruction) instr).stateAfter();
@@ -1011,10 +1017,22 @@ public abstract class LIRGenerator extends ValueVisitor {
                 emitXir(prologue, null, null, null, false);
             }
             FrameState fs = setOperandsForLocals();
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE CHANGE (setOperandsForLocals)");
+                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    TTY.println(fs.toString());
+                }
+            }
             lastState = fs;
         } else if (block.blockPredecessors().size() == 1) {
             FrameState fs = block.blockPredecessors().get(0).lastState();
             assert fs != null;
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE CHANGE (singlePred)");
+                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    TTY.println(fs.toString());
+                }
+            }
             lastState = fs;
         }
     }
@@ -1183,7 +1201,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected void arithmeticOpLong(int code, CiValue result, CiValue left, CiValue right, LIRDebugInfo info) {
+    protected void arithmeticOpLong(int code, CiValue result, CiValue left, CiValue right) {
         CiValue leftOp = left;
 
         if (isTwoOperand && leftOp != result) {
@@ -1441,6 +1459,27 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         resolver.dispose();
+        //TODO (gd) remove that later
+        if (merge instanceof LoopBegin) {
+            for (Node usage : merge.usages()) {
+                if (usage instanceof LoopCounter) {
+                    LoopCounter counter = (LoopCounter) usage;
+                    if (counter.operand().isIllegal()) {
+                        createResultVariable(counter);
+                    }
+                    if (nextSuccIndex == 0) { // (gd) nasty
+                        lir.move(operandForInstruction(counter.init()), counter.operand());
+                    } else {
+                        if (counter.kind == CiKind.Int) {
+                            this.arithmeticOpInt(IADD, counter.operand(), counter.operand(), operandForInstruction(counter.stride()), CiValue.IllegalValue);
+                        } else {
+                            assert counter.kind == CiKind.Long;
+                            this.arithmeticOpLong(LADD, counter.operand(), counter.operand(), operandForInstruction(counter.stride()));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -1459,7 +1498,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (x instanceof Constant) {
                 x.setOperand(x.asConstant());
             } else {
-                assert x instanceof Phi || x instanceof Local : "only for Phi and Local";
+                assert x instanceof Phi || x instanceof Local : "only for Phi and Local : " + x;
                 // allocate a variable for this local or phi
                 createResultVariable(x);
             }
@@ -1471,8 +1510,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         assert !phi.isDead() : "dead phi: " + phi.id();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
-            CiVariable operand = newVariable(phi.kind);
-            setResult(phi, operand);
+            createResultVariable(phi);
         }
         return phi.operand();
     }

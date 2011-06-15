@@ -240,7 +240,7 @@ public class IdealGraphPrinter {
                         nodes.add(merge.stateBefore());
                     }
                     for (Node usage : merge.usages()) {
-                        if (usage instanceof Phi) {
+                        if (usage instanceof Phi || usage instanceof LoopCounter) {
                             nodes.add(usage);
                         }
                     }
