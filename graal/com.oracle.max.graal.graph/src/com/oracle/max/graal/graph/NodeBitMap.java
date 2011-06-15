@@ -65,7 +65,7 @@ public final class NodeBitMap {
         check(node);
         bitMap.clear(node.id());
     }
-    
+
     public void clearAll() {
         bitMap.clearAll();
     }

@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -72,6 +74,14 @@ public class Deoptimize extends Instruction {
     @Override
     public String shortName() {
         return message == null ? "Deopt " : "Deopt " + message;
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("message", message);
+        properties.put("action", action);
+        return properties;
     }
 
     @Override

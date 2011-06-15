@@ -56,10 +56,8 @@ public class LoopPhase extends Phase {
                     if (!loopNodes.isMarked(init) && backEdge instanceof IntegerAdd && loopNodes.isMarked(backEdge)) {
                         IntegerAdd add = (IntegerAdd) backEdge;
                         int addUsageCount = 0;
-                        System.out.println("BackEdge usages :");
                         for (Node u : add.usages()) {
                             if (u != loopEnd.stateBefore()) {
-                                System.out.println(" - " + u);
                                 addUsageCount++;
                             }
                         }
