@@ -114,7 +114,7 @@ public final class Local extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        Local x = new Local(kind, index, start(), into);
+        Local x = new Local(kind, index, null, into);
         x.setDeclaredType(declaredType());
         return x;
     }

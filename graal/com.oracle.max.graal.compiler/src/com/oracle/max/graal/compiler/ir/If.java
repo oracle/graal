@@ -109,7 +109,7 @@ public final class If extends BlockEnd {
 
     @Override
     public String shortName() {
-        return "If " + compare().condition.operator;
+        return "If " + (compare() == null ? "?" : compare().condition.operator);
     }
 
     @Override

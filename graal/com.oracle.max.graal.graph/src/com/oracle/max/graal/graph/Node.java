@@ -125,6 +125,7 @@ public abstract class Node {
     public void delete() {
         assert !isDeleted();
         assert checkDeletion() : "Could not delete " + this;
+
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);
         }

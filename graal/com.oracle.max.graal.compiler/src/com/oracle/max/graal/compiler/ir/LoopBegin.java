@@ -43,7 +43,7 @@ public class LoopBegin extends Merge {
                 }
             }
         }
-        assert false : "Begin should always have a LoopEnd";
+        assert false : "LoopBegin should always have a LoopEnd";
         return null;
     }
 

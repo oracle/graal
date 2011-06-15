@@ -230,7 +230,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else {
                 Block dominatorBlock = b.getPredecessors().get(0);
-                for (int i=1; i<b.getPredecessors().size(); ++i) {
+                for (int i = 1; i < b.getPredecessors().size(); ++i) {
                     dominatorBlock = getCommonDominator(dominatorBlock, b.getPredecessors().get(i));
                 }
                 CiBitMap blockMap = new CiBitMap(blocks.size());

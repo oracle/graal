@@ -72,7 +72,12 @@ public class IR {
 
 
         printGraph("After GraphBuilding", compilation.graph);
-        //new DuplicationPhase().apply(compilation.graph);
+
+        if (GraalOptions.TestGraphDuplication) {
+            new DuplicationPhase().apply(compilation.graph);
+            printGraph("After Duplication", compilation.graph);
+        }
+
         new DeadCodeEliminationPhase().apply(compilation.graph);
         printGraph("After DeadCodeElimination", compilation.graph);
 

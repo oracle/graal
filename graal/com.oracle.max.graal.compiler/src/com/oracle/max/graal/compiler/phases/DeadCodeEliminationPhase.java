@@ -32,37 +32,41 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private NodeFlood flood;
     private Graph graph;
+    private ArrayList<LoopBegin> brokenLoops;
 
     @Override
     protected void run(Graph graph) {
         this.graph = graph;
         this.flood = graph.createNodeFlood();
+        this.brokenLoops = new ArrayList<LoopBegin>();
 
         // remove chained Merges
-//        for (Merge merge : graph.getNodes(Merge.class)) {
-//            if (merge.predecessors().size() == 1 && merge.usages().size() == 0) {
-//                if (merge.successors().get(0) instanceof Merge) {
-//                    Node pred = merge.predecessors().get(0);
-//                    int predIndex = merge.predecessorsIndex().get(0);
-//                    pred.successors().setAndClear(predIndex, merge, 0);
-//                    merge.delete();
-//                }
-//            }
-//        }
-//        Node startSuccessor = graph.start().successors().get(0);
-//        if (startSuccessor instanceof Merge) {
-//            Merge startMerge = (Merge) startSuccessor;
-//            if (startMerge.predecessors().size() == 1 && startMerge.usages().size() == 0) {
-//                int predIndex = startMerge.predecessorsIndex().get(0);
-//                graph.start().successors().setAndClear(predIndex, startMerge, 0);
-//                startMerge.delete();
-//            }
-//        }
+        for (Merge merge : graph.getNodes(Merge.class)) {
+            if (merge.predecessors().size() == 1 && merge.usages().size() == 0) {
+                if (merge.successors().get(0) instanceof Merge) {
+                    Node pred = merge.predecessors().get(0);
+                    int predIndex = merge.predecessorsIndex().get(0);
+                    pred.successors().setAndClear(predIndex, merge, 0);
+                    merge.delete();
+                }
+            }
+        }
+        Node startSuccessor = graph.start().successors().get(0);
+        if (startSuccessor instanceof Merge) {
+            Merge startMerge = (Merge) startSuccessor;
+            if (startMerge.predecessors().size() == 1 && startMerge.usages().size() == 0) {
+                int predIndex = startMerge.predecessorsIndex().get(0);
+                graph.start().successors().setAndClear(predIndex, startMerge, 0);
+                startMerge.delete();
+            }
+        }
 
         flood.add(graph.start());
 
         iterateSuccessors();
         disconnectCFGNodes();
+
+        deleteBrokenLoops();
 
         iterateInputs();
         disconnectNonCFGNodes();
@@ -108,6 +112,21 @@ public class DeadCodeEliminationPhase extends Phase {
                 node.successors().clearAll();
                 node.inputs().clearAll();
             }
+        }
+    }
+
+    private void deleteBrokenLoops() {
+        for (LoopBegin loop : brokenLoops) {
+            assert loop.predecessors().size() == 1;
+            for (Node usage : new ArrayList<Node>(loop.usages())) {
+                assert usage instanceof Phi;
+                usage.replace(((Phi) usage).valueAt(0));
+            }
+
+            Node pred = loop.predecessors().get(0);
+            int predIndex = loop.predecessorsIndex().get(0);
+            pred.successors().setAndClear(predIndex, loop, 0);
+            loop.delete();
         }
     }
 

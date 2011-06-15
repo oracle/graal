@@ -173,7 +173,7 @@ public class IdealGraphPrinter {
             }
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();
-                String value = entry.getValue().toString();
+                String value = entry.getValue() == null ? "null" : entry.getValue().toString();
                 stream.printf("    <p name='%s'>%s</p>%n", escape(key), escape(value));
             }
 
