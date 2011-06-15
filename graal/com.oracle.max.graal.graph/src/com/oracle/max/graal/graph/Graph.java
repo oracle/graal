@@ -184,6 +184,31 @@ public class Graph {
                 }
             }
         }
+        
+        // re-wire successors
+        for (Entry<Node, Node> entry : newNodes.entrySet()) {
+            Node oldNode = entry.getKey();
+            Node node = entry.getValue();
+            for (int i = 0; i < oldNode.successors().size(); i++) {
+                Node succ = oldNode.successors().get(i);
+                Node target = replacements.get(succ);
+                if (target == null) {
+                    target = newNodes.get(succ);
+                }
+                node.successors().setOrExpand(i, target);
+            }
+        }
+        for (Entry<Node, Node> entry : replacements.entrySet()) {
+            Node oldNode = entry.getKey();
+            Node node = entry.getValue();
+            for (int i = 0; i < oldNode.successors().size(); i++) {
+                Node succ = oldNode.successors().get(i);
+                if (newNodes.containsKey(succ)) {
+                    node.successors().setOrExpand(i, newNodes.get(succ));
+                }
+            }
+        }
+        /*
         // re-wire successors
         for (Entry<Node, Node> entry : newNodes.entrySet()) {
             Node oldNode = entry.getKey();
@@ -208,7 +233,7 @@ public class Graph {
                     newNodes.get(pred).successors().set(predIndex, node);
                 }
             }
-        }
+        }*/
         return newNodes;
     }
 }
