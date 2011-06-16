@@ -68,7 +68,7 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private static boolean isCFG(Node n) {
-        return n != null && ((n instanceof Instruction) || n == n.graph().start());
+        return n != null && ((n instanceof Instruction) || (n instanceof ControlSplit) || n == n.graph().start());
     }
 
     private void iterateSuccessors() {

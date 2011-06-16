@@ -41,7 +41,7 @@ public abstract class Phase {
     }
 
     public final void apply(Graph graph) {
-        assert graph != null;
+        assert graph != null && graph.verify();
 
         int startDeletedNodeCount = graph.getDeletedNodeCount();
         int startNodeCount = graph.getNodeCount();
@@ -73,6 +73,8 @@ public abstract class Phase {
         if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After " + getName(), graph, true, false));
         }
+
+        assert graph.verify();
 
         // (Item|Graph|Phase|Value)
     }

@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -309,8 +310,9 @@ public class InliningPhase extends Phase {
             }
             Node returnDuplicate = duplicates.get(returnNode);
             returnDuplicate.inputs().clearAll();
-            returnDuplicate.replace(invoke.next());
+            Node n = invoke.next();
             invoke.setNext(null);
+            returnDuplicate.replace(n);
         }
 
         if (exceptionEdge != null) {
@@ -325,7 +327,9 @@ public class InliningPhase extends Phase {
                     usage.inputs().replace(obj, unwindDuplicate.exception());
                 }
                 unwindDuplicate.inputs().clearAll();
-                unwindDuplicate.replace(obj.next());
+                Node n = obj.next();
+                obj.setNext(null);
+                unwindDuplicate.replace(n);
             }
         }
 

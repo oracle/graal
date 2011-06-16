@@ -33,6 +33,8 @@ import java.util.Map.Entry;
 
 public class Graph {
 
+    public static final List<VerificationListener> verificationListeners = new ArrayList<VerificationListener>(4);
+
     private final ArrayList<Node> nodes;
     private final StartNode start;
     int nextId;
@@ -147,6 +149,13 @@ public class Graph {
 
     public NodeWorkList createNodeWorkList(boolean fill, int iterationLimitPerNode) {
         return new NodeWorkList(this, fill, iterationLimitPerNode);
+    }
+
+    public boolean verify() {
+        for (Node n : getNodes()) {
+            assert n == Node.Null || n.verify();
+        }
+        return true;
     }
 
     public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
