@@ -45,6 +45,7 @@ import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
+import com.sun.cri.ri.RiType.*;
 import com.sun.cri.xir.*;
 import com.sun.cri.xir.CiXirAssembler.*;
 
@@ -722,6 +723,13 @@ public abstract class LIRGenerator extends ValueVisitor {
             CiValue value = load(x.object());
             LIRDebugInfo info = stateFor(x);
             lir.nullCheck(value, info);
+        } else if (comp instanceof IsType) {
+            IsType x = (IsType) comp;
+            CiValue value = load(x.object());
+            LIRDebugInfo info = stateFor(x);
+            XirArgument clazz = toXirArgument(x.type().getEncoding(Representation.ObjectHub));
+            XirSnippet typeCheck = xir.genTypeCheck(site(x), toXirArgument(x.object()), clazz, x.type());
+            emitXir(typeCheck, x, info, compilation.method, false);
         }
     }
 

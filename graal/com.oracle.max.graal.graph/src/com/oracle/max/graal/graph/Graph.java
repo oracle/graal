@@ -63,37 +63,37 @@ public class Graph {
         return Collections.unmodifiableList(nodes);
     }
 
-    public static class TypedNodeIterator<T> implements Iterator<T> {
+    public class TypedNodeIterator<T> implements Iterator<T> {
         private final Class<T> type;
-        private final Iterator<Node> iter;
-        private Node nextNode;
+        private int index;
 
-        public TypedNodeIterator(Class<T> type, Iterator<Node> iter) {
+        public TypedNodeIterator(Class<T> type) {
             this.type = type;
-            this.iter = iter;
+            this.index = -1;
             forward();
         }
 
         private void forward() {
-            do {
-                if (!iter.hasNext()) {
-                    nextNode = null;
-                    return;
+            if (index < nodes.size()) {
+                do {
+                    index++;
+                } while (index < nodes.size() && !type.isInstance(nodes.get(index)));
+                if (index >= nodes.size()) {
+                    index = Integer.MAX_VALUE;
                 }
-                nextNode = iter.next();
-            } while (nextNode == null || !type.isInstance(nextNode));
+            }
         }
 
         @Override
         public boolean hasNext() {
-            return nextNode != null;
+            return index < nodes.size();
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public T next() {
             try {
-                return (T) nextNode;
+                return (T) nodes.get(index);
             } finally {
                 forward();
             }
@@ -109,7 +109,7 @@ public class Graph {
         return new Iterable<T>() {
             @Override
             public Iterator<T> iterator() {
-                return new TypedNodeIterator<T>(type, nodes.iterator());
+                return new TypedNodeIterator<T>(type);
             }
         };
     }
