@@ -51,14 +51,14 @@ public abstract class BlockEnd extends Instruction {
     /**
      * The list of instructions that produce input for this instruction.
      */
-    public Instruction blockSuccessor(int index) {
+    public FixedNode blockSuccessor(int index) {
         assert index >= 0 && index < blockSuccessorCount;
-        return (Instruction) successors().get(super.successorCount() + SUCCESSOR_COUNT + index);
+        return (FixedNode) successors().get(super.successorCount() + SUCCESSOR_COUNT + index);
     }
 
-    public Instruction setBlockSuccessor(int index, Instruction n) {
+    public FixedNode setBlockSuccessor(int index, FixedNode n) {
         assert index >= 0 && index < blockSuccessorCount;
-        return (Merge) successors().set(super.successorCount() + SUCCESSOR_COUNT + index, n);
+        return (FixedNode) successors().set(super.successorCount() + SUCCESSOR_COUNT + index, n);
     }
 
     public int blockSuccessorCount() {
@@ -87,19 +87,6 @@ public abstract class BlockEnd extends Instruction {
     }
 
     /**
-     * Gets the block begin associated with this block end.
-     * @return the beginning of this basic block
-     */
-    public Merge begin() {
-        for (Node n : predecessors()) {
-            if (n instanceof Merge) {
-                return (Merge) n;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Substitutes a successor block in this block end's successor list. Note that
      * this method updates all occurrences in the list.
      * @param oldSucc the old successor to replace
@@ -121,7 +108,7 @@ public abstract class BlockEnd extends Instruction {
      * Gets the successor corresponding to the default (fall through) case.
      * @return the default successor
      */
-    public Instruction defaultSuccessor() {
+    public FixedNode defaultSuccessor() {
         return blockSuccessor(blockSuccessorCount - 1);
     }
 

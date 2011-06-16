@@ -77,6 +77,7 @@ public final class NodeBitMap {
     private void check(Node node) {
         assert node.graph == graph : "this node is not part of the graph";
         assert !isNew(node) : "this node (" + node.id() + ") was added to the graph after creating the node bitmap (" + bitMap.length() + ")";
+        assert !node.isDeleted() : "node " + node + " is deleted!";
     }
 
     @Override

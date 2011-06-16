@@ -20,16 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.runtime;
+package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.*;
-import com.sun.cri.ri.*;
+import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
-public interface Compiler {
 
-    VMEntries getVMEntries();
-    VMExits getVMExits();
-    GraalCompiler getCompiler();
-    RiType lookupType(String returnType, HotSpotTypeResolved accessingClass);
+public final class EndNode extends FixedNode {
+    public static final int SUCCESSOR_COUNT = 0;
+    public static final int INPUT_COUNT = 0;
+    public EndNode(Graph graph) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
 
+    @Override
+    public void accept(ValueVisitor v) {
+        v.visitEndNode(this);
+    }
+
+    @Override
+    public void print(LogStream out) {
+        out.print("end");
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        return new EndNode(into);
+    }
+
+    public Merge merge() {
+        if (usages().size() == 0) {
+            return null;
+        } else {
+            assert usages().size() == 1;
+            return (Merge) usages().get(0);
+        }
+    }
 }

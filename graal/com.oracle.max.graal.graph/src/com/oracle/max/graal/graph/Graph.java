@@ -171,7 +171,7 @@ public class Graph {
                 if (target == null) {
                     target = newNodes.get(input);
                 }
-                node.inputs().set(i, target);
+                node.inputs().setOrExpand(i, target);
             }
         }
         for (Entry<Node, Node> entry : replacements.entrySet()) {
@@ -180,32 +180,31 @@ public class Graph {
             for (int i = 0; i < oldNode.inputs().size(); i++) {
                 Node input = oldNode.inputs().get(i);
                 if (newNodes.containsKey(input)) {
-                    node.inputs().set(i, newNodes.get(input));
+                    node.inputs().setOrExpand(i, newNodes.get(input));
                 }
             }
         }
+        
         // re-wire successors
         for (Entry<Node, Node> entry : newNodes.entrySet()) {
             Node oldNode = entry.getKey();
             Node node = entry.getValue();
-            for (int i = 0; i < oldNode.predecessors().size(); i++) {
-                Node pred = oldNode.predecessors().get(i);
-                int predIndex = oldNode.predecessorsIndex().get(i);
-                Node source = replacements.get(pred);
-                if (source == null) {
-                    source = newNodes.get(pred);
+            for (int i = 0; i < oldNode.successors().size(); i++) {
+                Node succ = oldNode.successors().get(i);
+                Node target = replacements.get(succ);
+                if (target == null) {
+                    target = newNodes.get(succ);
                 }
-                source.successors().set(predIndex,  node);
+                node.successors().setOrExpand(i, target);
             }
         }
         for (Entry<Node, Node> entry : replacements.entrySet()) {
             Node oldNode = entry.getKey();
             Node node = entry.getValue();
-            for (int i = 0; i < oldNode.predecessors().size(); i++) {
-                Node pred = oldNode.predecessors().get(i);
-                int predIndex = oldNode.predecessorsIndex().get(i);
-                if (newNodes.containsKey(pred)) {
-                    newNodes.get(pred).successors().set(predIndex, node);
+            for (int i = 0; i < oldNode.successors().size(); i++) {
+                Node succ = oldNode.successors().get(i);
+                if (newNodes.containsKey(succ)) {
+                    node.successors().setOrExpand(i, newNodes.get(succ));
                 }
             }
         }

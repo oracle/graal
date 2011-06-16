@@ -262,6 +262,7 @@ public class InliningPhase extends Phase {
             System.out.println("inlining " + name + ": " + frameStates.size() + " frame states, " + nodes.size() + " nodes");
         }
 
+        assert invoke.successors().get(0) != null : invoke;
         assert invoke.predecessors().size() == 1 : "size: " + invoke.predecessors().size();
         Instruction pred;
         if (withReceiver) {
@@ -269,7 +270,7 @@ public class InliningPhase extends Phase {
             clipNode.setNode(new IsNonNull(parameters[0], compilation.graph));
             pred = clipNode;
         } else {
-            pred = new Merge(compilation.graph);
+            pred = new Placeholder(compilation.graph);//(Instruction) invoke.predecessors().get(0);//new Merge(compilation.graph);
         }
         invoke.predecessors().get(0).successors().replace(invoke, pred);
         replacements.put(startNode, pred);
@@ -293,6 +294,10 @@ public class InliningPhase extends Phase {
             }
         }
 
+        if (pred instanceof Placeholder) {
+            pred.replace(((Placeholder)pred).next());
+        }
+
         if (returnNode != null) {
             List<Node> usages = new ArrayList<Node>(invoke.usages());
             for (Node usage : usages) {
@@ -304,18 +309,8 @@ public class InliningPhase extends Phase {
             }
             Node returnDuplicate = duplicates.get(returnNode);
             returnDuplicate.inputs().clearAll();
-
-            Merge mergeAfter = new Merge(compilation.graph);
-
-            assert returnDuplicate.predecessors().size() == 1;
-            Node returnPred = returnDuplicate.predecessors().get(0);
-            int index = returnDuplicate.predecessorsIndex().get(0);
-            mergeAfter.successors().setAndClear(0, invoke, 0);
-            returnPred.successors().set(index, mergeAfter);
-
-            returnDuplicate.delete();
-
-            mergeAfter.setStateBefore(stateAfter);
+            returnDuplicate.replace(invoke.next());
+            invoke.setNext(null);
         }
 
         if (exceptionEdge != null) {
@@ -330,14 +325,7 @@ public class InliningPhase extends Phase {
                     usage.inputs().replace(obj, unwindDuplicate.exception());
                 }
                 unwindDuplicate.inputs().clearAll();
-
-                assert unwindDuplicate.predecessors().size() == 1;
-                Node unwindPred = unwindDuplicate.predecessors().get(0);
-                int index = unwindDuplicate.predecessorsIndex().get(0);
-                unwindPred.successors().setAndClear(index, obj, 0);
-
-                obj.inputs().clearAll();
-                unwindDuplicate.delete();
+                unwindDuplicate.replace(obj.next());
             }
         }
 

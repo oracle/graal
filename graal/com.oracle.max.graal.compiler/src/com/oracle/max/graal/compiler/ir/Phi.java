@@ -37,16 +37,13 @@ public final class Phi extends FloatingNode {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_MERGE = 0;
 
-    private final int maxValues;
-
     private static final int SUCCESSOR_COUNT = 0;
 
-    private int usedInputCount;
     private boolean isDead;
 
     @Override
     protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT + maxValues;
+        return super.inputCount() + INPUT_COUNT;
     }
 
     @Override
@@ -61,24 +58,12 @@ public final class Phi extends FloatingNode {
         return (Merge) inputs().get(super.inputCount() + INPUT_MERGE);
     }
 
-    public Value setMerge(Value n) {
-        return (Merge) inputs().set(super.inputCount() + INPUT_MERGE, n);
+    public void setMerge(Value n) {
+        inputs().set(super.inputCount() + INPUT_MERGE, n);
     }
 
-    /**
-     * Create a new Phi for the specified join block and local variable (or operand stack) slot.
-     * @param kind the type of the variable
-     * @param merge the join point
-     * @param graph
-     */
     public Phi(CiKind kind, Merge merge, Graph graph) {
-        this(kind, merge, DEFAULT_MAX_VALUES, graph);
-    }
-
-    public Phi(CiKind kind, Merge merge, int maxValues, Graph graph) {
-        super(kind, INPUT_COUNT + maxValues, SUCCESSOR_COUNT, graph);
-        this.maxValues = maxValues;
-        usedInputCount = 0;
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setMerge(merge);
     }
 
@@ -89,11 +74,11 @@ public final class Phi extends FloatingNode {
      * @return the instruction that produced the value in the i'th predecessor
      */
     public Value valueAt(int i) {
-        return (Value) inputs().get(INPUT_COUNT + i);
+        return (Value) inputs().variablePart().get(i);
     }
 
-    public Node setValueAt(int i, Node x) {
-        return inputs().set(INPUT_COUNT + i, x);
+    public void setValueAt(int i, Value x) {
+        inputs().set(INPUT_COUNT + i, x);
     }
 
     /**
@@ -101,7 +86,7 @@ public final class Phi extends FloatingNode {
      * @return the number of inputs in this phi
      */
     public int valueCount() {
-        return usedInputCount;
+        return inputs().variablePart().size();
     }
 
     @Override
@@ -144,36 +129,17 @@ public final class Phi extends FloatingNode {
         return "Phi: (" + str + ")";
     }
 
-    public Phi addInput(Node y) {
-        assert !this.isDeleted() && !y.isDeleted();
-        Phi phi = this;
-        if (usedInputCount == maxValues) {
-            phi = new Phi(kind, merge(), maxValues * 2, graph());
-            for (int i = 0; i < valueCount(); ++i) {
-                phi.addInput(valueAt(i));
-            }
-            phi.addInput(y);
-            this.replace(phi);
-        } else {
-            setValueAt(usedInputCount++, y);
-        }
-        return phi;
+    public void addInput(Node y) {
+        inputs().variablePart().add(y);
     }
 
     public void removeInput(int index) {
-        assert index < valueCount() : "index: " + index + ", valueCount: " + valueCount() + "@phi " + id();
-        setValueAt(index, Node.Null);
-        for (int i = index + 1; i < valueCount(); ++i) {
-            setValueAt(i - 1, valueAt(i));
-        }
-        setValueAt(valueCount() - 1, Node.Null);
-        usedInputCount--;
+        inputs().variablePart().remove(index);
     }
 
     @Override
     public Node copy(Graph into) {
-        Phi x = new Phi(kind, null, maxValues, into);
-        x.usedInputCount = usedInputCount;
+        Phi x = new Phi(kind, null, into);
         x.isDead = isDead;
         return x;
     }

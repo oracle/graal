@@ -155,4 +155,42 @@ public final class CompilerImpl implements Compiler, Remote {
         return vmExits;
     }
 
+    @Override
+    public RiType lookupType(String returnType, HotSpotTypeResolved accessingClass) {
+        if (returnType.length() == 1 && vmExits instanceof VMExitsNative) {
+            VMExitsNative exitsNative = (VMExitsNative) vmExits;
+            CiKind kind = CiKind.fromPrimitiveOrVoidTypeChar(returnType.charAt(0));
+            switch(kind) {
+                case Boolean:
+                    return exitsNative.typeBoolean;
+                case Byte:
+                    return exitsNative.typeByte;
+                case Char:
+                    return exitsNative.typeChar;
+                case Double:
+                    return exitsNative.typeDouble;
+                case Float:
+                    return exitsNative.typeFloat;
+                case Illegal:
+                    break;
+                case Int:
+                    return exitsNative.typeInt;
+                case Jsr:
+                    break;
+                case Long:
+                    return exitsNative.typeLong;
+                case Object:
+                    break;
+                case Short:
+                    return exitsNative.typeShort;
+                case Void:
+                    return exitsNative.typeVoid;
+                case Word:
+                    break;
+
+            }
+        }
+        return vmEntries.RiSignature_lookupType(returnType, accessingClass);
+    }
+
 }

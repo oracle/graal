@@ -39,7 +39,6 @@ public abstract class Node {
     final NodeArray successors;
     final ArrayList<Node> usages;
     final ArrayList<Node> predecessors;
-    final ArrayList<Integer> predecessorsIndex;
 
     public Node(int inputCount, int successorCount, Graph graph) {
         assert graph != null : "cannot create a node for a null graph";
@@ -47,17 +46,12 @@ public abstract class Node {
         this.id = graph.register(this);
         this.inputs = new NodeArray(this, inputCount);
         this.successors = new NodeArray(this, successorCount);
-        this.predecessors = new ArrayList<Node>();
-        this.usages = new ArrayList<Node>();
-        this.predecessorsIndex = new ArrayList<Integer>();
+        this.predecessors = new ArrayList<Node>(1);
+        this.usages = new ArrayList<Node>(4);
     }
 
     public List<Node> predecessors() {
         return Collections.unmodifiableList(predecessors);
-    }
-
-    public List<Integer> predecessorsIndex() {
-        return Collections.unmodifiableList(predecessorsIndex);
     }
 
     public List<Node> usages() {
@@ -96,18 +90,19 @@ public abstract class Node {
         }
         int z = 0;
         for (Node predecessor : predecessors) {
-            int predIndex = predecessorsIndex.get(z);
-            predecessor.successors.nodes[predIndex] = other;
+            for (int i=0; i<predecessor.successors.size(); i++) {
+                if (predecessor.successors.get(i) == this) {
+                    predecessor.successors.silentSet(i, other);
+                }
+            }
             ++z;
         }
         if (other != null) {
             other.usages.addAll(usages);
             other.predecessors.addAll(predecessors);
-            other.predecessorsIndex.addAll(predecessorsIndex);
         }
         usages.clear();
         predecessors.clear();
-        predecessorsIndex.clear();
         delete();
         return other;
     }
@@ -125,14 +120,12 @@ public abstract class Node {
         }
         usages.clear();
         predecessors.clear();
-        predecessorsIndex.clear();
-        delete();
     }
 
     public void delete() {
         assert !isDeleted();
-        assert checkDeletion();
-        assert predecessorsIndex.size() == 0;
+        assert checkDeletion() : "Could not delete " + this;
+
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);
         }
