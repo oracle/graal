@@ -285,10 +285,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         // Nothing to do.
     }
 
-    private static boolean jumpsToNextBlock(Node node) {
-        return node instanceof BlockEnd || node instanceof EndNode || node instanceof LoopEnd;
-    }
-
     @Override
     public void visitArrayLength(ArrayLength x) {
         emitArrayLength(x);
@@ -1433,6 +1429,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitEndNode(EndNode end) {
         setNoResult(end);
         Merge merge = end.merge();
+        assert merge != null;
         moveToPhi(merge, merge.endIndex(end));
         lir.jump(getLIRBlock(end.merge()));
     }

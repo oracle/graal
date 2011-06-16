@@ -299,17 +299,12 @@ public final class GraphBuilderPhase extends Phase {
             if (first instanceof Placeholder) {
                 assert !target.isLoopHeader;
                 Merge merge = new Merge(graph);
-
-
-
                 Placeholder p = (Placeholder) first;
                 assert p.predecessors().size() == 1;
                 assert p.next() == null;
-
                 EndNode end = new EndNode(graph);
                 p.replace(end);
                 merge.addEnd(end);
-                //end.setNext(merge);
                 target.firstInstruction = merge;
                 merge.setStateBefore(existingState);
                 first = merge;
@@ -1089,6 +1084,12 @@ public final class GraphBuilderPhase extends Phase {
         return append(new Constant(constant, graph));
     }
 
+    private Value append(FixedNode fixed) {
+        lastInstr.setNext(fixed);
+        lastInstr = null;
+        return fixed;
+    }
+
     private Value append(Instruction x) {
         return appendWithBCI(x);
     }
@@ -1211,9 +1212,13 @@ public final class GraphBuilderPhase extends Phase {
                 } else {
                     end.delete();
                     Merge merge = new Merge(graph);
+                    for (int i = 0; i < begin.endCount(); ++i) {
+                        merge.addEnd(begin.endAt(i));
+                    }
                     merge.setNext(begin.next());
                     begin.setNext(null);
                     begin.replace(merge);
+                    TTY.println("replace loop");
                 }
             }
         }
@@ -1270,7 +1275,9 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void appendGoto(FixedNode target) {
-        lastInstr.setNext(target);
+        if (lastInstr != null) {
+            lastInstr.setNext(target);
+        }
     }
 
     private void iterateBytecodesForBlock(Block block) {
@@ -1295,7 +1302,7 @@ public final class GraphBuilderPhase extends Phase {
             traceInstruction(bci, opcode, bci == block.startBci);
             processBytecode(bci, opcode);
 
-            if (IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
+            if (lastInstr == null || IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
                 break;
             }
 

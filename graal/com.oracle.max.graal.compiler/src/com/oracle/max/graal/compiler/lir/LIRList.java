@@ -245,6 +245,7 @@ public final class LIRList {
     }
 
     public void jump(LIRBlock block) {
+        assert block != null;
         append(new LIRBranch(Condition.TRUE, block));
     }
 

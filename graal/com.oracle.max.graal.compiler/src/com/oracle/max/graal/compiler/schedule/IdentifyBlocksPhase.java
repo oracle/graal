@@ -90,7 +90,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     public static boolean isBlockEnd(Node n) {
-        return trueSuccessorCount(n) > 1 || n instanceof Anchor || n instanceof Return || n instanceof Unwind;
+        return trueSuccessorCount(n) > 1 || n instanceof Return || n instanceof Unwind || n instanceof Deoptimize;
     }
 
     private void identifyBlocks() {

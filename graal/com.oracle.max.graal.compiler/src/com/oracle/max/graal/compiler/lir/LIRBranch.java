@@ -110,6 +110,7 @@ public class LIRBranch extends LIRInstruction {
     public void changeBlock(LIRBlock b) {
         assert block != null : "must have old block";
         assert block.label() == label() : "must be equal";
+        assert b != null;
 
         this.block = b;
         this.label = b.label();
@@ -146,6 +147,7 @@ public class LIRBranch extends LIRInstruction {
     }
 
     public void substitute(LIRBlock oldBlock, LIRBlock newBlock) {
+        assert newBlock != null;
         if (block == oldBlock) {
             block = newBlock;
             LIRInstruction instr = newBlock.lir().instructionsList().get(0);

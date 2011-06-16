@@ -28,7 +28,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-public class Deoptimize extends Instruction {
+public class Deoptimize extends FixedNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
