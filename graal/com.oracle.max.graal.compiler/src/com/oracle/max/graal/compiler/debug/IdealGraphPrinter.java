@@ -130,14 +130,14 @@ public class IdealGraphPrinter {
         }
         stream.println("  </edges>");
 
-        stream.println("  <controlFlow>");
         if (schedule != null) {
+            stream.println("  <controlFlow>");
             for (Block block : schedule.getBlocks()) {
                 printBlock(graph, block);
             }
+            printNoBlock();
+            stream.println("  </controlFlow>");
         }
-        printNoBlock();
-        stream.println("  </controlFlow>");
 
         stream.println(" </graph>");
         flush();
@@ -209,7 +209,7 @@ public class IdealGraphPrinter {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
-            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) {
+            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) { //TODO gd
                 // Skip back edges.
             } else {
                 stream.printf("     <successor name='%d'/>%n", sux.blockID());
@@ -218,10 +218,10 @@ public class IdealGraphPrinter {
         stream.printf("    </successors>%n");
         stream.printf("    <nodes>%n");
 
-        ArrayList<Node> nodes = new ArrayList<Node>(block.getInstructions());
+        Set<Node> nodes = new HashSet<Node>(block.getInstructions());
         if (nodes.size() > 0) {
             // if this is the first block: add all locals to this block
-            if (nodes.get(0) == graph.start()) {
+            if (block.getInstructions() == graph.start()) {
                 for (Node node : graph.getNodes()) {
                     if (node instanceof Local) {
                         nodes.add(node);
@@ -239,7 +239,9 @@ public class IdealGraphPrinter {
                     if (merge.stateBefore() != null) {
                         nodes.add(merge.stateBefore());
                     }
-                    for (Node usage : merge.usages()) {
+                }
+                if (node instanceof PhiPoint) {
+                    for (Node usage : node.usages()) {
                         if (usage instanceof Phi || usage instanceof LoopCounter) {
                             nodes.add(usage);
                         }

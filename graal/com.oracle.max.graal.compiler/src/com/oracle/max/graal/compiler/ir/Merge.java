@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -33,7 +35,7 @@ import com.sun.cri.ci.*;
  * about the basic block, including the successor and
  * predecessor blocks, exception handlers, liveness information, etc.
  */
-public class Merge extends StateSplit {
+public class Merge extends StateSplit implements PhiPoint{
 
     private static final int INPUT_COUNT = 0;
 
@@ -293,5 +295,26 @@ public class Merge extends StateSplit {
                 phi.removeInput(predIndex);
             }
         }
+    }
+
+    @Override
+    public int phiPointPredecessorCount() {
+        return endCount();
+    }
+
+    @Override
+    public int phiPointPredecessorIndex(Node pred) {
+        EndNode end = (EndNode) pred;
+        return endIndex(end);
+    }
+
+    @Override
+    public Node asNode() {
+        return this;
+    }
+
+    @Override
+    public Collection<Phi> phis() {
+        return Util.filter(this.usages(), Phi.class);
     }
 }

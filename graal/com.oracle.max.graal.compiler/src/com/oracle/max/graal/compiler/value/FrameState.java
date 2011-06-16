@@ -187,6 +187,28 @@ public final class FrameState extends Value implements FrameStateAccess {
         return true;
     }
 
+    public boolean equals(FrameStateAccess other) {
+        if (stackSize() != other.stackSize() || localsSize() != other.localsSize() || locksSize() != other.locksSize()) {
+            return false;
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            Value x = stackAt(i);
+            Value y = other.stackAt(i);
+            if (x != y) {
+                return false;
+            }
+        }
+        for (int i = 0; i < locksSize(); i++) {
+            if (lockAt(i) != other.lockAt(i)) {
+                return false;
+            }
+        }
+        if (other.outerFrameState() != outerFrameState()) {
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Gets the size of the local variables.
      */
@@ -282,7 +304,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param block the block begin for which we are creating the phi
      * @param i the index into the stack for which to create a phi
      */
-    public Phi setupPhiForStack(Merge block, int i) {
+    public Phi setupPhiForStack(PhiPoint block, int i) {
         Value p = stackAt(i);
         if (p != null) {
             if (p instanceof Phi) {
@@ -303,7 +325,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param block the block begin for which we are creating the phi
      * @param i the index of the local variable for which to create the phi
      */
-    public Phi setupPhiForLocal(Merge block, int i) {
+    public Phi setupPhiForLocal(PhiPoint block, int i) {
         Value p = localAt(i);
         if (p instanceof Phi) {
             Phi phi = (Phi) p;
@@ -351,7 +373,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
     }
 
-    public void merge(Merge block, FrameStateAccess other) {
+    public void merge(PhiPoint block, FrameStateAccess other) {
         checkSize(other);
         for (int i = 0; i < valuesSize(); i++) {
             Value x = valueAt(i);
@@ -378,7 +400,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                     }
 
                     if (phi.valueCount() == 0) {
-                        int size = block.endCount();
+                        int size = block.phiPointPredecessorCount();
                         for (int j = 0; j < size; ++j) {
                             phi.addInput(x);
                         }
@@ -387,7 +409,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                         phi.addInput((x == y) ? phi : y);
                     }
 
-                    assert phi.valueCount() == block.endCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.endCount();
+                    assert phi.valueCount() == block.phiPointPredecessorCount() + (block instanceof LoopBegin ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPointPredecessorCount();
                }
             }
         }

@@ -126,6 +126,20 @@ public class IdentifyBlocksPhase extends Phase {
         return trueSuccessorCount(n) > 1 || n instanceof Anchor || n instanceof Return || n instanceof Unwind;
     }
 
+    private void print() {
+        System.out.println("nodeToBlock :");
+        System.out.println(nodeToBlock);
+        System.out.println("Blocks :");
+        for (Block b : blocks) {
+            System.out.println(b + " [S:" + b.getSuccessors() + ", P:" + b.getPredecessors() + ", D:" + b.getDominators());
+            System.out.println("  f " + b.firstNode());
+            for (Node n : b.getInstructions()) {
+                System.out.println("  - " + n);
+            }
+            System.out.println("  l " + b.lastNode());
+        }
+    }
+
     private void identifyBlocks() {
 
         // Identify blocks.
@@ -143,6 +157,9 @@ public class IdentifyBlocksPhase extends Phase {
                             // Either dead code or at a merge node => stop iteration.
                             break;
                         }
+                        if (n instanceof LoopBegin) {
+                            block = null;
+                        }
                         assert n.predecessors().size() == 1 : "preds: " + n;
                         n = n.predecessors().get(0);
                     }
@@ -150,22 +167,31 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
 
+//        System.out.println("identify blocks");
+//        print();
+
         // Connect blocks.
+        //TODO gd restructure this
         for (Block block : blocks) {
             Node n = block.firstNode();
+            LoopBegin loopBegin = null;
             if (n instanceof Merge) {
-                for (Node usage : n.usages()) {
-                    if (usage instanceof Phi || usage instanceof LoopCounter) {
-                        nodeToBlock.set(usage, block);
-                    }
-                }
                 Merge m = (Merge) n;
+                for (Phi phi : m.phis()) {
+                    nodeToBlock.set(phi, block);
+                }
                 for (int i = 0; i < m.endCount(); ++i) {
                     EndNode end = m.endAt(i);
                     Block predBlock = nodeToBlock.get(end);
                     predBlock.addSuccessor(block);
                 }
+                if (m.next() instanceof LoopBegin) {
+                    loopBegin = (LoopBegin) m.next();
+                }
             } else {
+                if (n instanceof LoopBegin) {
+                    loopBegin = (LoopBegin) n;
+                }
                 for (Node pred : n.predecessors()) {
                     if (isFixed(pred)) {
                         Block predBlock = nodeToBlock.get(pred);
@@ -173,7 +199,18 @@ public class IdentifyBlocksPhase extends Phase {
                     }
                 }
             }
+            if (loopBegin != null) {
+                for (Phi phi : loopBegin.phis()) {
+                    nodeToBlock.set(phi, block);
+                }
+                for (LoopCounter counter : loopBegin.counters()) {
+                    nodeToBlock.set(counter, block);
+                }
+            }
         }
+
+//        System.out.println("connect");
+//        print();
 
         for (Node n : graph.getNodes()) {
             if (n instanceof FrameState) {
@@ -204,8 +241,15 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             }
 
+//            System.out.println("dom + cycles");
+//            print();
+
             assignLatestPossibleBlockToNodes();
+//            System.out.println("assign last");
+//            print();
             sortNodesWithinBlocks();
+//            System.out.println("sort");
+//            print();
         } else {
             computeJavaBlocks();
         }
@@ -289,9 +333,9 @@ public class IdentifyBlocksPhase extends Phase {
         for (Node usage : n.usages()) {
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
-                Merge merge = phi.merge();
-                Block mergeBlock = nodeToBlock.get(merge);
-                assert mergeBlock != null : "no block for merge " + merge.id();
+                PhiPoint merge = phi.merge();
+                Block mergeBlock = nodeToBlock.get(merge.asNode());
+                assert mergeBlock != null : "no block for merge " + merge.asNode().id();
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == n) {
                         if (mergeBlock.getPredecessors().size() == 0) {
@@ -303,19 +347,19 @@ public class IdentifyBlocksPhase extends Phase {
                         block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
                     }
                 }
-            } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
+            } else if (usage instanceof FrameState && ((FrameState) usage).block() != null && !(n instanceof Constant)) { //TODO gd humm..
                 Merge merge = ((FrameState) usage).block();
                 for (int i = 0; i < merge.endCount(); ++i) {
                     EndNode pred = merge.endAt(i);
                     block = getCommonDominator(block, nodeToBlock.get(pred));
                 }
-            /*} else if (usage instanceof LoopCounter) { //TODO gd
+            } else if (usage instanceof LoopCounter) { //TODO gd
                 LoopCounter counter = (LoopCounter) usage;
                 if (n == counter.init()) {
                     LoopBegin loopBegin = counter.loopBegin();
                     Block mergeBlock = nodeToBlock.get(loopBegin);
                     block = getCommonDominator(block, mergeBlock.dominator());
-                }*/
+                }
             } else {
                 block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
             }
@@ -356,7 +400,7 @@ public class IdentifyBlocksPhase extends Phase {
 
         if (b.firstNode() == b.lastNode()) {
             Node node = b.firstNode();
-            if (!(node instanceof Merge) || node instanceof LoopEnd) {
+            if (!(node instanceof Merge || node instanceof LoopBegin) || node instanceof LoopEnd) {
                 scheduleFirst = false;
             }
         }
