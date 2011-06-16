@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.Graph;

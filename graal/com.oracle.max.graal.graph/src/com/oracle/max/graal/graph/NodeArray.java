@@ -173,6 +173,7 @@ public class NodeArray extends AbstractList<Node> {
     @Override
     public Node get(int index) {
         checkIndex(index);
+        assert !self().isDeleted();
         return nodes[index];
     }
 

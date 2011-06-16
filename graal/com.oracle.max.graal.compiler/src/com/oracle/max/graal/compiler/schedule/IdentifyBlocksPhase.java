@@ -226,6 +226,8 @@ public class IdentifyBlocksPhase extends Phase {
             return null;
         }
 
+        assert !n.isDeleted();
+
         Block prevBlock = nodeToBlock.get(n);
         if (prevBlock != null) {
             return prevBlock;
