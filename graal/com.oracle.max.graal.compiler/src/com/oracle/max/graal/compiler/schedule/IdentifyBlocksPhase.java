@@ -311,7 +311,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else if (usage instanceof LoopCounter) {
                 LoopCounter counter = (LoopCounter) usage;
-                if (n == counter.init()) {
+                if (n == counter.init() || n == counter.stride()) {
                     LoopBegin loopBegin = counter.loopBegin();
                     Block mergeBlock = nodeToBlock.get(loopBegin);
                     block = getCommonDominator(block, mergeBlock.dominator());
