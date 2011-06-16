@@ -82,40 +82,11 @@ public abstract class ControlSplit extends FixedNode {
         this.blockSuccessorCount = blockSuccessorCount;
     }
 
-    public ControlSplit(CiKind kind, Graph graph) {
-        this(kind, 2, 0, 0, graph);
-    }
-
     /**
      * Gets the successor corresponding to the default (fall through) case.
      * @return the default successor
      */
     public FixedNode defaultSuccessor() {
         return blockSuccessor(blockSuccessorCount - 1);
-    }
-
-    /**
-     * Searches for the specified successor and returns its index into the
-     * successor list if found.
-     * @param b the block to search for in the successor list
-     * @return the index of the block in the list if found; <code>-1</code> otherwise
-     */
-    public int successorIndex(Merge b) {
-        for (int i = 0; i < blockSuccessorCount; i++) {
-            if (blockSuccessor(i) == b) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Gets this block end's list of successors.
-     * @return the successor list
-     */
-    @SuppressWarnings({ "unchecked", "rawtypes"})
-    public List<Instruction> blockSuccessors() {
-        List<Instruction> list = (List) successors().subList(super.successorCount() + SUCCESSOR_COUNT, super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT);
-        return Collections.unmodifiableList(list);
     }
 }

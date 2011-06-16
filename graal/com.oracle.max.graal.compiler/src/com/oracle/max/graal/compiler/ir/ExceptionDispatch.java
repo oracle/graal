@@ -115,9 +115,9 @@ public final class ExceptionDispatch extends ControlSplit {
         print(' ').
         print(catchType().name()).
         print(" then ").
-        print(blockSuccessors().get(1).toString()).
+        print(catchSuccessor().toString()).
         print(" else B").
-        print(blockSuccessors().get(0).toString());
+        print(otherSuccessor().toString());
     }
 
     @Override

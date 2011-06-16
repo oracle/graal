@@ -78,7 +78,7 @@ public final class LookupSwitch extends Switch {
         int l = numberOfCases();
         for (int i = 0; i < l; i++) {
             INSTRUCTION.advance(out);
-            out.printf("case %5d: B%d%n", keyAt(i), blockSuccessors().get(i));
+            out.printf("case %5d: B%d%n", keyAt(i), blockSuccessor(i));
         }
         INSTRUCTION.advance(out);
         out.print("default   : ").print(defaultSuccessor());

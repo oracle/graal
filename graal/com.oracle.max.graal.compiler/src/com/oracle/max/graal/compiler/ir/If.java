@@ -102,9 +102,9 @@ public final class If extends ControlSplit {
         print(' ').
         print(compare().y()).
         print(" then ").
-        print(blockSuccessors().get(0)).
+        print(trueSuccessor()).
         print(" else ").
-        print(blockSuccessors().get(1));
+        print(falseSuccessor());
     }
 
     @Override

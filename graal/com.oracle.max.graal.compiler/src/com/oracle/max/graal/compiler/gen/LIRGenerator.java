@@ -964,10 +964,9 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (rangeDensity >= GraalOptions.RangeTestsSwitchDensity) {
                 visitSwitchRanges(switchRanges, tag, getLIRBlock(x.defaultSuccessor()));
             } else {
-                List<Instruction> nonDefaultSuccessors = x.blockSuccessors().subList(0, x.numberOfCases());
-                LIRBlock[] targets = new LIRBlock[nonDefaultSuccessors.size()];
-                for (int i = 0; i < nonDefaultSuccessors.size(); ++i) {
-                    targets[i] = getLIRBlock(nonDefaultSuccessors.get(i));
+                LIRBlock[] targets = new LIRBlock[x.numberOfCases()];
+                for (int i = 0; i < x.numberOfCases(); ++i) {
+                    targets[i] = getLIRBlock(x.blockSuccessor(i));
                 }
                 lir.tableswitch(tag, x.lowKey(), getLIRBlock(x.defaultSuccessor()), targets);
             }
