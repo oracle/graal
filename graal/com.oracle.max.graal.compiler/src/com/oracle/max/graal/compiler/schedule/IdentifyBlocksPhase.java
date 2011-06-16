@@ -143,20 +143,6 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
 
-        for (Node n : graph.getNodes()) {
-            if (n instanceof FrameState) {
-                FrameState f = (FrameState) n;
-                if (f.predecessors().size() == 1) {
-                    Block predBlock = nodeToBlock.get(f.predecessors().get(0));
-                    assert predBlock != null;
-                    nodeToBlock.set(f, predBlock);
-                    predBlock.getInstructions().add(f);
-                } else {
-                    assert f.predecessors().size() == 0;
-                }
-            }
-        }
-
         computeDominators();
 
 
@@ -341,8 +327,13 @@ public class IdentifyBlocksPhase extends Phase {
             return;
         }
 
+        FrameState state = null;
         for (Node input : i.inputs()) {
-            addToSorting(b, input, sortedInstructions, map);
+            if (input instanceof FrameState) {
+                state = (FrameState) input;
+            } else {
+                addToSorting(b, input, sortedInstructions, map);
+            }
         }
 
         for (Node pred : i.predecessors()) {
@@ -355,6 +346,10 @@ public class IdentifyBlocksPhase extends Phase {
             if (succ instanceof FrameState) {
                 addToSorting(b, succ, sortedInstructions, map);
             }
+        }
+
+        if (state != null) {
+            addToSorting(b, state, sortedInstructions, map);
         }
 
         // Now predecessors and inputs are scheduled => we can add this node.

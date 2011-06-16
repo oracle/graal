@@ -398,9 +398,9 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     public Merge block() {
-        for (Node preds : predecessors()) {
-            if (preds instanceof Merge) {
-                return (Merge) preds;
+        for (Node n : usages()) {
+            if (n instanceof Merge) {
+                return (Merge) n;
             }
         }
         return null;

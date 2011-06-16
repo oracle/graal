@@ -32,10 +32,10 @@ import com.sun.cri.ci.*;
  */
 public abstract class StateSplit extends Instruction {
 
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_STATE_AFTER = 0;
 
     private static final int SUCCESSOR_COUNT = 1;
-    private static final int SUCCESSOR_STATE_AFTER = 0;
 
     @Override
     protected int inputCount() {
@@ -52,11 +52,11 @@ public abstract class StateSplit extends Instruction {
      */
      @Override
     public FrameState stateAfter() {
-        return (FrameState) successors().get(super.successorCount() + SUCCESSOR_STATE_AFTER);
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
     }
 
     public FrameState setStateAfter(FrameState n) {
-        return (FrameState) successors().set(super.successorCount() + SUCCESSOR_STATE_AFTER, n);
+        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
     }
 
     /**
