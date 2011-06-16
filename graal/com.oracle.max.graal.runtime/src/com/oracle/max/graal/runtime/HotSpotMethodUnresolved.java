@@ -54,6 +54,11 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     }
 
     @Override
+    public int codeSize() {
+        return 0;
+    }
+
+    @Override
     public RiMethodProfile methodData() {
         throw unresolved("methodData");
     }

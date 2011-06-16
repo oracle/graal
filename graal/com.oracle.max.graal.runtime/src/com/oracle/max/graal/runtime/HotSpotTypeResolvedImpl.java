@@ -39,7 +39,6 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private boolean hasFinalizer;
     private boolean hasSubclass;
     private boolean hasFinalizableSubclass;
-    private boolean isInitialized;
     private boolean isArrayClass;
     private boolean isInstanceClass;
     private boolean isInterface;
@@ -134,7 +133,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
 
     @Override
     public boolean isInitialized() {
-        return isInitialized;
+        return compiler.getVMEntries().RiType_isInitialized(this);
     }
 
     @Override

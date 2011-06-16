@@ -135,7 +135,7 @@ public class VMExitsNative implements VMExits, Remote {
     }
 
     @Override
-    public void compileMethod(final long methodVmId, final String name, final int entryBCI) throws Throwable {
+    public void compileMethod(final HotSpotMethodResolved method, final int entryBCI) throws Throwable {
         if (!compileMethods) {
             return;
         }
@@ -144,10 +144,9 @@ public class VMExitsNative implements VMExits, Remote {
             @Override
             public void run() throws Throwable {
                 try {
-                    HotSpotMethodResolved riMethod = new HotSpotMethodResolved(compiler, methodVmId, name);
-                    CiResult result = compiler.getCompiler().compileMethod(riMethod, -1, null, null);
+                    CiResult result = compiler.getCompiler().compileMethod(method, -1, null, null);
                     if (LogCompiledMethods) {
-                        String qualifiedName = CiUtil.toJavaName(riMethod.holder()) + "::" + riMethod.name();
+                        String qualifiedName = CiUtil.toJavaName(method.holder()) + "::" + method.name();
                         compiledMethods.add(qualifiedName);
                     }
 
@@ -175,21 +174,16 @@ public class VMExitsNative implements VMExits, Remote {
                         }
                         compiler.getVMEntries().recordBailout(s);
                     } else {
-                        HotSpotTargetMethod.installMethod(compiler, riMethod, result.targetMethod());
+                        HotSpotTargetMethod.installMethod(compiler, method, result.targetMethod());
                     }
                 } catch (Throwable t) {
                     StringWriter out = new StringWriter();
                     t.printStackTrace(new PrintWriter(out));
-                    TTY.println("Compilation interrupted: (" + name + ")\n" + out.toString());
+                    TTY.println("Compilation interrupted: (" + method.name() + ")\n" + out.toString());
                     throw t;
                 }
             }
         }.start();
-    }
-
-    @Override
-    public RiMethod createRiMethodResolved(long vmId, String name) {
-        return new HotSpotMethodResolved(compiler, vmId, name);
     }
 
     @Override

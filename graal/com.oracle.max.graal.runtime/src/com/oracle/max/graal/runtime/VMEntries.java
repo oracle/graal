@@ -33,17 +33,21 @@ public interface VMEntries {
 
     // Checkstyle: stop
 
-    byte[] RiMethod_code(long vmId);
+    byte[] RiMethod_code(HotSpotMethodResolved method);
 
-    int RiMethod_maxStackSize(long vmId);
+    String RiMethod_signature(HotSpotMethodResolved method);
 
-    int RiMethod_maxLocals(long vmId);
+    RiExceptionHandler[] RiMethod_exceptionHandlers(HotSpotMethodResolved method);
 
-    RiType RiMethod_holder(long vmId);
+    boolean RiMethod_hasBalancedMonitors(HotSpotMethodResolved method);
 
-    String RiMethod_signature(long vmId);
+    RiMethod RiMethod_uniqueConcreteMethod(HotSpotMethodResolved method);
 
-    int RiMethod_accessFlags(long vmId);
+    int RiMethod_invocationCount(HotSpotMethodResolved method);
+
+    RiTypeProfile RiMethod_typeProfile(HotSpotMethodResolved method, int bci);
+
+    int RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
 
     RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass);
 
@@ -65,8 +69,6 @@ public interface VMEntries {
 
     HotSpotVMConfig getConfiguration();
 
-    RiExceptionHandler[] RiMethod_exceptionHandlers(long vmId);
-
     RiMethod RiType_resolveMethodImpl(HotSpotTypeResolved klass, String name, String signature);
 
     boolean RiType_isSubtypeOf(HotSpotTypeResolved klass, RiType other);
@@ -77,11 +79,9 @@ public interface VMEntries {
 
     RiType RiType_componentType(HotSpotTypeResolved klass);
 
+    boolean RiType_isInitialized(HotSpotTypeResolved klass);
+
     RiType getType(Class<?> javaClass);
-
-    boolean RiMethod_hasBalancedMonitors(long vmId);
-
-    RiMethod RiMethod_uniqueConcreteMethod(long vmId);
 
     void recordBailout(String reason);
 
@@ -94,12 +94,6 @@ public interface VMEntries {
     boolean compareConstantObjects(CiConstant x, CiConstant y);
 
     RiType getRiType(CiConstant constant);
-
-    int RiMethod_invocationCount(long vmId);
-
-    RiTypeProfile RiMethod_typeProfile(long vmId, int bci);
-
-    int RiMethod_branchProbability(long vmId, int bci);
 
     // Checkstyle: resume
 }

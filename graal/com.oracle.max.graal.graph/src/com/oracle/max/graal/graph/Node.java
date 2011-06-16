@@ -83,14 +83,14 @@ public abstract class Node {
     }
 
     public Node replace(Node other) {
-        assert !isDeleted() && (other == null || !other.isDeleted());
+        assert !isDeleted() && (other == null || !other.isDeleted()) : "id: " + id() + ", other: " + other;
         assert other == null || other.graph == graph;
         for (Node usage : usages) {
             usage.inputs.replaceFirstOccurrence(this, other);
         }
         int z = 0;
         for (Node predecessor : predecessors) {
-            for (int i=0; i<predecessor.successors.size(); i++) {
+            for (int i = 0; i < predecessor.successors.size(); i++) {
                 if (predecessor.successors.get(i) == this) {
                     predecessor.successors.silentSet(i, other);
                 }
