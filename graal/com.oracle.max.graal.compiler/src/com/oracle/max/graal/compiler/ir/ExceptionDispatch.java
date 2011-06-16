@@ -31,7 +31,7 @@ import com.sun.cri.ri.*;
  * This instruction takes an exception object and has two successors:
  * The catchSuccessor is called whenever the exception matches the given type, otherwise otherSuccessor is called.
  */
-public final class ExceptionDispatch extends BlockEnd {
+public final class ExceptionDispatch extends ControlSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_EXCEPTION = 0;

@@ -1217,7 +1217,6 @@ public final class GraphBuilderPhase extends Phase {
                     merge.setNext(begin.next());
                     merge.setStateAfter(begin.stateAfter());
                     begin.replace(merge);
-                    TTY.println("replace loop");
                 }
             }
         }

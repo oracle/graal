@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Switch} class is the base of both lookup and table switches.
  */
-public abstract class Switch extends BlockEnd {
+public abstract class Switch extends ControlSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VALUE = 0;
