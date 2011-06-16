@@ -485,7 +485,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitLoopBegin(LoopBegin x) {
-        visitMerge(x);
+
     }
 
     @Override

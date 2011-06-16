@@ -196,11 +196,11 @@ public class IdentifyBlocksPhase extends Phase {
 
             // Add successors of loop end nodes. Makes the graph cyclic.
             for (Block block : blocks) {
-                Node n = block.firstNode();
-                if (n instanceof LoopBegin) {
-                    LoopBegin loopBegin = (LoopBegin) n;
-                    assert loopBegin.loopEnd() != null;
-                    nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+                Node n = block.lastNode();
+                if (n instanceof LoopEnd) {
+                    LoopEnd loopEnd = (LoopEnd) n;
+                    assert loopEnd.loopBegin() != null;
+                    block.addSuccessor(nodeToBlock.get(loopEnd.loopBegin()));
                 }
             }
 
@@ -309,13 +309,13 @@ public class IdentifyBlocksPhase extends Phase {
                     EndNode pred = merge.endAt(i);
                     block = getCommonDominator(block, nodeToBlock.get(pred));
                 }
-            } else if (usage instanceof LoopCounter) {
+            /*} else if (usage instanceof LoopCounter) { //TODO gd
                 LoopCounter counter = (LoopCounter) usage;
                 if (n == counter.init()) {
                     LoopBegin loopBegin = counter.loopBegin();
                     Block mergeBlock = nodeToBlock.get(loopBegin);
                     block = getCommonDominator(block, mergeBlock.dominator());
-                }
+                }*/
             } else {
                 block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
             }

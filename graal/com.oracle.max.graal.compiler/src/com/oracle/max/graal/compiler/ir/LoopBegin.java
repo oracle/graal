@@ -24,14 +24,15 @@ package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
-public class LoopBegin extends Merge {
+public class LoopBegin extends Instruction {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     public LoopBegin(Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     public LoopEnd loopEnd() {

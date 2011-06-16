@@ -45,7 +45,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
         // remove chained Merges
         for (Merge merge : graph.getNodes(Merge.class)) {
-            if (merge.endCount() == 1 && merge.usages().size() == 0 && !(merge instanceof LoopEnd) && !(merge instanceof LoopBegin)) {
+            if (merge.endCount() == 1 && merge.usages().size() == 0 && !(merge instanceof LoopEnd)) {
                 merge.endAt(0).replace(merge.next());
                 merge.delete();
             }

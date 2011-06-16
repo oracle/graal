@@ -61,14 +61,16 @@ public class LoopPhase extends Phase {
                 if (c2 != null && c1.stride().valueEqual(c2.stride())) {
                     acounters[j] = null;
                     CiKind kind = c1.kind;
-                    IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
+                    /*IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
                     IntegerAdd addStride = new IntegerAdd(kind, sub, c1.stride(), graph);
                     IntegerAdd add = new IntegerAdd(kind, c1, addStride, graph);
                     Phi phi = new Phi(kind, loopBegin, graph); // TODO (gd) assumes order on loopBegin preds
                     phi.addInput(c2.init());
                     phi.addInput(add);
-                    c2.replace(phi);
-                    //System.out.println("--> merged Loop Counters");
+                    c2.replace(phi);*/
+                    IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
+                    IntegerAdd add = new IntegerAdd(kind, c1, sub, graph);
+                    c2.replace(add);
                 }
             }
         }

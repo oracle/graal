@@ -133,4 +133,5 @@ public final class GraalOptions {
     public static boolean PrintLIRWithAssembly               = ____;
 
     public static boolean OptCanonicalizer                   = true;
+    public static boolean OptLoops                           = true;
 }

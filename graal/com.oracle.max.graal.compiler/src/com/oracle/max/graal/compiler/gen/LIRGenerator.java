@@ -1433,7 +1433,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitLoopEnd(LoopEnd x) {
         setNoResult(x);
-        moveToPhi(x.loopBegin(), x.loopBegin().endCount());
+        //moveToPhi(x.loopBegin(), x.loopBegin().endCount()); //TODO gd
         lir.jump(getLIRBlock(x.loopBegin()));
     }
 
@@ -1459,6 +1459,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         resolver.dispose();
+        /*
         //TODO (gd) remove that later
         if (merge instanceof LoopBegin) {
             for (Node usage : merge.usages()) {
@@ -1479,7 +1480,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                     }
                 }
             }
-        }
+        }*/
     }
 
     /**

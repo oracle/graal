@@ -387,11 +387,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                         phi.addInput((x == y) ? phi : y);
                     }
 
-                    if (block instanceof LoopBegin) {
-//                        assert phi.valueCount() == ((LoopBegin) block).loopEnd().predecessors().size() + 1 : "loop, valueCount=" + phi.valueCount() + " predSize= " + ((LoopBegin) block).loopEnd().predecessors().size();
-                    } else {
-                        assert phi.valueCount() == block.endCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.endCount();
-                    }
+                    assert phi.valueCount() == block.endCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.endCount();
                }
             }
         }

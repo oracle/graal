@@ -193,7 +193,7 @@ final class EdgeMoveOptimizer {
 
         assert numSux == 2 : "method should not be called otherwise";
 
-        if ( instructions.get(instructions.size() - 1).code != LIROpcode.Branch) {
+        if (instructions.get(instructions.size() - 1).code != LIROpcode.Branch) {
             for (Node n : block.getInstructions()) {
                 TTY.println("instr: " + n);
             }
