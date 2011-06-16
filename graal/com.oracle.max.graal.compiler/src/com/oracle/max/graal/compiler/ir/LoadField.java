@@ -36,6 +36,7 @@ import com.sun.cri.ri.*;
  */
 public final class LoadField extends AccessField {
     private static final LoadFieldCanonicalizerOp CANONICALIZER = new LoadFieldCanonicalizerOp();
+    private static final LoadFieldLoweringOp LOWERING = new LoadFieldLoweringOp();
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -118,6 +119,8 @@ public final class LoadField extends AccessField {
     public <T extends Op> T lookup(Class<T> clazz) {
         if (clazz == CanonicalizerOp.class) {
             return (T) CANONICALIZER;
+        } else if (clazz == LoweringOp.class) {
+            return (T) LOWERING;
         }
         return super.lookup(clazz);
     }
@@ -127,7 +130,17 @@ public final class LoadField extends AccessField {
         @Override
         public Node lower(Node n, LoweringTool tool) {
             LoadField field = (LoadField) n;
-            return null; //field.field().createLoad(tool);
+            if (field.isVolatile()) {
+                return null;
+            }
+            Graph graph = field.graph();
+            int displacement = field.field().offset();
+            assert field.kind != CiKind.Illegal;
+            MemoryRead memoryRead = new MemoryRead(field.field().kind(), displacement, graph);
+            memoryRead.setGuard(new IsNonNull(field.object(), graph));
+            memoryRead.setNext(field.next());
+            memoryRead.setLocation(field.object());
+            return memoryRead;
         }
 
     }

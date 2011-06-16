@@ -65,11 +65,10 @@ public final class GraalMetrics {
     public static int NodesCanonicalized;
 
     public static void print() {
-        printClassFields(GraalMetrics.class);
-
         for (Entry<String, GraalMetrics> m : map.entrySet()) {
             printField(m.getKey(), m.getValue().value);
         }
+        printClassFields(GraalMetrics.class);
     }
 
     private static LinkedHashMap<String, GraalMetrics> map = new LinkedHashMap<String, GraalMetrics>();

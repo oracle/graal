@@ -236,8 +236,8 @@ public class IdealGraphPrinter {
                 }
                 if (node instanceof Merge) {
                     Merge merge = (Merge) node;
-                    if (merge.stateBefore() != null) {
-                        nodes.add(merge.stateBefore());
+                    if (merge.stateAfter() != null) {
+                        nodes.add(merge.stateAfter());
                     }
                     for (Node usage : merge.usages()) {
                         if (usage instanceof Phi || usage instanceof LoopCounter) {

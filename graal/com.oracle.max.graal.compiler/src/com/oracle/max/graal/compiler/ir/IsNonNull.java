@@ -63,7 +63,6 @@ public final class IsNonNull extends FloatingNode {
     /**
      * Constructs a new NullCheck instruction.
      * @param object the instruction producing the object to check against null
-     * @param stateBefore the state before executing the null check
      * @param graph
      */
     public IsNonNull(Value object, Graph graph) {

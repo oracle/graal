@@ -57,4 +57,13 @@ public final class EndNode extends FixedNode {
             return (Merge) usages().get(0);
         }
     }
+
+    @Override
+    public boolean verify() {
+        assertTrue(inputs().size() == 0);
+        assertTrue(successors().size() == 0);
+        assertTrue(usages().size() <= 1);
+        assertTrue(predecessors().size() <= 1);
+        return true;
+    }
 }

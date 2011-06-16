@@ -55,10 +55,11 @@ public class DeadCodeEliminationPhase extends Phase {
 
         iterateSuccessors();
         disconnectCFGNodes();
-        deleteBrokenLoops();
         iterateInputs();
-        disconnectNonCFGNodes();
+        disconnectNodes();
         deleteNodes();
+
+        deleteBrokenLoops();
 
         new PhiSimplifier(graph);
 
@@ -68,7 +69,7 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private static boolean isCFG(Node n) {
-        return n != null && ((n instanceof Instruction) || n == n.graph().start());
+        return n != null && ((n instanceof Instruction) || (n instanceof ControlSplit) || n == n.graph().start());
     }
 
     private void iterateSuccessors() {
@@ -87,10 +88,7 @@ public class DeadCodeEliminationPhase extends Phase {
     private void disconnectCFGNodes() {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && !flood.isMarked(node)) {
-                if (isCFG(node)) {
-                    node.successors().clearAll();
-                    node.inputs().clearAll();
-                } else if (node instanceof EndNode) {
+                if (node instanceof EndNode) {
                     EndNode end = (EndNode) node;
                     Merge merge = end.merge();
                     if (merge != null && flood.isMarked(merge)) {
@@ -117,7 +115,7 @@ public class DeadCodeEliminationPhase extends Phase {
     private void deleteNodes() {
         for (Node node : graph.getNodes()) {
             if (node != Node.Null && !flood.isMarked(node)) {
-                node.delete();
+                node.unsafeDelete();
             }
         }
     }
@@ -129,25 +127,26 @@ public class DeadCodeEliminationPhase extends Phase {
             }
             if (node != Node.Null && flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
-                    if (!isCFG(input)) {
-                        flood.add(input);
-                    }
+                    flood.add(input);
                 }
             }
         }
         for (Node current : flood) {
             for (Node input : current.inputs()) {
-                if (!isCFG(input)) {
-                    flood.add(input);
-                }
+                flood.add(input);
             }
         }
     }
 
-    private void disconnectNonCFGNodes() {
+    private void disconnectNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node) && !isCFG(node)) {
-                node.inputs().clearAll();
+            if (node != Node.Null && !flood.isMarked(node)) {
+                for (int i = 0; i < node.inputs().size(); i++) {
+                    Node input = node.inputs().get(i);
+                    if (input != Node.Null && flood.isMarked(input)) {
+                        node.inputs().set(i, Node.Null);
+                    }
+                }
             }
         }
     }

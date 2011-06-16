@@ -256,4 +256,13 @@ public final class LIRBlock {
     public void setLastInstruction(Node n) {
         last = n;
     }
+
+    public boolean endsWithJump() {
+        List<LIRInstruction> instructionsList = lir.instructionsList();
+        if (instructionsList.size() == 0) {
+            return false;
+        }
+        LIROpcode code = instructionsList.get(instructionsList.size() - 1).code;
+        return code == LIROpcode.Branch || code == LIROpcode.TableSwitch;
+    }
 }

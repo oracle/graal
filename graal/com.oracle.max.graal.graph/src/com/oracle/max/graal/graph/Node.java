@@ -104,6 +104,7 @@ public abstract class Node {
         usages.clear();
         predecessors.clear();
         delete();
+        assert other == null || other.verify();
         return other;
     }
 
@@ -122,9 +123,15 @@ public abstract class Node {
         predecessors.clear();
     }
 
+    public void unsafeDelete() {
+        graph.unregister(this);
+        id = DeletedID;
+        assert isDeleted();
+    }
+
     public void delete() {
         assert !isDeleted();
-        assert checkDeletion() : "Could not delete " + this;
+        assert checkDeletion() : "Could not delete " + this + " (usages: " + this.usages() + ", predecessors: " + this.predecessors() + ")";
 
         for (int i = 0; i < inputs.size(); ++i) {
             inputs.set(i, Null);
@@ -133,10 +140,7 @@ public abstract class Node {
             successors.set(i, Null);
         }
         assert predecessors().size() == 0 && usages().size() == 0;
-        // make sure its not connected. pred usages
-        graph.unregister(this);
-        id = DeletedID;
-        assert isDeleted();
+        unsafeDelete();
     }
 
     private boolean checkDeletion() {
@@ -199,5 +203,20 @@ public abstract class Node {
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "-" + this.id();
+    }
+
+    public boolean verify() {
+        return true;
+    }
+
+    public final void assertTrue(boolean cond) {
+        assert cond || assertionFailure();
+    }
+
+    public final boolean assertionFailure() {
+        for (VerificationListener l : Graph.verificationListeners) {
+            l.verificationFailed(this);
+        }
+        return true;
     }
 }

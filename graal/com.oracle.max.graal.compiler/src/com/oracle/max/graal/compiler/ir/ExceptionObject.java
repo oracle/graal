@@ -36,7 +36,6 @@ public final class ExceptionObject extends Instruction {
 
     /**
      * Constructs a new ExceptionObject instruction.
-     * @param stateBefore TODO
      * @param graph
      */
     public ExceptionObject(Graph graph) {

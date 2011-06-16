@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Switch} class is the base of both lookup and table switches.
  */
-public abstract class Switch extends BlockEnd {
+public abstract class Switch extends ControlSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VALUE = 0;
@@ -65,7 +65,7 @@ public abstract class Switch extends BlockEnd {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public Switch(Value value, List<? extends Instruction> successors, int inputCount, int successorCount, Graph graph) {
+    public Switch(Value value, List<? extends FixedNode> successors, int inputCount, int successorCount, Graph graph) {
         super(CiKind.Illegal, successors, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setValue(value);
     }

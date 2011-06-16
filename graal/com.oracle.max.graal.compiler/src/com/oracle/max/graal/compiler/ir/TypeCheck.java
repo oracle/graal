@@ -76,7 +76,6 @@ public abstract class TypeCheck extends FloatingNode {
      * @param targetClass the class which is being casted to or checked against
      * @param object the instruction which produces the object
      * @param kind the result type of this instruction
-     * @param stateBefore the state before this instruction is executed
      * @param inputCount
      * @param successorCount
      * @param graph

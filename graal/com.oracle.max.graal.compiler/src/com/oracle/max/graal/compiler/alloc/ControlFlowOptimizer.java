@@ -105,7 +105,7 @@ final class ControlFlowOptimizer {
         assert instructions.get(0).code == LIROpcode.Label : "first instruction must always be a label";
         assert instructions.get(instructions.size() - 1) instanceof LIRBranch : "last instruction must always be a branch but is " + instructions.get(instructions.size() - 1);
         assert ((LIRBranch) instructions.get(instructions.size() - 1)).cond() == Condition.TRUE : "branch must be unconditional";
-        assert ((LIRBranch) instructions.get(instructions.size() - 1)).block() == block.suxAt(0) : "branch target must be the successor";
+        assert ((LIRBranch) instructions.get(instructions.size() - 1)).block() == block.suxAt(0) : "branch target must be the successor " + ((LIRBranch) instructions.get(instructions.size() - 1)).block();
 
         // block must have exactly one successor
 

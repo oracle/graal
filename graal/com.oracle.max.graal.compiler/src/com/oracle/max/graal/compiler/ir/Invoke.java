@@ -94,7 +94,6 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
      * @param args the list of instructions producing arguments to the invocation, including the receiver object
      * @param isStatic {@code true} if this call is static (no receiver object)
      * @param target the target method being called
-     * @param stateBefore the state before executing the invocation
      */
     public Invoke(int bci, int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, RiTypeProfile profile, Graph graph) {
         super(result, args.length, SUCCESSOR_COUNT, graph);

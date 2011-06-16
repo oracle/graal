@@ -33,6 +33,8 @@ import java.util.Map.Entry;
 
 public class Graph {
 
+    public static final List<VerificationListener> verificationListeners = new ArrayList<VerificationListener>(4);
+
     private final ArrayList<Node> nodes;
     private final StartNode start;
     int nextId;
@@ -149,6 +151,13 @@ public class Graph {
         return new NodeWorkList(this, fill, iterationLimitPerNode);
     }
 
+    public boolean verify() {
+        for (Node n : getNodes()) {
+            assert n == Node.Null || n.verify();
+        }
+        return true;
+    }
+
     public Map<Node, Node> addDuplicate(Collection<Node> nodes, Map<Node, Node> replacements) {
         Map<Node, Node> newNodes = new HashMap<Node, Node>();
         // create node duplicates
@@ -184,7 +193,7 @@ public class Graph {
                 }
             }
         }
-        
+
         // re-wire successors
         for (Entry<Node, Node> entry : newNodes.entrySet()) {
             Node oldNode = entry.getKey();
