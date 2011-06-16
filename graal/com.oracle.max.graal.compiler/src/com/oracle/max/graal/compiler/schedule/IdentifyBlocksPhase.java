@@ -133,18 +133,19 @@ public class IdentifyBlocksPhase extends Phase {
             if (n != null) {
                 if (n instanceof EndNode || n instanceof Return || n instanceof Unwind || n instanceof LoopEnd || n instanceof Deoptimize) {
                     Block block = null;
-                    while (nodeToBlock.get(n) == null) {
-                        if (block != null && IdentifyBlocksPhase.trueSuccessorCount(n) > 1) {
+                    Node currentNode = n;
+                    while (nodeToBlock.get(currentNode) == null) {
+                        if (block != null && IdentifyBlocksPhase.trueSuccessorCount(currentNode) > 1) {
                             // We are at a split node => start a new block.
                             block = null;
                         }
-                        block = assignBlockNew(n, block);
-                        if (n.predecessors().size() == 0) {
+                        block = assignBlockNew(currentNode, block);
+                        if (currentNode.predecessors().size() == 0) {
                             // Either dead code or at a merge node => stop iteration.
                             break;
                         }
-                        assert n.predecessors().size() == 1 : "preds: " + n;
-                        n = n.predecessors().get(0);
+                        assert currentNode.predecessors().size() == 1 : "preds: " + currentNode;
+                        currentNode = currentNode.predecessors().get(0);
                     }
                 }
             }

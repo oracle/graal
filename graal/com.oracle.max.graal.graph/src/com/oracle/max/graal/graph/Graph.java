@@ -184,7 +184,7 @@ public class Graph {
                 }
             }
         }
-        
+
         // re-wire successors
         for (Entry<Node, Node> entry : newNodes.entrySet()) {
             Node oldNode = entry.getKey();

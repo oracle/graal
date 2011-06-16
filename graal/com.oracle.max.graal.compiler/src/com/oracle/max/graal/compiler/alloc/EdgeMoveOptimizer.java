@@ -25,10 +25,8 @@ package com.oracle.max.graal.compiler.alloc;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.graph.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.
@@ -193,11 +191,6 @@ final class EdgeMoveOptimizer {
 
         assert numSux == 2 : "method should not be called otherwise";
 
-        if ( instructions.get(instructions.size() - 1).code != LIROpcode.Branch) {
-            for (Node n : block.getInstructions()) {
-                TTY.println("instr: " + n);
-            }
-        }
         assert instructions.get(instructions.size() - 1).code == LIROpcode.Branch : "block with successor must end with branch block=B" + block.blockID();
         assert instructions.get(instructions.size() - 1) instanceof LIRBranch : "branch must be LIROpBranch";
         assert ((LIRBranch) instructions.get(instructions.size() - 1)).cond() == Condition.TRUE : "block must end with unconditional branch";
