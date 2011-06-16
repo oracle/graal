@@ -46,11 +46,6 @@ public final class Unwind extends BlockEnd {
         return super.successorCount() + SUCCESSOR_COUNT;
     }
 
-    @Override
-    public Instruction next() {
-        return null;
-    }
-
     /**
      * The instruction that produces the exception object.
      */

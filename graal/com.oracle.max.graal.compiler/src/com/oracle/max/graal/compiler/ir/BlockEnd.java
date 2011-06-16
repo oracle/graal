@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
  * The {@code BlockEnd} instruction is a base class for all instructions that end a basic
  * block, including branches, switches, throws, and goto's.
  */
-public abstract class BlockEnd extends Instruction {
+public abstract class BlockEnd extends FixedNode {
 
     private static final int INPUT_COUNT = 0;
 
@@ -118,11 +118,4 @@ public abstract class BlockEnd extends Instruction {
         List<Instruction> list = (List) successors().subList(super.successorCount() + SUCCESSOR_COUNT, super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT);
         return Collections.unmodifiableList(list);
     }
-
-    public void clearSuccessors() {
-        for (int i = 0; i < blockSuccessorCount(); i++) {
-            setBlockSuccessor(i, null);
-        }
-    }
-
 }

@@ -58,11 +58,6 @@ public final class Return extends BlockEnd {
         return (Value) inputs().set(super.inputCount() + INPUT_RESULT, n);
     }
 
-    @Override
-    public Instruction next() {
-        return null;
-    }
-
     /**
      * Constructs a new Return instruction.
      * @param result the instruction producing the result for this return; {@code null} if this
