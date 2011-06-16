@@ -96,7 +96,7 @@ public class LoopPhase extends Phase {
                         IntegerAdd add = (IntegerAdd) backEdge;
                         int addUsageCount = 0;
                         for (Node u : add.usages()) {
-                            if (u != loopEnd.stateBefore() && u != phi) {
+                            if (u != loopEnd.stateAfter() && u != phi) {
                                 addUsageCount++;
                             }
                         }
@@ -114,7 +114,7 @@ public class LoopPhase extends Phase {
                         LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
                         counters.add(counter);
                         phi.replace(counter);
-                        loopEnd.stateBefore().inputs().replace(backEdge, counter);
+                        loopEnd.stateAfter().inputs().replace(backEdge, counter);
                         if (useCounterAfterAdd) {
                             /*IntegerAdd otherInit = new IntegerAdd(init.kind, init, stride, graph); // would be nice to canonicalize
                             LoopCounter otherCounter = new LoopCounter(init.kind, otherInit, stride, loopBegin, graph);

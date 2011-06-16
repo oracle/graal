@@ -315,27 +315,24 @@ public class IdentifyBlocksPhase extends Phase {
 
     private void sortNodesWithinBlocks(Block b, NodeBitMap map) {
         List<Node> instructions = b.getInstructions();
-        List<Node> sortedInstructions = new ArrayList<Node>();
+        List<Node> sortedInstructions = new ArrayList<Node>(instructions.size() + 2);
+
         assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
-
-        boolean scheduleFirst = true;
-        assert !instructions.contains(b.lastNode());
         assert !instructions.contains(b.firstNode());
+        assert !instructions.contains(b.lastNode());
+        assert !map.isMarked(b.lastNode()) && nodeToBlock.get(b.lastNode()) == b;
 
-        if (b.firstNode() == b.lastNode()) {
-            Node node = b.firstNode();
-            if (!(node instanceof Merge) || node instanceof LoopEnd) {
-                scheduleFirst = false;
-            }
-        }
-        if (scheduleFirst) {
-            addToSorting(b, b.firstNode(), sortedInstructions, map);
-        }
+        addToSorting(b, b.firstNode(), sortedInstructions, map);
         for (Node i : instructions) {
             addToSorting(b, i, sortedInstructions, map);
         }
         addToSorting(b, b.lastNode(), sortedInstructions, map);
-        assert sortedInstructions.get(sortedInstructions.size() - 1) == b.lastNode() : "lastNode=" + b.lastNode() + ", firstNode=" + b.firstNode() + ", sorted(sz-1)=" + sortedInstructions.get(sortedInstructions.size() - 1);
+
+        // Make sure that last node gets really last (i.e. when a frame state successor hangs off it).
+        sortedInstructions.remove(b.lastNode());
+        sortedInstructions.add(b.lastNode());
+
+        assert sortedInstructions.get(sortedInstructions.size() - 1) == b.lastNode() : " lastNode=" + b.lastNode() + ", firstNode=" + b.firstNode() + ", sorted(sz-1)=" + sortedInstructions.get(sortedInstructions.size() - 1);
         b.setInstructions(sortedInstructions);
     }
 

@@ -272,7 +272,7 @@ public final class GraphBuilderPhase extends Phase {
 
         int bci = target.startBci;
 
-        FrameState existingState = ((StateSplit) first).stateBefore();
+        FrameState existingState = ((StateSplit) first).stateAfter();
 
         if (existingState == null) {
             // copy state because it is modified
@@ -282,9 +282,9 @@ public final class GraphBuilderPhase extends Phase {
             if (first instanceof LoopBegin && target.isLoopHeader) {
                 assert first instanceof Merge;
                 insertLoopPhis((Merge) first, duplicate);
-                ((Merge) first).setStateBefore(duplicate);
+                ((Merge) first).setStateAfter(duplicate);
             } else {
-                ((StateSplit) first).setStateBefore(duplicate);
+                ((StateSplit) first).setStateAfter(duplicate);
             }
         } else {
             if (!GraalOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
@@ -300,7 +300,7 @@ public final class GraphBuilderPhase extends Phase {
                 Placeholder p = (Placeholder) first;
                 assert !target.isLoopHeader;
                 if (p.predecessors().size() == 0) {
-                    p.setStateBefore(newState.duplicate(bci));
+                    p.setStateAfter(newState.duplicate(bci));
                     return;
                 } else {
                     Merge merge = new Merge(graph);
@@ -310,7 +310,7 @@ public final class GraphBuilderPhase extends Phase {
                     p.replace(end);
                     merge.addEnd(end);
                     target.firstInstruction = merge;
-                    merge.setStateBefore(existingState);
+                    merge.setStateAfter(existingState);
                     first = merge;
                 }
             }
@@ -407,7 +407,7 @@ public final class GraphBuilderPhase extends Phase {
             FrameState entryState = frameState.duplicateWithEmptyStack(bci);
 
             StateSplit entry = new Placeholder(graph);
-            entry.setStateBefore(entryState);
+            entry.setStateAfter(entryState);
 
             Instruction currentNext = entry;
             Value currentExceptionObject = exceptionObject;
@@ -981,7 +981,7 @@ public final class GraphBuilderPhase extends Phase {
 
         if (needsCheck) {
             // append a call to the finalizer registration
-            append(new RegisterFinalizer(frameState.loadLocal(0), frameState.create(bci()), graph));
+            append(new RegisterFinalizer(frameState.loadLocal(0), graph));
             GraalMetrics.InlinedFinalizerChecks++;
         }
     }
@@ -1177,7 +1177,7 @@ public final class GraphBuilderPhase extends Phase {
             if (!isVisited(block)) {
                 markVisited(block);
                 // now parse the block
-                frameState.initializeFrom(((StateSplit) block.firstInstruction).stateBefore());
+                frameState.initializeFrom(((StateSplit) block.firstInstruction).stateAfter());
                 lastInstr = block.firstInstruction;
                 assert block.firstInstruction.next() == null : "instructions already appended at block " + block.blockID;
 
@@ -1206,8 +1206,8 @@ public final class GraphBuilderPhase extends Phase {
 //                    } catch (UnresolvedException iioe) {
 //                    }
 //                }
-                if (end.stateBefore() != null) {
-                    begin.stateBefore().merge(begin, end.stateBefore());
+                if (end.stateAfter() != null) {
+                    begin.stateAfter().merge(begin, end.stateAfter());
                 } else {
                     end.delete();
                     Merge merge = new Merge(graph);
@@ -1215,7 +1215,7 @@ public final class GraphBuilderPhase extends Phase {
                         merge.addEnd(begin.endAt(i));
                     }
                     merge.setNext(begin.next());
-                    begin.setNext(null);
+                    merge.setStateAfter(begin.stateAfter());
                     begin.replace(merge);
                     TTY.println("replace loop");
                 }

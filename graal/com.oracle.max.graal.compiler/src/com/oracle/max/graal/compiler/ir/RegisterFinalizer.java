@@ -23,14 +23,13 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
  * This instruction is used to perform the finalizer registration at the end of the java.lang.Object constructor.
  */
-public class RegisterFinalizer extends StateSplit {
+public final class RegisterFinalizer extends StateSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
@@ -58,10 +57,9 @@ public class RegisterFinalizer extends StateSplit {
         return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
     }
 
-    public RegisterFinalizer(Value object, FrameState stateBefore, Graph graph) {
+    public RegisterFinalizer(Value object, Graph graph) {
         super(CiKind.Void, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setObject(object);
-        setStateBefore(stateBefore);
     }
 
     @Override
@@ -76,7 +74,6 @@ public class RegisterFinalizer extends StateSplit {
 
     @Override
     public Node copy(Graph into) {
-        RegisterFinalizer x = new RegisterFinalizer(null, null, into);
-        return x;
+        return new RegisterFinalizer(null, into);
     }
 }

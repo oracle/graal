@@ -160,7 +160,7 @@ public class Merge extends StateSplit {
         boolean hasPhisOnStack = false;
 
         //if (end() != null && end().stateAfter() != null) {
-            FrameState state = stateBefore();
+            FrameState state = stateAfter();
 
             int i = 0;
             while (!hasPhisOnStack && i < state.stackSize()) {
@@ -213,8 +213,8 @@ public class Merge extends StateSplit {
             out.println();
             out.println("Stack:");
             int j = 0;
-            while (j < stateBefore().stackSize()) {
-                Value value = stateBefore().stackAt(j);
+            while (j < stateAfter().stackSize()) {
+                Value value = stateAfter().stackAt(j);
                 if (value != null) {
                     out.println(stateString(j, value));
                     j += value.kind.sizeInSlots();

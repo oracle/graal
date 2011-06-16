@@ -241,7 +241,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 stateAfter = ((Instruction) instr).stateAfter();
             }
             FrameState stateBefore = null;
-            if (instr instanceof StateSplit && ((StateSplit) instr).stateBefore() != null) {
+            if (instr instanceof StateSplit && ((StateSplit) instr).stateAfter() != null) {
                 stateBefore = ((StateSplit) instr).stateBefore();
             }
             if (stateBefore != null) {
@@ -1103,7 +1103,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitRegisterFinalizer(RegisterFinalizer x) {
         CiValue receiver = load(x.object());
-        LIRDebugInfo info = stateFor(x, x.stateBefore());
+        LIRDebugInfo info = stateFor(x);
         callRuntime(CiRuntimeCall.RegisterFinalizer, info, receiver);
         setNoResult(x);
     }
