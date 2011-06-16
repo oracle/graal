@@ -122,11 +122,6 @@ public class IdentifyBlocksPhase extends Phase {
         for (Block block : blocks) {
             Node n = block.firstNode();
             if (n instanceof Merge) {
-                for (Node usage : n.usages()) {
-                    if (usage instanceof Phi || usage instanceof LoopCounter) {
-                        nodeToBlock.set(usage, block);
-                    }
-                }
                 Merge m = (Merge) n;
                 for (int i = 0; i < m.endCount(); ++i) {
                     EndNode end = m.endAt(i);
@@ -234,6 +229,16 @@ public class IdentifyBlocksPhase extends Phase {
         Block prevBlock = nodeToBlock.get(n);
         if (prevBlock != null) {
             return prevBlock;
+        }
+
+        if (n instanceof Phi) {
+            Block block = nodeToBlock.get(((Phi) n).merge());
+            nodeToBlock.set(n, block);
+        }
+
+        if (n instanceof LoopCounter) {
+            Block block = nodeToBlock.get(((LoopCounter) n).loopBegin());
+            nodeToBlock.set(n, block);
         }
 
         Block block = null;
