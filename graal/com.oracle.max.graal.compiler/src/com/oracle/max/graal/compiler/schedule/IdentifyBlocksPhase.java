@@ -65,39 +65,6 @@ public class IdentifyBlocksPhase extends Phase {
         return b;
     }
 
-    private Block assignBlock(Node n) {
-        Block curBlock = nodeToBlock.get(n);
-        if (curBlock == null) {
-            curBlock = createBlock();
-            return assignBlock(n, curBlock);
-        }
-        return curBlock;
-    }
-
-
-    private Block assignBlock(Node n, Block b) {
-        assert nodeToBlock.get(n) == null;
-        nodeToBlock.set(n, b);
-        for (Node input : n.inputs()) {
-            if (input instanceof FrameState) {
-                assert nodeToBlock.get(n) == null;
-                nodeToBlock.set(n, b);
-            }
-        }
-
-        if (b.firstNode() == null) {
-            b.setFirstNode(n);
-            b.setLastNode(n);
-        } else {
-            if (b.lastNode() != null) {
-                b.getInstructions().add(b.lastNode());
-            }
-            b.setLastNode(n);
-        }
-        b.setLastNode(n);
-        return b;
-    }
-
     private Block assignBlockNew(Node n, Block b) {
         if (b == null) {
             b = createBlock();
@@ -377,13 +344,8 @@ public class IdentifyBlocksPhase extends Phase {
             return;
         }
 
-        FrameState state = null;
         for (Node input : i.inputs()) {
-//            if (input instanceof FrameState) {
-//               state = (FrameState) input;
-//            } else {
-                addToSorting(b, input, sortedInstructions, map);
-//            }
+            addToSorting(b, input, sortedInstructions, map);
         }
 
         for (Node pred : i.predecessors()) {
@@ -391,10 +353,6 @@ public class IdentifyBlocksPhase extends Phase {
         }
 
         map.mark(i);
-
-        if (state != null) {
-            addToSorting(b, state, sortedInstructions, map);
-        }
 
         for (Node succ : i.successors()) {
             if (succ instanceof FrameState) {

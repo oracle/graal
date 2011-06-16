@@ -267,7 +267,7 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
             }
         }
-        if (block.blockSuccessors().size() >= 1 && !jumpsToNextBlock(block.lastInstruction())) {
+        if (block.blockSuccessors().size() >= 1 && !block.endsWithJump()) {
             block.lir().jump(getLIRBlock((FixedNode) block.lastInstruction().successors().get(0)));
         }
 

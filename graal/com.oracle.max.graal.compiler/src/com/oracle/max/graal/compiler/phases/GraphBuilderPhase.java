@@ -1279,7 +1279,6 @@ public final class GraphBuilderPhase extends Phase {
         stream.setBCI(block.startBci);
 
         int endBCI = stream.endBCI();
-        boolean blockStart = true;
 
         int bci = block.startBci;
         while (bci < endBCI) {
@@ -1292,9 +1291,8 @@ public final class GraphBuilderPhase extends Phase {
             }
             // read the opcode
             int opcode = stream.currentBC();
-
             traceState();
-            traceInstruction(bci, opcode, blockStart);
+            traceInstruction(bci, opcode, bci == block.startBci);
             processBytecode(bci, opcode);
 
             if (IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
@@ -1309,7 +1307,6 @@ public final class GraphBuilderPhase extends Phase {
                     stateSplit.setStateAfter(frameState.create(bci));
                 }
             }
-            blockStart = false;
         }
     }
 
