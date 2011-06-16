@@ -297,26 +297,25 @@ public final class GraphBuilderPhase extends Phase {
             assert existingState.stackSize() == newState.stackSize();
 
             if (first instanceof Placeholder) {
-                assert !target.isLoopHeader;
-                Merge merge = new Merge(graph);
                 Placeholder p = (Placeholder) first;
-                assert p.predecessors().size() == 1;
-                assert p.next() == null;
-                EndNode end = new EndNode(graph);
-                p.replace(end);
-                merge.addEnd(end);
-                target.firstInstruction = merge;
-                merge.setStateBefore(existingState);
-                first = merge;
+                assert !target.isLoopHeader;
+                if (p.predecessors().size() == 0) {
+                    p.setStateBefore(newState.duplicate(bci));
+                    return;
+                } else {
+                    Merge merge = new Merge(graph);
+                    assert p.predecessors().size() == 1 : "predecessors size: " + p.predecessors().size();
+                    assert p.next() == null;
+                    EndNode end = new EndNode(graph);
+                    p.replace(end);
+                    merge.addEnd(end);
+                    target.firstInstruction = merge;
+                    merge.setStateBefore(existingState);
+                    first = merge;
+                }
             }
 
             existingState.merge((Merge) first, newState);
-        }
-
-        for (int j = 0; j < frameState.localsSize() + frameState.stackSize(); ++j) {
-            if (frameState.valueAt(j) != null) {
-                assert !frameState.valueAt(j).isDeleted();
-            }
         }
     }
 

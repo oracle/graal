@@ -87,24 +87,6 @@ public abstract class BlockEnd extends Instruction {
     }
 
     /**
-     * Substitutes a successor block in this block end's successor list. Note that
-     * this method updates all occurrences in the list.
-     * @param oldSucc the old successor to replace
-     * @param newSucc the new successor
-     */
-    public int substituteSuccessor(Merge oldSucc, Merge newSucc) {
-        assert newSucc != null;
-        int count = 0;
-        for (int i = 0; i < blockSuccessorCount; i++) {
-            if (blockSuccessor(i) == oldSucc) {
-                setBlockSuccessor(i, newSucc);
-                count++;
-            }
-        }
-        return count;
-    }
-
-    /**
      * Gets the successor corresponding to the default (fall through) case.
      * @return the default successor
      */
