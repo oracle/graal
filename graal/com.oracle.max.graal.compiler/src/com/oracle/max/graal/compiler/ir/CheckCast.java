@@ -41,7 +41,6 @@ public final class CheckCast extends TypeCheck {
      * Creates a new CheckCast instruction.
      * @param targetClass the class being cast to
      * @param object the instruction producing the object
-     * @param stateBefore the state before the cast
      * @param graph
      */
     public CheckCast(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {

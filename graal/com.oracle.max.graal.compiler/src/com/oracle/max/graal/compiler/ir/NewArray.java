@@ -59,7 +59,6 @@ public abstract class NewArray extends Instruction {
     /**
      * Constructs a new NewArray instruction.
      * @param length the instruction that produces the length for this allocation
-     * @param stateBefore the state before the allocation
      * @param inputCount
      * @param successorCount
      * @param graph

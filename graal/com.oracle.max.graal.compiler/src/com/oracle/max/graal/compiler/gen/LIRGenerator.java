@@ -240,19 +240,6 @@ public abstract class LIRGenerator extends ValueVisitor {
             if (instr instanceof Instruction) {
                 stateAfter = ((Instruction) instr).stateAfter();
             }
-            FrameState stateBefore = null;
-            if (instr instanceof StateSplit && ((StateSplit) instr).stateAfter() != null) {
-                stateBefore = ((StateSplit) instr).stateBefore();
-            }
-            if (stateBefore != null) {
-                lastState = stateBefore;
-                if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
-                    TTY.println("STATE CHANGE (stateBefore)");
-                    if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                        TTY.println(stateBefore.toString());
-                    }
-                }
-            }
             if (instr != instr.graph().start()) {
                 walkState(instr, stateAfter);
                 doRoot((Value) instr);

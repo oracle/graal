@@ -43,7 +43,6 @@ public final class NewInstance extends FloatingNode {
      * Constructs a NewInstance instruction.
      * @param type the class being allocated
      * @param cpi the constant pool index
-     * @param stateBefore the state before executing this instruction
      * @param graph
      */
     public NewInstance(RiType type, int cpi, RiConstantPool constantPool, Graph graph) {

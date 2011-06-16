@@ -1224,9 +1224,6 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void createDeoptBlock(DeoptBlock block) {
-//        Merge x = new Merge(graph);
-//        x.setStateBefore(((StateSplit) block.firstInstruction).stateBefore());
-//        append(x);
         append(new Deoptimize(DeoptAction.InvalidateReprofile, graph));
     }
 

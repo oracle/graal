@@ -78,7 +78,6 @@ public abstract class AccessIndexed extends AccessArray {
      * @param index the instruction producing the index
      * @param length the instruction producing the length (used in bounds check elimination?)
      * @param elementKind the type of the elements of the array
-     * @param stateBefore the state before executing this instruction
      * @param inputCount
      * @param successorCount
      * @param graph
