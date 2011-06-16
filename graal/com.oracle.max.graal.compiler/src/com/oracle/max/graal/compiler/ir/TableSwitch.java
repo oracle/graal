@@ -47,7 +47,7 @@ public final class TableSwitch extends Switch {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public TableSwitch(Value value, List<? extends Instruction> successors, int lowKey, Graph graph) {
+    public TableSwitch(Value value, List<? extends FixedNode> successors, int lowKey, Graph graph) {
         super(value, successors, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.lowKey = lowKey;
     }

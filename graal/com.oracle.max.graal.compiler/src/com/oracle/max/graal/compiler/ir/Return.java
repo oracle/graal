@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Return} class definition.
  */
-public final class Return extends BlockEnd {
+public final class Return extends FixedNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_RESULT = 0;
@@ -65,13 +65,13 @@ public final class Return extends BlockEnd {
      * @param graph
      */
     public Return(Value result, Graph graph) {
-        super(result == null ? CiKind.Void : result.kind, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(result == null ? CiKind.Void : result.kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setResult(result);
     }
 
     // for copying
     private Return(CiKind kind, Graph graph) {
-        super(kind, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override

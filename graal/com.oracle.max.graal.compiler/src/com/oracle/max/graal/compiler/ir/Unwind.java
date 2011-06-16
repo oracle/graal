@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * Unwind takes an exception object, destroys the current stack frame and passes the exception object to the system's exception dispatch code.
  */
-public final class Unwind extends BlockEnd {
+public final class Unwind extends FixedNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_EXCEPTION = 0;
@@ -59,7 +59,7 @@ public final class Unwind extends BlockEnd {
     }
 
     public Unwind(Value exception, Graph graph) {
-        super(CiKind.Object, 0, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setException(exception);
     }
 

@@ -70,7 +70,7 @@ public abstract class BlockEnd extends FixedNode {
      * @param kind the type of the value produced by this instruction
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
-    public BlockEnd(CiKind kind, List<? extends Instruction> blockSuccessors, int inputCount, int successorCount, Graph graph) {
+    public BlockEnd(CiKind kind, List<? extends FixedNode> blockSuccessors, int inputCount, int successorCount, Graph graph) {
         this(kind, blockSuccessors.size(), inputCount, successorCount, graph);
         for (int i = 0; i < blockSuccessors.size(); i++) {
             setBlockSuccessor(i, blockSuccessors.get(i));
