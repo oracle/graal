@@ -61,10 +61,10 @@ public final class EndNode extends FixedNode {
 
     @Override
     public boolean verify() {
-        assertTrue(inputs().size() == 0);
-        assertTrue(successors().size() == 0);
-        assertTrue(usages().size() <= 1);
-        assertTrue(predecessors().size() <= 1);
+        assertTrue(inputs().size() == 0, "inputs empty");
+        assertTrue(successors().size() == 0, "successors empty");
+        assertTrue(usages().size() <= 1, "at most one usage");
+        assertTrue(predecessors().size() <= 1, "at most one predecessor");
         return true;
     }
 }

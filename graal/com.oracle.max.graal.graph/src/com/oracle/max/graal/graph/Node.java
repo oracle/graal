@@ -88,7 +88,7 @@ public abstract class Node {
     }
 
     public Node replace(Node other) {
-        assert !isDeleted() && (other == null || !other.isDeleted());
+        assert !isDeleted() && (other == null || !other.isDeleted()) : "id: " + id() + ", other: " + other;
         assert other == null || other.graph == graph;
         for (Node usage : usages) {
             usage.inputs.replaceFirstOccurrence(this, other);
@@ -215,12 +215,16 @@ public abstract class Node {
     }
 
     public final void assertTrue(boolean cond) {
-        assert cond || assertionFailure();
+        assert cond || assertionFailure("");
     }
 
-    public final boolean assertionFailure() {
+    public final void assertTrue(boolean cond, String message) {
+        assert cond || assertionFailure(message);
+    }
+
+    public final boolean assertionFailure(String message) {
         for (VerificationListener l : Graph.verificationListeners) {
-            l.verificationFailed(this);
+            l.verificationFailed(this, message);
         }
         return true;
     }

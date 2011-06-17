@@ -68,7 +68,16 @@ public class IR {
      * Builds the graph, optimizes it, and computes the linear scan block order.
      */
     public void build() {
-        new GraphBuilderPhase(compilation, compilation.method, false, false).apply(compilation.graph);
+
+//        Object stored = GraphBuilderPhase.cachedGraphs.get(compilation.method);
+//        if (stored != null) {
+//            Map<Node, Node> replacements = new HashMap<Node, Node>();
+//            CompilerGraph duplicate = (CompilerGraph) stored;
+//            replacements.put(duplicate.start(), compilation.graph.start());
+//            compilation.graph.addDuplicate(duplicate.getNodes(), replacements);
+//        } else {
+            new GraphBuilderPhase(compilation, compilation.method, false, false).apply(compilation.graph);
+//        }
 
         if (GraalOptions.TestGraphDuplication) {
             new DuplicationPhase().apply(compilation.graph);

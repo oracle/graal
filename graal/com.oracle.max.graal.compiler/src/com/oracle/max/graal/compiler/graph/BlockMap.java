@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -170,7 +169,7 @@ public final class BlockMap {
      */
     public BlockMap(RiMethod method) {
         this.method = method;
-        this.blockMap = new Block[method.code().length];
+        this.blockMap = new Block[method.codeSize()];
         if (method.exceptionHandlers().length != 0) {
             this.canTrap = new BitSet(blockMap.length);
         }

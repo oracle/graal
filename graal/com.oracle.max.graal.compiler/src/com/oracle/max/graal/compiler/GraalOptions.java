@@ -29,8 +29,6 @@ import com.oracle.max.graal.compiler.debug.TTY.*;
  * The help message for each option is specified by a {@linkplain #helpMap help map}.
  *
  * (tw) WARNING: Fields of this class are treated as final by Graal.
- *
- * @author Ben L. Titzer
  */
 public final class GraalOptions {
 
@@ -40,9 +38,12 @@ public final class GraalOptions {
 
     // inlining settings
     public static boolean Inline                             = true;
+    public static boolean InlineWithTypeCheck                = ____;
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
+    public static int     MaximumFreqInlineSize              = 200;
+    public static int     FreqInlineRatio                    = 20;
     public static int     MaximumTrivialSize                 = 6;
     public static int     MaximumInlineLevel                 = 9;
     public static int     MaximumRecursiveInlineLevel        = 2;

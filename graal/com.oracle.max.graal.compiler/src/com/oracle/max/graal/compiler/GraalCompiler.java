@@ -71,12 +71,12 @@ public class GraalCompiler extends ObservableCompiler {
 
         Graph.verificationListeners.add(new VerificationListener() {
             @Override
-            public void verificationFailed(Node n) {
+            public void verificationFailed(Node n, String message) {
                 GraalCompiler.this.fireCompilationEvent(new CompilationEvent(currentCompilation, "Verification Error on Node " + n.id(), currentCompilation.graph, true, false));
                 for (Node p : n.predecessors()) {
                     TTY.println("predecessor: " + p);
                 }
-                assert false : "Verification of node " + n + " failed";
+                assert false : "Verification of node " + n + " failed: " + message;
             }
         });
     }

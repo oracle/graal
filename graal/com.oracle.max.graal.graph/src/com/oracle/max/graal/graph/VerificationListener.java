@@ -24,5 +24,5 @@ package com.oracle.max.graal.graph;
 
 
 public interface VerificationListener {
-    void verificationFailed(Node n);
+    void verificationFailed(Node n, String message);
 }

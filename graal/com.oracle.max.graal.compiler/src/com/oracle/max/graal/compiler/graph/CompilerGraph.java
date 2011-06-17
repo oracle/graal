@@ -38,20 +38,18 @@ public class CompilerGraph extends Graph {
         this.compilation = compilation;
     }
 
-    public Return createReturn(Value result) {
+    public void setReturn(Return returnNode) {
         assert returnSingleton == null;
-        returnSingleton = new Return(result, this);
-        return returnSingleton;
+        returnSingleton = returnNode;
     }
 
     public Return getReturn() {
         return returnSingleton;
     }
 
-    public Unwind createUnwind(Value exception) {
+    public void setUnwind(Unwind unwind) {
         assert unwindSingleton == null;
-        unwindSingleton = new Unwind(exception, this);
-        return unwindSingleton;
+        unwindSingleton = unwind;
     }
 
     public Unwind getUnwind() {
