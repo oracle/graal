@@ -24,6 +24,7 @@ package com.oracle.max.graal.runtime;
 
 import java.lang.reflect.*;
 
+import com.oracle.max.graal.compiler.debug.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -201,5 +202,20 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     public int branchProbability(int bci) {
         return compiler.getVMEntries().RiMethod_branchProbability(this, bci);
+    }
+
+    public void dumpProfile() {
+        TTY.println("profile info for %s", this);
+        TTY.println("canBeStaticallyBound: " + canBeStaticallyBound());
+        TTY.println("invocationCount: " + invocationCount());
+        for (int i = 0; i < codeSize(); i++) {
+            if (branchProbability(i) != -1) {
+                TTY.println("branchProbability@%d: %d", i, branchProbability(i));
+            }
+            RiTypeProfile profile = typeProfile(i);
+            if (profile != null && profile.count > 0) {
+                TTY.println("profile@%d: count: %d, morphism: %d", i, profile.count, profile.morphism);
+            }
+        }
     }
 }

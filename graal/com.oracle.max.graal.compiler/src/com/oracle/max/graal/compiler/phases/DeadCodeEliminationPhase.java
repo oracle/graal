@@ -29,6 +29,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 
 public class DeadCodeEliminationPhase extends Phase {
@@ -46,8 +47,25 @@ public class DeadCodeEliminationPhase extends Phase {
         // remove chained Merges
         for (Merge merge : graph.getNodes(Merge.class)) {
             if (merge.endCount() == 1 && merge.usages().size() == 0 && !(merge instanceof LoopEnd) && !(merge instanceof LoopBegin)) {
-                merge.endAt(0).replace(merge.next());
+                FixedNode next = merge.next();
+                EndNode endNode = merge.endAt(0);
                 merge.delete();
+                endNode.replace(next);
+            }
+        }
+        // remove if nodes with constant-value comparison
+        for (If ifNode : graph.getNodes(If.class)) {
+            Compare compare = ifNode.compare();
+            if (compare.x().isConstant() && compare.y().isConstant()) {
+                CiConstant constX = compare.x().asConstant();
+                CiConstant constY = compare.y().asConstant();
+                Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
+                if (result != null) {
+                    Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
+                    ifNode.replace(actualSuccessor);
+                } else {
+                    TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
+                }
             }
         }
 
