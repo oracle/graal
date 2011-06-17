@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
  * The {@code BlockEnd} instruction is a base class for all instructions that end a basic
  * block, including branches, switches, throws, and goto's.
  */
-public abstract class BlockEnd extends Instruction {
+public abstract class ControlSplit extends FixedNode {
 
     private static final int INPUT_COUNT = 0;
 
@@ -70,38 +70,16 @@ public abstract class BlockEnd extends Instruction {
      * @param kind the type of the value produced by this instruction
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
-    public BlockEnd(CiKind kind, List<? extends Instruction> blockSuccessors, int inputCount, int successorCount, Graph graph) {
+    public ControlSplit(CiKind kind, List<? extends FixedNode> blockSuccessors, int inputCount, int successorCount, Graph graph) {
         this(kind, blockSuccessors.size(), inputCount, successorCount, graph);
         for (int i = 0; i < blockSuccessors.size(); i++) {
             setBlockSuccessor(i, blockSuccessors.get(i));
         }
     }
 
-    public BlockEnd(CiKind kind, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
+    public ControlSplit(CiKind kind, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + blockSuccessorCount + SUCCESSOR_COUNT, graph);
         this.blockSuccessorCount = blockSuccessorCount;
-    }
-
-    public BlockEnd(CiKind kind, Graph graph) {
-        this(kind, 2, 0, 0, graph);
-    }
-
-    /**
-     * Substitutes a successor block in this block end's successor list. Note that
-     * this method updates all occurrences in the list.
-     * @param oldSucc the old successor to replace
-     * @param newSucc the new successor
-     */
-    public int substituteSuccessor(Merge oldSucc, Merge newSucc) {
-        assert newSucc != null;
-        int count = 0;
-        for (int i = 0; i < blockSuccessorCount; i++) {
-            if (blockSuccessor(i) == oldSucc) {
-                setBlockSuccessor(i, newSucc);
-                count++;
-            }
-        }
-        return count;
     }
 
     /**
@@ -111,36 +89,4 @@ public abstract class BlockEnd extends Instruction {
     public FixedNode defaultSuccessor() {
         return blockSuccessor(blockSuccessorCount - 1);
     }
-
-    /**
-     * Searches for the specified successor and returns its index into the
-     * successor list if found.
-     * @param b the block to search for in the successor list
-     * @return the index of the block in the list if found; <code>-1</code> otherwise
-     */
-    public int successorIndex(Merge b) {
-        for (int i = 0; i < blockSuccessorCount; i++) {
-            if (blockSuccessor(i) == b) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Gets this block end's list of successors.
-     * @return the successor list
-     */
-    @SuppressWarnings({ "unchecked", "rawtypes"})
-    public List<Instruction> blockSuccessors() {
-        List<Instruction> list = (List) successors().subList(super.successorCount() + SUCCESSOR_COUNT, super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT);
-        return Collections.unmodifiableList(list);
-    }
-
-    public void clearSuccessors() {
-        for (int i = 0; i < blockSuccessorCount(); i++) {
-            setBlockSuccessor(i, null);
-        }
-    }
-
 }

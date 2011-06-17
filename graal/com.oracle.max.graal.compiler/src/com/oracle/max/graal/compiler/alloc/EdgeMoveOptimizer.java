@@ -193,11 +193,6 @@ final class EdgeMoveOptimizer {
 
         assert numSux == 2 : "method should not be called otherwise";
 
-        if (instructions.get(instructions.size() - 1).code != LIROpcode.Branch) {
-            for (Node n : block.getInstructions()) {
-                TTY.println("instr: " + n);
-            }
-        }
         assert instructions.get(instructions.size() - 1).code == LIROpcode.Branch : "block with successor must end with branch block=B" + block.blockID();
         assert instructions.get(instructions.size() - 1) instanceof LIRBranch : "branch must be LIROpBranch";
         assert ((LIRBranch) instructions.get(instructions.size() - 1)).cond() == Condition.TRUE : "block must end with unconditional branch";

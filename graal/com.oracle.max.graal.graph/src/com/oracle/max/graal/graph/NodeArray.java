@@ -53,7 +53,7 @@ public class NodeArray extends AbstractList<Node> {
         nodes[index] = node;
         return result;
     }
-    
+
     public AbstractList<Node> variablePart() {
         return new AbstractList<Node>() {
 
@@ -77,24 +77,24 @@ public class NodeArray extends AbstractList<Node> {
                 variableLength++;
                 checkIndex(index);
                 NodeArray.this.ensureSize();
-                for (int i=size() - 1; i > index; i--) {
-                    NodeArray.this.nodes[fixedLength + i] = NodeArray.this.nodes[fixedLength + i-1];
+                for (int i = size() - 1; i > index; i--) {
+                    NodeArray.this.nodes[fixedLength + i] = NodeArray.this.nodes[fixedLength + i - 1];
                 }
                 set(index, element);
             }
-            
+
             private void checkIndex(int index) {
                 if (index < 0 || index >= size()) {
                     throw new IndexOutOfBoundsException();
                 }
             }
-            
+
             @Override
             public Node remove(int index) {
                 checkIndex(index);
                 Node n = get(index);
                 set(index, Node.Null);
-                for (int i=index; i < size() - 1; i++) {
+                for (int i = index; i < size() - 1; i++) {
                     NodeArray.this.nodes[fixedLength + i] = NodeArray.this.nodes[fixedLength + i + 1];
                 }
                 NodeArray.this.nodes[fixedLength + size() - 1] = Node.Null;
@@ -107,19 +107,19 @@ public class NodeArray extends AbstractList<Node> {
 
     private void ensureSize() {
         if (size() > nodes.length) {
-            nodes = Arrays.copyOf(nodes, (nodes.length + 1)*2);
+            nodes = Arrays.copyOf(nodes, (nodes.length + 1) * 2);
         }
     }
-    
+
     public void setOrExpand(int index, Node node) {
         if (index < 0) {
             throw new IndexOutOfBoundsException();
         }
-        
+
         while (index >= size()) {
             variablePart().add(Node.Null);
         }
-        
+
         set(index, node);
     }
 
@@ -129,7 +129,7 @@ public class NodeArray extends AbstractList<Node> {
         assert node == Node.Null || node.graph == self().graph : "node is from different graph: (this=" + self() + ") and (node=" + node + ")";
         assert node == Node.Null || node.id() != Node.DeletedID : "inserted node must not be deleted";
         assert node != self() || node.getClass().toString().contains("Phi") : "No direct circles allowed in the graph! " + node;
-        
+
         Node old = get(index);
         if (old != node) {
             silentSet(index, node);
@@ -143,13 +143,7 @@ public class NodeArray extends AbstractList<Node> {
             } else {
                 assert self().successors == this;
                 if (old != null) {
-                    for (int i = 0; i < old.predecessors.size(); ++i) {
-                        Node cur = old.predecessors.get(i);
-                        if (cur == self()) {
-                            old.predecessors.remove(i);
-                            break;
-                        }
-                    }
+                    old.predecessors.remove(self());
                 }
                 if (node != null) {
                     node.predecessors.add(self());
@@ -166,7 +160,7 @@ public class NodeArray extends AbstractList<Node> {
             set(i, other.get(i));
         }
     }
-    
+
     private void checkIndex(int index) {
         if (index < 0 || index >= size()) {
             throw new IndexOutOfBoundsException();
@@ -176,6 +170,7 @@ public class NodeArray extends AbstractList<Node> {
     @Override
     public Node get(int index) {
         checkIndex(index);
+        assert !self().isDeleted();
         return nodes[index];
     }
 

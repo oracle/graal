@@ -835,10 +835,10 @@ public final class LinearScan {
                 if (instr instanceof Phi) {
                     Phi phi = (Phi) instr;
                     TTY.println("phi block begin: " + phi.merge());
-                    TTY.println("pred count on blockbegin: " + phi.merge().predecessors().size());
+                    TTY.println("pred count on blockbegin: " + phi.merge().phiPointPredecessorCount());
                     TTY.println("phi values: " + phi.valueCount());
                     TTY.println("phi block preds:");
-                    for (Node n : phi.merge().predecessors()) {
+                    for (Node n : phi.merge().phiPointPredecessors()) {
                         TTY.println(n.toString());
                     }
                 }

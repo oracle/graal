@@ -32,7 +32,7 @@ import com.oracle.max.graal.graph.*;
 public interface PhiPoint {
     int phiPointPredecessorCount();
     int phiPointPredecessorIndex(Node pred);
-    List<Node> predecessors();
+    List<Node> phiPointPredecessors();
     Node asNode();
     Collection<Phi> phis();
 }

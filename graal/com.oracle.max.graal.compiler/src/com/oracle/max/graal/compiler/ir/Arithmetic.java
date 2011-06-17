@@ -44,7 +44,6 @@ public abstract class Arithmetic extends Binary {
      * @param x the first input instruction
      * @param y the second input instruction
      * @param isStrictFP indicates this operation has strict rounding semantics
-     * @param stateBefore the state for instructions that may trap
      */
     public Arithmetic(CiKind kind, int opcode, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);

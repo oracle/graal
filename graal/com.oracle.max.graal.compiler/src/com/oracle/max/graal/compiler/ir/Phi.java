@@ -68,6 +68,10 @@ public final class Phi extends FloatingNode {
         setMerge(merge.asNode());
     }
 
+    Phi(CiKind kind, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
+
     /**
      * Get the instruction that produces the value associated with the i'th predecessor
      * of the join block.
@@ -140,7 +144,7 @@ public final class Phi extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        Phi x = new Phi(kind, null, into);
+        Phi x = new Phi(kind, into);
         x.isDead = isDead;
         return x;
     }

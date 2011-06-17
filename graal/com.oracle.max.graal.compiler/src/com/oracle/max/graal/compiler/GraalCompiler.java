@@ -28,6 +28,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.target.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.xir.*;
@@ -58,6 +59,8 @@ public class GraalCompiler extends ObservableCompiler {
 
     public final RiRegisterConfig globalStubRegisterConfig;
 
+    private GraalCompilation currentCompilation;
+
     public GraalCompiler(RiRuntime runtime, CiTarget target, RiXirGenerator xirGen, RiRegisterConfig globalStubRegisterConfig) {
         this.runtime = runtime;
         this.target = target;
@@ -65,6 +68,17 @@ public class GraalCompiler extends ObservableCompiler {
         this.globalStubRegisterConfig = globalStubRegisterConfig;
         this.backend = Backend.create(target.arch, this);
         init();
+
+        Graph.verificationListeners.add(new VerificationListener() {
+            @Override
+            public void verificationFailed(Node n) {
+                GraalCompiler.this.fireCompilationEvent(new CompilationEvent(currentCompilation, "Verification Error on Node " + n.id(), currentCompilation.graph, true, false));
+                for (Node p : n.predecessors()) {
+                    TTY.println("predecessor: " + p);
+                }
+                assert false : "Verification of node " + n + " failed";
+            }
+        });
     }
 
     public CiResult compileMethod(RiMethod method, int osrBCI, RiXirGenerator xirGenerator, CiStatistics stats) {
@@ -78,6 +92,7 @@ public class GraalCompiler extends ObservableCompiler {
         CiResult result = null;
         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
         GraalCompilation compilation = new GraalCompilation(this, method, osrBCI, stats);
+        currentCompilation = compilation;
         try {
             result = compilation.compile();
         } finally {

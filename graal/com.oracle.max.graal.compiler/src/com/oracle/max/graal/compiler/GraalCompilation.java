@@ -217,7 +217,7 @@ public final class GraalCompilation {
                 if (t instanceof RuntimeException) {
                     throw (RuntimeException) t;
                 } else {
-                    throw new RuntimeException(t);
+                    throw new RuntimeException("Exception while compiling: " + method,t);
                 }
             }
         } finally {

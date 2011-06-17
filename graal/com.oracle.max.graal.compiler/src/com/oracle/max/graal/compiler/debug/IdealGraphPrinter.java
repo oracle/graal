@@ -209,11 +209,11 @@ public class IdealGraphPrinter {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
-            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) { //TODO gd
-                // Skip back edges.
-            } else {
+//            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) { //TODO gd
+//                // Skip back edges.
+//            } else {
                 stream.printf("     <successor name='%d'/>%n", sux.blockID());
-            }
+//            }
         }
         stream.printf("    </successors>%n");
         stream.printf("    <nodes>%n");
@@ -236,8 +236,8 @@ public class IdealGraphPrinter {
                 }
                 if (node instanceof Merge) {
                     Merge merge = (Merge) node;
-                    if (merge.stateBefore() != null) {
-                        nodes.add(merge.stateBefore());
+                    if (merge.stateAfter() != null) {
+                        nodes.add(merge.stateAfter());
                     }
                 }
                 if (node instanceof PhiPoint) {

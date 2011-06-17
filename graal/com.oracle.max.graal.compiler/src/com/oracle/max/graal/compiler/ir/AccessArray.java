@@ -60,7 +60,6 @@ public abstract class AccessArray extends StateSplit {
      * Creates a new AccessArray instruction.
      * @param kind the type of the result of this instruction
      * @param array the instruction that produces the array object value
-     * @param stateBefore the frame state before the instruction
      * @param inputCount
      * @param successorCount
      * @param graph

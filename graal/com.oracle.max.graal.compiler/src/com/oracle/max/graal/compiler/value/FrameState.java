@@ -415,10 +415,10 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
     }
 
-    public Merge block() {
-        for (Node usage : usages()) {
-            if (usage instanceof Merge) {
-                return (Merge) usage;
+    public PhiPoint block() {
+        for (Node n : usages()) {
+            if (n instanceof PhiPoint) {
+                return (PhiPoint) n;
             }
         }
         return null;

@@ -106,4 +106,9 @@ public class LoopBegin extends StateSplit implements PhiPoint{
     public Collection<LoopCounter> counters() {
         return Util.filter(this.usages(), LoopCounter.class);
     }
+
+    @Override
+    public List<Node> phiPointPredecessors() {
+        return Arrays.asList(new Node[]{this.singlePredecessor(), this.loopEnd()});
+    }
 }

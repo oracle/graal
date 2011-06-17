@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
  * The {@code If} instruction represents a branch that can go one of two directions
  * depending on the outcome of a comparison.
  */
-public final class If extends BlockEnd {
+public final class If extends ControlSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_COMPARE = 0;
@@ -102,9 +102,9 @@ public final class If extends BlockEnd {
         print(' ').
         print(compare().y()).
         print(" then ").
-        print(blockSuccessors().get(0)).
+        print(trueSuccessor()).
         print(" else ").
-        print(blockSuccessors().get(1));
+        print(falseSuccessor());
     }
 
     @Override

@@ -75,7 +75,6 @@ public final class NewMultiArray extends NewArray {
      * Constructs a new NewMultiArray instruction.
      * @param elementType the element type of the array
      * @param dimensions the instructions which produce the dimensions for this array
-     * @param stateBefore the state before this instruction
      * @param cpi the constant pool index for resolution
      * @param riConstantPool the constant pool for resolution
      * @param graph

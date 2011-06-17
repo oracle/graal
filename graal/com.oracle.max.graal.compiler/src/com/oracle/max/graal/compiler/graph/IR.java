@@ -80,17 +80,14 @@ public class IR {
             new InliningPhase(compilation, this, GraalOptions.TraceInlining).apply(compilation.graph);
         }
 
-        if (GraalOptions.Time) {
-            GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.start();
-        }
-
         Graph graph = compilation.graph;
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
-            new DeadCodeEliminationPhase().apply(compilation.graph);
+            new DeadCodeEliminationPhase().apply(graph);
         }
 
+        new LoopEdgeSplitingPhase().apply(graph);
         if (GraalOptions.OptLoops) {
             new LoopPhase().apply(graph);
         }
@@ -100,6 +97,9 @@ public class IR {
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);
 
+        if (GraalOptions.Time) {
+            GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.start();
+        }
 
         List<Block> blocks = schedule.getBlocks();
         List<LIRBlock> lirBlocks = new ArrayList<LIRBlock>();

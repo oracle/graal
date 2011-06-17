@@ -53,4 +53,13 @@ public final class NodeMap<T> {
         assert node.graph == graph : "this node is not part of the graph";
         assert node.id() < values.length : "this node was added to the graph after creating the node map";
     }
+    
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < values.length; i++) {
+            sb.append("[").append(i).append(" -> ").append(values[i]).append("]").append('\n');
+        }
+        return sb.toString();
+    }
 }
