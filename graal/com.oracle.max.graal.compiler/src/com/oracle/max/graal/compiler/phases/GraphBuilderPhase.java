@@ -104,7 +104,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private final boolean createUnwind;
 
-    public static HashMap<String, Integer> methodCount = new HashMap<String, Integer>();
+    public static final Map<RiMethod, CompilerGraph> cachedGraphs = new WeakHashMap<RiMethod, CompilerGraph>();
 
     /**
      * Creates a new, initialized, {@code GraphBuilder} instance for a given compilation.
@@ -126,23 +126,6 @@ public final class GraphBuilderPhase extends Phase {
         this.constantPool = runtime.getConstantPool(method);
         this.createUnwind = createUnwind;
         this.storeResultGraph = true;
-
-//        String name = method.toString().intern();
-//        if (methodCount.get(name) == null) {
-//            methodCount.put(name, 1);
-//        } else {
-//            methodCount.put(name, methodCount.get(name) + 1);
-//        }
-//
-//        int inlined = 0;
-//        int duplicate = 0;
-//        for (Map.Entry<String, Integer> entry : methodCount.entrySet()) {
-//            inlined += entry.getValue();
-//            duplicate += entry.getValue() - 1;
-//        }
-//        if (inlined > 0) {
-//            System.out.printf("GraphBuilder overhead: %d (%5.3f %%)\n", duplicate, duplicate * 100.0 / inlined);
-//        }
     }
 
     @Override
@@ -234,7 +217,7 @@ public final class GraphBuilderPhase extends Phase {
             replacements.put(graph.start(), duplicate.start());
             duplicate.addDuplicate(graph.getNodes(), replacements);
 
-            method.compilerStorage().put(CompilerGraph.class, duplicate);
+            cachedGraphs.put(method, duplicate);
         }
     }
 

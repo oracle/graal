@@ -210,12 +210,16 @@ public abstract class Node {
     }
 
     public final void assertTrue(boolean cond) {
-        assert cond || assertionFailure();
+        assert cond || assertionFailure("");
     }
 
-    public final boolean assertionFailure() {
+    public final void assertTrue(boolean cond, String message) {
+        assert cond || assertionFailure(message);
+    }
+
+    public final boolean assertionFailure(String message) {
         for (VerificationListener l : Graph.verificationListeners) {
-            l.verificationFailed(this);
+            l.verificationFailed(this, message);
         }
         return true;
     }
