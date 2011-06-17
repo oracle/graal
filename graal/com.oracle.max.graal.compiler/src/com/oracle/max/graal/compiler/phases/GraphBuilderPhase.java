@@ -1219,7 +1219,8 @@ public final class GraphBuilderPhase extends Phase {
                     loopEnd.delete();
                     Merge merge = new Merge(graph);
                     EndNode end = new EndNode(graph);
-                    begin.singlePredecessor().successors().replace(begin, end);
+                    int nbrReplacement = begin.singlePredecessor().successors().replace(begin, end);
+                    assert nbrReplacement > 0;
                     merge.addEnd(end);
                     merge.setNext(begin.next());
                     merge.setStateAfter(begin.stateAfter());

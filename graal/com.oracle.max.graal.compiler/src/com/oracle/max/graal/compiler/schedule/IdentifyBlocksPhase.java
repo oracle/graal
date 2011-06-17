@@ -33,6 +33,7 @@ import com.sun.cri.ci.*;
 
 
 public class IdentifyBlocksPhase extends Phase {
+    private static final int MAX_DOMINATOR_ITER = 50;
     private final List<Block> blocks = new ArrayList<Block>();
     private NodeMap<Block> nodeToBlock;
     private Graph graph;
@@ -94,6 +95,8 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private void print() {
+        Block dominatorRoot = nodeToBlock.get(graph.start());
+        System.out.println("Root = " + dominatorRoot);
         System.out.println("nodeToBlock :");
         System.out.println(nodeToBlock);
         System.out.println("Blocks :");
@@ -134,7 +137,7 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
 
-//        System.out.println("identify blocks");
+        //System.out.println("identify blocks");
 //        print();
 
         // Connect blocks.
@@ -142,9 +145,8 @@ public class IdentifyBlocksPhase extends Phase {
             Node n = block.firstNode();
             if (n instanceof Merge) {
                 Merge m = (Merge) n;
-                for (int i = 0; i < m.endCount(); ++i) {
-                    EndNode end = m.endAt(i);
-                    Block predBlock = nodeToBlock.get(end);
+                for (Node pred : m.phiPointPredecessors()) {
+                    Block predBlock = nodeToBlock.get(pred);
                     predBlock.addSuccessor(block);
                 }
             } else {
@@ -156,8 +158,8 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             }
         }
-//        System.out.println("connect");
-//        print();
+        //System.out.println("connect");
+        //print();
 
         computeDominators();
 
@@ -174,14 +176,14 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             }
 
-//            System.out.println("dom + cycles");
+            //System.out.println("dom + cycles");
 //            print();
 
             assignLatestPossibleBlockToNodes();
-//            System.out.println("assign last");
+            //System.out.println("assign last");
 //            print();
             sortNodesWithinBlocks();
-//            System.out.println("sort");
+            //System.out.println("sort");
 //            print();
         } else {
             computeJavaBlocks();
@@ -270,14 +272,8 @@ public class IdentifyBlocksPhase extends Phase {
             Block block = nodeToBlock.get(((LoopCounter) n).loopBegin());
             nodeToBlock.set(n, block);
         }
-        if (n.id() == 142) {
-            System.out.println("computing common dom for " + n);
-        }
         Block block = null;
         for (Node succ : n.successors()) {
-            if (n.id() == 142) {
-                System.out.println("com(assignLatestPossibleBlockToNode(succ)) = com(" + assignLatestPossibleBlockToNode(succ) + ")");
-            }
             block = getCommonDominator(block, assignLatestPossibleBlockToNode(succ));
         }
         for (Node usage : n.usages()) {
@@ -294,18 +290,12 @@ public class IdentifyBlocksPhase extends Phase {
                             TTY.println(merge.phiPointPredecessors().toString());
                             TTY.println("value count: " + phi.valueCount());
                         }
-                        if (n.id() == 142) {
-                            System.out.println("com(phi-merge) = com(" + mergeBlock.getPredecessors().get(i) + ")");
-                        }
                         block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
                     }
                 }
             } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
                 PhiPoint merge = ((FrameState) usage).block();
                 for (Node pred : merge.phiPointPredecessors()) {
-                    if (n.id() == 142) {
-                        System.out.println("com(FS pred) = com(" + nodeToBlock.get(pred) + ")");
-                    }
                     block = getCommonDominator(block, nodeToBlock.get(pred));
                 }
             } else if (usage instanceof LoopCounter) {
@@ -313,15 +303,9 @@ public class IdentifyBlocksPhase extends Phase {
                 if (n == counter.init() || n == counter.stride()) {
                     LoopBegin loopBegin = counter.loopBegin();
                     Block mergeBlock = nodeToBlock.get(loopBegin);
-                    if (n.id() == 142) {
-                        System.out.println("com(LC dom) = com(" + mergeBlock.dominator() + ")");
-                    }
                     block = getCommonDominator(block, mergeBlock.dominator());
                 }
             } else {
-                if (n.id() == 142) {
-                    System.out.println("com(usage) = com(" + assignLatestPossibleBlockToNode(usage) + ")");
-                }
                 block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
             }
         }
@@ -430,8 +414,14 @@ public class IdentifyBlocksPhase extends Phase {
         visited.set(dominatorRoot.blockID());
         LinkedList<Block> workList = new LinkedList<Block>();
         workList.add(dominatorRoot);
-
+        int iter = 0;
+        int maxIter = MAX_DOMINATOR_ITER * blocks.size();
         while (!workList.isEmpty()) {
+            if (iter++ >= maxIter) {
+                System.out.println("Reached maxIter(" + maxIter + ") !!");
+                print();
+                throw new CiBailout("Max iteration for dominator computation reached, Cycles in the block graph?");
+            }
             Block b = workList.remove();
 
             List<Block> predecessors = b.getPredecessors();

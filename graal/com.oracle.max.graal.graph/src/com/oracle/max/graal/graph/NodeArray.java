@@ -163,7 +163,7 @@ public class NodeArray extends AbstractList<Node> {
 
     private void checkIndex(int index) {
         if (index < 0 || index >= size()) {
-            throw new IndexOutOfBoundsException();
+            throw new IndexOutOfBoundsException("Index : " + index);
         }
     }
 

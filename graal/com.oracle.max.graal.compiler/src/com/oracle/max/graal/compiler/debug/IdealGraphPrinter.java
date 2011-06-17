@@ -28,6 +28,7 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 
 /**
@@ -133,7 +134,7 @@ public class IdealGraphPrinter {
         if (schedule != null) {
             stream.println("  <controlFlow>");
             for (Block block : schedule.getBlocks()) {
-                printBlock(graph, block);
+                printBlock(graph, block, schedule.getNodeToBlock());
             }
             printNoBlock();
             stream.println("  </controlFlow>");
@@ -164,9 +165,13 @@ public class IdealGraphPrinter {
                 }
                 stream.printf("    <p name='name'>%s</p>%n", escape(name));
             }
+            stream.printf("    <p name='class'>%s</p>%n", escape(node.getClass().getSimpleName()));
             Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
             if (block != null) {
                 stream.printf("    <p name='block'>%d</p>%n", block.blockID());
+                if (!(node instanceof Phi || node instanceof FrameState || node instanceof Local) && !block.getInstructions().contains(node)) {
+                    stream.printf("    <p name='notInOwnBlock'>true</p>%n");
+                }
             } else {
                 stream.printf("    <p name='block'>noBlock</p>%n");
                 noBlockNodes.add(node);
@@ -205,7 +210,7 @@ public class IdealGraphPrinter {
         stream.printf("   <edge from='%d' fromIndex='%d' to='%d' toIndex='%d'/>%n", edge.from, edge.fromIndex, edge.to, edge.toIndex);
     }
 
-    private void printBlock(Graph graph, Block block) {
+    private void printBlock(Graph graph, Block block, NodeMap<Block> nodeToBlock) {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
@@ -219,6 +224,19 @@ public class IdealGraphPrinter {
         stream.printf("    <nodes>%n");
 
         Set<Node> nodes = new HashSet<Node>(block.getInstructions());
+
+        if (nodeToBlock != null) {
+            for (Node n : graph.getNodes()) {
+                if (n == null) {
+                    continue;
+                }
+                Block blk = nodeToBlock.get(n);
+                if (blk == block) {
+                    nodes.add(n);
+                }
+            }
+        }
+
         if (nodes.size() > 0) {
             // if this is the first block: add all locals to this block
             if (block.getInstructions() == graph.start()) {

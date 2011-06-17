@@ -30,6 +30,7 @@ import com.sun.cri.ci.*;
 public final class EndNode extends FixedNode {
     public static final int SUCCESSOR_COUNT = 0;
     public static final int INPUT_COUNT = 0;
+
     public EndNode(Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
