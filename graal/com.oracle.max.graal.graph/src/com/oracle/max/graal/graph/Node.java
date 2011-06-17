@@ -53,8 +53,8 @@ public abstract class Node {
     public List<Node> predecessors() {
         return Collections.unmodifiableList(predecessors);
     }
-    
-    public Node singlePredecessor(){
+
+    public Node singlePredecessor() {
         assert predecessors.size() == 1;
         return predecessors.get(0);
     }
