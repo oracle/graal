@@ -126,7 +126,7 @@ public final class GraphBuilderPhase extends Phase {
 
         this.constantPool = runtime.getConstantPool(method);
         this.createUnwind = createUnwind;
-        this.storeResultGraph = true;
+        this.storeResultGraph = GraalOptions.StoreResultGraph;
     }
 
     @Override
