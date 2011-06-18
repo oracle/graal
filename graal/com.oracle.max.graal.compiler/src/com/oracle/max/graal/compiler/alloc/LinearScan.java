@@ -1914,7 +1914,7 @@ public final class LinearScan {
         if (state.outerFrameState() != null) {
             caller = computeFrameForState(state.outerFrameState(), opId, frameRefMap);
         }
-        return new CiFrame(caller, state.method, state.bci, values, state.localsSize(), state.stackSize(), state.locksSize());
+        return new CiFrame(caller, state.method, state.bci, state.rethrowException(), values, state.localsSize(), state.stackSize(), state.locksSize());
     }
 
     private void computeDebugInfo(IntervalWalker iw, LIRInstruction op) {

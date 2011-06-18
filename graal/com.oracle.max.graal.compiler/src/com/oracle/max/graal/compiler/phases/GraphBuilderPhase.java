@@ -70,6 +70,7 @@ public final class GraphBuilderPhase extends Phase {
     private final RiRuntime runtime;
     private final RiMethod method;
     private final RiConstantPool constantPool;
+    private RiExceptionHandler[] exceptionHandlers;
 
     private final BytecodeStream stream;           // the bytecode stream
     private final LogStream log;
@@ -152,6 +153,7 @@ public final class GraphBuilderPhase extends Phase {
         BlockMap blockMap = compilation.getBlockMap(method);
         this.branchOverride = blockMap.branchOverride;
 
+        exceptionHandlers = blockMap.exceptionHandlers();
         blockList = new ArrayList<Block>(blockMap.blocks);
         blockFromBci = new Block[method.codeSize()];
         for (int i = 0; i < blockList.size(); i++) {
@@ -285,6 +287,9 @@ public final class GraphBuilderPhase extends Phase {
         assert first instanceof StateSplit;
 
         int bci = target.startBci;
+        if (target instanceof ExceptionBlock) {
+            bci = ((ExceptionBlock) target).deoptBci;
+        }
 
         FrameState existingState = ((StateSplit) first).stateAfter();
 
@@ -379,7 +384,6 @@ public final class GraphBuilderPhase extends Phase {
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         RiExceptionHandler firstHandler = null;
-        RiExceptionHandler[] exceptionHandlers = method.exceptionHandlers();
         // join with all potential exception handlers
         if (exceptionHandlers != null) {
             for (RiExceptionHandler handler : exceptionHandlers) {
@@ -431,7 +435,7 @@ public final class GraphBuilderPhase extends Phase {
                 currentNext = exception;
                 currentExceptionObject = exception;
             }
-            FrameState stateWithException = entryState.duplicateModified(bci, CiKind.Void, currentExceptionObject);
+            FrameState stateWithException = entryState.duplicateWithException(bci, currentExceptionObject);
 
             currentNext.setNext(createTarget(dispatchBlock, stateWithException));
             return entry;
@@ -1281,7 +1285,7 @@ public final class GraphBuilderPhase extends Phase {
             assert frameState.stackSize() == 1 : "only exception object expected on stack, actual size: " + frameState.stackSize();
             createUnwindBlock(block);
         } else {
-            assert frameState.stackSize() == 1;
+            assert frameState.stackSize() == 1 : frameState;
 
             Block nextBlock = block.next == null ? unwindBlock() : block.next;
             if (block.handler.catchType().isResolved()) {
@@ -1289,7 +1293,7 @@ public final class GraphBuilderPhase extends Phase {
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
                 append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
             } else {
-                Deoptimize deopt = new Deoptimize(DeoptAction.InvalidateRecompile, graph);
+                Deoptimize deopt = new Deoptimize(DeoptAction.RethrowExceptionInInterpreter, graph);
                 deopt.setMessage("unresolved " + block.handler.catchType().name());
                 append(deopt);
 //                FixedNode nextDispatch = createTarget(nextBlock, frameState);

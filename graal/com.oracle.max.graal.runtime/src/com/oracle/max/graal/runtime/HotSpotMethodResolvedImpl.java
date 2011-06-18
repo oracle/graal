@@ -80,10 +80,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public RiExceptionHandler[] exceptionHandlers() {
-        if (exceptionHandlers == null) {
-            exceptionHandlers = compiler.getVMEntries().RiMethod_exceptionHandlers(this);
-        }
-        return exceptionHandlers;
+        return compiler.getVMEntries().RiMethod_exceptionHandlers(this);
     }
 
     @Override

@@ -128,7 +128,9 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
         RiType result = typeCache.get(cpi);
         if (result == null) {
             result = compiler.getVMEntries().RiConstantPool_lookupType(vmId, cpi);
-            typeCache.add(cpi, result);
+            if (result.isResolved()) {
+                typeCache.add(cpi, result);
+            }
         }
         return result;
     }

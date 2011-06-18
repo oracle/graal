@@ -29,7 +29,6 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
 
 public class DeadCodeEliminationPhase extends Phase {

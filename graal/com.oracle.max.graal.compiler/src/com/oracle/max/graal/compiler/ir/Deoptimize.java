@@ -39,6 +39,7 @@ public class Deoptimize extends FixedNode {
         InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
         InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
         InvalidateStopCompiling,        // invalidate the nmethod and do not compile
+        RethrowExceptionInInterpreter,
     }
 
     private String message;

@@ -95,7 +95,7 @@ public final class GraalCompilation {
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
-        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(method, 0, 0, 0, 0, graph) : null;
+        this.placeholderState = method != null && method.minimalDebugInfo() ? new FrameState(method, 0, 0, 0, 0, false, graph) : null;
 
         if (compiler.isObserved()) {
             compiler.fireCompilationStarted(new CompilationEvent(this));

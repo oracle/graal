@@ -300,7 +300,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             slot += arguments[arg].sizeInSlots();
         }
 
-        FrameState fs = new FrameState(compilation.method, bci, compilation.method.maxLocals(), 0, 0, compilation.graph);
+        FrameState fs = new FrameState(compilation.method, bci, compilation.method.maxLocals(), 0, 0, false, compilation.graph);
         for (Node node : compilation.graph.start().usages()) {
             if (node instanceof Local) {
                 Local local = (Local) node;
@@ -534,7 +534,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected FrameState stateBeforeInvokeReturn(Invoke invoke) {
-        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.kind);
+        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.stateAfter().rethrowException(), invoke.kind);
     }
 
     protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
@@ -542,7 +542,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         for (int i = 0; i < invoke.argumentCount(); i++) {
             args[i] = invoke.argument(i);
         }
-        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.kind, args);
+        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.stateAfter().rethrowException(), invoke.kind, args);
     }
 
     private int getBeforeInvokeBci(Invoke invoke) {

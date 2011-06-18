@@ -49,6 +49,8 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     protected final int locksSize;
 
+    private final boolean rethrowException;
+
     private static final int SUCCESSOR_COUNT = 0;
 
     @Override
@@ -90,19 +92,20 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param stackSize size of the stack
      * @param lockSize number of locks
      */
-    public FrameState(RiMethod method, int bci, int localsSize, int stackSize, int locksSize, Graph graph) {
+    public FrameState(RiMethod method, int bci, int localsSize, int stackSize, int locksSize, boolean rethrowException, Graph graph) {
         super(CiKind.Illegal, localsSize + stackSize + locksSize + INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.method = method;
         this.bci = bci;
         this.localsSize = localsSize;
         this.stackSize = stackSize;
         this.locksSize = locksSize;
+        this.rethrowException = rethrowException;
         GraalMetrics.FrameStatesCreated++;
         GraalMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
     }
 
-    FrameState(RiMethod method, int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks, Graph graph) {
-        this(method, bci, locals.length, stackSize, locks.size(), graph);
+    FrameState(RiMethod method, int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks, boolean rethrowException, Graph graph) {
+        this(method, bci, locals.length, stackSize, locks.size(), rethrowException, graph);
         for (int i = 0; i < locals.length; i++) {
             setValueAt(i, locals[i]);
         }
@@ -112,6 +115,10 @@ public final class FrameState extends Value implements FrameStateAccess {
         for (int i = 0; i < locks.size(); i++) {
             setValueAt(locals.length + stackSize + i, locks.get(i));
         }
+    }
+
+    public boolean rethrowException() {
+        return rethrowException;
     }
 
     /**
@@ -128,7 +135,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      */
     @Override
     public FrameState duplicateWithEmptyStack(int bci) {
-        FrameState other = new FrameState(method, bci, localsSize, 0, locksSize(), graph());
+        FrameState other = new FrameState(method, bci, localsSize, 0, locksSize(), rethrowException, graph());
         for (int i = 0; i < localsSize; i++) {
             other.setValueAt(i, localAt(i));
         }
@@ -139,15 +146,19 @@ public final class FrameState extends Value implements FrameStateAccess {
         return other;
     }
 
+    public FrameState duplicateWithException(int bci, Value exceptionObject) {
+        return duplicateModified(bci, true, CiKind.Void, exceptionObject);
+    }
+
     /**
      * Creates a copy of this frame state with one stack element of type popKind popped from the stack and the
      * values in pushedValues pushed on the stack. The pushedValues are expected to be in slot encoding: a long
      * or double is followed by a null slot.
      */
-    public FrameState duplicateModified(int bci, CiKind popKind, Value... pushedValues) {
+    public FrameState duplicateModified(int bci, boolean rethrowException, CiKind popKind, Value... pushedValues) {
         int popSlots = popKind.sizeInSlots();
         int pushSlots = pushedValues.length;
-        FrameState other = new FrameState(method, bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), graph());
+        FrameState other = new FrameState(method, bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), rethrowException, graph());
         for (int i = 0; i < localsSize; i++) {
             other.setValueAt(i, localAt(i));
         }
@@ -481,14 +492,9 @@ public final class FrameState extends Value implements FrameStateAccess {
         out.print("FrameState");
     }
 
-    @Override
-    public FrameState copy() {
-        return new FrameState(method, bci, localsSize, stackSize, locksSize, graph());
-    }
-
 
     private FrameState copy(int newBci) {
-        return new FrameState(method, newBci, localsSize, stackSize, locksSize, graph());
+        return new FrameState(method, newBci, localsSize, stackSize, locksSize, rethrowException, graph());
     }
 
     @Override
@@ -520,12 +526,12 @@ public final class FrameState extends Value implements FrameStateAccess {
             str.append(i == 0 ? "" : ", ").append(lockAt(i) == null ? "_" : lockAt(i).id());
         }
         properties.put("locks", str.toString());
+        properties.put("rethrowException", rethrowException);
         return properties;
     }
 
     @Override
     public Node copy(Graph into) {
-        FrameState x = new FrameState(method, bci, localsSize, stackSize, locksSize, into);
-        return x;
+        return new FrameState(method, bci, localsSize, stackSize, locksSize, rethrowException, into);
     }
 }

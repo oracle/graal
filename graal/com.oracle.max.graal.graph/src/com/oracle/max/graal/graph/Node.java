@@ -160,7 +160,7 @@ public abstract class Node {
         return true;
     }
 
-    public Node copy() {
+    public final Node copy() {
         return copy(graph);
     }
 

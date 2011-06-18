@@ -132,6 +132,7 @@ public final class BlockMap {
     public static class ExceptionBlock  extends Block {
         public RiExceptionHandler handler;
         public Block next;
+        public int deoptBci;
     }
 
     public static class DeoptBlock  extends Block {
@@ -157,6 +158,8 @@ public final class BlockMap {
 
     private final RiMethod method;
 
+    private final RiExceptionHandler[] exceptionHandlers;
+
     public final HashMap<Integer, BranchOverride> branchOverride;
 
     private Block[] blockMap;
@@ -169,6 +172,7 @@ public final class BlockMap {
      */
     public BlockMap(RiMethod method) {
         this.method = method;
+        exceptionHandlers = method.exceptionHandlers();
         this.blockMap = new Block[method.codeSize()];
         if (method.exceptionHandlers().length != 0) {
             this.canTrap = new BitSet(blockMap.length);
@@ -176,6 +180,10 @@ public final class BlockMap {
         this.blocks = new ArrayList<Block>();
         this.storesInLoops = new BitSet(method.maxLocals());
         branchOverride = new HashMap<Integer, BranchOverride>();
+    }
+
+    public RiExceptionHandler[] exceptionHandlers() {
+        return exceptionHandlers;
     }
 
     /**
@@ -202,7 +210,7 @@ public final class BlockMap {
 
     private void makeExceptionEntries() {
         // start basic blocks at all exception handler blocks and mark them as exception entries
-        for (RiExceptionHandler h : method.exceptionHandlers()) {
+        for (RiExceptionHandler h : this.exceptionHandlers) {
             Block xhandler = makeBlock(h.handlerBCI());
             xhandler.isExceptionEntry = true;
         }
@@ -427,7 +435,7 @@ public final class BlockMap {
 
     private ExceptionBlock unwindBlock;
 
-    private Block makeExceptionDispatch(List<RiExceptionHandler> handlers, int index) {
+    private Block makeExceptionDispatch(List<RiExceptionHandler> handlers, int index, int bci) {
         RiExceptionHandler handler = handlers.get(index);
         if (handler.isCatchAll()) {
             return blockMap[handler.handlerBCI()];
@@ -437,10 +445,11 @@ public final class BlockMap {
             block = new ExceptionBlock();
             block.startBci = -1;
             block.endBci = -1;
+            block.deoptBci = bci;
             block.handler = handler;
             block.successors.add(blockMap[handler.handlerBCI()]);
             if (index < handlers.size() - 1) {
-                block.next = makeExceptionDispatch(handlers, index + 1);
+                block.next = makeExceptionDispatch(handlers, index + 1, bci);
                 block.successors.add(block.next);
             }
             exceptionDispatch.put(handler, block);
@@ -457,7 +466,7 @@ public final class BlockMap {
             Block block = blockMap[bci];
 
             ArrayList<RiExceptionHandler> handlers = null;
-            for (RiExceptionHandler h : method.exceptionHandlers()) {
+            for (RiExceptionHandler h : this.exceptionHandlers) {
                 if (h.startBCI() <= bci && bci < h.endBCI()) {
                     if (handlers == null) {
                         handlers = new ArrayList<RiExceptionHandler>();
@@ -469,7 +478,7 @@ public final class BlockMap {
                 }
             }
             if (handlers != null) {
-                Block dispatch = makeExceptionDispatch(handlers, 0);
+                Block dispatch = makeExceptionDispatch(handlers, 0, bci);
                 block.successors.add(dispatch);
             }
         }
