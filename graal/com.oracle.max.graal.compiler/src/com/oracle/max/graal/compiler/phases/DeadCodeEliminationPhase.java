@@ -54,20 +54,20 @@ public class DeadCodeEliminationPhase extends Phase {
             }
         }
         // remove if nodes with constant-value comparison
-        for (If ifNode : graph.getNodes(If.class)) {
-            Compare compare = ifNode.compare();
-            if (compare.x().isConstant() && compare.y().isConstant()) {
-                CiConstant constX = compare.x().asConstant();
-                CiConstant constY = compare.y().asConstant();
-                Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
-                if (result != null) {
-                    Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-                    ifNode.replace(actualSuccessor);
-                } else {
-                    TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
-                }
-            }
-        }
+//        for (If ifNode : graph.getNodes(If.class)) {
+//            Compare compare = ifNode.compare();
+//            if (compare.x().isConstant() && compare.y().isConstant()) {
+//                CiConstant constX = compare.x().asConstant();
+//                CiConstant constY = compare.y().asConstant();
+//                Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
+//                if (result != null) {
+//                    Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
+//                    ifNode.replace(actualSuccessor);
+//                } else {
+//                    TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
+//                }
+//            }
+//        }
 
         flood.add(graph.start());
 

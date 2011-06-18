@@ -102,7 +102,7 @@ public class IdentifyBlocksPhase extends Phase {
                     Block block = null;
                     Node currentNode = n;
                     while (nodeToBlock.get(currentNode) == null) {
-                        if (block != null && IdentifyBlocksPhase.trueSuccessorCount(currentNode) > 1) {
+                        if (block != null && (currentNode instanceof ControlSplit || trueSuccessorCount(currentNode) > 1)) {
                             // We are at a split node => start a new block.
                             block = null;
                         }
@@ -372,6 +372,7 @@ public class IdentifyBlocksPhase extends Phase {
         visited.set(dominatorRoot.blockID());
         LinkedList<Block> workList = new LinkedList<Block>();
         workList.add(dominatorRoot);
+        // TODO: Add all predecessor.size()==0 nodes.
 
         while (!workList.isEmpty()) {
             Block b = workList.remove();
