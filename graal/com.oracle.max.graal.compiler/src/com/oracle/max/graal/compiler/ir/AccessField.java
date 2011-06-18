@@ -76,7 +76,7 @@ public abstract class AccessField extends StateSplit {
         this.field = field;
         setObject(object);
         assert field.isResolved();
-        assert field.holder().isResolved();
+        assert field.holder().isInitialized();
     }
 
     /**

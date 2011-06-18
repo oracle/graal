@@ -801,7 +801,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genGetField(int cpi, RiField field) {
         CiKind kind = field.kind();
         Value receiver = frameState.apop();
-        if (field.isResolved()) {
+        if (field.isResolved() && field.holder().isInitialized()) {
             LoadField load = new LoadField(receiver, field, graph);
             appendOptimizedLoadField(kind, load);
         } else {
@@ -814,7 +814,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genPutField(int cpi, RiField field) {
         Value value = frameState.pop(field.kind().stackKind());
         Value receiver = frameState.apop();
-        if (field.isResolved()) {
+        if (field.isResolved() && field.holder().isInitialized()) {
             StoreField store = new StoreField(receiver, field, value, graph);
             appendOptimizedStoreField(store);
         } else {
@@ -825,7 +825,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genGetStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        boolean isInitialized = field.isResolved();
+        boolean isInitialized = field.isResolved() && field.holder().isInitialized();
         CiConstant constantValue = null;
         if (isInitialized) {
             constantValue = field.constantValue(null);
@@ -847,7 +847,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genPutStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved(), cpi);
+        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && field.holder().isInitialized(), cpi);
         Value value = frameState.pop(field.kind().stackKind());
         if (container != null) {
             StoreField store = new StoreField(container, field, value, graph);
