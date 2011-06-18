@@ -1048,11 +1048,11 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genJsr(int dest) {
-        throw new CiBailout("jsr/ret not supported");
+        throw new JSRNotSupportedBailout();
     }
 
     private void genRet(int localIndex) {
-        throw new CiBailout("jsr/ret not supported");
+        throw new JSRNotSupportedBailout();
     }
 
     private void genTableswitch() {
@@ -1292,16 +1292,16 @@ public final class GraphBuilderPhase extends Phase {
                 Deoptimize deopt = new Deoptimize(DeoptAction.InvalidateRecompile, graph);
                 deopt.setMessage("unresolved " + block.handler.catchType().name());
                 append(deopt);
-                FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                appendGoto(nextDispatch);
+//                FixedNode nextDispatch = createTarget(nextBlock, frameState);
+//                appendGoto(nextDispatch);
             }
         }
     }
 
     private void appendGoto(FixedNode target) {
         if (lastInstr != null) {
-        lastInstr.setNext(target);
-    }
+            lastInstr.setNext(target);
+        }
     }
 
     private void iterateBytecodesForBlock(Block block) {

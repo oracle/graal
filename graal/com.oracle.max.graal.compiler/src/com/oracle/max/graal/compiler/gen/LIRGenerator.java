@@ -980,6 +980,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitDeoptimize(Deoptimize deoptimize) {
         assert lastState != null : "deoptimize always needs a state";
+        assert lastState.bci != Instruction.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
         DeoptimizationStub stub = new DeoptimizationStub(deoptimize.action(), lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);
