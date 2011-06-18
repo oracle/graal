@@ -290,7 +290,9 @@ public class Merge extends StateSplit {
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
-                phi.removeInput(predIndex);
+                if (!phi.isDead()) {
+                    phi.removeInput(predIndex);
+                }
             }
         }
     }

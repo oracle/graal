@@ -67,6 +67,15 @@ public final class Phi extends FloatingNode {
         setMerge(merge);
     }
 
+    @Override
+    public boolean verify() {
+        assertTrue(merge() != null);
+        if (!isDead()) {
+            assertTrue(merge().endCount() + (merge() instanceof LoopBegin ? 1 : 0) == valueCount());
+        }
+        return true;
+    }
+
     /**
      * Get the instruction that produces the value associated with the i'th predecessor
      * of the join block.
