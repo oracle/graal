@@ -51,12 +51,12 @@ public final class MemoryRead extends Instruction {
     /**
      * The instruction that produces the object tested against null.
      */
-     public FloatingNode guard() {
-        return (FloatingNode) inputs().get(super.inputCount() + INPUT_GUARD);
+     public GuardNode guard() {
+        return (GuardNode) inputs().get(super.inputCount() + INPUT_GUARD);
     }
 
-    public FloatingNode setGuard(FloatingNode n) {
-        return (FloatingNode) inputs().set(super.inputCount() + INPUT_GUARD, n);
+    public void setGuard(GuardNode n) {
+        inputs().set(super.inputCount() + INPUT_GUARD, n);
     }
 
     public int displacement() {

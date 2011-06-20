@@ -34,7 +34,7 @@ import com.sun.cri.ci.*;
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  *
  */
-public final class Compare extends FloatingNode {
+public final class Compare extends BooleanNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_X = 0;

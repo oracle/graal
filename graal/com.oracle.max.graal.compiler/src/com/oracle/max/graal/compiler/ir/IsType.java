@@ -34,7 +34,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code TypeCheck} class represents an explicit type check instruction.
  */
-public final class IsType extends FloatingNode {
+public final class IsType extends BooleanNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;

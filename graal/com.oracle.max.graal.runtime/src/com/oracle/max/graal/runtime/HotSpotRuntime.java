@@ -251,7 +251,7 @@ public class HotSpotRuntime implements RiRuntime {
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind != CiKind.Illegal;
             MemoryRead memoryRead = new MemoryRead(field.field().kind(), displacement, graph);
-            memoryRead.setGuard(new IsNonNull(field.object(), graph));
+            memoryRead.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryRead.setNext(field.next());
             memoryRead.setLocation(field.object());
             return memoryRead;

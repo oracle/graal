@@ -36,12 +36,12 @@ public final class FixedGuard extends Instruction {
     /**
      * The instruction that produces the object tested against null.
      */
-     public FloatingNode node() {
-        return (FloatingNode) inputs().get(super.inputCount() + INPUT_NODE);
+     public BooleanNode node() {
+        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public FloatingNode setNode(FloatingNode n) {
-        return (FloatingNode) inputs().set(super.inputCount() + INPUT_NODE, n);
+    public void setNode(BooleanNode n) {
+        inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
     public FixedGuard(Graph graph) {
