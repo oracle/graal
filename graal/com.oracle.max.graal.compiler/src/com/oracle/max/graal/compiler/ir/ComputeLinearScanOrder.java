@@ -29,6 +29,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 public final class ComputeLinearScanOrder {
@@ -40,9 +41,9 @@ public final class ComputeLinearScanOrder {
 
     List<LIRBlock> linearScanOrder; // the resulting list of blocks in correct order
 
-    final CiBitMap visitedBlocks; // used for recursive processing of blocks
-    final CiBitMap activeBlocks; // used for recursive processing of blocks
-    final CiBitMap dominatorBlocks; // temporary BitMap used for computation of dominator
+    final BitMap visitedBlocks; // used for recursive processing of blocks
+    final BitMap activeBlocks; // used for recursive processing of blocks
+    final BitMap dominatorBlocks; // temporary BitMap used for computation of dominator
     final int[] forwardBranches; // number of incoming forward branches for each block
     final List<LIRBlock> loopEndBlocks; // list of all loop end blocks collected during countEdges
     BitMap2D loopMap; // two-dimensional bit set: a bit is set if a block is contained in a loop
@@ -111,9 +112,9 @@ public final class ComputeLinearScanOrder {
     public ComputeLinearScanOrder(int maxBlockId, LIRBlock startBlock) {
 
         this.maxBlockId = maxBlockId;
-        visitedBlocks = new CiBitMap(maxBlockId);
-        activeBlocks = new CiBitMap(maxBlockId);
-        dominatorBlocks = new CiBitMap(maxBlockId);
+        visitedBlocks = new BitMap(maxBlockId);
+        activeBlocks = new BitMap(maxBlockId);
+        dominatorBlocks = new BitMap(maxBlockId);
         forwardBranches = new int[maxBlockId];
         loopEndBlocks = new ArrayList<LIRBlock>(8);
         workList = new ArrayList<LIRBlock>(8);

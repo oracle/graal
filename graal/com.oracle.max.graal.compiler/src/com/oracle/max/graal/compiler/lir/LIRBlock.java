@@ -30,7 +30,6 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code LIRBlock} class definition.
@@ -51,7 +50,7 @@ public final class LIRBlock {
      * in this block.
      * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.sun.cri.ci.CiValue) operand number}.
      */
-    public CiBitMap liveIn;
+    public BitMap liveIn;
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are live upon exit from this block.
@@ -59,20 +58,20 @@ public final class LIRBlock {
      * upon entry to this block.
      * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.sun.cri.ci.CiValue) operand number}.
      */
-    public CiBitMap liveOut;
+    public BitMap liveOut;
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are used (before being defined) in this block.
      * That is, these are the values that are live upon entry to the block.
      * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.sun.cri.ci.CiValue) operand number}.
      */
-    public CiBitMap liveGen;
+    public BitMap liveGen;
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are defined/overwritten in this block.
      * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.sun.cri.ci.CiValue) operand number}.
      */
-    public CiBitMap liveKill;
+    public BitMap liveKill;
 
     private int firstLirInstructionID;
     private int lastLirInstructionID;

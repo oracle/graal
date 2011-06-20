@@ -87,7 +87,7 @@ public class IdealGraphPrinter {
      */
     public void beginGroup(String name, String shortName, int bci) {
         stream.println("<group>");
-        stream.printf(" <properties><p name='name'>%s</p></properties>%n", escape(name));
+        stream.printf(" <properties><p name='name'>%s</p><p name='origin'>Graal</p></properties>%n", escape(name));
         stream.printf(" <method name='%s' shortName='%s' bci='%d'/>%n", escape(name), escape(shortName), bci);
     }
 

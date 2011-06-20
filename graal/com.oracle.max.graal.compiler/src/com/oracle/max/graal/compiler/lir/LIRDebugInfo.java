@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.lir;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -62,7 +63,7 @@ public class LIRDebugInfo {
         return new LIRDebugInfo(this);
     }
 
-    public void setOop(CiValue location, GraalCompilation compilation, CiBitMap frameRefMap, CiBitMap regRefMap) {
+    public void setOop(CiValue location, GraalCompilation compilation, BitMap frameRefMap, BitMap regRefMap) {
         CiTarget target = compilation.target;
         if (location.isAddress()) {
             CiAddress stackLocation = (CiAddress) location;
@@ -97,7 +98,7 @@ public class LIRDebugInfo {
         return debugInfo != null;
     }
 
-    public static void setBit(CiBitMap refMap, int bit) {
+    public static void setBit(BitMap refMap, int bit) {
         assert !refMap.get(bit) : "Ref map entry " + bit + " is already set.";
         refMap.set(bit);
     }

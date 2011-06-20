@@ -29,7 +29,6 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
 
 public class IdentifyBlocksPhase extends Phase {
@@ -183,7 +182,7 @@ public class IdentifyBlocksPhase extends Phase {
                 for (int i = 1; i < b.getPredecessors().size(); ++i) {
                     dominatorBlock = getCommonDominator(dominatorBlock, b.getPredecessors().get(i));
                 }
-                CiBitMap blockMap = new CiBitMap(blocks.size());
+                BitMap blockMap = new BitMap(blocks.size());
                 markPredecessors(b, dominatorBlock, blockMap);
 
                 Block result = dominatorBlock;
@@ -203,7 +202,7 @@ public class IdentifyBlocksPhase extends Phase {
         return b.javaBlock();
     }
 
-    private void markPredecessors(Block b, Block stopBlock, CiBitMap blockMap) {
+    private void markPredecessors(Block b, Block stopBlock, BitMap blockMap) {
         if (blockMap.get(b.blockID())) {
             return;
         }
@@ -368,7 +367,7 @@ public class IdentifyBlocksPhase extends Phase {
     private void computeDominators() {
         Block dominatorRoot = nodeToBlock.get(graph.start());
         assert dominatorRoot.getPredecessors().size() == 0;
-        CiBitMap visited = new CiBitMap(blocks.size());
+        BitMap visited = new BitMap(blocks.size());
         visited.set(dominatorRoot.blockID());
         LinkedList<Block> workList = new LinkedList<Block>();
         workList.add(dominatorRoot);
@@ -415,7 +414,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     public Block commonDominator(Block a, Block b) {
-        CiBitMap bitMap = new CiBitMap(blocks.size());
+        BitMap bitMap = new BitMap(blocks.size());
         Block cur = a;
         while (cur != null) {
             bitMap.set(cur.blockID());
