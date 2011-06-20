@@ -104,7 +104,7 @@ public class IR {
 
         new LoopPhase().apply(graph);
 
-        new LoweringPhase().apply(graph);
+        new LoweringPhase(compilation.runtime).apply(graph);
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);
