@@ -31,8 +31,10 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.graph.BlockMap.*;
 import com.oracle.max.graal.compiler.graph.BlockMap.Block;
+import com.oracle.max.graal.compiler.graph.BlockMap.BranchOverride;
+import com.oracle.max.graal.compiler.graph.BlockMap.DeoptBlock;
+import com.oracle.max.graal.compiler.graph.BlockMap.ExceptionBlock;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -42,7 +44,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.*;
+import com.sun.cri.ri.RiType.Representation;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -281,31 +283,31 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     public void mergeOrClone(Block target, FrameStateAccess newState) {
-        Instruction first = target.firstInstruction;
+        StateSplit first = (StateSplit) target.firstInstruction;
+
         if (target.isLoopHeader && isVisited(target)) {
-            first = ((LoopBegin) first).loopEnd();
+            first = loopBegin(target).loopEnd();
         }
-        assert first instanceof StateSplit;
 
         int bci = target.startBci;
         if (target instanceof ExceptionBlock) {
             bci = ((ExceptionBlock) target).deoptBci;
         }
 
-        FrameState existingState = ((StateSplit) first).stateAfter();
+        FrameState existingState = first.stateAfter();
 
         if (existingState == null) {
             // copy state because it is modified
             FrameState duplicate = newState.duplicate(bci);
 
             // if the block is a loop header, insert all necessary phis
-            if (first instanceof LoopBegin && target.isLoopHeader) {
-                assert first instanceof Merge;
-                insertLoopPhis((Merge) first, duplicate);
-                ((Merge) first).setStateAfter(duplicate);
-            } else {
-                ((StateSplit) first).setStateAfter(duplicate);
+            if (target.isLoopHeader && !isVisited(target)) {
+                LoopBegin loopBegin = loopBegin(target);
+                assert target.firstInstruction instanceof Placeholder && loopBegin != null;
+                //System.out.println("insertLoopPhis with " + target.loopHeaderState);
+                insertLoopPhis(loopBegin, loopBegin.stateAfter());
             }
+            first.setStateAfter(duplicate);
         } else {
             if (!GraalOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
                 // stacks or locks do not match--bytecodes would not verify
@@ -318,14 +320,14 @@ public final class GraphBuilderPhase extends Phase {
 
             if (first instanceof Placeholder) {
                 Placeholder p = (Placeholder) first;
-                assert !target.isLoopHeader;
                 if (p.predecessors().size() == 0) {
                     p.setStateAfter(newState.duplicate(bci));
                     return;
                 } else {
                     Merge merge = new Merge(graph);
                     assert p.predecessors().size() == 1 : "predecessors size: " + p.predecessors().size();
-                    assert p.next() == null;
+                    merge.setNext(p.next());
+                    p.setNext(null);
                     EndNode end = new EndNode(graph);
                     p.replace(end);
                     merge.addEnd(end);
@@ -339,20 +341,20 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void insertLoopPhis(Merge merge, FrameState newState) {
+    private void insertLoopPhis(LoopBegin loopBegin, FrameState newState) {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
             Value x = newState.stackAt(i);
             if (x != null) {
-                newState.setupPhiForStack(merge, i).addInput(x);
+                newState.setupPhiForStack(loopBegin, i).addInput(x);
             }
         }
         int localsSize = newState.localsSize();
         for (int i = 0; i < localsSize; i++) {
             Value x = newState.localAt(i);
             if (x != null) {
-                newState.setupPhiForLocal(merge, i).addInput(x);
+                newState.setupPhiForLocal(loopBegin, i).addInput(x);
             }
         }
     }
@@ -1158,7 +1160,10 @@ public final class GraphBuilderPhase extends Phase {
                 LoopBegin loopBegin = new LoopBegin(graph);
                 LoopEnd loopEnd = new LoopEnd(graph);
                 loopEnd.setLoopBegin(loopBegin);
-                block.firstInstruction = loopBegin;
+                Placeholder p = new Placeholder(graph);
+                p.setNext(loopBegin.forwardEdge());
+                loopBegin.setStateAfter(stateAfter.duplicate(block.startBci));
+                block.firstInstruction = p;
             } else {
                 block.firstInstruction = new Placeholder(graph);
             }
@@ -1167,8 +1172,8 @@ public final class GraphBuilderPhase extends Phase {
         addToWorkList(block);
 
         FixedNode result = null;
-        if (block.firstInstruction instanceof LoopBegin && isVisited(block)) {
-            result = ((LoopBegin) block.firstInstruction).loopEnd();
+        if (block.isLoopHeader && isVisited(block)) {
+            result = loopBegin(block).loopEnd();
         } else {
             result = block.firstInstruction;
         }
@@ -1176,11 +1181,15 @@ public final class GraphBuilderPhase extends Phase {
         assert result instanceof Merge || result instanceof Placeholder : result;
 
         if (result instanceof Merge) {
-            EndNode end = new EndNode(graph);
-            //end.setNext(result);
-            ((Merge) result).addEnd(end);
-            result = end;
+            if (result instanceof LoopBegin) {
+                result = ((LoopBegin) result).forwardEdge();
+            } else {
+                EndNode end = new EndNode(graph);
+                ((Merge) result).addEnd(end);
+                result = end;
+            }
         }
+        assert !(result instanceof LoopBegin || result instanceof Merge);
         return result;
     }
 
@@ -1206,9 +1215,13 @@ public final class GraphBuilderPhase extends Phase {
             if (!isVisited(block)) {
                 markVisited(block);
                 // now parse the block
-                frameState.initializeFrom(((StateSplit) block.firstInstruction).stateAfter());
-                lastInstr = block.firstInstruction;
-                assert block.firstInstruction.next() == null : "instructions already appended at block " + block.blockID;
+                if (block.isLoopHeader) {
+                    lastInstr = loopBegin(block);
+                } else {
+                    lastInstr = block.firstInstruction;
+                }
+                frameState.initializeFrom(((StateSplit) lastInstr).stateAfter());
+                assert lastInstr.next() == null : "instructions already appended at block " + block.blockID;
 
                 if (block == returnBlock) {
                     createReturnBlock(block);
@@ -1225,8 +1238,8 @@ public final class GraphBuilderPhase extends Phase {
         }
         for (Block b : blocksVisited) {
             if (b.isLoopHeader) {
-                LoopBegin begin = (LoopBegin) b.firstInstruction;
-                LoopEnd end = begin.loopEnd();
+                LoopBegin begin = loopBegin(b);
+                LoopEnd loopEnd = begin.loopEnd();
 
 //              This can happen with degenerated loops like this one:
 //                for (;;) {
@@ -1235,20 +1248,26 @@ public final class GraphBuilderPhase extends Phase {
 //                    } catch (UnresolvedException iioe) {
 //                    }
 //                }
-                if (end.stateAfter() != null) {
-                    begin.stateAfter().merge(begin, end.stateAfter());
+                if (loopEnd.stateAfter() != null) {
+                    //loopHeaderMerge.stateBefore().merge(begin, end.stateBefore());
+                    //assert loopHeaderMerge.equals(end.stateBefore());
+                    begin.stateAfter().merge(begin, loopEnd.stateAfter());
                 } else {
-                    end.delete();
+                    loopEnd.delete();
                     Merge merge = new Merge(graph);
-                    for (int i = 0; i < begin.endCount(); ++i) {
-                        merge.addEnd(begin.endAt(i));
-                    }
+                    merge.addEnd(begin.forwardEdge());
                     merge.setNext(begin.next());
                     merge.setStateAfter(begin.stateAfter());
                     begin.replace(merge);
                 }
             }
         }
+    }
+
+    private static LoopBegin loopBegin(Block block) {
+        EndNode endNode = (EndNode) block.firstInstruction.next();
+        LoopBegin loopBegin = (LoopBegin) endNode.merge();
+        return loopBegin;
     }
 
     private void createDeoptBlock(DeoptBlock block) {

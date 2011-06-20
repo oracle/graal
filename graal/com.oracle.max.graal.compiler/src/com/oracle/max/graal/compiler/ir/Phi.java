@@ -58,7 +58,7 @@ public final class Phi extends FloatingNode {
         return (Merge) inputs().get(super.inputCount() + INPUT_MERGE);
     }
 
-    public void setMerge(Value n) {
+    public void setMerge(Merge n) {
         inputs().set(super.inputCount() + INPUT_MERGE, n);
     }
 
@@ -67,11 +67,15 @@ public final class Phi extends FloatingNode {
         setMerge(merge);
     }
 
+    Phi(CiKind kind, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    }
+
     @Override
     public boolean verify() {
         assertTrue(merge() != null);
         if (!isDead()) {
-            assertTrue(merge().endCount() + (merge() instanceof LoopBegin ? 1 : 0) == valueCount());
+            assertTrue(merge().phiPredecessorCount() == valueCount());
         }
         return true;
     }
@@ -148,7 +152,7 @@ public final class Phi extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        Phi x = new Phi(kind, null, into);
+        Phi x = new Phi(kind, into);
         x.isDead = isDead;
         return x;
     }

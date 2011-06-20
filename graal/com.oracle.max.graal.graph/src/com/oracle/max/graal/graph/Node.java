@@ -54,6 +54,11 @@ public abstract class Node {
         return Collections.unmodifiableList(predecessors);
     }
 
+    public Node singlePredecessor() {
+        assert predecessors.size() == 1;
+        return predecessors.get(0);
+    }
+
     public List<Node> usages() {
         return Collections.unmodifiableList(usages);
     }
@@ -83,7 +88,7 @@ public abstract class Node {
     }
 
     public Node replace(Node other) {
-        assert !isDeleted() && (other == null || !other.isDeleted()) : "id: " + id() + ", other: " + other;
+        assert !isDeleted() && (other == null || !other.isDeleted()) && other != this : "id: " + id() + ", other: " + other;
         assert other == null || other.graph == graph;
         for (Node usage : usages) {
             usage.inputs.replaceFirstOccurrence(this, other);
