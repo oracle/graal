@@ -118,6 +118,7 @@ public class IdealGraphPrinter {
             schedule.apply(graph);
         } catch (Throwable t) {
             // nothing to do here...
+            t.printStackTrace();
         }
 
         stream.println("  <nodes>");
@@ -236,9 +237,6 @@ public class IdealGraphPrinter {
                 }
                 if (node instanceof Merge) {
                     Merge merge = (Merge) node;
-                    if (merge.stateAfter() != null) {
-                        nodes.add(merge.stateAfter());
-                    }
                     for (Node usage : merge.usages()) {
                         if (usage instanceof Phi || usage instanceof LoopCounter) {
                             nodes.add(usage);

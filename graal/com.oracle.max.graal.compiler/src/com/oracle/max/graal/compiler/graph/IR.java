@@ -94,10 +94,6 @@ public class IR {
             //printGraph("After Ininling", compilation.graph);
         }
 
-        if (GraalOptions.Time) {
-            GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.start();
-        }
-
         Graph graph = compilation.graph;
 
         if (GraalOptions.OptCanonicalizer) {
@@ -148,6 +144,11 @@ public class IR {
         startBlock = valueToBlock.get(graph.start());
         assert startBlock != null;
         assert startBlock.blockPredecessors().size() == 0;
+
+
+        if (GraalOptions.Time) {
+            GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.start();
+        }
 
         ComputeLinearScanOrder clso = new ComputeLinearScanOrder(lirBlocks.size(), startBlock);
         orderedBlocks = clso.linearScanOrder();

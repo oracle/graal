@@ -38,7 +38,7 @@ public final class GraalOptions {
 
     // inlining settings
     public static boolean Inline                             = true;
-    public static boolean StoreResultGraph                   = ____;
+    public static boolean CacheGraphs                        = ____;
     public static boolean InlineWithTypeCheck                = ____;
     public static int     MaximumInstructionCount            = 37000;
     public static float   MaximumInlineRatio                 = 0.90f;

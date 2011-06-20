@@ -2087,9 +2087,6 @@ public final class AMD64LIRAssembler extends LIRAssembler {
             case InvalidateStopCompiling:
                 code = 4;
                 break;
-            case RethrowExceptionInInterpreter:
-                code = 5;
-                break;
             default:
                 throw Util.shouldNotReachHere();
         }
