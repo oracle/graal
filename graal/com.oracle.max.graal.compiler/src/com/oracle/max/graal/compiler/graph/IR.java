@@ -104,7 +104,9 @@ public class IR {
 
         new LoopPhase().apply(graph);
 
-        new LoweringPhase(compilation.runtime).apply(graph);
+        if (GraalOptions.Lower) {
+            new LoweringPhase(compilation.runtime).apply(graph);
+        }
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);

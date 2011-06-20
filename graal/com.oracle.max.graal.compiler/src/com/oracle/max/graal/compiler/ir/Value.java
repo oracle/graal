@@ -154,28 +154,6 @@ public abstract class Value extends Node {
     }
 
     /**
-     * Compute the value number of this Instruction. Local and global value numbering
-     * optimizations use a hash map, and the value number provides a hash code.
-     * If the instruction cannot be value numbered, then this method should return
-     * {@code 0}.
-     * @return the hashcode of this instruction
-     */
-    public int valueNumber() {
-        return 0;
-    }
-
-    /**
-     * Checks that this instruction is equal to another instruction for the purposes
-     * of value numbering.
-     * @param i the other instruction
-     * @return {@code true} if this instruction is equivalent to the specified
-     * instruction w.r.t. value numbering
-     */
-    public boolean valueEqual(Node i) {
-        return false;
-    }
-
-    /**
      * This method supports the visitor pattern by accepting a visitor and calling the
      * appropriate {@code visit()} method.
      *
