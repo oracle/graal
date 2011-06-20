@@ -443,7 +443,14 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitExceptionObject(ExceptionObject x) {
         XirSnippet snippet = xir.genExceptionObject(site(x));
-        emitXir(snippet, x, stateFor(x), null, true);
+        emitXir(snippet, x, null, null, true);
+        lastState = lastState.duplicateWithException(lastState.bci, x);
+        if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+            TTY.println("STATE CHANGE (visitExceptionObject)");
+            if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                TTY.println(lastState.toString());
+            }
+        }
     }
 
     @Override

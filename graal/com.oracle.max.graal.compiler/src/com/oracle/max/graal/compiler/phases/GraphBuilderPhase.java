@@ -381,7 +381,7 @@ public final class GraphBuilderPhase extends Phase {
         return handler.catchTypeCPI() == 0;
     }
 
-    private Instruction handleException(Value exceptionObject, int bci) {
+    private FixedNode handleException(Value exceptionObject, int bci) {
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         RiExceptionHandler firstHandler = null;
@@ -423,23 +423,22 @@ public final class GraphBuilderPhase extends Phase {
                     dispatchBlock = blockFromBci[handlerBCI];
                 }
             }
-            FrameState entryState = frameState.duplicateWithEmptyStack(bci);
 
-            StateSplit entry = new Placeholder(graph);
-            entry.setStateAfter(entryState);
-
-            Instruction currentNext = entry;
-            Value currentExceptionObject = exceptionObject;
-            if (currentExceptionObject == null) {
-                ExceptionObject exception = new ExceptionObject(graph);
-                entry.setNext(exception);
-                currentNext = exception;
-                currentExceptionObject = exception;
+            Value currentExceptionObject;
+            if (exceptionObject == null) {
+                currentExceptionObject = new ExceptionObject(graph);
+            } else {
+                currentExceptionObject = exceptionObject;
             }
-            FrameState stateWithException = entryState.duplicateWithException(bci, currentExceptionObject);
-
-            currentNext.setNext(createTarget(dispatchBlock, stateWithException));
-            return entry;
+            FrameState stateWithException = frameState.duplicateWithException(bci, currentExceptionObject);
+            FixedNode target = createTarget(dispatchBlock, stateWithException);
+            if (exceptionObject == null) {
+                ExceptionObject eObj = (ExceptionObject) currentExceptionObject;
+                eObj.setNext(target);
+                return eObj;
+            } else {
+                return target;
+            }
         }
         return null;
     }
@@ -713,7 +712,7 @@ public final class GraphBuilderPhase extends Phase {
         node.setNode(new IsNonNull(exception, graph));
         append(node);
 
-        Instruction entry = handleException(exception, bci);
+        FixedNode entry = handleException(exception, bci);
         if (entry != null) {
             append(entry);
         } else {

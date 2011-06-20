@@ -130,22 +130,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         return other;
     }
 
-    /**
-     * Gets a copy of this frame state without the stack.
-     */
     @Override
-    public FrameState duplicateWithEmptyStack(int bci) {
-        FrameState other = new FrameState(method, bci, localsSize, 0, locksSize(), rethrowException, graph());
-        for (int i = 0; i < localsSize; i++) {
-            other.setValueAt(i, localAt(i));
-        }
-        for (int i = 0; i < locksSize; i++) {
-            other.setValueAt(localsSize + i, lockAt(i));
-        }
-        other.setOuterFrameState(outerFrameState());
-        return other;
-    }
-
     public FrameState duplicateWithException(int bci, Value exceptionObject) {
         return duplicateModified(bci, true, CiKind.Void, exceptionObject);
     }

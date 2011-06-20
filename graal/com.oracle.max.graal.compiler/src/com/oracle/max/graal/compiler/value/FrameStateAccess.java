@@ -42,10 +42,10 @@ public interface FrameStateAccess {
 
     Value stackAt(int i);
 
-    FrameState duplicateWithEmptyStack(int bci);
-
     void setValueAt(int j, Value v);
 
     Value outerFrameState();
+
+    FrameState duplicateWithException(int bci, Value exceptionObject);
 
 }

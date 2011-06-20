@@ -24,5 +24,5 @@ package com.oracle.max.graal.compiler.ir;
 
 
 public interface ExceptionEdgeInstruction {
-    Instruction exceptionEdge();
+    FixedNode exceptionEdge();
 }
