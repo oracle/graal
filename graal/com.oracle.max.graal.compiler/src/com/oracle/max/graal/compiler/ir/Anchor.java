@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -50,6 +52,42 @@ public final class Anchor extends Instruction {
     @Override
     public void print(LogStream out) {
         out.print("anchor ").print(next());
+    }
+
+    public Iterable<GuardNode> happensAfterGuards() {
+        final Iterator<Node> usages = this.usages().iterator();
+        return new Iterable<GuardNode>() {
+            public Iterator<GuardNode> iterator() {
+                return new Iterator<GuardNode>() {
+                    private GuardNode next;
+                    @Override
+                    public boolean hasNext() {
+                        if (next == null) {
+                            while (usages.hasNext()) {
+                                Node cur = usages.next();
+                                if (cur instanceof GuardNode) {
+                                    next = ((GuardNode) cur);
+                                    break;
+                                }
+                            }
+                        }
+                        return next != null;
+                    }
+
+                    @Override
+                    public GuardNode next() {
+                        GuardNode result = next;
+                        next = null;
+                        return result;
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw new IllegalStateException();
+                    }
+                };
+            }
+        };
     }
 
     @Override

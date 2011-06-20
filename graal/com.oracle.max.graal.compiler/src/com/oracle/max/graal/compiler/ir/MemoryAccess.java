@@ -27,39 +27,54 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FixedGuard extends Instruction {
-    private static final int INPUT_COUNT = 1;
+public abstract class MemoryAccess extends Instruction {
+    private static final int INPUT_COUNT = 2;
     private static final int INPUT_NODE = 0;
+    private static final int INPUT_GUARD = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
+
+    private int displacement;
+    private CiKind valueKind;
 
     /**
      * The instruction that produces the object tested against null.
      */
-     public BooleanNode node() {
-        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
+     public Value location() {
+        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public void setNode(BooleanNode n) {
-        inputs().set(super.inputCount() + INPUT_NODE, n);
+    public Value setLocation(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    public FixedGuard(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    /**
+     * The instruction that produces the object tested against null.
+     */
+     public GuardNode guard() {
+        return (GuardNode) inputs().get(super.inputCount() + INPUT_GUARD);
     }
 
-    @Override
-    public void accept(ValueVisitor v) {
-        v.visitFixedGuard(this);
+    public void setGuard(GuardNode n) {
+        inputs().set(super.inputCount() + INPUT_GUARD, n);
+    }
+
+    public int displacement() {
+        return displacement;
+    }
+
+    public CiKind valueKind() {
+        return valueKind;
+    }
+
+    public MemoryAccess(CiKind kind, int displacement, int inputCount, int successorCount, Graph graph) {
+        super(kind.stackKind(), INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
+        this.displacement = displacement;
+        this.valueKind = kind;
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("clip node ").print(node());
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        return new FixedGuard(into);
+        out.print("mem read from ").print(location());
     }
 }

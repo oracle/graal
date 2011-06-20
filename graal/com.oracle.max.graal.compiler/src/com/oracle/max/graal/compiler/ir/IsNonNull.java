@@ -32,7 +32,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NullCheck} class represents an explicit null check instruction.
  */
-public final class IsNonNull extends FloatingNode {
+public final class IsNonNull extends BooleanNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
