@@ -28,12 +28,21 @@ import com.sun.cri.ci.*;
 
 
 public final class MemoryWrite extends MemoryAccess {
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_VALUE = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
+    public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+    }
 
-    public MemoryWrite(CiKind kind, int displacement, Graph graph) {
+    public void setValue(Value v) {
+        inputs().set(super.inputCount() + INPUT_VALUE, v);
+    }
+
+    public MemoryWrite(CiKind kind, Value value, int displacement, Graph graph) {
         super(kind, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setValue(value);
     }
 
     @Override
@@ -43,11 +52,11 @@ public final class MemoryWrite extends MemoryAccess {
 
     @Override
     public void print(LogStream out) {
-        out.print("mem read from ").print(location());
+        out.print("mem write to ").print(location()).print(" with value").print(value());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryWrite(super.kind, displacement(), into);
+        return new MemoryWrite(super.kind, null, displacement(), into);
     }
 }

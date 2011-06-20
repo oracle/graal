@@ -1443,6 +1443,12 @@ public abstract class LIRGenerator extends ValueVisitor {
 
 
     @Override
+    public void visitMemoryWrite(MemoryWrite memWrite) {
+        lir.move(load(memWrite.location()), new CiAddress(memWrite.valueKind(), load(memWrite.location()), memWrite.displacement()), memWrite.valueKind());
+    }
+
+
+    @Override
     public void visitLoopEnd(LoopEnd x) {
         setNoResult(x);
         moveToPhi(x.loopBegin(), x.loopBegin().endCount());

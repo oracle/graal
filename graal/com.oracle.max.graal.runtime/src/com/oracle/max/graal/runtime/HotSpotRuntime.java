@@ -255,6 +255,19 @@ public class HotSpotRuntime implements RiRuntime {
             memoryRead.setNext(field.next());
             memoryRead.setLocation(field.object());
             return memoryRead;
+        } else if (n instanceof StoreField) {
+            return null;
+//            StoreField field = (StoreField) n;
+//            if (field.isVolatile()) {
+//                return null;
+//            }
+//            Graph graph = field.graph();
+//            int displacement = ((HotSpotField) field.field()).offset();
+//            MemoryWrite memoryWrite = new MemoryWrite(field.field().kind(), field.value(), displacement, graph);
+//            memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
+//            memoryWrite.setNext(field.next());
+//            memoryWrite.setLocation(field.object());
+//            return memoryWrite;
         }
         return null;
     }
