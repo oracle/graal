@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -50,6 +51,7 @@ public class LoopPhase extends Phase {
 
     private void mergeLoopCounters(List<LoopCounter> counters, LoopBegin loopBegin) {
         Graph graph = loopBegin.graph();
+        FrameState stateAfter = loopBegin.stateAfter();
         LoopCounter[] acounters = counters.toArray(new LoopCounter[counters.size()]);
         for (int i = 0; i < acounters.length; i++) {
             LoopCounter c1 = acounters[i];
@@ -59,16 +61,30 @@ public class LoopPhase extends Phase {
             for (int j = i + 1; j < acounters.length; j++) {
                 LoopCounter c2 = acounters[j];
                 if (c2 != null && c1.stride().valueEqual(c2.stride())) {
+                    boolean c1InCompare = Util.filter(c1.usages(), Compare.class).size() > 0;
+                    boolean c2inCompare = Util.filter(c2.usages(), Compare.class).size() > 0;
+                    if (c2inCompare && !c1InCompare) {
+                        c1 = acounters[j];
+                        c2 = acounters[i];
+                        acounters[i] = c2;
+                        acounters[j] = c1;
+                    }
+                    boolean c2InFramestate = stateAfter != null ? stateAfter.inputs().contains(c2) : false;
                     acounters[j] = null;
                     CiKind kind = c1.kind;
-                    IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
-                    IntegerAdd addStride = new IntegerAdd(kind, sub, c1.stride(), graph);
-                    IntegerAdd add = new IntegerAdd(kind, c1, addStride, graph);
-                    Phi phi = new Phi(kind, loopBegin, graph); // TODO (gd) assumes order on loopBegin preds
-                    phi.addInput(c2.init());
-                    phi.addInput(add);
-                    c2.replace(phi);
-                    //System.out.println("--> merged Loop Counters");
+                    if (c2InFramestate) {
+                        IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
+                        IntegerAdd addStride = new IntegerAdd(kind, sub, c1.stride(), graph);
+                        IntegerAdd add = new IntegerAdd(kind, c1, addStride, graph);
+                        Phi phi = new Phi(kind, loopBegin, graph); // TODO (gd) assumes order on loopBegin preds
+                        phi.addInput(c2.init());
+                        phi.addInput(add);
+                        c2.replace(phi);
+                    } else {
+                        IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
+                        IntegerAdd add = new IntegerAdd(kind, c1, sub, graph);
+                        c2.replace(add);
+                    }
                 }
             }
         }
