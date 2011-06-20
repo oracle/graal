@@ -329,7 +329,7 @@ public class CFGPrinter {
         }
         if (info.hasStackRefMap()) {
             sb.append("frame-ref-map:");
-            CiBitMap bm = info.frameRefMap;
+            BitMap bm = info.frameRefMap;
             for (int i = bm.nextSetBit(0); i >= 0; i = bm.nextSetBit(i + 1)) {
                 sb.append(' ').append(CiStackSlot.get(CiKind.Object, i));
             }

@@ -595,8 +595,8 @@ public final class LinearScan {
         // iterate all blocks
         for (int i = 0; i < numBlocks; i++) {
             LIRBlock block = blockAt(i);
-            final CiBitMap liveGen = new CiBitMap(liveSize);
-            final CiBitMap liveKill = new CiBitMap(liveSize);
+            final BitMap liveGen = new BitMap(liveSize);
+            final BitMap liveKill = new BitMap(liveSize);
 
             List<LIRInstruction> instructions = block.lir().instructionsList();
             int numInst = instructions.size();
@@ -697,8 +697,8 @@ public final class LinearScan {
 
             block.liveGen = liveGen;
             block.liveKill = liveKill;
-            block.liveIn = new CiBitMap(liveSize);
-            block.liveOut = new CiBitMap(liveSize);
+            block.liveIn = new BitMap(liveSize);
+            block.liveOut = new BitMap(liveSize);
 
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("liveGen  B%d %s", block.blockID(), block.liveGen);
@@ -709,7 +709,7 @@ public final class LinearScan {
         intervalInLoop = localIntervalInLoop;
     }
 
-    private void verifyTemp(CiBitMap liveKill, CiValue operand) {
+    private void verifyTemp(BitMap liveKill, CiValue operand) {
         // fixed intervals are never live at block boundaries, so
         // they need not be processed in live sets
         // process them only in debug mode so that this can be checked
@@ -720,7 +720,7 @@ public final class LinearScan {
         }
     }
 
-    private void verifyInput(LIRBlock block, CiBitMap liveKill, CiValue operand) {
+    private void verifyInput(LIRBlock block, BitMap liveKill, CiValue operand) {
         // fixed intervals are never live at block boundaries, so
         // they need not be processed in live sets.
         // this is checked by these assertions to be sure about it.
@@ -742,7 +742,7 @@ public final class LinearScan {
         boolean changeOccurred;
         boolean changeOccurredInBlock;
         int iterationCount = 0;
-        CiBitMap liveOut = new CiBitMap(liveSetSize()); // scratch set for calculations
+        BitMap liveOut = new BitMap(liveSetSize()); // scratch set for calculations
 
         // Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
         // The loop is executed until a fixpoint is reached (no changes in an iteration)
@@ -770,7 +770,7 @@ public final class LinearScan {
 
                     if (!block.liveOut.isSame(liveOut)) {
                         // A change occurred. Swap the old and new live out sets to avoid copying.
-                        CiBitMap temp = block.liveOut;
+                        BitMap temp = block.liveOut;
                         block.liveOut = liveOut;
                         liveOut = temp;
 
@@ -782,7 +782,7 @@ public final class LinearScan {
                 if (iterationCount == 0 || changeOccurredInBlock) {
                     // liveIn(block) is the union of liveGen(block) with (liveOut(block) & !liveKill(block))
                     // note: liveIn has to be computed only in first iteration or if liveOut has changed!
-                    CiBitMap liveIn = block.liveIn;
+                    BitMap liveIn = block.liveIn;
                     liveIn.setFrom(block.liveOut);
                     liveIn.setDifference(block.liveKill);
                     liveIn.setUnion(block.liveGen);
@@ -805,7 +805,7 @@ public final class LinearScan {
 
         // check that the liveIn set of the first block is empty
         LIRBlock startBlock = ir.startBlock;
-        CiBitMap liveInArgs = new CiBitMap(startBlock.liveIn.size());
+        BitMap liveInArgs = new BitMap(startBlock.liveIn.size());
         if (!startBlock.liveIn.isSame(liveInArgs)) {
             if (GraalOptions.DetailedAsserts) {
                 reportFailure(numBlocks);
@@ -1183,7 +1183,7 @@ public final class LinearScan {
             assert blockTo == instructions.get(instructions.size() - 1).id;
 
             // Update intervals for operands live at the end of this block;
-            CiBitMap live = block.liveOut;
+            BitMap live = block.liveOut;
             for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                 assert live.get(operandNum) : "should not stop here otherwise";
                 CiValue operand = operands.operandFor(operandNum);
@@ -1534,7 +1534,7 @@ public final class LinearScan {
         assert moveResolver.checkEmpty();
 
         int numOperands = operands.size();
-        CiBitMap liveAtEdge = toBlock.liveIn;
+        BitMap liveAtEdge = toBlock.liveIn;
 
         // visit all variables for which the liveAtEdge bit is set
         for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
@@ -1597,8 +1597,8 @@ public final class LinearScan {
     void resolveDataFlow() {
         int numBlocks = blockCount();
         MoveResolver moveResolver = new MoveResolver(this);
-        CiBitMap blockCompleted = new CiBitMap(numBlocks);
-        CiBitMap alreadyResolved = new CiBitMap(numBlocks);
+        BitMap blockCompleted = new BitMap(numBlocks);
+        BitMap alreadyResolved = new BitMap(numBlocks);
 
         int i;
         for (i = 0; i < numBlocks; i++) {
@@ -1768,7 +1768,7 @@ public final class LinearScan {
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
     }
 
-    void computeOopMap(IntervalWalker iw, LIRInstruction op, LIRDebugInfo info, boolean isCallSite, CiBitMap frameRefMap, CiBitMap regRefMap) {
+    void computeOopMap(IntervalWalker iw, LIRInstruction op, LIRDebugInfo info, boolean isCallSite, BitMap frameRefMap, BitMap regRefMap) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating oop map at opId %d", op.id);
         }
@@ -1817,7 +1817,7 @@ public final class LinearScan {
         return attributes(operand.asRegister()).isCallerSave;
     }
 
-    void computeOopMap(IntervalWalker iw, LIRInstruction op, LIRDebugInfo info, CiBitMap frameRefMap, CiBitMap regRefMap) {
+    void computeOopMap(IntervalWalker iw, LIRInstruction op, LIRDebugInfo info, BitMap frameRefMap, BitMap regRefMap) {
         computeOopMap(iw, op, info, op.hasCall, frameRefMap, regRefMap);
         if (op instanceof LIRCall) {
             List<CiValue> pointerSlots = ((LIRCall) op).pointerSlots;
@@ -1884,7 +1884,7 @@ public final class LinearScan {
         }
     }
 
-    CiFrame computeFrameForState(FrameState state, int opId, CiBitMap frameRefMap) {
+    CiFrame computeFrameForState(FrameState state, int opId, BitMap frameRefMap) {
         CiValue[] values = new CiValue[state.valuesSize() + state.locksSize()];
         int valueIndex = 0;
 
@@ -1935,18 +1935,18 @@ public final class LinearScan {
             if (info.debugInfo == null) {
                 int frameSize = compilation.frameMap().frameSize();
                 int frameWords = frameSize / compilation.target.spillSlotSize;
-                CiBitMap frameRefMap = new CiBitMap(frameWords);
-                CiBitMap regRefMap = !op.hasCall ? new CiBitMap(compilation.target.arch.registerReferenceMapBitCount) : null;
+                BitMap frameRefMap = new BitMap(frameWords);
+                BitMap regRefMap = !op.hasCall ? new BitMap(compilation.target.arch.registerReferenceMapBitCount) : null;
                 CiFrame frame = compilation.placeholderState != null ? null : computeFrame(info.state, op.id, frameRefMap);
                 computeOopMap(iw, op, info, frameRefMap, regRefMap);
                 info.debugInfo = new CiDebugInfo(frame, regRefMap, frameRefMap);
             } else if (GraalOptions.DetailedAsserts) {
-                assert info.debugInfo.frame().equals(computeFrame(info.state, op.id, new CiBitMap(info.debugInfo.frameRefMap.size())));
+                assert info.debugInfo.frame().equals(computeFrame(info.state, op.id, new BitMap(info.debugInfo.frameRefMap.size())));
             }
         }
     }
 
-    CiFrame computeFrame(FrameState state, int opId, CiBitMap frameRefMap) {
+    CiFrame computeFrame(FrameState state, int opId, BitMap frameRefMap) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating debug information at opId %d", opId);
         }
@@ -2294,7 +2294,7 @@ public final class LinearScan {
 
         for (int i = 0; i < numBlocks; i++) {
             LIRBlock block = blockAt(i);
-            CiBitMap liveAtEdge = block.liveIn;
+            BitMap liveAtEdge = block.liveIn;
 
             // visit all operands where the liveAtEdge bit is set
             for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {

@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.runtime;
 
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -114,7 +115,7 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     }
 
     @Override
-    public CiBitMap[] livenessMap() {
+    public BitMap[] livenessMap() {
         return null;
     }
 

@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -72,17 +73,17 @@ public final class OperandPool {
     /**
      * Records which variable operands have the {@link VariableFlag#MustBeByteRegister} flag set.
      */
-    private CiBitMap mustBeByteRegister;
+    private BitMap mustBeByteRegister;
 
     /**
      * Records which variable operands have the {@link VariableFlag#MustStartInMemory} flag set.
      */
-    private CiBitMap mustStartInMemory;
+    private BitMap mustStartInMemory;
 
     /**
      * Records which variable operands have the {@link VariableFlag#MustStayInMemory} flag set.
      */
-    private CiBitMap mustStayInMemory;
+    private BitMap mustStayInMemory;
 
     /**
      * Flags that can be set for {@linkplain CiValue#isVariable() variable} operands.
@@ -108,19 +109,19 @@ public final class OperandPool {
         public static final VariableFlag[] VALUES = values();
     }
 
-    private static CiBitMap set(CiBitMap map, CiVariable variable) {
+    private static BitMap set(BitMap map, CiVariable variable) {
         if (map == null) {
-            int length = CiBitMap.roundUpLength(variable.index + 1);
-            map = new CiBitMap(length);
+            int length = BitMap.roundUpLength(variable.index + 1);
+            map = new BitMap(length);
         } else if (map.size() <= variable.index) {
-            int length = CiBitMap.roundUpLength(variable.index + 1);
+            int length = BitMap.roundUpLength(variable.index + 1);
             map.grow(length);
         }
         map.set(variable.index);
         return map;
     }
 
-    private static boolean get(CiBitMap map, CiVariable variable) {
+    private static boolean get(BitMap map, CiVariable variable) {
         if (map == null || map.size() <= variable.index) {
             return false;
         }
