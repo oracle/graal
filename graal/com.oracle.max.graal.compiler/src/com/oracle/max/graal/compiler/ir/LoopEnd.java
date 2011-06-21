@@ -24,9 +24,10 @@ package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 
-public class LoopEnd extends Merge {
+public class LoopEnd extends FixedNode {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_LOOP_BEGIN = 0;
@@ -55,7 +56,7 @@ public class LoopEnd extends Merge {
     }
 
     public LoopEnd(Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
