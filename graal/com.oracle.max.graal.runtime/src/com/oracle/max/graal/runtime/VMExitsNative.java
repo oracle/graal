@@ -140,7 +140,6 @@ public class VMExitsNative implements VMExits, Remote {
         if (!compileMethods) {
             return;
         }
-        ((HotSpotMethodResolvedImpl) method).dumpProfile();
 
         new Sandbox() {
             @Override

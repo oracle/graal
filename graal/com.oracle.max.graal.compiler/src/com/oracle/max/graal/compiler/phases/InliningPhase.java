@@ -411,7 +411,7 @@ public class InliningPhase extends Phase {
         } else {
             if (unwindNode != null) {
                 Unwind unwindDuplicate = (Unwind) duplicates.get(unwindNode);
-                unwindDuplicate.replace(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
+                unwindDuplicate.replace(new Deoptimize(DeoptAction.InvalidateRecompile, compilation.graph));
             }
         }
 
