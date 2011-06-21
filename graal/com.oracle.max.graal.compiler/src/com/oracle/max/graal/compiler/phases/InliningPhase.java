@@ -29,6 +29,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -406,6 +407,11 @@ public class InliningPhase extends Phase {
                 Node n = obj.next();
                 obj.setNext(null);
                 unwindDuplicate.replace(n);
+            }
+        } else {
+            if (unwindNode != null) {
+                Unwind unwindDuplicate = (Unwind) duplicates.get(unwindNode);
+                unwindDuplicate.replace(new Deoptimize(DeoptAction.InvalidateRecompile, graph));
             }
         }
 

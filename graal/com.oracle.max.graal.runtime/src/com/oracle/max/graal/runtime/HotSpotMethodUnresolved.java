@@ -165,6 +165,10 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
         return -1;
     }
 
+    public int exceptionProbability(int bci) {
+        return -1;
+    }
+
     public RiTypeProfile typeProfile(int bci) {
         return null;
     }

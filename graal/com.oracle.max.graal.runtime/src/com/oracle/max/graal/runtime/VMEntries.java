@@ -45,6 +45,8 @@ public interface VMEntries {
 
     int RiMethod_invocationCount(HotSpotMethodResolved method);
 
+    int RiMethod_exceptionProbability(HotSpotMethodResolved method, int bci);
+
     RiTypeProfile RiMethod_typeProfile(HotSpotMethodResolved method, int bci);
 
     int RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
