@@ -92,6 +92,11 @@ public class LoopPhase extends Phase {
 
     private List<LoopCounter> findLoopCounters(LoopBegin loopBegin, NodeBitMap loopNodes) {
         LoopEnd loopEnd = loopBegin.loopEnd();
+        FrameState loopEndState = null;
+        Node loopEndPred = loopEnd.singlePredecessor();
+        if (loopEndPred instanceof Merge) {
+            loopEndState = ((Merge) loopEndPred).stateAfter();
+        }
         List<Node> usages = new ArrayList<Node>(loopBegin.usages());
         List<LoopCounter> counters = new LinkedList<LoopCounter>();
         for (Node usage : usages) {
@@ -112,7 +117,7 @@ public class LoopPhase extends Phase {
                         IntegerAdd add = (IntegerAdd) backEdge;
                         int addUsageCount = 0;
                         for (Node u : add.usages()) {
-                            if (u != loopEnd.stateAfter() && u != phi) {
+                            if (u != loopEndState && u != phi) {
                                 addUsageCount++;
                             }
                         }
@@ -130,7 +135,9 @@ public class LoopPhase extends Phase {
                         LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
                         counters.add(counter);
                         phi.replace(counter);
-                        loopEnd.stateAfter().inputs().replace(backEdge, counter);
+                        if (loopEndState != null) {
+                            loopEndState.inputs().replace(backEdge, counter);
+                        }
                         if (useCounterAfterAdd) {
                             /*IntegerAdd otherInit = new IntegerAdd(init.kind, init, stride, graph); // would be nice to canonicalize
                             LoopCounter otherCounter = new LoopCounter(init.kind, otherInit, stride, loopBegin, graph);

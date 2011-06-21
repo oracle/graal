@@ -286,7 +286,7 @@ public final class GraphBuilderPhase extends Phase {
         StateSplit first = (StateSplit) target.firstInstruction;
 
         if (target.isLoopHeader && isVisited(target)) {
-            first = loopBegin(target).loopEnd();
+            first = (StateSplit) loopBegin(target).loopEnd().singlePredecessor();
         }
 
         int bci = target.startBci;
@@ -317,13 +317,16 @@ public final class GraphBuilderPhase extends Phase {
                 } else {
                     Merge merge = new Merge(graph);
                     assert p.predecessors().size() == 1 : "predecessors size: " + p.predecessors().size();
-                    merge.setNext(p.next());
+                    FixedNode next = p.next();
                     p.setNext(null);
                     EndNode end = new EndNode(graph);
                     p.replace(end);
+                    merge.setNext(next);
                     merge.addEnd(end);
-                    target.firstInstruction = merge;
                     merge.setStateAfter(existingState);
+                    if (!(next instanceof LoopEnd)) {
+                        target.firstInstruction = merge;
+                    }
                     first = merge;
                 }
             }
@@ -1150,10 +1153,12 @@ public final class GraphBuilderPhase extends Phase {
                 LoopBegin loopBegin = new LoopBegin(graph);
                 LoopEnd loopEnd = new LoopEnd(graph);
                 loopEnd.setLoopBegin(loopBegin);
-                Placeholder p = new Placeholder(graph);
-                p.setNext(loopBegin.forwardEdge());
+                Placeholder pBegin = new Placeholder(graph);
+                pBegin.setNext(loopBegin.forwardEdge());
+                Placeholder pEnd = new Placeholder(graph);
+                pEnd.setNext(loopEnd);
                 loopBegin.setStateAfter(stateAfter.duplicate(block.startBci));
-                block.firstInstruction = p;
+                block.firstInstruction = pBegin;
             } else {
                 block.firstInstruction = new Placeholder(graph);
             }
@@ -1163,7 +1168,7 @@ public final class GraphBuilderPhase extends Phase {
 
         FixedNode result = null;
         if (block.isLoopHeader && isVisited(block)) {
-            result = loopBegin(block).loopEnd();
+            result = (StateSplit) loopBegin(block).loopEnd().singlePredecessor();
         } else {
             result = block.firstInstruction;
         }
@@ -1236,6 +1241,7 @@ public final class GraphBuilderPhase extends Phase {
             if (b.isLoopHeader) {
                 LoopBegin begin = loopBegin(b);
                 LoopEnd loopEnd = begin.loopEnd();
+                StateSplit loopEndPred = (StateSplit) loopEnd.singlePredecessor();
 
 //              This can happen with degenerated loops like this one:
 //                for (;;) {
@@ -1244,11 +1250,12 @@ public final class GraphBuilderPhase extends Phase {
 //                    } catch (UnresolvedException iioe) {
 //                    }
 //                }
-                if (loopEnd.stateAfter() != null) {
+                if (loopEndPred.stateAfter() != null) {
                     //loopHeaderMerge.stateBefore().merge(begin, end.stateBefore());
                     //assert loopHeaderMerge.equals(end.stateBefore());
-                    begin.stateAfter().merge(begin, loopEnd.stateAfter());
+                    begin.stateAfter().merge(begin, loopEndPred.stateAfter());
                 } else {
+                    loopEndPred.delete();
                     loopEnd.delete();
                     Merge merge = new Merge(graph);
                     merge.addEnd(begin.forwardEdge());
