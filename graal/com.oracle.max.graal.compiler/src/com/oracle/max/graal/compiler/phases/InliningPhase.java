@@ -319,20 +319,18 @@ public class InliningPhase extends Phase {
         Unwind unwindNode = null;
         StartNode startNode = graph.start();
         for (Node node : graph.getNodes()) {
-            if (node != null) {
-                if (node instanceof StartNode) {
-                    assert startNode == node;
-                } else if (node instanceof Local) {
-                    replacements.put(node, parameters[((Local) node).index()]);
-                } else {
-                    nodes.add(node);
-                    if (node instanceof Return) {
-                        returnNode = (Return) node;
-                    } else if (node instanceof Unwind) {
-                        unwindNode = (Unwind) node;
-                    } else if (node instanceof FrameState) {
-                        frameStates.add(node);
-                    }
+            if (node instanceof StartNode) {
+                assert startNode == node;
+            } else if (node instanceof Local) {
+                replacements.put(node, parameters[((Local) node).index()]);
+            } else {
+                nodes.add(node);
+                if (node instanceof Return) {
+                    returnNode = (Return) node;
+                } else if (node instanceof Unwind) {
+                    unwindNode = (Unwind) node;
+                } else if (node instanceof FrameState) {
+                    frameStates.add(node);
                 }
             }
         }

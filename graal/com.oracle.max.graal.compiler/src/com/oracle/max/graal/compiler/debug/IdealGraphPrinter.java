@@ -145,11 +145,11 @@ public class IdealGraphPrinter {
         flush();
     }
 
-    private List<Edge> printNodes(Collection<Node> nodes, boolean shortNames, NodeMap<Block> nodeToBlock) {
+    private List<Edge> printNodes(Iterable<Node> nodes, boolean shortNames, NodeMap<Block> nodeToBlock) {
         ArrayList<Edge> edges = new ArrayList<Edge>();
 
         for (Node node : nodes) {
-            if (node == Node.Null || omittedClasses.contains(node.getClass())) {
+            if (omittedClasses.contains(node.getClass())) {
                 continue;
             }
 
@@ -228,9 +228,6 @@ public class IdealGraphPrinter {
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
-                if (n == null) {
-                    continue;
-                }
                 Block blk = nodeToBlock.get(n);
                 if (blk == block) {
                     nodes.add(n);

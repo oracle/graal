@@ -35,8 +35,7 @@ public class LoopPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
-        List<Node> nodes = new ArrayList<Node>(graph.getNodes());
-        for (Node n : nodes) {
+        for (Node n : graph.getNodes()) {
             if (n instanceof LoopBegin) {
                 doLoop((LoopBegin) n);
             }

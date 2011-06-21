@@ -112,22 +112,20 @@ public class IdentifyBlocksPhase extends Phase {
 
         // Identify blocks.
         for (Node n : graph.getNodes()) {
-            if (n != null) {
-                if (n instanceof EndNode || n instanceof Return || n instanceof Unwind || n instanceof LoopEnd || n instanceof Deoptimize) {
-                    Block block = null;
-                    Node currentNode = n;
-                    while (nodeToBlock.get(currentNode) == null) {
-                        if (block != null && (currentNode instanceof ControlSplit || trueSuccessorCount(currentNode) > 1)) {
-                            // We are at a split node => start a new block.
-                            block = null;
-                        }
-                        block = assignBlockNew(currentNode, block);
-                        if (currentNode.predecessors().size() == 0) {
-                            // Either dead code or at a merge node => stop iteration.
-                            break;
-                        }
-                        currentNode = currentNode.singlePredecessor();
+            if (n instanceof EndNode || n instanceof Return || n instanceof Unwind || n instanceof LoopEnd || n instanceof Deoptimize) {
+                Block block = null;
+                Node currentNode = n;
+                while (nodeToBlock.get(currentNode) == null) {
+                    if (block != null && (currentNode instanceof ControlSplit || trueSuccessorCount(currentNode) > 1)) {
+                        // We are at a split node => start a new block.
+                        block = null;
                     }
+                    block = assignBlockNew(currentNode, block);
+                    if (currentNode.predecessors().size() == 0) {
+                        // Either dead code or at a merge node => stop iteration.
+                        break;
+                    }
+                    currentNode = currentNode.singlePredecessor();
                 }
             }
         }

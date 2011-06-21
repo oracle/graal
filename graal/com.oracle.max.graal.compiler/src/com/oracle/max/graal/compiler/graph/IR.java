@@ -99,6 +99,8 @@ public class IR {
             new CanonicalizerPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
         }
+//
+//        new EscapeAnalysisPhase().apply(graph);
 
         if (GraalOptions.OptLoops) {
             new LoopPhase().apply(graph);
