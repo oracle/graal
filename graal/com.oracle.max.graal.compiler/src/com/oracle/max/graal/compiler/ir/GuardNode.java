@@ -27,21 +27,30 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class GuardNode extends Instruction {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_NODE = 0;
+public final class GuardNode extends FloatingNode {
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_ANCHOR = 0;
+    private static final int INPUT_NODE = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
+
+    public FixedNode anchor() {
+        return (FixedNode) inputs().get(super.inputCount() + INPUT_ANCHOR);
+    }
+
+    public void setAnchor(FixedNode anchor) {
+        inputs().set(super.inputCount() + INPUT_ANCHOR, anchor);
+    }
 
     /**
      * The instruction that produces the object tested against null.
      */
-     public Compare node() {
-        return (Compare) inputs().get(super.inputCount() + INPUT_NODE);
+    public BooleanNode node() {
+        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public Compare setNode(Compare n) {
-        return (Compare) inputs().set(super.inputCount() + INPUT_NODE, n);
+    public void setNode(BooleanNode n) {
+        inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
     public GuardNode(Graph graph) {

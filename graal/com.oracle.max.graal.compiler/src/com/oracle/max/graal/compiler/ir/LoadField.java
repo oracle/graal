@@ -25,8 +25,8 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
-import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringTool;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -36,7 +36,6 @@ import com.sun.cri.ri.*;
  */
 public final class LoadField extends AccessField {
     private static final LoadFieldCanonicalizerOp CANONICALIZER = new LoadFieldCanonicalizerOp();
-    private static final LoadFieldLoweringOp LOWERING = new LoadFieldLoweringOp();
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -120,29 +119,9 @@ public final class LoadField extends AccessField {
         if (clazz == CanonicalizerOp.class) {
             return (T) CANONICALIZER;
         } else if (clazz == LoweringOp.class) {
-            return (T) LOWERING;
+            return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
         }
         return super.lookup(clazz);
-    }
-
-    private static class LoadFieldLoweringOp implements LoweringOp {
-
-        @Override
-        public Node lower(Node n, LoweringTool tool) {
-            LoadField field = (LoadField) n;
-            if (field.isVolatile()) {
-                return null;
-            }
-            Graph graph = field.graph();
-            int displacement = field.field().offset();
-            assert field.kind != CiKind.Illegal;
-            MemoryRead memoryRead = new MemoryRead(field.field().kind(), displacement, graph);
-            memoryRead.setGuard(new IsNonNull(field.object(), graph));
-            memoryRead.setNext(field.next());
-            memoryRead.setLocation(field.object());
-            return memoryRead;
-        }
-
     }
 
     private static class LoadFieldCanonicalizerOp implements CanonicalizerOp {

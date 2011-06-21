@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.util;
 
-import com.sun.cri.ci.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * This class implements a two-dimensional bitmap.
@@ -32,7 +32,7 @@ import com.sun.cri.ci.*;
  */
 public final class BitMap2D {
 
-    private CiBitMap map;
+    private BitMap map;
     private final int bitsPerSlot;
 
     private int bitIndex(int slotIndex, int bitWithinSlotIndex)  {
@@ -45,7 +45,7 @@ public final class BitMap2D {
     }
 
     public BitMap2D(int sizeInSlots, int bitsPerSlot) {
-        map = new CiBitMap(sizeInSlots * bitsPerSlot);
+        map = new BitMap(sizeInSlots * bitsPerSlot);
         this.bitsPerSlot = bitsPerSlot;
     }
 
@@ -84,7 +84,7 @@ public final class BitMap2D {
            while (size <= slotIndex) {
                size *= 2;
            }
-           CiBitMap newBitMap = new CiBitMap(size * bitsPerSlot);
+           BitMap newBitMap = new BitMap(size * bitsPerSlot);
            newBitMap.setUnion(map);
            map = newBitMap;
        }

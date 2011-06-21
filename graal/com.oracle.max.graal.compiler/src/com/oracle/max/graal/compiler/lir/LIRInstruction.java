@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.LIROperand.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -500,7 +501,7 @@ public abstract class LIRInstruction {
     protected static String refMapToString(CiDebugInfo debugInfo, OperandFormatter operandFmt) {
         StringBuilder buf = new StringBuilder();
         if (debugInfo.hasStackRefMap()) {
-            CiBitMap bm = debugInfo.frameRefMap;
+            BitMap bm = debugInfo.frameRefMap;
             for (int slot = bm.nextSetBit(0); slot >= 0; slot = bm.nextSetBit(slot + 1)) {
                 if (buf.length() != 0) {
                     buf.append(", ");
@@ -509,7 +510,7 @@ public abstract class LIRInstruction {
             }
         }
         if (debugInfo.hasRegisterRefMap()) {
-            CiBitMap bm = debugInfo.registerRefMap;
+            BitMap bm = debugInfo.registerRefMap;
             for (int reg = bm.nextSetBit(0); reg >= 0; reg = bm.nextSetBit(reg + 1)) {
                 if (buf.length() != 0) {
                     buf.append(", ");

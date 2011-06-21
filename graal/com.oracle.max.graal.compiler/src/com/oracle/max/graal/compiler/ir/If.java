@@ -50,17 +50,17 @@ public final class If extends ControlSplit {
     /**
      * The instruction that produces the first input to this comparison.
      */
-     public Compare compare() {
-        return (Compare) inputs().get(super.inputCount() + INPUT_COMPARE);
+     public BooleanNode compare() {
+        return (BooleanNode) inputs().get(super.inputCount() + INPUT_COMPARE);
     }
 
-    public Value setCompare(Compare n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_COMPARE, n);
+    public void setCompare(BooleanNode n) {
+        inputs().set(super.inputCount() + INPUT_COMPARE, n);
     }
 
-    public If(Compare compare, Graph graph) {
+    public If(BooleanNode condition, Graph graph) {
         super(CiKind.Illegal, 2, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setCompare(compare);
+        setCompare(condition);
     }
 
     /**
@@ -96,11 +96,7 @@ public final class If extends ControlSplit {
     @Override
     public void print(LogStream out) {
         out.print("if ").
-        print(compare().x()).
-        print(' ').
-        print(compare().condition().operator).
-        print(' ').
-        print(compare().y()).
+        print(compare()).
         print(" then ").
         print(trueSuccessor()).
         print(" else ").

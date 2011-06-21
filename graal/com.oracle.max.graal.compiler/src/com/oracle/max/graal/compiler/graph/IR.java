@@ -91,20 +91,22 @@ public class IR {
 
         if (GraalOptions.Inline) {
             new InliningPhase(compilation, this, GraalOptions.TraceInlining).apply(compilation.graph);
-            //printGraph("After Ininling", compilation.graph);
         }
 
         Graph graph = compilation.graph;
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
-            new DeadCodeEliminationPhase().apply(compilation.graph);
-            //printGraph("After Canonicalization", graph);
+            new DeadCodeEliminationPhase().apply(graph);
         }
 
-        new LoopPhase().apply(graph);
+        if (GraalOptions.OptLoops) {
+            new LoopPhase().apply(graph);
+        }
 
-        new LoweringPhase().apply(graph);
+        if (GraalOptions.Lower) {
+            new LoweringPhase(compilation.runtime).apply(graph);
+        }
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);

@@ -107,9 +107,8 @@ public class FrameStateBuilder implements FrameStateAccess {
         return new FrameState(method, bci, locals, stack, stackIndex, locks, false, graph);
     }
 
-    @Override
-    public FrameState duplicateWithEmptyStack(int bci) {
-        FrameState frameState = new FrameState(method, bci, locals, new Value[0], 0, locks, false, graph);
+    public FrameState duplicateWithException(int bci, Value exceptionObject) {
+        FrameState frameState = new FrameState(method, bci, locals, new Value[]{exceptionObject}, 1, locks, true, graph);
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }

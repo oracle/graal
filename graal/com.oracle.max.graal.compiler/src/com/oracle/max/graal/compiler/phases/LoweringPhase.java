@@ -24,32 +24,81 @@ package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 public class LoweringPhase extends Phase {
+
+    public static final LoweringOp DELEGATE_TO_RUNTIME = new LoweringOp() {
+        @Override
+        public Node lower(Node n, CiLoweringTool tool) {
+            return tool.getRuntime().lower(n, tool);
+        }
+    };
+
+    private final RiRuntime runtime;
+
+    public LoweringPhase(RiRuntime runtime) {
+        this.runtime = runtime;
+    }
+
     @Override
     protected void run(final Graph graph) {
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
         s.apply(graph);
 
         for (Block b : s.getBlocks()) {
-            //final Node firstNode = b.firstNode();
+            final Node[] firstNodeValue = new Node[]{b.firstNode()};
 
-            final LoweringTool loweringTool = new LoweringTool() {
+            final CiLoweringTool loweringTool = new CiLoweringTool() {
                 @Override
-                public Node createStructuredBlockAnchor() {
-                    throw Util.unimplemented();
-//                    if (!(firstNode instanceof Anchor) && !(firstNode instanceof Merge)) {
-//                        Anchor a = new Anchor(graph);
-//                        assert firstNode.predecessors().size() == 1;
-//                        Node pred = firstNode.predecessors().get(0);
-//                        int predIndex = firstNode.predecessorsIndex().get(0);
-//                        a.successors().setAndClear(Instruction.SUCCESSOR_NEXT, pred, predIndex);
-//                        pred.successors().set(predIndex, a);
-//                        return a;
-//                    }
-//                    return firstNode;
+                public Node getGuardAnchor() {
+                    Node firstNode = firstNodeValue[0];
+                    if (firstNode == firstNode.graph().start()) {
+                        Anchor a = new Anchor(graph);
+                        a.setNext((FixedNode) firstNode.graph().start().start());
+                        firstNode.graph().start().setStart(a);
+                        firstNodeValue[0] = a;
+                        return a;
+                    } else if (firstNode instanceof Merge) {
+                        Merge merge = (Merge) firstNode;
+                        Anchor a = new Anchor(graph);
+                        a.setNext(merge.next());
+                        merge.setNext(a);
+                        firstNodeValue[0] = a;
+                        return a;
+                    } else if (!(firstNode instanceof Anchor)) {
+                        Anchor a = new Anchor(graph);
+                        assert firstNode.predecessors().size() == 1 : firstNode;
+                        Node pred = firstNode.predecessors().get(0);
+                        int predIndex = pred.successors().indexOf(firstNode);
+                        pred.successors().set(predIndex, a);
+                        a.setNext((FixedNode) firstNode);
+                        firstNodeValue[0] = a;
+                        return a;
+                    }
+                    return firstNode;
+                }
+
+                @Override
+                public RiRuntime getRuntime() {
+                    return runtime;
+                }
+
+                @Override
+                public Node createGuard(Node condition) {
+                    Anchor anchor = (Anchor) getGuardAnchor();
+                    for (GuardNode guard : anchor.happensAfterGuards()) {
+                        if (guard.node().valueEqual(condition)) {
+                            condition.delete();
+                            return guard;
+                        }
+                    }
+                    GuardNode newGuard = new GuardNode(graph);
+                    newGuard.setAnchor(anchor);
+                    newGuard.setNode((BooleanNode) condition);
+                    return newGuard;
                 }
             };
 
@@ -67,11 +116,7 @@ public class LoweringPhase extends Phase {
         }
     }
 
-    public interface LoweringTool {
-        Node createStructuredBlockAnchor();
-    }
-
     public interface LoweringOp extends Op {
-        Node lower(Node n, LoweringTool tool);
+        Node lower(Node n, CiLoweringTool tool);
     }
 }

@@ -4,7 +4,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.asm"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.cri"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.graph"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.graphviz"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.graph"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -25,6 +25,7 @@ package com.oracle.max.graal.runtime;
 import java.lang.reflect.*;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -126,7 +127,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         throw new UnsupportedOperationException("jniSymbol");
     }
 
-    public CiBitMap[] livenessMap() {
+    public BitMap[] livenessMap() {
         return null;
     }
 

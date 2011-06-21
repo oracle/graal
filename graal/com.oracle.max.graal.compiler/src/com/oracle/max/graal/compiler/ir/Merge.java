@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -33,7 +35,7 @@ import com.sun.cri.ci.*;
  * about the basic block, including the successor and
  * predecessor blocks, exception handlers, liveness information, etc.
  */
-public class Merge extends StateSplit {
+public class Merge extends StateSplit{
 
     private static final int INPUT_COUNT = 0;
 
@@ -88,6 +90,29 @@ public class Merge extends StateSplit {
 
     public EndNode endAt(int index) {
         return (EndNode) inputs().variablePart().get(index);
+    }
+
+    public Iterable<Node> mergePredecessors() {
+        return new Iterable<Node>() {
+            @Override
+            public Iterator<Node> iterator() {
+                return new Iterator<Node>() {
+                    int i = 0;
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                    @Override
+                    public Node next() {
+                        return Merge.this.endAt(i++);
+                    }
+                    @Override
+                    public boolean hasNext() {
+                        return i < Merge.this.endCount();
+                    }
+                };
+            }
+        };
     }
 
     @Override
@@ -295,5 +320,22 @@ public class Merge extends StateSplit {
                 }
             }
         }
+    }
+
+    public int phiPredecessorCount() {
+        return endCount();
+    }
+
+    public int phiPredecessorIndex(Node pred) {
+        EndNode end = (EndNode) pred;
+        return endIndex(end);
+    }
+
+    public Collection<Phi> phis() {
+        return Util.filter(this.usages(), Phi.class);
+    }
+
+    public List<Node> phiPredecessors() {
+        return Collections.unmodifiableList(inputs().variablePart());
     }
 }

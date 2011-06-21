@@ -22,16 +22,16 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 
-public class LoopBegin extends Merge {
-
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
+public class LoopBegin extends Merge{
     public LoopBegin(Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(graph);
+        this.addEnd(new EndNode(graph));
     }
 
     public LoopEnd loopEnd() {
@@ -66,5 +66,40 @@ public class LoopBegin extends Merge {
     public Node copy(Graph into) {
         LoopBegin x = new LoopBegin(into);
         return x;
+    }
+
+    @Override
+    public int phiPredecessorCount() {
+        return 2;
+    }
+
+    @Override
+    public int phiPredecessorIndex(Node pred) {
+        if (pred == forwardEdge()) {
+            return 0;
+        } else if (pred == this.loopEnd()) {
+            return 1;
+        }
+        throw Util.shouldNotReachHere("unknown pred : " + pred + "(sp=" + forwardEdge() + ", le=" + this.loopEnd() + ")");
+    }
+
+    public Collection<LoopCounter> counters() {
+        return Util.filter(this.usages(), LoopCounter.class);
+    }
+
+    @Override
+    public List<Node> phiPredecessors() {
+        return Arrays.asList(new Node[]{this.forwardEdge(), this.loopEnd()});
+    }
+
+    public EndNode forwardEdge() {
+        return this.endAt(0);
+    }
+
+    @Override
+    public boolean verify() {
+        assertTrue(loopEnd() != null);
+        assertTrue(forwardEdge() != null);
+        return true;
     }
 }

@@ -72,12 +72,12 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
      * The entry to the exception dispatch chain for this invoke.
      */
     @Override
-    public Instruction exceptionEdge() {
-        return (Instruction) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
+    public FixedNode exceptionEdge() {
+        return (FixedNode) successors().get(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE);
     }
 
-    public Instruction setExceptionEdge(Instruction n) {
-        return (Instruction) successors().set(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE, n);
+    public FixedNode setExceptionEdge(FixedNode n) {
+        return (FixedNode) successors().set(super.successorCount() + SUCCESSOR_EXCEPTION_EDGE, n);
     }
 
     public final int opcode;

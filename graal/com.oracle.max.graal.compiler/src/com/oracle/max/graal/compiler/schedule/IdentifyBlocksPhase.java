@@ -29,7 +29,6 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
 
 public class IdentifyBlocksPhase extends Phase {
@@ -93,6 +92,22 @@ public class IdentifyBlocksPhase extends Phase {
         return trueSuccessorCount(n) > 1 || n instanceof Return || n instanceof Unwind || n instanceof Deoptimize;
     }
 
+    private void print() {
+        Block dominatorRoot = nodeToBlock.get(graph.start());
+        System.out.println("Root = " + dominatorRoot);
+        System.out.println("nodeToBlock :");
+        System.out.println(nodeToBlock);
+        System.out.println("Blocks :");
+        for (Block b : blocks) {
+            System.out.println(b + " [S:" + b.getSuccessors() + ", P:" + b.getPredecessors() + ", D:" + b.getDominators());
+            System.out.println("  f " + b.firstNode());
+            for (Node n : b.getInstructions()) {
+                System.out.println("  - " + n);
+            }
+            System.out.println("  l " + b.lastNode());
+        }
+    }
+
     private void identifyBlocks() {
 
         // Identify blocks.
@@ -111,8 +126,7 @@ public class IdentifyBlocksPhase extends Phase {
                             // Either dead code or at a merge node => stop iteration.
                             break;
                         }
-                        assert currentNode.predecessors().size() == 1 : "preds: " + currentNode;
-                        currentNode = currentNode.predecessors().get(0);
+                        currentNode = currentNode.singlePredecessor();
                     }
                 }
             }
@@ -123,9 +137,8 @@ public class IdentifyBlocksPhase extends Phase {
             Node n = block.firstNode();
             if (n instanceof Merge) {
                 Merge m = (Merge) n;
-                for (int i = 0; i < m.endCount(); ++i) {
-                    EndNode end = m.endAt(i);
-                    Block predBlock = nodeToBlock.get(end);
+                for (Node pred : m.mergePredecessors()) {
+                    Block predBlock = nodeToBlock.get(pred);
                     predBlock.addSuccessor(block);
                 }
             } else {
@@ -145,11 +158,11 @@ public class IdentifyBlocksPhase extends Phase {
 
             // Add successors of loop end nodes. Makes the graph cyclic.
             for (Block block : blocks) {
-                Node n = block.firstNode();
-                if (n instanceof LoopBegin) {
-                    LoopBegin loopBegin = (LoopBegin) n;
-                    assert loopBegin.loopEnd() != null;
-                    nodeToBlock.get(loopBegin.loopEnd()).addSuccessor(block);
+                Node n = block.lastNode();
+                if (n instanceof LoopEnd) {
+                    LoopEnd loopEnd = (LoopEnd) n;
+                    assert loopEnd.loopBegin() != null;
+                    block.addSuccessor(nodeToBlock.get(loopEnd.loopBegin()));
                 }
             }
 
@@ -183,7 +196,7 @@ public class IdentifyBlocksPhase extends Phase {
                 for (int i = 1; i < b.getPredecessors().size(); ++i) {
                     dominatorBlock = getCommonDominator(dominatorBlock, b.getPredecessors().get(i));
                 }
-                CiBitMap blockMap = new CiBitMap(blocks.size());
+                BitMap blockMap = new BitMap(blocks.size());
                 markPredecessors(b, dominatorBlock, blockMap);
 
                 Block result = dominatorBlock;
@@ -203,7 +216,7 @@ public class IdentifyBlocksPhase extends Phase {
         return b.javaBlock();
     }
 
-    private void markPredecessors(Block b, Block stopBlock, CiBitMap blockMap) {
+    private void markPredecessors(Block b, Block stopBlock, BitMap blockMap) {
         if (blockMap.get(b.blockID())) {
             return;
         }
@@ -258,7 +271,7 @@ public class IdentifyBlocksPhase extends Phase {
                         if (mergeBlock.getPredecessors().size() == 0) {
                             TTY.println(merge.toString());
                             TTY.println(phi.toString());
-                            TTY.println(merge.predecessors().toString());
+                            TTY.println(merge.phiPredecessors().toString());
                             TTY.println("value count: " + phi.valueCount());
                         }
                         block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
@@ -266,8 +279,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
                 Merge merge = ((FrameState) usage).block();
-                for (int i = 0; i < merge.endCount(); ++i) {
-                    EndNode pred = merge.endAt(i);
+                for (Node pred : merge.mergePredecessors()) {
                     block = getCommonDominator(block, nodeToBlock.get(pred));
                 }
             } else if (usage instanceof LoopCounter) {
@@ -322,10 +334,24 @@ public class IdentifyBlocksPhase extends Phase {
         addToSorting(b, b.lastNode(), sortedInstructions, map);
 
         // Make sure that last node gets really last (i.e. when a frame state successor hangs off it).
-        sortedInstructions.remove(b.lastNode());
-        sortedInstructions.add(b.lastNode());
-
-        assert sortedInstructions.get(sortedInstructions.size() - 1) == b.lastNode() : " lastNode=" + b.lastNode() + ", firstNode=" + b.firstNode() + ", sorted(sz-1)=" + sortedInstructions.get(sortedInstructions.size() - 1);
+        Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
+        if (lastSorted != b.lastNode()) {
+            int idx = sortedInstructions.indexOf(b.lastNode());
+            boolean canNotMove = false;
+            for (int i = idx + 1; i < sortedInstructions.size(); i++) {
+                if (sortedInstructions.get(i).inputs().contains(b.lastNode())) {
+                    canNotMove = true;
+                    break;
+                }
+            }
+            if (canNotMove) {
+                assert !(b.lastNode() instanceof ControlSplit);
+                //b.setLastNode(lastSorted);
+            } else {
+                sortedInstructions.remove(b.lastNode());
+                sortedInstructions.add(b.lastNode());
+            }
+        }
         b.setInstructions(sortedInstructions);
     }
 
@@ -368,11 +394,14 @@ public class IdentifyBlocksPhase extends Phase {
     private void computeDominators() {
         Block dominatorRoot = nodeToBlock.get(graph.start());
         assert dominatorRoot.getPredecessors().size() == 0;
-        CiBitMap visited = new CiBitMap(blocks.size());
+        BitMap visited = new BitMap(blocks.size());
         visited.set(dominatorRoot.blockID());
         LinkedList<Block> workList = new LinkedList<Block>();
-        workList.add(dominatorRoot);
-        // TODO: Add all predecessor.size()==0 nodes.
+        for (Block block : blocks) {
+            if (block.getPredecessors().size() == 0) {
+                workList.add(block);
+            }
+        }
 
         while (!workList.isEmpty()) {
             Block b = workList.remove();
@@ -415,7 +444,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     public Block commonDominator(Block a, Block b) {
-        CiBitMap bitMap = new CiBitMap(blocks.size());
+        BitMap bitMap = new BitMap(blocks.size());
         Block cur = a;
         while (cur != null) {
             bitMap.set(cur.blockID());

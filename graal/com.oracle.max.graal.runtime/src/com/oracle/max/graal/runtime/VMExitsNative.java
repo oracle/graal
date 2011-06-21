@@ -157,7 +157,7 @@ public class VMExitsNative implements VMExits, Remote {
                         if (!GraalOptions.QuietBailout && !(result.bailout() instanceof JSRNotSupportedBailout)) {
                             StringWriter out = new StringWriter();
                             result.bailout().printStackTrace(new PrintWriter(out));
-                            TTY.println("Bailout:\n" + out.toString());
+                            TTY.println("Bailout while compiling " + method + " :\n" + out.toString());
                             if (cause != null) {
                                 Logger.info("Trace for cause: ");
                                 for (StackTraceElement e : cause.getStackTrace()) {

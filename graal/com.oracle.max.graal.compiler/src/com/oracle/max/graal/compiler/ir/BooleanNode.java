@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-/**
- * This package contains the Node base class and the Graph container class of the Graal IR.
- *
- * @author Gilles Duboscq
- * @author Lukas Stadler
- * @author Thomas Wuerthinger
- */
-package com.oracle.max.graal.graph;
+package com.oracle.max.graal.compiler.ir;
+
+import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
+
+
+public abstract class BooleanNode extends FloatingNode {
+
+    public BooleanNode(CiKind kind, int inputCount, int successorCount, Graph graph) {
+        super(kind, inputCount, successorCount, graph);
+    }
+
+}

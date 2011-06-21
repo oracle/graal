@@ -52,6 +52,7 @@ public abstract class ValueVisitor {
     public abstract void visitLogic(Logic i);
     public abstract void visitLookupSwitch(LookupSwitch i);
     public abstract void visitMemoryRead(MemoryRead i);
+    public abstract void visitMemoryWrite(MemoryWrite i);
     public abstract void visitMonitorAddress(MonitorAddress monitorAddress);
     public abstract void visitMonitorEnter(MonitorEnter i);
     public abstract void visitMonitorExit(MonitorExit i);

@@ -23,6 +23,8 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -76,6 +78,15 @@ public final class StoreField extends AccessField {
         v.visitStoreField(this);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(java.lang.Class<T> clazz) {
+        if (clazz == LoweringOp.class) {
+            return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
+        }
+        return null;
+    };
+
     @Override
     public void print(LogStream out) {
         out.print(object()).
@@ -89,7 +100,6 @@ public final class StoreField extends AccessField {
 
     @Override
     public Node copy(Graph into) {
-        StoreField x = new StoreField(null, field, null, into);
-        return x;
+        return new StoreField(null, field, null, into);
     }
 }

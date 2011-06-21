@@ -36,6 +36,9 @@ public final class GraalOptions {
     private static final boolean ____ = false;
     // Checkstyle: resume
 
+
+    public static boolean Lower                              = true;
+
     // inlining settings
     public static boolean Inline                             = true;
     public static boolean CacheGraphs                        = ____;
@@ -135,4 +138,5 @@ public final class GraalOptions {
     public static boolean PrintLIRWithAssembly               = ____;
 
     public static boolean OptCanonicalizer                   = true;
+    public static boolean OptLoops                           = true;
 }

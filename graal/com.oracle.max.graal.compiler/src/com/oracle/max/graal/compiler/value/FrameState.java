@@ -130,22 +130,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         return other;
     }
 
-    /**
-     * Gets a copy of this frame state without the stack.
-     */
     @Override
-    public FrameState duplicateWithEmptyStack(int bci) {
-        FrameState other = new FrameState(method, bci, localsSize, 0, locksSize(), rethrowException, graph());
-        for (int i = 0; i < localsSize; i++) {
-            other.setValueAt(i, localAt(i));
-        }
-        for (int i = 0; i < locksSize; i++) {
-            other.setValueAt(localsSize + i, lockAt(i));
-        }
-        other.setOuterFrameState(outerFrameState());
-        return other;
-    }
-
     public FrameState duplicateWithException(int bci, Value exceptionObject) {
         return duplicateModified(bci, true, CiKind.Void, exceptionObject);
     }
@@ -184,6 +169,28 @@ public final class FrameState extends Value implements FrameStateAccess {
             Value x = stackAt(i);
             Value y = other.stackAt(i);
             if (x != y && typeMismatch(x, y)) {
+                return false;
+            }
+        }
+        for (int i = 0; i < locksSize(); i++) {
+            if (lockAt(i) != other.lockAt(i)) {
+                return false;
+            }
+        }
+        if (other.outerFrameState() != outerFrameState()) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean equals(FrameStateAccess other) {
+        if (stackSize() != other.stackSize() || localsSize() != other.localsSize() || locksSize() != other.locksSize()) {
+            return false;
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            Value x = stackAt(i);
+            Value y = other.stackAt(i);
+            if (x != y) {
                 return false;
             }
         }
@@ -389,7 +396,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                     }
 
                     if (phi.valueCount() == 0) {
-                        int size = block.endCount();
+                        int size = block.phiPredecessorCount();
                         for (int j = 0; j < size; ++j) {
                             phi.addInput(x);
                         }
@@ -398,11 +405,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                         phi.addInput((x == y) ? phi : y);
                     }
 
-                    if (block instanceof LoopBegin) {
-//                        assert phi.valueCount() == ((LoopBegin) block).loopEnd().predecessors().size() + 1 : "loop, valueCount=" + phi.valueCount() + " predSize= " + ((LoopBegin) block).loopEnd().predecessors().size();
-                    } else {
-                        assert phi.valueCount() == block.endCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.endCount();
-                    }
+                    assert phi.valueCount() == block.phiPredecessorCount() + (block instanceof LoopBegin ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPredecessorCount();
                }
             }
         }

@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -423,5 +424,16 @@ public class Util {
      */
     public static String valueString(Value value) {
         return (value == null) ? "-" : ("" + value.kind.typeChar + value.id());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends Node> Collection<T> filter(Collection<Node> nodes, Class<T> clazz) {
+        ArrayList<T> phis = new ArrayList<T>();
+        for (Node node : nodes) {
+            if (clazz.isInstance(node)) {
+                phis.add((T) node);
+            }
+        }
+        return phis;
     }
 }

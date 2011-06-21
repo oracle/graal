@@ -27,50 +27,13 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class MemoryRead extends Instruction {
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_NODE = 0;
-    private static final int INPUT_GUARD = 1;
-
+public final class MemoryRead extends MemoryAccess {
+    private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    private int displacement;
-    private CiKind valueKind;
-
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public Value location() {
-        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
-    }
-
-    public Value setLocation(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
-    }
-
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public FloatingNode guard() {
-        return (FloatingNode) inputs().get(super.inputCount() + INPUT_GUARD);
-    }
-
-    public FloatingNode setGuard(FloatingNode n) {
-        return (FloatingNode) inputs().set(super.inputCount() + INPUT_GUARD, n);
-    }
-
-    public int displacement() {
-        return displacement;
-    }
-
-    public CiKind valueKind() {
-        return valueKind;
-    }
 
     public MemoryRead(CiKind kind, int displacement, Graph graph) {
-        super(kind.stackKind(), INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.displacement = displacement;
-        this.valueKind = kind;
+        super(kind, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
