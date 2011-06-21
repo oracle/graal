@@ -298,16 +298,7 @@ public final class GraphBuilderPhase extends Phase {
 
         if (existingState == null) {
             // copy state because it is modified
-            FrameState duplicate = newState.duplicate(bci);
-
-            // if the block is a loop header, insert all necessary phis
-            if (target.isLoopHeader && !isVisited(target)) {
-                LoopBegin loopBegin = loopBegin(target);
-                assert target.firstInstruction instanceof Placeholder && loopBegin != null;
-                //System.out.println("insertLoopPhis with " + target.loopHeaderState);
-                insertLoopPhis(loopBegin, loopBegin.stateAfter());
-            }
-            first.setStateAfter(duplicate);
+            first.setStateAfter(newState.duplicate(bci));
         } else {
             if (!GraalOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
                 // stacks or locks do not match--bytecodes would not verify
@@ -1215,7 +1206,13 @@ public final class GraphBuilderPhase extends Phase {
                 markVisited(block);
                 // now parse the block
                 if (block.isLoopHeader) {
-                    lastInstr = loopBegin(block);
+                    LoopBegin begin = loopBegin(block);
+                    FrameState preLoopState = block.firstInstruction.stateAfter();
+                    assert preLoopState != null;
+                    FrameState duplicate = preLoopState.duplicate(preLoopState.bci);
+                    begin.setStateAfter(duplicate);
+                    insertLoopPhis(begin, duplicate);
+                    lastInstr = begin;
                 } else {
                     lastInstr = block.firstInstruction;
                 }
