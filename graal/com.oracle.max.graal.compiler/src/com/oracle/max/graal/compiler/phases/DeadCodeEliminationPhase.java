@@ -104,7 +104,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void disconnectCFGNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node)) {
+            if (!flood.isMarked(node)) {
                 if (node instanceof EndNode) {
                     EndNode end = (EndNode) node;
                     Merge merge = end.merge();
@@ -131,7 +131,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void deleteNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node)) {
+            if (!flood.isMarked(node)) {
                 node.unsafeDelete();
             }
         }
@@ -142,7 +142,7 @@ public class DeadCodeEliminationPhase extends Phase {
             if (node instanceof Local) {
                 flood.add(node);
             }
-            if (node != Node.Null && flood.isMarked(node)) {
+            if (flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
                     flood.add(input);
                 }
@@ -157,7 +157,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void disconnectNodes() {
         for (Node node : graph.getNodes()) {
-            if (node != Node.Null && !flood.isMarked(node)) {
+            if (!flood.isMarked(node)) {
                 for (int i = 0; i < node.inputs().size(); i++) {
                     Node input = node.inputs().get(i);
                     if (input != Node.Null && flood.isMarked(input)) {

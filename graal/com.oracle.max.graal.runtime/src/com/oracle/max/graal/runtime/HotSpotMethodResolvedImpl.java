@@ -43,7 +43,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private final int accessFlags;
     private final int maxLocals;
     private final int maxStackSize;
-    private final int invocationCount;
     private RiExceptionHandler[] exceptionHandlers;
     private RiSignature signature;
     private Boolean hasBalancedMonitors;
@@ -54,7 +53,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         accessFlags = -1;
         maxLocals = -1;
         maxStackSize = -1;
-        invocationCount = -1;
     }
 
     @Override
@@ -173,7 +171,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     public boolean hasCompiledCode() {
         // TODO: needs a VMEntries to go cache the result of that method.
-        // This isn't used by GRAAL for now, so this is enough.
+        // This isn't used by GRAAL for now, so this is enough.throwoutCount
         return false;
     }
 
@@ -193,7 +191,11 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     public int invocationCount() {
-        return invocationCount;
+        return compiler.getVMEntries().RiMethod_invocationCount(this);
+    }
+
+    public int exceptionProbability(int bci) {
+        return compiler.getVMEntries().RiMethod_exceptionProbability(this, bci);
     }
 
     public RiTypeProfile typeProfile(int bci) {
@@ -209,6 +211,9 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         TTY.println("canBeStaticallyBound: " + canBeStaticallyBound());
         TTY.println("invocationCount: " + invocationCount());
         for (int i = 0; i < codeSize(); i++) {
+            if (exceptionProbability(i) != -1) {
+                TTY.println("exceptionProbability@%d: %d", i, exceptionProbability(i));
+            }
             if (branchProbability(i) != -1) {
                 TTY.println("branchProbability@%d: %d", i, branchProbability(i));
             }

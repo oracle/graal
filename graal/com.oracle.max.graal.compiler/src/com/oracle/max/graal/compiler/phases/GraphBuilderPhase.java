@@ -387,6 +387,12 @@ public final class GraphBuilderPhase extends Phase {
     private FixedNode handleException(Value exceptionObject, int bci) {
         assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
+        if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
+            if (exceptionObject == null && method.exceptionProbability(bci) == 0) {
+                return null;
+            }
+        }
+
         RiExceptionHandler firstHandler = null;
         // join with all potential exception handlers
         if (exceptionHandlers != null) {

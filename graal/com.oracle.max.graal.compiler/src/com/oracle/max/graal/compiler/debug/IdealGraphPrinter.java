@@ -156,7 +156,7 @@ public class IdealGraphPrinter {
         }
 
         for (Node node : graph.getNodes()) {
-            if (node == Node.Null || omittedClasses.contains(node.getClass())) {
+            if (omittedClasses.contains(node.getClass())) {
                 continue;
             }
 
@@ -250,9 +250,6 @@ public class IdealGraphPrinter {
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
-                if (n == null) {
-                    continue;
-                }
                 Block blk = nodeToBlock.get(n);
                 if (blk == block) {
                     nodes.add(n);

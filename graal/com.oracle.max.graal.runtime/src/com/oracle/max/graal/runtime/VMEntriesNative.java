@@ -54,6 +54,9 @@ public class VMEntriesNative implements VMEntries, Remote {
     public native int RiMethod_invocationCount(HotSpotMethodResolved method);
 
     @Override
+    public native int RiMethod_exceptionProbability(HotSpotMethodResolved method, int bci);
+
+    @Override
     public native RiTypeProfile RiMethod_typeProfile(HotSpotMethodResolved method, int bci);
 
     @Override

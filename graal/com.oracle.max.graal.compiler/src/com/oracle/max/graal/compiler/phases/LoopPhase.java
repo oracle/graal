@@ -35,11 +35,8 @@ public class LoopPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
-        List<Node> nodes = new ArrayList<Node>(graph.getNodes());
-        for (Node n : nodes) {
-            if (n instanceof LoopBegin) {
-                doLoop((LoopBegin) n);
-            }
+        for (LoopBegin n : graph.getNodes(LoopBegin.class)) {
+            doLoop(n);
         }
     }
 
@@ -76,7 +73,7 @@ public class LoopPhase extends Phase {
                         IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
                         IntegerAdd addStride = new IntegerAdd(kind, sub, c1.stride(), graph);
                         IntegerAdd add = new IntegerAdd(kind, c1, addStride, graph);
-                        Phi phi = new Phi(kind, loopBegin, graph); // TODO (gd) assumes order on loopBegin preds
+                        Phi phi = new Phi(kind, loopBegin, graph); // (gd) assumes order on loopBegin preds - works in collab with graph builder
                         phi.addInput(c2.init());
                         phi.addInput(add);
                         c2.replace(phi);

@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.debug;
 
 import java.io.*;
+import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -444,7 +445,7 @@ public class LogStream {
      */
     public LogStream printf(String format, Object... args) {
         if (ps != null) {
-            print(String.format(format, args));
+            print(String.format(Locale.ENGLISH, format, args));
         }
         return this;
     }
