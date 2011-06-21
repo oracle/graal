@@ -28,6 +28,8 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 
@@ -121,9 +123,10 @@ public class IdealGraphPrinter {
             // nothing to do here...
             t.printStackTrace();
         }
+        List<Loop> loops = LoopUtil.computeLoops(graph);
 
         stream.println("  <nodes>");
-        List<Edge> edges = printNodes(graph.getNodes(), shortNames, schedule == null ? null : schedule.getNodeToBlock());
+        List<Edge> edges = printNodes(graph, shortNames, schedule == null ? null : schedule.getNodeToBlock(), loops);
         stream.println("  </nodes>");
 
         stream.println("  <edges>");
@@ -145,10 +148,14 @@ public class IdealGraphPrinter {
         flush();
     }
 
-    private List<Edge> printNodes(Collection<Node> nodes, boolean shortNames, NodeMap<Block> nodeToBlock) {
+    private List<Edge> printNodes(Graph graph, boolean shortNames, NodeMap<Block> nodeToBlock, List<Loop> loops) {
         ArrayList<Edge> edges = new ArrayList<Edge>();
+        NodeBitMap loopExits = graph.createNodeBitMap();
+        for (Loop loop : loops) {
+            loopExits.markAll(loop.exist());
+        }
 
-        for (Node node : nodes) {
+        for (Node node : graph.getNodes()) {
             if (node == Node.Null || omittedClasses.contains(node.getClass())) {
                 continue;
             }
@@ -170,12 +177,27 @@ public class IdealGraphPrinter {
             Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
             if (block != null) {
                 stream.printf("    <p name='block'>%d</p>%n", block.blockID());
-                if (!(node instanceof Phi || node instanceof FrameState || node instanceof Local) && !block.getInstructions().contains(node)) {
+                if (!(node instanceof Phi || node instanceof FrameState || node instanceof Local || node instanceof LoopCounter) && !block.getInstructions().contains(node)) {
                     stream.printf("    <p name='notInOwnBlock'>true</p>%n");
                 }
             } else {
                 stream.printf("    <p name='block'>noBlock</p>%n");
                 noBlockNodes.add(node);
+            }
+            if (loopExits.isMarked(node)) {
+                stream.printf("    <p name='loopExit'>true</p>%n");
+            }
+            StringBuilder sb = new StringBuilder();
+            for (Loop loop : loops) {
+                if (loop.nodes().isMarked(node)) {
+                    if (sb.length() > 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(loop.loopBegin().id());
+                }
+            }
+            if (sb.length() > 0) {
+                stream.printf("    <p name='loops'>%s</p>%n", sb);
             }
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();

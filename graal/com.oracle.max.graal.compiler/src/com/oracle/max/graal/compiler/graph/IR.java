@@ -166,6 +166,7 @@ public class IR {
         if (GraalOptions.Time) {
             GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.stop();
         }
+
     }
 
     /**

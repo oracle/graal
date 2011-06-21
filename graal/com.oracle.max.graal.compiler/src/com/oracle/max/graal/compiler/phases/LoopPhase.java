@@ -44,7 +44,7 @@ public class LoopPhase extends Phase {
     }
 
     private void doLoop(LoopBegin loopBegin) {
-        NodeBitMap loopNodes = computeLoopNodes(loopBegin);
+        NodeBitMap loopNodes = LoopUtil.computeLoopNodes(loopBegin);
         List<LoopCounter> counters = findLoopCounters(loopBegin, loopNodes);
         mergeLoopCounters(counters, loopBegin);
     }
@@ -150,39 +150,5 @@ public class LoopPhase extends Phase {
             }
         }
         return counters;
-    }
-
-    private NodeBitMap computeLoopNodes(LoopBegin loopBegin) {
-        LoopEnd loopEnd = loopBegin.loopEnd();
-        NodeBitMap loopNodes = loopBegin.graph().createNodeBitMap();
-        NodeFlood workCFG = loopBegin.graph().createNodeFlood();
-        NodeFlood workData = loopBegin.graph().createNodeFlood();
-        workCFG.add(loopEnd);
-        for (Node n : workCFG) {
-            workData.add(n);
-            loopNodes.mark(n);
-            if (n == loopBegin) {
-                continue;
-            }
-            for (Node pred : n.predecessors()) {
-                workCFG.add(pred);
-            }
-            if (n instanceof Merge) {
-                Merge merge = (Merge) n;
-                for (int i = 0; i < merge.endCount(); i++) {
-                    workCFG.add(merge.endAt(i));
-                }
-            }
-        }
-        for (Node n : workData) {
-            loopNodes.mark(n);
-            for (Node usage : n.usages()) {
-                if (usage instanceof FrameState) {
-                    continue;
-                }
-                workData.add(usage);
-            }
-        }
-        return loopNodes;
     }
 }

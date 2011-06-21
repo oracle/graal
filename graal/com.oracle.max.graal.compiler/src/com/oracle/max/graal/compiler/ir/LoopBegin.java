@@ -102,4 +102,20 @@ public class LoopBegin extends Merge{
         assertTrue(forwardEdge() != null);
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "LoopBegin: " + super.toString();
+    }
+
+    @Override
+    public Iterable< ? extends Node> dataUsages() {
+        final Iterator< ? extends Node> dataUsages = super.dataUsages().iterator();
+        return new Iterable<Node>() {
+            @Override
+            public Iterator<Node> iterator() {
+                return new StateSplit.FilteringIterator(dataUsages, LoopBegin.class);
+            }
+        };
+    }
 }

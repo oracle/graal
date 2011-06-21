@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -35,7 +37,7 @@ public abstract class StateSplit extends Instruction {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_STATE_AFTER = 0;
 
-    private static final int SUCCESSOR_COUNT = 1;
+    private static final int SUCCESSOR_COUNT = 0;
 
     @Override
     protected int inputCount() {
@@ -72,5 +74,59 @@ public abstract class StateSplit extends Instruction {
 
     public boolean needsStateAfter() {
         return true;
+    }
+
+    @Override
+    public Iterable< ? extends Node> dataInputs() {
+        final Iterator< ? extends Node> dataInputs = super.dataInputs().iterator();
+        return new Iterable<Node>() {
+            @Override
+            public Iterator<Node> iterator() {
+                return new FilteringIterator(dataInputs, FrameState.class);
+            }
+        };
+    }
+
+    public static final class FilteringIterator implements Iterator<Node> {
+
+        private final Iterator< ? extends Node> input;
+        private Node next;
+        private Class< ? > clazz;
+
+        public FilteringIterator(Iterator< ? extends Node> input, Class<?> clazz) {
+            this.input = input;
+            this.clazz = clazz;
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Node next() {
+            forward();
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            Node res = next;
+            next = null;
+            return res;
+        }
+
+        @Override
+        public boolean hasNext() {
+            forward();
+            return next != null;
+        }
+
+        private void forward() {
+            while (next == null && input.hasNext()) {
+                next = input.next();
+                if (clazz.isInstance(next)) {
+                    next = null;
+                }
+            }
+        }
     }
 }

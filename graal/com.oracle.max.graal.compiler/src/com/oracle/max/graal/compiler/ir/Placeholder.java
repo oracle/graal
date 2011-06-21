@@ -49,7 +49,7 @@ public class Placeholder extends StateSplit {
 
     @Override
     public void accept(ValueVisitor v) {
-        assert false;
+        //assert false;
     }
 
     @Override

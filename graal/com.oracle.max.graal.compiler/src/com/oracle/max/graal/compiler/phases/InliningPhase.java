@@ -279,6 +279,9 @@ public class InliningPhase extends Phase {
     private void inlineMethod(Invoke invoke, RiMethod method) {
         FrameState stateAfter = invoke.stateAfter();
         FixedNode exceptionEdge = invoke.exceptionEdge();
+        if (exceptionEdge instanceof Placeholder) {
+            exceptionEdge = ((Placeholder) exceptionEdge).next();
+        }
 
         CompilerGraph graph;
         Object stored = GraphBuilderPhase.cachedGraphs.get(method);
