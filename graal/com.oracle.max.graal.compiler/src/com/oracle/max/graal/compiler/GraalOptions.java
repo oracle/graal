@@ -113,7 +113,7 @@ public final class GraalOptions {
     public static boolean GenLIR                             = true;
     public static boolean GenCode                            = true;
     public static boolean UseBranchPrediction                = true;
-    public static boolean UseExceptionProbability            = true;
+    public static boolean UseExceptionProbability            = ____;
     public static int     MatureInvocationCount              = 100;
 
     public static boolean UseConstDirectCall                 = ____;
