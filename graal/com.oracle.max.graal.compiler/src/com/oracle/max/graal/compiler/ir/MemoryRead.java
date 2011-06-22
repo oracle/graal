@@ -32,8 +32,8 @@ public final class MemoryRead extends MemoryAccess {
     private static final int SUCCESSOR_COUNT = 0;
 
 
-    public MemoryRead(CiKind kind, int displacement, Graph graph) {
-        super(kind, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public MemoryRead(CiKind kind, Value location, int displacement, Graph graph) {
+        super(kind, location, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -48,6 +48,6 @@ public final class MemoryRead extends MemoryAccess {
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryRead(super.kind, displacement(), into);
+        return new MemoryRead(super.kind, null, displacement(), into);
     }
 }

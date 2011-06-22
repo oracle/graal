@@ -144,7 +144,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return operand;
     }
 
-    protected CiValue load(Value val) {
+    public CiValue load(Value val) {
         CiValue result = makeOperand(val);
         if (!result.isVariableOrRegister()) {
             CiVariable operand = newVariable(val.kind);
@@ -199,6 +199,10 @@ public abstract class LIRGenerator extends ValueVisitor {
         variablesForConstants = new ArrayList<CiVariable>();
 
         this.operands = new OperandPool(compilation.target);
+    }
+
+    public LIRList lir() {
+        return lir;
     }
 
     public ArrayList<DeoptimizationStub> deoptimizationStubs() {
@@ -1366,7 +1370,10 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (GraalOptions.TraceLIRVisit) {
             TTY.println("Visiting    " + instr);
         }
-        instr.accept(this);
+
+        LIRGeneratorOp op = instr.lookup(LIRGeneratorOp.class);
+        op.generate(instr, this);
+
         if (GraalOptions.TraceLIRVisit) {
             TTY.println("Operand for " + instr + " = " + instr.operand());
         }
@@ -1443,7 +1450,7 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitMemoryWrite(MemoryWrite memWrite) {
-        lir.move(load(memWrite.location()), new CiAddress(memWrite.valueKind(), load(memWrite.location()), memWrite.displacement()), memWrite.valueKind());
+        lir.move(load(memWrite.value()), new CiAddress(memWrite.valueKind(), load(memWrite.location()), memWrite.displacement()), memWrite.valueKind());
     }
 
 
@@ -1660,7 +1667,7 @@ public abstract class LIRGenerator extends ValueVisitor {
      *
      * @param instruction an instruction that produces a result value
      */
-    protected CiValue makeOperand(Value instruction) {
+    public CiValue makeOperand(Value instruction) {
         if (instruction == null) {
             return CiValue.IllegalValue;
         }
@@ -1790,4 +1797,15 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.callRuntime(CiRuntimeCall.UnwindException, CiValue.IllegalValue, args, null);
         setNoResult(x);
     }
+
+    public interface LIRGeneratorOp extends Op {
+        void generate(Node n, LIRGenerator generator);
+    }
+
+    public static final LIRGeneratorOp DELEGATE_TO_VALUE_VISITOR = new LIRGeneratorOp() {
+        @Override
+        public void generate(Node n, LIRGenerator generator) {
+            ((Value) n).accept(generator);
+        }
+    };
 }

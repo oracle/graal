@@ -32,6 +32,11 @@ public final class MemoryWrite extends MemoryAccess {
     private static final int INPUT_VALUE = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
     public Value value() {
         return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
     }
@@ -40,8 +45,8 @@ public final class MemoryWrite extends MemoryAccess {
         inputs().set(super.inputCount() + INPUT_VALUE, v);
     }
 
-    public MemoryWrite(CiKind kind, Value value, int displacement, Graph graph) {
-        super(kind, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public MemoryWrite(CiKind kind, Value object, Value value, int displacement, Graph graph) {
+        super(kind, object, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 
@@ -57,6 +62,6 @@ public final class MemoryWrite extends MemoryAccess {
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryWrite(super.kind, null, displacement(), into);
+        return new MemoryWrite(super.kind, null, null, displacement(), into);
     }
 }

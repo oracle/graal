@@ -72,12 +72,10 @@ public class VMExitsNative implements VMExits, Remote {
 
     private static Set<String> compiledMethods = new HashSet<String>();
 
-    private static PrintStream originalOut;
-    private static PrintStream originalErr;
-
     public void startCompiler() {
-        originalOut = System.out;
-        originalErr = System.err;
+        // Make sure TTY is initialized here such that the correct System.out is used for TTY.
+        TTY.isSuppressed();
+        TTY.println("test");
     }
 
     public void shutdownCompiler() throws Throwable {

@@ -31,5 +31,6 @@ public interface Compiler {
     VMExits getVMExits();
     GraalCompiler getCompiler();
     RiType lookupType(String returnType, HotSpotTypeResolved accessingClass);
+    HotSpotVMConfig getConfig();
 
 }
