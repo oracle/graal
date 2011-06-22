@@ -92,18 +92,19 @@ public class Merge extends StateSplit{
         return (EndNode) inputs().variablePart().get(index);
     }
 
-    public Iterable<Node> mergePredecessors() {
-        return new Iterable<Node>() {
+    @Override
+    public Iterable<EndNode> cfgPredecessors() {
+        return new Iterable<EndNode>() {
             @Override
-            public Iterator<Node> iterator() {
-                return new Iterator<Node>() {
+            public Iterator<EndNode> iterator() {
+                return new Iterator<EndNode>() {
                     int i = 0;
                     @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
                     }
                     @Override
-                    public Node next() {
+                    public EndNode next() {
                         return Merge.this.endAt(i++);
                     }
                     @Override
@@ -113,6 +114,11 @@ public class Merge extends StateSplit{
                 };
             }
         };
+    }
+
+    @Override
+    public Iterable< ? extends Node> dataInputs() {
+        return Collections.emptyList();
     }
 
     @Override

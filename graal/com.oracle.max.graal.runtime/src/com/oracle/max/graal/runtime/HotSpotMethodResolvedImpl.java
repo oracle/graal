@@ -34,7 +34,7 @@ import com.sun.cri.ri.*;
  */
 public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements HotSpotMethodResolved {
 
-    // Do not use as a Java object!
+    /** DO NOT USE IN JAVA CODE! */
     @Deprecated
     private Object javaMirror;
 

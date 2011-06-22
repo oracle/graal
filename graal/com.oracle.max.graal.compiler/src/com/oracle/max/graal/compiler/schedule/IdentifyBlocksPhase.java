@@ -135,7 +135,7 @@ public class IdentifyBlocksPhase extends Phase {
             Node n = block.firstNode();
             if (n instanceof Merge) {
                 Merge m = (Merge) n;
-                for (Node pred : m.mergePredecessors()) {
+                for (Node pred : m.cfgPredecessors()) {
                     Block predBlock = nodeToBlock.get(pred);
                     predBlock.addSuccessor(block);
                 }
@@ -239,11 +239,6 @@ public class IdentifyBlocksPhase extends Phase {
 
         assert !n.isDeleted();
 
-        Block prevBlock = nodeToBlock.get(n);
-        if (prevBlock != null) {
-            return prevBlock;
-        }
-
         if (n instanceof Phi) {
             Block block = nodeToBlock.get(((Phi) n).merge());
             nodeToBlock.set(n, block);
@@ -252,6 +247,11 @@ public class IdentifyBlocksPhase extends Phase {
         if (n instanceof LoopCounter) {
             Block block = nodeToBlock.get(((LoopCounter) n).loopBegin());
             nodeToBlock.set(n, block);
+        }
+
+        Block prevBlock = nodeToBlock.get(n);
+        if (prevBlock != null) {
+            return prevBlock;
         }
 
         Block block = null;
@@ -277,7 +277,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
                 Merge merge = ((FrameState) usage).block();
-                for (Node pred : merge.mergePredecessors()) {
+                for (Node pred : merge.cfgPredecessors()) {
                     block = getCommonDominator(block, nodeToBlock.get(pred));
                 }
             } else if (usage instanceof LoopCounter) {

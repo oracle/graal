@@ -48,9 +48,6 @@ public abstract class ControlSplit extends FixedNode {
         return super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT;
     }
 
-    /**
-     * The list of instructions that produce input for this instruction.
-     */
     public FixedNode blockSuccessor(int index) {
         assert index >= 0 && index < blockSuccessorCount;
         return (FixedNode) successors().get(super.successorCount() + SUCCESSOR_COUNT + index);
@@ -88,5 +85,29 @@ public abstract class ControlSplit extends FixedNode {
      */
     public FixedNode defaultSuccessor() {
         return blockSuccessor(blockSuccessorCount - 1);
+    }
+
+    public Iterable<FixedNode> blockSuccessors() {
+        return new Iterable<FixedNode>() {
+            @Override
+            public Iterator<FixedNode> iterator() {
+                return new Iterator<FixedNode>() {
+                    int i = 0;
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                    @Override
+                    public FixedNode next() {
+                        return ControlSplit.this.blockSuccessor(i++);
+                    }
+
+                    @Override
+                    public boolean hasNext() {
+                        return i < ControlSplit.this.blockSuccessorCount;
+                    }
+                };
+            }
+        };
     }
 }

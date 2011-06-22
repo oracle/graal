@@ -35,15 +35,13 @@ public class LoopPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
-        for (Node n : graph.getNodes()) {
-            if (n instanceof LoopBegin) {
-                doLoop((LoopBegin) n);
-            }
+        for (LoopBegin n : graph.getNodes(LoopBegin.class)) {
+            doLoop(n);
         }
     }
 
     private void doLoop(LoopBegin loopBegin) {
-        NodeBitMap loopNodes = computeLoopNodes(loopBegin);
+        NodeBitMap loopNodes = LoopUtil.computeLoopNodes(loopBegin);
         List<LoopCounter> counters = findLoopCounters(loopBegin, loopNodes);
         mergeLoopCounters(counters, loopBegin);
     }
@@ -75,7 +73,7 @@ public class LoopPhase extends Phase {
                         IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
                         IntegerAdd addStride = new IntegerAdd(kind, sub, c1.stride(), graph);
                         IntegerAdd add = new IntegerAdd(kind, c1, addStride, graph);
-                        Phi phi = new Phi(kind, loopBegin, graph); // TODO (gd) assumes order on loopBegin preds
+                        Phi phi = new Phi(kind, loopBegin, graph); // (gd) assumes order on loopBegin preds - works in collab with graph builder
                         phi.addInput(c2.init());
                         phi.addInput(add);
                         c2.replace(phi);
@@ -149,39 +147,5 @@ public class LoopPhase extends Phase {
             }
         }
         return counters;
-    }
-
-    private NodeBitMap computeLoopNodes(LoopBegin loopBegin) {
-        LoopEnd loopEnd = loopBegin.loopEnd();
-        NodeBitMap loopNodes = loopBegin.graph().createNodeBitMap();
-        NodeFlood workCFG = loopBegin.graph().createNodeFlood();
-        NodeFlood workData = loopBegin.graph().createNodeFlood();
-        workCFG.add(loopEnd);
-        for (Node n : workCFG) {
-            workData.add(n);
-            loopNodes.mark(n);
-            if (n == loopBegin) {
-                continue;
-            }
-            for (Node pred : n.predecessors()) {
-                workCFG.add(pred);
-            }
-            if (n instanceof Merge) {
-                Merge merge = (Merge) n;
-                for (int i = 0; i < merge.endCount(); i++) {
-                    workCFG.add(merge.endAt(i));
-                }
-            }
-        }
-        for (Node n : workData) {
-            loopNodes.mark(n);
-            for (Node usage : n.usages()) {
-                if (usage instanceof FrameState) {
-                    continue;
-                }
-                workData.add(usage);
-            }
-        }
-        return loopNodes;
     }
 }

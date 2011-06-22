@@ -39,6 +39,7 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -197,9 +198,15 @@ public final class GraphBuilderPhase extends Phase {
         addToWorkList(blockFromBci[0]);
         iterateAllBlocks();
 
+        List<Loop> loops = LoopUtil.computeLoops(graph);
+        NodeBitMap loopExits = graph.createNodeBitMap();
+        for (Loop loop : loops) {
+            loopExits.markAll(loop.exist());
+        }
+
         // remove Placeholders
         for (Node n : graph.getNodes()) {
-            if (n instanceof Placeholder) {
+            if (n instanceof Placeholder && !loopExits.isMarked(n)) {
                 Placeholder p = (Placeholder) n;
                 p.replace(p.next());
             }
@@ -425,6 +432,8 @@ public final class GraphBuilderPhase extends Phase {
                     dispatchBlock = blockFromBci[handlerBCI];
                 }
             }
+            Placeholder p = new Placeholder(graph);
+            p.setStateAfter(frameState.duplicateWithoutStack(bci));
 
             Value currentExceptionObject;
             if (exceptionObject == null) {
@@ -437,10 +446,11 @@ public final class GraphBuilderPhase extends Phase {
             if (exceptionObject == null) {
                 ExceptionObject eObj = (ExceptionObject) currentExceptionObject;
                 eObj.setNext(target);
-                return eObj;
+                p.setNext(eObj);
             } else {
-                return target;
+                p.setNext(target);
             }
+            return p;
         }
         return null;
     }
