@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 
@@ -137,5 +138,41 @@ public class Block {
 
     public void setInstructions(List<Node> instructions) {
         this.instructions = instructions;
+    }
+
+
+    public static void iteratePostOrder(List<Block> blocks, BlockClosure closure) {
+        BitMap visited = new BitMap(blocks.size());
+        LinkedList<Block> workList = new LinkedList<Block>();
+        for (Block block : blocks) {
+            if (block.getPredecessors().size() == 0) {
+                workList.add(block);
+                visited.set(block.blockID());
+            }
+        }
+
+        while (!workList.isEmpty()) {
+            Block b = workList.remove();
+
+            closure.apply(b);
+
+            for (Block succ : b.getSuccessors()) {
+                if (!visited.get(succ.blockID())) {
+                    boolean delay = false;
+                    for (Block pred : succ.getPredecessors()) {
+                        if (!visited.get(pred.blockID()) && !(pred.lastNode instanceof LoopEnd)) {
+                            TTY.println("missing pred: %d", pred.blockID());
+                            delay = true;
+                            break;
+                        }
+                    }
+
+                    if (!delay) {
+                        visited.set(succ.blockID());
+                        workList.add(succ);
+                    }
+                }
+            }
+        }
     }
 }

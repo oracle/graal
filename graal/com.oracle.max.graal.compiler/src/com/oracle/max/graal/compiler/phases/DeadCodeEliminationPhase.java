@@ -29,6 +29,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 
 public class DeadCodeEliminationPhase extends Phase {
@@ -53,20 +54,29 @@ public class DeadCodeEliminationPhase extends Phase {
             }
         }
         // remove if nodes with constant-value comparison
-//        for (If ifNode : graph.getNodes(If.class)) {
-//            Compare compare = ifNode.compare();
-//            if (compare.x().isConstant() && compare.y().isConstant()) {
-//                CiConstant constX = compare.x().asConstant();
-//                CiConstant constY = compare.y().asConstant();
-//                Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
-//                if (result != null) {
-//                    Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-//                    ifNode.replace(actualSuccessor);
-//                } else {
-//                    TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
-//                }
-//            }
-//        }
+        for (If ifNode : graph.getNodes(If.class)) {
+            BooleanNode bool = ifNode.compare();
+            if (bool instanceof Compare) {
+                Compare compare = (Compare) bool;
+                if (compare.x().isConstant() && compare.y().isConstant()) {
+                    CiConstant constX = compare.x().asConstant();
+                    CiConstant constY = compare.y().asConstant();
+                    Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
+                    if (result != null) {
+                        Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
+                        ifNode.replace(actualSuccessor);
+                    } else {
+                        TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
+                    }
+                }
+            }
+        }
+        // remove unnecessary FixedGuards
+        for (FixedGuard guard : graph.getNodes(FixedGuard.class)) {
+            if (guard.node() instanceof IsNonNull && ((IsNonNull) guard.node()).object() instanceof NewInstance) {
+                guard.replace(guard.next());
+            }
+        }
 
         flood.add(graph.start());
 

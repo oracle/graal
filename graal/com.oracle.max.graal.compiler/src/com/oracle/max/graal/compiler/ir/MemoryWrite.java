@@ -23,11 +23,15 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.NewInstance.*;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class MemoryWrite extends MemoryAccess {
+    private static final EscapeOp ESCAPE = new NewInstanceEscapeOp();
+
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VALUE = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -58,5 +62,21 @@ public final class MemoryWrite extends MemoryAccess {
     @Override
     public Node copy(Graph into) {
         return new MemoryWrite(super.kind, null, displacement(), into);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == EscapeOp.class) {
+            return (T) ESCAPE;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class NewInstanceEscapeOp implements EscapeOp {
+        @Override
+        public Escape escape(Node node, Node value) {
+            return Escape.NewValue;
+        }
     }
 }

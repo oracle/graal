@@ -84,7 +84,6 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
     public final RiMethod target;
     public final RiType returnType;
     public final int bci; // XXX needed because we can not compute the bci from the sateBefore bci of this Invoke was optimized from INVOKEINTERFACE to INVOKESPECIAL
-    public final RiTypeProfile profile;
 
     /**
      * Constructs a new Invoke instruction.
@@ -95,13 +94,12 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
      * @param isStatic {@code true} if this call is static (no receiver object)
      * @param target the target method being called
      */
-    public Invoke(int bci, int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, RiTypeProfile profile, Graph graph) {
+    public Invoke(int bci, int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, Graph graph) {
         super(result, args.length, SUCCESSOR_COUNT, graph);
         this.opcode = opcode;
         this.target = target;
         this.returnType = returnType;
         this.bci = bci;
-        this.profile = profile;
 
         this.argumentCount = args.length;
         for (int i = 0; i < args.length; i++) {
@@ -146,10 +144,6 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
      */
     public RiMethod target() {
         return target;
-    }
-
-    public RiTypeProfile profile() {
-        return profile;
     }
 
     /**
@@ -201,7 +195,7 @@ public final class Invoke extends StateSplit implements ExceptionEdgeInstruction
 
     @Override
     public Node copy(Graph into) {
-        Invoke x = new Invoke(bci, opcode, kind, new Value[argumentCount], target, returnType, profile, into);
+        Invoke x = new Invoke(bci, opcode, kind, new Value[argumentCount], target, returnType, into);
         return x;
     }
 }

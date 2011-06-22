@@ -23,6 +23,8 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.Escape;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -31,6 +33,7 @@ import com.sun.cri.ri.*;
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
 public final class NewInstance extends FloatingNode {
+    private static final EscapeOp ESCAPE = new NewInstanceEscapeOp();
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -84,5 +87,21 @@ public final class NewInstance extends FloatingNode {
     public Node copy(Graph into) {
         NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
         return x;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == EscapeOp.class) {
+            return (T) ESCAPE;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class NewInstanceEscapeOp implements EscapeOp {
+        @Override
+        public Escape escape(Node node, Node value) {
+            return Escape.NewValue;
+        }
     }
 }

@@ -121,6 +121,10 @@ public final class FrameState extends Value implements FrameStateAccess {
         return rethrowException;
     }
 
+    public RiMethod method() {
+        return method;
+    }
+
     /**
      * Gets a copy of this frame state.
      */

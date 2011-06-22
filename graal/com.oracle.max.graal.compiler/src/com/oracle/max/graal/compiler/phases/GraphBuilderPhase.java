@@ -953,7 +953,7 @@ public final class GraphBuilderPhase extends Phase {
             append(deoptimize);
             frameState.pushReturn(resultType, Constant.defaultForKind(resultType, graph));
         } else {
-            Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), method.typeProfile(bci()), graph);
+            Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
             Value result = appendWithBCI(invoke);
             invoke.setExceptionEdge(handleException(null, bci()));
             frameState.pushReturn(resultType, result);
