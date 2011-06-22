@@ -123,7 +123,7 @@ public final class BlockMap {
 
         public Instruction firstInstruction;
 
-        final HashSet<Block> successors = new HashSet<Block>();
+        final HashSet<Block> successors = new LinkedHashSet<Block>();
         private boolean visited;
         private boolean active;
         private int loops;

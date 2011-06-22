@@ -75,7 +75,6 @@ public class VMExitsNative implements VMExits, Remote {
     public void startCompiler() {
         // Make sure TTY is initialized here such that the correct System.out is used for TTY.
         TTY.isSuppressed();
-        TTY.println("test");
     }
 
     public void shutdownCompiler() throws Throwable {

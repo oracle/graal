@@ -26,6 +26,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
@@ -263,8 +264,9 @@ public class HotSpotRuntime implements RiRuntime {
             Graph graph = field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
             MemoryWrite memoryWrite = new MemoryWrite(field.field().kind(), field.object(), field.value(), displacement, graph);
+            memoryWrite.setStateAfter(field.stateAfter());
             memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
-            if (field.field().kind() == CiKind.Object) {
+            if (field.field().kind() == CiKind.Object && !field.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = new FieldWriteBarrier(field.object(), graph);
                 memoryWrite.setNext(writeBarrier);
                 writeBarrier.setNext(field.next());
