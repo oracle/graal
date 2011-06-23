@@ -142,7 +142,7 @@ public class GraalCompiler extends ObservableCompiler {
         if (GraalOptions.PrintDOTGraphToPdf) {
             addCompilationObserver(new GraphvizPrinterObserver(true));
         }
-        if (GraalOptions.PrintIdealGraphLevel != 0) {
+        if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot) {
             CompilationObserver observer;
             if (GraalOptions.PrintIdealGraphFile) {
                 observer = new IdealGraphPrinterObserver();

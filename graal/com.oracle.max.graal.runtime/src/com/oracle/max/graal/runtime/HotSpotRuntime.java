@@ -26,7 +26,6 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
