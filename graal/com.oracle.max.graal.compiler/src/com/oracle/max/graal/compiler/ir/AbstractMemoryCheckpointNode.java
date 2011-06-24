@@ -28,16 +28,16 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class AbstractMemoryMergeNode extends StateSplit {
+public abstract class AbstractMemoryCheckpointNode extends StateSplit {
 
     private static final int SUCCESSOR_COUNT = 0;
     private static final int INPUT_COUNT = 0;
 
-    public AbstractMemoryMergeNode(Graph graph) {
+    public AbstractMemoryCheckpointNode(Graph graph) {
         this(CiKind.Illegal, 0, 0, graph);
     }
 
-    public AbstractMemoryMergeNode(CiKind result, int inputCount, int successorCount, Graph graph) {
+    public AbstractMemoryCheckpointNode(CiKind result, int inputCount, int successorCount, Graph graph) {
         super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
