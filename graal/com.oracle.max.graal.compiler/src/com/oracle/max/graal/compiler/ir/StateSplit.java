@@ -32,7 +32,7 @@ import com.sun.cri.ci.*;
  * The {@code StateSplit} class is the abstract base class of all instructions
  * that store an immutable copy of the frame state.
  */
-public abstract class StateSplit extends Instruction {
+public abstract class StateSplit extends FixedNodeWithNext {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_STATE_AFTER = 0;
@@ -52,7 +52,6 @@ public abstract class StateSplit extends Instruction {
     /**
      * The state for this instruction.
      */
-     @Override
     public FrameState stateAfter() {
         return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
     }

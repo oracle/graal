@@ -22,24 +22,10 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-/**
- * Denotes an instruction node in the IR, which is a {@link Value} that
- * can be added to a basic block (whereas other {@link Value} nodes such as {@link Phi} and
- * {@link Local} cannot be added to basic blocks).
- *
- * Subclasses of instruction represent arithmetic and object operations,
- * control flow operators, phi statements, method calls, the start of basic blocks, and
- * the end of basic blocks.
- *
- * Instruction nodes are chained together in a basic block through the embedded
- * {@link Instruction#next} field. An Instruction may also have a list of {@link ExceptionHandler}s.
- */
-public abstract class Instruction extends FixedNode {
+public abstract class FixedNodeWithNext extends FixedNode {
 
     private static final int INPUT_COUNT = 0;
 
@@ -68,11 +54,6 @@ public abstract class Instruction extends FixedNode {
         return successors().set(super.successorCount() + SUCCESSOR_NEXT, next);
     }
 
-    public int nextIndex() {
-        return super.successorCount() + SUCCESSOR_NEXT;
-    }
-
-
     public static final int SYNCHRONIZATION_ENTRY_BCI = -1;
 
     /**
@@ -81,16 +62,7 @@ public abstract class Instruction extends FixedNode {
      * @param inputCount
      * @param successorCount
      */
-    public Instruction(CiKind kind, int inputCount, int successorCount, Graph graph) {
+    public FixedNodeWithNext(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
-        GraalMetrics.HIRInstructions++;
-    }
-
-    /**
-     * Gets the state after the instruction, if it is recorded.
-     * @return the state after the instruction
-     */
-    public FrameState stateAfter() {
-        return null;
     }
 }

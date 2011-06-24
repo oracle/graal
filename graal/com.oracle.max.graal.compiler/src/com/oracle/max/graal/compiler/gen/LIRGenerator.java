@@ -247,8 +247,8 @@ public abstract class LIRGenerator extends ValueVisitor {
                 TTY.println("LIRGen for " + instr);
             }
             FrameState stateAfter = null;
-            if (instr instanceof Instruction) {
-                stateAfter = ((Instruction) instr).stateAfter();
+            if (instr instanceof StateSplit) {
+                stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr != instr.graph().start()) {
                 walkState(instr, stateAfter);
@@ -302,7 +302,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         CiCallingConvention args = compilation.frameMap().incomingArguments();
         int bci = 0;
         if (Modifier.isSynchronized(compilation.method.accessFlags())) {
-            bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            bci = FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI;
         }
 
         boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
@@ -1012,7 +1012,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitDeoptimize(Deoptimize deoptimize) {
         assert lastState != null : "deoptimize always needs a state";
-        assert lastState.bci != Instruction.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
+        assert lastState.bci != FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
         DeoptimizationStub stub = new DeoptimizationStub(deoptimize.action(), lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);

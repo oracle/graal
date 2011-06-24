@@ -88,7 +88,7 @@ public final class TableSwitch extends Switch {
 
     @Override
     public Node copy(Graph into) {
-        TableSwitch x = new TableSwitch(null, Arrays.asList(new Instruction[numberOfCases() + 1]), lowKey, into);
+        TableSwitch x = new TableSwitch(null, Arrays.asList(new FixedNodeWithNext[numberOfCases() + 1]), lowKey, into);
         return x;
     }
 }

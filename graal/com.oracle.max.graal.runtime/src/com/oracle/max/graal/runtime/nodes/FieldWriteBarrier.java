@@ -31,7 +31,7 @@ import com.oracle.max.graal.runtime.*;
 import com.sun.cri.ci.*;
 
 
-public final class FieldWriteBarrier extends Instruction {
+public final class FieldWriteBarrier extends FixedNodeWithNext {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
 

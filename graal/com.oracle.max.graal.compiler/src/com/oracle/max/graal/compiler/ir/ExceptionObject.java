@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
  */
-public final class ExceptionObject extends Instruction {
+public final class ExceptionObject extends FixedNodeWithNext {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;

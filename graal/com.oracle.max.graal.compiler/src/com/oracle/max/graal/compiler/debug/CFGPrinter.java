@@ -409,8 +409,8 @@ public class CFGPrinter {
         out.println("HIR");
         out.disableIndentation();
         for (Node i : block.getInstructions()) {
-            if (i instanceof Instruction) {
-                printInstructionHIR((Instruction) i);
+            if (i instanceof FixedNodeWithNext) {
+                printInstructionHIR((FixedNodeWithNext) i);
             }
         }
         out.enableIndentation();
@@ -515,16 +515,19 @@ public class CFGPrinter {
      *
      * @param i the instruction for which HIR will be printed
      */
-    private void printInstructionHIR(Instruction i) {
+    private void printInstructionHIR(FixedNodeWithNext i) {
         out.print("bci ").print(-1).println(COLUMN_END);
         if (i.operand().isLegal()) {
             out.print("result ").print(new CFGOperandFormatter(false).format(i.operand())).println(COLUMN_END);
         }
         out.print("tid ").print(i).println(COLUMN_END);
 
-        String state = stateToString(i.stateAfter(), null);
-        if (state != null) {
-            out.print("st ").print(HOVER_START).print("st").print(HOVER_SEP).print(state).print(HOVER_END).println(COLUMN_END);
+        if (i instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) i;
+            String state = stateToString(stateSplit.stateAfter(), null);
+            if (state != null) {
+                out.print("st ").print(HOVER_START).print("st").print(HOVER_SEP).print(state).print(HOVER_END).println(COLUMN_END);
+            }
         }
 
         out.print("instruction ");
