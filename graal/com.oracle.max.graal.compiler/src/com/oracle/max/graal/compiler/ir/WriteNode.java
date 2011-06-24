@@ -25,10 +25,9 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 
-public final class MemoryWrite extends AccessNode {
+public final class WriteNode extends AccessNode {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VALUE = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -46,7 +45,7 @@ public final class MemoryWrite extends AccessNode {
         inputs().set(super.inputCount() + INPUT_VALUE, v);
     }
 
-    public MemoryWrite(CiKind kind, Value object, Value value, LocationNode location, Graph graph) {
+    public WriteNode(CiKind kind, Value object, Value value, LocationNode location, Graph graph) {
         super(kind, object, location, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
@@ -63,6 +62,6 @@ public final class MemoryWrite extends AccessNode {
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryWrite(super.kind, null, null, null, into);
+        return new WriteNode(super.kind, null, null, null, into);
     }
 }

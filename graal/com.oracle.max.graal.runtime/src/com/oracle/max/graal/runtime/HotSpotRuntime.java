@@ -262,7 +262,7 @@ public class HotSpotRuntime implements RiRuntime {
             }
             Graph graph = field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
-            MemoryWrite memoryWrite = new MemoryWrite(field.field().kind(), field.object(), field.value(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
+            WriteNode memoryWrite = new WriteNode(field.field().kind(), field.object(), field.value(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
             memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryWrite.setStateAfter(field.stateAfter());
             memoryWrite.setNext(field.next());
