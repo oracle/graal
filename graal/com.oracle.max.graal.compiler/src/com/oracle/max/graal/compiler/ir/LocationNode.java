@@ -23,31 +23,45 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class MemoryRead extends MemoryAccess {
+public final class LocationNode extends FloatingNode {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
+    private int displacement;
+    private CiKind valueKind;
+    private Object identity;
 
-    public MemoryRead(CiKind kind, Value location, int displacement, Graph graph) {
-        super(kind, location, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public LocationNode(Object identity, CiKind kind, int displacement, Graph graph) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.displacement = displacement;
+        this.valueKind = kind;
+        this.identity = identity;
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitMemoryRead(this);
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+            return null;
+        }
+        return super.lookup(clazz);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("mem read from ").print(location());
+        out.print("mem location disp is ").print(displacement);
     }
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryRead(super.kind, null, displacement(), into);
+        return new LocationNode(identity, valueKind, displacement, into);
+    }
+
+    public CiValue createAddress(LIRGenerator lirGenerator, Value object) {
+        return new CiAddress(valueKind, lirGenerator.load(object), displacement);
     }
 }

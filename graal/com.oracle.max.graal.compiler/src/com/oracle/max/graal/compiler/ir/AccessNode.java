@@ -27,14 +27,15 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class MemoryAccess extends StateSplit {
-    private static final int INPUT_COUNT = 2;
+public abstract class AccessNode extends StateSplit {
+    private static final int INPUT_COUNT = 3;
     private static final int INPUT_NODE = 0;
     private static final int INPUT_GUARD = 1;
+    private static final int INPUT_MEMORY_STATE = 2;
 
     private static final int SUCCESSOR_COUNT = 0;
 
-    private int displacement;
+    private LocationNode location;
     private CiKind valueKind;
 
     @Override
@@ -42,21 +43,15 @@ public abstract class MemoryAccess extends StateSplit {
         return super.inputCount() + INPUT_COUNT;
     }
 
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public Value location() {
+    public Value object() {
         return (Value) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public Value setLocation(Value n) {
+    public Value setObject(Value n) {
         return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public GuardNode guard() {
+    public GuardNode guard() {
         return (GuardNode) inputs().get(super.inputCount() + INPUT_GUARD);
     }
 
@@ -64,23 +59,31 @@ public abstract class MemoryAccess extends StateSplit {
         inputs().set(super.inputCount() + INPUT_GUARD, n);
     }
 
-    public int displacement() {
-        return displacement;
+    public GuardNode memoryState() {
+        return (GuardNode) inputs().get(super.inputCount() + INPUT_MEMORY_STATE);
+    }
+
+    public void setMemoryState(GuardNode n) {
+        inputs().set(super.inputCount() + INPUT_MEMORY_STATE, n);
+    }
+
+    public LocationNode location() {
+        return location;
     }
 
     public CiKind valueKind() {
         return valueKind;
     }
 
-    public MemoryAccess(CiKind kind, Value location, int displacement, int inputCount, int successorCount, Graph graph) {
+    public AccessNode(CiKind kind, Value object, LocationNode location, int inputCount, int successorCount, Graph graph) {
         super(kind.stackKind(), INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
-        this.displacement = displacement;
+        this.location = location;
         this.valueKind = kind;
-        setLocation(location);
+        setObject(object);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("mem read from ").print(location());
+        out.print("mem read from ").print(object());
     }
 }

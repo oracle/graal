@@ -1372,7 +1372,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         LIRGeneratorOp op = instr.lookup(LIRGeneratorOp.class);
-        op.generate(instr, this);
+        if (op != null) {
+            op.generate(instr, this);
+        }
 
         if (GraalOptions.TraceLIRVisit) {
             TTY.println("Operand for " + instr + " = " + instr.operand());
@@ -1443,14 +1445,14 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitMemoryRead(MemoryRead memRead) {
-        lir.move(new CiAddress(memRead.valueKind(), load(memRead.location()), memRead.displacement()), createResultVariable(memRead), memRead.valueKind());
+    public void visitMemoryRead(ReadNode memRead) {
+        lir.move(memRead.location().createAddress(this, memRead.object()), createResultVariable(memRead), memRead.valueKind());
     }
 
 
     @Override
     public void visitMemoryWrite(MemoryWrite memWrite) {
-        lir.move(load(memWrite.value()), new CiAddress(memWrite.valueKind(), load(memWrite.location()), memWrite.displacement()), memWrite.valueKind());
+        lir.move(load(memWrite.value()), memWrite.location().createAddress(this, memWrite.object()), memWrite.valueKind());
     }
 
 

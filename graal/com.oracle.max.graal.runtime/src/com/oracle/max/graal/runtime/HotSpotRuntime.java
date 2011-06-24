@@ -242,29 +242,34 @@ public class HotSpotRuntime implements RiRuntime {
     }
 
     @Override
-    public Node lower(Node n, CiLoweringTool tool) {
+    public void lower(Node n, CiLoweringTool tool) {
         if (n instanceof LoadField) {
             LoadField field = (LoadField) n;
             if (field.isVolatile()) {
-                return null;
+                return;
             }
             Graph graph = field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind != CiKind.Illegal;
-            MemoryRead memoryRead = new MemoryRead(field.field().kind(), field.object(), displacement, graph);
+            ReadNode memoryRead = new ReadNode(field.field().kind(), field.object(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
             memoryRead.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryRead.setNext(field.next());
-            return memoryRead;
+            field.replace(memoryRead);
         } else if (n instanceof StoreField) {
             StoreField field = (StoreField) n;
             if (field.isVolatile()) {
-                return null;
+                return;
             }
             Graph graph = field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
-            MemoryWrite memoryWrite = new MemoryWrite(field.field().kind(), field.object(), field.value(), displacement, graph);
-            memoryWrite.setStateAfter(field.stateAfter());
+            MemoryWrite memoryWrite = new MemoryWrite(field.field().kind(), field.object(), field.value(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
             memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
+            memoryWrite.setStateAfter(field.stateAfter());
+            memoryWrite.setNext(field.next());
+
+            //MemoryMergeNode memoryMergeNode = new MemoryMergeNode(graph);
+            //memoryMergeNode.setStateAfter(field.stateAfter());
+            //tool.createMemoryMerge(memoryMergeNode);
             if (field.field().kind() == CiKind.Object && !field.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = new FieldWriteBarrier(field.object(), graph);
                 memoryWrite.setNext(writeBarrier);
@@ -272,8 +277,7 @@ public class HotSpotRuntime implements RiRuntime {
             } else {
                 memoryWrite.setNext(field.next());
             }
-            return memoryWrite;
+            field.replace(memoryWrite);
         }
-        return null;
     }
 }

@@ -22,6 +22,11 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
+import java.util.*;
+import java.util.Map.Entry;
+
+import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
@@ -32,84 +37,201 @@ public class LoweringPhase extends Phase {
 
     public static final LoweringOp DELEGATE_TO_RUNTIME = new LoweringOp() {
         @Override
-        public Node lower(Node n, CiLoweringTool tool) {
-            return tool.getRuntime().lower(n, tool);
+        public void lower(Node n, CiLoweringTool tool) {
+            tool.getRuntime().lower(n, tool);
         }
     };
 
     private final RiRuntime runtime;
+    private Graph currentGraph;
 
     public LoweringPhase(RiRuntime runtime) {
         this.runtime = runtime;
     }
 
+    public static class MemoryMap {
+
+        private final Block block;
+        private HashMap<Object, Node> locationToWrite;
+        private HashMap<Object, List<Node>> locationToReads;
+
+        public MemoryMap(Block b, MemoryMap memoryMap) {
+            this(b);
+        }
+
+        public MemoryMap(Block b) {
+            block = b;
+            locationToWrite = new HashMap<Object, Node>();
+            locationToReads = new HashMap<Object, List<Node>>();
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Creating new memory map for block B" + b.blockID());
+            }
+        }
+
+        public void mergeWith(MemoryMap memoryMap) {
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Merging with memory map of block B" + memoryMap.block.blockID());
+            }
+        }
+
+        public void createMemoryMerge(AbstractMemoryMergeNode memMerge) {
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Creating memory merge at node " + memMerge.id());
+            }
+
+            for (Entry<Object, Node> writeEntry : locationToWrite.entrySet()) {
+                memMerge.mergedNodes().add(writeEntry.getValue());
+            }
+
+            TTY.println("entrySet size" + locationToReads.entrySet());
+            for (Entry<Object, List<Node>> readEntry : locationToReads.entrySet()) {
+                TTY.println(readEntry.getValue().toString());
+                memMerge.mergedNodes().addAll(readEntry.getValue());
+            }
+
+            locationToReads.clear();
+            locationToWrite.clear();
+        }
+
+        public void registerWrite(Object location, Node node) {
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Register write to " + location + " at node " + node.id());
+            }
+
+            if (locationToWrite.containsKey(location)) {
+                Node prevWrite = locationToWrite.get(location);
+                node.inputs().add(prevWrite);
+            }
+
+            if (locationToReads.containsKey(location)) {
+                for (Node prevRead : locationToReads.get(location)) {
+                    node.inputs().add(prevRead);
+                }
+            }
+            locationToWrite.put(location, node);
+            locationToReads.remove(location);
+        }
+
+        public void registerRead(Object location, Node node) {
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Register read to " + location + " at node " + node.id());
+            }
+
+            if (locationToWrite.containsKey(location)) {
+                Node prevWrite = locationToWrite.get(location);
+                node.inputs().add(prevWrite);
+            }
+
+            if (!locationToReads.containsKey(location)) {
+                locationToReads.put(location, new ArrayList<Node>());
+            }
+            locationToReads.get(location).add(node);
+            TTY.println("entrySet size" + locationToReads.entrySet());
+        }
+
+        public Node getMemoryState(Object location) {
+            return null;
+        }
+    }
+
     @Override
     protected void run(final Graph graph) {
+        this.currentGraph = graph;
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
         s.apply(graph);
 
-        for (Block b : s.getBlocks()) {
-            final Node[] firstNodeValue = new Node[]{b.firstNode()};
+        List<Block> blocks = s.getBlocks();
+        MemoryMap[] memoryMaps = new MemoryMap[blocks.size()];
+        for (final Block b : blocks) {
+            process(b, memoryMaps);
+        }
+    }
 
-            final CiLoweringTool loweringTool = new CiLoweringTool() {
-                @Override
-                public Node getGuardAnchor() {
-                    Node firstNode = firstNodeValue[0];
-                    if (firstNode == firstNode.graph().start()) {
-                        Anchor a = new Anchor(graph);
-                        a.setNext((FixedNode) firstNode.graph().start().start());
-                        firstNode.graph().start().setStart(a);
-                        firstNodeValue[0] = a;
-                        return a;
-                    } else if (firstNode instanceof Merge) {
-                        Merge merge = (Merge) firstNode;
-                        Anchor a = new Anchor(graph);
-                        a.setNext(merge.next());
-                        merge.setNext(a);
-                        firstNodeValue[0] = a;
-                        return a;
-                    } else if (!(firstNode instanceof Anchor)) {
-                        Anchor a = new Anchor(graph);
-                        assert firstNode.predecessors().size() == 1 : firstNode;
-                        Node pred = firstNode.predecessors().get(0);
-                        int predIndex = pred.successors().indexOf(firstNode);
-                        pred.successors().set(predIndex, a);
-                        a.setNext((FixedNode) firstNode);
-                        firstNodeValue[0] = a;
-                        return a;
+    private void process(final Block b, MemoryMap[] memoryMaps) {
+        // Visit every block at most once.
+        if (memoryMaps[b.blockID()] != null) {
+            return;
+        }
+
+        // Process predecessors before this block.
+        for (Block pred : b.getPredecessors()) {
+            process(pred, memoryMaps);
+        }
+
+        // Create initial memory map for the block.
+        MemoryMap map = null;
+        if (b.getPredecessors().size() == 0) {
+            map = new MemoryMap(b);
+        } else {
+            map = new MemoryMap(b, memoryMaps[b.getPredecessors().get(0).blockID()]);
+            for (int i=1; i<b.getPredecessors().size(); ++i) {
+                map.mergeWith(memoryMaps[b.getPredecessors().get(0).blockID()]);
+            }
+        }
+        final MemoryMap finalMap = map;
+        memoryMaps[b.blockID()] = finalMap;
+
+        final CiLoweringTool loweringTool = new CiLoweringTool() {
+
+            @Override
+            public Node getGuardAnchor() {
+                return b.createAnchor();
+            }
+
+            @Override
+            public RiRuntime getRuntime() {
+                return runtime;
+            }
+
+            @Override
+            public Node createGuard(Node condition) {
+                Anchor anchor = (Anchor) getGuardAnchor();
+                for (GuardNode guard : anchor.happensAfterGuards()) {
+                    if (guard.node().valueEqual(condition)) {
+                        condition.delete();
+                        return guard;
                     }
-                    return firstNode;
                 }
+                GuardNode newGuard = new GuardNode(currentGraph);
+                newGuard.setAnchor(anchor);
+                newGuard.setNode((BooleanNode) condition);
+                return newGuard;
+            }
 
-                @Override
-                public RiRuntime getRuntime() {
-                    return runtime;
-                }
+            @Override
+            public void createMemoryMerge(Node node) {
+                assert node instanceof AbstractMemoryMergeNode;
+                AbstractMemoryMergeNode memMerge = (AbstractMemoryMergeNode) node;
+                assert memMerge.mergedNodes().size() == 0;
+                finalMap.createMemoryMerge(memMerge);
+            }
 
-                @Override
-                public Node createGuard(Node condition) {
-                    Anchor anchor = (Anchor) getGuardAnchor();
-                    for (GuardNode guard : anchor.happensAfterGuards()) {
-                        if (guard.node().valueEqual(condition)) {
-                            condition.delete();
-                            return guard;
-                        }
-                    }
-                    GuardNode newGuard = new GuardNode(graph);
-                    newGuard.setAnchor(anchor);
-                    newGuard.setNode((BooleanNode) condition);
-                    return newGuard;
-                }
-            };
+            @Override
+            public void registerRead(Object location, Node node) {
+                finalMap.registerRead(location, node);
+            }
 
-            for (final Node n : b.getInstructions()) {
-                if (n instanceof FixedNode) {
-                    LoweringOp op = n.lookup(LoweringOp.class);
-                    if (op != null) {
-                        Node newNode = op.lower(n, loweringTool);
-                        if (newNode != null) {
-                            n.replace(newNode);
-                        }
+            @Override
+            public void registerWrite(Object location, Node node) {
+                finalMap.registerWrite(location, node);
+            }
+
+            @Override
+            public Node getMemoryState(Object location) {
+                return finalMap.getMemoryState(location);
+            }
+        };
+
+        // Lower the instructions of this block.
+        for (final Node n : b.getInstructions()) {
+            if (n instanceof FixedNode) {
+                LoweringOp op = n.lookup(LoweringOp.class);
+                if (op != null) {
+                    op.lower(n, loweringTool);
+                } else {
+                    // This memory merge node is not lowered => create a memory merge nevertheless.
+                    if (n instanceof AbstractMemoryMergeNode) {
+                        loweringTool.createMemoryMerge(n);
                     }
                 }
             }
@@ -117,6 +239,6 @@ public class LoweringPhase extends Phase {
     }
 
     public interface LoweringOp extends Op {
-        Node lower(Node n, CiLoweringTool tool);
+        void lower(Node n, CiLoweringTool tool);
     }
 }

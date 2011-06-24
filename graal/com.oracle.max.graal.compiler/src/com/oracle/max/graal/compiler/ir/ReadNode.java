@@ -25,44 +25,29 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 
-public final class MemoryWrite extends AccessNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
+public final class ReadNode extends AccessNode {
+    private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
 
-    public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
-    }
-
-    public void setValue(Value v) {
-        inputs().set(super.inputCount() + INPUT_VALUE, v);
-    }
-
-    public MemoryWrite(CiKind kind, Value object, Value value, LocationNode location, Graph graph) {
+    public ReadNode(CiKind kind, Value object, LocationNode location, Graph graph) {
         super(kind, object, location, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setValue(value);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitMemoryWrite(this);
+        v.visitMemoryRead(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("mem write to ").print(object()).print(" with value").print(value());
+        out.print("mem read from ").print(object());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryWrite(super.kind, null, null, null, into);
+        return new ReadNode(super.kind, null, null, into);
     }
 }

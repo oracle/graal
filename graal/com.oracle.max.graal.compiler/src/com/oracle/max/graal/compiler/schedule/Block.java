@@ -37,6 +37,7 @@ public class Block {
     private Block dominator;
     private Block javaBlock;
     private final List<Block> dominators = new ArrayList<Block>();
+    private Anchor anchor;
 
     private Node firstNode;
     private Node lastNode;
@@ -47,6 +48,7 @@ public class Block {
 
     public void setFirstNode(Node node) {
         this.firstNode = node;
+        this.anchor = null;
     }
 
     public Block javaBlock() {
@@ -59,6 +61,44 @@ public class Block {
 
     public Node lastNode() {
         return lastNode;
+    }
+
+    public Anchor createAnchor() {
+        if (anchor == null) {
+            if (firstNode instanceof Anchor) {
+                this.anchor = (Anchor) firstNode;
+            } else if (firstNode == firstNode.graph().start()) {
+                StartNode start = (StartNode) firstNode;
+                if (start.start() instanceof Anchor) {
+                    this.anchor = (Anchor) start.start();
+                } else {
+                    Anchor a = new Anchor(firstNode.graph());
+                    a.setNext((FixedNode) firstNode.graph().start().start());
+                    firstNode.graph().start().setStart(a);
+                    this.anchor = a;
+                }
+            } else if (firstNode instanceof Merge) {
+                Merge merge = (Merge) firstNode;
+                if (merge.next() instanceof Anchor) {
+                    this.anchor = (Anchor) merge.next();
+                } else {
+                    Anchor a = new Anchor(firstNode.graph());
+                    a.setNext(merge.next());
+                    merge.setNext(a);
+                    this.anchor = a;
+                }
+            } else {
+                assert !(firstNode instanceof Anchor);
+                Anchor a = new Anchor(firstNode.graph());
+                assert firstNode.predecessors().size() == 1 : firstNode;
+                Node pred = firstNode.predecessors().get(0);
+                int predIndex = pred.successors().indexOf(firstNode);
+                pred.successors().set(predIndex, a);
+                a.setNext((FixedNode) firstNode);
+                this.anchor = a;
+            }
+        }
+        return anchor;
     }
 
     public void setLastNode(Node node) {

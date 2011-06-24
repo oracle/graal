@@ -157,7 +157,9 @@ public abstract class Value extends Node {
         throw new IllegalStateException("No visit method for this node");
     }
 
-    public abstract void print(LogStream out);
+    public void print(LogStream out) {
+        out.print(this.getClass().toString());
+    }
 
     @SuppressWarnings("unchecked")
     @Override
