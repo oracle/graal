@@ -28,15 +28,13 @@ import com.sun.cri.ci.*;
 
 
 public abstract class AccessNode extends StateSplit {
-    private static final int INPUT_COUNT = 3;
+    private static final int INPUT_COUNT = 2;
     private static final int INPUT_NODE = 0;
     private static final int INPUT_GUARD = 1;
-    private static final int INPUT_MEMORY_STATE = 2;
 
     private static final int SUCCESSOR_COUNT = 0;
 
     private LocationNode location;
-    private CiKind valueKind;
 
     @Override
     protected int inputCount() {
@@ -59,26 +57,13 @@ public abstract class AccessNode extends StateSplit {
         inputs().set(super.inputCount() + INPUT_GUARD, n);
     }
 
-    public GuardNode memoryState() {
-        return (GuardNode) inputs().get(super.inputCount() + INPUT_MEMORY_STATE);
-    }
-
-    public void setMemoryState(GuardNode n) {
-        inputs().set(super.inputCount() + INPUT_MEMORY_STATE, n);
-    }
-
     public LocationNode location() {
         return location;
     }
 
-    public CiKind valueKind() {
-        return valueKind;
-    }
-
     public AccessNode(CiKind kind, Value object, LocationNode location, int inputCount, int successorCount, Graph graph) {
-        super(kind.stackKind(), INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
+        super(kind, INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
         this.location = location;
-        this.valueKind = kind;
         setObject(object);
     }
 

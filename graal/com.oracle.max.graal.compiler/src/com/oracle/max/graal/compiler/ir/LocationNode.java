@@ -56,6 +56,10 @@ public final class LocationNode extends FloatingNode {
         out.print("mem location disp is ").print(displacement);
     }
 
+    public CiKind getValueKind() {
+        return valueKind;
+    }
+
     @Override
     public Node copy(Graph into) {
         return new LocationNode(identity, valueKind, displacement, into);

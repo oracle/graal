@@ -1446,13 +1446,13 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitMemoryRead(ReadNode memRead) {
-        lir.move(memRead.location().createAddress(this, memRead.object()), createResultVariable(memRead), memRead.valueKind());
+        lir.move(memRead.location().createAddress(this, memRead.object()), createResultVariable(memRead), memRead.location().getValueKind());
     }
 
 
     @Override
     public void visitMemoryWrite(WriteNode memWrite) {
-        lir.move(load(memWrite.value()), memWrite.location().createAddress(this, memWrite.object()), memWrite.valueKind());
+        lir.move(load(memWrite.value()), memWrite.location().createAddress(this, memWrite.object()), memWrite.location().getValueKind());
     }
 
 
