@@ -208,7 +208,7 @@ public final class GraphBuilderPhase extends Phase {
         for (Node n : graph.getNodes()) {
             if (n instanceof Placeholder && !loopExits.isMarked(n)) {
                 Placeholder p = (Placeholder) n;
-                p.replace(p.next());
+                p.replaceAndDelete(p.next());
             }
         }
 
@@ -327,7 +327,7 @@ public final class GraphBuilderPhase extends Phase {
                     FixedNode next = p.next();
                     p.setNext(null);
                     EndNode end = new EndNode(graph);
-                    p.replace(end);
+                    p.replaceAndDelete(end);
                     merge.setNext(next);
                     merge.addEnd(end);
                     merge.setStateAfter(existingState);
@@ -1277,7 +1277,7 @@ public final class GraphBuilderPhase extends Phase {
                     merge.addEnd(begin.forwardEdge());
                     merge.setNext(begin.next());
                     merge.setStateAfter(begin.stateAfter());
-                    begin.replace(merge);
+                    begin.replaceAndDelete(merge);
                 }
             }
         }

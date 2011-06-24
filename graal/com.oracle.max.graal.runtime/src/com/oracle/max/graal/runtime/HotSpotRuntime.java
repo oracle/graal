@@ -254,7 +254,7 @@ public class HotSpotRuntime implements RiRuntime {
             ReadNode memoryRead = new ReadNode(field.field().kind().stackKind(), field.object(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
             memoryRead.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryRead.setNext(field.next());
-            field.replace(memoryRead);
+            field.replaceAndDelete(memoryRead);
         } else if (n instanceof StoreField) {
             StoreField field = (StoreField) n;
             if (field.isVolatile()) {
@@ -277,7 +277,7 @@ public class HotSpotRuntime implements RiRuntime {
             } else {
                 memoryWrite.setNext(field.next());
             }
-            field.replace(memoryWrite);
+            field.replaceAndDelete(memoryWrite);
         }
     }
 }

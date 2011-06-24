@@ -76,11 +76,11 @@ public class LoopPhase extends Phase {
                         Phi phi = new Phi(kind, loopBegin, graph); // (gd) assumes order on loopBegin preds - works in collab with graph builder
                         phi.addInput(c2.init());
                         phi.addInput(add);
-                        c2.replace(phi);
+                        c2.replaceAndDelete(phi);
                     } else {
                         IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
                         IntegerAdd add = new IntegerAdd(kind, c1, sub, graph);
-                        c2.replace(add);
+                        c2.replaceAndDelete(add);
                     }
                 }
             }
@@ -131,7 +131,7 @@ public class LoopPhase extends Phase {
                         Graph graph = loopBegin.graph();
                         LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
                         counters.add(counter);
-                        phi.replace(counter);
+                        phi.replaceAndDelete(counter);
                         if (loopEndState != null) {
                             loopEndState.inputs().replace(backEdge, counter);
                         }

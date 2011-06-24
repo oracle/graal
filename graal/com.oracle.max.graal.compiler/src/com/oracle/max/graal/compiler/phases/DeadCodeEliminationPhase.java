@@ -49,7 +49,7 @@ public class DeadCodeEliminationPhase extends Phase {
                 FixedNode next = merge.next();
                 EndNode endNode = merge.endAt(0);
                 merge.delete();
-                endNode.replace(next);
+                endNode.replaceAndDelete(next);
             }
         }
         // remove if nodes with constant-value comparison
@@ -118,10 +118,10 @@ public class DeadCodeEliminationPhase extends Phase {
             assert loop.predecessors().size() == 1;
             for (Node usage : new ArrayList<Node>(loop.usages())) {
                 assert usage instanceof Phi;
-                usage.replace(((Phi) usage).valueAt(0));
+                usage.replaceAndDelete(((Phi) usage).valueAt(0));
             }
 
-            loop.replace(loop.next());
+            loop.replaceAndDelete(loop.next());
         }
     }
 

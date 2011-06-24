@@ -374,7 +374,7 @@ public class InliningPhase extends Phase {
         }
 
         if (pred instanceof Placeholder) {
-            pred.replace(((Placeholder) pred).next());
+            pred.replaceAndDelete(((Placeholder) pred).next());
         }
 
         if (returnNode != null) {
@@ -390,7 +390,7 @@ public class InliningPhase extends Phase {
             returnDuplicate.inputs().clearAll();
             Node n = invoke.next();
             invoke.setNext(null);
-            returnDuplicate.replace(n);
+            returnDuplicate.replaceAndDelete(n);
         }
 
         if (exceptionEdge != null) {
@@ -407,12 +407,12 @@ public class InliningPhase extends Phase {
                 unwindDuplicate.inputs().clearAll();
                 Node n = obj.next();
                 obj.setNext(null);
-                unwindDuplicate.replace(n);
+                unwindDuplicate.replaceAndDelete(n);
             }
         } else {
             if (unwindNode != null) {
                 Unwind unwindDuplicate = (Unwind) duplicates.get(unwindNode);
-                unwindDuplicate.replace(new Deoptimize(DeoptAction.InvalidateRecompile, compilation.graph));
+                unwindDuplicate.replaceAndDelete(new Deoptimize(DeoptAction.InvalidateRecompile, compilation.graph));
             }
         }
 
