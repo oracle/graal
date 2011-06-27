@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,34 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
- */
-public final class ExceptionObject extends FixedNodeWithNext {
 
-    private static final int INPUT_COUNT = 0;
+public final class MemoryMergeNode extends AbstractMemoryMergeNode {
+
     private static final int SUCCESSOR_COUNT = 0;
+    private static final int INPUT_COUNT = 0;
 
-    /**
-     * Constructs a new ExceptionObject instruction.
-     * @param graph
-     */
-    public ExceptionObject(Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public MemoryMergeNode(Graph graph) {
+        this(CiKind.Illegal, 0, 0, graph);
+    }
+
+    public MemoryMergeNode(CiKind result, int inputCount, int successorCount, Graph graph) {
+        super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitExceptionObject(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("incoming exception");
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+            return null;
+        }
+        return super.lookup(clazz);
     }
 
     @Override
     public Node copy(Graph into) {
-        ExceptionObject x = new ExceptionObject(into);
-        return x;
+        return new MemoryMergeNode(into);
     }
 }

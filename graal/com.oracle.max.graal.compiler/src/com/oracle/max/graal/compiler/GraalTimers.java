@@ -34,6 +34,8 @@ import com.oracle.max.graal.compiler.debug.*;
 public final class GraalTimers {
     private static LinkedHashMap<String, GraalTimers> map = new LinkedHashMap<String, GraalTimers>();
 
+
+    public static final GraalTimers TOTAL = get("Total compilation time");
     public static final GraalTimers COMPUTE_LINEAR_SCAN_ORDER = get("Compute Linear Scan Order");
     public static final GraalTimers LIR_CREATE = get("Create LIR");
     public static final GraalTimers LIFETIME_ANALYSIS = get("Lifetime Analysis");
@@ -73,19 +75,15 @@ public final class GraalTimers {
     }
 
     public static void print() {
-        long total = 0;
-        for (Entry<String, GraalTimers> e : map.entrySet()) {
-            total += e.getValue().total;
-        }
-        if (total == 0) {
-            return;
-        }
 
         TTY.println();
+        TTY.println("%-30s: %7.4f s", TOTAL.name, TOTAL.total / 1000000000.0);
         for (Entry<String, GraalTimers> e : map.entrySet()) {
             GraalTimers timer = e.getValue();
-            TTY.println("%-30s: %7.4f s (%5.2f%%)", timer.name, timer.total / 1000000000.0, timer.total * 100.0 / total);
-            timer.total = 0;
+            if (timer != TOTAL) {
+                TTY.println("%-30s: %7.4f s (%5.2f%%)", timer.name, timer.total / 1000000000.0, timer.total * 100.0 / TOTAL.total);
+                timer.total = 0;
+            }
         }
         TTY.println();
     }

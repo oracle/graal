@@ -82,6 +82,7 @@ public class GraalCompiler extends ObservableCompiler {
     }
 
     public CiResult compileMethod(RiMethod method, int osrBCI, RiXirGenerator xirGenerator, CiStatistics stats) {
+        GraalTimers.TOTAL.start();
         long startTime = 0;
         int index = GraalMetrics.CompiledMethods++;
         if (GraalOptions.PrintCompilation) {
@@ -102,6 +103,7 @@ public class GraalCompiler extends ObservableCompiler {
                 long time = (System.nanoTime() - startTime) / 100000;
                 TTY.println(String.format("%3d.%dms", time / 10, time % 10));
             }
+            GraalTimers.TOTAL.stop();
         }
 
         return result;
@@ -140,7 +142,7 @@ public class GraalCompiler extends ObservableCompiler {
         if (GraalOptions.PrintDOTGraphToPdf) {
             addCompilationObserver(new GraphvizPrinterObserver(true));
         }
-        if (GraalOptions.PrintIdealGraphLevel != 0) {
+        if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot) {
             CompilationObserver observer;
             if (GraalOptions.PrintIdealGraphFile) {
                 observer = new IdealGraphPrinterObserver();

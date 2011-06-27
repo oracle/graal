@@ -23,43 +23,52 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.NewInstance.*;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class MemoryWrite extends MemoryAccess {
+public abstract class AccessNode extends StateSplit {
+    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_NODE = 0;
+    private static final int INPUT_GUARD = 1;
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
-    }
-
-    public void setValue(Value v) {
-        inputs().set(super.inputCount() + INPUT_VALUE, v);
-    }
-
-    public MemoryWrite(CiKind kind, Value value, int displacement, Graph graph) {
-        super(kind, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setValue(value);
-    }
+    private LocationNode location;
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitMemoryWrite(this);
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
+    }
+
+    public Value object() {
+        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
+    }
+
+    public Value setObject(Value n) {
+        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
+    }
+
+    public GuardNode guard() {
+        return (GuardNode) inputs().get(super.inputCount() + INPUT_GUARD);
+    }
+
+    public void setGuard(GuardNode n) {
+        inputs().set(super.inputCount() + INPUT_GUARD, n);
+    }
+
+    public LocationNode location() {
+        return location;
+    }
+
+    public AccessNode(CiKind kind, Value object, LocationNode location, int inputCount, int successorCount, Graph graph) {
+        super(kind, INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
+        this.location = location;
+        setObject(object);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("mem write to ").print(location()).print(" with value").print(value());
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        return new MemoryWrite(super.kind, null, displacement(), into);
+        out.print("mem read from ").print(object());
     }
 }

@@ -28,7 +28,7 @@ import com.oracle.max.graal.compiler.ir.*;
 
 /**
  * A {@link ValueVisitor} for {@linkplain #printInstruction(Value) printing}
- * an {@link Instruction} as an expression or statement.
+ * an {@link FixedNodeWithNext} as an expression or statement.
  *
  * @author Doug Simon
  */

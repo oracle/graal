@@ -101,7 +101,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     });
 
-    private Instruction lastInstr;                 // the last instruction added
+    private FixedNodeWithNext lastInstr;                 // the last instruction added
 
     private final Set<Block> blocksOnWorklist = new HashSet<Block>();
     private final Set<Block> blocksVisited = new HashSet<Block>();
@@ -169,26 +169,26 @@ public final class GraphBuilderPhase extends Phase {
         }
 
         // 1. create the start block
-        Block startBlock = nextBlock(Instruction.SYNCHRONIZATION_ENTRY_BCI);
+        Block startBlock = nextBlock(FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI);
         markOnWorkList(startBlock);
-        lastInstr = (Instruction) createTarget(startBlock, frameState);
+        lastInstr = (FixedNodeWithNext) createTarget(startBlock, frameState);
         graph.start().setStart(lastInstr);
 
         if (isSynchronized(method.accessFlags())) {
             // 4A.1 add a monitor enter to the start block
             methodSynchronizedObject = synchronizedObject(frameState, method);
-            genMonitorEnter(methodSynchronizedObject, Instruction.SYNCHRONIZATION_ENTRY_BCI);
+            genMonitorEnter(methodSynchronizedObject, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI);
             // 4A.2 finish the start block
             finishStartBlock(startBlock);
 
             // 4A.3 setup an exception handler to unlock the root method synchronized object
-            unwindHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
+            unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
         } else {
             // 4B.1 simply finish the start block
             finishStartBlock(startBlock);
 
             if (createUnwind) {
-                unwindHandler = new CiExceptionHandler(0, method.code().length, Instruction.SYNCHRONIZATION_ENTRY_BCI, 0, null);
+                unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
             }
         }
 
@@ -208,7 +208,7 @@ public final class GraphBuilderPhase extends Phase {
         for (Node n : graph.getNodes()) {
             if (n instanceof Placeholder && !loopExits.isMarked(n)) {
                 Placeholder p = (Placeholder) n;
-                p.replace(p.next());
+                p.replaceAndDelete(p.next());
             }
         }
 
@@ -327,7 +327,7 @@ public final class GraphBuilderPhase extends Phase {
                     FixedNode next = p.next();
                     p.setNext(null);
                     EndNode end = new EndNode(graph);
-                    p.replace(end);
+                    p.replaceAndDelete(end);
                     merge.setNext(next);
                     merge.addEnd(end);
                     merge.setStateAfter(existingState);
@@ -385,7 +385,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private FixedNode handleException(Value exceptionObject, int bci) {
-        assert bci == Instruction.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
+        assert bci == FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
             if (exceptionObject == null && method.exceptionProbability(bci) == 0) {
@@ -426,7 +426,7 @@ public final class GraphBuilderPhase extends Phase {
             if (dispatchBlock == null) {
                 assert isCatchAll(firstHandler);
                 int handlerBCI = firstHandler.handlerBCI();
-                if (handlerBCI == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
+                if (handlerBCI == FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI) {
                     dispatchBlock = unwindBlock(bci);
                 } else {
                     dispatchBlock = blockFromBci[handlerBCI];
@@ -1044,7 +1044,7 @@ public final class GraphBuilderPhase extends Phase {
         MonitorEnter monitorEnter = new MonitorEnter(x, lockAddress, lockNumber, graph);
         appendWithBCI(monitorEnter);
         frameState.lock(x);
-        if (bci == Instruction.SYNCHRONIZATION_ENTRY_BCI) {
+        if (bci == FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI) {
             monitorEnter.setStateAfter(frameState.create(0));
         }
     }
@@ -1076,7 +1076,7 @@ public final class GraphBuilderPhase extends Phase {
         Value value = frameState.ipop();
         BytecodeTableSwitch ts = new BytecodeTableSwitch(stream(), bci);
         int max = ts.numberOfCases();
-        List<Instruction> list = new ArrayList<Instruction>(max + 1);
+        List<FixedNodeWithNext> list = new ArrayList<FixedNodeWithNext>(max + 1);
         List<Integer> offsetList = new ArrayList<Integer>(max + 1);
         for (int i = 0; i < max; i++) {
             // add all successors to the successor list
@@ -1099,7 +1099,7 @@ public final class GraphBuilderPhase extends Phase {
         Value value = frameState.ipop();
         BytecodeLookupSwitch ls = new BytecodeLookupSwitch(stream(), bci);
         int max = ls.numberOfCases();
-        List<Instruction> list = new ArrayList<Instruction>(max + 1);
+        List<FixedNodeWithNext> list = new ArrayList<FixedNodeWithNext>(max + 1);
         List<Integer> offsetList = new ArrayList<Integer>(max + 1);
         int[] keys = new int[max];
         for (int i = 0; i < max; i++) {
@@ -1129,7 +1129,7 @@ public final class GraphBuilderPhase extends Phase {
         return fixed;
     }
 
-    private Value append(Instruction x) {
+    private Value append(FixedNodeWithNext x) {
         return appendWithBCI(x);
     }
 
@@ -1137,7 +1137,7 @@ public final class GraphBuilderPhase extends Phase {
         return v;
     }
 
-    private Value appendWithBCI(Instruction x) {
+    private Value appendWithBCI(FixedNodeWithNext x) {
         assert x.predecessors().size() == 0 : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
         lastInstr.setNext(x);
@@ -1228,7 +1228,7 @@ public final class GraphBuilderPhase extends Phase {
                 // now parse the block
                 if (block.isLoopHeader) {
                     LoopBegin begin = loopBegin(block);
-                    FrameState preLoopState = block.firstInstruction.stateAfter();
+                    FrameState preLoopState = ((StateSplit) block.firstInstruction).stateAfter();
                     assert preLoopState != null;
                     FrameState duplicate = preLoopState.duplicate(preLoopState.bci);
                     begin.setStateAfter(duplicate);
@@ -1277,7 +1277,7 @@ public final class GraphBuilderPhase extends Phase {
                     merge.addEnd(begin.forwardEdge());
                     merge.setNext(begin.next());
                     merge.setStateAfter(begin.stateAfter());
-                    begin.replace(merge);
+                    begin.replaceAndDelete(merge);
                 }
             }
         }

@@ -83,6 +83,7 @@ public final class GraalOptions {
     public static boolean OmitDOTFrameStates                 = ____;
 
     // Ideal graph visualizer output settings
+    public static boolean Plot                               = ____;
     public static int     PrintIdealGraphLevel               = 0;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
@@ -105,6 +106,7 @@ public final class GraalOptions {
     public static boolean TraceInlining                      = ____;
     public static boolean TraceDeadCodeElimination           = ____;
     public static boolean TraceEscapeAnalysis                = ____;
+    public static boolean TraceMemoryMaps                    = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean QuietBailout                       = ____;
 

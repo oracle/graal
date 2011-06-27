@@ -28,7 +28,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code AccessMonitor} instruction is the base class of both monitor acquisition and release.
  */
-public abstract class AccessMonitor extends StateSplit {
+public abstract class AccessMonitor extends AbstractMemoryMergeNode {
 
     private static final int INPUT_COUNT = 2;
     private static final int INPUT_OBJECT = 0;

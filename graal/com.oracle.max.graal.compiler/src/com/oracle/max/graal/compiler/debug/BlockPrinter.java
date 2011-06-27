@@ -45,7 +45,7 @@ public class BlockPrinter implements BlockClosure {
     public void apply(Block block) {
         if (cfgOnly) {
             if (block.getInstructions().size() > 0) {
-                ip.printInstruction((Instruction) block.getInstructions().get(0));
+                ip.printInstruction((FixedNodeWithNext) block.getInstructions().get(0));
             } else {
                 ip.out().println("Empty block");
             }
@@ -62,8 +62,8 @@ public class BlockPrinter implements BlockClosure {
         ip.printInstructionListingHeader();
 
         for (Node i : block.getInstructions()) {
-            if (i instanceof Instruction) {
-                ip.printInstructionListing((Instruction) i);
+            if (i instanceof FixedNodeWithNext) {
+                ip.printInstructionListing((FixedNodeWithNext) i);
             }
         }
         out.println();

@@ -269,8 +269,8 @@ public class IdealGraphPrinter {
 
             // add all framestates and phis to their blocks
             for (Node node : block.getInstructions()) {
-                if (node instanceof Instruction && ((Instruction) node).stateAfter() != null) {
-                    nodes.add(((Instruction) node).stateAfter());
+                if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
+                    nodes.add(((StateSplit) node).stateAfter());
                 }
                 if (node instanceof Merge) {
                     for (Node usage : node.usages()) {

@@ -51,7 +51,9 @@ public final class PhiSimplifier {
         Phi phi = (Phi) x;
 
         if (phi.valueCount() == 1 && !cannotSimplify.isMarked(phi)) {
-            return (Value) phi.replace(phi.valueAt(0));
+            Value result = phi.valueAt(0);
+            phi.replaceAndDelete(result);
+            return result;
         }
 
         if (cannotSimplify.isMarked(phi)) {
@@ -111,7 +113,7 @@ public final class PhiSimplifier {
             assert phiSubst != null : "illegal phi function";
             visited.clear(phi);
 
-            phi.replace(phiSubst);
+            phi.replaceAndDelete(phiSubst);
 
             return phiSubst;
         }

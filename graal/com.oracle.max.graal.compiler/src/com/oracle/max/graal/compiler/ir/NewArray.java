@@ -35,8 +35,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NewArray} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArray extends Instruction {
-    private static final EscapeOp ESCAPE = new NewArrayEscapeOp();
+public abstract class NewArray extends FixedNodeWithNext {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_LENGTH = 0;

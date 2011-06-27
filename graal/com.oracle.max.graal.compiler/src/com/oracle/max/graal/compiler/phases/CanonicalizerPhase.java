@@ -41,7 +41,7 @@ public class CanonicalizerPhase extends Phase {
             if (op != null) {
                 Node canonical = op.canonical(node);
                 if (canonical != node) {
-                    node.replace(canonical);
+                    node.replaceAndDelete(canonical);
                     nodeWorkList.replaced(canonical, node, EdgeType.USAGES);
                     //System.out.println("-->" + n + " canonicalized to " + canonical);
                     GraalMetrics.NodesCanonicalized++;

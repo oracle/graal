@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Anchor} instruction represents the end of a block with an unconditional jump to another block.
  */
-public final class Anchor extends Instruction {
+public final class Anchor extends FixedNodeWithNext {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;

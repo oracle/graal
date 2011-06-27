@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,26 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import java.util.*;
+
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
- */
-public final class ExceptionObject extends FixedNodeWithNext {
 
-    private static final int INPUT_COUNT = 0;
+public abstract class AbstractMemoryMergeNode extends StateSplit {
+
     private static final int SUCCESSOR_COUNT = 0;
+    private static final int INPUT_COUNT = 0;
 
-    /**
-     * Constructs a new ExceptionObject instruction.
-     * @param graph
-     */
-    public ExceptionObject(Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public AbstractMemoryMergeNode(Graph graph) {
+        this(CiKind.Illegal, 0, 0, graph);
     }
 
-    @Override
-    public void accept(ValueVisitor v) {
-        v.visitExceptionObject(this);
+    public AbstractMemoryMergeNode(CiKind result, int inputCount, int successorCount, Graph graph) {
+        super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print("incoming exception");
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        ExceptionObject x = new ExceptionObject(into);
-        return x;
+    public List<Node> mergedNodes() {
+        return inputs().variablePart();
     }
 }

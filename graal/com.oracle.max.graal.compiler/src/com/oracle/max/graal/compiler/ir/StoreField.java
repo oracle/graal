@@ -84,7 +84,7 @@ public final class StoreField extends AccessField {
         if (clazz == LoweringOp.class) {
             return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
         }
-        return null;
+        return super.lookup(clazz);
     };
 
     @Override

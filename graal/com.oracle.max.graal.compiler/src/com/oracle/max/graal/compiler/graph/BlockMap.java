@@ -121,9 +121,9 @@ public final class BlockMap {
         public boolean isLoopHeader;
         public int blockID;
 
-        public Instruction firstInstruction;
+        public FixedNodeWithNext firstInstruction;
 
-        final HashSet<Block> successors = new HashSet<Block>();
+        final HashSet<Block> successors = new LinkedHashSet<Block>();
         private boolean visited;
         private boolean active;
         private int loops;

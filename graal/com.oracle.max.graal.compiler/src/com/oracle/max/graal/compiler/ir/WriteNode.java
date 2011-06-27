@@ -27,39 +27,41 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FixedGuard extends FixedNodeWithNext {
+public final class WriteNode extends AccessNode {
     private static final int INPUT_COUNT = 1;
-    private static final int INPUT_NODE = 0;
-
+    private static final int INPUT_VALUE = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public BooleanNode node() {
-        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
+    @Override
+    protected int inputCount() {
+        return super.inputCount() + INPUT_COUNT;
     }
 
-    public void setNode(BooleanNode n) {
-        inputs().set(super.inputCount() + INPUT_NODE, n);
+    public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
     }
 
-    public FixedGuard(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public void setValue(Value v) {
+        inputs().set(super.inputCount() + INPUT_VALUE, v);
+    }
+
+    public WriteNode(CiKind kind, Value object, Value value, LocationNode location, Graph graph) {
+        super(kind, object, location, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setValue(value);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitFixedGuard(this);
+        v.visitMemoryWrite(this);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("clip node ").print(node());
+        out.print("mem write to ").print(object()).print(" with value").print(value());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new FixedGuard(into);
+        return new WriteNode(super.kind, null, null, null, into);
     }
 }

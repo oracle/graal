@@ -23,58 +23,49 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class MemoryAccess extends Instruction {
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_NODE = 0;
-    private static final int INPUT_GUARD = 1;
-
+public final class LocationNode extends FloatingNode {
+    private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
     private int displacement;
     private CiKind valueKind;
+    private Object identity;
 
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public Value location() {
-        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
-    }
-
-    public Value setLocation(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
-    }
-
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public GuardNode guard() {
-        return (GuardNode) inputs().get(super.inputCount() + INPUT_GUARD);
-    }
-
-    public void setGuard(GuardNode n) {
-        inputs().set(super.inputCount() + INPUT_GUARD, n);
-    }
-
-    public int displacement() {
-        return displacement;
-    }
-
-    public CiKind valueKind() {
-        return valueKind;
-    }
-
-    public MemoryAccess(CiKind kind, int displacement, int inputCount, int successorCount, Graph graph) {
-        super(kind.stackKind(), INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
+    public LocationNode(Object identity, CiKind kind, int displacement, Graph graph) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.displacement = displacement;
         this.valueKind = kind;
+        this.identity = identity;
+    }
+
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+            return null;
+        }
+        return super.lookup(clazz);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("mem read from ").print(location());
+        out.print("mem location disp is ").print(displacement);
+    }
+
+    public CiKind getValueKind() {
+        return valueKind;
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        return new LocationNode(identity, valueKind, displacement, into);
+    }
+
+    public CiValue createAddress(LIRGenerator lirGenerator, Value object) {
+        return new CiAddress(valueKind, lirGenerator.load(object), displacement);
     }
 }

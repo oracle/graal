@@ -27,13 +27,13 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class MemoryRead extends MemoryAccess {
+public final class ReadNode extends AccessNode {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
 
-    public MemoryRead(CiKind kind, int displacement, Graph graph) {
-        super(kind, displacement, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public ReadNode(CiKind kind, Value object, LocationNode location, Graph graph) {
+        super(kind, object, location, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -43,11 +43,11 @@ public final class MemoryRead extends MemoryAccess {
 
     @Override
     public void print(LogStream out) {
-        out.print("mem read from ").print(location());
+        out.print("mem read from ").print(object());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryRead(super.kind, displacement(), into);
+        return new ReadNode(super.kind, null, null, into);
     }
 }

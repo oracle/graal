@@ -111,6 +111,7 @@ public class IR {
 
         if (GraalOptions.Lower) {
             new LoweringPhase(compilation.runtime).apply(graph);
+            new MemoryPhase().apply(graph);
         }
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
@@ -213,7 +214,7 @@ public class IR {
         return maxLocks;
     }
 
-    public Instruction getHIRStartBlock() {
-        return (Instruction) compilation.graph.start().successors().get(0);
+    public FixedNodeWithNext getHIRStartBlock() {
+        return (FixedNodeWithNext) compilation.graph.start().successors().get(0);
     }
 }

@@ -5,4 +5,19 @@ Before running the Graal VM, the following environment variables are needed:
 - MAXINE: Pointing to a Maxine VM repository with compiled Java files.
 - GRAAL: Pointing to a Graal VM repository with compiled Java files.
 
-For starting the Graal VM, the two flags "-client -graal" have to be specified.
+In particular, the VM will look for the compiled Java files in the following directories:
+${MAXINE}/com.oracle.max.cri/bin
+${MAXINE}/com.oracle.max.base/bin
+${MAXINE}/com.oracle.max.asmdis/bin
+${MAXINE}/com.oracle.max.asm/bin
+${MAXINE}/com.oracle.max.graal.graph/bin
+${GRAAL}/graal/com.oracle.max.graal.compiler/bin
+${GRAAL}/graal/com.oracle.max.graal.runtime/bin
+${GRAAL}/graal/com.oracle.max.graal.graphviz/bin
+
+For starting the Graal VM, the two flags "-client -graal" have to be specified. Additional flags that might be useful:
+-G:Plot Sends the graphs of compiled methods via network stream to the IdealGraphVisualizer (NetBeans project at ${GRAAL}/src/share/tools/IdealGraphVisualizer that can be built and run with NetBeans 7.0, use "Graal Coloring" and "Graal Edge Coloring" filters)
+-G:Time Prints timings for the different compilation phases
+-G:Meter Prints metrics for the different compilation phases
+
+The usual HotSpot flags -Xcomp -XX:CompileOnly= -XX:CompileCommand= or -XX:+PrintCompilation can be used to control the compiled methods.

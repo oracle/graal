@@ -402,7 +402,7 @@ public class Util {
      * @param compareConstants {@code true} if equivalent constants should be considered equivalent
      * @return {@code true} if the instructions are equivalent; {@code false} otherwise
      */
-    public static boolean equivalent(Instruction x, Instruction y, boolean compareConstants) {
+    public static boolean equivalent(FixedNodeWithNext x, FixedNodeWithNext y, boolean compareConstants) {
         if (x == y) {
             return true;
         }

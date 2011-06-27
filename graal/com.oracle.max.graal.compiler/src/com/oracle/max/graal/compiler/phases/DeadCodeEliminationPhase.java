@@ -50,7 +50,7 @@ public class DeadCodeEliminationPhase extends Phase {
                 FixedNode next = merge.next();
                 EndNode endNode = merge.endAt(0);
                 merge.delete();
-                endNode.replace(next);
+                endNode.replaceAndDelete(next);
             }
         }
         // remove if nodes with constant-value comparison
@@ -95,10 +95,6 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private static boolean isCFG(Node n) {
-        return n != null && ((n instanceof Instruction) || (n instanceof ControlSplit) || n == n.graph().start());
-    }
-
     private void iterateSuccessors() {
         for (Node current : flood) {
             if (current instanceof EndNode) {
@@ -132,10 +128,10 @@ public class DeadCodeEliminationPhase extends Phase {
             assert loop.predecessors().size() == 1;
             for (Node usage : new ArrayList<Node>(loop.usages())) {
                 assert usage instanceof Phi;
-                usage.replace(((Phi) usage).valueAt(0));
+                usage.replaceAndDelete(((Phi) usage).valueAt(0));
             }
 
-            loop.replace(loop.next());
+            loop.replaceAndDelete(loop.next());
         }
     }
 

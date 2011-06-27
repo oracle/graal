@@ -144,7 +144,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return operand;
     }
 
-    protected CiValue load(Value val) {
+    public CiValue load(Value val) {
         CiValue result = makeOperand(val);
         if (!result.isVariableOrRegister()) {
             CiVariable operand = newVariable(val.kind);
@@ -201,6 +201,10 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.operands = new OperandPool(compilation.target);
     }
 
+    public LIRList lir() {
+        return lir;
+    }
+
     public ArrayList<DeoptimizationStub> deoptimizationStubs() {
         return deoptimizationStubs;
     }
@@ -243,8 +247,8 @@ public abstract class LIRGenerator extends ValueVisitor {
                 TTY.println("LIRGen for " + instr);
             }
             FrameState stateAfter = null;
-            if (instr instanceof Instruction) {
-                stateAfter = ((Instruction) instr).stateAfter();
+            if (instr instanceof StateSplit) {
+                stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr != instr.graph().start()) {
                 walkState(instr, stateAfter);
@@ -298,7 +302,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         CiCallingConvention args = compilation.frameMap().incomingArguments();
         int bci = 0;
         if (Modifier.isSynchronized(compilation.method.accessFlags())) {
-            bci = Instruction.SYNCHRONIZATION_ENTRY_BCI;
+            bci = FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI;
         }
 
         boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
@@ -1008,7 +1012,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitDeoptimize(Deoptimize deoptimize) {
         assert lastState != null : "deoptimize always needs a state";
-        assert lastState.bci != Instruction.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
+        assert lastState.bci != FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
         DeoptimizationStub stub = new DeoptimizationStub(deoptimize.action(), lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);
@@ -1366,7 +1370,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (GraalOptions.TraceLIRVisit) {
             TTY.println("Visiting    " + instr);
         }
-        instr.accept(this);
+
+        LIRGeneratorOp op = instr.lookup(LIRGeneratorOp.class);
+        if (op != null) {
+            op.generate(instr, this);
+        }
+
         if (GraalOptions.TraceLIRVisit) {
             TTY.println("Operand for " + instr + " = " + instr.operand());
         }
@@ -1436,14 +1445,14 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitMemoryRead(MemoryRead memRead) {
-        lir.move(new CiAddress(memRead.valueKind(), load(memRead.location()), memRead.displacement()), createResultVariable(memRead), memRead.valueKind());
+    public void visitMemoryRead(ReadNode memRead) {
+        lir.move(memRead.location().createAddress(this, memRead.object()), createResultVariable(memRead), memRead.location().getValueKind());
     }
 
 
     @Override
-    public void visitMemoryWrite(MemoryWrite memWrite) {
-        lir.move(load(memWrite.location()), new CiAddress(memWrite.valueKind(), load(memWrite.location()), memWrite.displacement()), memWrite.valueKind());
+    public void visitMemoryWrite(WriteNode memWrite) {
+        lir.move(load(memWrite.value()), memWrite.location().createAddress(this, memWrite.object()), memWrite.location().getValueKind());
     }
 
 
@@ -1669,7 +1678,7 @@ public abstract class LIRGenerator extends ValueVisitor {
      *
      * @param instruction an instruction that produces a result value
      */
-    protected CiValue makeOperand(Value instruction) {
+    public CiValue makeOperand(Value instruction) {
         if (instruction == null) {
             return CiValue.IllegalValue;
         }
@@ -1799,4 +1808,15 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.callRuntime(CiRuntimeCall.UnwindException, CiValue.IllegalValue, args, null);
         setNoResult(x);
     }
+
+    public interface LIRGeneratorOp extends Op {
+        void generate(Node n, LIRGenerator generator);
+    }
+
+    public static final LIRGeneratorOp DELEGATE_TO_VALUE_VISITOR = new LIRGeneratorOp() {
+        @Override
+        public void generate(Node n, LIRGenerator generator) {
+            ((Value) n).accept(generator);
+        }
+    };
 }
