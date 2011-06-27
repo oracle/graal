@@ -48,9 +48,9 @@ public class MemoryPhase extends Phase {
             for (Entry<Object, Node> e : memoryMap.locationToWrite.entrySet()) {
                 locationToWrite.put(e.getKey(), e.getValue());
             }
-            for (Entry<Object, List<Node>> e : memoryMap.locationToReads.entrySet()) {
-                locationToReads.put(e.getKey(), new ArrayList<Node>(e.getValue()));
-            }
+//            for (Entry<Object, List<Node>> e : memoryMap.locationToReads.entrySet()) {
+//                locationToReads.put(e.getKey(), new ArrayList<Node>(e.getValue()));
+//            }
             lastReadWriteMerge = memoryMap.lastReadWriteMerge;
             lastWriteMerge = memoryMap.lastWriteMerge;
         }
@@ -96,11 +96,11 @@ public class MemoryPhase extends Phase {
                 locationToWrite.remove(o);
             }
 
-            for (Entry<Object, List<Node>> e : memoryMap.locationToReads.entrySet()) {
-                for (Node n : e.getValue()) {
-                    addRead(n, e.getKey());
-                }
-            }
+//            for (Entry<Object, List<Node>> e : memoryMap.locationToReads.entrySet()) {
+//                for (Node n : e.getValue()) {
+//                    addRead(n, e.getKey());
+//                }
+//            }
 
             mergeOperations++;
         }
@@ -138,7 +138,7 @@ public class MemoryPhase extends Phase {
                 memMerge.mergedNodes().add(writeEntry.getValue());
 
                 // Register the merge point as a read such that subsequent writes to this location will depend on it (but subsequent reads do not).
-                addRead(memMerge, writeEntry.getKey());
+//                addRead(memMerge, writeEntry.getKey());
             }
             lastWriteMerge = memMerge;
         }
@@ -155,9 +155,9 @@ public class MemoryPhase extends Phase {
             locationToWrite.clear();
 
             // Merge in all reads.
-            for (Entry<Object, List<Node>> readEntry : locationToReads.entrySet()) {
-                memMerge.mergedNodes().addAll(readEntry.getValue());
-            }
+//            for (Entry<Object, List<Node>> readEntry : locationToReads.entrySet()) {
+//                memMerge.mergedNodes().addAll(readEntry.getValue());
+//            }
             locationToReads.clear();
             lastWriteMerge = memMerge;
             lastReadWriteMerge = memMerge;
@@ -170,12 +170,12 @@ public class MemoryPhase extends Phase {
             }
 
             boolean connectionAdded = false;
-            if (locationToReads.containsKey(location)) {
-                for (Node prevRead : locationToReads.get(location)) {
-                    node.inputs().variablePart().add(prevRead);
-                    connectionAdded = true;
-                }
-            }
+//            if (locationToReads.containsKey(location)) {
+//                for (Node prevRead : locationToReads.get(location)) {
+//                    node.inputs().variablePart().add(prevRead);
+//                    connectionAdded = true;
+//                }
+//            }
 
             if (!connectionAdded) {
                 if (locationToWrite.containsKey(location)) {
