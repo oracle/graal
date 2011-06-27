@@ -27,16 +27,16 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class MemoryCheckpointNode extends AbstractMemoryCheckpointNode {
+public final class WriteMemoryCheckpointNode extends AbstractMemoryCheckpointNode {
 
     private static final int SUCCESSOR_COUNT = 0;
     private static final int INPUT_COUNT = 0;
 
-    public MemoryCheckpointNode(Graph graph) {
+    public WriteMemoryCheckpointNode(Graph graph) {
         this(CiKind.Illegal, 0, 0, graph);
     }
 
-    public MemoryCheckpointNode(CiKind result, int inputCount, int successorCount, Graph graph) {
+    public WriteMemoryCheckpointNode(CiKind result, int inputCount, int successorCount, Graph graph) {
         super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
@@ -50,6 +50,6 @@ public final class MemoryCheckpointNode extends AbstractMemoryCheckpointNode {
 
     @Override
     public Node copy(Graph into) {
-        return new MemoryCheckpointNode(into);
+        return new WriteMemoryCheckpointNode(into);
     }
 }

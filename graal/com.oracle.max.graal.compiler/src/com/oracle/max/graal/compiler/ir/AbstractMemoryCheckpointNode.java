@@ -41,6 +41,13 @@ public abstract class AbstractMemoryCheckpointNode extends StateSplit {
         super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> debugProperties = super.getDebugProperties();
+        debugProperties.put("memoryCheckpoint", "true");
+        return debugProperties;
+    }
+
     public List<Node> mergedNodes() {
         return inputs().variablePart();
     }

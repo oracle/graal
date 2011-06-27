@@ -27,7 +27,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class AccessNode extends StateSplit {
+public abstract class AccessNode extends AbstractMemoryCheckpointNode {
     private static final int INPUT_COUNT = 3;
     private static final int INPUT_NODE = 0;
     private static final int INPUT_LOCATION = 1;

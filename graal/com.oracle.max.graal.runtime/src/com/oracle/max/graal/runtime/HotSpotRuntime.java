@@ -266,10 +266,6 @@ public class HotSpotRuntime implements RiRuntime {
             memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryWrite.setStateAfter(field.stateAfter());
             memoryWrite.setNext(field.next());
-
-            //MemoryMergeNode memoryMergeNode = new MemoryMergeNode(graph);
-            //memoryMergeNode.setStateAfter(field.stateAfter());
-            //tool.createMemoryMerge(memoryMergeNode);
             if (field.field().kind() == CiKind.Object && !field.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = new FieldWriteBarrier(field.object(), graph);
                 memoryWrite.setNext(writeBarrier);
