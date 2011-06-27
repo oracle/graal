@@ -49,12 +49,12 @@ public class InliningPhase extends Phase {
 
     private int inliningSize;
     private final boolean trace;
-    private final Invoke hint;
+    private final Collection<Invoke> hints;
 
-    public InliningPhase(GraalCompilation compilation, IR ir, Invoke hint, boolean trace) {
+    public InliningPhase(GraalCompilation compilation, IR ir, Collection<Invoke> hints, boolean trace) {
         this.compilation = compilation;
         this.ir = ir;
-        this.hint = hint;
+        this.hints = hints;
         this.trace = trace;
     }
 
@@ -74,8 +74,8 @@ public class InliningPhase extends Phase {
         float ratio = GraalOptions.MaximumInlineRatio;
         inliningSize = compilation.method.codeSize();
 
-        if (hint != null) {
-            newInvokes.add(hint);
+        if (hints != null) {
+            newInvokes.addAll(hints);
         } else {
             for (Invoke invoke : graph.getNodes(Invoke.class)) {
                 newInvokes.add(invoke);
@@ -269,7 +269,7 @@ public class InliningPhase extends Phase {
 
     private boolean checkStaticSizeConditions(RiMethod method, Invoke invoke) {
         int maximumSize = GraalOptions.MaximumInlineSize;
-        if (invoke == hint) {
+        if (hints != null && hints.contains(invoke)) {
             maximumSize = GraalOptions.MaximumFreqInlineSize;
         }
         if (method.codeSize() > maximumSize) {
@@ -293,7 +293,7 @@ public class InliningPhase extends Phase {
                 maximumSize = GraalOptions.MaximumInlineSize;
             }
         }
-        if (invoke == hint) {
+        if (hints != null && hints.contains(invoke)) {
             maximumSize = GraalOptions.MaximumFreqInlineSize;
         }
         if (method.codeSize() > maximumSize) {

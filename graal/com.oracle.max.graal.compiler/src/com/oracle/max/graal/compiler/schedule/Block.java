@@ -140,15 +140,22 @@ public class Block {
         this.instructions = instructions;
     }
 
-
     public static void iteratePostOrder(List<Block> blocks, BlockClosure closure) {
-        BitMap visited = new BitMap(blocks.size());
-        LinkedList<Block> workList = new LinkedList<Block>();
+        ArrayList<Block> startBlocks = new ArrayList<Block>();
         for (Block block : blocks) {
             if (block.getPredecessors().size() == 0) {
-                workList.add(block);
-                visited.set(block.blockID());
+                startBlocks.add(block);
             }
+        }
+        iteratePostOrder(blocks, closure, startBlocks.toArray(new Block[startBlocks.size()]));
+    }
+
+    public static void iteratePostOrder(List<Block> blocks, BlockClosure closure, Block... startBlocks) {
+        BitMap visited = new BitMap(blocks.size());
+        LinkedList<Block> workList = new LinkedList<Block>();
+        for (Block block : startBlocks) {
+            workList.add(block);
+            visited.set(block.blockID());
         }
 
         while (!workList.isEmpty()) {
@@ -161,7 +168,6 @@ public class Block {
                     boolean delay = false;
                     for (Block pred : succ.getPredecessors()) {
                         if (!visited.get(pred.blockID()) && !(pred.lastNode instanceof LoopEnd)) {
-                            TTY.println("missing pred: %d", pred.blockID());
                             delay = true;
                             break;
                         }

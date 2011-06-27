@@ -22,13 +22,21 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
+import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 /**
  * The {@code NewArray} class is the base of all instructions that allocate arrays.
  */
 public abstract class NewArray extends Instruction {
+    private static final EscapeOp ESCAPE = new NewArrayEscapeOp();
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_LENGTH = 0;
@@ -66,5 +74,159 @@ public abstract class NewArray extends Instruction {
     NewArray(Value length, int inputCount, int successorCount, Graph graph) {
         super(CiKind.Object, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setLength(length);
+    }
+
+    /**
+     * The list of instructions which produce input for this instruction.
+     */
+    public Value dimension(int index) {
+        assert index == 0;
+        return length();
+    }
+
+    /**
+     * The rank of the array allocated by this instruction, i.e. how many array dimensions.
+     */
+    public int dimensionCount() {
+        return 1;
+    }
+
+    public abstract CiKind elementKind();
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == EscapeOp.class) {
+            return (T) ESCAPE;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class NewArrayEscapeOp implements EscapeOp {
+
+        @Override
+        public boolean canAnalyze(Node node) {
+            NewArray x = (NewArray) node;
+            CiConstant length = x.dimension(0).asConstant();
+            return length != null && length.asInt() >= 0 && length.asInt() < GraalOptions.MaximumEscapeAnalysisArrayLength;
+        }
+
+        @Override
+        public boolean escape(Node node, Node usage) {
+            if (usage instanceof IsNonNull) {
+                IsNonNull x = (IsNonNull) usage;
+                assert x.object() == node;
+                return false;
+            } else if (usage instanceof IsType) {
+                IsType x = (IsType) usage;
+                assert x.object() == node;
+                return false;
+            } else if (usage instanceof FrameState) {
+                FrameState x = (FrameState) usage;
+                assert x.inputs().contains(node);
+                return true;
+            } else if (usage instanceof LoadIndexed) {
+                LoadIndexed x = (LoadIndexed) usage;
+                assert x.array() == node;
+                CiConstant index = x.index().asConstant();
+                CiConstant length = ((NewArray) node).dimension(0).asConstant();
+                if (index == null || length == null || index.asInt() < 0 || index.asInt() >= length.asInt()) {
+                    return true;
+                }
+                return false;
+            } else if (usage instanceof StoreField) {
+                StoreField x = (StoreField) usage;
+                assert x.value() == node;
+                return true;
+            } else if (usage instanceof StoreIndexed) {
+                StoreIndexed x = (StoreIndexed) usage;
+                CiConstant index = x.index().asConstant();
+                CiConstant length = ((NewArray) node).dimension(0).asConstant();
+                if (index == null || length == null || index.asInt() < 0 || index.asInt() >= length.asInt()) {
+                    return true;
+                }
+                return x.value() == node;
+            } else if (usage instanceof AccessMonitor) {
+                AccessMonitor x = (AccessMonitor) usage;
+                assert x.object() == node;
+                return false;
+            } else if (usage instanceof ArrayLength) {
+                ArrayLength x = (ArrayLength) usage;
+                assert x.array() == node;
+                return false;
+            } else if (usage instanceof VirtualObject) {
+                VirtualObject x = (VirtualObject) usage;
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        @Override
+        public void beforeUpdate(Node node, Node usage) {
+            if (usage instanceof IsNonNull) {
+                IsNonNull x = (IsNonNull) usage;
+                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
+                    FixedGuard guard = (FixedGuard) x.usages().get(0);
+                    guard.replace(guard.next());
+                }
+                x.delete();
+            } else if (usage instanceof IsType) {
+                IsType x = (IsType) usage;
+                assert x.type() == ((NewArray) node).exactType();
+                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
+                    FixedGuard guard = (FixedGuard) x.usages().get(0);
+                    guard.replace(guard.next());
+                }
+                x.delete();
+            } else if (usage instanceof AccessMonitor) {
+                AccessMonitor x = (AccessMonitor) usage;
+                x.replace(x.next());
+            } else if (usage instanceof ArrayLength) {
+                ArrayLength x = (ArrayLength) usage;
+                x.replace(((NewArray) node).dimension(0));
+            }
+        }
+
+        @Override
+        public void collectField(Node node, Node usage, Map<Object, EscapeField> fields) {
+            if (usage instanceof AccessIndexed) {
+                AccessIndexed x = (AccessIndexed) usage;
+                CiConstant index = x.index().asConstant();
+                CiConstant length = ((NewArray) node).dimension(0).asConstant();
+                assert index != null && length != null && index.asInt() >= 0 && index.asInt() < length.asInt();
+
+                Integer representation = index.asInt();
+                if (!fields.containsKey(representation)) {
+                    fields.put(representation, new EscapeField("[" + representation + "]", representation, ((NewArray) node).elementKind()));
+                }
+            }
+        }
+
+        @Override
+        public void updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Node> fieldState) {
+            if (current instanceof AccessIndexed) {
+                int index = ((AccessIndexed) current).index().asConstant().asInt();
+                EscapeField field = fields.get(index);
+                if (current instanceof LoadIndexed) {
+                    LoadIndexed x = (LoadIndexed) current;
+                    if (x.array() == node) {
+                        for (Node usage : new ArrayList<Node>(x.usages())) {
+                            assert fieldState.get(field) != null;
+                            usage.inputs().replace(x, fieldState.get(field));
+                        }
+                        assert x.usages().size() == 0;
+                        x.replace(x.next());
+                    }
+                } else if (current instanceof StoreIndexed) {
+                    StoreIndexed x = (StoreIndexed) current;
+                    if (x.array() == node) {
+                        fieldState.put(field, x.value());
+                        assert x.usages().size() == 0;
+                        x.replace(x.next());
+                    }
+                }
+            }
+        }
     }
 }

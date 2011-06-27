@@ -398,7 +398,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitNewObjectArray(NewObjectArray x) {
         XirArgument length = toXirArgument(x.length());
-        XirSnippet snippet = xir.genNewArray(site(x), length, CiKind.Object, x.elementClass(), x.exactType());
+        XirSnippet snippet = xir.genNewArray(site(x), length, CiKind.Object, x.elementType(), x.exactType());
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
@@ -1598,7 +1598,9 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     private void walkStateValue(Value value) {
         if (value != null) {
-            if (value instanceof Phi && !((Phi) value).isDead()) {
+            if (value instanceof VirtualObject) {
+                walkVirtualObject((VirtualObject) value);
+            } else if (value instanceof Phi && !((Phi) value).isDead()) {
                 // phi's are special
                 operandForPhi((Phi) value);
             } else if (value.operand().isIllegal()) {
@@ -1606,6 +1608,13 @@ public abstract class LIRGenerator extends ValueVisitor {
                 CiValue operand = makeOperand(value);
                 assert operand.isLegal() : "must be evaluated now";
             }
+        }
+    }
+
+    private void walkVirtualObject(VirtualObject value) {
+        walkStateValue(value.input());
+        if (value.object() != null) {
+            walkVirtualObject(value.object());
         }
     }
 
