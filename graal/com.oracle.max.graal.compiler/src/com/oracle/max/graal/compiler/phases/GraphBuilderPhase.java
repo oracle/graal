@@ -1167,6 +1167,7 @@ public final class GraphBuilderPhase extends Phase {
         if (block.firstInstruction == null) {
             if (block.isLoopHeader) {
                 LoopBegin loopBegin = new LoopBegin(graph);
+                loopBegin.addEnd(new EndNode(graph));
                 LoopEnd loopEnd = new LoopEnd(graph);
                 loopEnd.setLoopBegin(loopBegin);
                 Placeholder pBegin = new Placeholder(graph);

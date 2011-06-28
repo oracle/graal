@@ -126,7 +126,7 @@ public class LoopUtil {
     public static NodeBitMap computeLoopNodes(LoopBegin loopBegin) {
         return computeLoopNodesFrom(loopBegin, loopBegin.loopEnd());
     }
-
+    private static boolean recurse = false;
     public static NodeBitMap computeLoopNodesFrom(LoopBegin loopBegin, FixedNode from) {
         NodeFlood workData1 = loopBegin.graph().createNodeFlood();
         NodeFlood workData2 = loopBegin.graph().createNodeFlood();
@@ -140,6 +140,17 @@ public class LoopUtil {
         for (Node n : workData1) {
             inOrAfter.mark(n);
             for (Node usage : n.dataUsages()) {
+                if (usage instanceof Phi) { // filter out data graph cycles
+                    Phi phi = (Phi) usage;
+                    Merge merge = phi.merge();
+                    if (merge instanceof LoopBegin) {
+                        LoopBegin phiLoop = (LoopBegin) merge;
+                        int backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
+                        if (phi.valueAt(backIndex) == n) {
+                            continue;
+                        }
+                    }
+                }
                 workData1.add(usage);
             }
         }
@@ -155,6 +166,18 @@ public class LoopUtil {
                 }
             }
         }
+        /*if (!recurse) {
+            recurse = true;
+            GraalCompilation compilation = GraalCompilation.compilation();
+            if (compilation.compiler.isObserved()) {
+                Map<String, Object> debug = new HashMap<String, Object>();
+                debug.put("loopNodes", loopNodes);
+                debug.put("inOrAfter", inOrAfter);
+                debug.put("inOrBefore", inOrBefore);
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Compute loop nodes", loopBegin.graph(), true, false, debug));
+            }
+            recurse = false;
+        }*/
         inOrAfter.setIntersect(inOrBefore);
         loopNodes.setUnion(inOrAfter);
         return loopNodes;
@@ -297,8 +320,6 @@ public class LoopUtil {
             newExit.setStateAfter(null);
             newExit.replaceAndDelete(nEnd);
 
-            exitPoints.remove(original);
-            exitPoints.add(oEnd);
             exitPoints.add(nEnd);
         }
 
@@ -413,7 +434,6 @@ public class LoopUtil {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After coloring", graph, true, false, debug));
         }
 
-        // TODO (gd) handle Phi inputs properly : use the color from the corresponding EndNode
         GraphUtil.splitFromColoring(colors, new ColorSplitingLambda<Node>(){
             @Override
             public void fixSplit(Node oldNode, Node newNode, Node color) {
@@ -425,12 +445,30 @@ public class LoopUtil {
                     return value;
                 }
                 Merge merge = (Merge) point;
-                Phi phi = new Phi(kind, merge, merge.graph());
-                valueMap.set(point, phi);
+                ArrayList<Value> values = new ArrayList<Value>(merge.phiPredecessorCount());
+                Value v = null;
+                boolean createPhi = false;
                 for (EndNode end : merge.cfgPredecessors()) {
-                    phi.addInput(getValueAt(colors.get(end), valueMap, kind));
+                    Value valueAt = getValueAt(colors.get(end), valueMap, kind);
+                    if (v == null) {
+                        v = valueAt;
+                    } else if (v != valueAt) {
+                        createPhi = true;
+                    }
+                    values.add(valueAt);
                 }
-                return phi;
+                if (createPhi) {
+                    Phi phi = new Phi(kind, merge, merge.graph());
+                    valueMap.set(point, phi);
+                    for (EndNode end : merge.cfgPredecessors()) {
+                        phi.addInput(getValueAt(colors.get(end), valueMap, kind));
+                    }
+                    return phi;
+                } else {
+                    assert v != null;
+                    valueMap.set(point, v);
+                    return v;
+                }
             }
             @Override
             public boolean explore(Node n) {
@@ -451,6 +489,17 @@ public class LoopUtil {
                         //}
                     }
                 }
+            }
+            @Override
+            public Value fixPhiInput(Value input, Node color) {
+                if (newExitValues.isNew(input)) {
+                    return input;
+                }
+                NodeMap<Value> valueMap = newExitValues.get(input);
+                if (valueMap != null) {
+                    return getValueAt(color, valueMap, input.kind);
+                }
+                return input;
             }});
 
         if (compilation.compiler.isObserved()) {
@@ -469,7 +518,6 @@ public class LoopUtil {
         Map<Node, Node> replacements = new HashMap<Node, Node>();
         NodeMap<Placeholder> phis = graph.createNodeMap();
         NodeMap<Placeholder> exits = graph.createNodeMap();
-
 
         for (Node exit : loop.exits()) {
             if (marked.isMarked(exit.singlePredecessor())) {
@@ -500,17 +548,18 @@ public class LoopUtil {
             }
         }
 
-        Map<Node, Node> duplicates = graph.addDuplicate(marked, replacements);
-
         GraalCompilation compilation = GraalCompilation.compilation();
         if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After addDuplicate", graph, true, false));
+            Map<String, Object> debug = new HashMap<String, Object>();
+            debug.put("marked", marked);
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Before addDuplicate", loopBegin.graph(), true, false, debug));
         }
+
+        Map<Node, Node> duplicates = graph.addDuplicate(marked, replacements);
 
         NodeMap<Node> dataOut = graph.createNodeMap();
         for (Node n : marked) {
             for (Node usage : n.dataUsages()) {
-                System.out.println("n = " + n + "; u= " + usage);
                 if (!marked.isMarked(usage)
                                 && !loop.nodes().isNew(usage) && loop.nodes().isMarked(usage)
                                 && !((usage instanceof Phi) || ((Phi) usage).merge() != loopBegin)) {

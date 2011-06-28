@@ -297,9 +297,6 @@ public class IdealGraphPrinter {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
-//            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) { //TODO gd
-//                // Skip back edges.
-//            } else {
             if (sux != null) {
                 stream.printf("     <successor name='%d'/>%n", sux.blockID());
             }
