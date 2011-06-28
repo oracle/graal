@@ -82,8 +82,8 @@ public class HotSpotRuntime implements RiRuntime {
                     return "{" + call.runtimeCall.name() + "}";
                 } else if (call.symbol != null) {
                     return "{" + call.symbol + "}";
-                } else if (call.globalStubID != null) {
-                    return "{" + call.globalStubID + "}";
+                } else if (call.stubID != null) {
+                    return "{" + call.stubID + "}";
                 } else {
                     return "{" + call.method + "}";
                 }
@@ -178,7 +178,7 @@ public class HotSpotRuntime implements RiRuntime {
     }
 
     @Override
-    public Object registerGlobalStub(CiTargetMethod targetMethod, String name) {
+    public Object registerCompilerStub(CiTargetMethod targetMethod, String name) {
         return HotSpotTargetMethod.installStub(compiler, targetMethod, name);
     }
 
