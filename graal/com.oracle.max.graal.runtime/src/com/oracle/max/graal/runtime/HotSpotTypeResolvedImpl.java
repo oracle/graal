@@ -222,4 +222,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         return ((HotSpotMethodResolved) method).uniqueConcreteMethod();
     }
 
+    @Override
+    public RiField[] fields() {
+        return compiler.getVMEntries().RiType_fields(this);
+    }
 }

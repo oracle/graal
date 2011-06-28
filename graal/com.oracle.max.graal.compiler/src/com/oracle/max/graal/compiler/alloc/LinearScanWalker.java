@@ -233,15 +233,15 @@ final class LinearScanWalker extends IntervalWalker {
         // When the block already contains spill moves, the index must be increased until the
         // correct index is reached.
         List<LIRInstruction> list = opBlock.lir().instructionsList();
-        int index = (opId - list.get(0).id) >> 1;
-        assert list.get(index).id <= opId : "error in calculation";
+        int index = (opId - list.get(0).id()) >> 1;
+        assert list.get(index).id() <= opId : "error in calculation";
 
-        while (list.get(index).id != opId) {
+        while (list.get(index).id() != opId) {
             index++;
             assert 0 <= index && index < list.size() : "index out of bounds";
         }
         assert 1 <= index && index < list.size() : "index out of bounds";
-        assert list.get(index).id == opId : "error in calculation";
+        assert list.get(index).id() == opId : "error in calculation";
 
         // insert new instruction before instruction at position index
         moveResolver.moveInsertPosition(opBlock.lir(), index - 1);

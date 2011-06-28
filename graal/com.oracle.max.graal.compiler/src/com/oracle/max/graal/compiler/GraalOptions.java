@@ -55,6 +55,7 @@ public final class GraalOptions {
     public static int     MaximumShortLoopSize               = 5;
 
     // escape analysis settings
+    public static boolean EscapeAnalysis                     = ____;
     public static int     ForcedInlineEscapeWeight           = 0;
     public static int     MaximumEscapeAnalysisArrayLength   = 32;
 

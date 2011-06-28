@@ -90,7 +90,7 @@ public abstract class LIRInstruction {
     /**
      * Value id for register allocation.
      */
-    public int id;
+    private int id;
 
     /**
      * Determines if all caller-saved registers are destroyed by this instruction.
@@ -196,6 +196,14 @@ public abstract class LIRInstruction {
         initInputsAndTemps(tempInput, temp, operands);
 
         assert verifyOperands();
+    }
+
+    public final int id() {
+        return id;
+    }
+
+    public final void setId(int id) {
+        this.id = id;
     }
 
     private LIROperand initOutput(CiValue output) {

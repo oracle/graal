@@ -64,7 +64,7 @@ public class DeadCodeEliminationPhase extends Phase {
                     Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
                     if (result != null) {
                         Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-                        ifNode.replace(actualSuccessor);
+                        ifNode.replaceAndDelete(actualSuccessor);
                     } else {
                         TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
                     }
@@ -74,7 +74,7 @@ public class DeadCodeEliminationPhase extends Phase {
         // remove unnecessary FixedGuards
         for (FixedGuard guard : graph.getNodes(FixedGuard.class)) {
             if (guard.node() instanceof IsNonNull && ((IsNonNull) guard.node()).object() instanceof NewInstance) {
-                guard.replace(guard.next());
+                guard.replaceAndDelete(guard.next());
             }
         }
 

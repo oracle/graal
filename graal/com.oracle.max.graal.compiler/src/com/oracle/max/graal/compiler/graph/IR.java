@@ -100,10 +100,12 @@ public class IR {
             new DeadCodeEliminationPhase().apply(graph);
         }
 
-        new EscapeAnalysisPhase(compilation, this).apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
-        new CanonicalizerPhase().apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
+        if (GraalOptions.EscapeAnalysis) {
+            new EscapeAnalysisPhase(compilation, this).apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new CanonicalizerPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+        }
 
         if (GraalOptions.OptLoops) {
             new LoopPhase().apply(graph);

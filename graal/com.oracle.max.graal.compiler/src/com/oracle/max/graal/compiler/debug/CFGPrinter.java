@@ -479,7 +479,7 @@ public class CFGPrinter {
             out.println("LIR");
             for (int i = 0; i < lir.length(); i++) {
                 LIRInstruction inst = lir.at(i);
-                out.printf("nr %4d ", inst.id).print(COLUMN_END);
+                out.printf("nr %4d ", inst.id()).print(COLUMN_END);
 
                 if (inst.info != null) {
                     int level = out.indentationLevel();
