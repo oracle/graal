@@ -111,10 +111,15 @@ public class EscapeAnalysisPhase extends Phase {
                     } else {
                         List<Block> predecessors = block.getPredecessors();
                         Set<EscapeField> mergedFields = new HashSet<EscapeField>();
+
+                        BlockExitState predState = exitStates.get(predecessors.get(0));
+                        state.obj = predState == null ? null : predState.obj;
+
                         for (int i = 0; i < predecessors.size(); i++) {
                             BlockExitState exitState = exitStates.get(predecessors.get(i));
                             if (exitState == null) {
                                 mergedFields.addAll(fields.values());
+                                state.obj = null;
                                 break;
                             } else {
                                 for (EscapeField field : fields.values()) {
