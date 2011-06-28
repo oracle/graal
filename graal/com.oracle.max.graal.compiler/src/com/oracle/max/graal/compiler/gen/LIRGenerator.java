@@ -488,7 +488,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (node instanceof Compare) {
             return emitCompare((Compare) node);
         } else {
-            throw Util.unimplemented();
+            throw Util.unimplemented(node.toString());
         }
     }
 

@@ -1124,6 +1124,36 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private Value append(FixedNode fixed) {
+        if (fixed instanceof Deoptimize && lastInstr.predecessors().size() > 0) {
+            Node cur = lastInstr;
+            Node prev = cur;
+            while (cur != cur.graph().start() && !(cur instanceof ControlSplit)) {
+                assert cur.predecessors().size() == 1;
+                prev = cur;
+                cur = cur.predecessors().get(0);
+                if (cur.predecessors().size() == 0) {
+                    break;
+                }
+            }
+
+            if (cur instanceof If) {
+                If ifNode = (If) cur;
+                if (ifNode.falseSuccessor() == prev) {
+                    FixedNode successor = ifNode.trueSuccessor();
+                    BooleanNode condition = ifNode.compare();
+                    FixedGuard fixedGuard = new FixedGuard(graph);
+                    fixedGuard.setNext(successor);
+                    fixedGuard.setNode(condition);
+                    ifNode.replaceAndDelete(fixedGuard);
+                    lastInstr = null;
+                    return fixed;
+                }
+            } else {
+                prev.replaceAtPredecessors(fixed);
+                lastInstr = null;
+                return fixed;
+            }
+        }
         lastInstr.setNext(fixed);
         lastInstr = null;
         return fixed;
