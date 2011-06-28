@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -66,5 +68,10 @@ public final class EndNode extends FixedNode {
         assertTrue(usages().size() <= 1, "at most one usage");
         assertTrue(predecessors().size() <= 1, "at most one predecessor");
         return true;
+    }
+
+    @Override
+    public Iterable< ? extends Node> dataUsages() {
+        return Collections.emptyList();
     }
 }

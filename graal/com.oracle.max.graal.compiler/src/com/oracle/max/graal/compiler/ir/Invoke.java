@@ -34,7 +34,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code Invoke} instruction represents all kinds of method calls.
  */
-public final class Invoke extends AbstractMemoryMergeNode implements ExceptionEdgeInstruction {
+public final class Invoke extends AbstractMemoryCheckpointNode implements ExceptionEdgeInstruction {
 
     private final int argumentCount;
 

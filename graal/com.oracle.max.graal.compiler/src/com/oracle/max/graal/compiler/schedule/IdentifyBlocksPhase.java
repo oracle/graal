@@ -74,10 +74,9 @@ public class IdentifyBlocksPhase extends Phase {
         if (b.lastNode() == null) {
             b.setFirstNode(n);
             b.setLastNode(n);
+            b.getInstructions().add(n);
         } else {
-            if (b.firstNode() != b.lastNode()) {
-                b.getInstructions().add(0, b.firstNode());
-            }
+            b.getInstructions().add(0, n);
             b.setFirstNode(n);
         }
 
@@ -321,15 +320,15 @@ public class IdentifyBlocksPhase extends Phase {
         List<Node> sortedInstructions = new ArrayList<Node>(instructions.size() + 2);
 
         assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
-        assert !instructions.contains(b.firstNode());
-        assert !instructions.contains(b.lastNode());
+//        assert !instructions.contains(b.firstNode());
+//        assert !instructions.contains(b.lastNode());
         assert !map.isMarked(b.lastNode()) && nodeToBlock.get(b.lastNode()) == b;
 
-        addToSorting(b, b.firstNode(), sortedInstructions, map);
+        //addToSorting(b, b.firstNode(), sortedInstructions, map);
         for (Node i : instructions) {
             addToSorting(b, i, sortedInstructions, map);
         }
-        addToSorting(b, b.lastNode(), sortedInstructions, map);
+        //addToSorting(b, b.lastNode(), sortedInstructions, map);
 
         // Make sure that last node gets really last (i.e. when a frame state successor hangs off it).
         Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
@@ -351,6 +350,11 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
         b.setInstructions(sortedInstructions);
+//        TTY.println();
+//        TTY.println("B" + b.blockID());
+//        for (Node n : sortedInstructions) {
+//            TTY.println("n=" + n);
+//        }
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
@@ -358,9 +362,19 @@ public class IdentifyBlocksPhase extends Phase {
             return;
         }
 
+        if (i instanceof WriteNode) {
+            // Make sure every ReadNode that is connected to the same memory state is executed before every write node.
+            WriteNode wn = (WriteNode) i;
+            // TODO: Iterate over variablePart.
+            wn.inputs().variablePart();
+        }
+
         FrameState state = null;
+        WriteNode writeNode = null;
         for (Node input : i.inputs()) {
-            if (input instanceof FrameState) {
+            if (input instanceof WriteNode && !map.isMarked(input) && nodeToBlock.get(input) == b) {
+                writeNode = (WriteNode) input;
+            } else if (input instanceof FrameState) {
                 state = (FrameState) input;
             } else {
                 addToSorting(b, input, sortedInstructions, map);
@@ -373,20 +387,12 @@ public class IdentifyBlocksPhase extends Phase {
 
         map.mark(i);
 
-        for (Node succ : i.successors()) {
-            if (succ instanceof FrameState) {
-                addToSorting(b, succ, sortedInstructions, map);
-            }
-        }
-
-        if (state != null) {
-            addToSorting(b, state, sortedInstructions, map);
-        }
+        addToSorting(b, state, sortedInstructions, map);
+        assert writeNode == null || !map.isMarked(writeNode);
+        addToSorting(b, writeNode, sortedInstructions, map);
 
         // Now predecessors and inputs are scheduled => we can add this node.
-        if (!(i instanceof FrameState)) {
-            sortedInstructions.add(i);
-        }
+        sortedInstructions.add(i);
     }
 
     private void computeDominators() {

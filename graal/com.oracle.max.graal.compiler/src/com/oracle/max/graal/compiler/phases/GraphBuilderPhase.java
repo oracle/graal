@@ -201,7 +201,7 @@ public final class GraphBuilderPhase extends Phase {
         List<Loop> loops = LoopUtil.computeLoops(graph);
         NodeBitMap loopExits = graph.createNodeBitMap();
         for (Loop loop : loops) {
-            loopExits.markAll(loop.exist());
+            loopExits.setUnion(loop.exits());
         }
 
         // remove Placeholders
@@ -1167,6 +1167,7 @@ public final class GraphBuilderPhase extends Phase {
         if (block.firstInstruction == null) {
             if (block.isLoopHeader) {
                 LoopBegin loopBegin = new LoopBegin(graph);
+                loopBegin.addEnd(new EndNode(graph));
                 LoopEnd loopEnd = new LoopEnd(graph);
                 loopEnd.setLoopBegin(loopBegin);
                 Placeholder pBegin = new Placeholder(graph);

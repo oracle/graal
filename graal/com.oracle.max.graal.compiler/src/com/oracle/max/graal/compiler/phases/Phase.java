@@ -62,7 +62,21 @@ public abstract class Phase {
             GraalTimers.get(getName()).start();
         }
         //System.out.println("Starting Phase " + getName());
-        run(graph);
+        try {
+            run(graph);
+        } catch (AssertionError t) {
+            GraalCompilation compilation = GraalCompilation.compilation();
+            if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class) {
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "AssertionError in " + getName(), graph, true, false, true));
+            }
+            throw t;
+        } catch (RuntimeException t) {
+            GraalCompilation compilation = GraalCompilation.compilation();
+            if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class) {
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in " + getName(), graph, true, false, true));
+            }
+            throw t;
+        }
         //System.out.println("Finished Phase " + getName());
         if (GraalOptions.Time) {
             GraalTimers.get(getName()).stop();

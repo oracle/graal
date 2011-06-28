@@ -52,6 +52,8 @@ public class CompilationEvent {
     private CiTargetMethod targetMethod;
     private boolean hirValid = false;
     private boolean lirValid = false;
+    private boolean errorEvent;
+    private Map<String, Object> debugObjects;
 
     private Interval[] intervals;
     private int intervalsSize;
@@ -68,10 +70,23 @@ public class CompilationEvent {
     }
 
     public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid) {
+        this(compilation, label, graph, hirValid, lirValid, false, (Map<String, Object>) null);
+    }
+    public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, boolean error) {
+        this(compilation, label, graph, hirValid, lirValid, error, (Map<String, Object>) null);
+    }
+
+    public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, Map<String, Object> debugObjects) {
+        this(compilation, label, graph, hirValid, lirValid, false, debugObjects);
+    }
+
+    public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, boolean error, Map<String, Object> debugObjects) {
         this(compilation, label);
         this.graph = graph;
         this.hirValid = hirValid;
         this.lirValid = lirValid;
+        this.debugObjects = debugObjects;
+        this.errorEvent = error;
     }
 
     public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
@@ -128,6 +143,10 @@ public class CompilationEvent {
         return lirValid;
     }
 
+    public boolean isErrorEvent() {
+        return errorEvent;
+    }
+
     public Interval[] getIntervals() {
         if (intervalsCopy == null && intervals != null) {
             // deferred copy of the valid range of the intervals array
@@ -138,5 +157,10 @@ public class CompilationEvent {
 
     public int getCodeSize() {
         return codeSize;
+    }
+
+
+    public Map<String, Object> getDebugObjects() {
+        return debugObjects;
     }
 }

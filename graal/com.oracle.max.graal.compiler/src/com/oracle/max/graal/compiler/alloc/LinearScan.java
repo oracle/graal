@@ -1915,7 +1915,7 @@ public final class LinearScan {
         } while (current != null);
 
         for (CiValue val : values) {
-            assert val != null;
+//            assert val != null;
         }
 
         CiVirtualObject vobj = CiVirtualObject.get(type, values, obj.id());

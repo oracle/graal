@@ -34,13 +34,13 @@ public final class LocationNode extends FloatingNode {
 
     private int displacement;
     private CiKind valueKind;
-    private Object identity;
+    private Object locationIdentity;
 
     public LocationNode(Object identity, CiKind kind, int displacement, Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.displacement = displacement;
         this.valueKind = kind;
-        this.identity = identity;
+        this.locationIdentity = identity;
     }
 
     @Override
@@ -62,10 +62,18 @@ public final class LocationNode extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        return new LocationNode(identity, valueKind, displacement, into);
+        return new LocationNode(locationIdentity, valueKind, displacement, into);
     }
 
     public CiValue createAddress(LIRGenerator lirGenerator, Value object) {
         return new CiAddress(valueKind, lirGenerator.load(object), displacement);
+    }
+
+    public Object locationIdentity() {
+        return locationIdentity;
+    }
+
+    public boolean same(LocationNode location) {
+        return valueKind == location.valueKind && displacement == location.displacement;
     }
 }

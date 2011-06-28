@@ -27,10 +27,11 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class AccessNode extends StateSplit {
-    private static final int INPUT_COUNT = 2;
+public abstract class AccessNode extends AbstractMemoryCheckpointNode {
+    private static final int INPUT_COUNT = 3;
     private static final int INPUT_NODE = 0;
-    private static final int INPUT_GUARD = 1;
+    private static final int INPUT_LOCATION = 1;
+    private static final int INPUT_GUARD = 2;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -58,12 +59,16 @@ public abstract class AccessNode extends StateSplit {
     }
 
     public LocationNode location() {
-        return location;
+        return (LocationNode) inputs().get(super.inputCount() + INPUT_LOCATION);
+    }
+
+    public void setLocation(LocationNode n) {
+        inputs().set(super.inputCount() + INPUT_LOCATION, n);
     }
 
     public AccessNode(CiKind kind, Value object, LocationNode location, int inputCount, int successorCount, Graph graph) {
         super(kind, INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
-        this.location = location;
+        setLocation(location);
         setObject(object);
     }
 
