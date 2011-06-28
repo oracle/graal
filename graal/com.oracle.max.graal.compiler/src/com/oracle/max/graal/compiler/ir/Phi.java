@@ -22,7 +22,10 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.StateSplit.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -59,6 +62,7 @@ public final class Phi extends FloatingNode {
     }
 
     public void setMerge(Merge n) {
+        assert n != null;
         inputs().set(super.inputCount() + INPUT_MERGE, n);
     }
 
@@ -155,5 +159,17 @@ public final class Phi extends FloatingNode {
         Phi x = new Phi(kind, into);
         x.isDead = isDead;
         return x;
+    }
+
+    @Override
+    public Iterable<? extends Node> dataInputs() {
+        final Iterator< ? extends Node> input = super.dataInputs().iterator();
+        return new Iterable<Node>() {
+            @Override
+            public Iterator<Node> iterator() {
+                // TODO Auto-generated method stub
+                return new FilteringIterator(input, Merge.class);
+            }
+        };
     }
 }

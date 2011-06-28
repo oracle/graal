@@ -83,6 +83,16 @@ public class LoopBegin extends Merge{
         throw Util.shouldNotReachHere("unknown pred : " + pred + "(sp=" + forwardEdge() + ", le=" + this.loopEnd() + ")");
     }
 
+    @Override
+    public Node phiPredecessorAt(int index) {
+        if (index == 0) {
+            return forwardEdge();
+        } else if (index == 1) {
+            return loopEnd();
+        }
+        throw Util.shouldNotReachHere();
+    }
+
     public Collection<LoopCounter> counters() {
         return Util.filter(this.usages(), LoopCounter.class);
     }
@@ -106,6 +116,12 @@ public class LoopBegin extends Merge{
     @Override
     public String toString() {
         return "LoopBegin: " + super.toString();
+    }
+
+    @Override
+    public Node singlePredecessor() {
+        assert endCount() == 1;
+        return endAt(0).singlePredecessor();
     }
 
     @Override

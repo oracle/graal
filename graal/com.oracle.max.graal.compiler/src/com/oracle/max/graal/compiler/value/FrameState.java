@@ -420,6 +420,15 @@ public final class FrameState extends Value implements FrameStateAccess {
         return null;
     }
 
+    public StateSplit stateSplit() {
+        for (Node n : usages()) {
+            if (n instanceof StateSplit) {
+                return (StateSplit) n;
+            }
+        }
+        return null;
+    }
+
     /**
      * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
      * {@link FrameState#forEachLivePhi(Merge, PhiProcedure)}.
@@ -467,7 +476,7 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        /*StringBuilder sb = new StringBuilder();
         String nl = String.format("%n");
         sb.append("[bci: ").append(bci).append("]").append(nl);
         for (int i = 0; i < localsSize(); ++i) {
@@ -482,7 +491,8 @@ public final class FrameState extends Value implements FrameStateAccess {
             Value value = lockAt(i);
             sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
-        return sb.toString();
+        return sb.toString();*/
+        return super.toString();
     }
 
     @Override

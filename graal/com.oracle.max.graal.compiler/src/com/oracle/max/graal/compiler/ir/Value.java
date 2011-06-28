@@ -179,7 +179,7 @@ public abstract class Value extends Node {
         return properties;
     }
 
-    @Override
+    /*@Override
     public Iterable<? extends Node> dataUsages() {
         final Iterator<? extends Node> dataUsages = super.dataUsages().iterator();
         return new Iterable<Node>() {
@@ -188,5 +188,5 @@ public abstract class Value extends Node {
                 return new StateSplit.FilteringIterator(dataUsages, FrameState.class);
             }
         };
-    }
+    }*/
 }

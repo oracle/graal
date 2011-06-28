@@ -56,6 +56,7 @@ public class CompilationEvent {
     private Interval[] intervals;
     private int intervalsSize;
     private Interval[] intervalsCopy = null;
+    Map<String, Object> debugObjects;
 
     public CompilationEvent(GraalCompilation compilation) {
         this(compilation, null);
@@ -72,6 +73,14 @@ public class CompilationEvent {
         this.graph = graph;
         this.hirValid = hirValid;
         this.lirValid = lirValid;
+    }
+
+    public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, Map<String, Object> debugObjects) {
+        this(compilation, label);
+        this.graph = graph;
+        this.hirValid = hirValid;
+        this.lirValid = lirValid;
+        this.debugObjects = debugObjects;
     }
 
     public CompilationEvent(GraalCompilation compilation, String label, Graph graph, boolean hirValid, boolean lirValid, CiTargetMethod targetMethod) {
@@ -138,5 +147,10 @@ public class CompilationEvent {
 
     public int getCodeSize() {
         return codeSize;
+    }
+
+
+    public Map<String, Object> getDebugObjects() {
+        return debugObjects;
     }
 }

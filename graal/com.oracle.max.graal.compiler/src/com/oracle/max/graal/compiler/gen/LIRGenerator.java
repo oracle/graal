@@ -1464,6 +1464,9 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private void moveToPhi(Merge merge, Node pred) {
+        if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
+            TTY.println("MOVE TO PHI from " + pred + " to " + merge);
+        }
         int nextSuccIndex = merge.phiPredecessorIndex(pred);
         PhiResolver resolver = new PhiResolver(this);
         for (Phi phi : merge.phis()) {
