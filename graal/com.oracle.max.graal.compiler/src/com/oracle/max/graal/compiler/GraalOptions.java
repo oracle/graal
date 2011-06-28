@@ -80,6 +80,7 @@ public final class GraalOptions {
 
     // Ideal graph visualizer output settings
     public static boolean Plot                               = ____;
+    public static boolean PlotOnError                        = ____;
     public static int     PrintIdealGraphLevel               = 0;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
