@@ -72,7 +72,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
     };
 
-    private final CiCalleeSaveArea registerSaveArea;
+    private final CiCalleeSaveLayout registerSaveArea;
 
 
     public HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
@@ -83,9 +83,9 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         }
 
         if (globalStubConfig) {
-            registerSaveArea = new CiCalleeSaveArea(-1, 8, rsaRegs);
+            registerSaveArea = new CiCalleeSaveLayout(0, -1, 8, rsaRegs);
         } else {
-            registerSaveArea = CiCalleeSaveArea.EMPTY;
+            registerSaveArea = new CiCalleeSaveLayout(0, 0, 0, new CiRegister[0]);
         }
 
         attributesMap = RiRegisterAttributes.createMap(this, AMD64.allRegisters);
@@ -104,18 +104,18 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
     }
 
     @Override
-    public CiCallingConvention getCallingConvention(Type type, CiKind[] parameters, CiTarget target) {
+    public CiCallingConvention getCallingConvention(Type type, CiKind[] parameters, CiTarget target, boolean stackOnly) {
         if (type == Type.NativeCall) {
             throw new UnsupportedOperationException();
         }
-        return callingConvention(parameters, type, target);
+        return callingConvention(parameters, type, target, stackOnly);
     }
 
     public CiRegister[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
         return allParameterRegisters;
     }
 
-    private CiCallingConvention callingConvention(CiKind[] types, Type type, CiTarget target) {
+    private CiCallingConvention callingConvention(CiKind[] types, Type type, CiTarget target, boolean stackOnly) {
         CiValue[] locations = new CiValue[types.length];
 
         int currentGeneral = 0;
@@ -134,14 +134,14 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
                 case Long:
                 case Word:
                 case Object:
-                    if (currentGeneral < generalParameterRegisters.length) {
+                    if (!stackOnly && currentGeneral < generalParameterRegisters.length) {
                         CiRegister register = generalParameterRegisters[currentGeneral++];
                         locations[i] = register.asValue(kind);
                     }
                     break;
                 case Float:
                 case Double:
-                    if (currentXMM < xmmParameterRegisters.length) {
+                    if (!stackOnly && currentXMM < xmmParameterRegisters.length) {
                         CiRegister register = xmmParameterRegisters[currentXMM++];
                         locations[i] = register.asValue(kind);
                     }
@@ -193,7 +193,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         return rsp;
     }
 
-    public CiCalleeSaveArea getCalleeSaveArea() {
+    public CiCalleeSaveLayout getCalleeSaveLayout() {
         return registerSaveArea;
     }
 
@@ -202,7 +202,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         String res = String.format(
              "Allocatable: " + Arrays.toString(getAllocatableRegisters()) + "%n" +
              "CallerSave:  " + Arrays.toString(getCallerSaveRegisters()) + "%n" +
-             "CalleeSave:  " + getCalleeSaveArea() + "%n" +
+             "CalleeSave:  " + getCalleeSaveLayout() + "%n" +
              "Scratch:     " + getScratchRegister() + "%n");
         return res;
     }

@@ -98,7 +98,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         emitStandardForward(null, runtimeCall);
         String name = "stub-" + runtimeCall;
         CiTargetMethod targetMethod = tasm.finishTargetMethod(name, runtime, registerRestoreEpilogueOffset, true);
-        Object stubObject = runtime.registerGlobalStub(targetMethod, name);
+        Object stubObject = runtime.registerCompilerStub(targetMethod, name);
         return new GlobalStub(null, runtimeCall.resultKind, stubObject, argsSize, argOffsets, resultOffset);
     }
 
@@ -128,7 +128,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
 
         String name = "stub-" + stub;
         CiTargetMethod targetMethod = tasm.finishTargetMethod(name, runtime, registerRestoreEpilogueOffset, true);
-        Object stubObject = runtime.registerGlobalStub(targetMethod, name);
+        Object stubObject = runtime.registerCompilerStub(targetMethod, name);
         return new GlobalStub(stub, stub.resultKind, stubObject, argsSize, argOffsets, resultOffset);
     }
 
@@ -238,7 +238,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         assembler.emitXirInstructions(null, template.fastPath, labels, operands, null);
         epilogue();
         CiTargetMethod targetMethod = tasm.finishTargetMethod(template.name, runtime, registerRestoreEpilogueOffset, true);
-        Object stubObject = runtime.registerGlobalStub(targetMethod, template.name);
+        Object stubObject = runtime.registerCompilerStub(targetMethod, template.name);
         return new GlobalStub(null, template.resultOperand.kind, stubObject, argsSize, argOffsets, resultOffset);
     }
 
@@ -377,7 +377,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     }
 
     private void completeSavePrologue() {
-        CiCalleeSaveArea csa = compiler.globalStubRegisterConfig.getCalleeSaveArea();
+        CiCalleeSaveLayout csa = compiler.globalStubRegisterConfig.getCalleeSaveLayout();
         this.saveSize = csa.size;
         int entryCodeOffset = runtime.codeOffset();
         if (entryCodeOffset != 0) {
@@ -396,7 +396,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
         registerRestoreEpilogueOffset = asm.codeBuffer.position();
 
         if (savedAllRegisters) {
-            CiCalleeSaveArea csa = compiler.globalStubRegisterConfig.getCalleeSaveArea();
+            CiCalleeSaveLayout csa = compiler.globalStubRegisterConfig.getCalleeSaveLayout();
             int frameToCSA = 0;
             asm.restore(csa, frameToCSA);
         } else {
@@ -419,7 +419,7 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
 
     private void forwardRuntimeCall(CiRuntimeCall call) {
         // Load arguments
-        CiCallingConvention cc = compiler.globalStubRegisterConfig.getCallingConvention(RuntimeCall, call.arguments, target);
+        CiCallingConvention cc = compiler.globalStubRegisterConfig.getCallingConvention(RuntimeCall, call.arguments, target, false);
         for (int i = 0; i < cc.locations.length; ++i) {
             CiValue location = cc.locations[i];
             loadArgument(i, location.asRegister());

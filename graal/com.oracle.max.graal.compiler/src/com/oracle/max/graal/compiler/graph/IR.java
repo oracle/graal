@@ -109,6 +109,7 @@ public class IR {
         if (GraalOptions.Lower) {
             new LoweringPhase(compilation.runtime).apply(graph);
             new MemoryPhase().apply(graph);
+            new ReadEliminationPhase().apply(graph);
         }
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);

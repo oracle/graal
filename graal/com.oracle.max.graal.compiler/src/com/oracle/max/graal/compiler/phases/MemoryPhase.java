@@ -30,85 +30,224 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 public class MemoryPhase extends Phase {
 
     public static class MemoryMap {
 
         private final Block block;
-        private HashMap<Object, Node> locationToWrite;
-        private HashMap<Object, List<Node>> locationToReads;
+        private HashMap<Object, Node> locationForWrite;
+        private HashMap<Object, Node> locationForRead;
+        private Node mergeForWrite;
+        private Node mergeForRead;
+        private int mergeOperationCount;
+        private Node loopCheckPoint;
+        private MemoryMap loopEntryMap;
 
         public MemoryMap(Block b, MemoryMap memoryMap) {
             this(b);
+            if (b.firstNode() instanceof LoopBegin) {
+                loopCheckPoint = new WriteMemoryCheckpointNode(b.firstNode().graph());
+                mergeForWrite = loopCheckPoint;
+                mergeForRead = loopCheckPoint;
+                this.loopEntryMap = memoryMap;
+            } else {
+                memoryMap.locationForWrite.putAll(memoryMap.locationForWrite);
+                memoryMap.locationForRead.putAll(memoryMap.locationForRead);
+                mergeForWrite = memoryMap.mergeForWrite;
+                mergeForRead = memoryMap.mergeForRead;
+            }
         }
 
         public MemoryMap(Block b) {
-            block = b;
-            locationToWrite = new HashMap<Object, Node>();
-            locationToReads = new HashMap<Object, List<Node>>();
             if (GraalOptions.TraceMemoryMaps) {
                 TTY.println("Creating new memory map for block B" + b.blockID());
             }
+
+            block = b;
+            locationForWrite = new HashMap<Object, Node>();
+            locationForRead = new HashMap<Object, Node>();
+            StartNode startNode = b.firstNode().graph().start();
+            if (b.firstNode() == startNode) {
+                WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(startNode.graph());
+                checkpoint.setNext((FixedNode) startNode.start());
+                startNode.setStart(checkpoint);
+                mergeForWrite = checkpoint;
+                mergeForRead = checkpoint;
+            }
         }
 
-        public void mergeWith(MemoryMap memoryMap) {
+        public Node getLoopCheckPoint() {
+            return loopCheckPoint;
+        }
+
+        public MemoryMap getLoopEntryMap() {
+            return loopEntryMap;
+        }
+
+        public void resetMergeOperationCount() {
+            mergeOperationCount = 0;
+        }
+
+        public void mergeWith(MemoryMap memoryMap, Block block) {
             if (GraalOptions.TraceMemoryMaps) {
                 TTY.println("Merging with memory map of block B" + memoryMap.block.blockID());
             }
+            mergeForWrite = mergeNodes(mergeForWrite, memoryMap.mergeForWrite, locationForWrite, memoryMap.locationForWrite, block);
+            mergeForRead = mergeNodes(mergeForRead, memoryMap.mergeForRead, locationForRead, memoryMap.locationForRead, block);
+            mergeOperationCount++;
         }
 
-        public void createMemoryMerge(AbstractMemoryMergeNode memMerge) {
+        private Node mergeNodes(Node mergeLeft, Node mergeRight, HashMap<Object, Node> locationLeft, HashMap<Object, Node> locationRight, Block block) {
             if (GraalOptions.TraceMemoryMaps) {
-                TTY.println("Creating memory merge at node " + memMerge.id());
+                TTY.println("Merging main merge nodes: " + mergeLeft.id() + " and " + mergeRight.id());
             }
 
-            for (Entry<Object, Node> writeEntry : locationToWrite.entrySet()) {
+            for (Entry<Object, Node> e : locationRight.entrySet()) {
+                if (!locationLeft.containsKey(e.getKey())) {
+                    // Only available in right map => create correct node for left map.
+                    if (GraalOptions.TraceMemoryMaps) {
+                        TTY.println("Only right map " + e.getKey());
+                    }
+                    Node leftNode = mergeLeft;
+                    if (leftNode instanceof Phi && ((Phi) leftNode).merge() == block.firstNode()) {
+                        leftNode = leftNode.copyWithEdges();
+                    }
+                    locationLeft.put(e.getKey(), leftNode);
+                }
+            }
+
+            for (Entry<Object, Node> e : locationLeft.entrySet()) {
+                if (locationRight.containsKey(e.getKey())) {
+                    // Available in both maps.
+                    if (GraalOptions.TraceMemoryMaps) {
+                        TTY.println("Merging entries for location " + e.getKey());
+                    }
+                    locationLeft.put(e.getKey(), mergeNodes(e.getValue(), locationRight.get(e.getKey()), block));
+                } else {
+                    // Only available in left map.
+                    if (GraalOptions.TraceMemoryMaps) {
+                        TTY.println("Only available in left map " + e.getKey());
+                    }
+                    locationLeft.put(e.getKey(), mergeNodes(e.getValue(), mergeRight, block));
+                }
+            }
+
+            return mergeNodes(mergeLeft, mergeRight, block);
+        }
+
+        private Node mergeNodes(Node original, Node newValue, Block block) {
+            if (original == newValue) {
+                // Nothing to merge.
+                if (GraalOptions.TraceMemoryMaps) {
+                    TTY.println("Nothing to merge both nodes are " + original.id());
+                }
+                return original;
+            }
+            Merge m = (Merge) block.firstNode();
+            if (original instanceof Phi && ((Phi) original).merge() == m) {
+                Phi phi = (Phi) original;
+                phi.addInput(newValue);
+                if (GraalOptions.TraceMemoryMaps) {
+                    TTY.println("Add new input to phi " + original.id());
+                }
+                assert phi.valueCount() <= phi.merge().endCount();
+                return original;
+            } else {
+                Phi phi = new Phi(CiKind.Illegal, m, m.graph());
+                phi.makeDead(); // Phi does not produce a value, it is only a memory phi.
+                for (int i = 0; i < mergeOperationCount + 1; ++i) {
+                    phi.addInput(original);
+                }
+                phi.addInput(newValue);
+                if (GraalOptions.TraceMemoryMaps) {
+                    TTY.println("Creating new phi " + phi.id());
+                }
+                assert phi.valueCount() <= phi.merge().endCount() + ((phi.merge() instanceof LoopBegin) ? 1 : 0) : phi.merge() + "/" + phi.valueCount() + "/" + phi.merge().endCount() + "/" + mergeOperationCount;
+                return phi;
+            }
+        }
+
+        public void createWriteMemoryMerge(AbstractMemoryCheckpointNode memMerge) {
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Creating write memory checkpoint at node " + memMerge.id());
+            }
+
+            // Merge in all writes.
+            for (Entry<Object, Node> writeEntry : locationForWrite.entrySet()) {
                 memMerge.mergedNodes().add(writeEntry.getValue());
             }
-
-            for (Entry<Object, List<Node>> readEntry : locationToReads.entrySet()) {
-                memMerge.mergedNodes().addAll(readEntry.getValue());
-            }
-
-            locationToReads.clear();
-            locationToWrite.clear();
+            locationForWrite.clear();
+            mergeForWrite = memMerge;
         }
 
-        public void registerWrite(Object location, Node node) {
+        public void createReadWriteMemoryCheckpoint(AbstractMemoryCheckpointNode memMerge) {
+            if (GraalOptions.TraceMemoryMaps) {
+                TTY.println("Creating readwrite memory checkpoint at node " + memMerge.id());
+            }
+            createWriteMemoryMerge(memMerge);
+            locationForRead.clear();
+            mergeForRead = memMerge;
+        }
+
+        public void registerWrite(WriteNode node) {
+            Object location = node.location().locationIdentity();
             if (GraalOptions.TraceMemoryMaps) {
                 TTY.println("Register write to " + location + " at node " + node.id());
             }
 
-            if (locationToWrite.containsKey(location)) {
-                Node prevWrite = locationToWrite.get(location);
-                node.inputs().add(prevWrite);
-            }
+            // Create dependency on previous write to same location.
+            node.inputs().variablePart().add(getLocationForWrite(node));
 
-            if (locationToReads.containsKey(location)) {
-                for (Node prevRead : locationToReads.get(location)) {
-                    node.inputs().add(prevRead);
-                }
-            }
-            locationToWrite.put(location, node);
-            locationToReads.remove(location);
+            locationForWrite.put(location, node);
+            locationForRead.put(location, node);
         }
 
-        public void registerRead(Object location, Node node) {
+        public Node getLocationForWrite(WriteNode node) {
+            Object location = node.location().locationIdentity();
+            if (locationForWrite.containsKey(location)) {
+                Node prevWrite = locationForWrite.get(location);
+                return prevWrite;
+            } else {
+                return mergeForWrite;
+            }
+        }
+
+        public void registerRead(ReadNode node) {
             if (GraalOptions.TraceMemoryMaps) {
-                TTY.println("Register read to " + location + " at node " + node.id());
+                TTY.println("Register read to node " + node.id());
             }
 
-            if (locationToWrite.containsKey(location)) {
-                Node prevWrite = locationToWrite.get(location);
-                node.inputs().add(prevWrite);
-            }
+            // Create dependency on previous node that creates the memory state for this location.
+            node.inputs().variablePart().add(getLocationForRead(node));
+        }
 
-            if (!locationToReads.containsKey(location)) {
-                locationToReads.put(location, new ArrayList<Node>());
+        public Node getLocationForRead(ReadNode node) {
+            Object location = node.location().locationIdentity();
+            if (locationForRead.containsKey(location)) {
+                return locationForRead.get(location);
             }
-            locationToReads.get(location).add(node);
-            TTY.println("entrySet size" + locationToReads.entrySet());
+            return mergeForRead;
+        }
+
+        public void replaceCheckPoint(Node loopCheckPoint) {
+            List<Node> usages = new ArrayList<Node>(loopCheckPoint.usages());
+            for (Node n : usages) {
+                replaceCheckPoint(loopCheckPoint, n);
+            }
+        }
+
+        private void replaceCheckPoint(Node loopCheckPoint, Node n) {
+            if (n instanceof ReadNode) {
+                n.inputs().replace(loopCheckPoint, getLocationForRead((ReadNode) n));
+            } else if (n instanceof WriteNode) {
+                n.inputs().replace(loopCheckPoint, getLocationForWrite((WriteNode) n));
+            } else if (n instanceof WriteMemoryCheckpointNode) {
+                n.inputs().replace(loopCheckPoint, mergeForWrite);
+            } else {
+                n.inputs().replace(loopCheckPoint, mergeForRead);
+            }
         }
     }
 
@@ -120,11 +259,11 @@ public class MemoryPhase extends Phase {
         List<Block> blocks = s.getBlocks();
         MemoryMap[] memoryMaps = new MemoryMap[blocks.size()];
         for (final Block b : blocks) {
-            process(b, memoryMaps);
+            process(b, memoryMaps, s.getNodeToBlock());
         }
     }
 
-    private void process(final Block b, MemoryMap[] memoryMaps) {
+    private void process(final Block b, MemoryMap[] memoryMaps, NodeMap<Block> nodeMap) {
         // Visit every block at most once.
         if (memoryMaps[b.blockID()] != null) {
             return;
@@ -132,7 +271,7 @@ public class MemoryPhase extends Phase {
 
         // Process predecessors before this block.
         for (Block pred : b.getPredecessors()) {
-            process(pred, memoryMaps);
+            process(pred, memoryMaps, nodeMap);
         }
 
         // Create initial memory map for the block.
@@ -142,24 +281,44 @@ public class MemoryPhase extends Phase {
         } else {
             map = new MemoryMap(b, memoryMaps[b.getPredecessors().get(0).blockID()]);
             for (int i = 1; i < b.getPredecessors().size(); ++i) {
-                map.mergeWith(memoryMaps[b.getPredecessors().get(0).blockID()]);
+                assert b.firstNode() instanceof Merge : b.firstNode();
+                Block block = b.getPredecessors().get(i);
+                map.mergeWith(memoryMaps[block.blockID()], b);
             }
         }
 
-        // Lower the instructions of this block.
+        // Create the floating memory checkpoint instructions.
         for (final Node n : b.getInstructions()) {
-            // This memory merge node is not lowered => create a memory merge nevertheless.
-            if (n instanceof AbstractMemoryMergeNode) {
-                map.createMemoryMerge((AbstractMemoryMergeNode) n);
-            } else if (n instanceof ReadNode) {
+            if (n instanceof ReadNode) {
                 ReadNode readNode = (ReadNode) n;
-
+                readNode.replaceAtPredecessors(readNode.next());
+                readNode.setNext(null);
+                map.registerRead(readNode);
             } else if (n instanceof WriteNode) {
                 WriteNode writeNode = (WriteNode) n;
-
+                WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(writeNode.graph());
+                checkpoint.setStateAfter(writeNode.stateAfter());
+                writeNode.setStateAfter(null);
+                checkpoint.setNext(writeNode.next());
+                writeNode.setNext(null);
+                writeNode.replaceAtPredecessors(checkpoint);
+                map.registerWrite(writeNode);
+                map.createWriteMemoryMerge(checkpoint);
+            } else if (n instanceof AbstractMemoryCheckpointNode) {
+                map.createReadWriteMemoryCheckpoint((AbstractMemoryCheckpointNode) n);
             }
         }
 
         memoryMaps[b.blockID()] = map;
+        if (b.lastNode() instanceof LoopEnd) {
+            LoopEnd end = (LoopEnd) b.lastNode();
+            LoopBegin begin = end.loopBegin();
+            Block beginBlock = nodeMap.get(begin);
+            MemoryMap memoryMap = memoryMaps[beginBlock.blockID()];
+            memoryMap.getLoopEntryMap().resetMergeOperationCount();
+            memoryMap.getLoopEntryMap().mergeWith(map, beginBlock);
+            Node loopCheckPoint = memoryMap.getLoopCheckPoint();
+            memoryMap.getLoopEntryMap().replaceCheckPoint(loopCheckPoint);
+        }
     }
 }

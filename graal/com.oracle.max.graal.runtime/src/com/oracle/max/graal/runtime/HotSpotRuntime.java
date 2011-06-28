@@ -82,8 +82,8 @@ public class HotSpotRuntime implements RiRuntime {
                     return "{" + call.runtimeCall.name() + "}";
                 } else if (call.symbol != null) {
                     return "{" + call.symbol + "}";
-                } else if (call.globalStubID != null) {
-                    return "{" + call.globalStubID + "}";
+                } else if (call.stubID != null) {
+                    return "{" + call.stubID + "}";
                 } else {
                     return "{" + call.method + "}";
                 }
@@ -178,7 +178,7 @@ public class HotSpotRuntime implements RiRuntime {
     }
 
     @Override
-    public Object registerGlobalStub(CiTargetMethod targetMethod, String name) {
+    public Object registerCompilerStub(CiTargetMethod targetMethod, String name) {
         return HotSpotTargetMethod.installStub(compiler, targetMethod, name);
     }
 
@@ -266,10 +266,6 @@ public class HotSpotRuntime implements RiRuntime {
             memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryWrite.setStateAfter(field.stateAfter());
             memoryWrite.setNext(field.next());
-
-            //MemoryMergeNode memoryMergeNode = new MemoryMergeNode(graph);
-            //memoryMergeNode.setStateAfter(field.stateAfter());
-            //tool.createMemoryMerge(memoryMergeNode);
             if (field.field().kind() == CiKind.Object && !field.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = new FieldWriteBarrier(field.object(), graph);
                 memoryWrite.setNext(writeBarrier);

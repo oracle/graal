@@ -171,6 +171,10 @@ public class Block {
         return "B" + blockID;
     }
 
+    public boolean isLoopHeader() {
+        return firstNode instanceof LoopBegin;
+    }
+
     public Block dominator() {
         return dominator;
     }

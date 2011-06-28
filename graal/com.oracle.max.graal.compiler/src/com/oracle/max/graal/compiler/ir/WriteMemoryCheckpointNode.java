@@ -22,26 +22,34 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import java.util.*;
-
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class AbstractMemoryMergeNode extends StateSplit {
+public final class WriteMemoryCheckpointNode extends AbstractMemoryCheckpointNode {
 
     private static final int SUCCESSOR_COUNT = 0;
     private static final int INPUT_COUNT = 0;
 
-    public AbstractMemoryMergeNode(Graph graph) {
+    public WriteMemoryCheckpointNode(Graph graph) {
         this(CiKind.Illegal, 0, 0, graph);
     }
 
-    public AbstractMemoryMergeNode(CiKind result, int inputCount, int successorCount, Graph graph) {
+    public WriteMemoryCheckpointNode(CiKind result, int inputCount, int successorCount, Graph graph) {
         super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
-    public List<Node> mergedNodes() {
-        return inputs().variablePart();
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+            return null;
+        }
+        return super.lookup(clazz);
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        return new WriteMemoryCheckpointNode(into);
     }
 }
