@@ -102,6 +102,7 @@ public final class GraalOptions {
     public static boolean TraceInlining                      = ____;
     public static boolean TraceDeadCodeElimination           = ____;
     public static boolean TraceMemoryMaps                    = ____;
+    public static boolean TraceReadElimination               = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean QuietBailout                       = ____;
 

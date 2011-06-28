@@ -72,4 +72,8 @@ public final class LocationNode extends FloatingNode {
     public Object locationIdentity() {
         return locationIdentity;
     }
+
+    public boolean same(LocationNode location) {
+        return valueKind == location.valueKind && displacement == location.displacement;
+    }
 }
