@@ -142,12 +142,17 @@ public class LoopUtil {
             for (Node usage : n.dataUsages()) {
                 if (usage instanceof Phi) { // filter out data graph cycles
                     Phi phi = (Phi) usage;
-                    Merge merge = phi.merge();
-                    if (merge instanceof LoopBegin) {
-                        LoopBegin phiLoop = (LoopBegin) merge;
-                        int backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
-                        if (phi.valueAt(backIndex) == n) {
-                            continue;
+                    if (!phi.isDead()) {
+                        Merge merge = phi.merge();
+                        if (merge instanceof LoopBegin) {
+                            LoopBegin phiLoop = (LoopBegin) merge;
+                            int backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
+                            if (backIndex >= phi.valueCount()) {
+                                System.out.println("Wierd phi : " + phi);
+                            }
+                            if (phi.valueAt(backIndex) == n) {
+                                continue;
+                            }
                         }
                     }
                 }
