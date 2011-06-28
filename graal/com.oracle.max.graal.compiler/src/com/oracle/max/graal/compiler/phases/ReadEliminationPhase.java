@@ -38,7 +38,7 @@ public class ReadEliminationPhase extends Phase {
             Node memoryInput = n.inputs().variablePart().get(0);
             if (memoryInput instanceof WriteNode) {
                 WriteNode other = (WriteNode) memoryInput;
-                if (other.object() == n.object() && other.location().same(n.location())) {
+                if (other.object() == n.object() && other.location() == n.location()) {
                     if (GraalOptions.TraceReadElimination) {
                         TTY.println("Eliminated memory read " + n + "and replaced with node " + other.value());
                     }

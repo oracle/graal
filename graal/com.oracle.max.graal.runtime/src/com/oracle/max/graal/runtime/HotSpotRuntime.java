@@ -251,7 +251,7 @@ public class HotSpotRuntime implements RiRuntime {
             Graph graph = field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind != CiKind.Illegal;
-            ReadNode memoryRead = new ReadNode(field.field().kind().stackKind(), field.object(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
+            ReadNode memoryRead = new ReadNode(field.field().kind().stackKind(), field.object(), LocationNode.create(field.field(), field.field().kind(), displacement, graph), graph);
             memoryRead.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryRead.setNext(field.next());
             field.replaceAndDelete(memoryRead);
@@ -262,7 +262,7 @@ public class HotSpotRuntime implements RiRuntime {
             }
             Graph graph = field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
-            WriteNode memoryWrite = new WriteNode(CiKind.Illegal, field.object(), field.value(), new LocationNode(field.field(), field.field().kind(), displacement, graph), graph);
+            WriteNode memoryWrite = new WriteNode(CiKind.Illegal, field.object(), field.value(), LocationNode.create(field.field(), field.field().kind(), displacement, graph), graph);
             memoryWrite.setGuard((GuardNode) tool.createGuard(new IsNonNull(field.object(), graph)));
             memoryWrite.setStateAfter(field.stateAfter());
             memoryWrite.setNext(field.next());
