@@ -83,11 +83,7 @@ public final class IsNonNull extends BooleanNode {
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof IsNonNull) {
-            IsNonNull o = (IsNonNull) i;
-            return object() == o.object();
-        }
-        return false;
+        return i instanceof IsNonNull;
     }
 
     @Override
