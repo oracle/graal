@@ -99,6 +99,10 @@ public class IR {
             new CanonicalizerPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
         }
+
+        if (GraalOptions.OptGVN) {
+            new GlobalValueNumberingPhase().apply(graph);
+        }
 //
 //        new EscapeAnalysisPhase().apply(graph);
 
@@ -109,6 +113,9 @@ public class IR {
         if (GraalOptions.Lower) {
             new LoweringPhase(compilation.runtime).apply(graph);
             new MemoryPhase().apply(graph);
+            if (GraalOptions.OptGVN) {
+                new GlobalValueNumberingPhase().apply(graph);
+            }
             new ReadEliminationPhase().apply(graph);
         }
 

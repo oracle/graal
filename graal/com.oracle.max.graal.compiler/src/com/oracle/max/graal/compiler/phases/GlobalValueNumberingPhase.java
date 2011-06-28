@@ -20,39 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.phases;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
-
-public final class ReadNode extends AccessNode {
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
-
-    public ReadNode(CiKind kind, Value object, LocationNode location, Graph graph) {
-        super(kind, object, location, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
+/**
+ * Duplicates every node in the graph to test the implementation of the {@link com.oracle.max.graal.graph.Node#copy()} method in node subclasses.
+ */
+public class GlobalValueNumberingPhase extends Phase {
 
     @Override
-    public void accept(ValueVisitor v) {
-        v.visitMemoryRead(this);
+    protected void run(Graph graph) {
+        NodeBitMap visited = graph.createNodeBitMap();
+        for (Node n : graph.getNodes()) {
+            apply(n, visited);
+        }
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print("mem read from ").print(object());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof ReadNode;
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        return new ReadNode(super.kind, null, null, into);
+    private void apply(Node n, NodeBitMap visited) {
+        if (n != null && !visited.isMarked(n)) {
+            visited.mark(n);
+            for (Node input : n.inputs()) {
+                apply(input, visited);
+            }
+            Node newNode = n.graph().ideal(n);
+            if (GraalOptions.TraceGVN && newNode != n) {
+                TTY.println("GVN applied and new node is " + newNode);
+            }
+        }
     }
 }
