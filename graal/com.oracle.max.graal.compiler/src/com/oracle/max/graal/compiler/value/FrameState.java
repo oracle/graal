@@ -480,9 +480,17 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     @Override
     public String toString() {
-        /*StringBuilder sb = new StringBuilder();
+        return super.toString();
+    }
+
+    public String toDetailedString() {
+        StringBuilder sb = new StringBuilder();
         String nl = String.format("%n");
-        sb.append("[bci: ").append(bci).append("]").append(nl);
+        sb.append("[bci: ").append(bci).append("]");
+        if (rethrowException()) {
+            sb.append(" rethrows Exception");
+        }
+        sb.append(nl);
         for (int i = 0; i < localsSize(); ++i) {
             Value value = localAt(i);
             sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
@@ -495,8 +503,7 @@ public final class FrameState extends Value implements FrameStateAccess {
             Value value = lockAt(i);
             sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
-        return sb.toString();*/
-        return super.toString();
+        return sb.toString();
     }
 
     @Override

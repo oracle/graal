@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 

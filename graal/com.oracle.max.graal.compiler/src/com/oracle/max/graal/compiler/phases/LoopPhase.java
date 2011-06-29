@@ -38,14 +38,14 @@ public class LoopPhase extends Phase {
     protected void run(Graph graph) {
         List<Loop> loops = LoopUtil.computeLoops(graph);
 
-//        for (Loop loop : loops) {
-//            LoopUtil.peelLoop(loop);
-//        }
-//        loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
-
         for (Loop loop : loops) {
-            doLoopCounters(loop);
+            LoopUtil.peelLoop(loop);
         }
+        loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
+
+//        for (Loop loop : loops) {
+//            doLoopCounters(loop);
+//        }
     }
 
     private void doLoopCounters(Loop loop) {

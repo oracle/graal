@@ -346,7 +346,7 @@ public class LoopUtil {
                         phiMap = graph.createNodeMap();
                         newExitValues.set(originalValue, phiMap);
                     }
-                    phiMap.set(oEnd, (Value) originalValue);
+                    phiMap.set(original, (Value) originalValue);
                     phiMap.set(nEnd, (Value) newValue);
 
                     phiMap = newExitValues.get(newValue);
@@ -354,7 +354,7 @@ public class LoopUtil {
                         phiMap = graph.createNodeMap();
                         newExitValues.set(newValue, phiMap);
                     }
-                    phiMap.set(oEnd, (Value) originalValue);
+                    phiMap.set(original, (Value) originalValue);
                     phiMap.set(nEnd, (Value) newValue);
                 }
             }
@@ -447,6 +447,7 @@ public class LoopUtil {
             private Value getValueAt(Node point, NodeMap<Value> valueMap, CiKind kind) {
                 Value value = valueMap.get(point);
                 if (value != null) {
+                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = " + value);
                     return value;
                 }
                 Merge merge = (Merge) point;
@@ -468,10 +469,12 @@ public class LoopUtil {
                     for (EndNode end : merge.cfgPredecessors()) {
                         phi.addInput(getValueAt(colors.get(end), valueMap, kind));
                     }
+                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = " + phi);
                     return phi;
                 } else {
                     assert v != null;
                     valueMap.set(point, v);
+                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = " + v);
                     return v;
                 }
             }
@@ -481,6 +484,7 @@ public class LoopUtil {
             }
             @Override
             public void fixNode(Node node, Node color) {
+                //System.out.println("fixNode(" + node + ", " + color + ")");
                 for (int i = 0; i < node.inputs().size(); i++) {
                     Node input = node.inputs().get(i);
                     if (input == null || newExitValues.isNew(input)) {
@@ -489,9 +493,7 @@ public class LoopUtil {
                     NodeMap<Value> valueMap = newExitValues.get(input);
                     if (valueMap != null) {
                         Value replacement = getValueAt(color, valueMap, ((Value) input).kind);
-                        //if (!(replacement instanceof Phi && replacement == node)) { // handle the Phi that were created when merging loop exits
-                            node.inputs().set(i, replacement);
-                        //}
+                        node.inputs().set(i, replacement);
                     }
                 }
             }
@@ -526,6 +528,7 @@ public class LoopUtil {
 
         for (Node exit : loop.exits()) {
             if (marked.isMarked(exit.singlePredecessor())) {
+                //System.out.println("Exit : " + exit);
                 marked.mark(((Placeholder) exit).stateAfter());
                 Placeholder p = new Placeholder(graph);
                 replacements.put(exit, p);
