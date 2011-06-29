@@ -95,18 +95,18 @@ public class HotSpotField extends CompilerObject implements RiField {
         return holder;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof HotSpotField) {
-            HotSpotField other = (HotSpotField) obj;
-            return other.offset == offset && other.holder.equals(holder());
-        }
-        return false;
-    }
+//    @Override
+//    public boolean equals(Object obj) {
+//        if (obj instanceof HotSpotField) {
+//            HotSpotField other = (HotSpotField) obj;
+//            return other.offset == offset && other.holder.equals(holder());
+//        }
+//        return false;
+//    }
 
     @Override
     public boolean isResolved() {
-        return offset != -1;
+        return holder.isResolved();
     }
 
     @Override
@@ -130,7 +130,7 @@ public class HotSpotField extends CompilerObject implements RiField {
 
     @Override
     public String toString() {
-        return "HotSpotField<" + holder.name() + "." + name + ">";
+        return "HotSpotField<" + holder.name() + "." + name + ":" + offset + ">";
     }
 
 }

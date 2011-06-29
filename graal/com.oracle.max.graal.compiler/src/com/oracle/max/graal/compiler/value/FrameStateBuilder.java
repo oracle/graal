@@ -509,7 +509,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     public FrameState duplicateWithoutStack(int bci) {
-        FrameState frameState = new FrameState(method, bci, locals, new Value[0], 0, locks, true, graph);
+        FrameState frameState = new FrameState(method, bci, locals, new Value[0], 0, locks, false, graph);
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }

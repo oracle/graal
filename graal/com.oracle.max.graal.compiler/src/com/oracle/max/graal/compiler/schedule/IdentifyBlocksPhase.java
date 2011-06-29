@@ -125,6 +125,7 @@ public class IdentifyBlocksPhase extends Phase {
                         break;
                     }
                     currentNode = currentNode.singlePredecessor();
+                    assert !currentNode.isDeleted();
                 }
             }
         }
