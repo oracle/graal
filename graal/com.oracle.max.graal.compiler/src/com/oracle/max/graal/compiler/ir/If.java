@@ -22,7 +22,9 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -112,4 +114,35 @@ public final class If extends ControlSplit {
     public Node copy(Graph into) {
         return new If(null, into);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            If ifNode = (If) node;
+            if (ifNode.compare() instanceof Constant) {
+                Constant c = (Constant) ifNode.compare();
+                if (c.asConstant().asBoolean()) {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Replacing if " + ifNode + " with true branch");
+                    }
+                    return ifNode.trueSuccessor();
+                } else {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Replacing if " + ifNode + " with false branch");
+                    }
+                    return ifNode.falseSuccessor();
+                }
+            }
+            return ifNode;
+        }
+    };
 }

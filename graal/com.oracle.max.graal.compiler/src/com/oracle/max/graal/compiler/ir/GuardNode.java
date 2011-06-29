@@ -22,7 +22,10 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.Deoptimize.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -64,11 +67,37 @@ public final class GuardNode extends FloatingNode {
 
     @Override
     public void print(LogStream out) {
-        out.print("clip node ").print(node());
+        out.print("guard node ").print(node());
     }
 
     @Override
     public Node copy(Graph into) {
         return new GuardNode(into);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            GuardNode guard = (GuardNode) node;
+            if (guard.node() instanceof Constant) {
+                Constant c = (Constant) guard.node();
+                if (c.asConstant().asBoolean()) {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Removing redundant floating guard " + guard);
+                    }
+                    return Node.Null;
+                }
+            }
+            return guard;
+        }
+    };
 }

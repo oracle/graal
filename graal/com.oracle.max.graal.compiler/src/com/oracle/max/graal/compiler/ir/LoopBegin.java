@@ -43,7 +43,6 @@ public class LoopBegin extends Merge{
                 }
             }
         }
-        assert false : "LoopBegin should always have a LoopEnd";
         return null;
     }
 
@@ -64,8 +63,7 @@ public class LoopBegin extends Merge{
 
     @Override
     public Node copy(Graph into) {
-        LoopBegin x = new LoopBegin(into);
-        return x;
+        return new LoopBegin(into);
     }
 
     @Override

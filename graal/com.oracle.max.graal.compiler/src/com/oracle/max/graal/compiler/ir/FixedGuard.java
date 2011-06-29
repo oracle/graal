@@ -22,7 +22,10 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -62,4 +65,35 @@ public final class FixedGuard extends FixedNodeWithNext {
     public Node copy(Graph into) {
         return new FixedGuard(into);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            FixedGuard fixedGuard = (FixedGuard) node;
+            if (fixedGuard.node() instanceof Constant) {
+                Constant c = (Constant) fixedGuard.node();
+                if (c.asConstant().asBoolean()) {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Removing redundant fixed guard " + fixedGuard);
+                    }
+                    return fixedGuard.next();
+                } else {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Replacing fixed guard " + fixedGuard + " with deoptimization node");
+                    }
+                    return new Deoptimize(DeoptAction.InvalidateRecompile, fixedGuard.graph());
+                }
+            }
+            return fixedGuard;
+        }
+    };
 }

@@ -35,54 +35,29 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private NodeFlood flood;
     private Graph graph;
-    private ArrayList<LoopBegin> brokenLoops;
 
     @Override
     protected void run(Graph graph) {
         this.graph = graph;
         this.flood = graph.createNodeFlood();
-        this.brokenLoops = new ArrayList<LoopBegin>();
-
-        // remove chained Merges
-        for (Merge merge : graph.getNodes(Merge.class)) {
-            if (merge.endCount() == 1 && merge.usages().size() == 0 && !(merge instanceof LoopBegin)) {
-                FixedNode next = merge.next();
-                EndNode endNode = merge.endAt(0);
-                merge.delete();
-                endNode.replaceAndDelete(next);
-            }
-        }
-        // remove if nodes with constant-value comparison
-//        for (If ifNode : graph.getNodes(If.class)) {
-//            Compare compare = ifNode.compare();
-//            if (compare.x().isConstant() && compare.y().isConstant()) {
-//                CiConstant constX = compare.x().asConstant();
-//                CiConstant constY = compare.y().asConstant();
-//                Boolean result = compare.condition().foldCondition(constX, constY, GraalCompilation.compilation().runtime);
-//                if (result != null) {
-//                    Node actualSuccessor = result ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-//                    ifNode.replace(actualSuccessor);
-//                } else {
-//                    TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
-//                }
-//            }
-//        }
 
         flood.add(graph.start());
-
         iterateSuccessors();
         disconnectCFGNodes();
         iterateInputs();
         disconnectNodes();
         deleteNodes();
 
-        deleteBrokenLoops();
+        // remove chained Merges
+        for (Merge merge : graph.getNodes(Merge.class)) {
+            if (merge.endCount() == 1 && !(merge instanceof LoopBegin)) {
+                replacePhis(merge);
+                merge.endAt(0).replaceAndDelete(merge.next());
+                merge.delete();
+            }
+        }
 
         new PhiSimplifier(graph);
-
-        if (GraalOptions.TraceDeadCodeElimination) {
-            TTY.println("dead code elimination finished");
-        }
     }
 
     private void iterateSuccessors() {
@@ -108,20 +83,28 @@ public class DeadCodeEliminationPhase extends Phase {
                         // We are a dead end node leading to a live merge.
                         merge.removeEnd(end);
                     }
+                } else if (node instanceof LoopEnd) {
+                    LoopBegin loop = ((LoopEnd) node).loopBegin();
+                    if (flood.isMarked(loop)) {
+                        if (GraalOptions.TraceDeadCodeElimination) {
+                            TTY.println("Building loop begin node back: " + loop);
+                        }
+                        ((LoopEnd) node).setLoopBegin(null);
+                        EndNode endNode = loop.endAt(0);
+                        assert endNode.predecessors().size() == 1 : endNode.predecessors().size();
+                        replacePhis(loop);
+                        endNode.replaceAndDelete(loop.next());
+                        loop.delete();
+                    }
                 }
             }
         }
     }
 
-    private void deleteBrokenLoops() {
-        for (LoopBegin loop : brokenLoops) {
-            assert loop.predecessors().size() == 1;
-            for (Node usage : new ArrayList<Node>(loop.usages())) {
-                assert usage instanceof Phi;
-                usage.replaceAndDelete(((Phi) usage).valueAt(0));
-            }
-
-            loop.replaceAndDelete(loop.next());
+    private void replacePhis(Merge merge) {
+        for (Node usage : new ArrayList<Node>(merge.usages())) {
+            assert usage instanceof Phi;
+            usage.replaceAndDelete(((Phi) usage).valueAt(0));
         }
     }
 

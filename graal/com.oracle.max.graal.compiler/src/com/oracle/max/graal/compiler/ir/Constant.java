@@ -33,7 +33,7 @@ import com.sun.cri.ri.*;
  * The {@code Constant} instruction represents a constant such as an integer value,
  * long, float, object reference, address, etc.
  */
-public final class Constant extends FloatingNode {
+public final class Constant extends BooleanNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -53,6 +53,14 @@ public final class Constant extends FloatingNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitConstant(this);
+    }
+
+    @Override
+    public BooleanNode negate() {
+        if (kind != CiKind.Boolean) {
+            throw new IllegalStateException();
+        }
+        return Constant.forBoolean(!value.asBoolean(), graph());
     }
 
     /**
@@ -193,7 +201,6 @@ public final class Constant extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        Constant x = new Constant(value, into);
-        return x;
+        return new Constant(value, into);
     }
 }

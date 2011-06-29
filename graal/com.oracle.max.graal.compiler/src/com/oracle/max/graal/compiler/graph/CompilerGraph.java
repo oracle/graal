@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.graph;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ri.*;
 
 
 public class CompilerGraph extends Graph {
@@ -56,6 +57,9 @@ public class CompilerGraph extends Graph {
         return unwindSingleton;
     }
 
+    public RiRuntime runtime() {
+        return compilation.runtime;
+    }
 
     public GraalCompilation getCompilation() {
         return compilation;
