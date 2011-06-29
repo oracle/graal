@@ -738,10 +738,10 @@ public final class GraphBuilderPhase extends Phase {
         int cpi = stream().readCPI();
         RiType type = constantPool.lookupType(cpi, CHECKCAST);
         boolean isInitialized = type.isResolved();
-        Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
+        Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
         if (typeInstruction != null) {
-            frameState.apush(append(new CheckCast(type, typeInstruction, object, graph)));
+            frameState.apush(append(new CheckCast(typeInstruction, object, graph)));
         } else {
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
@@ -751,10 +751,10 @@ public final class GraphBuilderPhase extends Phase {
         int cpi = stream().readCPI();
         RiType type = constantPool.lookupType(cpi, INSTANCEOF);
         boolean isInitialized = type.isResolved();
-        Value typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
+        Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
         if (typeInstruction != null) {
-            frameState.ipush(append(new InstanceOf(type, typeInstruction, object, graph)));
+            frameState.ipush(append(new InstanceOf(typeInstruction, object, graph)));
         } else {
             frameState.ipush(appendConstant(CiConstant.INT_0));
         }
@@ -869,7 +869,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private Value genTypeOrDeopt(RiType.Representation representation, RiType holder, boolean initialized, int cpi) {
+    private Constant genTypeOrDeopt(RiType.Representation representation, RiType holder, boolean initialized, int cpi) {
         if (initialized) {
             return appendConstant(holder.getEncoding(representation));
         } else {
@@ -1119,8 +1119,8 @@ public final class GraphBuilderPhase extends Phase {
         append(lookupSwitch);
     }
 
-    private Value appendConstant(CiConstant constant) {
-        return append(new Constant(constant, graph));
+    private Constant appendConstant(CiConstant constant) {
+        return new Constant(constant, graph);
     }
 
     private Value append(FixedNode fixed) {

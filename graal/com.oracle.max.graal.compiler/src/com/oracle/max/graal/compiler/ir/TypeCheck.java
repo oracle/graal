@@ -61,15 +61,22 @@ public abstract class TypeCheck extends FloatingNode {
     /**
      * The instruction that loads the target class object that is used by this checkcast.
      */
-     public Value targetClassInstruction() {
-        return (Value) inputs().get(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION);
+     public Constant targetClassInstruction() {
+        return (Constant) inputs().get(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION);
     }
 
-    public Value setTargetClassInstruction(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION, n);
+    private void setTargetClassInstruction(Constant n) {
+        inputs().set(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION, n);
     }
 
-    final RiType targetClass;
+
+    /**
+     * Gets the target class, i.e. the class being cast to, or the class being tested against.
+     * @return the target class
+     */
+    public RiType targetClass() {
+        return (RiType) targetClassInstruction().asConstant().asObject();
+    }
 
     /**
      * Creates a new TypeCheck instruction.
@@ -80,27 +87,9 @@ public abstract class TypeCheck extends FloatingNode {
      * @param successorCount
      * @param graph
      */
-    public TypeCheck(RiType targetClass, Value targetClassInstruction, Value object, CiKind kind, int inputCount, int successorCount, Graph graph) {
+    public TypeCheck(Constant targetClassInstruction, Value object, CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
-        this.targetClass = targetClass;
         setObject(object);
         setTargetClassInstruction(targetClassInstruction);
     }
-
-    /**
-     * Gets the target class, i.e. the class being cast to, or the class being tested against.
-     * @return the target class
-     */
-    public RiType targetClass() {
-        return targetClass;
-    }
-
-    /**
-     * Checks whether the target class of this instruction is loaded.
-     * @return {@code true} if the target class is loaded
-     */
-    public boolean isLoaded() {
-        return targetClass != null;
-    }
-
 }

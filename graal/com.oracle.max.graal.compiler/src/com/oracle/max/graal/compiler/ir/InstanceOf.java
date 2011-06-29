@@ -27,7 +27,6 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code InstanceOf} instruction represents an instanceof test.
@@ -43,8 +42,8 @@ public final class InstanceOf extends TypeCheck {
      * @param object the instruction producing the object input to this instruction
      * @param graph
      */
-    public InstanceOf(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {
-        super(targetClass, targetClassInstruction, object, CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public InstanceOf(Constant targetClassInstruction, Value object, Graph graph) {
+        super(targetClassInstruction, object, CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -59,11 +58,7 @@ public final class InstanceOf extends TypeCheck {
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof InstanceOf) {
-            InstanceOf o = (InstanceOf) i;
-            return targetClass == o.targetClass && object() == o.object();
-        }
-        return false;
+        return i instanceof InstanceOf;
     }
 
     @Override
@@ -73,7 +68,6 @@ public final class InstanceOf extends TypeCheck {
 
     @Override
     public Node copy(Graph into) {
-        InstanceOf x = new InstanceOf(targetClass, null, null, into);
-        return x;
+        return new InstanceOf(null, null, into);
     }
 }

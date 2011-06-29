@@ -43,8 +43,8 @@ public final class CheckCast extends TypeCheck {
      * @param object the instruction producing the object
      * @param graph
      */
-    public CheckCast(RiType targetClass, Value targetClassInstruction, Value object, Graph graph) {
-        super(targetClass, targetClassInstruction, object, CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public CheckCast(Constant targetClassInstruction, Value object, Graph graph) {
+        super(targetClassInstruction, object, CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
     /**
@@ -53,7 +53,7 @@ public final class CheckCast extends TypeCheck {
      */
     @Override
     public RiType declaredType() {
-        return targetClass;
+        return targetClass();
     }
 
     /**
@@ -62,7 +62,7 @@ public final class CheckCast extends TypeCheck {
      */
     @Override
     public RiType exactType() {
-        return targetClass.isResolved() ? targetClass.exactType() : null;
+        return targetClass().isResolved() ? targetClass().exactType() : null;
     }
 
     @Override
@@ -72,16 +72,12 @@ public final class CheckCast extends TypeCheck {
 
     @Override
     public int valueNumber() {
-        return targetClass.isResolved() ? Util.hash1(Bytecodes.CHECKCAST, object()) : 0;
+        return targetClass().isResolved() ? Util.hash1(Bytecodes.CHECKCAST, object()) : 0;
     }
 
     @Override
     public boolean valueEqual(Node i) {
-        if (i instanceof CheckCast) {
-            CheckCast o = (CheckCast) i;
-            return targetClass == o.targetClass && object() == o.object();
-        }
-        return false;
+        return i instanceof CheckCast;
     }
 
     @Override
@@ -96,7 +92,7 @@ public final class CheckCast extends TypeCheck {
 
     @Override
     public Node copy(Graph into) {
-        CheckCast x = new CheckCast(targetClass, null, null, into);
+        CheckCast x = new CheckCast(null, null, into);
         return x;
     }
 }
