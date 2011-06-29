@@ -44,9 +44,6 @@ public class InliningPhase extends Phase {
     private final GraalCompilation compilation;
     private final IR ir;
 
-    private final Queue<Invoke> invokes = new ArrayDeque<Invoke>();
-    private final Queue<RiMethod> methods = new ArrayDeque<RiMethod>();
-
     private int inliningSize;
     private final Collection<Invoke> hints;
 
@@ -54,12 +51,6 @@ public class InliningPhase extends Phase {
         this.compilation = compilation;
         this.ir = ir;
         this.hints = hints;
-    }
-
-    private void addToQueue(Invoke invoke, RiMethod method) {
-        invokes.add(invoke);
-        methods.add(method);
-        inliningSize += method.codeSize();
     }
 
     private Queue<Invoke> newInvokes = new ArrayDeque<Invoke>();
@@ -85,37 +76,36 @@ public class InliningPhase extends Phase {
             newInvokes = new ArrayDeque<Invoke>();
             for (Invoke invoke : queue) {
                 if (!invoke.isDeleted()) {
-                    inlineInvoke(invoke, iterations, ratio);
-                    if (inliningSize > GraalOptions.MaximumInstructionCount) {
-                        break;
+                    RiMethod code = inlineInvoke(invoke, iterations, ratio);
+                    if (code != null) {
+                        inliningSize += code.codeSize();
+                        if (inliningSize > GraalOptions.MaximumInstructionCount) {
+                            break;
+                        }
+
+                        inlineMethod(invoke, code);
+                        if (GraalOptions.TraceInlining) {
+                            if (methodCount.get(code) == null) {
+                                methodCount.put(code, 1);
+                            } else {
+                                methodCount.put(code, methodCount.get(code) + 1);
+                            }
+                        }
                     }
                 }
             }
-
-            assert invokes.size() == methods.size();
-            if (invokes.isEmpty()) {
-                break;
-            }
-
-            Invoke invoke;
-            while ((invoke = invokes.poll()) != null) {
-                RiMethod method = methods.remove();
-                inlineMethod(invoke, method);
-
-                if (methodCount.get(method) == null) {
-                    methodCount.put(method, 1);
-                } else {
-                    methodCount.put(method, methodCount.get(method) + 1);
-                }
-            }
-            new DeadCodeEliminationPhase().apply(graph);
-
             if (inliningSize > GraalOptions.MaximumInstructionCount) {
                 if (GraalOptions.TraceInlining) {
                     TTY.println("inlining stopped: MaximumInstructionCount reached");
                 }
                 break;
             }
+            if (newInvokes.isEmpty()) {
+                break;
+            }
+
+//            new DeadCodeEliminationPhase().apply(graph);
+
             ratio *= GraalOptions.MaximumInlineRatio;
         }
 
@@ -132,28 +122,26 @@ public class InliningPhase extends Phase {
         }
     }
 
-    private boolean inlineInvoke(Invoke invoke, int iterations, float ratio) {
+    private RiMethod inlineInvoke(Invoke invoke, int iterations, float ratio) {
         RiMethod parent = invoke.stateAfter().method();
         RiTypeProfile profile = parent.typeProfile(invoke.bci);
         if (!checkInvokeConditions(invoke)) {
-            return false;
+            return null;
         }
         if (invoke.opcode() == Bytecodes.INVOKESPECIAL || invoke.target.canBeStaticallyBound()) {
             if (checkTargetConditions(invoke.target, iterations) && checkSizeConditions(invoke.target, invoke, profile, ratio)) {
-                addToQueue(invoke, invoke.target);
-                return true;
+                return invoke.target;
             }
-            return false;
+            return null;
         }
         if (invoke.receiver().exactType() != null) {
             RiType exact = invoke.receiver().exactType();
             assert exact.isSubtypeOf(invoke.target().holder()) : exact + " subtype of " + invoke.target().holder();
             RiMethod resolved = exact.resolveMethodImpl(invoke.target());
             if (checkTargetConditions(resolved, iterations) && checkSizeConditions(resolved, invoke, profile, ratio)) {
-                addToQueue(invoke, resolved);
-                return true;
+                return resolved;
             }
-            return false;
+            return null;
         }
         RiType holder = invoke.target().holder();
 
@@ -175,10 +163,9 @@ public class InliningPhase extends Phase {
                     TTY.println("recording concrete method assumption: %s -> %s", targetName, concreteName);
                 }
                 compilation.assumptions.recordConcreteMethod(invoke.target, concrete);
-                addToQueue(invoke, concrete);
-                return true;
+                return concrete;
             }
-            return false;
+            return null;
         }
         if (profile != null && profile.probabilities != null && profile.probabilities.length > 0 && profile.morphism == 1) {
             if (GraalOptions.InlineWithTypeCheck) {
@@ -195,21 +182,20 @@ public class InliningPhase extends Phase {
                     if (GraalOptions.TraceInlining) {
                         TTY.println("inlining with type check, type probability: %5.3f", profile.probabilities[0]);
                     }
-                    addToQueue(invoke, concrete);
-                    return true;
+                    return concrete;
                 }
-                return false;
+                return null;
             } else {
                 if (GraalOptions.TraceInlining) {
                     TTY.println("not inlining %s because GraalOptions.InlineWithTypeCheck == false", methodName(invoke.target, invoke));
                 }
-                return false;
+                return null;
             }
         } else {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because no monomorphic receiver could be found", methodName(invoke.target, invoke));
             }
-            return false;
+            return null;
         }
     }
 
