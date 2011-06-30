@@ -147,9 +147,6 @@ public class LoopUtil {
                         if (merge instanceof LoopBegin) {
                             LoopBegin phiLoop = (LoopBegin) merge;
                             int backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
-                            if (backIndex >= phi.valueCount()) {
-                                System.out.println("Wierd phi : " + phi);
-                            }
                             if (phi.valueAt(backIndex) == n) {
                                 continue;
                             }
@@ -162,8 +159,25 @@ public class LoopUtil {
         NodeBitMap inOrBefore = loopBegin.graph().createNodeBitMap();
         for (Node n : workData2) {
             inOrBefore.mark(n);
-            for (Node input : n.dataInputs()) {
-                workData2.add(input);
+            if (n instanceof Phi) {
+                Phi phi = (Phi) n;
+                if (!phi.isDead()) {
+                    int backIndex = -1;
+                    Merge merge = phi.merge();
+                    if (merge instanceof LoopBegin) {
+                        LoopBegin phiLoop = (LoopBegin) merge;
+                        backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
+                    }
+                    for (int i = 0; i < phi.valueCount(); i++) {
+                        if (i != backIndex) {
+                            workData2.add(phi.valueAt(i));
+                        }
+                    }
+                }
+            } else {
+                for (Node input : n.dataInputs()) {
+                    workData2.add(input);
+                }
             }
             if (n instanceof Merge) { //add phis & counters
                 for (Node usage : n.dataUsages()) {
@@ -171,7 +185,7 @@ public class LoopUtil {
                 }
             }
         }
-        /*if (!recurse) {
+        if (!recurse) {
             recurse = true;
             GraalCompilation compilation = GraalCompilation.compilation();
             if (compilation.compiler.isObserved()) {
@@ -182,7 +196,7 @@ public class LoopUtil {
                 compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Compute loop nodes", loopBegin.graph(), true, false, debug));
             }
             recurse = false;
-        }*/
+        }
         inOrAfter.setIntersect(inOrBefore);
         loopNodes.setUnion(inOrAfter);
         return loopNodes;
@@ -260,13 +274,7 @@ public class LoopUtil {
         LoopBegin loopBegin = loop.loopBegin();
         Graph graph = loopBegin.graph();
         Node loopPred = loopBegin.singlePredecessor();
-        if (loopPred instanceof FixedNodeWithNext) {
-            ((FixedNodeWithNext) loopPred).setNext(peeling.begin);
-        } else if (loopPred instanceof StartNode) {
-            ((StartNode) loopPred).setStart(peeling.begin);
-        } else {
-            Util.shouldNotReachHere();
-        }
+        loopPred.successors().replace(loopBegin.forwardEdge(), peeling.begin);
         NodeBitMap loopNodes = loop.nodes();
         Node originalLast = from;
         if (originalLast == loopBegin.loopEnd()) {
@@ -399,7 +407,7 @@ public class LoopUtil {
 
         // prepare inital colors
         for (Node exitPoint : exitPoints) {
-                colors.set(exitPoint, exitPoint);
+            colors.set(exitPoint, exitPoint);
         }
 
         /*System.out.println("newExitValues");
@@ -425,6 +433,19 @@ public class LoopUtil {
                         return merge;
                     }
                 }
+                return color;
+            }
+            @Override
+            public Node danglingColor(Iterable<Node> incomming, Merge merge) {
+                Node color = null;
+                for (Node c : incomming) {
+                    if (color == null) {
+                        color = c;
+                    } else if (color != c) {
+                        return merge;
+                    }
+                }
+                assert color != null;
                 return color;
             }
         });
@@ -518,6 +539,12 @@ public class LoopUtil {
         LoopBegin loopBegin = loop.loopBegin();
         Graph graph = loopBegin.graph();
         NodeBitMap marked = computeLoopNodesFrom(loopBegin, from);
+        GraalCompilation compilation = GraalCompilation.compilation();
+        if (compilation.compiler.isObserved()) {
+            Map<String, Object> debug = new HashMap<String, Object>();
+            debug.put("marked", marked);
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After computeLoopNodesFrom", loopBegin.graph(), true, false, debug));
+        }
         if (from == loopBegin.loopEnd()) {
             marked.clear(from);
         }
@@ -528,7 +555,6 @@ public class LoopUtil {
 
         for (Node exit : loop.exits()) {
             if (marked.isMarked(exit.singlePredecessor())) {
-                //System.out.println("Exit : " + exit);
                 marked.mark(((Placeholder) exit).stateAfter());
                 Placeholder p = new Placeholder(graph);
                 replacements.put(exit, p);
@@ -556,7 +582,7 @@ public class LoopUtil {
             }
         }
 
-        GraalCompilation compilation = GraalCompilation.compilation();
+        //GraalCompilation compilation = GraalCompilation.compilation();
         if (compilation.compiler.isObserved()) {
             Map<String, Object> debug = new HashMap<String, Object>();
             debug.put("marked", marked);

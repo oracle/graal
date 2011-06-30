@@ -35,13 +35,55 @@ public class GraphUtil {
 
     public static interface ColoringLambda<T> {
         T color(Iterable<T> incomming, Merge merge);
+        T danglingColor(Iterable<T> incomming, Merge merge);
     }
 
     /**
      * colors down, applying the lambda at merge points, starting at the pre-colored points.
      */
     public static <T> void colorCFGDown(NodeMap<T> colors, ColoringLambda<T> lambda) {
-        List<Node> startingPoints = new LinkedList<Node>();
+        Set<Merge> delayed = new HashSet<Merge>();
+        Set<Node> currentPoints = new HashSet<Node>();
+        Set<Node> otherPoints = new HashSet<Node>();
+        Set<Merge> otherMerges = new HashSet<Merge>();
+        for (Entry<Node, T> entry : colors.entries()) {
+            currentPoints.add(entry.getKey());
+        }
+        ArrayList<T> incomming = new ArrayList<T>(2);
+        while (!currentPoints.isEmpty()) {
+            for (Node node : currentPoints) {
+                otherMerges.addAll(colorCFGDownToMerge(node, colors.get(node), colors));
+            }
+            for (Merge merge : otherMerges) {
+                incomming.clear();
+                for (EndNode end : merge.cfgPredecessors()) {
+                    incomming.add(colors.get(end));
+                }
+                T color = lambda.color(incomming, merge);
+                if (color != null) {
+                    colors.set(merge, color);
+                    colors.set(merge.next(), color);
+                    otherPoints.add(merge.next());
+                    delayed.remove(merge);
+                } else {
+                    delayed.add(merge);
+                }
+            }
+            Set<Node> tmp = currentPoints;
+            currentPoints = otherPoints;
+            otherPoints = tmp;
+            otherPoints.clear();
+            otherMerges.clear();
+        }
+        for (Merge merge : delayed) {
+            T color = lambda.danglingColor(incomming, merge);
+            if (color != null) {
+                colors.set(merge, color);
+            }
+        }
+
+
+        /*List<Node> startingPoints = new LinkedList<Node>();
         for (Entry<Node, T> entry : colors.entries()) {
             startingPoints.add(entry.getKey());
         }
@@ -65,9 +107,10 @@ public class GraphUtil {
                 colors.set(merge, color);
                 work.addAll(colorCFGDownToMerge(merge.next(), color, colors));
             } else {
+                System.out.println("Can not color " + merge);
                 work.addAgain(merge);
             }
-        }
+        }*/
     }
 
     private static <T> Collection<Merge> colorCFGDownToMerge(Node from, T color, NodeMap<T> colors) {
@@ -155,12 +198,9 @@ public class GraphUtil {
                                     Value v = phi.valueAt(i);
                                     if (v == node) {
                                         T color = internalColoring.get(merge.phiPredecessorAt(i));
-                                        if (color == null) {
-                                            //System.out.println("Split : color from " + usage + " is null");
-                                            delay = true;
-                                            break;
+                                        if (color != null) {
+                                            colors.add(color);
                                         }
-                                        colors.add(color);
                                     }
                                 }
                             } else {
@@ -265,7 +305,7 @@ public class GraphUtil {
                 }
                 Map<String, Object> debug = new HashMap<String, Object>();
                 debug.put("split", debugColoring);
-                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in split", coloring.graph(), true, false, debug));
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in split", coloring.graph(), true, false, true, debug));
             }
         }
     }

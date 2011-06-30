@@ -325,12 +325,12 @@ public final class GraphBuilderPhase extends Phase {
                     Merge merge = new Merge(graph);
                     assert p.predecessors().size() == 1 : "predecessors size: " + p.predecessors().size();
                     FixedNode next = p.next();
-                    p.setNext(null);
                     EndNode end = new EndNode(graph);
-                    p.replaceAndDelete(end);
+                    p.setNext(end);
                     merge.setNext(next);
                     merge.addEnd(end);
                     merge.setStateAfter(existingState);
+                    p.setStateAfter(existingState.duplicate(bci));
                     if (!(next instanceof LoopEnd)) {
                         target.firstInstruction = merge;
                     }
@@ -1198,7 +1198,14 @@ public final class GraphBuilderPhase extends Phase {
             } else {
                 EndNode end = new EndNode(graph);
                 ((Merge) result).addEnd(end);
-                result = end;
+                Placeholder p = new Placeholder(graph);
+                int bci = block.startBci;
+                if (block instanceof ExceptionBlock) {
+                    bci = ((ExceptionBlock) block).deoptBci;
+                }
+                p.setStateAfter(stateAfter.duplicate(bci));
+                p.setNext(end);
+                result = p;
             }
         }
         assert !(result instanceof LoopBegin || result instanceof Merge);
