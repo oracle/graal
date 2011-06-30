@@ -125,7 +125,7 @@ public final class NewInstance extends FloatingNode {
             } else if (usage instanceof LoadField) {
                 LoadField x = (LoadField) usage;
                 assert x.object() == node;
-                return false;
+                return x.field().isResolved() == false;
             } else if (usage instanceof StoreField) {
                 StoreField x = (StoreField) usage;
                 return x.value() == node;
@@ -193,8 +193,8 @@ public final class NewInstance extends FloatingNode {
                 if (current instanceof LoadField) {
                     LoadField x = (LoadField) current;
                     if (x.object() == node) {
+                        assert fieldState.get(field) != null : field + ", " + ((AccessField) current).field() + ((AccessField) current).field().hashCode();
                         for (Node usage : new ArrayList<Node>(x.usages())) {
-                            assert fieldState.get(field) != null;
                             usage.inputs().replace(x, fieldState.get(field));
                         }
                         assert x.usages().size() == 0;

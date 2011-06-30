@@ -436,12 +436,17 @@ public final class GraphBuilderPhase extends Phase {
             p.setStateAfter(frameState.duplicateWithoutStack(bci));
 
             Value currentExceptionObject;
+            ExceptionObject newObj = null;
             if (exceptionObject == null) {
-                currentExceptionObject = new ExceptionObject(graph);
+                newObj = new ExceptionObject(graph);
+                currentExceptionObject = newObj;
             } else {
                 currentExceptionObject = exceptionObject;
             }
             FrameState stateWithException = frameState.duplicateWithException(bci, currentExceptionObject);
+            if (newObj != null) {
+                newObj.setStateAfter(stateWithException);
+            }
             FixedNode target = createTarget(dispatchBlock, stateWithException);
             if (exceptionObject == null) {
                 ExceptionObject eObj = (ExceptionObject) currentExceptionObject;

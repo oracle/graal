@@ -123,7 +123,7 @@ public class IdealGraphPrinter {
         IdentifyBlocksPhase schedule = null;
         try {
             schedule = new IdentifyBlocksPhase(true);
-            schedule.apply(graph);
+            schedule.apply(graph, false);
         } catch (Throwable t) {
             // nothing to do here...
             //t.printStackTrace();
