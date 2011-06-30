@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code InstanceOf} instruction represents an instanceof test.
  */
-public final class InstanceOf extends TypeCheck {
+public final class NotInstanceOf extends TypeCheck {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -42,7 +42,7 @@ public final class InstanceOf extends TypeCheck {
      * @param object the instruction producing the object input to this instruction
      * @param graph
      */
-    public InstanceOf(Constant targetClassInstruction, Value object, Graph graph) {
+    public NotInstanceOf(Constant targetClassInstruction, Value object, Graph graph) {
         super(targetClassInstruction, object, CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
@@ -57,7 +57,7 @@ public final class InstanceOf extends TypeCheck {
 
     @Override
     public boolean valueEqual(Node i) {
-        return i instanceof InstanceOf;
+        return i instanceof NotInstanceOf;
     }
 
     @Override
@@ -67,11 +67,11 @@ public final class InstanceOf extends TypeCheck {
 
     @Override
     public BooleanNode negate() {
-        return new NotInstanceOf(targetClassInstruction(), object(), graph());
+        return new InstanceOf(targetClassInstruction(), object(), graph());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new InstanceOf(null, null, into);
+        return new NotInstanceOf(null, null, into);
     }
 }

@@ -26,9 +26,7 @@ import com.oracle.max.asm.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -54,11 +52,11 @@ public final class MaterializeNode extends FloatingNode {
     /**
      * The instruction which produces the input value to this instruction.
      */
-     public Node value() {
-        return inputs().get(super.inputCount() + INPUT_VALUE);
+     public BooleanNode value() {
+        return (BooleanNode) inputs().get(super.inputCount() + INPUT_VALUE);
     }
 
-    public void setValue(Value n) {
+    public void setValue(BooleanNode n) {
         inputs().set(super.inputCount() + INPUT_VALUE, n);
     }
 
@@ -69,7 +67,7 @@ public final class MaterializeNode extends FloatingNode {
      * @param kind the result type of this instruction
      * @param graph
      */
-    public MaterializeNode(Value value, Graph graph) {
+    public MaterializeNode(BooleanNode value, Graph graph) {
         super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
@@ -80,7 +78,7 @@ public final class MaterializeNode extends FloatingNode {
 
     @Override
     public boolean valueEqual(Node i) {
-        return (i instanceof Materialize);
+        return (i instanceof MaterializeNode);
     }
 
     @SuppressWarnings("unchecked")
@@ -97,7 +95,7 @@ public final class MaterializeNode extends FloatingNode {
         @Override
         public void generate(Node n, LIRGenerator generator) {
             LIRBlock trueSuccessor = new LIRBlock(new Label(), null);
-            generator.emitBooleanBranch(((Materialize) n).value(), trueSuccessor, null);
+            generator.emitBooleanBranch(((MaterializeNode) n).value(), trueSuccessor, null, null);
             CiValue result = generator.createResultVariable((Value) n);
             LIRList lir = generator.lir();
             lir.move(CiConstant.FALSE, result);
@@ -116,6 +114,6 @@ public final class MaterializeNode extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        return new Materialize(null, into);
+        return new MaterializeNode(null, into);
     }
 }

@@ -754,7 +754,7 @@ public final class GraphBuilderPhase extends Phase {
         Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
         if (typeInstruction != null) {
-            frameState.ipush(append(new Materialize(new InstanceOf(typeInstruction, object, graph), graph)));
+            frameState.ipush(append(new MaterializeNode(new InstanceOf(typeInstruction, object, graph), graph)));
         } else {
             frameState.ipush(appendConstant(CiConstant.INT_0));
         }

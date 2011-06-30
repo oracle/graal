@@ -455,7 +455,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitIf(If x) {
         assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination";
-        emitBooleanBranch(x.compare(), getLIRBlock(x.trueSuccessor()),  getLIRBlock(x.falseSuccessor()));
+        emitBooleanBranch(x.compare(), getLIRBlock(x.trueSuccessor()),  getLIRBlock(x.falseSuccessor()), null);
     }
 
     public void emitBranch(BooleanNode n, Condition cond, LIRBlock trueSuccessor, LIRBlock falseSucc) {
@@ -473,20 +473,22 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.branch(cond, trueSuccessor);
     }
 
-    public void emitBooleanBranch(Node node, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
+    public void emitBooleanBranch(Node node, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
         if (node instanceof Compare) {
             emitCompare((Compare) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof InstanceOf) {
-            emitInstanceOf((InstanceOf) node, trueSuccessor, falseSuccessor);
+            emitInstanceOf((TypeCheck) node, trueSuccessor, falseSuccessor, info);
+        } else if (node instanceof NotInstanceOf) {
+            emitInstanceOf((TypeCheck) node, falseSuccessor, trueSuccessor, info);
         } else {
             throw Util.unimplemented(node.toString());
         }
     }
 
-    private void emitInstanceOf(InstanceOf x, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
+    private void emitInstanceOf(TypeCheck x, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
-        emitXir(snippet, x, stateFor(x), null, false);
+        emitXir(snippet, x, info, null, false);
         LIRXirInstruction instr = (LIRXirInstruction) lir.instructionsList().get(lir.instructionsList().size() - 1);
         instr.setTrueSuccessor(trueSuccessor);
         instr.setFalseSuccessor(falseSuccessor);
@@ -767,7 +769,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
             deoptimizationStubs.add(stub);
 
-            emitBooleanBranch(comp, null, new LIRBlock(stub.label, stub.info));
+            emitBooleanBranch(comp, null, new LIRBlock(stub.label, stub.info), stub.info);
         }
     }
 

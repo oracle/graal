@@ -180,6 +180,30 @@ public final class Compare extends BooleanNode {
                         TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
                     }
                 }
+            } else if (compare.x().isConstant() && compare.y() instanceof MaterializeNode) {
+                return optimizeMaterialize(compare, compare.x().asConstant(), (MaterializeNode) compare.y());
+            } else if (compare.y().isConstant() && compare.x() instanceof MaterializeNode) {
+                return optimizeMaterialize(compare, compare.y().asConstant(), (MaterializeNode) compare.x());
+            }
+            return compare;
+        }
+
+        private Node optimizeMaterialize(Compare compare, CiConstant constant, MaterializeNode materializeNode) {
+            if (constant.kind == CiKind.Int) {
+                boolean isFalseCheck = (constant.asInt() == 0);
+                if (compare.condition == Condition.EQ || compare.condition == Condition.NE) {
+                    if (compare.condition == Condition.NE) {
+                        isFalseCheck = !isFalseCheck;
+                    }
+                    BooleanNode result = materializeNode.value();
+                    if (isFalseCheck) {
+                        result = result.negate();
+                    }
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Removed materialize replacing with " + result);
+                    }
+                    return result;
+                }
             }
             return compare;
         }
