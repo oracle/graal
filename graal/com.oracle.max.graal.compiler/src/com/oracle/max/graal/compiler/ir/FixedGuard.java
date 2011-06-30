@@ -47,8 +47,9 @@ public final class FixedGuard extends FixedNodeWithNext {
         inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    public FixedGuard(Graph graph) {
+    public FixedGuard(BooleanNode node, Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setNode(node);
     }
 
     @Override
@@ -63,7 +64,7 @@ public final class FixedGuard extends FixedNodeWithNext {
 
     @Override
     public Node copy(Graph into) {
-        return new FixedGuard(into);
+        return new FixedGuard(null, into);
     }
 
     @SuppressWarnings("unchecked")
