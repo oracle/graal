@@ -36,13 +36,14 @@ import com.oracle.max.graal.graph.*;
  */
 public final class LIRBlock {
 
-    public final Label label = new Label();
+    public final Label label;
     private LIRList lir;
     private final int blockID;
     private FrameState lastState;
     private List<Node> instructions = new ArrayList<Node>(4);
     private List<LIRBlock> predecessors = new ArrayList<LIRBlock>(4);
     private List<LIRBlock> successors = new ArrayList<LIRBlock>(4);
+    private LIRDebugInfo debugInfo;
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.
@@ -77,10 +78,24 @@ public final class LIRBlock {
     private int lastLirInstructionID;
     public int blockEntryPco;
 
+    public LIRBlock(Label label, LIRDebugInfo debugInfo) {
+        this.label = label;
+        blockID = -1;
+        this.debugInfo = debugInfo;
+    }
+
+    public LIRDebugInfo debugInfo() {
+        return this.debugInfo;
+    }
+
     public LIRBlock(int blockID) {
         this.blockID = blockID;
+        label = new Label();
         loopIndex = -1;
         linearScanNumber = blockID;
+        instructions = new ArrayList<Node>(4);
+        predecessors = new ArrayList<LIRBlock>(4);
+        successors = new ArrayList<LIRBlock>(4);
     }
 
     public List<Node> getInstructions() {

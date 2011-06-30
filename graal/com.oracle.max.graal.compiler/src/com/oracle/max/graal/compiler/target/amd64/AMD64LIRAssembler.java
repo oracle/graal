@@ -439,22 +439,11 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
     private boolean assertEmitBranch(LIRBranch op) {
         assert op.block() == null || op.block().label() == op.label() : "wrong label";
-        if (op.block() != null) {
-            branchTargetBlocks.add(op.block());
-        }
-        if (op.unorderedBlock() != null) {
-            branchTargetBlocks.add(op.unorderedBlock());
-        }
         return true;
     }
 
     private boolean assertEmitTableSwitch(LIRTableSwitch op) {
         assert op.defaultTarget != null;
-        branchTargetBlocks.add(op.defaultTarget);
-        for (LIRBlock target : op.targets) {
-            assert target != null;
-            branchTargetBlocks.add(target);
-        }
         return true;
     }
 
@@ -537,9 +526,14 @@ public final class AMD64LIRAssembler extends LIRAssembler {
             masm.jmp(op.label());
         } else {
             ConditionFlag acond = ConditionFlag.zero;
+            Label unorderedLabel = null;
             if (op.code == LIROpcode.CondFloatBranch) {
-                assert op.unorderedBlock() != null : "must have unordered successor";
-                masm.jcc(ConditionFlag.parity, op.unorderedBlock().label());
+                if (op.unorderedBlock() == null) {
+                    unorderedLabel = new Label();
+                } else {
+                    unorderedLabel = op.unorderedBlock().label;
+                }
+                masm.jcc(ConditionFlag.parity, unorderedLabel);
                 // Checkstyle: off
                 switch (op.cond()) {
                     case EQ : acond = ConditionFlag.equal; break;
@@ -565,6 +559,9 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                 // Checkstyle: on
             }
             masm.jcc(acond, op.label());
+            if (unorderedLabel != null) {
+                masm.bind(unorderedLabel);
+            }
         }
     }
 
@@ -1597,11 +1594,30 @@ public final class AMD64LIRAssembler extends LIRAssembler {
     protected void emitXir(LIRXirInstruction instruction) {
         XirSnippet snippet = instruction.snippet;
 
+
+        Label endLabel = null;
         Label[] labels = new Label[snippet.template.labels.length];
         for (int i = 0; i < labels.length; i++) {
             labels[i] = new Label();
+            if (snippet.template.labels[i].name == XirLabel.TrueSuccessor) {
+                labels[i] = instruction.trueSuccessor().label;
+                if (labels[i] == null) {
+                    assert endLabel == null;
+                    endLabel = new Label();
+                }
+            } else if (snippet.template.labels[i].name == XirLabel.FalseSuccessor) {
+                labels[i] = instruction.falseSuccessor().label;
+                if (labels[i] == null) {
+                    assert endLabel == null;
+                    endLabel = new Label();
+                }
+            }
         }
         emitXirInstructions(instruction, snippet.template.fastPath, labels, instruction.getOperands(), snippet.marks);
+        if (endLabel != null) {
+            masm.bind(endLabel);
+        }
+
         if (snippet.template.slowPath != null) {
             addSlowPath(new SlowPath(instruction, labels, snippet.marks));
         }

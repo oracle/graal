@@ -95,7 +95,7 @@ public final class IsType extends BooleanNode {
     public boolean valueEqual(Node i) {
         if (i instanceof IsType) {
             IsType o = (IsType) i;
-            return type == o.type() && object() == o.object();
+            return type == o.type();
         }
         return false;
     }
