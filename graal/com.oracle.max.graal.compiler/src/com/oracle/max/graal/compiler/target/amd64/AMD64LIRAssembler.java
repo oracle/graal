@@ -1600,16 +1600,20 @@ public final class AMD64LIRAssembler extends LIRAssembler {
         for (int i = 0; i < labels.length; i++) {
             labels[i] = new Label();
             if (snippet.template.labels[i].name == XirLabel.TrueSuccessor) {
-                labels[i] = instruction.trueSuccessor().label;
-                if (labels[i] == null) {
+                if (instruction.trueSuccessor() == null) {
                     assert endLabel == null;
                     endLabel = new Label();
+                    labels[i] = endLabel;
+                } else {
+                    labels[i] = instruction.trueSuccessor().label;
                 }
             } else if (snippet.template.labels[i].name == XirLabel.FalseSuccessor) {
-                labels[i] = instruction.falseSuccessor().label;
-                if (labels[i] == null) {
+                if (instruction.falseSuccessor() == null) {
                     assert endLabel == null;
                     endLabel = new Label();
+                    labels[i] = endLabel;
+                } else {
+                    labels[i] = instruction.falseSuccessor().label;
                 }
             }
         }

@@ -355,9 +355,16 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitInstanceOf(InstanceOf x) {
-        XirArgument obj = toXirArgument(x.object());
-        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
-        emitXir(snippet, x, stateFor(x), null, true);
+        LIRBlock trueSuccessor = new LIRBlock(new Label(), null);
+        emitInstanceOf(x, trueSuccessor, null);
+
+        CiValue result = createResultVariable(x);
+        lir.move(CiConstant.FALSE, result);
+        Label label = new Label();
+        lir.branch(Condition.TRUE, label);
+        lir.branchDestination(trueSuccessor.label);
+        lir.move(CiConstant.TRUE, result);
+        lir.branchDestination(label);
     }
 
     @Override
@@ -480,12 +487,23 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.branch(cond, trueSuccessor);
     }
 
-    public void emitBooleanBranch(BooleanNode node, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
+    public void emitBooleanBranch(Node node, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
         if (node instanceof Compare) {
             emitCompare((Compare) node, trueSuccessor, falseSuccessor);
+        } else if (node instanceof InstanceOf) {
+            emitInstanceOf((InstanceOf) node, trueSuccessor, falseSuccessor);
         } else {
             throw Util.unimplemented(node.toString());
         }
+    }
+
+    private void emitInstanceOf(InstanceOf x, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
+        XirArgument obj = toXirArgument(x.object());
+        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
+        emitXir(snippet, x, stateFor(x), null, false);
+        LIRXirInstruction instr = (LIRXirInstruction) lir.instructionsList().get(lir.instructionsList().size() - 1);
+        instr.setTrueSuccessor(trueSuccessor);
+        instr.setFalseSuccessor(falseSuccessor);
     }
 
     public void emitCompare(Compare compare, LIRBlock trueSuccessorBlock, LIRBlock falseSuccessorBlock) {

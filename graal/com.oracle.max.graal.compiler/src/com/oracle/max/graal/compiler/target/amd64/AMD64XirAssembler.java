@@ -200,7 +200,7 @@ public class AMD64XirAssembler extends CiXirAssembler {
             }
         }
         for (XirLabel label : labels) {
-            assert boundLabels.contains(label) : "label " + label.name + " is not bound!";
+            assert label.name == XirLabel.TrueSuccessor || label.name == XirLabel.FalseSuccessor || boundLabels.contains(label) : "label " + label.name + " is not bound!";
         }
         XirInstruction[] fp = fastPath.toArray(new XirInstruction[fastPath.size()]);
         XirInstruction[] sp = slowPath.size() > 0 ? slowPath.toArray(new XirInstruction[slowPath.size()]) : null;

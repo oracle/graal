@@ -475,11 +475,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
         XirArgument obj = toXirArgument(x.exception());
         XirArgument clazz = toXirArgument(riType.getEncoding(Representation.ObjectHub));
         XirSnippet snippet = xir.genInstanceOf(site(x), obj, clazz, riType);
-        CiValue result = emitXir(snippet, x, stateFor(x), null, true);
+        emitXir(snippet, x, stateFor(x), null, false);
 
-        lir.cmp(Condition.EQ, result, CiConstant.TRUE);
-        lir.branch(Condition.EQ, getLIRBlock(x.catchSuccessor()));
-
+        LIRXirInstruction instr = (LIRXirInstruction) lir.instructionsList().get(lir.instructionsList().size() - 1);
+        instr.setTrueSuccessor(getLIRBlock(x.catchSuccessor()));
         lir.jump(getLIRBlock(x.otherSuccessor()));
     }
 
