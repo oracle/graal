@@ -136,8 +136,12 @@ final class EdgeMoveOptimizer {
                 return;
             }
 
+            if (predInstructions.get(predInstructions.size() - 1).code == LIROpcode.Xir) {
+                return;
+            }
+
             assert pred.suxAt(0) == block : "invalid control flow";
-            assert predInstructions.get(predInstructions.size() - 1).code == LIROpcode.Branch : "block with successor must end with branch";
+            assert predInstructions.get(predInstructions.size() - 1).code == LIROpcode.Branch : "block with successor must end with branch" + predInstructions.get(predInstructions.size() - 1);
             assert predInstructions.get(predInstructions.size() - 1) instanceof LIRBranch : "branch must be LIROpBranch";
             assert ((LIRBranch) predInstructions.get(predInstructions.size() - 1)).cond() == Condition.TRUE : "block must end with unconditional branch";
 
@@ -190,6 +194,11 @@ final class EdgeMoveOptimizer {
         List<LIRInstruction> instructions = block.lir().instructionsList();
 
         assert numSux == 2 : "method should not be called otherwise";
+
+        if (instructions.get(instructions.size() - 1).code == LIROpcode.Xir) {
+            // cannot optimize when last instruction is Xir.
+            return;
+        }
 
         assert instructions.get(instructions.size() - 1).code == LIROpcode.Branch : "block with successor must end with branch block=B" + block.blockID();
         assert instructions.get(instructions.size() - 1) instanceof LIRBranch : "branch must be LIROpBranch";
