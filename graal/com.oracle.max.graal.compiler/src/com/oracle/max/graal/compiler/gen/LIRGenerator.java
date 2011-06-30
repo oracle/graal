@@ -354,20 +354,6 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitInstanceOf(InstanceOf x) {
-        LIRBlock trueSuccessor = new LIRBlock(new Label(), null);
-        emitInstanceOf(x, trueSuccessor, null);
-
-        CiValue result = createResultVariable(x);
-        lir.move(CiConstant.FALSE, result);
-        Label label = new Label();
-        lir.branch(Condition.TRUE, label);
-        lir.branchDestination(trueSuccessor.label);
-        lir.move(CiConstant.TRUE, result);
-        lir.branchDestination(label);
-    }
-
-    @Override
     public void visitMonitorEnter(MonitorEnter x) {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = toXirArgument(x.lockAddress());
@@ -1150,7 +1136,7 @@ public abstract class LIRGenerator extends ValueVisitor {
      * @param x an instruction that produces a result
      * @return the variable assigned to hold the result produced by {@code x}
      */
-    protected CiVariable createResultVariable(Value x) {
+    public CiVariable createResultVariable(Value x) {
         CiVariable operand = newVariable(x.kind);
         setResult(x, operand);
         return operand;
