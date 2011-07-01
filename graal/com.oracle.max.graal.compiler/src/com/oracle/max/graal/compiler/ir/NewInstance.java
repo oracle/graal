@@ -87,6 +87,14 @@ public final class NewInstance extends FixedNodeWithNext {
     }
 
     @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("instanceClass", instanceClass);
+        properties.put("cpi", cpi);
+        return properties;
+    }
+
+    @Override
     public Node copy(Graph into) {
         NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
         return x;
@@ -187,7 +195,7 @@ public final class NewInstance extends FixedNodeWithNext {
         }
 
         @Override
-        public void updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Node> fieldState) {
+        public EscapeField updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Value> fieldState) {
             if (current instanceof AccessField) {
                 EscapeField field = fields.get(((AccessField) current).field());
                 if (current instanceof LoadField) {
@@ -206,9 +214,11 @@ public final class NewInstance extends FixedNodeWithNext {
                         fieldState.put(field, x.value());
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
+                        return field;
                     }
                 }
             }
+            return null;
         }
     }
 }

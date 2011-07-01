@@ -101,6 +101,7 @@ public abstract class Value extends Node {
         assert this.operand.isIllegal() : "operand cannot be set twice";
         assert operand != null && operand.isLegal() : "operand must be legal";
         assert operand.kind.stackKind() == this.kind;
+        assert !(this instanceof VirtualObject);
         this.operand = operand;
     }
 

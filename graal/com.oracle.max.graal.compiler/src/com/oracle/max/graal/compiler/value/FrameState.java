@@ -469,12 +469,28 @@ public final class FrameState extends Value implements FrameStateAccess {
     public void forEachLiveStateValue(ValueProcedure proc) {
         for (int i = 0; i < valuesSize(); i++) {
             Value value = valueAt(i);
-            if (value != null) {
-                proc.doValue(value);
-            }
+            visitLiveStateValue(value, proc);
         }
         if (outerFrameState() != null) {
             outerFrameState().forEachLiveStateValue(proc);
+        }
+    }
+
+    private void visitLiveStateValue(Value value, ValueProcedure proc) {
+        if (value != null) {
+            if (value instanceof VirtualObject) {
+                HashSet<Object> fields = new HashSet<Object>();
+                VirtualObject obj = (VirtualObject) value;
+                do {
+                    if (!fields.contains(obj.field().representation())) {
+                        fields.add(obj.field().representation());
+                        visitLiveStateValue(obj.input(), proc);
+                    }
+                    obj = obj.object();
+                } while (obj != null);
+            } else {
+                proc.doValue(value);
+            }
         }
     }
 

@@ -93,6 +93,13 @@ public abstract class NewArray extends FixedNodeWithNext {
 
     public abstract CiKind elementKind();
 
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("exactType", exactType());
+        return properties;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
@@ -200,7 +207,7 @@ public abstract class NewArray extends FixedNodeWithNext {
         }
 
         @Override
-        public void updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Node> fieldState) {
+        public EscapeField updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Value> fieldState) {
             if (current instanceof AccessIndexed) {
                 int index = ((AccessIndexed) current).index().asConstant().asInt();
                 EscapeField field = fields.get(index);
@@ -220,9 +227,11 @@ public abstract class NewArray extends FixedNodeWithNext {
                         fieldState.put(field, x.value());
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
+                        return field;
                     }
                 }
             }
+            return null;
         }
     }
 }
