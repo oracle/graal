@@ -1146,13 +1146,7 @@ public final class GraphBuilderPhase extends Phase {
         assert x.predecessors().size() == 0 : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
         lastInstr.setNext(x);
-
         lastInstr = x;
-        if (++stats.nodeCount >= GraalOptions.MaximumInstructionCount) {
-            // bailout if we've exceeded the maximum inlining size
-            throw new CiBailout("Method and/or inlining is too large");
-        }
-
         return x;
     }
 

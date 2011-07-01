@@ -44,7 +44,7 @@ public final class GraalOptions {
     public static boolean Intrinsify                         = true;
     public static boolean CacheGraphs                        = ____;
     public static boolean InlineWithTypeCheck                = ____;
-    public static int     MaximumInstructionCount            = 37000;
+    public static int     MaximumInstructionCount            = 3000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
     public static int     MaximumFreqInlineSize              = 200;

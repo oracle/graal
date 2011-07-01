@@ -334,6 +334,12 @@ public class EscapeAnalysisPhase extends Phase {
                         }
                         break;
                     }
+                    if (!GraalOptions.Inline) {
+                        break;
+                    }
+                    if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
+                        TTY.println("Trying inlining to get a non-escaping object for %d", node.id());
+                    }
                     new InliningPhase(compilation, ir, invokes).apply(graph);
                     new DeadCodeEliminationPhase().apply(graph);
                     exits.clear();
