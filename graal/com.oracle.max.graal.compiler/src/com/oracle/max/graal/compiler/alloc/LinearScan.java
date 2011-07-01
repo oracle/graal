@@ -642,7 +642,7 @@ public final class LinearScan {
                                 if (!liveKill.get(operandNum)) {
                                     liveGen.set(operandNum);
                                     if (GraalOptions.TraceLinearScanLevel >= 4) {
-                                        TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d because of state for " + op.toString(), Util.valueString(value), op.id(), operandNum);
+                                        TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d because of state for %s", Util.valueString(value), op.id(), operandNum, op);
                                     }
                                 }
                             } else if (operand.isRegister()) {
@@ -1270,17 +1270,9 @@ public final class LinearScan {
                 if (info != null) {
                     info.state.forEachLiveStateValue(new ValueProcedure() {
                         public void doValue(Value value) {
-                            if (value instanceof VirtualObject) {
-                                VirtualObject obj = (VirtualObject) value;
-                                do {
-                                    doValue(obj.input());
-                                    obj = obj.object();
-                                } while (obj != null);
-                            } else {
-                                CiValue operand = value.operand();
-                                if (operand.isVariableOrRegister()) {
-                                    addUse(operand, blockFrom, (opId + 1), RegisterPriority.None, null);
-                                }
+                            CiValue operand = value.operand();
+                            if (operand.isVariableOrRegister()) {
+                                addUse(operand, blockFrom, (opId + 1), RegisterPriority.None, null);
                             }
                         }
                     });
@@ -1899,6 +1891,7 @@ public final class LinearScan {
         RiType type = obj.type();
         EscapeField[] escapeFields = obj.fields();
         CiValue[] values = new CiValue[escapeFields.length];
+        int valuesFilled = 0;
 
         VirtualObject current = obj;
         do {
@@ -1907,6 +1900,7 @@ public final class LinearScan {
                 if (escapeFields[i].representation() == current.field().representation()) {
                     if (values[i] == null) {
                         values[i] = toCiValue(opId, current.input());
+                        valuesFilled++;
                     }
                     found = true;
                     break;
@@ -1914,7 +1908,7 @@ public final class LinearScan {
             }
             assert found : type + "." + current.field() + " not found";
             current = current.object();
-        } while (current != null);
+        } while (current != null && valuesFilled < values.length);
 
         for (int i = 0; i < escapeFields.length; i++) {
             assert values[i] != null : type + "." + escapeFields[i];

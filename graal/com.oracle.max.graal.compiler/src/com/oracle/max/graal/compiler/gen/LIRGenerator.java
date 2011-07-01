@@ -1645,10 +1645,18 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private void walkVirtualObject(VirtualObject value) {
-        walkStateValue(value.input());
-        if (value.object() != null) {
-            walkVirtualObject(value.object());
+        if (value.input() instanceof Phi) {
+            assert !((Phi) value.input()).isDead();
         }
+        HashSet<Object> fields = new HashSet<Object>();
+        VirtualObject obj = value;
+        do {
+            if (!fields.contains(obj.field().representation())) {
+                fields.add(obj.field().representation());
+                walkStateValue(obj.input());
+            }
+            obj = obj.object();
+        } while (obj != null);
     }
 
     protected LIRDebugInfo stateFor(Value x) {

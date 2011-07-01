@@ -59,6 +59,7 @@ public final class GraalOptions {
     public static boolean EscapeAnalysis                     = ____;
     public static int     ForcedInlineEscapeWeight           = 0;
     public static int     MaximumEscapeAnalysisArrayLength   = 32;
+    public static boolean PrintEscapeAnalysis                = ____;
 
     // debugging settings
     public static boolean VerifyPointerMaps                  = ____;
@@ -155,4 +156,5 @@ public final class GraalOptions {
     public static boolean OptGVN                             = true;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = true;
+    public static boolean LoopPeeling                        = ____;
 }
