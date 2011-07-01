@@ -151,4 +151,5 @@ public final class GraalOptions {
 
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = true;
+    public static boolean LoopPeeling                        = ____;
 }

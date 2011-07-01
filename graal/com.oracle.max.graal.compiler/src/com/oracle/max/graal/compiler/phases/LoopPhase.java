@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
@@ -38,14 +39,24 @@ public class LoopPhase extends Phase {
     protected void run(Graph graph) {
         List<Loop> loops = LoopUtil.computeLoops(graph);
 
-//        for (Loop loop : loops) {
-//            System.out.println("Peel loop : " + loop.loopBegin());
-//            LoopUtil.peelLoop(loop);
-//        }
-//        loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
-
-        for (Loop loop : loops) {
-            doLoopCounters(loop);
+        // TODO (gd) currently counter detection is disabled when loop peeling is active
+        if (GraalOptions.LoopPeeling) {
+peeling:
+            for (Loop loop : loops) {
+    //            System.out.println("Peel loop : " + loop.loopBegin());
+                for (Node exit : loop.exits()) {
+                    if (!(exit instanceof StateSplit) || ((StateSplit) exit).stateAfter() == null) {
+                        // TODO (gd) can not do loop peeling if an exit has no state. see LoopUtil.findNearestMergableExitPoint
+                        continue peeling;
+                    }
+                }
+                LoopUtil.peelLoop(loop);
+            }
+        } else {
+//            loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
+            for (Loop loop : loops) {
+                doLoopCounters(loop);
+            }
         }
     }
 
