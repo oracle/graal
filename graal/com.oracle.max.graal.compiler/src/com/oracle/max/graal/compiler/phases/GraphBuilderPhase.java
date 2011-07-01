@@ -994,42 +994,8 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void callRegisterFinalizer() {
-        Value receiver = frameState.loadLocal(0);
-        RiType declaredType = receiver.declaredType();
-        RiType receiverType = declaredType;
-        RiType exactType = receiver.exactType();
-        if (exactType == null && declaredType != null) {
-            exactType = declaredType.exactType();
-        }
-        if (exactType == null && receiver instanceof Local && ((Local) receiver).index() == 0) {
-            // the exact type isn't known, but the receiver is parameter 0 => use holder
-            receiverType = method.holder();
-            exactType = receiverType.exactType();
-        }
-        boolean needsCheck = true;
-        if (exactType != null) {
-            // we have an exact type
-            needsCheck = exactType.hasFinalizer();
-        } else {
-            // if either the declared type of receiver or the holder can be assumed to have no finalizers
-            if (declaredType != null && !declaredType.hasFinalizableSubclass()) {
-                if (compilation.recordNoFinalizableSubclassAssumption(declaredType)) {
-                    needsCheck = false;
-                }
-            }
-
-            if (receiverType != null && !receiverType.hasFinalizableSubclass()) {
-                if (compilation.recordNoFinalizableSubclassAssumption(receiverType)) {
-                    needsCheck = false;
-                }
-            }
-        }
-
-        if (needsCheck) {
-            // append a call to the finalizer registration
-            append(new RegisterFinalizer(frameState.loadLocal(0), graph));
-            GraalMetrics.InlinedFinalizerChecks++;
-        }
+        // append a call to the finalizer registration
+        append(new RegisterFinalizer(frameState.loadLocal(0), graph));
     }
 
     private void genReturn(Value x) {

@@ -128,6 +128,10 @@ public class InliningPhase extends Phase {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
+        if (invoke.target.hasIntrinsicGraph() && GraalOptions.Intrinsify) {
+            // Always intrinsify.
+            return invoke.target;
+        }
         if (invoke.opcode() == Bytecodes.INVOKESPECIAL || invoke.target.canBeStaticallyBound()) {
             if (checkTargetConditions(invoke.target, iterations) && checkSizeConditions(invoke.target, invoke, profile, ratio)) {
                 return invoke.target;
@@ -326,21 +330,6 @@ public class InliningPhase extends Phase {
             exceptionEdge = ((Placeholder) exceptionEdge).next();
         }
 
-        CompilerGraph graph;
-        Object stored = GraphBuilderPhase.cachedGraphs.get(method);
-        if (stored != null) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("Reusing graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
-            }
-            graph = (CompilerGraph) stored;
-        } else {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
-            }
-            graph = new CompilerGraph(null);
-            new GraphBuilderPhase(compilation, method, true, true).apply(graph);
-        }
-
         boolean withReceiver = !Modifier.isStatic(method.accessFlags());
 
         int argumentCount = method.signature().argumentCount(false);
@@ -353,6 +342,28 @@ public class InliningPhase extends Phase {
         }
         if (withReceiver) {
             parameters[0] = invoke.argument(0);
+        }
+
+        CompilerGraph graph = null;
+        if (GraalOptions.Intrinsify) {
+            graph = (CompilerGraph) method.intrinsicGraph(parameters);
+        }
+        if (graph != null) {
+            TTY.println("Using intrinsic graph");
+        } else {
+            graph = GraphBuilderPhase.cachedGraphs.get(method);
+        }
+
+        if (graph != null) {
+            if (GraalOptions.TraceInlining) {
+                TTY.println("Reusing graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
+            }
+        } else {
+            if (GraalOptions.TraceInlining) {
+                TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
+            }
+            graph = new CompilerGraph(null);
+            new GraphBuilderPhase(compilation, method, true, true).apply(graph);
         }
 
         invoke.inputs().clearAll();

@@ -22,9 +22,13 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 /**
  * This instruction is used to perform the finalizer registration at the end of the java.lang.Object constructor.
@@ -66,6 +70,57 @@ public final class RegisterFinalizer extends StateSplit {
     public void accept(ValueVisitor v) {
         v.visitRegisterFinalizer(this);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+
+        @Override
+        public Node canonical(Node node) {
+            RegisterFinalizer finalizer = (RegisterFinalizer) node;
+            Value object = finalizer.object();
+
+            RiType declaredType = object.declaredType();
+            RiType exactType = object.exactType();
+            if (exactType == null && declaredType != null) {
+                exactType = declaredType.exactType();
+            }
+
+            GraalCompilation compilation = ((CompilerGraph) node.graph()).getCompilation();
+            boolean needsCheck = true;
+            if (exactType != null) {
+                // we have an exact type
+                needsCheck = exactType.hasFinalizer();
+            } else {
+                // if either the declared type of receiver or the holder can be assumed to have no finalizers
+                if (declaredType != null && !declaredType.hasFinalizableSubclass()) {
+                    if (compilation.recordNoFinalizableSubclassAssumption(declaredType)) {
+                        needsCheck = false;
+                    }
+                }
+            }
+
+            if (needsCheck) {
+                if (GraalOptions.TraceGVN) {
+                    TTY.println("Could not canonicalize finalizer " + object + " (declaredType=" + declaredType + ", exactType=" + exactType + ")");
+                }
+            } else {
+                if (GraalOptions.TraceGVN) {
+                    TTY.println("Canonicalized finalizer for object " + object);
+                }
+                return finalizer.next();
+            }
+
+            return finalizer;
+        }
+    };
 
     @Override
     public void print(LogStream out) {
