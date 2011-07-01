@@ -173,8 +173,7 @@ public class InliningPhase extends Phase {
                 concrete = profile.types[0].resolveMethodImpl(invoke.target);
                 if (concrete != null && checkTargetConditions(concrete, iterations) && checkSizeConditions(concrete, invoke, profile, ratio)) {
                     IsType isType = new IsType(invoke.receiver(), profile.types[0], compilation.graph);
-                    FixedGuard guard = new FixedGuard(graph);
-                    guard.setNode(isType);
+                    FixedGuard guard = new FixedGuard(isType, graph);
                     assert invoke.predecessors().size() == 1;
                     invoke.predecessors().get(0).successors().replace(invoke, guard);
                     guard.setNext(invoke);
@@ -389,9 +388,7 @@ public class InliningPhase extends Phase {
         assert invoke.predecessors().size() == 1 : "size: " + invoke.predecessors().size();
         FixedNodeWithNext pred;
         if (withReceiver) {
-            FixedGuard clipNode = new FixedGuard(compilation.graph);
-            clipNode.setNode(new IsNonNull(parameters[0], compilation.graph));
-            pred = clipNode;
+            pred = new FixedGuard(new IsNonNull(parameters[0], compilation.graph), compilation.graph);
         } else {
             pred = new Placeholder(compilation.graph);
         }
