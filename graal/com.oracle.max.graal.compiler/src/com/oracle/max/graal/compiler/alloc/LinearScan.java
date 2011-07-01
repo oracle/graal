@@ -1914,8 +1914,13 @@ public final class LinearScan {
             assert values[i] != null : type + "." + escapeFields[i];
         }
 
-        CiVirtualObject vobj = CiVirtualObject.get(type, values, obj.id());
-        return vobj;
+        if (GraalOptions.PrintEscapeAnalysis) {
+            for (int i = 0; i < values.length; i++) {
+                TTY.println("field " + escapeFields[i].name() + " offset=" + values[i]);
+            }
+        }
+
+        return CiVirtualObject.get(type, values, obj.id());
     }
 
     CiFrame computeFrameForState(FrameState state, int opId, BitMap frameRefMap) {

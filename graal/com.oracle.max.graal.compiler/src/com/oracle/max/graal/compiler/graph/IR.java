@@ -100,7 +100,7 @@ public class IR {
             new DeadCodeEliminationPhase().apply(graph);
         }
 
-        if (GraalOptions.EscapeAnalysis) {
+        if (GraalOptions.EscapeAnalysis/* && compilation.method.toString().contains("commonDominator")*/) {
             new EscapeAnalysisPhase(compilation, this).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase().apply(graph);
