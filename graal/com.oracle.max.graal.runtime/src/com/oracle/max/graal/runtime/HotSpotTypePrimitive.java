@@ -150,4 +150,8 @@ public final class HotSpotTypePrimitive extends HotSpotType {
         return null;
     }
 
+    @Override
+    public RiField[] fields() {
+        return null;
+    }
 }

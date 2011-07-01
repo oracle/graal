@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.debug;
 
 import java.io.*;
 import java.util.*;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.ir.*;
@@ -109,24 +110,33 @@ public class IdealGraphPrinter {
         flush();
     }
 
+    public void print(Graph graph, String title, boolean shortNames) {
+        print(graph, title, shortNames, Collections.<String, Object>emptyMap());
+    }
+
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
      */
-    public void print(Graph graph, String title, boolean shortNames) {
+    public void print(Graph graph, String title, boolean shortNames, Map<String, Object> debugObjects) {
         stream.printf(" <graph name='%s'>%n", escape(title));
         noBlockNodes.clear();
         IdentifyBlocksPhase schedule = null;
         try {
             schedule = new IdentifyBlocksPhase(true);
-            schedule.apply(graph);
+            schedule.apply(graph, false);
         } catch (Throwable t) {
             // nothing to do here...
+            //t.printStackTrace();
+        }
+        List<Loop> loops = null;
+        try {
+            loops = LoopUtil.computeLoops(graph);
+        } catch (Throwable t) {
             t.printStackTrace();
         }
-        List<Loop> loops = LoopUtil.computeLoops(graph);
 
         stream.println("  <nodes>");
-        List<Edge> edges = printNodes(graph, shortNames, schedule == null ? null : schedule.getNodeToBlock(), loops);
+        List<Edge> edges = printNodes(graph, shortNames, schedule == null ? null : schedule.getNodeToBlock(), loops, debugObjects);
         stream.println("  </nodes>");
 
         stream.println("  <edges>");
@@ -148,11 +158,52 @@ public class IdealGraphPrinter {
         flush();
     }
 
-    private List<Edge> printNodes(Graph graph, boolean shortNames, NodeMap<Block> nodeToBlock, List<Loop> loops) {
+    private List<Edge> printNodes(Graph graph, boolean shortNames, NodeMap<Block> nodeToBlock, List<Loop> loops, Map<String, Object> debugObjects) {
         ArrayList<Edge> edges = new ArrayList<Edge>();
         NodeBitMap loopExits = graph.createNodeBitMap();
-        for (Loop loop : loops) {
-            loopExits.markAll(loop.exist());
+        if (loops != null) {
+            for (Loop loop : loops) {
+                loopExits.setUnion(loop.exits());
+            }
+        }
+
+        Map<Node, Set<Entry<String, Integer>>> colors = new HashMap<Node, Set<Entry<String, Integer>>>();
+        Map<Node, Set<String>> bits = new HashMap<Node, Set<String>>();
+        if (debugObjects != null) {
+            for (Entry<String, Object> entry : debugObjects.entrySet()) {
+                String name = entry.getKey();
+                Object obj = entry.getValue();
+                if (obj instanceof NodeMap) {
+                    Map<Object, Integer> colorNumbers = new HashMap<Object, Integer>();
+                    int nextColor = 0;
+                    NodeMap<?> map = (NodeMap<?>) obj;
+                    for (Entry<Node, ?> mapEntry : map.entries()) {
+                        Node node = mapEntry.getKey();
+                        Object color = mapEntry.getValue();
+                        Integer colorNumber = colorNumbers.get(color);
+                        if (colorNumber == null) {
+                            colorNumber = nextColor++;
+                            colorNumbers.put(color, colorNumber);
+                        }
+                        Set<Entry<String, Integer>> nodeColors = colors.get(node);
+                        if (nodeColors == null) {
+                            nodeColors = new HashSet<Entry<String, Integer>>();
+                            colors.put(node, nodeColors);
+                        }
+                        nodeColors.add(new SimpleImmutableEntry<String, Integer>(name + "Color", colorNumber));
+                    }
+                } else if (obj instanceof NodeBitMap) {
+                    NodeBitMap bitmap = (NodeBitMap) obj;
+                    for (Node node : bitmap) {
+                        Set<String> nodeBits = bits.get(node);
+                        if (nodeBits == null) {
+                            nodeBits = new HashSet<String>();
+                            bits.put(node, nodeBits);
+                        }
+                        nodeBits.add(name);
+                    }
+                }
+            }
         }
 
         for (Node node : graph.getNodes()) {
@@ -188,17 +239,35 @@ public class IdealGraphPrinter {
                 stream.printf("    <p name='loopExit'>true</p>%n");
             }
             StringBuilder sb = new StringBuilder();
-            for (Loop loop : loops) {
-                if (loop.nodes().isMarked(node)) {
-                    if (sb.length() > 0) {
-                        sb.append(", ");
+            if (loops != null) {
+                for (Loop loop : loops) {
+                    if (loop.nodes().isMarked(node)) {
+                        if (sb.length() > 0) {
+                            sb.append(", ");
+                        }
+                        sb.append(loop.loopBegin().id());
                     }
-                    sb.append(loop.loopBegin().id());
                 }
             }
             if (sb.length() > 0) {
                 stream.printf("    <p name='loops'>%s</p>%n", sb);
             }
+
+            Set<Entry<String, Integer>> nodeColors = colors.get(node);
+            if (nodeColors != null) {
+                for (Entry<String, Integer> color : nodeColors) {
+                    String name = color.getKey();
+                    Integer value = color.getValue();
+                    stream.printf("    <p name='%s'>%d</p>%n", name, value);
+                }
+            }
+            Set<String> nodeBits = bits.get(node);
+            if (nodeBits != null) {
+                for (String bit : nodeBits) {
+                    stream.printf("    <p name='%s'>true</p>%n", bit);
+                }
+            }
+
             for (Entry<Object, Object> entry : props.entrySet()) {
                 String key = entry.getKey().toString();
                 String value = entry.getValue() == null ? "null" : entry.getValue().toString();
@@ -237,11 +306,9 @@ public class IdealGraphPrinter {
         stream.printf("   <block name='%d'>%n", block.blockID());
         stream.printf("    <successors>%n");
         for (Block sux : block.getSuccessors()) {
-//            if (sux.firstNode() instanceof LoopBegin && block.lastNode() instanceof LoopEnd) { //TODO gd
-//                // Skip back edges.
-//            } else {
+            if (sux != null) {
                 stream.printf("     <successor name='%d'/>%n", sux.blockID());
-//            }
+            }
         }
         stream.printf("    </successors>%n");
         stream.printf("    <nodes>%n");

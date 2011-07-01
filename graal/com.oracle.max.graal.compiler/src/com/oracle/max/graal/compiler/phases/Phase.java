@@ -48,6 +48,10 @@ public abstract class Phase {
     }
 
     public final void apply(Graph graph) {
+        apply(graph, true);
+    }
+
+    public final void apply(Graph graph, boolean plotOnError) {
         assert graph != null && (!shouldVerify || graph.verify());
 
         int startDeletedNodeCount = graph.getDeletedNodeCount();
@@ -62,7 +66,21 @@ public abstract class Phase {
             GraalTimers.get(getName()).start();
         }
         //System.out.println("Starting Phase " + getName());
-        run(graph);
+        try {
+            run(graph);
+        } catch (AssertionError t) {
+            GraalCompilation compilation = GraalCompilation.compilation();
+            if (compilation.compiler.isObserved() && plotOnError) {
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "AssertionError in " + getName(), graph, true, false, true));
+            }
+            throw t;
+        } catch (RuntimeException t) {
+            GraalCompilation compilation = GraalCompilation.compilation();
+            if (compilation.compiler.isObserved() && plotOnError) {
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in " + getName(), graph, true, false, true));
+            }
+            throw t;
+        }
         //System.out.println("Finished Phase " + getName());
         if (GraalOptions.Time) {
             GraalTimers.get(getName()).stop();

@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -35,14 +36,22 @@ public class LoopPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
-        for (LoopBegin n : graph.getNodes(LoopBegin.class)) {
-            doLoop(n);
+        List<Loop> loops = LoopUtil.computeLoops(graph);
+
+//        for (Loop loop : loops) {
+//            System.out.println("Peel loop : " + loop.loopBegin());
+//            LoopUtil.peelLoop(loop);
+//        }
+//        loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
+
+        for (Loop loop : loops) {
+            doLoopCounters(loop);
         }
     }
 
-    private void doLoop(LoopBegin loopBegin) {
-        NodeBitMap loopNodes = LoopUtil.computeLoopNodes(loopBegin);
-        List<LoopCounter> counters = findLoopCounters(loopBegin, loopNodes);
+    private void doLoopCounters(Loop loop) {
+        LoopBegin loopBegin = loop.loopBegin();
+        List<LoopCounter> counters = findLoopCounters(loopBegin, loop.nodes());
         mergeLoopCounters(counters, loopBegin);
     }
 
@@ -102,6 +111,9 @@ public class LoopPhase extends Phase {
                 if (phi.valueCount() == 2) {
                     Value backEdge = phi.valueAt(1);
                     Value init = phi.valueAt(0);
+                    if (loopNodes.isNew(init) || loopNodes.isNew(backEdge)) {
+                        continue;
+                    }
                     if (loopNodes.isMarked(init)) {
                         // try to reverse init/backEdge order
                         Value tmp = backEdge;
@@ -127,7 +139,7 @@ public class LoopPhase extends Phase {
                             useCounterAfterAdd = true;
                         }
                     }
-                    if (stride != null && !loopNodes.isMarked(stride)) {
+                    if (stride != null && !loopNodes.isNew(stride) &&  !loopNodes.isMarked(stride)) {
                         Graph graph = loopBegin.graph();
                         LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
                         counters.add(counter);

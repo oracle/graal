@@ -42,6 +42,7 @@ public final class NewTypeArray extends NewArray {
         this.elementType = elementType;
     }
 
+    @Override
     public CiKind elementKind() {
         return elementType.kind();
     }

@@ -22,7 +22,12 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
+import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -30,7 +35,8 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
-public final class NewInstance extends FloatingNode {
+public final class NewInstance extends FixedNodeWithNext {
+    private static final EscapeOp ESCAPE = new NewInstanceEscapeOp();
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -84,5 +90,125 @@ public final class NewInstance extends FloatingNode {
     public Node copy(Graph into) {
         NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
         return x;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == EscapeOp.class) {
+            return (T) ESCAPE;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static class NewInstanceEscapeOp implements EscapeOp {
+
+        @Override
+        public boolean canAnalyze(Node node) {
+            return ((NewInstance) node).instanceClass().isResolved();
+        }
+
+        @Override
+        public boolean escape(Node node, Node usage) {
+            if (usage instanceof IsNonNull) {
+                IsNonNull x = (IsNonNull) usage;
+                assert x.object() == node;
+                return false;
+            } else if (usage instanceof IsType) {
+                IsType x = (IsType) usage;
+                assert x.object() == node;
+                return false;
+            } else if (usage instanceof FrameState) {
+                FrameState x = (FrameState) usage;
+                assert x.inputs().contains(node);
+                return true;
+            } else if (usage instanceof LoadField) {
+                LoadField x = (LoadField) usage;
+                assert x.object() == node;
+                return x.field().isResolved() == false;
+            } else if (usage instanceof StoreField) {
+                StoreField x = (StoreField) usage;
+                return x.value() == node;
+            } else if (usage instanceof StoreIndexed) {
+                StoreIndexed x = (StoreIndexed) usage;
+                assert x.value() == node;
+                return true;
+            } else if (usage instanceof AccessMonitor) {
+                AccessMonitor x = (AccessMonitor) usage;
+                assert x.object() == node;
+                return false;
+            } else if (usage instanceof VirtualObject) {
+                return false;
+            } else if (usage instanceof RegisterFinalizer) {
+                RegisterFinalizer x = (RegisterFinalizer) usage;
+                assert x.object() == node;
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        @Override
+        public EscapeField[] fields(Node node) {
+            NewInstance x = (NewInstance) node;
+            RiField[] riFields = x.instanceClass().fields();
+            EscapeField[] fields = new EscapeField[riFields.length];
+            for (int i = 0; i < riFields.length; i++) {
+                RiField field = riFields[i];
+                fields[i] = new EscapeField(field.name(), field, field.kind().stackKind());
+            }
+            return fields;
+        }
+
+        @Override
+        public void beforeUpdate(Node node, Node usage) {
+            if (usage instanceof IsNonNull) {
+                IsNonNull x = (IsNonNull) usage;
+                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
+                    FixedGuard guard = (FixedGuard) x.usages().get(0);
+                    guard.replaceAndDelete(guard.next());
+                }
+                x.delete();
+            } else if (usage instanceof IsType) {
+                IsType x = (IsType) usage;
+                assert x.type() == ((NewInstance) node).instanceClass();
+                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
+                    FixedGuard guard = (FixedGuard) x.usages().get(0);
+                    guard.replaceAndDelete(guard.next());
+                }
+                x.delete();
+            } else if (usage instanceof AccessMonitor) {
+                AccessMonitor x = (AccessMonitor) usage;
+                x.replaceAndDelete(x.next());
+            } else if (usage instanceof RegisterFinalizer) {
+                RegisterFinalizer x = (RegisterFinalizer) usage;
+                x.replaceAndDelete(x.next());
+            }
+        }
+
+        @Override
+        public void updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Node> fieldState) {
+            if (current instanceof AccessField) {
+                EscapeField field = fields.get(((AccessField) current).field());
+                if (current instanceof LoadField) {
+                    LoadField x = (LoadField) current;
+                    if (x.object() == node) {
+                        assert fieldState.get(field) != null : field + ", " + ((AccessField) current).field() + ((AccessField) current).field().hashCode();
+                        for (Node usage : new ArrayList<Node>(x.usages())) {
+                            usage.inputs().replace(x, fieldState.get(field));
+                        }
+                        assert x.usages().size() == 0;
+                        x.replaceAndDelete(x.next());
+                    }
+                } else if (current instanceof StoreField) {
+                    StoreField x = (StoreField) current;
+                    if (x.object() == node) {
+                        fieldState.put(field, x.value());
+                        assert x.usages().size() == 0;
+                        x.replaceAndDelete(x.next());
+                    }
+                }
+            }
+        }
     }
 }

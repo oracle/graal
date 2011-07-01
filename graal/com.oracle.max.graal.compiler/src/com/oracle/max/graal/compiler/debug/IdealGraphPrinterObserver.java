@@ -67,7 +67,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
     public void compilationStarted(CompilationEvent event) {
         assert (stream == null && printer == null);
 
-        if (!TTY.isSuppressed()) {
+        if ((!TTY.isSuppressed() && GraalOptions.Plot) || (GraalOptions.PlotOnError && event.isErrorEvent())) {
             String name = event.getMethod().holder().name();
             name = name.substring(1, name.length() - 1).replace('/', '.');
             name = name + "." + event.getMethod().name();
@@ -140,9 +140,17 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
 
     @Override
     public void compilationEvent(CompilationEvent event) {
+        boolean lazyStart = false;
+        if (printer == null && event.isErrorEvent()) {
+            this.compilationStarted(event);
+            lazyStart = true;
+        }
         if (printer != null && event.getGraph() != null && event.isHIRValid()) {
             Graph graph = event.getGraph();
-            printer.print(graph, event.getLabel(), true);
+            printer.print(graph, event.getLabel(), true, event.getDebugObjects());
+        }
+        if (lazyStart) {
+            this.compilationFinished(event);
         }
     }
 

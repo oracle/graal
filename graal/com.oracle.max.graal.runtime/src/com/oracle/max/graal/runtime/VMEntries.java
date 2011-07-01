@@ -87,15 +87,17 @@ public interface VMEntries {
 
     void recordBailout(String reason);
 
-    RiType RiType_uniqueConcreteSubtype(HotSpotTypeResolved hotSpotTypeResolved);
+    RiType RiType_uniqueConcreteSubtype(HotSpotTypeResolved klass);
 
-    RiType RiType_superType(HotSpotTypeResolved hotSpotTypeResolved);
+    RiType RiType_superType(HotSpotTypeResolved klass);
 
     int getArrayLength(CiConstant array);
 
     boolean compareConstantObjects(CiConstant x, CiConstant y);
 
     RiType getRiType(CiConstant constant);
+
+    RiField[] RiType_fields(HotSpotTypeResolved klass);
 
     // Checkstyle: resume
 }

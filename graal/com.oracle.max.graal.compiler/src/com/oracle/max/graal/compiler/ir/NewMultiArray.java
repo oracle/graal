@@ -50,6 +50,7 @@ public final class NewMultiArray extends NewArray {
     /**
      * The list of instructions which produce input for this instruction.
      */
+    @Override
     public Value dimension(int index) {
         assert index >= 0 && index < dimensionCount;
         return (Value) inputs().get(super.inputCount() + index);
@@ -63,6 +64,7 @@ public final class NewMultiArray extends NewArray {
     /**
      * The rank of the array allocated by this instruction, i.e. how many array dimensions.
      */
+    @Override
     public int dimensionCount() {
         return dimensionCount;
     }
@@ -102,6 +104,21 @@ public final class NewMultiArray extends NewArray {
      */
     public RiType elementType() {
         return elementType;
+    }
+
+    @Override
+    public CiKind elementKind() {
+        return elementType.kind();
+    }
+
+    @Override
+    public RiType exactType() {
+        return elementType.arrayOf();
+    }
+
+    @Override
+    public RiType declaredType() {
+        return exactType();
     }
 
     @Override

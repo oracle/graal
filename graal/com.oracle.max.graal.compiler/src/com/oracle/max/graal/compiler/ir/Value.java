@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -179,7 +178,7 @@ public abstract class Value extends Node {
         return properties;
     }
 
-    @Override
+    /*@Override
     public Iterable<? extends Node> dataUsages() {
         final Iterator<? extends Node> dataUsages = super.dataUsages().iterator();
         return new Iterable<Node>() {
@@ -188,5 +187,5 @@ public abstract class Value extends Node {
                 return new StateSplit.FilteringIterator(dataUsages, FrameState.class);
             }
         };
-    }
+    }*/
 }

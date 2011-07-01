@@ -90,12 +90,19 @@ public class IR {
         //printGraph("After DeadCodeElimination", compilation.graph);
 
         if (GraalOptions.Inline) {
-            new InliningPhase(compilation, this, GraalOptions.TraceInlining).apply(compilation.graph);
+            new InliningPhase(compilation, this, null).apply(compilation.graph);
         }
 
         Graph graph = compilation.graph;
 
         if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+        }
+
+        if (GraalOptions.EscapeAnalysis) {
+            new EscapeAnalysisPhase(compilation, this).apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
         }

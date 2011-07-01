@@ -201,4 +201,8 @@ public class HotSpotTypeUnresolved extends HotSpotType {
         throw unresolved("uniqueConcreteMethod");
     }
 
+    @Override
+    public RiField[] fields() {
+        return null;
+    }
 }

@@ -52,8 +52,13 @@ public final class NewObjectArray extends NewArray {
      * Gets the type of the elements of the array.
      * @return the element type of the array
      */
-    public RiType elementClass() {
+    public RiType elementType() {
         return elementClass;
+    }
+
+    @Override
+    public CiKind elementKind() {
+        return elementClass.kind();
     }
 
     @Override
@@ -73,7 +78,7 @@ public final class NewObjectArray extends NewArray {
 
     @Override
     public void print(LogStream out) {
-        out.print("new object array [").print(length()).print("] ").print(CiUtil.toJavaName(elementClass()));
+        out.print("new object array [").print(length()).print("] ").print(CiUtil.toJavaName(elementType()));
     }
 
     @Override

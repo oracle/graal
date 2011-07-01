@@ -121,6 +121,10 @@ public final class FrameState extends Value implements FrameStateAccess {
         return rethrowException;
     }
 
+    public RiMethod method() {
+        return method;
+    }
+
     /**
      * Gets a copy of this frame state.
      */
@@ -420,6 +424,15 @@ public final class FrameState extends Value implements FrameStateAccess {
         return null;
     }
 
+    public StateSplit stateSplit() {
+        for (Node n : usages()) {
+            if (n instanceof StateSplit) {
+                return (StateSplit) n;
+            }
+        }
+        return null;
+    }
+
     /**
      * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
      * {@link FrameState#forEachLivePhi(Merge, PhiProcedure)}.
@@ -467,9 +480,17 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     @Override
     public String toString() {
+        return super.toString();
+    }
+
+    public String toDetailedString() {
         StringBuilder sb = new StringBuilder();
         String nl = String.format("%n");
-        sb.append("[bci: ").append(bci).append("]").append(nl);
+        sb.append("[bci: ").append(bci).append("]");
+        if (rethrowException()) {
+            sb.append(" rethrows Exception");
+        }
+        sb.append(nl);
         for (int i = 0; i < localsSize(); ++i) {
             Value value = localAt(i);
             sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));

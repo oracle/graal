@@ -337,6 +337,10 @@ public class Merge extends StateSplit{
         return endIndex(end);
     }
 
+    public Node phiPredecessorAt(int index) {
+        return endAt(index);
+    }
+
     public Collection<Phi> phis() {
         return Util.filter(this.usages(), Phi.class);
     }

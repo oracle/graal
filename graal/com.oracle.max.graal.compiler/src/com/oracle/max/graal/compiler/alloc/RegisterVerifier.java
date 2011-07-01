@@ -229,8 +229,8 @@ final class RegisterVerifier {
                 CiValue operand = op.operandAt(LIRInstruction.OperandMode.Input, j);
                 if (allocator.isProcessed(operand)) {
                     Interval interval = intervalAt(operand);
-                    if (op.id != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id, LIRInstruction.OperandMode.Input, allocator);
+                    if (op.id() != -1) {
+                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Input, allocator);
                     }
 
                     assert checkState(inputState, interval.location(), interval.splitParent());
@@ -251,8 +251,8 @@ final class RegisterVerifier {
                 if (allocator.isProcessed(operand)) {
                     Interval interval = intervalAt(operand);
                     assert interval != null : "Could not find interval for operand " + operand;
-                    if (op.id != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id, LIRInstruction.OperandMode.Temp, allocator);
+                    if (op.id() != -1) {
+                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Temp, allocator);
                     }
 
                     statePut(inputState, interval.location(), interval.splitParent());
@@ -265,8 +265,8 @@ final class RegisterVerifier {
                 CiValue operand = op.operandAt(LIRInstruction.OperandMode.Output, j);
                 if (allocator.isProcessed(operand)) {
                     Interval interval = intervalAt(operand);
-                    if (op.id != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id, LIRInstruction.OperandMode.Output, allocator);
+                    if (op.id() != -1) {
+                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Output, allocator);
                     }
 
                     statePut(inputState, interval.location(), interval.splitParent());

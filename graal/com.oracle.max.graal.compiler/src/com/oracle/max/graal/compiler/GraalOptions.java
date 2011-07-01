@@ -54,6 +54,11 @@ public final class GraalOptions {
     public static int     MaximumDesiredSize                 = 8000;
     public static int     MaximumShortLoopSize               = 5;
 
+    // escape analysis settings
+    public static boolean EscapeAnalysis                     = ____;
+    public static int     ForcedInlineEscapeWeight           = 0;
+    public static int     MaximumEscapeAnalysisArrayLength   = 32;
+
     // debugging settings
     public static boolean VerifyPointerMaps                  = ____;
     public static int     MethodEndBreakpointGuards          = 0;
@@ -80,6 +85,7 @@ public final class GraalOptions {
 
     // Ideal graph visualizer output settings
     public static boolean Plot                               = ____;
+    public static boolean PlotOnError                        = ____;
     public static int     PrintIdealGraphLevel               = 0;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
@@ -101,6 +107,7 @@ public final class GraalOptions {
     public static boolean TraceAssembler                     = ____;
     public static boolean TraceInlining                      = ____;
     public static boolean TraceDeadCodeElimination           = ____;
+    public static boolean TraceEscapeAnalysis                = ____;
     public static boolean TraceCanonicalizer                 = ____;
     public static boolean TraceMemoryMaps                    = ____;
     public static boolean TraceReadElimination               = ____;
