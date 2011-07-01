@@ -35,7 +35,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
-public final class NewInstance extends FloatingNode {
+public final class NewInstance extends FixedNodeWithNext {
     private static final EscapeOp ESCAPE = new NewInstanceEscapeOp();
 
     private static final int INPUT_COUNT = 0;

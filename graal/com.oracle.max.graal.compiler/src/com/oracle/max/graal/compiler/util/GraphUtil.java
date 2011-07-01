@@ -30,6 +30,7 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.NodeWorkList.*;
 
 public class GraphUtil {
 
@@ -174,9 +175,16 @@ public class GraphUtil {
                         Value v = phi.valueAt(i);
                         if (v != null) {
                             T color = internalColoring.get(merge.phiPredecessorAt(i));
-                            Value replace = lambda.fixPhiInput(v, color);
-                            if (replace != v) {
-                                phi.setValueAt(i, replace);
+                            if (color != null) {
+                                Value replace = lambda.fixPhiInput(v, color);
+                                if (replace != v) {
+                                    phi.setValueAt(i, replace);
+                                } else {
+                                    if (lambda.explore(v) && coloring.get(v) == null && !work.isNew(v)) {
+                                        //System.out.println("Split : Add input " + input + " to work from " + node);
+                                        work.add(v);
+                                    }
+                                }
                             }
                         }
                     }
@@ -266,37 +274,39 @@ public class GraphUtil {
                             }
                         }
                     }
-                }
-
-                if (node instanceof StateSplit) {
-                    FrameState stateAfter = ((StateSplit) node).stateAfter();
-                    if (stateAfter != null && lambda.explore(stateAfter) && !work.isNew(stateAfter)) {
-                        //System.out.println("Split : Add framestate to work");
-                        work.add(stateAfter);
+                    if (node instanceof StateSplit) {
+                        FrameState stateAfter = ((StateSplit) node).stateAfter();
+                        if (stateAfter != null && lambda.explore(stateAfter) && !work.isNew(stateAfter)) {
+                            //System.out.println("Split : Add framestate to work");
+                            work.add(stateAfter);
+                        }
                     }
-                }
 
-                if (node instanceof Merge) {
-                    for (Node usage : node.usages()) {
-                        if (!work.isNew(usage)) {
-                            work.add(usage);
+                    if (node instanceof Merge) {
+                        for (Node usage : node.usages()) {
+                            if (!work.isNew(usage)) {
+                                work.add(usage);
+                            }
+                        }
+                    }
+
+                    if (node instanceof LoopEnd) {
+                        work.add(((LoopEnd) node).loopBegin());
+                    }
+
+                    for (Node input : node.dataInputs()) {
+                        if (lambda.explore(input) && coloring.get(input) == null && !work.isNew(input)) {
+                            //System.out.println("Split : Add input " + input + " to work from " + node);
+                            work.add(input);
                         }
                     }
                 }
-
-                if (node instanceof LoopEnd) {
-                    work.add(((LoopEnd) node).loopBegin());
-                }
-
-                for (Node input : node.dataInputs()) {
-                    if (lambda.explore(input) && coloring.get(input) == null && !work.isNew(input)) {
-                        //System.out.println("Split : Add input " + input + " to work from " + node);
-                        work.add(input);
-                    }
-                }
             }
-        } catch (RuntimeException re) {
-            re.printStackTrace();
+        } catch (InfiniteWorkException re) {
+            System.out.println("Infinite work, current queue :");
+            for (Node n : work) {
+                System.out.println(" - " + n);
+            }
             GraalCompilation compilation = GraalCompilation.compilation();
             if (compilation.compiler.isObserved()) {
                 NodeMap<T> debugColoring = coloring.graph().createNodeMap();
@@ -307,6 +317,17 @@ public class GraphUtil {
                 debug.put("split", debugColoring);
                 compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in split", coloring.graph(), true, false, true, debug));
             }
+            throw re;
+        }
+        GraalCompilation compilation = GraalCompilation.compilation();
+        if (compilation.compiler.isObserved()) {
+            NodeMap<T> debugColoring = coloring.graph().createNodeMap();
+            for (Entry<Node, T> entry : internalColoring.entrySet()) {
+                debugColoring.set(entry.getKey(), entry.getValue());
+            }
+            Map<String, Object> debug = new HashMap<String, Object>();
+            debug.put("split", debugColoring);
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Split end!!", coloring.graph(), true, false, debug));
         }
     }
 }
