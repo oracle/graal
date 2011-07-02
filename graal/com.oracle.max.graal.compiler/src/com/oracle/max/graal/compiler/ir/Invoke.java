@@ -185,6 +185,11 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
     }
 
     @Override
+    public String toString() {
+        return super.toString() + target;
+    }
+
+    @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("opcode", Bytecodes.nameOf(opcode));

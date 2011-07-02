@@ -214,10 +214,7 @@ public abstract class NewArray extends FixedNodeWithNext {
                 if (current instanceof LoadIndexed) {
                     LoadIndexed x = (LoadIndexed) current;
                     if (x.array() == node) {
-                        for (Node usage : new ArrayList<Node>(x.usages())) {
-                            assert fieldState.get(field) != null;
-                            usage.inputs().replace(x, fieldState.get(field));
-                        }
+                        x.replaceAtUsages(fieldState.get(field));
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
                     }
@@ -226,7 +223,10 @@ public abstract class NewArray extends FixedNodeWithNext {
                     if (x.array() == node) {
                         fieldState.put(field, x.value());
                         assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(x.graph());
+                        checkpoint.setStateAfter(x.stateAfter());
+                        checkpoint.setNext(x.next());
+                        x.replaceAndDelete(checkpoint);
                         return field;
                     }
                 }

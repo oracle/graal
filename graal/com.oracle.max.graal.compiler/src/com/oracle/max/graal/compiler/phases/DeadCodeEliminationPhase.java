@@ -28,6 +28,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 
 
@@ -98,6 +99,29 @@ public class DeadCodeEliminationPhase extends Phase {
                         endNode.replaceAndDelete(loop.next());
                         loop.delete();
                     }
+                } else if (node instanceof Merge) {
+                    for (Node n : node.usages()) {
+                        if (n instanceof Phi) {
+                            Phi phi = (Phi) n;
+                            if (phi.usages().size() == 1 && phi.usages().get(0) instanceof VirtualObject) {
+                                // (tw) This VirtualObject instance is implicitely dead, because the CFG to it (i.e. the store that produced it) is dead! => fix this in escape analysis
+                                VirtualObject virtualObject = (VirtualObject) phi.usages().get(0);
+                                virtualObject.replaceAndDelete(virtualObject.object());
+                            }
+                        }
+                    }
+                }
+
+
+                if (IdentifyBlocksPhase.isFixed(node)) {
+                    for (Node n : new ArrayList<Node>(node.usages())) {
+                        if (n instanceof VirtualObject) {
+                            // (tw) This VirtualObject instance is implicitely dead, because the CFG to it (i.e. the
+                            // store that produced it) is dead! => fix this in Escape analysis
+                            VirtualObject virtualObject = (VirtualObject) n;
+                            virtualObject.replaceAndDelete(virtualObject.object());
+                        }
+                    }
                 }
             }
         }
@@ -113,7 +137,28 @@ public class DeadCodeEliminationPhase extends Phase {
     private void deleteNodes() {
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
-                node.unsafeDelete();
+                for (int i = 0; i < node.inputs().size(); i++) {
+                    node.inputs().set(i, Node.Null);
+                }
+                for (int i = 0; i < node.successors().size(); i++) {
+                    node.successors().set(i, Node.Null);
+                }
+            }
+        }
+        for (Node node : graph.getNodes()) {
+            if (!flood.isMarked(node)) {
+                if (node.predecessors().size() > 0) {
+                    for (Node pred : node.predecessors()) {
+                        TTY.println("!PRED! " + pred + " (" + flood.isMarked(pred) + ")");
+                        for (int i=0; i<pred.successors().size(); i++) {
+                            TTY.println("pred=>succ: " + pred.successors().get(i));
+                        }
+                        for (int i=0; i<pred.usages().size(); i++) {
+                            TTY.println("pred=>usage: " + pred.usages().get(i));
+                        }
+                    }
+                }
+                node.delete();
             }
         }
     }

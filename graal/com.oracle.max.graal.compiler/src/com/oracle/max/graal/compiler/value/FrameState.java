@@ -129,8 +129,9 @@ public final class FrameState extends Value implements FrameStateAccess {
      * Gets a copy of this frame state.
      */
     public FrameState duplicate(int bci) {
-        FrameState other = copy(bci);
+        FrameState other = new FrameState(method, bci, localsSize, stackSize, locksSize, rethrowException, graph());
         other.inputs().setAll(inputs());
+        other.setOuterFrameState(outerFrameState());
         return other;
     }
 
@@ -530,11 +531,6 @@ public final class FrameState extends Value implements FrameStateAccess {
     @Override
     public void print(LogStream out) {
         out.print("FrameState");
-    }
-
-
-    private FrameState copy(int newBci) {
-        return new FrameState(method, newBci, localsSize, stackSize, locksSize, rethrowException, graph());
     }
 
     @Override

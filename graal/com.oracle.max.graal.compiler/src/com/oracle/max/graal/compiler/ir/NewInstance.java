@@ -202,9 +202,7 @@ public final class NewInstance extends FixedNodeWithNext {
                     LoadField x = (LoadField) current;
                     if (x.object() == node) {
                         assert fieldState.get(field) != null : field + ", " + ((AccessField) current).field() + ((AccessField) current).field().hashCode();
-                        for (Node usage : new ArrayList<Node>(x.usages())) {
-                            usage.inputs().replace(x, fieldState.get(field));
-                        }
+                        x.replaceAtUsages(fieldState.get(field));
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
                     }
@@ -213,7 +211,10 @@ public final class NewInstance extends FixedNodeWithNext {
                     if (x.object() == node) {
                         fieldState.put(field, x.value());
                         assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(x.graph());
+                        checkpoint.setStateAfter(x.stateAfter());
+                        checkpoint.setNext(x.next());
+                        x.replaceAndDelete(checkpoint);
                         return field;
                     }
                 }

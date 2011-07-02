@@ -1613,6 +1613,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         if (state == null) {
             return;
         }
+
+        walkState(x, state.outerFrameState());
+
         for (int index = 0; index < state.stackSize(); index++) {
             Value value = state.stackAt(index);
             if (value != x) {

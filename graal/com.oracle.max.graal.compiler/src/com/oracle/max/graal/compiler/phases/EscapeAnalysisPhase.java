@@ -104,11 +104,6 @@ public class EscapeAnalysisPhase extends Phase {
                     BlockExitState state = new BlockExitState();
                     if (/*block == startBlock ||*/ block.getPredecessors().size() == 0) {
                         state.obj = null;
-                        for (EscapeField field : fields.values()) {
-                            Constant value = Constant.defaultForKind(field.kind(), graph);
-                            state.fieldState.put(field, value);
-                            state.obj = new VirtualObject(state.obj, value, field, type, escapeFields, graph);
-                        }
                     } else {
                         List<Block> predecessors = block.getPredecessors();
                         Set<EscapeField> mergedFields = new HashSet<EscapeField>();
@@ -119,6 +114,7 @@ public class EscapeAnalysisPhase extends Phase {
                         for (int i = 0; i < predecessors.size(); i++) {
                             BlockExitState exitState = exitStates.get(predecessors.get(i));
                             if (exitState == null) {
+                                // (tw) What about an object that is allocated in a loop. We are merging in the values of the old allocation?; Now solved by "if" below.
                                 mergedFields.addAll(fields.values());
                                 state.obj = null;
                                 break;
@@ -126,12 +122,23 @@ public class EscapeAnalysisPhase extends Phase {
                                 for (EscapeField field : fields.values()) {
                                     if (state.fieldState.get(field) == null) {
                                         state.fieldState.put(field, exitState.fieldState.get(field));
+                                        if (i != 0) {
+                                            // We need to merge this field too!
+                                            mergedFields.add(field);
+                                        }
                                     } else if (state.fieldState.get(field) != exitState.fieldState.get(field)) {
                                         mergedFields.add(field);
                                     }
                                 }
                             }
                         }
+                        if (block.firstNode() instanceof LoopBegin) {
+                            if (predState.obj == null) {
+                                state.obj = null;
+                                mergedFields.clear();
+                            }
+                        }
+
                         if (!mergedFields.isEmpty()) {
                             assert block.firstNode() instanceof Merge : "unexpected: " + block.firstNode().shortName() + " " + block.firstNode().id();
                             for (EscapeField field : mergedFields) {
@@ -151,15 +158,24 @@ public class EscapeAnalysisPhase extends Phase {
                     }
                     while (current != block.lastNode()) {
                         Node next = ((FixedNodeWithNext) current).next();
-                        EscapeField changedField = op.updateState(node, current, fields, state.fieldState);
-                        if (changedField != null) {
-                            state.obj = new VirtualObject(state.obj, state.fieldState.get(changedField), changedField, type, escapeFields, graph);
+                        FrameState stateAfter = null;
+                        if (current instanceof StateSplit) {
+                            stateAfter = ((StateSplit) current).stateAfter();
                         }
-                        if (!current.isDeleted() && current instanceof StateSplit) {
-                            FrameState stateAfter = ((StateSplit) current).stateAfter();
-                            if (stateAfter != null) {
-                                updateFrameState(stateAfter, state.obj);
+                        if (current == node) {
+                            for (EscapeField field : fields.values()) {
+                                Constant value = Constant.defaultForKind(field.kind(), graph);
+                                state.fieldState.put(field, value);
+                                state.obj = new VirtualObject(state.obj, value, field, type, escapeFields, graph);
                             }
+                        } else {
+                            EscapeField changedField = op.updateState(node, current, fields, state.fieldState);
+                            if (changedField != null) {
+                                state.obj = new VirtualObject(state.obj, state.fieldState.get(changedField), changedField, type, escapeFields, graph);
+                            }
+                        }
+                        if (stateAfter != null) {
+                            updateFrameState(stateAfter, state.obj);
                         }
                         current = next;
                     }
@@ -187,13 +203,12 @@ public class EscapeAnalysisPhase extends Phase {
                     BlockExitState exitState = exitStates.get(predecessors.get(i));
                     if (exitState.fieldState.get(field) != simple) {
                         simple = null;
+                        break;
                     }
                 }
                 if (simple != null) {
-                    for (Node usage : new ArrayList<Node>(phi.usages())) {
-                        usage.inputs().replace(phi, simple);
-                    }
-                    phi.delete();
+                    // (tw) Should never be reached, because Phi verification fails here..
+                    phi.replaceAndDelete(simple);
                 } else {
                     for (int i = 0; i < predecessors.size(); i++) {
                         BlockExitState exitState = exitStates.get(predecessors.get(i));
@@ -212,8 +227,14 @@ public class EscapeAnalysisPhase extends Phase {
             }
             // the rest of the usages should be dead frame states...
             for (Node usage : new ArrayList<Node>(node.usages())) {
-                assert usage instanceof FrameState || usage instanceof VirtualObject : "usage: " + usage;
-                usage.inputs().replace(node, Node.Null);
+                if (usage instanceof IsNonNull) {
+                    usage.replaceAndDelete(Constant.forBoolean(true, graph));
+                } else if (usage instanceof RegisterFinalizer) {
+                    usage.replaceAndDelete(((RegisterFinalizer) usage).next());
+                } else {
+                    assert usage instanceof FrameState || usage instanceof VirtualObject : "usage: " + usage;
+                    usage.inputs().replace(node, Node.Null);
+                }
             }
 
             if (node instanceof FixedNodeWithNext) {
@@ -223,14 +244,14 @@ public class EscapeAnalysisPhase extends Phase {
             }
         }
 
-        private VirtualObject updateFrameState(FrameState frameState, VirtualObject current) {
+        private void updateFrameState(FrameState frameState, VirtualObject current) {
             for (int i = 0; i < frameState.inputs().size(); i++) {
                 if (frameState.inputs().get(i) == node) {
                     frameState.inputs().set(i, current);
                 } else if (frameState.inputs().get(i) instanceof VirtualObject) {
                     VirtualObject obj = (VirtualObject) frameState.inputs().get(i);
                     do {
-                        current = updateVirtualObject(obj, current);
+                        updateVirtualObject(obj, current);
                         obj = obj.object();
                     } while (obj != null);
                 }
@@ -243,26 +264,27 @@ public class EscapeAnalysisPhase extends Phase {
                         duplicate = true;
                     }
                 }
+                // (tw) need to fully duplicate also if there is a reference to "node" in an outer framestate?
+                duplicate = true;
                 if (duplicate) {
                     outer = outer.duplicate(outer.bci);
                     frameState.setOuterFrameState(outer);
                 }
-                current = updateFrameState(outer, current);
+                updateFrameState(outer, current);
             }
-            return current;
         }
 
-        private VirtualObject updateVirtualObject(VirtualObject obj, VirtualObject current) {
+        private void updateVirtualObject(VirtualObject obj, VirtualObject current) {
             if (obj.input() == node) {
+                // (tw) don't we have similar issues here like in framestate dup? We are updating a shared data structure here..
                 obj.setInput(current);
             } else if (obj.input() instanceof VirtualObject) {
                 VirtualObject obj2 = (VirtualObject) obj.input();
                 do {
-                    current = updateVirtualObject(obj2, current);
+                    updateVirtualObject(obj2, current);
                     obj2 = obj2.object();
                 } while (obj2 != null);
             }
-            return current;
         }
 
         private void process() {
@@ -283,9 +305,9 @@ public class EscapeAnalysisPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
-//        if (compilation.method.holder().name().contains("oracle")) {
-//            return;
-//        }
+        if (compilation.method.name().contains("removeEnd") || compilation.method.name().contains("emitCode")) {
+            return;
+        }
         for (Node node : graph.getNodes()) {
             EscapeOp op = node.lookup(EscapeOp.class);
             if (op != null && op.canAnalyze(node)) {

@@ -212,6 +212,7 @@ public abstract class LIRAssembler {
     void emitOp1(LIROp1 op) {
         switch (op.code) {
             case Move:
+                assert !op.operand().isIllegal();
                 if (op.moveKind() == LIROp1.LIRMoveKind.Volatile) {
                     emitVolatileMove(op.operand(), op.result(), op.kind, op.info);
                 } else {

@@ -1914,12 +1914,6 @@ public final class LinearScan {
             assert values[i] != null : type + "." + escapeFields[i];
         }
 
-        if (GraalOptions.PrintEscapeAnalysis) {
-            for (int i = 0; i < values.length; i++) {
-                TTY.println("field " + escapeFields[i].name() + " offset=" + values[i]);
-            }
-        }
-
         return CiVirtualObject.get(type, values, obj.id());
     }
 

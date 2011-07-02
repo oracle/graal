@@ -100,21 +100,19 @@ public class IR {
             new DeadCodeEliminationPhase().apply(graph);
         }
 
-        if (GraalOptions.EscapeAnalysis/* && compilation.method.toString().contains("commonDominator")*/) {
+        if (GraalOptions.OptLoops) {
+            new LoopPhase().apply(graph);
+        }
+
+        if (GraalOptions.EscapeAnalysis /*&& compilation.method.toString().contains("simplify")*/) {
             new EscapeAnalysisPhase(compilation, this).apply(graph);
-            new DeadCodeEliminationPhase().apply(graph);
+         //   new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
         }
 
         if (GraalOptions.OptGVN) {
             new GlobalValueNumberingPhase().apply(graph);
-        }
-//
-//        new EscapeAnalysisPhase().apply(graph);
-
-        if (GraalOptions.OptLoops) {
-            new LoopPhase().apply(graph);
         }
 
         if (GraalOptions.Lower) {
