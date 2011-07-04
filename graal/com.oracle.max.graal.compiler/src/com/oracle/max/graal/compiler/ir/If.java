@@ -106,6 +106,14 @@ public final class If extends ControlSplit {
     }
 
     @Override
+    public boolean verify() {
+        assertTrue(compare() != null);
+        assertTrue(trueSuccessor() != null);
+        assertTrue(falseSuccessor() != null);
+        return true;
+    }
+
+    @Override
     public void print(LogStream out) {
         out.print("if ").
         print(compare()).

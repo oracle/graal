@@ -264,7 +264,7 @@ public class LoopUtil {
             System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
         }
         System.out.println(" Exits :");
-        for (Entry<Node, Placeholder> entry : peeling.exits.entries()) {
+        for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
             System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
         }
         System.out.println(" PhiInits :");
@@ -282,7 +282,7 @@ public class LoopUtil {
         // update parents
         Loop parent = loop.parent();
         while (parent != null) {
-            parent.nodes = computeLoopNodes(loop.loopBegin);
+            parent.nodes = computeLoopNodes(parent.loopBegin);
             parent.exits = computeLoopExits(parent.loopBegin, parent.nodes);
             parent = parent.parent;
         }
