@@ -57,8 +57,8 @@ public final class Constant extends BooleanNode {
 
     @Override
     public BooleanNode negate() {
-        if (kind != CiKind.Boolean) {
-            throw new IllegalStateException();
+        if (value.kind != CiKind.Boolean) {
+            throw new IllegalStateException("boolean expected, actual: " + kind);
         }
         return Constant.forBoolean(!value.asBoolean(), graph());
     }

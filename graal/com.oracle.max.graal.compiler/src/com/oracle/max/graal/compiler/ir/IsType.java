@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -127,4 +128,27 @@ public final class IsType extends BooleanNode {
     public Node copy(Graph into) {
         return new IsType(null, type, into);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            IsType isType = (IsType) node;
+            Value object = isType.object();
+            RiType exactType = object.exactType();
+            if (exactType != null) {
+                return Constant.forBoolean(exactType == isType.type, node.graph());
+            }
+            // constants return the correct exactType, so they are handled by the code above
+            return isType;
+        }
+    };
 }

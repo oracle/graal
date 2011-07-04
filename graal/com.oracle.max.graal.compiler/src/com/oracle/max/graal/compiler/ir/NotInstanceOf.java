@@ -23,10 +23,12 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 /**
  * The {@code InstanceOf} instruction represents an instanceof test.
@@ -74,4 +76,36 @@ public final class NotInstanceOf extends TypeCheck {
     public Node copy(Graph into) {
         return new NotInstanceOf(null, null, into);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            NotInstanceOf notIsInstance = (NotInstanceOf) node;
+            Value object = notIsInstance.object();
+            RiType exactType = object.exactType();
+            if (exactType != null) {
+                return Constant.forBoolean(!exactType.isSubtypeOf(notIsInstance.targetClass()), node.graph());
+            }
+            CiConstant constant = object.asConstant();
+            if (constant != null) {
+                assert constant.kind == CiKind.Object;
+                if (constant.isNull()) {
+                    return Constant.forBoolean(true, node.graph());
+                } else {
+                    // this should never happen - non-null constants are always expected to provide an exactType
+                    assert false;
+                }
+            }
+            return notIsInstance;
+        }
+    };
 }
