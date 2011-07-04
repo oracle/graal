@@ -118,12 +118,12 @@ public class InliningPhase extends Phase {
     private RiMethod inlineInvoke(Invoke invoke, int iterations, float ratio) {
         RiMethod parent = invoke.stateAfter().method();
         RiTypeProfile profile = parent.typeProfile(invoke.bci);
-        if (!checkInvokeConditions(invoke)) {
-            return null;
-        }
         if (GraalOptions.Intrinsify && compilation.runtime.intrinsicGraph(invoke.target, invoke.arguments()) != null) {
             // Always intrinsify.
             return invoke.target;
+        }
+        if (!checkInvokeConditions(invoke)) {
+            return null;
         }
         if (invoke.opcode() == Bytecodes.INVOKESPECIAL || invoke.target.canBeStaticallyBound()) {
             if (checkTargetConditions(invoke.target, iterations) && checkSizeConditions(invoke.target, invoke, profile, ratio)) {
@@ -323,7 +323,7 @@ public class InliningPhase extends Phase {
             exceptionEdge = ((Placeholder) exceptionEdge).next();
         }
 
-        boolean withReceiver = !Modifier.isStatic(method.accessFlags());
+        boolean withReceiver = !invoke.isStatic();
 
         int argumentCount = method.signature().argumentCount(false);
         Value[] parameters = new Value[argumentCount + (withReceiver ? 1 : 0)];
@@ -340,6 +340,12 @@ public class InliningPhase extends Phase {
         CompilerGraph graph = null;
         if (GraalOptions.Intrinsify) {
             graph = (CompilerGraph) compilation.runtime.intrinsicGraph(method, invoke.arguments());
+            if (graph != null && graph.getNodes(Merge.class).iterator().hasNext()) {
+                WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(invoke.graph());
+                checkpoint.setStateAfter(invoke.stateAfter());
+                checkpoint.setNext(invoke.next());
+                invoke.setNext(checkpoint);
+            }
         }
         if (graph != null) {
             if (GraalOptions.TraceInlining) {
@@ -351,7 +357,7 @@ public class InliningPhase extends Phase {
 
         if (graph != null) {
             if (GraalOptions.TraceInlining) {
-                TTY.println("Reusing graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
+                TTY.println("Reusing graph for %s", methodName(method, invoke));
             }
         } else {
             if (GraalOptions.TraceInlining) {

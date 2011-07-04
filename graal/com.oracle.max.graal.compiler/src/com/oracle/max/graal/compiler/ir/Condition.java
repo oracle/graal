@@ -173,10 +173,10 @@ public enum Condition {
                     case LE: return x <= y;
                     case GT: return x > y;
                     case GE: return x >= y;
-                    case AE: return UnsignedComparisons.aboveOrEqual(x, y);
-                    case BE: return UnsignedComparisons.belowOrEqual(x, y);
-                    case AT: return UnsignedComparisons.aboveThan(x, y);
-                    case BT: return UnsignedComparisons.belowThan(x, y);
+                    case AE: return toUnsigned(x) >= toUnsigned(y);
+                    case BE: return toUnsigned(x) <= toUnsigned(y);
+                    case AT: return toUnsigned(x) > toUnsigned(y);
+                    case BT: return toUnsigned(x) < toUnsigned(y);
                 }
                 break;
             }
@@ -203,5 +203,12 @@ public enum Condition {
             // XXX: folding of floating comparisons should be possible
         }
         return null;
+    }
+
+    private long toUnsigned(int x) {
+        if (x < 0) {
+            return ((long) (x & 0x7FFFFFFF)) + ((long) Integer.MAX_VALUE) + 1;
+        }
+        return x;
     }
 }

@@ -73,6 +73,12 @@ public class DeadCodeEliminationPhase extends Phase {
                     flood.add(successor);
                 }
             }
+
+            if (current instanceof AbstractVectorNode) {
+                for (Node usage : current.usages()) {
+                    flood.add(usage);
+                }
+            }
         }
     }
 

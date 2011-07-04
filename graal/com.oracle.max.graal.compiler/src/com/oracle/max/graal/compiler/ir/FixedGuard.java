@@ -31,25 +31,16 @@ import com.sun.cri.ci.*;
 
 
 public final class FixedGuard extends FixedNodeWithNext {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_NODE = 0;
-
+    private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public BooleanNode node() {
-        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
-    }
-
-    public void setNode(BooleanNode n) {
-        inputs().set(super.inputCount() + INPUT_NODE, n);
-    }
-
     public FixedGuard(BooleanNode node, Graph graph) {
+        this(graph);
+        addNode(node);
+    }
+
+    public FixedGuard(Graph graph) {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setNode(node);
     }
 
     @Override
@@ -59,12 +50,16 @@ public final class FixedGuard extends FixedNodeWithNext {
 
     @Override
     public void print(LogStream out) {
-        out.print("clip node ").print(node());
+        out.print("clip node ").print(inputs().toString());
+    }
+
+    public void addNode(BooleanNode node) {
+        inputs().add(node);
     }
 
     @Override
     public Node copy(Graph into) {
-        return new FixedGuard(null, into);
+        return new FixedGuard(into);
     }
 
     @SuppressWarnings("unchecked")
@@ -80,19 +75,25 @@ public final class FixedGuard extends FixedNodeWithNext {
         @Override
         public Node canonical(Node node) {
             FixedGuard fixedGuard = (FixedGuard) node;
-            if (fixedGuard.node() instanceof Constant) {
-                Constant c = (Constant) fixedGuard.node();
-                if (c.asConstant().asBoolean()) {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("Removing redundant fixed guard " + fixedGuard);
+            for (Node n : fixedGuard.inputs()) {
+                if (n instanceof Constant) {
+                    Constant c = (Constant) n;
+                    if (c.asConstant().asBoolean()) {
+                        if (GraalOptions.TraceCanonicalizer) {
+                            TTY.println("Removing redundant fixed guard " + fixedGuard);
+                        }
+                        fixedGuard.inputs().remove(c);
+                    } else {
+                        if (GraalOptions.TraceCanonicalizer) {
+                            TTY.println("Replacing fixed guard " + fixedGuard + " with deoptimization node");
+                        }
+                        return new Deoptimize(DeoptAction.InvalidateRecompile, fixedGuard.graph());
                     }
-                    return fixedGuard.next();
-                } else {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("Replacing fixed guard " + fixedGuard + " with deoptimization node");
-                    }
-                    return new Deoptimize(DeoptAction.InvalidateRecompile, fixedGuard.graph());
                 }
+            }
+
+            if (fixedGuard.inputs().size() == 0) {
+                return fixedGuard.next();
             }
             return fixedGuard;
         }

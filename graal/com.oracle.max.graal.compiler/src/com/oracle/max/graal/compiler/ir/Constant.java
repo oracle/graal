@@ -179,7 +179,7 @@ public final class Constant extends BooleanNode {
     public RiType declaredType() {
         RiRuntime runtime = compilation().runtime;
         if (kind.isPrimitive()) {
-            runtime.asRiType(kind);
+            return runtime.asRiType(kind);
         }
         return runtime.getTypeOf(asConstant());
     }
