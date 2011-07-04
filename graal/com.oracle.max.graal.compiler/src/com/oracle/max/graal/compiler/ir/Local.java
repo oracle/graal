@@ -64,10 +64,10 @@ public final class Local extends FloatingNode {
     private final int index;
     private RiType declaredType;
 
-    public Local(CiKind kind, int javaIndex, StartNode start, Graph graph) {
+    public Local(CiKind kind, int javaIndex, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.index = javaIndex;
-        setStart(start);
+        setStart(graph.start());
     }
 
     /**
@@ -114,7 +114,7 @@ public final class Local extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        Local x = new Local(kind, index, null, into);
+        Local x = new Local(kind, index, into);
         x.setDeclaredType(declaredType());
         return x;
     }

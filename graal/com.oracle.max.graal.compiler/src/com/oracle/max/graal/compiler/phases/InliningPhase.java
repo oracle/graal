@@ -342,7 +342,9 @@ public class InliningPhase extends Phase {
             graph = (CompilerGraph) compilation.runtime.intrinsicGraph(method, invoke.arguments());
         }
         if (graph != null) {
-            TTY.println("Using intrinsic graph");
+            if (GraalOptions.TraceInlining) {
+                TTY.println("Using intrinsic graph");
+            }
         } else {
             graph = GraphBuilderPhase.cachedGraphs.get(method);
         }

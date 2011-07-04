@@ -286,7 +286,13 @@ public class HotSpotRuntime implements RiRuntime {
             String fullName = method.name() + method.signature().asString();
             if (holder.name().equals("Ljava/lang/Object;")) {
                 if (fullName.equals("getClass()Ljava/lang/Class;")) {
-
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local receiver = new Local(CiKind.Object, 0, graph);
+                    ReadNode klassOop = new ReadNode(CiKind.Object, receiver, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
+                    Return ret = new Return(new ReadNode(CiKind.Object, klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
                 }
             }
 

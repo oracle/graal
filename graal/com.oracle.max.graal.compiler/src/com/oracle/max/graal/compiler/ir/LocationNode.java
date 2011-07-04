@@ -32,6 +32,8 @@ public final class LocationNode extends FloatingNode {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
+    public static final Object FINAL_LOCATION = new Object();
+
     private int displacement;
     private CiKind valueKind;
     private Object locationIdentity;
