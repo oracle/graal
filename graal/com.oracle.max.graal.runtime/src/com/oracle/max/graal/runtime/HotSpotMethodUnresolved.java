@@ -177,14 +177,4 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     public int branchProbability(int bci) {
         return -1;
     }
-
-    @Override
-    public Graph intrinsicGraph(Node[] parameters) {
-        return null;
-    }
-
-    @Override
-    public boolean hasIntrinsicGraph() {
-        return false;
-    }
 }

@@ -580,11 +580,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
-        Value[] args = new Value[invoke.argumentCount()];
-        for (int i = 0; i < invoke.argumentCount(); i++) {
-            args[i] = invoke.argument(i);
-        }
-        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.stateAfter().rethrowException(), invoke.kind, args);
+        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.stateAfter().rethrowException(), invoke.kind, invoke.arguments().toArray(new Value[0]));
     }
 
     private int getBeforeInvokeBci(Invoke invoke) {
@@ -1676,10 +1672,9 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     List<CiValue> visitInvokeArguments(CiCallingConvention cc, Invoke x, List<CiValue> pointerSlots) {
         // for each argument, load it into the correct location
-        List<CiValue> argList = new ArrayList<CiValue>(x.argumentCount());
+        List<CiValue> argList = new ArrayList<CiValue>();
         int j = 0;
-        for (int i = 0; i < x.argumentCount(); i++) {
-            Value arg = x.argument(i);
+        for (Value arg : x.arguments()) {
             if (arg != null) {
                 CiValue operand = cc.locations[j++];
                 if (operand.isRegister()) {

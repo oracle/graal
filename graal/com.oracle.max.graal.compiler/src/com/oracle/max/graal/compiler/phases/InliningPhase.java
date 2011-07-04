@@ -54,11 +54,11 @@ public class InliningPhase extends Phase {
     }
 
     private Queue<Invoke> newInvokes = new ArrayDeque<Invoke>();
-    private Graph graph;
+    private CompilerGraph graph;
 
     @Override
     protected void run(Graph graph) {
-        this.graph = graph;
+        this.graph = (CompilerGraph) graph;
 
         float ratio = GraalOptions.MaximumInlineRatio;
         inliningSize = compilation.method.codeSize();
@@ -121,7 +121,7 @@ public class InliningPhase extends Phase {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
-        if (invoke.target.hasIntrinsicGraph() && GraalOptions.Intrinsify) {
+        if (GraalOptions.Intrinsify && compilation.runtime.intrinsicGraph(invoke.target, invoke.arguments()) != null) {
             // Always intrinsify.
             return invoke.target;
         }
@@ -159,7 +159,7 @@ public class InliningPhase extends Phase {
                     String concreteName = CiUtil.format("%H.%n(%p):%r", concrete, false);
                     TTY.println("recording concrete method assumption: %s -> %s", targetName, concreteName);
                 }
-                compilation.assumptions.recordConcreteMethod(invoke.target, concrete);
+                graph.assumptions().recordConcreteMethod(invoke.target, concrete);
                 return concrete;
             }
             return null;
@@ -330,16 +330,16 @@ public class InliningPhase extends Phase {
         int slot = withReceiver ? 1 : 0;
         int param = withReceiver ? 1 : 0;
         for (int i = 0; i < argumentCount; i++) {
-            parameters[param++] = invoke.argument(slot);
+            parameters[param++] = invoke.arguments().get(slot);
             slot += method.signature().argumentKindAt(i).sizeInSlots();
         }
         if (withReceiver) {
-            parameters[0] = invoke.argument(0);
+            parameters[0] = invoke.arguments().get(0);
         }
 
         CompilerGraph graph = null;
         if (GraalOptions.Intrinsify) {
-            graph = (CompilerGraph) method.intrinsicGraph(parameters);
+            graph = (CompilerGraph) compilation.runtime.intrinsicGraph(method, invoke.arguments());
         }
         if (graph != null) {
             TTY.println("Using intrinsic graph");
