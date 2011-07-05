@@ -76,18 +76,15 @@ public class IR {
 //            replacements.put(duplicate.start(), compilation.graph.start());
 //            compilation.graph.addDuplicate(duplicate.getNodes(), replacements);
 //        } else {
-            new GraphBuilderPhase(compilation, compilation.method, false, false).apply(compilation.graph);
+            new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
 //        }
 
-        //printGraph("After GraphBuilding", compilation.graph);
 
         if (GraalOptions.TestGraphDuplication) {
             new DuplicationPhase().apply(compilation.graph);
-            //printGraph("After Duplication", compilation.graph);
         }
 
         new DeadCodeEliminationPhase().apply(compilation.graph);
-        //printGraph("After DeadCodeElimination", compilation.graph);
 
         if (GraalOptions.Inline) {
             new InliningPhase(compilation, this, null).apply(compilation.graph);
@@ -104,9 +101,8 @@ public class IR {
             new LoopPhase().apply(graph);
         }
 
-        if (GraalOptions.EscapeAnalysis /*&& compilation.method.toString().contains("simplify")*/) {
+        if (GraalOptions.EscapeAnalysis) {
             new EscapeAnalysisPhase(compilation, this).apply(graph);
-         //   new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
         }

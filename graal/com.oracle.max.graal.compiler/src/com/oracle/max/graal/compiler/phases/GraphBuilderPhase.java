@@ -106,8 +106,6 @@ public final class GraphBuilderPhase extends Phase {
     private final Set<Block> blocksOnWorklist = new HashSet<Block>();
     private final Set<Block> blocksVisited = new HashSet<Block>();
 
-    private final boolean createUnwind;
-
     public static final Map<RiMethod, CompilerGraph> cachedGraphs = new WeakHashMap<RiMethod, CompilerGraph>();
 
     /**
@@ -117,7 +115,7 @@ public final class GraphBuilderPhase extends Phase {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean createUnwind, boolean inline) {
+    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean inline) {
         super(inline ? "BuildInlineGraph " + method.holder().name() + "." + method.name() + method.signature().asString() : "BuildGraph");
         this.compilation = compilation;
 
@@ -128,7 +126,6 @@ public final class GraphBuilderPhase extends Phase {
         this.stream = new BytecodeStream(method.code());
 
         this.constantPool = runtime.getConstantPool(method);
-        this.createUnwind = createUnwind;
         this.storeResultGraph = GraalOptions.CacheGraphs;
     }
 
@@ -178,19 +175,11 @@ public final class GraphBuilderPhase extends Phase {
             // 4A.1 add a monitor enter to the start block
             methodSynchronizedObject = synchronizedObject(frameState, method);
             genMonitorEnter(methodSynchronizedObject, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI);
-            // 4A.2 finish the start block
-            finishStartBlock(startBlock);
-
-            // 4A.3 setup an exception handler to unlock the root method synchronized object
-            unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
-        } else {
-            // 4B.1 simply finish the start block
-            finishStartBlock(startBlock);
-
-            if (createUnwind) {
-                unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
-            }
         }
+
+        // 4B.1 simply finish the start block
+        finishStartBlock(startBlock);
+        unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
 
         // 5. SKIPPED: look for intrinsics
 
@@ -970,6 +959,9 @@ public final class GraphBuilderPhase extends Phase {
             Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
             Value result = appendWithBCI(invoke);
             invoke.setExceptionEdge(handleException(null, bci()));
+            if (invoke.exceptionEdge() == null) {
+                TTY.println("no exception edge" + unwindHandler);
+            }
             frameState.pushReturn(resultType, result);
         }
     }

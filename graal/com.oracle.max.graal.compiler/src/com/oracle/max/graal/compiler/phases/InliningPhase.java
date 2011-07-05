@@ -358,7 +358,7 @@ public class InliningPhase extends Phase {
                 TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
             }
             graph = new CompilerGraph(null);
-            new GraphBuilderPhase(compilation, method, true, true).apply(graph);
+            new GraphBuilderPhase(compilation, method, true).apply(graph);
         }
 
         invoke.inputs().clearAll();
