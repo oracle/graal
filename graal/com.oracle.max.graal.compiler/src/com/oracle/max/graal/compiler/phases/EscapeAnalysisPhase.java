@@ -152,7 +152,7 @@ public class EscapeAnalysisPhase extends Phase {
 
                     Node current;
                     if (block.firstNode() instanceof StartNode) {
-                        current = ((StartNode) block.firstNode()).start();
+                        current = ((StartNode) block.firstNode()).next();
                     } else {
                         current = block.firstNode();
                     }

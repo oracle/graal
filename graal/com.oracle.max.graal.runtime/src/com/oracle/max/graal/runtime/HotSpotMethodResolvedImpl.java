@@ -223,14 +223,4 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             }
         }
     }
-
-    @Override
-    public Graph intrinsicGraph(Node[] parameters) {
-        return null;
-    }
-
-    @Override
-    public boolean hasIntrinsicGraph() {
-        return false;
-    }
 }

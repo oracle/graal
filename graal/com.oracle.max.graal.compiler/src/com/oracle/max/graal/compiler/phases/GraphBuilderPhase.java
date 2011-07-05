@@ -172,7 +172,7 @@ public final class GraphBuilderPhase extends Phase {
         Block startBlock = nextBlock(FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI);
         markOnWorkList(startBlock);
         lastInstr = (FixedNodeWithNext) createTarget(startBlock, frameState);
-        graph.start().setStart(lastInstr);
+        graph.start().setNext(lastInstr);
 
         if (isSynchronized(method.accessFlags())) {
             // 4A.1 add a monitor enter to the start block

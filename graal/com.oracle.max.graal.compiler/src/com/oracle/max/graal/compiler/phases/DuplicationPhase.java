@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.graph.*;
 
@@ -36,13 +35,8 @@ public class DuplicationPhase extends Phase {
     @Override
     protected void run(Graph graph) {
 
-        GraalCompilation compilation = null;
-        if (graph instanceof CompilerGraph) {
-            compilation = ((CompilerGraph) graph).getCompilation();
-        }
-
         // Create duplicate graph.
-        CompilerGraph duplicate = new CompilerGraph(compilation);
+        CompilerGraph duplicate = new CompilerGraph(((CompilerGraph) graph).runtime());
         Map<Node, Node> replacements = new HashMap<Node, Node>();
         replacements.put(graph.start(), duplicate.start());
         duplicate.addDuplicate(graph.getNodes(), replacements);

@@ -201,6 +201,10 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.operands = new OperandPool(compilation.target);
     }
 
+    public CiTarget target() {
+        return compilation.target;
+    }
+
     public LIRList lir() {
         return lir;
     }
@@ -580,11 +584,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
-        Value[] args = new Value[invoke.argumentCount()];
-        for (int i = 0; i < invoke.argumentCount(); i++) {
-            args[i] = invoke.argument(i);
-        }
-        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.stateAfter().rethrowException(), invoke.kind, args);
+        return invoke.stateAfter().duplicateModified(getBeforeInvokeBci(invoke), invoke.stateAfter().rethrowException(), invoke.kind, invoke.arguments().toArray(new Value[0]));
     }
 
     private int getBeforeInvokeBci(Invoke invoke) {
@@ -742,8 +742,11 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     @Override
     public void visitFixedGuard(FixedGuard fixedGuard) {
-        BooleanNode comp = fixedGuard.node();
-        emitGuardComp(comp);
+        for (Node n : fixedGuard.inputs()) {
+            if (n != null) {
+                emitGuardComp((BooleanNode) n);
+            }
+        }
     }
 
     public void emitGuardComp(BooleanNode comp) {
@@ -1074,7 +1077,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             lastState = fs;
         } else if (block.blockPredecessors().size() == 1) {
             FrameState fs = block.blockPredecessors().get(0).lastState();
-            assert fs != null;
+            //assert fs != null : "B" + block.blockID() + ", pred=B" + block.blockPredecessors().get(0).blockID();
             if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
                 TTY.println("STATE CHANGE (singlePred)");
                 if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
@@ -1461,8 +1464,11 @@ public abstract class LIRGenerator extends ValueVisitor {
     @Override
     public void visitEndNode(EndNode end) {
         setNoResult(end);
+        assert end.merge() != null;
         moveToPhi(end.merge(), end);
-        lir.jump(getLIRBlock(end.merge()));
+        LIRBlock lirBlock = getLIRBlock(end.merge());
+        assert lirBlock != null : end;
+        lir.jump(lirBlock);
     }
 
     @Override
@@ -1676,10 +1682,9 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     List<CiValue> visitInvokeArguments(CiCallingConvention cc, Invoke x, List<CiValue> pointerSlots) {
         // for each argument, load it into the correct location
-        List<CiValue> argList = new ArrayList<CiValue>(x.argumentCount());
+        List<CiValue> argList = new ArrayList<CiValue>();
         int j = 0;
-        for (int i = 0; i < x.argumentCount(); i++) {
-            Value arg = x.argument(i);
+        for (Value arg : x.arguments()) {
             if (arg != null) {
                 CiValue operand = cc.locations[j++];
                 if (operand.isRegister()) {

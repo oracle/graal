@@ -554,6 +554,8 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                     case GT : acond = ConditionFlag.greater; break;
                     case BE : acond = ConditionFlag.belowEqual; break;
                     case AE : acond = ConditionFlag.aboveEqual; break;
+                    case AT : acond = ConditionFlag.above; break;
+                    case BT : acond = ConditionFlag.below; break;
                     default : throw Util.shouldNotReachHere();
                 }
                 // Checkstyle: on

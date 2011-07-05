@@ -26,15 +26,35 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ci.CiAddress.*;
 
 
 public final class LocationNode extends FloatingNode {
-    private static final int INPUT_COUNT = 0;
+    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_INDEX = 0;
     private static final int SUCCESSOR_COUNT = 0;
+
+    public static final Object FINAL_LOCATION = new Object();
+
+    public static Object getArrayLocation(CiKind elementKind) {
+        return elementKind;
+    }
 
     private int displacement;
     private CiKind valueKind;
     private Object locationIdentity;
+
+    public int displacement() {
+        return displacement;
+    }
+
+    public Value index() {
+        return (Value) inputs().get(super.inputCount() + INPUT_INDEX);
+    }
+
+    public void setIndex(Value index) {
+        inputs().set(super.inputCount() + INPUT_INDEX, index);
+    }
 
     public static LocationNode create(Object identity, CiKind kind, int displacement, Graph graph) {
         LocationNode result = new LocationNode(identity, kind, displacement, graph);
@@ -71,7 +91,13 @@ public final class LocationNode extends FloatingNode {
     }
 
     public CiValue createAddress(LIRGenerator lirGenerator, Value object) {
-        return new CiAddress(valueKind, lirGenerator.load(object), displacement);
+        CiValue indexValue = CiValue.IllegalValue;
+        Scale indexScale = Scale.Times1;
+        if (this.index() != null) {
+            indexValue = lirGenerator.load(this.index());
+            indexScale = Scale.fromInt(valueKind.sizeInBytes(lirGenerator.target().wordSize));
+        }
+        return new CiAddress(valueKind, lirGenerator.load(object), indexValue, indexScale, displacement);
     }
 
     public Object locationIdentity() {

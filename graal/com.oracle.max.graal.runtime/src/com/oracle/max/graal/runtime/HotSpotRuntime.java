@@ -26,6 +26,9 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
@@ -46,6 +49,7 @@ public class HotSpotRuntime implements RiRuntime {
     final HotSpotRegisterConfig regConfig;
     final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
+    private IdentityHashMap<RiMethod, CompilerGraph> intrinsicGraphs = new IdentityHashMap<RiMethod, CompilerGraph>();
 
 
     public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
@@ -275,5 +279,112 @@ public class HotSpotRuntime implements RiRuntime {
             }
             field.replaceAndDelete(memoryWrite);
         }
+    }
+
+    @Override
+    public Graph intrinsicGraph(RiMethod method, List<? extends Node> parameters) {
+        if (!intrinsicGraphs.containsKey(method)) {
+            RiType holder = method.holder();
+            String fullName = method.name() + method.signature().asString();
+            String holderName = holder.name();
+            if (holderName.equals("Ljava/lang/Object;")) {
+                if (fullName.equals("getClass()Ljava/lang/Class;")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local receiver = new Local(CiKind.Object, 0, graph);
+                    ReadNode klassOop = new ReadNode(CiKind.Object, receiver, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
+                    Return ret = new Return(new ReadNode(CiKind.Object, klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
+            } else if (holderName.equals("Ljava/lang/System;")) {
+                if (fullName.equals("arraycopy(Ljava/lang/Object;ILjava/lang/Object;II)V")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local src = new Local(CiKind.Object, 0, graph);
+                    Local srcPos = new Local(CiKind.Int, 1, graph);
+                    Local dest = new Local(CiKind.Object, 2, graph);
+                    Local destPos = new Local(CiKind.Int, 3, graph);
+                    Local length = new Local(CiKind.Int, 4, graph);
+                    src.setDeclaredType(((Value) parameters.get(0)).declaredType());
+                    dest.setDeclaredType(((Value) parameters.get(2)).declaredType());
+
+                    if (src.declaredType() == null || dest.declaredType() == null) {
+                        return null;
+                    }
+
+                    if (src.declaredType() != dest.declaredType()) {
+                        return null;
+                    }
+
+                    if (!src.declaredType().isArrayClass()) {
+                        return null;
+                    }
+
+                    CiKind componentType = src.declaredType().componentType().kind();
+
+                    if (componentType == CiKind.Object) {
+                        return null;
+                    }
+
+                    // Add preconditions.
+                    FixedGuard guard = new FixedGuard(graph);
+                    ArrayLength srcLength = new ArrayLength(src, graph);
+                    ArrayLength destLength = new ArrayLength(dest, graph);
+                    IntegerAdd upperLimitSrc = new IntegerAdd(CiKind.Int, srcPos, length, graph);
+                    IntegerAdd upperLimitDest = new IntegerAdd(CiKind.Int, destPos, length, graph);
+                    guard.addNode(new Compare(srcPos, Condition.BE, srcLength, graph));
+                    guard.addNode(new Compare(destPos, Condition.BE, destLength, graph));
+                    guard.addNode(new Compare(length, Condition.GE, Constant.forInt(0, graph), graph));
+                    guard.addNode(new Compare(upperLimitSrc, Condition.LE, srcLength, graph));
+                    guard.addNode(new Compare(upperLimitDest, Condition.LE, destLength, graph));
+                    graph.start().setNext(guard);
+
+                    LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, componentType, config.getArrayOffset(componentType), graph);
+
+                    // Build normal vector instruction.
+                    CreateVectorNode normalVector = new CreateVectorNode(false, length, graph);
+                    ReadVectorNode values = new ReadVectorNode(new IntegerAddVectorNode(normalVector, srcPos, graph), src, location, graph);
+                    new WriteVectorNode(new IntegerAddVectorNode(normalVector, destPos, graph), dest, location, values, graph);
+
+                    // Build reverse vector instruction.
+                    CreateVectorNode reverseVector = new CreateVectorNode(true, length, graph);
+                    ReadVectorNode reverseValues = new ReadVectorNode(new IntegerAddVectorNode(reverseVector, srcPos, graph), src, location, graph);
+                    new WriteVectorNode(new IntegerAddVectorNode(reverseVector, destPos, graph), dest, location, reverseValues, graph);
+
+                    If ifNode = new If(new Compare(src, Condition.EQ, dest, graph), graph);
+                    guard.setNext(ifNode);
+
+                    If secondIf = new If(new Compare(srcPos, Condition.LT, destPos, graph), graph);
+                    ifNode.setTrueSuccessor(secondIf);
+
+                    secondIf.setTrueSuccessor(reverseVector);
+
+                    Merge merge1 = new Merge(graph);
+                    merge1.addEnd(new EndNode(graph));
+                    merge1.addEnd(new EndNode(graph));
+
+                    ifNode.setFalseSuccessor(merge1.endAt(0));
+                    secondIf.setFalseSuccessor(merge1.endAt(1));
+                    merge1.setNext(normalVector);
+
+                    Merge merge2 = new Merge(graph);
+                    merge2.addEnd(new EndNode(graph));
+                    merge2.addEnd(new EndNode(graph));
+
+                    normalVector.setNext(merge2.endAt(0));
+                    reverseVector.setNext(merge2.endAt(1));
+
+                    Return ret = new Return(null, graph);
+                    merge2.setNext(ret);
+                    graph.setReturn(ret);
+                    return graph;
+                }
+            }
+
+            if (!intrinsicGraphs.containsKey(method)) {
+                intrinsicGraphs.put(method, null);
+            }
+        }
+        return intrinsicGraphs.get(method);
     }
 }

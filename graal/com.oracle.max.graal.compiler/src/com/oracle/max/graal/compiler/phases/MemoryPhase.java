@@ -71,8 +71,8 @@ public class MemoryPhase extends Phase {
             StartNode startNode = b.firstNode().graph().start();
             if (b.firstNode() == startNode) {
                 WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(startNode.graph());
-                checkpoint.setNext((FixedNode) startNode.start());
-                startNode.setStart(checkpoint);
+                checkpoint.setNext((FixedNode) startNode.next());
+                startNode.setNext(checkpoint);
                 mergeForWrite = checkpoint;
                 mergeForRead = checkpoint;
             }
