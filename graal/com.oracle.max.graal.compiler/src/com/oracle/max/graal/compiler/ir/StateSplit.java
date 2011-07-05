@@ -76,6 +76,17 @@ public abstract class StateSplit extends FixedNodeWithNext {
     }
 
     @Override
+    public void delete() {
+        FrameState stateAfter = stateAfter();
+        super.delete();
+        if (stateAfter != null) {
+            if (stateAfter.usages().isEmpty()) {
+                stateAfter.delete();
+            }
+        }
+    }
+
+    @Override
     public Iterable< ? extends Node> dataInputs() {
         final Iterator< ? extends Node> dataInputs = super.dataInputs().iterator();
         return new Iterable<Node>() {
