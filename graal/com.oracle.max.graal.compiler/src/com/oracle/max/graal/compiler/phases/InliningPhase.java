@@ -340,12 +340,6 @@ public class InliningPhase extends Phase {
         CompilerGraph graph = null;
         if (GraalOptions.Intrinsify) {
             graph = (CompilerGraph) compilation.runtime.intrinsicGraph(method, invoke.arguments());
-            if (graph != null && graph.getNodes(Merge.class).iterator().hasNext()) {
-                WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(invoke.graph());
-                checkpoint.setStateAfter(invoke.stateAfter());
-                checkpoint.setNext(invoke.next());
-                invoke.setNext(checkpoint);
-            }
         }
         if (graph != null) {
             if (GraalOptions.TraceInlining) {
@@ -404,14 +398,25 @@ public class InliningPhase extends Phase {
         } else {
             pred = new Placeholder(compilation.graph);
         }
-        invoke.predecessors().get(0).successors().replace(invoke, pred);
+        invoke.replaceAtPredecessors(pred);
         replacements.put(startNode, pred);
 
         Map<Node, Node> duplicates = compilation.graph.addDuplicate(nodes, replacements);
 
+        FrameState stateBefore = null;
         for (Node node : duplicates.values()) {
             if (node instanceof Invoke) {
                 newInvokes.add((Invoke) node);
+            } else if (node instanceof FrameState) {
+                FrameState frameState = (FrameState) node;
+                if (frameState.bci == FrameState.BEFORE_BCI) {
+                    if (stateBefore == null) {
+                        stateBefore = stateAfter.duplicateModified(invoke.bci, false, invoke.kind, parameters);
+                    }
+                    frameState.replaceAndDelete(stateBefore);
+                } else if (frameState.bci == FrameState.AFTER_BCI) {
+                    frameState.replaceAndDelete(stateAfter);
+                }
             }
         }
 

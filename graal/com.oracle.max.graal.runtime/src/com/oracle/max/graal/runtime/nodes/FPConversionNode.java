@@ -25,9 +25,7 @@ package com.oracle.max.graal.runtime.nodes;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.runtime.*;
 import com.sun.cri.ci.*;
 
 

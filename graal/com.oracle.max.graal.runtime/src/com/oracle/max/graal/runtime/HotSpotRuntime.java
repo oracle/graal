@@ -26,10 +26,9 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
 import com.sun.cri.ci.*;
@@ -326,6 +325,9 @@ public class HotSpotRuntime implements RiRuntime {
                         return null;
                     }
 
+                    FrameState stateBefore = new FrameState(method, FrameState.BEFORE_BCI, 0, 0, 0, false, graph);
+                    FrameState stateAfter = new FrameState(method, FrameState.AFTER_BCI, 0, 0, 0, false, graph);
+
                     // Add preconditions.
                     FixedGuard guard = new FixedGuard(graph);
                     ArrayLength srcLength = new ArrayLength(src, graph);
@@ -345,11 +347,13 @@ public class HotSpotRuntime implements RiRuntime {
                     CreateVectorNode normalVector = new CreateVectorNode(false, length, graph);
                     ReadVectorNode values = new ReadVectorNode(new IntegerAddVectorNode(normalVector, srcPos, graph), src, location, graph);
                     new WriteVectorNode(new IntegerAddVectorNode(normalVector, destPos, graph), dest, location, values, graph);
+                    normalVector.setStateAfter(stateAfter);
 
                     // Build reverse vector instruction.
                     CreateVectorNode reverseVector = new CreateVectorNode(true, length, graph);
                     ReadVectorNode reverseValues = new ReadVectorNode(new IntegerAddVectorNode(reverseVector, srcPos, graph), src, location, graph);
                     new WriteVectorNode(new IntegerAddVectorNode(reverseVector, destPos, graph), dest, location, reverseValues, graph);
+                    reverseVector.setStateAfter(stateAfter);
 
                     If ifNode = new If(new Compare(src, Condition.EQ, dest, graph), graph);
                     guard.setNext(ifNode);
@@ -362,6 +366,7 @@ public class HotSpotRuntime implements RiRuntime {
                     Merge merge1 = new Merge(graph);
                     merge1.addEnd(new EndNode(graph));
                     merge1.addEnd(new EndNode(graph));
+                    merge1.setStateAfter(stateBefore);
 
                     ifNode.setFalseSuccessor(merge1.endAt(0));
                     secondIf.setFalseSuccessor(merge1.endAt(1));
@@ -370,6 +375,7 @@ public class HotSpotRuntime implements RiRuntime {
                     Merge merge2 = new Merge(graph);
                     merge2.addEnd(new EndNode(graph));
                     merge2.addEnd(new EndNode(graph));
+                    merge2.setStateAfter(stateAfter);
 
                     normalVector.setNext(merge2.endAt(0));
                     reverseVector.setNext(merge2.endAt(1));

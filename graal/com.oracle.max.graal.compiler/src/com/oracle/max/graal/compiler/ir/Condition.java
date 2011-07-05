@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.sun.cri.bytecode.Bytecodes.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

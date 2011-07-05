@@ -28,7 +28,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class AbstractVectorNode extends FixedNodeWithNext {
+public abstract class AbstractVectorNode extends StateSplit {
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_VECTOR = 0;
