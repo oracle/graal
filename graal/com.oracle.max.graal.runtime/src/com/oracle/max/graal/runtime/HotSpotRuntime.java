@@ -304,7 +304,7 @@ public class HotSpotRuntime implements RiRuntime {
                     Local srcPos = new Local(CiKind.Int, 1, graph);
                     Local dest = new Local(CiKind.Object, 2, graph);
                     Local destPos = new Local(CiKind.Int, 3, graph);
-                    Local length = new Local(CiKind.Int, 4, graph);
+                    Value length = new Local(CiKind.Int, 4, graph);
                     src.setDeclaredType(((Value) parameters.get(0)).declaredType());
                     dest.setDeclaredType(((Value) parameters.get(2)).declaredType());
 
@@ -378,6 +378,42 @@ public class HotSpotRuntime implements RiRuntime {
                     merge2.setNext(ret);
                     graph.setReturn(ret);
                     return graph;
+                }
+            } else if (holderName.equals("Ljava/lang/Float;")) {
+                if (fullName.equals("floatToRawIntBits(F)I") || fullName.equals("floatToIntBits(F)I")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Int, new Local(CiKind.Float, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("intBitsToFloat(I)F")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Float, new Local(CiKind.Int, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
+            } else if (holderName.equals("Ljava/lang/Double;")) {
+                if (fullName.equals("doubleToRawLongBits(D)J") || fullName.equals("doubleToLongBits(D)J")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Long, new Local(CiKind.Double, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("longBitsToDouble(J)D")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Double, new Local(CiKind.Long, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
+            } else if (holderName.equals("Ljava/lang/Thread;")) {
+                if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new CurrentThread(config.threadObjectOffset, graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
                 }
             }
 

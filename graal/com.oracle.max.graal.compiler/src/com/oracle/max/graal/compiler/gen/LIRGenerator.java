@@ -1097,7 +1097,7 @@ public abstract class LIRGenerator extends ValueVisitor {
      * @return the operand that is guaranteed to be a stack location when it is
      *         initially defined a by move from {@code value}
      */
-    CiValue forceToSpill(CiValue value, CiKind kind, boolean mustStayOnStack) {
+    public CiValue forceToSpill(CiValue value, CiKind kind, boolean mustStayOnStack) {
         assert value.isLegal() : "value should not be illegal";
         assert kind.jvmSlots == value.kind.jvmSlots : "size mismatch";
         if (!value.isVariableOrRegister()) {
