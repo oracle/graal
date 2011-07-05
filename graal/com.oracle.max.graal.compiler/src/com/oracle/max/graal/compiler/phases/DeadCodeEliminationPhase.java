@@ -150,10 +150,10 @@ public class DeadCodeEliminationPhase extends Phase {
                 if (node.predecessors().size() > 0) {
                     for (Node pred : node.predecessors()) {
                         TTY.println("!PRED! " + pred + " (" + flood.isMarked(pred) + ")");
-                        for (int i=0; i<pred.successors().size(); i++) {
+                        for (int i = 0; i < pred.successors().size(); i++) {
                             TTY.println("pred=>succ: " + pred.successors().get(i));
                         }
-                        for (int i=0; i<pred.usages().size(); i++) {
+                        for (int i = 0; i < pred.usages().size(); i++) {
                             TTY.println("pred=>usage: " + pred.usages().get(i));
                         }
                     }
