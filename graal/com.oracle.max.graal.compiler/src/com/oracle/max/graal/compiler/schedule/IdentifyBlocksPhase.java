@@ -24,6 +24,9 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
+import javax.annotation.*;
+
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.phases.*;
@@ -71,6 +74,20 @@ public class IdentifyBlocksPhase extends Phase {
 
         assert nodeToBlock.get(n) == null;
         nodeToBlock.set(n, b);
+
+        if (n instanceof Merge) {
+            for (Node usage : n.usages()) {
+
+                if (usage instanceof Phi) {
+                    nodeToBlock.set(usage, b);
+                }
+
+                if (usage instanceof LoopCounter) {
+                    nodeToBlock.set(usage, b);
+                }
+
+            }
+        }
         if (b.lastNode() == null) {
             b.setFirstNode(n);
             b.setLastNode(n);
@@ -240,16 +257,6 @@ public class IdentifyBlocksPhase extends Phase {
 
         assert !n.isDeleted();
 
-        if (n instanceof Phi) {
-            Block block = nodeToBlock.get(((Phi) n).merge());
-            nodeToBlock.set(n, block);
-        }
-
-        if (n instanceof LoopCounter) {
-            Block block = nodeToBlock.get(((LoopCounter) n).loopBegin());
-            nodeToBlock.set(n, block);
-        }
-
         Block prevBlock = nodeToBlock.get(n);
         if (prevBlock != null) {
             return prevBlock;
@@ -293,12 +300,66 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
 
+        if (GraalOptions.OptOptimisticSchedule) {
+            block = scheduleOutOfLoops(n, block);
+        }
+
         nodeToBlock.set(n, block);
         if (block != null) {
             block.getInstructions().add(n);
         }
         return block;
     }
+
+    private Block scheduleOutOfLoops(Node n, Block latestBlock) {
+        Block cur = latestBlock;
+        while (cur != null) {
+            if (cur.isLoopHeader()) {
+                assert cur.getPredecessors().size() == 2 : cur.getPredecessors().size();
+                if (canSchedule(n, cur.getPredecessors().get(0))) {
+                    TTY.println("can schedule out of loop!" + n);
+                    return scheduleOutOfLoops(n, cur.getPredecessors().get(0));
+                }
+            }
+            cur = cur.dominator();
+        }
+        return latestBlock;
+    }
+
+    private boolean canSchedule(Node n, Block block) {
+        Set<Block> allowedBlocks = new HashSet<Block>();
+        Block cur = block;
+        while (cur != null) {
+            allowedBlocks.add(cur);
+            cur = cur.dominator();
+        }
+        // Now we know the allowed blocks for inputs and predecessors.
+        return checkNodesAbove(allowedBlocks, n);
+    }
+
+    private boolean checkNodesAbove(Set<Block> allowedBlocks, Node n) {
+        if (n == null) {
+            return true;
+        }
+
+        if (nodeToBlock.get(n) != null) {
+            return allowedBlocks.contains(nodeToBlock.get(n));
+        } else {
+            assert !(n instanceof Phi) : ((Phi) n).merge();
+            for (Node input : n.inputs()) {
+                if (!checkNodesAbove(allowedBlocks, input)) {
+                    return false;
+                }
+            }
+            for (Node pred : n.predecessors()) {
+                if (!checkNodesAbove(allowedBlocks, pred)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
 
     private Block getCommonDominator(Block a, Block b) {
         if (a == null) {
@@ -322,15 +383,11 @@ public class IdentifyBlocksPhase extends Phase {
         List<Node> sortedInstructions = new ArrayList<Node>(instructions.size() + 2);
 
         assert !map.isMarked(b.firstNode()) && nodeToBlock.get(b.firstNode()) == b;
-//        assert !instructions.contains(b.firstNode());
-//        assert !instructions.contains(b.lastNode());
         assert !map.isMarked(b.lastNode()) && nodeToBlock.get(b.lastNode()) == b;
 
-        //addToSorting(b, b.firstNode(), sortedInstructions, map);
         for (Node i : instructions) {
             addToSorting(b, i, sortedInstructions, map);
         }
-        //addToSorting(b, b.lastNode(), sortedInstructions, map);
 
         // Make sure that last node gets really last (i.e. when a frame state successor hangs off it).
         Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
@@ -365,7 +422,7 @@ public class IdentifyBlocksPhase extends Phase {
         }
 
         if (i instanceof WriteNode) {
-            // Make sure every ReadNode that is connected to the same memory state is executed before every write node.
+            // TODO(tw): Make sure every ReadNode that is connected to the same memory state is executed before every write node.
             WriteNode wn = (WriteNode) i;
             // TODO: Iterate over variablePart.
             wn.inputs().variablePart();

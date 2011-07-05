@@ -156,5 +156,6 @@ public final class GraalOptions {
     public static boolean OptGVN                             = ____;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = ____;
+    public static boolean OptOptimisticSchedule              = ____;
     public static boolean LoopPeeling                        = ____;
 }
