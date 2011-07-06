@@ -95,6 +95,15 @@ public final class Compare extends BooleanNode {
         setY(y);
     }
 
+    @Override
+    public boolean valueEqual(Node i) {
+        if (i instanceof Compare) {
+            Compare compare = (Compare) i;
+            return compare.condition == condition && compare.unorderedIsTrue == unorderedIsTrue;
+        }
+        return super.valueEqual(i);
+    }
+
     /**
      * Gets the condition (comparison operation) for this instruction.
      * @return the condition

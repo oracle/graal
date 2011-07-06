@@ -307,7 +307,7 @@ public class HotSpotRuntime implements RiRuntime {
             LocationNode arrayLocation = createArrayLocation(graph, elementKind);
             arrayLocation.setIndex(storeIndexed.index());
             Value value = storeIndexed.value();
-            if (elementKind == CiKind.Object) {
+            if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 // Store check!
                 if (storeIndexed.array().exactType() != null) {
                     RiType elementType = storeIndexed.array().exactType().componentType();

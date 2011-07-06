@@ -107,11 +107,11 @@ public final class RegisterFinalizer extends StateSplit {
             }
 
             if (needsCheck) {
-                if (GraalOptions.TraceGVN) {
+                if (GraalOptions.TraceCanonicalizer) {
                     TTY.println("Could not canonicalize finalizer " + object + " (declaredType=" + declaredType + ", exactType=" + exactType + ")");
                 }
             } else {
-                if (GraalOptions.TraceGVN) {
+                if (GraalOptions.TraceCanonicalizer) {
                     TTY.println("Canonicalized finalizer for object " + object);
                 }
                 return finalizer.next();
