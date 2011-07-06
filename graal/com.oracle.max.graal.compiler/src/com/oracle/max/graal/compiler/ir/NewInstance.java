@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
 import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -117,41 +116,25 @@ public final class NewInstance extends FixedNodeWithNext {
 
         @Override
         public boolean escape(Node node, Node usage) {
-            if (usage instanceof IsNonNull) {
-                IsNonNull x = (IsNonNull) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof IsType) {
-                IsType x = (IsType) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof FrameState) {
-                FrameState x = (FrameState) usage;
-                assert x.inputs().contains(node);
-                return true;
-            } else if (usage instanceof LoadField) {
+            if (usage instanceof LoadField) {
                 LoadField x = (LoadField) usage;
                 assert x.object() == node;
                 return x.field().isResolved() == false;
             } else if (usage instanceof StoreField) {
                 StoreField x = (StoreField) usage;
-                return x.value() == node;
+                return x.value() == node && x.object() != node;
             } else if (usage instanceof StoreIndexed) {
                 StoreIndexed x = (StoreIndexed) usage;
                 assert x.value() == node;
                 return true;
-            } else if (usage instanceof AccessMonitor) {
-                AccessMonitor x = (AccessMonitor) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof VirtualObject) {
+            } else if (usage instanceof VirtualObjectField) {
                 return false;
             } else if (usage instanceof RegisterFinalizer) {
                 RegisterFinalizer x = (RegisterFinalizer) usage;
                 assert x.object() == node;
                 return false;
             } else {
-                return true;
+                return super.escape(node, usage);
             }
         }
 
@@ -169,45 +152,27 @@ public final class NewInstance extends FixedNodeWithNext {
 
         @Override
         public void beforeUpdate(Node node, Node usage) {
-            if (usage instanceof IsNonNull) {
-                IsNonNull x = (IsNonNull) usage;
-                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
-                    FixedGuard guard = (FixedGuard) x.usages().get(0);
-                    guard.replaceAndDelete(guard.next());
-                }
-                x.delete();
-            } else if (usage instanceof IsType) {
-                IsType x = (IsType) usage;
-                assert x.type() == ((NewInstance) node).instanceClass();
-                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
-                    FixedGuard guard = (FixedGuard) x.usages().get(0);
-                    guard.replaceAndDelete(guard.next());
-                }
-                x.delete();
-            } else if (usage instanceof AccessMonitor) {
-                AccessMonitor x = (AccessMonitor) usage;
-                x.replaceAndDelete(x.next());
-            } else if (usage instanceof RegisterFinalizer) {
+            if (usage instanceof RegisterFinalizer) {
                 RegisterFinalizer x = (RegisterFinalizer) usage;
                 x.replaceAndDelete(x.next());
+            } else {
+                super.beforeUpdate(node, usage);
             }
         }
 
         @Override
         public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, Value[] fieldState) {
             if (current instanceof AccessField) {
-                if (((AccessField) current).object() == node) {
-                    Integer field = fieldIndex.get(((AccessField) current).field());
-                    assert field != null : ((AccessField) current).field() + " " + ((AccessField) current).field().hashCode();
+                AccessField x = (AccessField) current;
+                if (x.object() == node) {
+                    int field = fieldIndex.get(((AccessField) current).field());
                     if (current instanceof LoadField) {
-                        LoadField x = (LoadField) current;
-                        assert fieldState[field] != null : field + ", " + ((AccessField) current).field() + ((AccessField) current).field().hashCode();
+                        assert fieldState[field] != null : field + ", " + ((AccessField) current).field();
                         x.replaceAtUsages(fieldState[field]);
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
                     } else if (current instanceof StoreField) {
-                        StoreField x = (StoreField) current;
-                        fieldState[field] = x.value();
+                        fieldState[field] = ((StoreField) x).value();
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
                         return field;
