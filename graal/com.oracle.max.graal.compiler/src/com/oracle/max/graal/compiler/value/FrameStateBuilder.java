@@ -515,4 +515,14 @@ public class FrameStateBuilder implements FrameStateAccess {
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }
+
+    @Override
+    public boolean rethrowException() {
+        return rethrowException;
+    }
+
+    @Override
+    public void setRethrowException(boolean b) {
+        rethrowException = b;
+    }
 }

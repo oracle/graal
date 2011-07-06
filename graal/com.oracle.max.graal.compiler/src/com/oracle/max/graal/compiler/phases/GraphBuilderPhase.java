@@ -1250,6 +1250,7 @@ public final class GraphBuilderPhase extends Phase {
                 } else if (block instanceof DeoptBlock) {
                     createDeoptBlock((DeoptBlock) block);
                 } else {
+                    frameState.setRethrowException(false);
                     iterateBytecodesForBlock(block);
                 }
             }
