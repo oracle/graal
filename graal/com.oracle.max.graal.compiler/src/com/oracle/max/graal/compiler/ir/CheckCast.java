@@ -91,7 +91,6 @@ public final class CheckCast extends TypeCheck {
 
     @Override
     public Node copy(Graph into) {
-        CheckCast x = new CheckCast(null, null, into);
-        return x;
+        return new CheckCast(null, null, into);
     }
 }

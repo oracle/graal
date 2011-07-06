@@ -734,8 +734,12 @@ public final class GraphBuilderPhase extends Phase {
         Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
         if (typeInstruction != null) {
-//            append(new FixedGuard(new InstanceOf(typeInstruction, object, graph), graph));
-//            frameState.apush(object);
+//            InstanceOf instanceOf = new InstanceOf(typeInstruction, object, true, graph);
+//            FixedGuard fixedGuard = new FixedGuard(instanceOf, graph);
+//            append(fixedGuard);
+//            CastNode castNode = new CastNode(object.kind, object, graph);
+//            castNode.inputs().add(fixedGuard);
+//            frameState.apush(castNode);
             frameState.apush(new CheckCast(typeInstruction, object, graph));
         } else {
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
@@ -749,7 +753,7 @@ public final class GraphBuilderPhase extends Phase {
         Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
         Value object = frameState.apop();
         if (typeInstruction != null) {
-            frameState.ipush(append(new MaterializeNode(new InstanceOf(typeInstruction, object, graph), graph)));
+            frameState.ipush(append(new MaterializeNode(new InstanceOf(typeInstruction, object, false, graph), graph)));
         } else {
             frameState.ipush(appendConstant(CiConstant.INT_0));
         }

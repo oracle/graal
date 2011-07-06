@@ -478,12 +478,12 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     public void emitBooleanBranch(Node node, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
-        if (node instanceof Compare) {
+        if (node instanceof NegateBooleanNode) {
+            emitBooleanBranch(((NegateBooleanNode) node).value(), falseSuccessor, trueSuccessor, info);
+        } else if (node instanceof Compare) {
             emitCompare((Compare) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof InstanceOf) {
             emitInstanceOf((TypeCheck) node, trueSuccessor, falseSuccessor, info);
-        } else if (node instanceof NotInstanceOf) {
-            emitInstanceOf((TypeCheck) node, falseSuccessor, trueSuccessor, info);
         } else {
             throw Util.unimplemented(node.toString());
         }
@@ -1576,7 +1576,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         x.clearOperand();
     }
 
-    protected CiValue setResult(Value x, CiVariable operand) {
+    public CiValue setResult(Value x, CiVariable operand) {
         x.setOperand(operand);
         if (GraalOptions.DetailedAsserts) {
             operands.recordResult(operand, x);
