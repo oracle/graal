@@ -79,7 +79,7 @@ public final class Phi extends FloatingNode {
     public boolean verify() {
         assertTrue(merge() != null);
         if (!isDead()) {
-            assertTrue(merge().phiPredecessorCount() == valueCount());
+            assertTrue(merge().phiPredecessorCount() == valueCount(), merge().phiPredecessorCount() + "==" + valueCount());
         }
         return true;
     }

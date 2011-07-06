@@ -36,7 +36,6 @@ import com.sun.cri.ri.*;
  * The {@code NewInstance} instruction represents the allocation of an instance class object.
  */
 public final class NewInstance extends FixedNodeWithNext {
-    private static final EscapeOp ESCAPE = new NewInstanceEscapeOp();
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -109,7 +108,7 @@ public final class NewInstance extends FixedNodeWithNext {
         return super.lookup(clazz);
     }
 
-    private static class NewInstanceEscapeOp implements EscapeOp {
+    private static final EscapeOp ESCAPE = new EscapeOp() {
 
         @Override
         public boolean canAnalyze(Node node) {
@@ -195,31 +194,27 @@ public final class NewInstance extends FixedNodeWithNext {
         }
 
         @Override
-        public EscapeField updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Value> fieldState) {
+        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, Value[] fieldState) {
             if (current instanceof AccessField) {
-                EscapeField field = fields.get(((AccessField) current).field());
-                if (current instanceof LoadField) {
-                    LoadField x = (LoadField) current;
-                    if (x.object() == node) {
-                        assert fieldState.get(field) != null : field + ", " + ((AccessField) current).field() + ((AccessField) current).field().hashCode();
-                        x.replaceAtUsages(fieldState.get(field));
+                if (((AccessField) current).object() == node) {
+                    Integer field = fieldIndex.get(((AccessField) current).field());
+                    assert field != null : ((AccessField) current).field() + " " + ((AccessField) current).field().hashCode();
+                    if (current instanceof LoadField) {
+                        LoadField x = (LoadField) current;
+                        assert fieldState[field] != null : field + ", " + ((AccessField) current).field() + ((AccessField) current).field().hashCode();
+                        x.replaceAtUsages(fieldState[field]);
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
-                    }
-                } else if (current instanceof StoreField) {
-                    StoreField x = (StoreField) current;
-                    if (x.object() == node) {
-                        fieldState.put(field, x.value());
+                    } else if (current instanceof StoreField) {
+                        StoreField x = (StoreField) current;
+                        fieldState[field] = x.value();
                         assert x.usages().size() == 0;
-                        WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(x.graph());
-                        checkpoint.setStateAfter(x.stateAfter());
-                        checkpoint.setNext(x.next());
-                        x.replaceAndDelete(checkpoint);
+                        x.replaceAndDelete(x.next());
                         return field;
                     }
                 }
             }
-            return null;
+            return -1;
         }
-    }
+    };
 }

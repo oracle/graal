@@ -125,12 +125,27 @@ public final class FrameState extends Value implements FrameStateAccess {
         return method;
     }
 
+    public void addVirtualObjectMapping(Node virtualObject) {
+        assert virtualObject instanceof VirtualObjectField || virtualObject instanceof Phi : virtualObject;
+        inputs().variablePart().add(virtualObject);
+    }
+
+    public int virtualObjectMappingCount() {
+        return inputs().variablePart().size();
+    }
+
+    public Node virtualObjectMappingAt(int i) {
+        return inputs().variablePart().get(i);
+    }
+
+
     /**
      * Gets a copy of this frame state.
      */
     public FrameState duplicate(int bci) {
         FrameState other = new FrameState(method, bci, localsSize, stackSize, locksSize, rethrowException, graph());
         other.inputs().setAll(inputs());
+        other.inputs().variablePart().addAll(inputs().variablePart());
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -162,6 +177,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         for (int i = 0; i < locksSize; i++) {
             other.setValueAt(localsSize + other.stackSize + i, lockAt(i));
         }
+        other.inputs().variablePart().addAll(inputs().variablePart());
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -468,30 +484,83 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param proc the call back called to process each live value traversed
      */
     public void forEachLiveStateValue(ValueProcedure proc) {
-        for (int i = 0; i < valuesSize(); i++) {
-            Value value = valueAt(i);
-            visitLiveStateValue(value, proc);
-        }
-        if (outerFrameState() != null) {
-            outerFrameState().forEachLiveStateValue(proc);
-        }
-    }
-
-    private void visitLiveStateValue(Value value, ValueProcedure proc) {
-        if (value != null) {
-            if (value instanceof VirtualObject) {
-                HashSet<Object> fields = new HashSet<Object>();
-                VirtualObject obj = (VirtualObject) value;
-                do {
-                    if (!fields.contains(obj.field().representation())) {
-                        fields.add(obj.field().representation());
-                        visitLiveStateValue(obj.input(), proc);
+        HashSet<VirtualObject> vobjs = null;
+        FrameState current = this;
+        do {
+            for (int i = 0; i < current.valuesSize(); i++) {
+                Value value = current.valueAt(i);
+                if (value instanceof VirtualObject) {
+                    if (vobjs == null) {
+                        vobjs = new HashSet<VirtualObject>();
                     }
-                    obj = obj.object();
-                } while (obj != null);
-            } else {
-                proc.doValue(value);
+                    vobjs.add((VirtualObject) value);
+                } else if (value != null) {
+                    proc.doValue(value);
+                }
             }
+            current = current.outerFrameState();
+        } while (current != null);
+
+        if (vobjs != null) {
+            // collect all VirtualObjectField instances:
+            HashMap<VirtualObject, VirtualObjectField> objectStates = new HashMap<VirtualObject, VirtualObjectField>();
+            current = this;
+            do {
+                for (int i = 0; i < current.virtualObjectMappingCount(); i++) {
+                    VirtualObjectField field = (VirtualObjectField) current.virtualObjectMappingAt(i);
+                    // null states occur for objects with 0 fields
+                    if (field != null && !objectStates.containsKey(field.object())) {
+                        objectStates.put(field.object(), field);
+                    }
+                }
+                current = current.outerFrameState();
+            } while (current != null);
+
+            do {
+                HashSet<VirtualObject> vobjsCopy = new HashSet<VirtualObject>(vobjs);
+                for (VirtualObject vobj : vobjsCopy) {
+                    if (vobj.fields().length > 0) {
+                        boolean[] fieldState = new boolean[vobj.fields().length];
+                        FloatingNode currentField = objectStates.get(vobj);
+                        assert currentField != null : this;
+                        do {
+                            if (currentField instanceof VirtualObjectField) {
+                                int index = ((VirtualObjectField) currentField).index();
+                                Value value = ((VirtualObjectField) currentField).input();
+                                if (!fieldState[index]) {
+                                    fieldState[index] = true;
+                                    if (value instanceof VirtualObject) {
+                                        vobjs.add((VirtualObject) value);
+                                    } else {
+                                        proc.doValue(value);
+                                    }
+                                }
+                                currentField = ((VirtualObjectField) currentField).lastState();
+                            } else {
+                                assert currentField instanceof Phi : currentField;
+                                currentField = (FloatingNode) ((Phi) currentField).valueAt(0);
+                            }
+                        } while (currentField != null);
+                    }
+                    vobjs.remove(vobj);
+                }
+            } while (!vobjs.isEmpty());
+            if (!vobjs.isEmpty()) {
+                for (VirtualObject obj : vobjs) {
+                    TTY.println("+" + obj);
+                }
+                for (Node vobj : inputs().variablePart()) {
+                    if (vobj instanceof VirtualObjectField) {
+                        TTY.println("-" + ((VirtualObjectField) vobj).object());
+                    } else {
+                        TTY.println("-" + vobj);
+                    }
+                }
+                for (Node n : this.usages()) {
+                    TTY.println("usage: " + n);
+                }
+            }
+            assert vobjs.isEmpty() : "at FrameState " + this;
         }
     }
 

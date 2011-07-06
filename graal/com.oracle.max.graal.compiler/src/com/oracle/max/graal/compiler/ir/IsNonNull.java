@@ -68,7 +68,7 @@ public final class IsNonNull extends BooleanNode {
      */
     public IsNonNull(Value object, Graph graph) {
         super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        assert object == null || object.kind == CiKind.Object;
+        assert object == null || object.kind == CiKind.Object : object;
         setObject(object);
     }
 

@@ -99,29 +99,29 @@ public class DeadCodeEliminationPhase extends Phase {
                         endNode.replaceAndDelete(loop.next());
                         loop.delete();
                     }
-                } else if (node instanceof Merge) {
-                    for (Node n : node.usages()) {
-                        if (n instanceof Phi) {
-                            Phi phi = (Phi) n;
-                            if (phi.usages().size() == 1 && phi.usages().get(0) instanceof VirtualObject) {
-                                // (tw) This VirtualObject instance is implicitely dead, because the CFG to it (i.e. the store that produced it) is dead! => fix this in escape analysis
-                                VirtualObject virtualObject = (VirtualObject) phi.usages().get(0);
-                                virtualObject.replaceAndDelete(virtualObject.object());
-                            }
-                        }
-                    }
-                }
-
-
-                if (IdentifyBlocksPhase.isFixed(node)) {
-                    for (Node n : new ArrayList<Node>(node.usages())) {
-                        if (n instanceof VirtualObject) {
-                            // (tw) This VirtualObject instance is implicitely dead, because the CFG to it (i.e. the
-                            // store that produced it) is dead! => fix this in Escape analysis
-                            VirtualObject virtualObject = (VirtualObject) n;
-                            virtualObject.replaceAndDelete(virtualObject.object());
-                        }
-                    }
+//                } else if (node instanceof Merge) {
+//                    for (Node n : node.usages()) {
+//                        if (n instanceof Phi) {
+//                            Phi phi = (Phi) n;
+//                            if (phi.usages().size() == 1 && phi.usages().get(0) instanceof VirtualObject) {
+//                                // (tw) This VirtualObject instance is implicitely dead, because the CFG to it (i.e. the store that produced it) is dead! => fix this in escape analysis
+//                                VirtualObject virtualObject = (VirtualObject) phi.usages().get(0);
+//                                virtualObject.replaceAndDelete(virtualObject.object());
+//                            }
+//                        }
+//                    }
+//                }
+//
+//
+//                if (IdentifyBlocksPhase.isFixed(node)) {
+//                    for (Node n : new ArrayList<Node>(node.usages())) {
+//                        if (n instanceof VirtualObject) {
+//                            // (tw) This VirtualObject instance is implicitely dead, because the CFG to it (i.e. the
+//                            // store that produced it) is dead! => fix this in Escape analysis
+//                            VirtualObject virtualObject = (VirtualObject) n;
+//                            virtualObject.replaceAndDelete(virtualObject.object());
+//                        }
+//                    }
                 }
             }
         }

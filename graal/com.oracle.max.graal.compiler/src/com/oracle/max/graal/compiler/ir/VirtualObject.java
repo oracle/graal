@@ -33,9 +33,7 @@ import com.sun.cri.ri.*;
 
 public class VirtualObject extends FloatingNode {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_OBJECT = 0;
-    private static final int INPUT_INPUT = 1;
+    private static final int INPUT_COUNT = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -49,48 +47,13 @@ public class VirtualObject extends FloatingNode {
         return super.successorCount() + SUCCESSOR_COUNT;
     }
 
-    /**
-     * The instruction that specifies the old state of the virtual object.
-     */
-     public VirtualObject object() {
-        return (VirtualObject) inputs().get(super.inputCount() + INPUT_OBJECT);
-    }
-
-    private VirtualObject setObject(VirtualObject n) {
-        return (VirtualObject) inputs().set(super.inputCount() + INPUT_OBJECT, n);
-    }
-
-    /**
-     * The instruction that contains the new state of the specified field.
-     */
-     public Value input() {
-        return (Value) inputs().get(super.inputCount() + INPUT_INPUT);
-    }
-
-    public Value setInput(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_INPUT, n);
-    }
-
-    private EscapeField field;
     private EscapeField[] fields;
     private RiType type;
 
-    /**
-     * Constructs a new ArrayLength instruction.
-     * @param array the instruction producing the array
-     * @param newFrameState the state after executing this instruction
-     */
-    public VirtualObject(VirtualObject object, Value input, EscapeField field, RiType type, EscapeField[] fields, Graph graph) {
+    public VirtualObject(RiType type, EscapeField[] fields, Graph graph) {
         super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.field = field;
         this.type = type;
         this.fields = fields;
-        setObject(object);
-        setInput(input);
-    }
-
-    public EscapeField field() {
-        return field;
     }
 
     public RiType type() {
@@ -110,23 +73,22 @@ public class VirtualObject extends FloatingNode {
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("type", type);
-        properties.put("field", field);
         return properties;
     }
 
     @Override
     public String shortName() {
-        return "VirtualObject " + field.name();
+        return "VirtualObject " + type.name();
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(object()).print(".").print(field.name()).print("=").print(input());
+        out.print("virtualobject ").print(type.name());
     }
 
     @Override
     public Node copy(Graph into) {
-        VirtualObject x = new VirtualObject(null, null, field, type, fields, into);
+        VirtualObject x = new VirtualObject(type, fields, into);
         return x;
     }
 }
