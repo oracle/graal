@@ -29,9 +29,10 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FieldWriteBarrier extends WriteBarrier {
-    private static final int INPUT_COUNT = 1;
+public final class ArrayWriteBarrier extends WriteBarrier {
+    private static final int INPUT_COUNT = 2;
     private static final int INPUT_OBJECT = 0;
+    private static final int INPUT_LOCATION = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -51,9 +52,21 @@ public final class FieldWriteBarrier extends WriteBarrier {
         inputs().set(super.inputCount() + INPUT_OBJECT, n);
     }
 
-    public FieldWriteBarrier(Value object, Graph graph) {
+    /**
+     * The instruction that produces the object tested against null.
+     */
+     public LocationNode location() {
+        return (LocationNode) inputs().get(super.inputCount() + INPUT_LOCATION);
+    }
+
+    public void setLocation(LocationNode n) {
+        inputs().set(super.inputCount() + INPUT_LOCATION, n);
+    }
+
+    public ArrayWriteBarrier(Value object, LocationNode index, Graph graph) {
         super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.setObject(object);
+        this.setLocation(index);
     }
 
 
@@ -64,10 +77,10 @@ public final class FieldWriteBarrier extends WriteBarrier {
             return (T) new LIRGenerator.LIRGeneratorOp() {
                 @Override
                 public void generate(Node n, LIRGenerator generator) {
-                    assert n == FieldWriteBarrier.this;
+                    assert n == ArrayWriteBarrier.this;
                     CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().move(generator.makeOperand(object()), temp);
-                    FieldWriteBarrier.this.generateBarrier(temp, generator);
+                    generator.lir().lea(location().createAddress(generator, object()), temp);
+                    ArrayWriteBarrier.this.generateBarrier(temp, generator);
                 }
             };
         }
@@ -81,6 +94,6 @@ public final class FieldWriteBarrier extends WriteBarrier {
 
     @Override
     public Node copy(Graph into) {
-        return new FieldWriteBarrier(null, into);
+        return new ArrayWriteBarrier(null, null, into);
     }
 }

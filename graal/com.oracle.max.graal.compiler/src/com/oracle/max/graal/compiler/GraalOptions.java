@@ -153,6 +153,7 @@ public final class GraalOptions {
     public static boolean CommentedAssembly                  = ____;
     public static boolean PrintLIRWithAssembly               = ____;
 
+    public static boolean OptReadElimination                 = ____;
     public static boolean OptGVN                             = ____;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = ____;

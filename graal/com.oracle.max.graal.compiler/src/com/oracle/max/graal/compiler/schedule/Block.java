@@ -246,4 +246,8 @@ public class Block {
             }
         }
     }
+
+    public String name() {
+        return "B" + blockID;
+    }
 }

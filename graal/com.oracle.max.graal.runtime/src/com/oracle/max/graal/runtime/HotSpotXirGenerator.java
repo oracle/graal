@@ -1179,7 +1179,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     @Override
     public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiType type) {
-        assert type.isResolved();
         return new XirSnippet(checkCastTemplates.get(site), receiver, hub);
     }
 

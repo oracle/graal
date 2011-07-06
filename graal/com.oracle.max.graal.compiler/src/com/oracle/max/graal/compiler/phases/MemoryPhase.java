@@ -315,6 +315,8 @@ public class MemoryPhase extends Phase {
             LoopBegin begin = end.loopBegin();
             Block beginBlock = nodeMap.get(begin);
             MemoryMap memoryMap = memoryMaps[beginBlock.blockID()];
+            assert memoryMap != null : beginBlock.name();
+            assert memoryMap.getLoopEntryMap() != null;
             memoryMap.getLoopEntryMap().resetMergeOperationCount();
             memoryMap.getLoopEntryMap().mergeWith(map, beginBlock);
             Node loopCheckPoint = memoryMap.getLoopCheckPoint();

@@ -1300,11 +1300,11 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                     default      : throw Util.shouldNotReachHere();
                 }
             } else {
-                throw Util.shouldNotReachHere();
+                throw Util.shouldNotReachHere("opr1=" + opr1.toString() + " opr2=" + opr2);
             }
 
         } else {
-            throw Util.shouldNotReachHere(opr1.toString() + " opr2 = " + opr2);
+            throw Util.shouldNotReachHere("opr1=" + opr1.toString() + " opr2=" + opr2);
         }
         // Checkstyle: on
     }

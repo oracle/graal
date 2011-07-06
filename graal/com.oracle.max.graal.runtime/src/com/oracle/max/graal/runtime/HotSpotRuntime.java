@@ -26,6 +26,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -36,6 +37,7 @@ import com.sun.cri.ci.CiTargetMethod.Call;
 import com.sun.cri.ci.CiTargetMethod.DataPatch;
 import com.sun.cri.ci.CiTargetMethod.Safepoint;
 import com.sun.cri.ri.*;
+import com.sun.cri.ri.RiType.Representation;
 import com.sun.max.asm.dis.*;
 import com.sun.max.lang.*;
 
@@ -246,6 +248,10 @@ public class HotSpotRuntime implements RiRuntime {
 
     @Override
     public void lower(Node n, CiLoweringTool tool) {
+        if (!GraalOptions.Lower) {
+            return;
+        }
+
         if (n instanceof LoadField) {
             LoadField field = (LoadField) n;
             if (field.isVolatile()) {
@@ -277,7 +283,68 @@ public class HotSpotRuntime implements RiRuntime {
                 memoryWrite.setNext(field.next());
             }
             field.replaceAndDelete(memoryWrite);
+        } else if (n instanceof LoadIndexed) {
+            LoadIndexed loadIndexed = (LoadIndexed) n;
+            Graph graph = loadIndexed.graph();
+            GuardNode boundsCheck = createBoundsCheck(loadIndexed, tool);
+
+            CiKind elementKind = loadIndexed.elementKind();
+            LocationNode arrayLocation = createArrayLocation(graph, elementKind);
+            arrayLocation.setIndex(loadIndexed.index());
+            ReadNode memoryRead = new ReadNode(elementKind.stackKind(), loadIndexed.array(), arrayLocation, graph);
+            memoryRead.setGuard(boundsCheck);
+            memoryRead.setNext(loadIndexed.next());
+            loadIndexed.replaceAndDelete(memoryRead);
+        } else if (n instanceof StoreIndexed) {
+            StoreIndexed storeIndexed = (StoreIndexed) n;
+            Graph graph = storeIndexed.graph();
+            Anchor anchor = new Anchor(graph);
+            GuardNode boundsCheck = createBoundsCheck(storeIndexed, tool);
+            anchor.inputs().add(boundsCheck);
+
+
+            CiKind elementKind = storeIndexed.elementKind();
+            LocationNode arrayLocation = createArrayLocation(graph, elementKind);
+            arrayLocation.setIndex(storeIndexed.index());
+            Value value = storeIndexed.value();
+            if (elementKind == CiKind.Object) {
+                // Store check!
+                if (storeIndexed.array().exactType() != null) {
+                    RiType elementType = storeIndexed.array().exactType().componentType();
+                    if (elementType.superType() != null) {
+                        Constant type = new Constant(elementType.getEncoding(Representation.ObjectHub), graph);
+                        value = new CheckCast(type, value, graph);
+                    } else {
+                        assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
+                    }
+                } else {
+                    ReadNode arrayKlass = new ReadNode(CiKind.Object, storeIndexed.array(), LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
+                    ReadNode arrayElementKlass = new ReadNode(CiKind.Object, arrayKlass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), graph);
+                    value = new CheckCast(arrayElementKlass, value, graph);
+                }
+            }
+            WriteNode memoryWrite = new WriteNode(elementKind.stackKind(), storeIndexed.array(), value, arrayLocation, graph);
+            memoryWrite.setGuard(boundsCheck);
+            memoryWrite.setStateAfter(storeIndexed.stateAfter());
+            anchor.setNext(memoryWrite);
+            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+                ArrayWriteBarrier writeBarrier = new ArrayWriteBarrier(storeIndexed.array(), arrayLocation, graph);
+                memoryWrite.setNext(writeBarrier);
+                writeBarrier.setNext(storeIndexed.next());
+            } else {
+                memoryWrite.setNext(storeIndexed.next());
+            }
+            storeIndexed.replaceAtPredecessors(anchor);
+            storeIndexed.delete();
         }
+    }
+
+    private LocationNode createArrayLocation(Graph graph, CiKind elementKind) {
+        return LocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), graph);
+    }
+
+    private GuardNode createBoundsCheck(AccessIndexed n, CiLoweringTool tool) {
+        return (GuardNode) tool.createGuard(new Compare(n.index(), Condition.BT, n.length(), n.graph()));
     }
 
     @Override

@@ -111,13 +111,15 @@ public class IR {
             new GlobalValueNumberingPhase().apply(graph);
         }
 
+        new LoweringPhase(compilation.runtime).apply(graph);
         if (GraalOptions.Lower) {
-            new LoweringPhase(compilation.runtime).apply(graph);
             new MemoryPhase().apply(graph);
             if (GraalOptions.OptGVN) {
                 new GlobalValueNumberingPhase().apply(graph);
             }
-            new ReadEliminationPhase().apply(graph);
+            if (GraalOptions.OptReadElimination) {
+                new ReadEliminationPhase().apply(graph);
+            }
         }
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);

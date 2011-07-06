@@ -484,6 +484,8 @@ public abstract class LIRGenerator extends ValueVisitor {
             emitCompare((Compare) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof InstanceOf) {
             emitInstanceOf((TypeCheck) node, trueSuccessor, falseSuccessor, info);
+        } else if (node instanceof Constant) {
+            emitConstantBranch(((Constant) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
         } else {
             throw Util.unimplemented(node.toString());
         }
@@ -496,6 +498,21 @@ public abstract class LIRGenerator extends ValueVisitor {
         LIRXirInstruction instr = (LIRXirInstruction) lir.instructionsList().get(lir.instructionsList().size() - 1);
         instr.setTrueSuccessor(trueSuccessor);
         instr.setFalseSuccessor(falseSuccessor);
+    }
+
+
+    public void emitConstantBranch(boolean value, LIRBlock trueSuccessorBlock, LIRBlock falseSuccessorBlock, LIRDebugInfo info) {
+        if (value) {
+            emitConstantBranch(trueSuccessorBlock, info);
+        } else {
+            emitConstantBranch(falseSuccessorBlock, info);
+        }
+    }
+
+    private void emitConstantBranch(LIRBlock block, LIRDebugInfo info) {
+        if (block != null) {
+            lir.jump(block);
+        }
     }
 
     public void emitCompare(Compare compare, LIRBlock trueSuccessorBlock, LIRBlock falseSuccessorBlock) {
@@ -761,13 +778,17 @@ public abstract class LIRGenerator extends ValueVisitor {
             FrameState state = lastState;
             assert state != null : "deoptimize instruction always needs a state";
 
-            if (deoptimizationStubs == null) {
-                deoptimizationStubs = new ArrayList<DeoptimizationStub>();
-            }
-            DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
-            deoptimizationStubs.add(stub);
+            if (comp instanceof Constant && comp.asConstant().asBoolean()) {
+                // Nothing to emit.
+            } else {
+                if (deoptimizationStubs == null) {
+                    deoptimizationStubs = new ArrayList<DeoptimizationStub>();
+                }
 
-            emitBooleanBranch(comp, null, new LIRBlock(stub.label, stub.info), stub.info);
+                DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
+                deoptimizationStubs.add(stub);
+                emitBooleanBranch(comp, null, new LIRBlock(stub.label, stub.info), stub.info);
+            }
         }
     }
 
