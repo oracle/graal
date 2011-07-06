@@ -95,14 +95,14 @@ public class Block {
                     firstNode.graph().start().setNext(a);
                     this.anchor = a;
                 }
-            } else if (firstNode instanceof Merge) {
-                Merge merge = (Merge) firstNode;
-                if (merge.next() instanceof Anchor) {
-                    this.anchor = (Anchor) merge.next();
+            } else if (firstNode instanceof Merge || firstNode instanceof ExceptionObject) {
+                FixedNodeWithNext fixedNode = (FixedNodeWithNext) firstNode;
+                if (fixedNode.next() instanceof Anchor) {
+                    this.anchor = (Anchor) fixedNode.next();
                 } else {
                     Anchor a = new Anchor(firstNode.graph());
-                    a.setNext(merge.next());
-                    merge.setNext(a);
+                    a.setNext(fixedNode.next());
+                    fixedNode.setNext(a);
                     this.anchor = a;
                 }
             } else {
