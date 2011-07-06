@@ -157,11 +157,6 @@ public final class Compare extends BooleanNode {
         return x;
     }
 
-    @Override
-    public BooleanNode negate() {
-        return new Compare(x(), condition.negate(), y(), graph());
-    }
-
     private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
         @Override
         public Node canonical(Node node) {
@@ -197,7 +192,7 @@ public final class Compare extends BooleanNode {
                     }
                     BooleanNode result = materializeNode.value();
                     if (isFalseCheck) {
-                        result = result.negate();
+                        result = new NegateBooleanNode(result, compare.graph());
                     }
                     if (GraalOptions.TraceCanonicalizer) {
                         TTY.println("Removed materialize replacing with " + result);

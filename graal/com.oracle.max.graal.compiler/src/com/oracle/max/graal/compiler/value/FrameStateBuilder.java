@@ -43,6 +43,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     private final ArrayList<Value> locks;
 
     private int stackIndex;
+    private boolean rethrowException;
 
     private final RiMethod method;
 
@@ -59,7 +60,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
-            Local local = new Local(method.holder().kind(), javaIndex, graph.start(), graph);
+            Local local = new Local(method.holder().kind(), javaIndex, graph);
             local.setDeclaredType(method.holder());
             storeLocal(javaIndex, local);
             javaIndex = 1;
@@ -71,7 +72,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         for (int i = 0; i < max; i++) {
             RiType type = sig.argumentTypeAt(i, accessingClass);
             CiKind kind = type.kind().stackKind();
-            Local local = new Local(kind, index, graph.start(), graph);
+            Local local = new Local(kind, index, graph);
             if (type.isResolved()) {
                 local.setDeclaredType(type);
             }
@@ -102,10 +103,11 @@ public class FrameStateBuilder implements FrameStateAccess {
         for (int i = 0; i < other.locksSize(); i++) {
             locks.add(other.lockAt(i));
         }
+        this.rethrowException = other.rethrowException();
     }
 
     public FrameState create(int bci) {
-        return new FrameState(method, bci, locals, stack, stackIndex, locks, false, graph);
+        return new FrameState(method, bci, locals, stack, stackIndex, locks, rethrowException, graph);
     }
 
     public FrameState duplicateWithException(int bci, Value exceptionObject) {

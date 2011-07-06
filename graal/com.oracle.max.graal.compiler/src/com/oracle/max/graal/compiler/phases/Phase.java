@@ -30,12 +30,14 @@ import com.oracle.max.graal.graph.Graph;
 public abstract class Phase {
 
     private final String name;
+    private String detailedName;
     private static final ThreadLocal<Phase> currentPhase = new ThreadLocal<Phase>();
     private final boolean shouldVerify;
 
     public Phase() {
         this.name = this.getClass().getSimpleName();
         this.shouldVerify = true;
+        this.detailedName = name;
     }
 
     public Phase(String name) {
@@ -45,6 +47,11 @@ public abstract class Phase {
     public Phase(String name, boolean shouldVerify) {
         this.name = name;
         this.shouldVerify = shouldVerify;
+        this.detailedName = name;
+    }
+
+    protected void setDetailedName(String detailedName) {
+        this.detailedName = detailedName;
     }
 
     public final void apply(Graph graph) {
@@ -71,13 +78,13 @@ public abstract class Phase {
         } catch (AssertionError t) {
             GraalCompilation compilation = GraalCompilation.compilation();
             if (compilation.compiler.isObserved() && plotOnError) {
-                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "AssertionError in " + getName(), graph, true, false, true));
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "AssertionError in " + detailedName, graph, true, false, true));
             }
             throw t;
         } catch (RuntimeException t) {
             GraalCompilation compilation = GraalCompilation.compilation();
             if (compilation.compiler.isObserved() && plotOnError) {
-                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in " + getName(), graph, true, false, true));
+                compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "RuntimeException in " + detailedName, graph, true, false, true));
             }
             throw t;
         }
@@ -98,7 +105,7 @@ public abstract class Phase {
         }
         GraalCompilation compilation = GraalCompilation.compilation();
         if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After " + getName(), graph, true, false));
+            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After " + detailedName, graph, true, false));
         }
 
         assert !shouldVerify || graph.verify();

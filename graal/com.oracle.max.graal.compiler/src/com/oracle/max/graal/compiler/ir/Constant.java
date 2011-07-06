@@ -55,14 +55,6 @@ public final class Constant extends BooleanNode {
         v.visitConstant(this);
     }
 
-    @Override
-    public BooleanNode negate() {
-        if (value.kind != CiKind.Boolean) {
-            throw new IllegalStateException("boolean expected, actual: " + kind);
-        }
-        return Constant.forBoolean(!value.asBoolean(), graph());
-    }
-
     /**
      * Creates an instruction for a double constant.
      * @param d the double value for which to create the instruction
@@ -179,7 +171,7 @@ public final class Constant extends BooleanNode {
     public RiType declaredType() {
         RiRuntime runtime = compilation().runtime;
         if (kind.isPrimitive()) {
-            runtime.asRiType(kind);
+            return runtime.asRiType(kind);
         }
         return runtime.getTypeOf(asConstant());
     }

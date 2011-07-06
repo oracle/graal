@@ -20,67 +20,63 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.runtime.nodes;
+package com.oracle.max.graal.compiler.ir;
+
+import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FieldWriteBarrier extends WriteBarrier {
+public final class WriteVectorNode extends AccessVectorNode {
     private static final int INPUT_COUNT = 1;
-    private static final int INPUT_OBJECT = 0;
-
+    private static final int INPUT_VALUES = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public void setValues(AbstractVectorNode length) {
+        inputs().set(super.inputCount() + INPUT_VALUES, length);
     }
 
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    public AbstractVectorNode values() {
+        return (AbstractVectorNode) inputs().get(super.inputCount() + INPUT_VALUES);
     }
 
-    public void setObject(Value n) {
-        inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    public WriteVectorNode(AbstractVectorNode vector, Value object, LocationNode location, AbstractVectorNode values, Graph graph) {
+        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, vector, object, location, graph);
+        setValues(values);
     }
 
-    public FieldWriteBarrier(Value object, Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.setObject(object);
-    }
-
-
-    @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
         if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) new LIRGenerator.LIRGeneratorOp() {
-                @Override
-                public void generate(Node n, LIRGenerator generator) {
-                    assert n == FieldWriteBarrier.this;
-                    CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().move(generator.makeOperand(object()), temp);
-                    FieldWriteBarrier.this.generateBarrier(temp, generator);
-                }
-            };
+            return null;
         }
         return super.lookup(clazz);
     }
 
     @Override
     public void print(LogStream out) {
-        out.print("field write barrier ").print(object());
+        out.print("write vector node " + values());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new FieldWriteBarrier(null, into);
+        return new WriteVectorNode(null, null, null, null, into);
+    }
+
+
+    @Override
+    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
+        LocationNode newLocation = LocationNode.create(LocationNode.getArrayLocation(location().getValueKind()), location().getValueKind(), location().displacement(), graph());
+        Value index = nodes.get(vector());
+        Value value = nodes.get(values());
+        assert index != null;
+        assert value != null;
+        newLocation.setIndex(index);
+        WriteNode writeNode = new WriteNode(location().getValueKind().stackKind(), object(), value, newLocation, graph());
+        loop.loopEnd().replaceAtPredecessors(writeNode);
+        writeNode.setNext(loop.loopEnd());
     }
 }

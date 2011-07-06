@@ -54,11 +54,11 @@ public class InliningPhase extends Phase {
     }
 
     private Queue<Invoke> newInvokes = new ArrayDeque<Invoke>();
-    private Graph graph;
+    private CompilerGraph graph;
 
     @Override
     protected void run(Graph graph) {
-        this.graph = graph;
+        this.graph = (CompilerGraph) graph;
 
         float ratio = GraalOptions.MaximumInlineRatio;
         inliningSize = compilation.method.codeSize();
@@ -118,12 +118,12 @@ public class InliningPhase extends Phase {
     private RiMethod inlineInvoke(Invoke invoke, int iterations, float ratio) {
         RiMethod parent = invoke.stateAfter().method();
         RiTypeProfile profile = parent.typeProfile(invoke.bci);
-        if (!checkInvokeConditions(invoke)) {
-            return null;
-        }
-        if (invoke.target.hasIntrinsicGraph() && GraalOptions.Intrinsify) {
+        if (GraalOptions.Intrinsify && compilation.runtime.intrinsicGraph(invoke.target, invoke.arguments()) != null) {
             // Always intrinsify.
             return invoke.target;
+        }
+        if (!checkInvokeConditions(invoke)) {
+            return null;
         }
         if (invoke.opcode() == Bytecodes.INVOKESPECIAL || invoke.target.canBeStaticallyBound()) {
             if (checkTargetConditions(invoke.target, iterations) && checkSizeConditions(invoke.target, invoke, profile, ratio)) {
@@ -159,7 +159,7 @@ public class InliningPhase extends Phase {
                     String concreteName = CiUtil.format("%H.%n(%p):%r", concrete, false);
                     TTY.println("recording concrete method assumption: %s -> %s", targetName, concreteName);
                 }
-                compilation.assumptions.recordConcreteMethod(invoke.target, concrete);
+                graph.assumptions().recordConcreteMethod(invoke.target, concrete);
                 return concrete;
             }
             return null;
@@ -323,40 +323,42 @@ public class InliningPhase extends Phase {
             exceptionEdge = ((Placeholder) exceptionEdge).next();
         }
 
-        boolean withReceiver = !Modifier.isStatic(method.accessFlags());
+        boolean withReceiver = !invoke.isStatic();
 
         int argumentCount = method.signature().argumentCount(false);
         Value[] parameters = new Value[argumentCount + (withReceiver ? 1 : 0)];
         int slot = withReceiver ? 1 : 0;
         int param = withReceiver ? 1 : 0;
         for (int i = 0; i < argumentCount; i++) {
-            parameters[param++] = invoke.argument(slot);
+            parameters[param++] = invoke.arguments().get(slot);
             slot += method.signature().argumentKindAt(i).sizeInSlots();
         }
         if (withReceiver) {
-            parameters[0] = invoke.argument(0);
+            parameters[0] = invoke.arguments().get(0);
         }
 
         CompilerGraph graph = null;
         if (GraalOptions.Intrinsify) {
-            graph = (CompilerGraph) method.intrinsicGraph(parameters);
+            graph = (CompilerGraph) compilation.runtime.intrinsicGraph(method, invoke.arguments());
         }
         if (graph != null) {
-            TTY.println("Using intrinsic graph");
+            if (GraalOptions.TraceInlining) {
+                TTY.println("Using intrinsic graph");
+            }
         } else {
             graph = GraphBuilderPhase.cachedGraphs.get(method);
         }
 
         if (graph != null) {
             if (GraalOptions.TraceInlining) {
-                TTY.println("Reusing graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
+                TTY.println("Reusing graph for %s", methodName(method, invoke));
             }
         } else {
             if (GraalOptions.TraceInlining) {
                 TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
             }
             graph = new CompilerGraph(null);
-            new GraphBuilderPhase(compilation, method, true, true).apply(graph);
+            new GraphBuilderPhase(compilation, method, true).apply(graph);
         }
 
         invoke.inputs().clearAll();
@@ -396,14 +398,25 @@ public class InliningPhase extends Phase {
         } else {
             pred = new Placeholder(compilation.graph);
         }
-        invoke.predecessors().get(0).successors().replace(invoke, pred);
+        invoke.replaceAtPredecessors(pred);
         replacements.put(startNode, pred);
 
         Map<Node, Node> duplicates = compilation.graph.addDuplicate(nodes, replacements);
 
+        FrameState stateBefore = null;
         for (Node node : duplicates.values()) {
             if (node instanceof Invoke) {
                 newInvokes.add((Invoke) node);
+            } else if (node instanceof FrameState) {
+                FrameState frameState = (FrameState) node;
+                if (frameState.bci == FrameState.BEFORE_BCI) {
+                    if (stateBefore == null) {
+                        stateBefore = stateAfter.duplicateModified(invoke.bci, false, invoke.kind, parameters);
+                    }
+                    frameState.replaceAndDelete(stateBefore);
+                } else if (frameState.bci == FrameState.AFTER_BCI) {
+                    frameState.replaceAndDelete(stateAfter);
+                }
             }
         }
 

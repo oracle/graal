@@ -20,40 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.runtime.nodes;
+package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FieldWriteBarrier extends WriteBarrier {
+public final class CastNode extends FloatingNode {
     private static final int INPUT_COUNT = 1;
-    private static final int INPUT_OBJECT = 0;
+    private static final int INPUT_NODE = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
 
     /**
      * The instruction that produces the object tested against null.
      */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    public Value value() {
+        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public void setObject(Value n) {
-        inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    public void setValue(Value n) {
+        inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    public FieldWriteBarrier(Value object, Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.setObject(object);
+    public CastNode(CiKind kind, Value n, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        setValue(n);
+    }
+
+    @Override
+    public void accept(ValueVisitor v) {
     }
 
 
@@ -64,10 +62,8 @@ public final class FieldWriteBarrier extends WriteBarrier {
             return (T) new LIRGenerator.LIRGeneratorOp() {
                 @Override
                 public void generate(Node n, LIRGenerator generator) {
-                    assert n == FieldWriteBarrier.this;
-                    CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().move(generator.makeOperand(object()), temp);
-                    FieldWriteBarrier.this.generateBarrier(temp, generator);
+                    CastNode conv = (CastNode) n;
+                    conv.setOperand(generator.load(conv.value()));
                 }
             };
         }
@@ -76,11 +72,11 @@ public final class FieldWriteBarrier extends WriteBarrier {
 
     @Override
     public void print(LogStream out) {
-        out.print("field write barrier ").print(object());
+        out.print("cast node ").print(value().toString());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new FieldWriteBarrier(null, into);
+        return new CastNode(kind, null, into);
     }
 }

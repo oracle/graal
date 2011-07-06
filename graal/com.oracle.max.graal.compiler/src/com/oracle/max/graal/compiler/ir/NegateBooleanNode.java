@@ -23,18 +23,16 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code StoreIndexed} instruction represents a write to an array element.
+ * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class StoreIndexed extends AccessIndexed {
-
+public final class NegateBooleanNode extends BooleanNode {
     private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
+    private static final int INPUT_NODE = 0;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -49,53 +47,65 @@ public final class StoreIndexed extends AccessIndexed {
     }
 
     /**
-     * The instruction that produces the value that is to be stored into the array.
+     * The instruction that produces the array object.
      */
      public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
     public Value setValue(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
     /**
-     * Creates a new StoreIndexed instruction.
+     * Constructs a new ArrayLength instruction.
      * @param array the instruction producing the array
-     * @param index the instruction producing the index
-     * @param length the instruction producing the length
-     * @param elementKind the element type
-     * @param value the value to store into the array
-     * @param stateAfter the state after executing this instruction
-     * @param graph
+     * @param newFrameState the state after executing this instruction
      */
-    public StoreIndexed(Value array, Value index, Value length, CiKind elementKind, Value value, Graph graph) {
-        super(CiKind.Void, array, index, length, elementKind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+    public NegateBooleanNode(Value value, Graph graph) {
+        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitStoreIndexed(this);
+    }
+
+    @Override
+    public boolean valueEqual(Node i) {
+        return i instanceof NegateBooleanNode;
     }
 
     @Override
     public void print(LogStream out) {
-        out.print(array()).print('[').print(index()).print("] := ").print(value()).print(" (").print(kind.typeChar).print(')');
+        out.print(value()).print("!");
+    }
+
+    @Override
+    public Node copy(Graph into) {
+        return new NegateBooleanNode(null, into);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LoweringOp.class) {
-            return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
         }
         return super.lookup(clazz);
     }
 
-    @Override
-    public Node copy(Graph into) {
-        StoreIndexed x = new StoreIndexed(null, null, null, elementKind(), null, into);
-        return x;
-    }
+    private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            NegateBooleanNode negateNode = (NegateBooleanNode) node;
+            Value value = negateNode.value();
+            if (value instanceof NegateBooleanNode) {
+                return ((NegateBooleanNode) value).value();
+            } else if (value instanceof Constant) {
+                return Constant.forBoolean(!value.asConstant().asBoolean(), node.graph());
+            }
+            return negateNode;
+        }
+    };
 }

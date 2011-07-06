@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
+import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
@@ -29,33 +30,15 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FieldWriteBarrier extends WriteBarrier {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_OBJECT = 0;
-
+public final class CurrentThread extends FloatingNode {
+    private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
+    private int threadObjectOffset;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public CurrentThread(int threadObjectOffset, Graph graph) {
+        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.threadObjectOffset = threadObjectOffset;
     }
-
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
-    }
-
-    public void setObject(Value n) {
-        inputs().set(super.inputCount() + INPUT_OBJECT, n);
-    }
-
-    public FieldWriteBarrier(Value object, Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.setObject(object);
-    }
-
 
     @SuppressWarnings("unchecked")
     @Override
@@ -64,10 +47,9 @@ public final class FieldWriteBarrier extends WriteBarrier {
             return (T) new LIRGenerator.LIRGeneratorOp() {
                 @Override
                 public void generate(Node n, LIRGenerator generator) {
-                    assert n == FieldWriteBarrier.this;
-                    CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().move(generator.makeOperand(object()), temp);
-                    FieldWriteBarrier.this.generateBarrier(temp, generator);
+                    CurrentThread conv = (CurrentThread) n;
+                    CiValue result = generator.createResultVariable(conv);
+                    generator.lir().move(new CiAddress(CiKind.Object, AMD64.r15.asValue(CiKind.Word), threadObjectOffset), result);
                 }
             };
         }
@@ -75,12 +57,17 @@ public final class FieldWriteBarrier extends WriteBarrier {
     }
 
     @Override
+    public boolean valueEqual(Node i) {
+        return i instanceof CurrentThread;
+    }
+
+    @Override
     public void print(LogStream out) {
-        out.print("field write barrier ").print(object());
+        out.print("currentThread");
     }
 
     @Override
     public Node copy(Graph into) {
-        return new FieldWriteBarrier(null, into);
+        return new CurrentThread(threadObjectOffset, into);
     }
 }

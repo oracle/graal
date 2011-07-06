@@ -43,7 +43,7 @@ public final class CheckCast extends TypeCheck {
      * @param object the instruction producing the object
      * @param graph
      */
-    public CheckCast(Constant targetClassInstruction, Value object, Graph graph) {
+    public CheckCast(Value targetClassInstruction, Value object, Graph graph) {
         super(targetClassInstruction, object, CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
@@ -92,8 +92,7 @@ public final class CheckCast extends TypeCheck {
 
     @Override
     public Node copy(Graph into) {
-        CheckCast x = new CheckCast(null, null, into);
-        return x;
+        return new CheckCast(null, null, into);
     }
 
     private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {

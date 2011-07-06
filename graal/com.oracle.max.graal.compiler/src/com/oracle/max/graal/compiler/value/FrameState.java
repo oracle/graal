@@ -54,6 +54,9 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     private static final int SUCCESSOR_COUNT = 0;
 
+    public static final int BEFORE_BCI = -2;
+    public static final int AFTER_BCI = -3;
+
     @Override
     protected int inputCount() {
         return super.inputCount() + localsSize + stackSize + locksSize;

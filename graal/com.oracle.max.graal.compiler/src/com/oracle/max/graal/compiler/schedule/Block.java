@@ -38,6 +38,8 @@ public class Block {
     private Block javaBlock;
     private final List<Block> dominators = new ArrayList<Block>();
     private Anchor anchor;
+    private int loopDepth = 0;
+    private int loopIndex = -1;
 
     private Node firstNode;
     private Node lastNode;
@@ -63,18 +65,34 @@ public class Block {
         return lastNode;
     }
 
+    public int loopDepth() {
+        return loopDepth;
+    }
+
+    public void setLoopDepth(int i) {
+        loopDepth = i;
+    }
+
+    public int loopIndex() {
+        return loopIndex;
+    }
+
+    public void setLoopIndex(int i) {
+        loopIndex = i;
+    }
+
     public Anchor createAnchor() {
         if (anchor == null) {
             if (firstNode instanceof Anchor) {
                 this.anchor = (Anchor) firstNode;
             } else if (firstNode == firstNode.graph().start()) {
                 StartNode start = (StartNode) firstNode;
-                if (start.start() instanceof Anchor) {
-                    this.anchor = (Anchor) start.start();
+                if (start.next() instanceof Anchor) {
+                    this.anchor = (Anchor) start.next();
                 } else {
                     Anchor a = new Anchor(firstNode.graph());
-                    a.setNext((FixedNode) firstNode.graph().start().start());
-                    firstNode.graph().start().setStart(a);
+                    a.setNext((FixedNode) firstNode.graph().start().next());
+                    firstNode.graph().start().setNext(a);
                     this.anchor = a;
                 }
             } else if (firstNode instanceof Merge) {
@@ -175,6 +193,10 @@ public class Block {
         return firstNode instanceof LoopBegin;
     }
 
+    public boolean isLoopEnd() {
+        return lastNode instanceof LoopEnd;
+    }
+
     public Block dominator() {
         return dominator;
     }
@@ -223,5 +245,9 @@ public class Block {
                 }
             }
         }
+    }
+
+    public String name() {
+        return "B" + blockID;
     }
 }

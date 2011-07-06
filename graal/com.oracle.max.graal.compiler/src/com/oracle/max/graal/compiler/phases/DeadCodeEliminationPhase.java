@@ -73,6 +73,12 @@ public class DeadCodeEliminationPhase extends Phase {
                     flood.add(successor);
                 }
             }
+
+            if (current instanceof AbstractVectorNode) {
+                for (Node usage : current.usages()) {
+                    flood.add(usage);
+        }
+    }
         }
     }
 
@@ -147,17 +153,6 @@ public class DeadCodeEliminationPhase extends Phase {
         }
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
-                if (node.predecessors().size() > 0) {
-                    for (Node pred : node.predecessors()) {
-                        TTY.println("!PRED! " + pred + " (" + flood.isMarked(pred) + ")");
-                        for (int i = 0; i < pred.successors().size(); i++) {
-                            TTY.println("pred=>succ: " + pred.successors().get(i));
-                        }
-                        for (int i = 0; i < pred.usages().size(); i++) {
-                            TTY.println("pred=>usage: " + pred.usages().get(i));
-                        }
-                    }
-                }
                 node.delete();
             }
         }

@@ -52,10 +52,9 @@ public final class GraalCompilation {
     public final RiMethod method;
     public final RiRegisterConfig registerConfig;
     public final CiStatistics stats;
-    public final CiAssumptions assumptions = new CiAssumptions();
     public final FrameState placeholderState;
 
-    public CompilerGraph graph = new CompilerGraph(this);
+    public final CompilerGraph graph;
 
     private boolean hasExceptionHandlers;
     private final GraalCompilation parent;
@@ -92,6 +91,7 @@ public final class GraalCompilation {
         this.compiler = compiler;
         this.target = compiler.target;
         this.runtime = compiler.runtime;
+        this.graph = new CompilerGraph(runtime);
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.globalStubRegisterConfig : runtime.getRegisterConfig(method);
@@ -136,16 +136,6 @@ public final class GraalCompilation {
      */
     public boolean archKindsEqual(CiKind kind1, CiKind kind2) {
         return archKind(kind1) == archKind(kind2);
-    }
-
-    /**
-     * Records an assumption that the specified type has no finalizable subclasses.
-     *
-     * @param receiverType the type that is assumed to have no finalizable subclasses
-     * @return {@code true} if the assumption was recorded and can be assumed; {@code false} otherwise
-     */
-    public boolean recordNoFinalizableSubclassAssumption(RiType receiverType) {
-        return false;
     }
 
     /**
@@ -285,8 +275,8 @@ public final class GraalCompilation {
             lirAssembler.emitTraps();
 
             CiTargetMethod targetMethod = assembler().finishTargetMethod(method, runtime, lirAssembler.registerRestoreEpilogueOffset, false);
-            if (assumptions.count() > 0) {
-                targetMethod.setAssumptions(assumptions);
+            if (graph.assumptions().count() > 0) {
+                targetMethod.setAssumptions(graph.assumptions());
             }
 
             if (compiler.isObserved()) {

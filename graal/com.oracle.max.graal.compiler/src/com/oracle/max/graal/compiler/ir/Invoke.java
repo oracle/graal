@@ -51,21 +51,24 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
         return super.successorCount() + SUCCESSOR_COUNT;
     }
 
-    /**
-     * The list of instructions that produce input for this instruction.
-     */
-    public Value argument(int index) {
-        assert index >= 0 && index < argumentCount;
-        return (Value) inputs().get(super.inputCount() + index);
-    }
+    public List<Value> arguments() {
+        return new AbstractList<Value>() {
+            @Override
+            public int size() {
+                return argumentCount;
+            }
 
-    public Value setArgument(int index, Value n) {
-        assert index >= 0 && index < argumentCount;
-        return (Value) inputs().set(super.inputCount() + index, n);
-    }
+            @Override
+            public Value get(int index) {
+                return (Value) inputs().get(Invoke.super.inputCount() + index);
+            }
 
-    public int argumentCount() {
-        return argumentCount;
+            @Override
+            public Value set(int index, Value node) {
+                return (Value) inputs().set(Invoke.super.inputCount() + index, node);
+            }
+        };
+
     }
 
     /**
@@ -103,7 +106,7 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
 
         this.argumentCount = args.length;
         for (int i = 0; i < args.length; i++) {
-            setArgument(i, args[i]);
+            arguments().set(i, args[i]);
         }
     }
 
@@ -135,7 +138,7 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
      */
     public Value receiver() {
         assert !isStatic();
-        return argument(0);
+        return arguments().get(0);
     }
 
     /**
@@ -179,7 +182,7 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
             if (i > argStart) {
                 out.print(", ");
             }
-            out.print(argument(i));
+            out.print(arguments().get(i));
         }
         out.print(CiUtil.format(") [method: %H.%n(%p):%r]", target, false));
     }

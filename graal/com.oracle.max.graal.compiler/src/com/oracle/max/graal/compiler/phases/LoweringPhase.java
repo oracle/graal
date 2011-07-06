@@ -57,11 +57,13 @@ public class LoweringPhase extends Phase {
     }
 
     private void process(final Block b) {
+
+        final Node anchor = b.javaBlock().createAnchor();
         final CiLoweringTool loweringTool = new CiLoweringTool() {
 
             @Override
             public Node getGuardAnchor() {
-                return b.createAnchor();
+                return anchor;
             }
 
             @Override
@@ -72,18 +74,12 @@ public class LoweringPhase extends Phase {
             @Override
             public Node createGuard(Node condition) {
                 Anchor anchor = (Anchor) getGuardAnchor();
-                for (GuardNode guard : anchor.happensAfterGuards()) {
-                    if (guard.node().valueEqual(condition)) {
-                        condition.delete();
-                        return guard;
-                    }
-                }
-                GuardNode newGuard = new GuardNode(anchor.graph());
+                GuardNode newGuard = new GuardNode((BooleanNode) condition, anchor.graph());
                 newGuard.setAnchor(anchor);
-                newGuard.setNode((BooleanNode) condition);
                 return newGuard;
             }
         };
+
 
         // Lower the instructions of this block.
         for (final Node n : b.getInstructions()) {

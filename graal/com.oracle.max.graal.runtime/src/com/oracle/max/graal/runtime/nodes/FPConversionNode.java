@@ -29,7 +29,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class FieldWriteBarrier extends WriteBarrier {
+public final class FPConversionNode extends FloatingNode {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_OBJECT = 0;
 
@@ -43,17 +43,17 @@ public final class FieldWriteBarrier extends WriteBarrier {
     /**
      * The instruction that produces the object tested against null.
      */
-     public Value object() {
+     public Value value() {
         return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
     }
 
-    public void setObject(Value n) {
+    public void setValue(Value n) {
         inputs().set(super.inputCount() + INPUT_OBJECT, n);
     }
 
-    public FieldWriteBarrier(Value object, Graph graph) {
-        super(INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        this.setObject(object);
+    public FPConversionNode(CiKind kind, Value value, Graph graph) {
+        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.setValue(value);
     }
 
 
@@ -64,10 +64,11 @@ public final class FieldWriteBarrier extends WriteBarrier {
             return (T) new LIRGenerator.LIRGeneratorOp() {
                 @Override
                 public void generate(Node n, LIRGenerator generator) {
-                    assert n == FieldWriteBarrier.this;
-                    CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().move(generator.makeOperand(object()), temp);
-                    FieldWriteBarrier.this.generateBarrier(temp, generator);
+                    FPConversionNode conv = (FPConversionNode) n;
+                    CiValue reg = generator.createResultVariable(conv);
+                    CiValue value = generator.load(conv.value());
+                    CiValue tmp = generator.forceToSpill(value, conv.kind, false);
+                    generator.lir().move(tmp, reg);
                 }
             };
         }
@@ -75,12 +76,17 @@ public final class FieldWriteBarrier extends WriteBarrier {
     }
 
     @Override
+    public boolean valueEqual(Node i) {
+        return i instanceof FPConversionNode && ((FPConversionNode) i).kind == kind;
+    }
+
+    @Override
     public void print(LogStream out) {
-        out.print("field write barrier ").print(object());
+        out.print("fp conversion node ").print(value());
     }
 
     @Override
     public Node copy(Graph into) {
-        return new FieldWriteBarrier(null, into);
+        return new FPConversionNode(kind, null, into);
     }
 }

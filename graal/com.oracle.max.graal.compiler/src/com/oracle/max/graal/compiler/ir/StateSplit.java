@@ -56,8 +56,8 @@ public abstract class StateSplit extends FixedNodeWithNext {
         return (FrameState) inputs().get(super.inputCount() + INPUT_STATE_AFTER);
     }
 
-    public FrameState setStateAfter(FrameState n) {
-        return (FrameState) inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
+    public void setStateAfter(FrameState n) {
+        inputs().set(super.inputCount() + INPUT_STATE_AFTER, n);
     }
 
     /**
@@ -73,6 +73,17 @@ public abstract class StateSplit extends FixedNodeWithNext {
 
     public boolean needsStateAfter() {
         return true;
+    }
+
+    @Override
+    public void delete() {
+        FrameState stateAfter = stateAfter();
+        super.delete();
+        if (stateAfter != null) {
+            if (stateAfter.usages().isEmpty()) {
+                stateAfter.delete();
+            }
+        }
     }
 
     @Override

@@ -38,13 +38,15 @@ public final class InstanceOf extends TypeCheck {
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
+    private boolean nullIsTrue;
+
     /**
      * Constructs a new InstanceOf instruction.
      * @param targetClass the target class of the instanceof check
      * @param object the instruction producing the object input to this instruction
      * @param graph
      */
-    public InstanceOf(Constant targetClassInstruction, Value object, Graph graph) {
+    public InstanceOf(Constant targetClassInstruction, Value object, boolean nullIsTrue, Graph graph) {
         super(targetClassInstruction, object, CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
@@ -68,13 +70,8 @@ public final class InstanceOf extends TypeCheck {
     }
 
     @Override
-    public BooleanNode negate() {
-        return new NotInstanceOf(targetClassInstruction(), object(), graph());
-    }
-
-    @Override
     public Node copy(Graph into) {
-        return new InstanceOf(null, null, into);
+        return new InstanceOf(null, null, nullIsTrue, into);
     }
 
     @SuppressWarnings("unchecked")
