@@ -197,7 +197,7 @@ public class Merge extends StateSplit{
             while (!hasPhisOnStack && i < state.stackSize()) {
                 Value value = state.stackAt(i);
                 hasPhisOnStack = isPhiAtBlock(value);
-                if (value != null && !(value instanceof Phi && ((Phi) value).isDead())) {
+                if (value != null) {
                     i += value.kind.sizeInSlots();
                 } else {
                     i++;
@@ -208,7 +208,7 @@ public class Merge extends StateSplit{
                 Value value = state.localAt(i);
                 hasPhisInLocals = isPhiAtBlock(value);
                 // also ignore illegal HiWords
-                if (value != null && !(value instanceof Phi && ((Phi) value).isDead())) {
+                if (value != null) {
                     i += value.kind.sizeInSlots();
                 } else {
                     i++;
@@ -227,11 +227,7 @@ public class Merge extends StateSplit{
                 if (value != null) {
                     out.println(stateString(j, value));
                     // also ignore illegal HiWords
-                    if (value instanceof Phi && ((Phi) value).isDead()) {
-                        j +=  1;
-                    } else {
-                        j += value.kind.sizeInSlots();
-                    }
+                    j += value.kind.sizeInSlots();
                 } else {
                     j++;
                 }
@@ -320,10 +316,7 @@ public class Merge extends StateSplit{
 
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
-                Phi phi = (Phi) usage;
-                if (!phi.isDead()) {
-                    phi.removeInput(predIndex);
-                }
+                ((Phi) usage).removeInput(predIndex);
             }
         }
     }

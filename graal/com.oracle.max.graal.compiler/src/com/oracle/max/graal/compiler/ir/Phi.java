@@ -42,7 +42,7 @@ public final class Phi extends FloatingNode {
 
     private static final int SUCCESSOR_COUNT = 0;
 
-    private boolean isDead;
+    private final PhiType type;
 
     @Override
     protected int inputCount() {
@@ -66,21 +66,31 @@ public final class Phi extends FloatingNode {
         inputs().set(super.inputCount() + INPUT_MERGE, n);
     }
 
-    public Phi(CiKind kind, Merge merge, Graph graph) {
+    public static enum PhiType {
+        Value,          // normal value phis
+        Memory,         // memory phis
+        Virtual         // phis used for VirtualObjectField merges
+    }
+
+    public Phi(CiKind kind, Merge merge, PhiType type, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.type = type;
         setMerge(merge);
     }
 
-    Phi(CiKind kind, Graph graph) {
+    private Phi(CiKind kind, PhiType type, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.type = type;
+    }
+
+    public PhiType type() {
+        return type;
     }
 
     @Override
     public boolean verify() {
         assertTrue(merge() != null);
-        if (!isDead()) {
-            assertTrue(merge().phiPredecessorCount() == valueCount());
-        }
+        assertTrue(merge().phiPredecessorCount() == valueCount(), merge().phiPredecessorCount() + "==" + valueCount());
         return true;
     }
 
@@ -111,17 +121,6 @@ public final class Phi extends FloatingNode {
         v.visitPhi(this);
     }
 
-    /**
-     * Make this phi illegal if types were not merged correctly.
-     */
-    public void makeDead() {
-        isDead = true;
-    }
-
-    public boolean isDead() {
-        return isDead;
-    }
-
     @Override
     public void print(LogStream out) {
         out.print("phi function (");
@@ -143,10 +142,10 @@ public final class Phi extends FloatingNode {
             }
             str.append(valueAt(i) == null ? "-" : valueAt(i).id());
         }
-        if (isDead()) {
-            return "Phi: dead (" + str + ")";
-        } else {
+        if (type == PhiType.Value) {
             return "Phi: (" + str + ")";
+        } else {
+            return type + "Phi: (" + str + ")";
         }
     }
 
@@ -160,8 +159,7 @@ public final class Phi extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        Phi x = new Phi(kind, into);
-        x.isDead = isDead;
+        Phi x = new Phi(kind, type, into);
         return x;
     }
 

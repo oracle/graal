@@ -28,6 +28,7 @@ import static java.lang.reflect.Modifier.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -334,8 +335,11 @@ public class FrameStateBuilder implements FrameStateAccess {
     public Value loadLocal(int i) {
         Value x = locals[i];
         if (x != null) {
-            if (x instanceof Phi && ((Phi) x).isDead()) {
-                return null;
+            if (x instanceof Phi) {
+                assert ((Phi) x).type() == PhiType.Value;
+                if (x.isDeleted()) {
+                    return null;
+                }
             }
             assert x.kind.isSingleWord() || locals[i + 1] == null || locals[i + 1] instanceof Phi;
         }

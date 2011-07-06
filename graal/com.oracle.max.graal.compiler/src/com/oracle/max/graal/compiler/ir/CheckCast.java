@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -93,4 +94,27 @@ public final class CheckCast extends TypeCheck {
     public Node copy(Graph into) {
         return new CheckCast(null, null, into);
     }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            CheckCast checkCast = (CheckCast) node;
+            Value object = checkCast.object();
+            RiType exactType = object.exactType();
+            if (exactType != null) {
+                return Constant.forBoolean(exactType.isSubtypeOf(checkCast.targetClass()), node.graph());
+            }
+            CiConstant constant = object.asConstant();
+            if (constant != null) {
+                assert constant.kind == CiKind.Object;
+                if (constant.isNull()) {
+                    return Constant.forBoolean(true, node.graph());
+                } else {
+                    // this should never happen - non-null constants are always expected to provide an exactType
+                    assert false;
+                }
+            }
+            return checkCast;
+        }
+    };
 }

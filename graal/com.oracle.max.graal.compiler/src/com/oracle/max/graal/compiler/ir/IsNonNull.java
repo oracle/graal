@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -67,7 +68,7 @@ public final class IsNonNull extends BooleanNode {
      */
     public IsNonNull(Value object, Graph graph) {
         super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        assert object == null || object.kind == CiKind.Object;
+        assert object == null || object.kind == CiKind.Object : object;
         setObject(object);
     }
 
@@ -107,4 +108,30 @@ public final class IsNonNull extends BooleanNode {
     public Node copy(Graph into) {
         return new IsNonNull(null, into);
     }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+        @Override
+        public Node canonical(Node node) {
+            IsNonNull isNonNull = (IsNonNull) node;
+            Value object = isNonNull.object();
+            if (object instanceof NewInstance || object instanceof NewArray) {
+                return Constant.forBoolean(true, node.graph());
+            }
+            CiConstant constant = object.asConstant();
+            if (constant != null) {
+                assert constant.kind == CiKind.Object;
+                return Constant.forBoolean(constant.isNonNull(), node.graph());
+            }
+            return isNonNull;
+        }
+    };
 }
