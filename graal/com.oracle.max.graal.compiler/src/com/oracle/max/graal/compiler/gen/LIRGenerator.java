@@ -241,11 +241,35 @@ public abstract class LIRGenerator extends ValueVisitor {
             TTY.println("BEGIN Generating LIR for block B" + block.blockID());
         }
 
-        if (block.blockPredecessors().size() > 1) {
+        if (block == ir.startBlock) {
+            XirSnippet prologue = xir.genPrologue(null, compilation.method);
+            if (prologue != null) {
+                emitXir(prologue, null, null, null, false);
+            }
+            FrameState fs = setOperandsForLocals();
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE CHANGE (setOperandsForLocals)");
+                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    TTY.println(fs.toString());
+                }
+            }
+            lastState = fs;
+        } else if (block.blockPredecessors().size() > 1) {
             if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
                 TTY.println("STATE RESET");
             }
             lastState = null;
+        }  else if (block.blockPredecessors().size() == 1) {
+            LIRBlock pred = block.blockPredecessors().get(0);
+            FrameState fs = pred.lastState();
+            assert fs != null : "block B" + block.blockID() + " pred block B" + pred.blockID();
+            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                TTY.println("STATE CHANGE (singlePred)");
+                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    TTY.println(fs.toString());
+                }
+            }
+            lastState = fs;
         }
 
         for (Node instr : block.getInstructions()) {
@@ -444,13 +468,13 @@ public abstract class LIRGenerator extends ValueVisitor {
     public void visitExceptionObject(ExceptionObject x) {
         XirSnippet snippet = xir.genExceptionObject(site(x));
         emitXir(snippet, x, null, null, true);
-        lastState = lastState.duplicateWithException(lastState.bci, x);
-        if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
-            TTY.println("STATE CHANGE (visitExceptionObject)");
-            if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                TTY.println(lastState.toString());
-            }
-        }
+//        lastState = lastState.duplicateWithException(lastState.bci, x);
+//        if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+//            TTY.println("STATE CHANGE (visitExceptionObject)");
+//            if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+//                TTY.println(lastState.toString());
+//            }
+//        }
     }
 
     @Override
@@ -1080,30 +1104,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         block.setLir(lir);
 
         lir.branchDestination(block.label());
-        if (block == ir.startBlock) {
-            XirSnippet prologue = xir.genPrologue(null, compilation.method);
-            if (prologue != null) {
-                emitXir(prologue, null, null, null, false);
-            }
-            FrameState fs = setOperandsForLocals();
-            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
-                TTY.println("STATE CHANGE (setOperandsForLocals)");
-                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                    TTY.println(fs.toString());
-                }
-            }
-            lastState = fs;
-        } else if (block.blockPredecessors().size() == 1) {
-            FrameState fs = block.blockPredecessors().get(0).lastState();
-            //assert fs != null;
-            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
-                TTY.println("STATE CHANGE (singlePred)");
-                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                    TTY.println(fs.toString());
-                }
-            }
-            lastState = fs;
-        }
     }
 
     /**

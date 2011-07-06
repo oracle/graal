@@ -113,6 +113,7 @@ public final class CreateVectorNode extends AbstractVectorNode {
 
         LoopEnd loopEnd = new LoopEnd(graph());
         loopEnd.setLoopBegin(loopBegin);
+        loopBegin.setStateAfter(stateAfter());
         Compare condition;
         if (reversed) {
             condition = new Compare(loopVariable, Condition.GE, Constant.forInt(0, graph()), graph());

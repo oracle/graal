@@ -636,6 +636,7 @@ public final class LinearScan {
                 // Add uses of live locals from interpreter's point of view for proper debug information generation
                 LIRDebugInfo info = op.info;
                 if (info != null) {
+                    assert info.state != null;
                     info.state.forEachLiveStateValue(new ValueProcedure() {
                         public void doValue(Value value) {
                             CiValue operand = value.operand();

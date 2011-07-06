@@ -45,6 +45,7 @@ public final class LIRBlock {
     private List<LIRBlock> predecessors = new ArrayList<LIRBlock>(4);
     private List<LIRBlock> successors = new ArrayList<LIRBlock>(4);
     private LIRDebugInfo debugInfo;
+    private boolean align;
 
     /**
      * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.
@@ -105,6 +106,14 @@ public final class LIRBlock {
 
     public int firstLirInstructionId() {
         return firstLirInstructionID;
+    }
+
+    public boolean align() {
+        return align;
+    }
+
+    public void setAlign(boolean b) {
+        align = b;
     }
 
     public void setFirstLirInstructionId(int firstLirInstructionId) {

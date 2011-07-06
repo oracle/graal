@@ -36,12 +36,14 @@ public final class ComputeLinearScanOrder {
     private int numBlocks; // total number of blocks (smaller than maxBlockId)
 
     List<LIRBlock> linearScanOrder; // the resulting list of blocks in correct order
+    List<LIRBlock> codeEmittingOrder;
 
     final BitMap visitedBlocks; // used for recursive processing of blocks
     final BitMap activeBlocks; // used for recursive processing of blocks
     final BitMap dominatorBlocks; // temporary BitMap used for computation of dominator
     final int[] forwardBranches; // number of incoming forward branches for each block
     final List<LIRBlock> workList; // temporary list (used in markLoops and computeOrder)
+    final LIRBlock[] loopHeaders;
 
     // accessors for visitedBlocks and activeBlocks
     void initVisited() {
@@ -86,7 +88,8 @@ public final class ComputeLinearScanOrder {
         return linearScanOrder;
     }
 
-    public ComputeLinearScanOrder(int maxBlockId, LIRBlock startBlock) {
+    public ComputeLinearScanOrder(int maxBlockId, int loopCount, LIRBlock startBlock) {
+        loopHeaders = new LIRBlock[loopCount];
 
         this.maxBlockId = maxBlockId;
         visitedBlocks = new BitMap(maxBlockId);
@@ -257,6 +260,24 @@ public final class ComputeLinearScanOrder {
         // be equal.
         cur.setLinearScanNumber(linearScanOrder.size());
         linearScanOrder.add(cur);
+
+        if (!cur.isLinearScanLoopHeader() || !GraalOptions.OptReorderLoops) {
+            codeEmittingOrder.add(cur);
+
+            if (cur.isLinearScanLoopEnd() && GraalOptions.OptReorderLoops) {
+                LIRBlock loopHeader = loopHeaders[cur.loopIndex()];
+                assert loopHeader != null;
+                codeEmittingOrder.add(loopHeader);
+
+                for (LIRBlock succ : loopHeader.blockSuccessors()) {
+                    if (succ.loopDepth() == loopHeader.loopDepth()) {
+                        succ.setAlign(true);
+                    }
+                }
+            }
+        } else {
+            loopHeaders[cur.loopIndex()] = cur;
+        }
     }
 
     private void computeOrder(LIRBlock startBlock) {
@@ -266,6 +287,8 @@ public final class ComputeLinearScanOrder {
 
         // the start block is always the first block in the linear scan order
         linearScanOrder = new ArrayList<LIRBlock>(numBlocks);
+
+        codeEmittingOrder = new ArrayList<LIRBlock>(numBlocks);
 
         // start processing with standard entry block
         assert workList.isEmpty() : "list must be empty before processing";
@@ -326,5 +349,9 @@ public final class ComputeLinearScanOrder {
                 TTY.println();
             }
         }
+    }
+
+    public List<LIRBlock> codeEmittingOrder() {
+        return codeEmittingOrder;
     }
 }

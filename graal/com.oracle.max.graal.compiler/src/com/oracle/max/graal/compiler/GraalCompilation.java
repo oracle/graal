@@ -35,6 +35,7 @@ import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -239,8 +240,10 @@ public final class GraalCompilation {
 
             lirGenerator = compiler.backend.newLIRGenerator(this);
 
-            for (LIRBlock begin : hir.linearScanOrder()) {
-                lirGenerator.doBlock(begin);
+            BitMap blockVisited = new BitMap(hir.linearScanOrder().size());
+            for (LIRBlock b : hir.linearScanOrder()) {
+                lirGenerator.doBlock(b);
+//                iterateBlocks(b, blockVisited);
             }
 
             if (GraalOptions.Time) {
@@ -255,10 +258,28 @@ public final class GraalCompilation {
         }
     }
 
+    private void iterateBlocks(LIRBlock b, BitMap blockVisited) {
+        if (blockVisited.get(b.blockID())) {
+            return;
+        }
+//        TTY.println("visit B" + b.blockID() + "(" + b.isLinearScanLoopHeader() + ")");
+//        TTY.println("predecessors: " + b.blockPredecessors());
+        blockVisited.set(b.blockID());
+        if (!b.isLinearScanLoopHeader()) {
+            for (LIRBlock pred : b.blockPredecessors()) {
+//                TTY.println("iterate " + pred + " " + blockVisited.get(pred.blockID()));
+                iterateBlocks(pred, blockVisited);
+            }
+        } else {
+            iterateBlocks(b.blockPredecessors().get(0), blockVisited);
+        }
+        lirGenerator.doBlock(b);
+    }
+
     private CiTargetMethod emitCode() {
         if (GraalOptions.GenLIR && GraalOptions.GenCode) {
             final LIRAssembler lirAssembler = compiler.backend.newLIRAssembler(this);
-            lirAssembler.emitCode(hir.linearScanOrder());
+            lirAssembler.emitCode(hir.codeEmittingOrder());
 
             // generate code for slow cases
             lirAssembler.emitLocalStubs();

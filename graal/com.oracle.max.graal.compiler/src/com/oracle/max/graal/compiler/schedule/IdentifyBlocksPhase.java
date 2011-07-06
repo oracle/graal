@@ -194,6 +194,7 @@ public class IdentifyBlocksPhase extends Phase {
                 block.addSuccessor(loopBeginBlock);
                 BitMap map = new BitMap(blocks.size());
                 markBlocks(block, loopBeginBlock, map, loopCount++, block.loopDepth());
+                assert loopBeginBlock.loopDepth() == block.loopDepth() && loopBeginBlock.loopIndex() == block.loopIndex();
             }
         }
 
@@ -220,6 +221,10 @@ public class IdentifyBlocksPhase extends Phase {
 
         for (Block pred : block.getPredecessors()) {
             markBlocks(pred, endBlock, map, loopIndex, initialDepth);
+        }
+
+        if (block.isLoopHeader()) {
+            markBlocks(nodeToBlock.get(((LoopBegin) block.firstNode()).loopEnd()), endBlock, map, loopIndex, initialDepth);
         }
     }
 

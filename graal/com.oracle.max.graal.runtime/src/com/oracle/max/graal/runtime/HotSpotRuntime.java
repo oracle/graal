@@ -394,6 +394,9 @@ public class HotSpotRuntime implements RiRuntime {
                     }
 
                     CiKind componentType = src.declaredType().componentType().kind();
+                    if (componentType == CiKind.Object) {
+                        return null;
+                    }
 
                     FrameState stateBefore = new FrameState(method, FrameState.BEFORE_BCI, 0, 0, 0, false, graph);
                     FrameState stateAfter = new FrameState(method, FrameState.AFTER_BCI, 0, 0, 0, false, graph);
