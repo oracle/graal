@@ -24,8 +24,6 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
-import javax.annotation.*;
-
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
@@ -39,6 +37,7 @@ public class IdentifyBlocksPhase extends Phase {
     private NodeMap<Block> nodeToBlock;
     private Graph graph;
     private boolean scheduleAllNodes;
+    private int loopCount;
 
     public IdentifyBlocksPhase(boolean scheduleAllNodes) {
         super(scheduleAllNodes ? "FullSchedule" : "PartSchedule", false);
@@ -65,6 +64,10 @@ public class IdentifyBlocksPhase extends Phase {
         Block b = new Block(blocks.size());
         blocks.add(b);
         return b;
+    }
+
+    public int loopCount() {
+        return loopCount;
     }
 
     private Block assignBlockNew(Node n, Block b) {
@@ -171,21 +174,52 @@ public class IdentifyBlocksPhase extends Phase {
 
 
         if (scheduleAllNodes) {
-
-            // Add successors of loop end nodes. Makes the graph cyclic.
-            for (Block block : blocks) {
-                Node n = block.lastNode();
-                if (n instanceof LoopEnd) {
-                    LoopEnd loopEnd = (LoopEnd) n;
-                    assert loopEnd.loopBegin() != null;
-                    block.addSuccessor(nodeToBlock.get(loopEnd.loopBegin()));
-                }
-            }
-
+            computeLoopInformation(); // Will make the graph cyclic.
             assignLatestPossibleBlockToNodes();
             sortNodesWithinBlocks();
         } else {
             computeJavaBlocks();
+        }
+    }
+
+    private void computeLoopInformation() {
+
+        // Add successors of loop end nodes. Makes the graph cyclic.
+        for (Block block : blocks) {
+            Node n = block.lastNode();
+            if (n instanceof LoopEnd) {
+                LoopEnd loopEnd = (LoopEnd) n;
+                assert loopEnd.loopBegin() != null;
+                Block loopBeginBlock = nodeToBlock.get(loopEnd.loopBegin());
+                block.addSuccessor(loopBeginBlock);
+                BitMap map = new BitMap(blocks.size());
+                markBlocks(block, loopBeginBlock, map, loopCount++, block.loopDepth());
+            }
+        }
+
+//        for (Block block : blocks) {
+//            TTY.println("Block B" + block.blockID() + " loopIndex=" + block.loopIndex() + ", loopDepth=" + block.loopDepth());
+//        }
+    }
+
+    private void markBlocks(Block block, Block endBlock, BitMap map, int loopIndex, int initialDepth) {
+        if (map.get(block.blockID())) {
+            return;
+        }
+
+        map.set(block.blockID());
+        if (block.loopDepth() <= initialDepth) {
+            assert block.loopDepth() == initialDepth;
+            block.setLoopIndex(loopIndex);
+        }
+        block.setLoopDepth(block.loopDepth() + 1);
+
+        if (block == endBlock) {
+            return;
+        }
+
+        for (Block pred : block.getPredecessors()) {
+            markBlocks(pred, endBlock, map, loopIndex, initialDepth);
         }
     }
 
@@ -300,12 +334,12 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
 
-        if (GraalOptions.OptOptimisticSchedule) {
-            block = scheduleOutOfLoops(n, block);
-        }
 
-        nodeToBlock.set(n, block);
         if (block != null) {
+            if (GraalOptions.OptOptimisticSchedule) {
+                block = scheduleOutOfLoops(n, block);
+            }
+            nodeToBlock.set(n, block);
             block.getInstructions().add(n);
         }
         return block;
@@ -313,15 +347,24 @@ public class IdentifyBlocksPhase extends Phase {
 
     private Block scheduleOutOfLoops(Node n, Block latestBlock) {
         Block cur = latestBlock;
-        while (cur != null) {
+        while (cur.loopDepth() != 0) {
             if (cur.isLoopHeader()) {
                 assert cur.getPredecessors().size() == 2 : cur.getPredecessors().size();
                 if (canSchedule(n, cur.getPredecessors().get(0))) {
-                    TTY.println("can schedule out of loop!" + n);
+                   // TTY.println("can schedule out of loop!" + n);
                     return scheduleOutOfLoops(n, cur.getPredecessors().get(0));
+                } else {
+                    break;
                 }
             }
+            Block prev = cur;
             cur = cur.dominator();
+
+            // This must be a loop exit.
+            if (cur.loopDepth() > prev.loopDepth()) {
+//                TTY.println("break out because of different loop depth");
+                break;
+            }
         }
         return latestBlock;
     }

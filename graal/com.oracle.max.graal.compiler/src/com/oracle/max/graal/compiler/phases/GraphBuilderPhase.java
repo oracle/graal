@@ -116,8 +116,10 @@ public final class GraphBuilderPhase extends Phase {
      * @param graph
      */
     public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean inline) {
-        super(inline ? "BuildInlineGraph " + method.holder().name() + "." + method.name() + method.signature().asString() : "BuildGraph");
+        super(inline ? "BuildInlineGraph" : "BuildGraph");
         this.compilation = compilation;
+
+        setDetailedName(getName() + " " + method.holder().name() + "." + method.name() + method.signature().asString());
 
         this.runtime = compilation.runtime;
         this.method = method;

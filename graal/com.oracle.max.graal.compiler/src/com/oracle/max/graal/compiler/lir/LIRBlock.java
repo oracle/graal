@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
@@ -174,8 +175,7 @@ public final class LIRBlock {
     }
 
     public int loopDepth() {
-        // TODO(tw): Set correct loop depth.
-        return 0;
+        return loopDepth;
     }
 
     public int loopIndex() {
@@ -283,5 +283,9 @@ public final class LIRBlock {
         }
         LIROpcode code = lirInstruction.code;
         return code == LIROpcode.Branch || code == LIROpcode.TableSwitch;
+    }
+
+    public boolean isExceptionEntry() {
+        return firstInstruction() instanceof ExceptionObject;
     }
 }

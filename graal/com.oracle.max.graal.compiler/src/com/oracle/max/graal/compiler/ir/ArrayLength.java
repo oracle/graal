@@ -95,8 +95,7 @@ public final class ArrayLength extends FloatingNode {
 
     @Override
     public Node copy(Graph into) {
-        ArrayLength x = new ArrayLength(null, into);
-        return x;
+        return new ArrayLength(null, into);
     }
 
     @SuppressWarnings("unchecked")

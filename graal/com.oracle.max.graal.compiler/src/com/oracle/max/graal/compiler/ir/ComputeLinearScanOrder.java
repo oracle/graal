@@ -30,7 +30,6 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
 public final class ComputeLinearScanOrder {
 
@@ -124,9 +123,11 @@ public final class ComputeLinearScanOrder {
         countEdges(startBlock, null);
 
         if (numLoops > 0) {
-            markLoops();
-            clearNonNaturalLoops(startBlock);
-            assignLoopDepth(startBlock);
+            TTY.println("num loops " + numLoops);
+            throw new IllegalStateException();
+//            markLoops();
+//            clearNonNaturalLoops(startBlock);
+//            assignLoopDepth(startBlock);
         }
 
         computeOrder(startBlock);
@@ -193,15 +194,15 @@ public final class ComputeLinearScanOrder {
         // innermost loop has the lowest number. This is guaranteed by setting
         // the loop number after the recursive calls for the successors above
         // have returned.
-        if (cur.isLinearScanLoopHeader()) {
-            assert cur.loopIndex() == -1 : "cannot set loop-index twice";
-            if (GraalOptions.TraceLinearScanLevel >= 3) {
-                TTY.println("Block B%d is loop header of loop %d", cur.blockID(), numLoops);
-            }
-
-            cur.setLoopIndex(numLoops);
-            numLoops++;
-        }
+//        if (cur.isLinearScanLoopHeader()) {
+//            assert cur.loopIndex() == -1 : "cannot set loop-index twice";
+//            if (GraalOptions.TraceLinearScanLevel >= 3) {
+//                TTY.println("Block B%d is loop header of loop %d", cur.blockID(), numLoops);
+//            }
+//
+//            cur.setLoopIndex(numLoops);
+//            numLoops++;
+//        }
 
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("Finished counting edges for block B%d", cur.blockID());
@@ -329,10 +330,10 @@ public final class ComputeLinearScanOrder {
         // this is necessary for the (very rare) case that two successive blocks have
         // the same loop depth, but a different loop index (can happen for endless loops
         // with exception handlers)
-        if (!cur.isLinearScanLoopHeader()) {
-            weight |= 1 << curBit;
-        }
-        curBit--;
+//        if (!cur.isLinearScanLoopHeader()) {
+//            weight |= 1 << curBit;
+//        }
+//        curBit--;
 
         // loop end blocks (blocks that end with a backward branch) are added
         // after all other blocks of the loop.
@@ -360,10 +361,10 @@ public final class ComputeLinearScanOrder {
 //        curBit--;
 
         // exceptions handlers are added as late as possible
-//        if (!cur.isExceptionEntry()) {
-//            weight |= 1 << curBit;
-//        }
-//        curBit--;
+        if (!cur.isExceptionEntry()) {
+            weight |= 1 << curBit;
+        }
+        curBit--;
 
         // guarantee that weight is > 0
         weight |= 1;
@@ -434,29 +435,22 @@ public final class ComputeLinearScanOrder {
         linearScanOrder.add(cur);
     }
 
-    void computeOrder(LIRBlock startBlock) {
+    private void computeOrder(LIRBlock startBlock) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("----- computing final block order");
         }
 
         // the start block is always the first block in the linear scan order
         linearScanOrder = new ArrayList<LIRBlock>(numBlocks);
-//        appendBlock(startBlock);
-
-        LIRBlock stdEntry = startBlock; //.suxAt(0);
 
         // start processing with standard entry block
         assert workList.isEmpty() : "list must be empty before processing";
 
-        if (readyForProcessing(stdEntry)) {
-            sortIntoWorkList(stdEntry);
-        } else {
-            throw new CiBailout("the stdEntry must be ready for processing (otherwise, the method has no start block)");
-        }
+        assert readyForProcessing(startBlock);
+        sortIntoWorkList(startBlock);
 
         do {
             LIRBlock cur = workList.remove(workList.size() - 1);
-
             appendBlock(cur);
 
             int i;

@@ -122,6 +122,7 @@ public class IR {
 
         IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true);
         schedule.apply(graph);
+        compilation.stats.loopCount = schedule.loopCount();
 
 
         List<Block> blocks = schedule.getBlocks();
@@ -132,6 +133,8 @@ public class IR {
             map.put(b, block);
             block.setInstructions(b.getInstructions());
             block.setLinearScanNumber(b.blockID());
+            block.setLoopDepth(b.loopDepth());
+            block.setLoopIndex(b.loopIndex());
 
             block.setFirstInstruction(b.firstNode());
             block.setLastInstruction(b.lastNode());
@@ -166,7 +169,6 @@ public class IR {
 
         ComputeLinearScanOrder clso = new ComputeLinearScanOrder(lirBlocks.size(), startBlock);
         orderedBlocks = clso.linearScanOrder();
-        this.compilation.stats.loopCount = clso.numLoops();
 
         int z = 0;
         for (LIRBlock b : orderedBlocks) {
