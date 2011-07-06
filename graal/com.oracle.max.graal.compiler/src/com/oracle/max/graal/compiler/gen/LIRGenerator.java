@@ -39,6 +39,7 @@ import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -1499,7 +1500,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         int nextSuccIndex = merge.phiPredecessorIndex(pred);
         PhiResolver resolver = new PhiResolver(this);
         for (Phi phi : merge.phis()) {
-            if (!phi.isDead()) {
+            if (phi.type() == PhiType.Value) {
                 Value curVal = phi.valueAt(nextSuccIndex);
                 if (curVal != null && curVal != phi) {
                     if (curVal instanceof Phi) {
@@ -1561,7 +1562,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     private CiValue operandForPhi(Phi phi) {
-        assert !phi.isDead() : "dead phi: " + phi.id();
+        assert phi.type() == PhiType.Value : "wrong phi type: " + phi.id();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
             createResultVariable(phi);
@@ -1626,7 +1627,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             public void doValue(Value value) {
                 if (value == x) {
                     // nothing to do, will be visited shortly
-                } else if (value instanceof Phi && !((Phi) value).isDead()) {
+                } else if (value instanceof Phi && ((Phi) value).type() == PhiType.Value) {
                     // phi's are special
                     operandForPhi((Phi) value);
                 } else if (value.operand().isIllegal()) {

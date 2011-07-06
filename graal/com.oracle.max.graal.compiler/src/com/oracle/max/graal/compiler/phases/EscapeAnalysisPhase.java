@@ -29,6 +29,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Phi.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.value.*;
@@ -242,14 +243,13 @@ public class EscapeAnalysisPhase extends Phase {
             Phi[] valuePhis = new Phi[fieldState.length];
             for (BlockExitState other : withStates) {
                 if (virtualObjectField != other.virtualObjectField && vobjPhi == null) {
-                    vobjPhi = new Phi(CiKind.Illegal, merge, virtualObject.graph());
-                    vobjPhi.makeDead();
+                    vobjPhi = new Phi(CiKind.Illegal, merge, PhiType.Virtual, virtualObject.graph());
                     vobjPhi.addInput(virtualObjectField);
                     virtualObjectField = vobjPhi;
                 }
                 for (int i2 = 0; i2 < fieldState.length; i2++) {
                     if (fieldState[i2] != other.fieldState[i2] && valuePhis[i2] == null) {
-                        valuePhis[i2] = new Phi(fieldState[i2].kind, merge, virtualObject.graph());
+                        valuePhis[i2] = new Phi(fieldState[i2].kind, merge, PhiType.Value, virtualObject.graph());
                         valuePhis[i2].addInput(fieldState[i2]);
                         fieldState[i2] = valuePhis[i2];
                     }
@@ -277,12 +277,11 @@ public class EscapeAnalysisPhase extends Phase {
         @Override
         public void loopBegin(LoopBegin loopBegin) {
             Phi vobjPhi = null;
-            vobjPhi = new Phi(CiKind.Illegal, loopBegin, virtualObject.graph());
-            vobjPhi.makeDead();
+            vobjPhi = new Phi(CiKind.Illegal, loopBegin, PhiType.Virtual, virtualObject.graph());
             vobjPhi.addInput(virtualObjectField);
             virtualObjectField = vobjPhi;
             for (int i2 = 0; i2 < fieldState.length; i2++) {
-                Phi valuePhi = new Phi(fieldState[i2].kind, loopBegin, virtualObject.graph());
+                Phi valuePhi = new Phi(fieldState[i2].kind, loopBegin, PhiType.Value, virtualObject.graph());
                 valuePhi.addInput(fieldState[i2]);
                 fieldState[i2] = valuePhi;
                 updateField(i2);
