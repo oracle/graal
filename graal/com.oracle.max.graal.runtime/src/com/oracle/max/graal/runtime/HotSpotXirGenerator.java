@@ -164,8 +164,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         protected XirTemplate create(CiXirAssembler asm, long flags) {
             asm.restart(CiKind.Void);
 
-            // XirOperand temp = asm.createRegister("temp", CiKind.Word, AMD64.rax);
-            // asm.pload(CiKind.Word, temp, asm.w(config.safepointPollingAddress), true);
+            XirOperand temp = asm.createRegister("temp", CiKind.Word, AMD64.rax);
+            asm.pload(CiKind.Word, temp, asm.w(config.safepointPollingAddress), true);
 
             return asm.finishTemplate("safepoint");
         }
