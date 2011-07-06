@@ -118,7 +118,7 @@ public class InliningPhase extends Phase {
     private RiMethod inlineInvoke(Invoke invoke, int iterations, float ratio) {
         RiMethod parent = invoke.stateAfter().method();
         RiTypeProfile profile = parent.typeProfile(invoke.bci);
-        if (GraalOptions.Intrinsify && compilation.runtime.intrinsicGraph(invoke.target, invoke.arguments()) != null) {
+        if (GraalOptions.Intrinsify && compilation.runtime.intrinsicGraph(parent, invoke.bci, invoke.target, invoke.arguments()) != null) {
             // Always intrinsify.
             return invoke.target;
         }
@@ -209,6 +209,12 @@ public class InliningPhase extends Phase {
     }
 
     private boolean checkInvokeConditions(Invoke invoke) {
+        if (!invoke.canInline()) {
+            if (GraalOptions.TraceInlining) {
+                TTY.println("not inlining %s because the invoke is manually set to be non-inlinable", methodName(invoke.target, invoke));
+            }
+            return false;
+        }
         if (invoke.stateAfter() == null) {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because the invoke has no after state", methodName(invoke.target, invoke));
@@ -317,6 +323,7 @@ public class InliningPhase extends Phase {
     }
 
     private void inlineMethod(Invoke invoke, RiMethod method) {
+        RiMethod parent = invoke.stateAfter().method();
         FrameState stateAfter = invoke.stateAfter();
         FixedNode exceptionEdge = invoke.exceptionEdge();
         if (exceptionEdge instanceof Placeholder) {
@@ -339,7 +346,7 @@ public class InliningPhase extends Phase {
 
         CompilerGraph graph = null;
         if (GraalOptions.Intrinsify) {
-            graph = (CompilerGraph) compilation.runtime.intrinsicGraph(method, invoke.arguments());
+            graph = (CompilerGraph) compilation.runtime.intrinsicGraph(parent, invoke.bci, method, invoke.arguments());
         }
         if (graph != null) {
             if (GraalOptions.TraceInlining) {
@@ -405,7 +412,7 @@ public class InliningPhase extends Phase {
 
         FrameState stateBefore = null;
         for (Node node : duplicates.values()) {
-            if (node instanceof Invoke) {
+            if (node instanceof Invoke && ((Invoke) node).canInline()) {
                 newInvokes.add((Invoke) node);
             } else if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;

@@ -27,11 +27,13 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Call;
 import com.sun.cri.ci.CiTargetMethod.DataPatch;
@@ -307,10 +309,11 @@ public class HotSpotRuntime implements RiRuntime {
             LocationNode arrayLocation = createArrayLocation(graph, elementKind);
             arrayLocation.setIndex(storeIndexed.index());
             Value value = storeIndexed.value();
+            Value array = storeIndexed.array();
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 // Store check!
-                if (storeIndexed.array().exactType() != null) {
-                    RiType elementType = storeIndexed.array().exactType().componentType();
+                if (array.exactType() != null) {
+                    RiType elementType = array.exactType().componentType();
                     if (elementType.superType() != null) {
                         Constant type = new Constant(elementType.getEncoding(Representation.ObjectHub), graph);
                         value = new CheckCast(type, value, graph);
@@ -318,17 +321,16 @@ public class HotSpotRuntime implements RiRuntime {
                         assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
                     }
                 } else {
-                    ReadNode arrayKlass = new ReadNode(CiKind.Object, storeIndexed.array(), LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
-                    ReadNode arrayElementKlass = new ReadNode(CiKind.Object, arrayKlass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), graph);
+                    ReadNode arrayElementKlass = readArrayElementKlass(graph, array);
                     value = new CheckCast(arrayElementKlass, value, graph);
                 }
             }
-            WriteNode memoryWrite = new WriteNode(elementKind.stackKind(), storeIndexed.array(), value, arrayLocation, graph);
+            WriteNode memoryWrite = new WriteNode(elementKind.stackKind(), array, value, arrayLocation, graph);
             memoryWrite.setGuard(boundsCheck);
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
             anchor.setNext(memoryWrite);
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
-                ArrayWriteBarrier writeBarrier = new ArrayWriteBarrier(storeIndexed.array(), arrayLocation, graph);
+                ArrayWriteBarrier writeBarrier = new ArrayWriteBarrier(array, arrayLocation, graph);
                 memoryWrite.setNext(writeBarrier);
                 writeBarrier.setNext(storeIndexed.next());
             } else {
@@ -337,6 +339,12 @@ public class HotSpotRuntime implements RiRuntime {
             storeIndexed.replaceAtPredecessors(anchor);
             storeIndexed.delete();
         }
+    }
+
+    private ReadNode readArrayElementKlass(Graph graph, Value array) {
+        ReadNode arrayKlass = readHub(graph, array);
+        ReadNode arrayElementKlass = new ReadNode(CiKind.Object, arrayKlass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), graph);
+        return arrayElementKlass;
     }
 
     private LocationNode createArrayLocation(Graph graph, CiKind elementKind) {
@@ -348,7 +356,7 @@ public class HotSpotRuntime implements RiRuntime {
     }
 
     @Override
-    public Graph intrinsicGraph(RiMethod method, List<? extends Node> parameters) {
+    public Graph intrinsicGraph(RiMethod caller, int bci, RiMethod method, List<? extends Node> parameters) {
         if (!intrinsicGraphs.containsKey(method)) {
             RiType holder = method.holder();
             String fullName = method.name() + method.signature().asString();
@@ -357,7 +365,7 @@ public class HotSpotRuntime implements RiRuntime {
                 if (fullName.equals("getClass()Ljava/lang/Class;")) {
                     CompilerGraph graph = new CompilerGraph(this);
                     Local receiver = new Local(CiKind.Object, 0, graph);
-                    ReadNode klassOop = new ReadNode(CiKind.Object, receiver, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
+                    ReadNode klassOop = readHub(graph, receiver);
                     Return ret = new Return(new ReadNode(CiKind.Object, klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), graph), graph);
                     graph.start().setNext(ret);
                     graph.setReturn(ret);
@@ -387,10 +395,6 @@ public class HotSpotRuntime implements RiRuntime {
                     }
 
                     CiKind componentType = src.declaredType().componentType().kind();
-
-                    if (componentType == CiKind.Object) {
-                        return null;
-                    }
 
                     FrameState stateBefore = new FrameState(method, FrameState.BEFORE_BCI, 0, 0, 0, false, graph);
                     FrameState stateAfter = new FrameState(method, FrameState.AFTER_BCI, 0, 0, 0, false, graph);
@@ -435,7 +439,22 @@ public class HotSpotRuntime implements RiRuntime {
                     merge1.addEnd(new EndNode(graph));
                     merge1.setStateAfter(stateBefore);
 
-                    ifNode.setFalseSuccessor(merge1.endAt(0));
+
+                    Invoke newInvoke = null;
+                    if (componentType == CiKind.Object) {
+                        Value srcClass = readHub(graph, src);
+                        Value destClass = readHub(graph, dest);
+                        If elementClassIf = new If(new Compare(srcClass, Condition.EQ, destClass, graph), graph);
+                        ifNode.setFalseSuccessor(elementClassIf);
+                        newInvoke = new Invoke(bci, Bytecodes.INVOKESTATIC, CiKind.Void, new Value[]{src, srcPos, dest, destPos, length}, method, method.signature().returnType(method.holder()), graph);
+                        newInvoke.setCanInline(false);
+                        newInvoke.setStateAfter(stateAfter);
+                        elementClassIf.setFalseSuccessor(newInvoke);
+                        elementClassIf.setTrueSuccessor(merge1.endAt(0));
+                    } else {
+                        ifNode.setFalseSuccessor(merge1.endAt(0));
+                    }
+
                     secondIf.setFalseSuccessor(merge1.endAt(1));
                     merge1.setNext(normalVector);
 
@@ -446,6 +465,11 @@ public class HotSpotRuntime implements RiRuntime {
 
                     normalVector.setNext(merge2.endAt(0));
                     reverseVector.setNext(merge2.endAt(1));
+
+                    if (newInvoke != null) {
+                        merge2.addEnd(new EndNode(graph));
+                        newInvoke.setNext(merge2.endAt(2));
+                    }
 
                     Return ret = new Return(null, graph);
                     merge2.setNext(ret);
@@ -495,5 +519,9 @@ public class HotSpotRuntime implements RiRuntime {
             }
         }
         return intrinsicGraphs.get(method);
+    }
+
+    private ReadNode readHub(Graph graph, Value value) {
+        return new ReadNode(CiKind.Object, value, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
     }
 }
