@@ -20,11 +20,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.extensions;
-
-import com.sun.cri.ri.*;
+package com.oracle.max.graal.examples.inlining;
 
 
-public interface InliningGuide {
-    InliningHint getHint(int depth, RiMethod caller, int bci, RiMethod target);
+public class InliningExample {
+
+    public static void run() {
+        System.out.println(test());
+        long start = System.currentTimeMillis();
+        System.out.println(testFib());
+        System.out.println(System.currentTimeMillis() - start);
+    }
+
+    private static int test() {
+        return alwaysInline(30);
+    }
+
+    public static int testFib() {
+        int sum = 0;
+        for (int i = 0; i < 10000000; ++i) {
+            sum += fib(5);
+        }
+        return sum;
+    }
+
+    public static int alwaysInline(int value) {
+        if (value == 0) {
+            return neverInline(value);
+        }
+        return alwaysInline(value - 1);
+    }
+
+    public static int neverInline(int value) {
+        if (value == 0) {
+            return 0;
+        }
+        return neverInline(value - 1);
+    }
+
+    public static int fib(int val) {
+        if (val == 0 || val == 1) {
+            return 1;
+        }
+        return fib(val - 1) + fib(val - 2);
+    }
 }

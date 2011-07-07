@@ -20,11 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.extensions;
+package com.oracle.max.graal.examples.inlining;
 
+import com.oracle.max.graal.extensions.*;
 import com.sun.cri.ri.*;
 
 
-public interface InliningGuide {
-    InliningHint getHint(int depth, RiMethod caller, int bci, RiMethod target);
+public class InliningGuideImpl implements InliningGuide {
+
+    @Override
+    public InliningHint getHint(int depth, RiMethod caller, int bci, RiMethod target) {
+        if (target.name().equals("neverInline")) {
+            return InliningHint.NEVER_INLINE;
+        } else if (target.name().equals("alwaysInline") && depth < 50) {
+            return InliningHint.ALWAYS_INLINE;
+        } else if (target.name().equals("fib") && depth < 5) {
+            return InliningHint.ALWAYS_INLINE;
+        }
+        return InliningHint.NONE;
+    }
+
 }

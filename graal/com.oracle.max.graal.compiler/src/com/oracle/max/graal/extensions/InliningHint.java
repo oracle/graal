@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.extensions;
 
-import com.sun.cri.ri.*;
 
-
-public interface InliningGuide {
-    InliningHint getHint(int depth, RiMethod caller, int bci, RiMethod target);
+public enum InliningHint {
+    NONE,
+    ALWAYS_INLINE,
+    NEVER_INLINE
 }

@@ -20,11 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.extensions;
+package com.oracle.max.graal.examples;
 
-import com.sun.cri.ri.*;
+import com.oracle.max.graal.examples.inlining.*;
 
 
-public interface InliningGuide {
-    InliningHint getHint(int depth, RiMethod caller, int bci, RiMethod target);
+public class Main {
+
+    public static void main(String[] args) {
+        InliningExample.run();
+    }
+
 }
