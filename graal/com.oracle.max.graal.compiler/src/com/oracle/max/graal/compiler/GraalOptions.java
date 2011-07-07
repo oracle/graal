@@ -85,6 +85,8 @@ public final class GraalOptions {
     public static boolean PrintDOTGraphToPdf                 = ____;
     public static boolean OmitDOTFrameStates                 = ____;
 
+    public static boolean Extend                             = ____;
+
     // Ideal graph visualizer output settings
     public static boolean Plot                               = ____;
     public static boolean PlotOnError                        = ____;

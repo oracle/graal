@@ -31,6 +31,7 @@ import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -314,12 +315,26 @@ public class InliningPhase extends Phase {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because of code size (size: %d, max size: %d, ratio %5.3f, %s)", methodName(method, invoke), method.codeSize(), maximumSize, ratio, profile);
             }
+            if (GraalOptions.Extend) {
+                return overrideInliningDecision(method, false);
+            }
             return false;
         }
         if (GraalOptions.TraceInlining) {
             TTY.println("inlining %s (size: %d, max size: %d, ratio %5.3f, %s)", methodName(method, invoke), method.codeSize(), maximumSize, ratio, profile);
         }
+        if (GraalOptions.Extend) {
+            return overrideInliningDecision(method, true);
+        }
         return true;
+    }
+
+    private boolean overrideInliningDecision(RiMethod method, boolean previousDecision) {
+        ServiceLoader<InliningGuide> loader = ServiceLoader.load(InliningGuide.class);
+        for (InliningGuide guide : loader) {
+            TTY.println("inlining guide " + guide);
+        }
+        return previousDecision;
     }
 
     private void inlineMethod(Invoke invoke, RiMethod method) {
