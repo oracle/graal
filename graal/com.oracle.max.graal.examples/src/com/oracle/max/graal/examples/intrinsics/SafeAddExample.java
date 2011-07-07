@@ -28,21 +28,27 @@ public class SafeAddExample {
     public static final int N = 100000000;
 
     public static void run() {
+        System.out.println();
+        System.out.println();
+        System.out.println("Running SafeAdd Example");
         long start = System.currentTimeMillis();
-        System.out.println(test());
-        System.out.println(System.currentTimeMillis() - start);
+        System.out.println("result=" + test());
+        System.out.println("time=" + (System.currentTimeMillis() - start) + "ms");
     }
 
-    private static long test() {
-        long sum = 0;
-        for (long i = -N; i < N; ++i) {
+    private static int test() {
+        int sum = 0;
+        int j = N;
+        for (int i = -N; i < N; ++i) {
             sum = safeAdd(sum, i);
+            sum = safeAdd(sum, j);
+            --j;
         }
         return sum;
     }
 
-    private static long safeAdd(long a, long b) {
-        long result = a + b;
+    public static int safeAdd(int a, int b) {
+        int result = a + b;
         if (b < 0 && result > a) {
             throw new IllegalStateException("underflow when adding " + a + " and " + b);
         } else if (b > 0 && result < a) {

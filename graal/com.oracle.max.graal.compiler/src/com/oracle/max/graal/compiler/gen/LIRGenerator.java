@@ -1240,7 +1240,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected void arithmeticOpInt(int code, CiValue result, CiValue left, CiValue right, CiValue tmp) {
+    public void arithmeticOpInt(int code, CiValue result, CiValue left, CiValue right, CiValue tmp) {
         CiValue leftOp = left;
 
         if (isTwoOperand && leftOp != result) {

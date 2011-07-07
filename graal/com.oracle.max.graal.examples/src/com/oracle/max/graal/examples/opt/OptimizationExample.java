@@ -22,20 +22,25 @@
  */
 package com.oracle.max.graal.examples.opt;
 
-import java.math.*;
+import com.oracle.max.graal.examples.intrinsics.*;
 
 
 public class OptimizationExample {
 
     public static void run() {
+        System.out.println();
+        System.out.println();
+        System.out.println("Running Optimization Example");
         long start = System.currentTimeMillis();
-        System.out.println(test(1, 2));
-        System.out.println(System.currentTimeMillis() - start);
+        System.out.println("result=" + test(1000000000));
+        System.out.println("time=" + (System.currentTimeMillis() - start) + "ms");
     }
 
-    private static long test(long a, long b) {
-        BigInteger bigA = BigInteger.valueOf(a);
-        BigInteger bigB = BigInteger.valueOf(b);
-        return bigA.add(bigB).longValue();
+    private static long test(int n) {
+        long sum = 0;
+        for (int i = 0; i < n; i = SafeAddExample.safeAdd(i, 1)) {
+            sum = sum + i;
+        }
+        return sum;
     }
 }

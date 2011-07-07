@@ -31,6 +31,7 @@ import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 
 /**
@@ -100,6 +101,10 @@ public class IR {
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
+        }
+
+        if (GraalOptions.Extend) {
+            extensionOptimizations(graph);
         }
 
         if (GraalOptions.OptLoops) {
@@ -196,6 +201,23 @@ public class IR {
             GraalTimers.COMPUTE_LINEAR_SCAN_ORDER.stop();
         }
 
+    }
+
+
+
+    public static ThreadLocal<ServiceLoader<Optimizer>> optimizerLoader = new ThreadLocal<ServiceLoader<Optimizer>>();
+
+    private void extensionOptimizations(Graph graph) {
+
+        ServiceLoader<Optimizer> serviceLoader = optimizerLoader.get();
+        if (serviceLoader == null) {
+            serviceLoader = ServiceLoader.load(Optimizer.class);
+            optimizerLoader.set(serviceLoader);
+        }
+
+        for (Optimizer o : serviceLoader) {
+            o.optimize(compilation.runtime, graph);
+        }
     }
 
     /**

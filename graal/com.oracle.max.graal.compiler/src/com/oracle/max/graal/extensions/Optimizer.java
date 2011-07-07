@@ -20,19 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples;
+package com.oracle.max.graal.extensions;
 
-import com.oracle.max.graal.examples.inlining.*;
-import com.oracle.max.graal.examples.intrinsics.*;
-import com.oracle.max.graal.examples.opt.*;
+import com.oracle.max.graal.graph.*;
+import com.sun.cri.ri.*;
 
 
-public class Main {
-
-    public static void main(String[] args) {
-        InliningExample.run();
-        SafeAddExample.run();
-        OptimizationExample.run();
-    }
-
+public interface Optimizer {
+    void optimize(RiRuntime runtime, Graph graph);
 }

@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 
 public final class SafeAdd extends IntegerArithmetic {
     public SafeAdd(Value x, Value y, Graph graph) {
-        super(CiKind.Long, Bytecodes.LADD, x, y, graph);
+        super(CiKind.Int, Bytecodes.LADD, x, y, graph);
     }
 
     @Override
@@ -57,7 +57,7 @@ public final class SafeAdd extends IntegerArithmetic {
         @Override
         public void generate(Node n, LIRGenerator generator) {
             SafeAdd add = (SafeAdd) n;
-            generator.arithmeticOpLong(Bytecodes.LADD, generator.createResultVariable(add), generator.load(add.x()), generator.load(add.y()));
+            generator.arithmeticOpInt(Bytecodes.IADD, generator.createResultVariable(add), generator.load(add.x()), generator.load(add.y()), CiValue.IllegalValue);
             generator.deoptimizeOn(Condition.OF);
         }
     };
