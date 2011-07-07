@@ -44,6 +44,10 @@ public final class Anchor extends FixedNodeWithNext {
         super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
     }
 
+    public void addGuard(GuardNode x) {
+        variableInputs().add(x);
+    }
+
     @Override
     public void accept(ValueVisitor v) {
         v.visitAnchor(this);

@@ -131,17 +131,20 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     public void addVirtualObjectMapping(Node virtualObject) {
         assert virtualObject instanceof VirtualObjectField || virtualObject instanceof Phi : virtualObject;
-        inputs().variablePart().add(virtualObject);
+        variableInputs().add(virtualObject);
     }
 
     public int virtualObjectMappingCount() {
-        return inputs().variablePart().size();
+        return variableInputs().size();
     }
 
     public Node virtualObjectMappingAt(int i) {
-        return inputs().variablePart().get(i);
+        return variableInputs().get(i);
     }
 
+    public List<Node> virtualObjectMappings() {
+        return variableInputs();
+    }
 
     /**
      * Gets a copy of this frame state.
@@ -149,7 +152,7 @@ public final class FrameState extends Value implements FrameStateAccess {
     public FrameState duplicate(int bci) {
         FrameState other = new FrameState(method, bci, localsSize, stackSize, locksSize, rethrowException, graph());
         other.inputs().setAll(inputs());
-        other.inputs().variablePart().addAll(inputs().variablePart());
+        other.variableInputs().addAll(variableInputs());
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -181,7 +184,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         for (int i = 0; i < locksSize; i++) {
             other.setValueAt(localsSize + other.stackSize + i, lockAt(i));
         }
-        other.inputs().variablePart().addAll(inputs().variablePart());
+        other.variableInputs().addAll(variableInputs());
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -551,7 +554,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                 for (VirtualObject obj : vobjs) {
                     TTY.println("+" + obj);
                 }
-                for (Node vobj : inputs().variablePart()) {
+                for (Node vobj : variableInputs()) {
                     if (vobj instanceof VirtualObjectField) {
                         TTY.println("-" + ((VirtualObjectField) vobj).object());
                     } else {

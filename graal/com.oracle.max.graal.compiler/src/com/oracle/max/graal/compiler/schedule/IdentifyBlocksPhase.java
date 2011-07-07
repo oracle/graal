@@ -474,7 +474,7 @@ public class IdentifyBlocksPhase extends Phase {
             // TODO(tw): Make sure every ReadNode that is connected to the same memory state is executed before every write node.
             WriteNode wn = (WriteNode) i;
             // TODO: Iterate over variablePart.
-            wn.inputs().variablePart();
+//            wn.variableInputs();
         }
 
         FrameState state = null;

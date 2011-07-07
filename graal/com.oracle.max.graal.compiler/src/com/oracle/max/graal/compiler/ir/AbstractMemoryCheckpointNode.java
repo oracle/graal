@@ -49,6 +49,6 @@ public abstract class AbstractMemoryCheckpointNode extends StateSplit {
     }
 
     public List<Node> mergedNodes() {
-        return inputs().variablePart();
+        return variableInputs();
     }
 }

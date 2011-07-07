@@ -76,20 +76,20 @@ public class Merge extends StateSplit{
     }
 
     public int endIndex(EndNode end) {
-        assert inputs().variablePart().contains(end);
-        return inputs().variablePart().indexOf(end);
+        assert variableInputs().contains(end);
+        return variableInputs().indexOf(end);
     }
 
     public void addEnd(EndNode end) {
-        inputs().variablePart().add(end);
+        variableInputs().add(end);
     }
 
     public int endCount() {
-        return inputs().variablePart().size();
+        return variableInputs().size();
     }
 
     public EndNode endAt(int index) {
-        return (EndNode) inputs().variablePart().get(index);
+        return (EndNode) variableInputs().get(index);
     }
 
     @Override
@@ -310,9 +310,9 @@ public class Merge extends StateSplit{
     }
 
     public void removeEnd(EndNode pred) {
-        int predIndex = inputs().variablePart().indexOf(pred);
+        int predIndex = variableInputs().indexOf(pred);
         assert predIndex != -1;
-        inputs().variablePart().remove(predIndex);
+        variableInputs().remove(predIndex);
 
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
@@ -339,6 +339,6 @@ public class Merge extends StateSplit{
     }
 
     public List<Node> phiPredecessors() {
-        return Collections.unmodifiableList(inputs().variablePart());
+        return Collections.unmodifiableList(variableInputs());
     }
 }
