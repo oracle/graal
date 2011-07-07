@@ -102,6 +102,10 @@ public class IR {
 
         if (GraalOptions.OptLoops) {
             new LoopPhase().apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase().apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
+            }
         }
 
         if (GraalOptions.EscapeAnalysis /*&& compilation.method.toString().contains("simplify")*/) {

@@ -496,7 +496,7 @@ public class LoopUtil {
             @Override
             public boolean explore(Node n) {
                 return (!exitFrameStates.isNew(n) && exitFrameStates.isMarked(n))
-                || (!inOrBefore.isNew(n) && !inOrBefore.isMarked(n) && !(n instanceof Local) && !danglingMergeFrameState(n)); //TODO (gd) hum
+                || (!inOrBefore.isNew(n) && !inOrBefore.isMarked(n) && n.inputs().size() > 0 && !danglingMergeFrameState(n)); //TODO (gd) hum
             }
             public boolean danglingMergeFrameState(Node n) {
                 if (!(n instanceof FrameState)) {
