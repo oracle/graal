@@ -129,9 +129,17 @@ public final class FrameState extends Value implements FrameStateAccess {
      * Gets a copy of this frame state.
      */
     public FrameState duplicate(int bci) {
+        return duplicate(bci, false);
+    }
+
+    public FrameState duplicate(int bci, boolean duplicateOuter) {
         FrameState other = new FrameState(method, bci, localsSize, stackSize, locksSize, rethrowException, graph());
         other.inputs().setAll(inputs());
-        other.setOuterFrameState(outerFrameState());
+        FrameState outerFrameState = outerFrameState();
+        if (duplicateOuter && outerFrameState != null) {
+            outerFrameState = outerFrameState.duplicate(outerFrameState.bci, duplicateOuter);
+        }
+        other.setOuterFrameState(outerFrameState);
         return other;
     }
 
@@ -564,6 +572,15 @@ public final class FrameState extends Value implements FrameStateAccess {
         properties.put("locks", str.toString());
         properties.put("rethrowException", rethrowException);
         return properties;
+    }
+
+    @Override
+    public void delete() {
+        FrameState outerFrameState = outerFrameState();
+        super.delete();
+        if (outerFrameState != null && outerFrameState.usages().isEmpty()) {
+            outerFrameState.delete();
+        }
     }
 
     @Override

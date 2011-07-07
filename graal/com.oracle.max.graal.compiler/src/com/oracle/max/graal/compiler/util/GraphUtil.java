@@ -82,36 +82,6 @@ public class GraphUtil {
                 colors.set(merge, color);
             }
         }
-
-
-        /*List<Node> startingPoints = new LinkedList<Node>();
-        for (Entry<Node, T> entry : colors.entries()) {
-            startingPoints.add(entry.getKey());
-        }
-        NodeWorkList work = colors.graph().createNodeWorkList();
-        for (Node startingPoint : startingPoints) {
-            if (startingPoint instanceof Merge) {
-                work.addAll(colorCFGDownToMerge(((Merge) startingPoint).next(), colors.get(startingPoint), colors));
-            } else {
-                work.addAll(colorCFGDownToMerge(startingPoint, colors.get(startingPoint), colors));
-            }
-        }
-        for (Node n : work) {
-            //System.out.println("Color : work on " + n);
-            Merge merge = (Merge) n;
-            ArrayList<T> incomming = new ArrayList<T>(2);
-            for (EndNode end : merge.cfgPredecessors()) {
-                incomming.add(colors.get(end));
-            }
-            T color = lambda.color(incomming, merge);
-            if (color != null) {
-                colors.set(merge, color);
-                work.addAll(colorCFGDownToMerge(merge.next(), color, colors));
-            } else {
-                System.out.println("Can not color " + merge);
-                work.addAgain(merge);
-            }
-        }*/
     }
 
     private static <T> Collection<Merge> colorCFGDownToMerge(Node from, T color, NodeMap<T> colors) {
@@ -129,7 +99,7 @@ public class GraphUtil {
                     break;
                 }
                 colors.set(current, color);
-                if (current instanceof FixedNodeWithNext) {
+                if (current instanceof FixedNodeWithNext && !(current instanceof Invoke && ((Invoke) current).exceptionEdge() != null)) {
                     current = ((FixedNodeWithNext) current).next();
                 } else if (current instanceof EndNode) {
                     current = ((EndNode) current).merge();
@@ -138,6 +108,10 @@ public class GraphUtil {
                         for (Node sux : current.cfgSuccessors()) {
                             work.add(sux);
                         }
+                    } else if (current instanceof Invoke && ((Invoke) current).exceptionEdge() != null) {
+                        Invoke invoke = (Invoke) current;
+                        work.add(invoke.next());
+                        work.add(invoke.exceptionEdge());
                     }
                     current = null;
                 }
@@ -152,6 +126,8 @@ public class GraphUtil {
         void fixNode(Node node, T color);
         Value fixPhiInput(Value input, T color);
         boolean explore(Node n);
+        List<T> parentColors(T color);
+        Merge merge(T color);
     }
 
     // TODO (gd) rework that code around Phi handling : too complicated
@@ -214,11 +190,14 @@ public class GraphUtil {
                             } else {
                                 T color = internalColoring.get(usage);
                                 if (color == null) {
-                                    //System.out.println("Split : color from " + usage + " is null");
-                                    delay = true;
-                                    break;
+                                    //System.out.println("Split : color from " + usage + " is null : " + (lambda.explore(usage) ? "Should be colored" : "Should be white"));
+                                    if (lambda.explore(usage)) {
+                                        delay = true;
+                                        break;
+                                    }
+                                } else {
+                                    colors.add(color);
                                 }
-                                colors.add(color);
                             }
                         }
                         if (delay) {
@@ -235,19 +214,44 @@ public class GraphUtil {
                         internalColoring.put(node, color);
                         lambda.fixNode(node, color);
                     } else {
-                        //System.out.println("Split : " + colors.size() + " colors, coloring, spliting, fixing");
-                        for (T color : colors) {
-                            Node newNode = node.copy();
-                            for (int i = 0; i < node.inputs().size(); i++) {
-                                Node input = node.inputs().get(i);
-                                newNode.inputs().setOrExpand(i, input);
+                        Map<T, Node> newNodes = new HashMap<T, Node>();
+                        Queue<T> colorQueue = new LinkedList<T>(colors);
+                        while (!colorQueue.isEmpty()) {
+                            T color = colorQueue.poll();
+                            List<T> parentColors = lambda.parentColors(color);
+                            Node newNode;
+                            if (parentColors.size() > 1 && !(node instanceof FrameState) && colors.containsAll(parentColors)) {
+                                boolean ready = true;
+                                for (T parentColor : parentColors) {
+                                    if (newNodes.get(parentColor) == null) {
+                                        ready = false;
+                                        break;
+                                    }
+                                }
+                                if (!ready) {
+                                    colorQueue.offer(color);
+                                    continue;
+                                }
+                                Phi phi = new Phi(((Value) node).kind, lambda.merge(color), node.graph());
+                                for (T parentColor : parentColors) {
+                                    Node input = newNodes.get(parentColor);
+                                    phi.addInput(input);
+                                }
+                                newNode = phi;
+                            } else {
+                                newNode = node.copy();
+                                for (int i = 0; i < node.inputs().size(); i++) {
+                                    Node input = node.inputs().get(i);
+                                    newNode.inputs().setOrExpand(i, input);
+                                }
+                                for (int i = 0; i < node.successors().size(); i++) {
+                                    Node input = node.successors().get(i);
+                                    newNode.successors().setOrExpand(i, input);
+                                }
+                                internalColoring.put(newNode, color);
+                                lambda.fixSplit(node, newNode, color);
                             }
-                            for (int i = 0; i < node.successors().size(); i++) {
-                                Node input = node.successors().get(i);
-                                newNode.successors().setOrExpand(i, input);
-                            }
-                            internalColoring.put(newNode, color);
-                            lambda.fixSplit(node, newNode, color);
+                            newNodes.put(color, newNode);
                             LinkedList<Node> dataUsages = new LinkedList<Node>();
                             for (Node usage : node.dataUsages()) {
                                 dataUsages.add(usage);
@@ -273,12 +277,15 @@ public class GraphUtil {
                                 }
                             }
                         }
+                        lambda.fixNode(node, null /*white*/);
                     }
                     if (node instanceof StateSplit) {
                         FrameState stateAfter = ((StateSplit) node).stateAfter();
                         if (stateAfter != null && lambda.explore(stateAfter) && !work.isNew(stateAfter)) {
                             //System.out.println("Split : Add framestate to work");
-                            work.add(stateAfter);
+                            if (!(node instanceof Merge && coloring.get(((Merge) node).next()) == null)) { // not dangling colored merge
+                                work.add(stateAfter);
+                            }
                         }
                     }
 

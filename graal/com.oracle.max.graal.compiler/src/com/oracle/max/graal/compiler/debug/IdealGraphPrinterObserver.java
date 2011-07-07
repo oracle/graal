@@ -101,7 +101,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
         try {
             socket = new Socket(host, port);
             if (socket.getInputStream().read() == 'y') {
-                stream = socket.getOutputStream();
+                stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
             } else {
                 // server currently does not accept any input
                 socket.close();

@@ -221,11 +221,11 @@ final class EdgeMoveOptimizer {
         // the instructions are inserted at the end of the block before these two branches
         int insertIdx = instructions.size() - 2;
 
-        if (GraalOptions.DetailedAsserts) {
+        if (GraalOptions.DetailedAsserts && false) { // not true anymore with guards
             for (int i = insertIdx - 1; i >= 0; i--) {
                 LIRInstruction op = instructions.get(i);
                 if ((op.code == LIROpcode.Branch || op.code == LIROpcode.CondFloatBranch) && ((LIRBranch) op).block() != null) {
-                    throw new Error("block with two successors can have only two branch instructions");
+                    throw new Error("block with two successors can have only two branch instructions : error in " + block);
                 }
             }
         }

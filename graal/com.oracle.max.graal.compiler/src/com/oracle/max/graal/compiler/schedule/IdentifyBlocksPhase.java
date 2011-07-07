@@ -276,6 +276,8 @@ public class IdentifyBlocksPhase extends Phase {
                         block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
                     }
                 }
+            } else if (usage instanceof FrameState && ((FrameState) usage).outerFrameState() == n) {
+                block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
             } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
                 Merge merge = ((FrameState) usage).block();
                 for (Node pred : merge.cfgPredecessors()) {
@@ -411,7 +413,7 @@ public class IdentifyBlocksPhase extends Phase {
 
         int cnt = 0;
         while (!workList.isEmpty()) {
-            if (cnt++ > blocks.size() * 10) {
+            if (cnt++ > blocks.size() * 15) {
                 throw new RuntimeException("(ls) endless loop in computeDominators?");
             }
             Block b = workList.remove();

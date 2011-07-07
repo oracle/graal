@@ -81,7 +81,8 @@ public class LoopUtil {
         public final NodeMap<Placeholder> phis;
         public final NodeMap<Node> phiInits;
         public final NodeMap<Node> dataOut;
-        public PeelingResult(FixedNode begin, FixedNode end, NodeMap<StateSplit> exits, NodeMap<Placeholder> phis, NodeMap<Node> phiInits, NodeMap<Node> dataOut, NodeBitMap unaffectedExits) {
+        public final NodeBitMap exitFrameStates;
+        public PeelingResult(FixedNode begin, FixedNode end, NodeMap<StateSplit> exits, NodeMap<Placeholder> phis, NodeMap<Node> phiInits, NodeMap<Node> dataOut, NodeBitMap unaffectedExits, NodeBitMap exitFrameStates) {
             this.begin = begin;
             this.end = end;
             this.exits = exits;
@@ -89,6 +90,7 @@ public class LoopUtil {
             this.phiInits = phiInits;
             this.dataOut = dataOut;
             this.unaffectedExits = unaffectedExits;
+            this.exitFrameStates = exitFrameStates;
         }
     }
 
@@ -114,21 +116,13 @@ public class LoopUtil {
     public static NodeBitMap computeLoopExits(LoopBegin loopBegin, NodeBitMap nodes) {
         Graph graph = loopBegin.graph();
         NodeBitMap exits = graph.createNodeBitMap();
-        NodeFlood workCFG = graph.createNodeFlood();
-        workCFG.add(loopBegin.loopEnd());
-        for (Node n : workCFG) {
-            if (n == loopBegin) {
-                continue;
-            }
+        for (Node n : markUpCFG(loopBegin, loopBegin.loopEnd())) {
             if (IdentifyBlocksPhase.trueSuccessorCount(n) > 1) {
                 for (Node sux : n.cfgSuccessors()) {
                     if (!nodes.isMarked(sux) && sux instanceof FixedNode) {
                         exits.mark(sux);
                     }
                 }
-            }
-            for (Node pred : n.cfgPredecessors()) {
-                workCFG.add(pred);
             }
         }
         return exits;
@@ -169,7 +163,8 @@ public class LoopUtil {
         }
         NodeBitMap inOrBefore = loopBegin.graph().createNodeBitMap();
         for (Node n : workData2) {
-            markWithState(n, inOrBefore);
+            //markWithState(n, inOrBefore);
+            inOrBefore.mark(n);
             if (n instanceof Phi) { // filter out data graph cycles
                 Phi phi = (Phi) n;
                 if (!phi.isDead()) {
@@ -195,8 +190,14 @@ public class LoopUtil {
                     workData2.add(usage);
                 }
             }
+            if (n instanceof StateSplit) {
+                FrameState stateAfter = ((StateSplit) n).stateAfter();
+                if (stateAfter != null) {
+                    workData2.add(stateAfter);
+                }
+            }
         }
-        if (!recurse) {
+        /*if (!recurse) {
             recurse = true;
             GraalCompilation compilation = GraalCompilation.compilation();
             if (compilation.compiler.isObserved()) {
@@ -207,7 +208,7 @@ public class LoopUtil {
                 compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Compute loop nodes loop#" + loopBegin.id(), loopBegin.graph(), true, false, debug));
             }
             recurse = false;
-        }
+        }*/
         inOrAfter.setIntersect(inOrBefore);
         loopNodes.setUnion(inOrAfter);
         return loopNodes;
@@ -276,9 +277,9 @@ public class LoopUtil {
             System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
         }*/
         rewirePeeling(peeling, loop, loopEnd);
-        if (compilation.compiler.isObserved()) {
+        /*if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After rewirePeeling", loopEnd.graph(), true, false));
-        }
+        }*/
         // update parents
         Loop parent = loop.parent();
         while (parent != null) {
@@ -317,7 +318,14 @@ public class LoopUtil {
         for (Entry<Node, Placeholder> entry : peeling.phis.entries()) {
             Phi phi = (Phi) entry.getKey();
             Placeholder p = entry.getValue();
-            p.replaceAndDelete(phi.valueAt(phiInitIndex));
+            Value init = phi.valueAt(phiInitIndex);
+            p.replaceAndDelete(init);
+            for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
+                if (dataEntry.getValue() == p) {
+                    dataEntry.setValue(init);
+                    //System.out.println("Patch dataOut : " + dataEntry.getKey() + " -> " + dataEntry.getValue());
+                }
+            }
         }
         for (Entry<Node, Node> entry : peeling.phiInits.entries()) {
             Phi phi = (Phi) entry.getKey();
@@ -341,10 +349,10 @@ public class LoopUtil {
             EndNode oEnd = new EndNode(graph);
             EndNode nEnd = new EndNode(graph);
             Merge merge = new Merge(graph);
-            FrameState newState = newExit.stateAfter();
+            FrameState originalState = original.stateAfter();
             merge.addEnd(nEnd);
             merge.addEnd(oEnd);
-            merge.setStateAfter(newState.duplicate(newState.bci));
+            merge.setStateAfter(originalState.duplicate(originalState.bci, true));
             merge.setNext(original.next());
             original.setNext(oEnd);
             newExit.setNext(nEnd);
@@ -357,40 +365,20 @@ public class LoopUtil {
             EndNode oEnd = (EndNode) original.next();
             Merge merge = oEnd.merge();
             EndNode nEnd = merge.endAt(1 - merge.phiPredecessorIndex(oEnd));
-            FrameState newState = merge.stateAfter();
-            FrameState originalState = original.stateAfter();
-            while (newState != null) {
-                assert originalState != null;
-                NodeArray oInputs = originalState.inputs();
-                NodeArray nInputs = newState.inputs();
-                int oSize = oInputs.size();
-                for (int i = 1; i < oSize; i++) { // TODO (gd) start from 1 to avoid outer framestate, hacky..
-                    Node newValue = nInputs.get(i);
-                    Node originalValue = oInputs.get(i);
-                    if (newValue != originalValue) {
-                        Node newExit = nEnd.singlePredecessor();
-                        NodeMap<Value> phiMap = newExitValues.get(originalValue);
-                        if (phiMap == null) {
-                            phiMap = graph.createNodeMap();
-                            newExitValues.set(originalValue, phiMap);
-                        }
-                        phiMap.set(original, (Value) originalValue);
-                        phiMap.set(newExit, (Value) newValue);
-
-                        phiMap = newExitValues.get(newValue);
-                        if (phiMap == null) {
-                            phiMap = graph.createNodeMap();
-                            newExitValues.set(newValue, phiMap);
-                        }
-                        phiMap.set(original, (Value) originalValue);
-                        phiMap.set(nEnd, (Value) newValue);
-                    }
+            Node newExit = nEnd.singlePredecessor();
+            for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
+                Node originalValue = dataEntry.getKey();
+                Node newValue = dataEntry.getValue();
+                NodeMap<Value> phiMap = newExitValues.get(originalValue);
+                if (phiMap == null) {
+                    phiMap = graph.createNodeMap();
+                    newExitValues.set(originalValue, phiMap);
                 }
-                newState = newState.outerFrameState();
-                originalState = originalState.outerFrameState();
+                phiMap.set(original, (Value) originalValue);
+                phiMap.set(newExit, (Value) newValue);
             }
-            assert originalState == null;
         }
+
         for (Entry<Node, NodeMap<Value>> entry : newExitValues.entries()) {
             Value original = (Value) entry.getKey();
             NodeMap<Value> pointToValue = entry.getValue();
@@ -402,10 +390,10 @@ public class LoopUtil {
             }
         }
 
-        replaceValuesAtLoopExits(newExitValues, loop, exitPoints);
+        replaceValuesAtLoopExits(newExitValues, loop, exitPoints, peeling.exitFrameStates);
     }
 
-    private static void replaceValuesAtLoopExits(final NodeMap<NodeMap<Value>> newExitValues, Loop loop, List<Node> exitPoints) {
+    private static void replaceValuesAtLoopExits(final NodeMap<NodeMap<Value>> newExitValues, Loop loop, List<Node> exitPoints, final NodeBitMap exitFrameStates) {
         Graph graph = loop.loopBegin().graph();
         final NodeMap<Node> colors = graph.createNodeMap();
 
@@ -461,18 +449,20 @@ public class LoopUtil {
             Map<String, Object> debug = new HashMap<String, Object>();
             debug.put("loopExits", colors);
             debug.put("inOrBefore", inOrBefore);
+            debug.put("exitFrameStates", exitFrameStates);
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After coloring", graph, true, false, debug));
         }
 
         GraphUtil.splitFromColoring(colors, new ColorSplitingLambda<Node>(){
             @Override
             public void fixSplit(Node oldNode, Node newNode, Node color) {
+                assert color != null;
                 this.fixNode(newNode, color);
             }
             private Value getValueAt(Node point, NodeMap<Value> valueMap, CiKind kind) {
                 Value value = valueMap.get(point);
                 if (value != null) {
-                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = " + value);
+                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = (cached) " + value);
                     return value;
                 }
                 Merge merge = (Merge) point;
@@ -494,31 +484,45 @@ public class LoopUtil {
                     for (EndNode end : merge.cfgPredecessors()) {
                         phi.addInput(getValueAt(colors.get(end), valueMap, kind));
                     }
-                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = " + phi);
+                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = (new-phi) " + phi);
                     return phi;
                 } else {
                     assert v != null;
                     valueMap.set(point, v);
-                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = " + v);
+                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = (unique) " + v);
                     return v;
                 }
             }
             @Override
             public boolean explore(Node n) {
-                return !inOrBefore.isNew(n) && !inOrBefore.isMarked(n) && !(n instanceof Local) && !(n instanceof Constant); //TODO (gd) hum
+                return (!exitFrameStates.isNew(n) && exitFrameStates.isMarked(n))
+                || (!inOrBefore.isNew(n) && !inOrBefore.isMarked(n) && !(n instanceof Local) && !danglingMergeFrameState(n)); //TODO (gd) hum
+            }
+            public boolean danglingMergeFrameState(Node n) {
+                if (!(n instanceof FrameState)) {
+                    return false;
+                }
+                Merge block = ((FrameState) n).block();
+                return block != null && colors.get(block.next()) == null;
             }
             @Override
             public void fixNode(Node node, Node color) {
                 //System.out.println("fixNode(" + node + ", " + color + ")");
-                for (int i = 0; i < node.inputs().size(); i++) {
-                    Node input = node.inputs().get(i);
-                    if (input == null || newExitValues.isNew(input)) {
-                        continue;
-                    }
-                    NodeMap<Value> valueMap = newExitValues.get(input);
-                    if (valueMap != null) {
-                        Value replacement = getValueAt(color, valueMap, ((Value) input).kind);
-                        node.inputs().set(i, replacement);
+                if (color == null) {
+                    // 'white' it out : make non-explorable
+                    exitFrameStates.clear(node);
+                    inOrBefore.mark(node);
+                } else {
+                    for (int i = 0; i < node.inputs().size(); i++) {
+                        Node input = node.inputs().get(i);
+                        if (input == null || newExitValues.isNew(input)) {
+                            continue;
+                        }
+                        NodeMap<Value> valueMap = newExitValues.get(input);
+                        if (valueMap != null) {
+                            Value replacement = getValueAt(color, valueMap, ((Value) input).kind);
+                            node.inputs().set(i, replacement);
+                        }
                     }
                 }
             }
@@ -532,11 +536,28 @@ public class LoopUtil {
                     return getValueAt(color, valueMap, input.kind);
                 }
                 return input;
-            }});
+            }
+            @Override
+            public List<Node> parentColors(Node color) {
+                if (!(color instanceof Merge)) {
+                    return Collections.emptyList();
+                }
+                Merge merge = (Merge) color;
+                List<Node> parentColors = new ArrayList<Node>(merge.phiPredecessorCount());
+                for (Node pred : merge.phiPredecessors()) {
+                    parentColors.add(colors.get(pred));
+                }
+                return parentColors;
+            }
+            @Override
+            public Merge merge(Node color) {
+                return (Merge) color;
+            }
+        });
 
-        if (compilation.compiler.isObserved()) {
+        /*if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After split from colors", graph, true, false));
-        }
+        }*/
     }
 
     private static PeelingResult preparePeeling(Loop loop, FixedNode from) {
@@ -544,11 +565,11 @@ public class LoopUtil {
         Graph graph = loopBegin.graph();
         NodeBitMap marked = computeLoopNodesFrom(loopBegin, from);
         GraalCompilation compilation = GraalCompilation.compilation();
-        if (compilation.compiler.isObserved()) {
+        /*if (compilation.compiler.isObserved()) {
             Map<String, Object> debug = new HashMap<String, Object>();
             debug.put("marked", marked);
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After computeLoopNodesFrom", loopBegin.graph(), true, false, debug));
-        }
+        }*/
         if (from == loopBegin.loopEnd()) {
             clearWithState(from, marked);
         }
@@ -558,13 +579,32 @@ public class LoopUtil {
         NodeMap<StateSplit> exits = graph.createNodeMap();
         NodeBitMap unaffectedExits = graph.createNodeBitMap();
         NodeBitMap clonedExits = graph.createNodeBitMap();
+        NodeBitMap exitFrameStates = graph.createNodeBitMap();
         for (Node exit : loop.exits()) {
             if (marked.isMarked(exit.singlePredecessor())) {
                 StateSplit pExit = findNearestMergableExitPoint(exit, marked);
                 markWithState(pExit, marked);
                 clonedExits.mark(pExit);
+                FrameState stateAfter = pExit.stateAfter();
+                while (stateAfter != null) {
+                    exitFrameStates.mark(stateAfter);
+                    stateAfter = stateAfter.outerFrameState();
+                }
             } else {
                 unaffectedExits.mark(exit);
+            }
+        }
+
+        NodeBitMap dataOut = graph.createNodeBitMap();
+        for (Node n : marked) {
+            if (!(n instanceof FrameState)) {
+                for (Node usage : n.dataUsages()) {
+                    if ((!marked.isMarked(usage) && !((usage instanceof Phi) && ((Phi) usage).merge() != loopBegin))
+                                    || (marked.isMarked(usage) && exitFrameStates.isMarked(usage))) {
+                        dataOut.mark(n);
+                        break;
+                    }
+                }
             }
         }
 
@@ -591,37 +631,45 @@ public class LoopUtil {
 
         Map<Node, Node> duplicates = graph.addDuplicate(marked, replacements);
 
+        /*System.out.println("Dup mapping :");
+        for (Entry<Node, Node> entry : duplicates.entrySet()) {
+            System.out.println(" - " + entry.getKey().id() + " -> " + entry.getValue().id());
+        }*/
+
+        NodeMap<Node> dataOutMapping = graph.createNodeMap();
+        for (Node n : dataOut) {
+            Node newOut = duplicates.get(n);
+            if (newOut == null) {
+                newOut = replacements.get(n);
+            }
+            assert newOut != null;
+            dataOutMapping.set(n, newOut);
+        }
+
         for (Node n : clonedExits) {
             exits.set(n, (StateSplit) duplicates.get(n));
         }
 
-        NodeMap<Node> dataOut = graph.createNodeMap();
-        for (Node n : marked) {
-            for (Node usage : n.dataUsages()) {
-                if (!marked.isMarked(usage)
-                                && !loop.nodes().isNew(usage) && loop.nodes().isMarked(usage)
-                                && !((usage instanceof Phi) && ((Phi) usage).merge() != loopBegin)) {
-                    dataOut.set(n, duplicates.get(n));
-                    break;
-                }
-            }
-        }
         NodeMap<Node> phiInits = graph.createNodeMap();
-        int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
-        int fowardIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
-        for (Phi phi : loopBegin.phis()) {
-            Value backValue = phi.valueAt(backIndex);
-            if (marked.isMarked(backValue)) {
-                phiInits.set(phi, duplicates.get(backValue));
-            } else if (backValue instanceof Phi && ((Phi) backValue).merge() == loopBegin) {
-                Phi backPhi = (Phi) backValue;
-                phiInits.set(phi, backPhi.valueAt(fowardIndex));
+        if (from == loopBegin.loopEnd()) {
+            int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
+            int fowardIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
+            for (Phi phi : loopBegin.phis()) {
+                Value backValue = phi.valueAt(backIndex);
+                if (marked.isMarked(backValue)) {
+                    phiInits.set(phi, duplicates.get(backValue));
+                } else if (backValue instanceof Phi && ((Phi) backValue).merge() == loopBegin) {
+                    Phi backPhi = (Phi) backValue;
+                    phiInits.set(phi, backPhi.valueAt(fowardIndex));
+                } else {
+                    phiInits.set(phi, backValue);
+                }
             }
         }
 
         FixedNode newBegin = (FixedNode) duplicates.get(loopBegin.next());
         FixedNode newFrom = (FixedNode) duplicates.get(from == loopBegin.loopEnd() ? from.singlePredecessor() : from);
-        return new PeelingResult(newBegin, newFrom, exits, phis, phiInits, dataOut, unaffectedExits);
+        return new PeelingResult(newBegin, newFrom, exits, phis, phiInits, dataOutMapping, unaffectedExits, exitFrameStates);
     }
 
     private static StateSplit findNearestMergableExitPoint(Node exit, NodeBitMap marked) {

@@ -1732,7 +1732,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         // the value must be a constant or have a valid operand
-        assert operand.isLegal() : "this root has not been visited yet; instruction=" + instruction;
+        assert operand.isLegal() : "this root has not been visited yet; instruction=" + instruction + " currentBlock=" + currentBlock;
         return operand;
     }
 

@@ -43,7 +43,7 @@ public class LoopPhase extends Phase {
         if (GraalOptions.LoopPeeling) {
 peeling:
             for (Loop loop : loops) {
-    //            System.out.println("Peel loop : " + loop.loopBegin());
+                //System.out.println("Peel loop : " + loop.loopBegin());
                 for (Node exit : loop.exits()) {
                     if (!(exit instanceof StateSplit) || ((StateSplit) exit).stateAfter() == null) {
                         // TODO (gd) can not do loop peeling if an exit has no state. see LoopUtil.findNearestMergableExitPoint
