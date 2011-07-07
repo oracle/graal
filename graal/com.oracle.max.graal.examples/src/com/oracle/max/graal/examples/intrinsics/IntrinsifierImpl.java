@@ -20,16 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples;
+package com.oracle.max.graal.examples.intrinsics;
 
-import com.oracle.max.graal.examples.intrinsics.*;
+import java.util.*;
+
+import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.extensions.*;
+import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 
-public class Main {
+public class IntrinsifierImpl implements Intrinsifier {
 
-    public static void main(String[] args) {
-//        InliningExample.run();
-        SafeAddExample.run();
+    @Override
+    public Graph intrinsicGraph(RiRuntime runtime, RiMethod caller, int bci, RiMethod method, List<? extends Node> parameters) {
+        if (method.holder().name().equals("Lcom/oracle/max/graal/examples/intrinsics/SafeAddExample;") && method.name().equals("safeAdd")) {
+            CompilerGraph graph = new CompilerGraph(runtime);
+            Return returnNode = new Return(new SafeAdd(new Local(CiKind.Long, 0, graph), new Local(CiKind.Long, 1, graph), graph), graph);
+            graph.start().setNext(returnNode);
+            graph.setReturn(returnNode);
+            return graph;
+        }
+        return null;
     }
 
 }

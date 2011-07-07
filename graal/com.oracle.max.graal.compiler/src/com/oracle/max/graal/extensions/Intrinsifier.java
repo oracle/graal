@@ -20,16 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples;
+package com.oracle.max.graal.extensions;
 
-import com.oracle.max.graal.examples.intrinsics.*;
+import java.util.*;
+
+import com.oracle.max.graal.graph.*;
+import com.sun.cri.ri.*;
 
 
-public class Main {
-
-    public static void main(String[] args) {
-//        InliningExample.run();
-        SafeAddExample.run();
-    }
-
+public interface Intrinsifier {
+    Graph intrinsicGraph(RiRuntime runtime, RiMethod caller, int bci, RiMethod method, List<? extends Node> parameters);
 }

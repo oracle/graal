@@ -20,16 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples;
-
-import com.oracle.max.graal.examples.intrinsics.*;
+package com.oracle.max.graal.examples.intrinsics;
 
 
-public class Main {
+public class SafeAddExample {
 
-    public static void main(String[] args) {
-//        InliningExample.run();
-        SafeAddExample.run();
+    public static final int N = 100000000;
+
+    public static void run() {
+        long start = System.currentTimeMillis();
+        System.out.println(test());
+        System.out.println(System.currentTimeMillis() - start);
     }
 
+    private static long test() {
+        long sum = 0;
+        for (long i = -N; i < N; ++i) {
+            sum = safeAdd(sum, i);
+        }
+        return sum;
+    }
+
+    private static long safeAdd(long a, long b) {
+        long result = a + b;
+        if (b < 0 && result > a) {
+            throw new IllegalStateException("underflow when adding " + a + " and " + b);
+        } else if (b > 0 && result < a) {
+            throw new IllegalStateException("overflow when adding " + a + " and " + b);
+        }
+        return result;
+    }
 }

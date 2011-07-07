@@ -20,16 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples;
+package com.oracle.max.graal.examples.opt;
 
-import com.oracle.max.graal.examples.intrinsics.*;
+import java.math.*;
 
 
-public class Main {
+public class OptimizationExample {
 
-    public static void main(String[] args) {
-//        InliningExample.run();
-        SafeAddExample.run();
+    public static void run() {
+        long start = System.currentTimeMillis();
+        System.out.println(test(1, 2));
+        System.out.println(System.currentTimeMillis() - start);
     }
 
+    private static long test(long a, long b) {
+        BigInteger bigA = BigInteger.valueOf(a);
+        BigInteger bigB = BigInteger.valueOf(b);
+        return bigA.add(bigB).longValue();
+    }
 }

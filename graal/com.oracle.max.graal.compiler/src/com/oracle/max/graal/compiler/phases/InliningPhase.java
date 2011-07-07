@@ -121,9 +121,14 @@ public class InliningPhase extends Phase {
     private RiMethod inlineInvoke(Invoke invoke, int iterations, float ratio) {
         RiMethod parent = invoke.stateAfter().method();
         RiTypeProfile profile = parent.typeProfile(invoke.bci);
-        if (GraalOptions.Intrinsify && compilation.runtime.intrinsicGraph(parent, invoke.bci, invoke.target, invoke.arguments()) != null) {
-            // Always intrinsify.
-            return invoke.target;
+        if (GraalOptions.Intrinsify) {
+            if (GraalOptions.Extend && intrinsicGraph(parent, invoke.bci, invoke.target, invoke.arguments()) != null) {
+                return invoke.target;
+            }
+            if (compilation.runtime.intrinsicGraph(parent, invoke.bci, invoke.target, invoke.arguments()) != null) {
+                // Always intrinsify.
+                return invoke.target;
+            }
         }
         if (!checkInvokeConditions(invoke)) {
             return null;
@@ -366,6 +371,25 @@ public class InliningPhase extends Phase {
         return previousDecision;
     }
 
+
+    public static ThreadLocal<ServiceLoader<Intrinsifier>> intrinsicLoader = new ThreadLocal<ServiceLoader<Intrinsifier>>();
+
+    private Graph intrinsicGraph(RiMethod parent, int bci, RiMethod target, List<Value> arguments) {
+        ServiceLoader<Intrinsifier> serviceLoader = intrinsicLoader.get();
+        if (serviceLoader == null) {
+            serviceLoader = ServiceLoader.load(Intrinsifier.class);
+            intrinsicLoader.set(serviceLoader);
+        }
+
+        for (Intrinsifier intrinsifier : serviceLoader) {
+            Graph result = intrinsifier.intrinsicGraph(compilation.runtime, parent, bci, target, arguments);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
+    }
+
     private void inlineMethod(Invoke invoke, RiMethod method) {
         RiMethod parent = invoke.stateAfter().method();
         FrameState stateAfter = invoke.stateAfter();
@@ -390,7 +414,12 @@ public class InliningPhase extends Phase {
 
         CompilerGraph graph = null;
         if (GraalOptions.Intrinsify) {
-            graph = (CompilerGraph) compilation.runtime.intrinsicGraph(parent, invoke.bci, method, invoke.arguments());
+            if (GraalOptions.Extend) {
+                graph = (CompilerGraph) intrinsicGraph(parent, invoke.bci, method, invoke.arguments());
+            }
+            if (graph == null) {
+                graph = (CompilerGraph) compilation.runtime.intrinsicGraph(parent, invoke.bci, method, invoke.arguments());
+            }
         }
         if (graph != null) {
             if (GraalOptions.TraceInlining) {

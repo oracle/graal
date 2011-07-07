@@ -79,6 +79,16 @@ public enum Condition {
      */
     BT("|<|"),
 
+    /**
+     * Operation produced an overflow.
+     */
+    OF("overflow"),
+
+    /**
+     * Operation did not produce an overflow.
+     */
+    NOF("noOverflow"),
+
     TRUE("TRUE");
 
     public final String operator;

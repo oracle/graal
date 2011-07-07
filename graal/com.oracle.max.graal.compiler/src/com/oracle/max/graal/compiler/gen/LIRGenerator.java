@@ -801,22 +801,32 @@ public abstract class LIRGenerator extends ValueVisitor {
             XirSnippet typeCheck = xir.genTypeCheck(site(x), toXirArgument(x.object()), clazz, x.type());
             emitXir(typeCheck, x, info, compilation.method, false);
         } else {
-            FrameState state = lastState;
-            assert state != null : "deoptimize instruction always needs a state";
-
             if (comp instanceof Constant && comp.asConstant().asBoolean()) {
                 // Nothing to emit.
             } else {
-            if (deoptimizationStubs == null) {
-                deoptimizationStubs = new ArrayList<DeoptimizationStub>();
+                DeoptimizationStub stub = createDeoptStub();
+                emitBooleanBranch(comp, null, new LIRBlock(stub.label, stub.info), stub.info);
             }
-
-            DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
-            deoptimizationStubs.add(stub);
-            emitBooleanBranch(comp, null, new LIRBlock(stub.label, stub.info), stub.info);
-        }
         }
     }
+
+    private DeoptimizationStub createDeoptStub() {
+        if (deoptimizationStubs == null) {
+            deoptimizationStubs = new ArrayList<DeoptimizationStub>();
+        }
+
+        FrameState state = lastState;
+        assert state != null : "deoptimize instruction always needs a state";
+        DeoptimizationStub stub = new DeoptimizationStub(DeoptAction.InvalidateReprofile, state);
+        deoptimizationStubs.add(stub);
+        return stub;
+    }
+
+    public void deoptimizeOn(Condition cond) {
+        DeoptimizationStub stub = createDeoptStub();
+        lir.branch(cond, stub.label, stub.info);
+    }
+
 
     @Override
     public void visitPhi(Phi i) {
@@ -1270,7 +1280,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected void arithmeticOpLong(int code, CiValue result, CiValue left, CiValue right) {
+    public void arithmeticOpLong(int code, CiValue result, CiValue left, CiValue right) {
         CiValue leftOp = left;
 
         if (isTwoOperand && leftOp != result) {
