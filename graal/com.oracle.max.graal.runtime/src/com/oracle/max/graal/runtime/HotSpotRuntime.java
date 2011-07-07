@@ -301,7 +301,7 @@ public class HotSpotRuntime implements RiRuntime {
             Graph graph = storeIndexed.graph();
             Anchor anchor = new Anchor(graph);
             GuardNode boundsCheck = createBoundsCheck(storeIndexed, tool);
-            anchor.inputs().add(boundsCheck);
+            anchor.addGuard(boundsCheck);
 
 
             CiKind elementKind = storeIndexed.elementKind();

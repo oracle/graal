@@ -1953,7 +1953,7 @@ public final class LinearScan {
                 HashMap<VirtualObject, VirtualObjectField> objectStates = new HashMap<VirtualObject, VirtualObjectField>();
                 FrameState current = topState;
                 do {
-                    for (Node n : current.inputs().variablePart()) {
+                    for (Node n : current.virtualObjectMappings()) {
                         VirtualObjectField field = (VirtualObjectField) n;
                         // null states occur for objects with 0 fields
                         if (field != null && !objectStates.containsKey(field.object())) {

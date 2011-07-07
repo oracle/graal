@@ -199,7 +199,7 @@ public final class Compare extends BooleanNode {
                     if (compare.condition == Condition.NE) {
                         isFalseCheck = !isFalseCheck;
                     }
-                    BooleanNode result = materializeNode.value();
+                    Value result = materializeNode.value();
                     if (isFalseCheck) {
                         result = new NegateBooleanNode(result, compare.graph());
                     }

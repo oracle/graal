@@ -198,7 +198,7 @@ public class MemoryPhase extends Phase {
             }
 
             // Create dependency on previous write to same location.
-            node.inputs().variablePart().add(getLocationForWrite(node));
+            node.addDependency(getLocationForWrite(node));
 
             locationForWrite.put(location, node);
             locationForRead.put(location, node);
@@ -220,7 +220,7 @@ public class MemoryPhase extends Phase {
             }
 
             // Create dependency on previous node that creates the memory state for this location.
-            node.inputs().variablePart().add(getLocationForRead(node));
+            node.addDependency(getLocationForRead(node));
         }
 
         public Node getLocationForRead(ReadNode node) {
