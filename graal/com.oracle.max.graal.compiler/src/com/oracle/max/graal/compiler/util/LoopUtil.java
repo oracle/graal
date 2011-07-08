@@ -231,6 +231,11 @@ public class LoopUtil {
                     }
                 }
             }
+            if (n instanceof AbstractVectorNode) {
+                for (Node usage : n.usages()) {
+                    workData2.add(usage);
+                }
+            }
             if (n instanceof StateSplit) {
                 FrameState stateAfter = ((StateSplit) n).stateAfter();
                 if (stateAfter != null) {
@@ -817,6 +822,11 @@ public class LoopUtil {
                         if (!(usage instanceof LoopEnd)) {
                             work.add(usage);
                         }
+                    }
+                }
+                if (n instanceof AbstractVectorNode) {
+                    for (Node usage : n.usages()) {
+                        work.add(usage);
                     }
                 }
                 if (n instanceof LoopBegin && n != loop.loopBegin()) {
