@@ -442,6 +442,42 @@ public final class FrameState extends Value implements FrameStateAccess {
         return null;
     }
 
+    public Iterable<FrameState> innerFrameStates() {
+        final Iterator<Node> iterator = usages().iterator();
+        return new Iterable<FrameState>() {
+            @Override
+            public Iterator<FrameState> iterator() {
+                return new Iterator<FrameState>() {
+                    private Node next;
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                    @Override
+                    public FrameState next() {
+                        forward();
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
+                        FrameState res = (FrameState) next;
+                        next = null;
+                        return res;
+                    }
+                    @Override
+                    public boolean hasNext() {
+                        forward();
+                        return next != null;
+                    }
+                    private void forward() {
+                        while (!(next instanceof FrameState) && iterator.hasNext()) {
+                            next = iterator.next();
+                        }
+                    }
+                };
+            }
+        };
+    }
+
     /**
      * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
      * {@link FrameState#forEachLivePhi(Merge, PhiProcedure)}.

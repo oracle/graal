@@ -546,14 +546,27 @@ public class LoopUtil {
                 System.out.println(" - inputs > 0 : " + (n.inputs().size() > 0));
                 System.out.println(" - !danglingMergeFrameState : " + (!danglingMergeFrameState(n)));*/
                 return (!exitFrameStates.isNew(n) && exitFrameStates.isMarked(n))
-                || (!inOrBefore.isNew(n) && !inOrBefore.isMarked(n) && n.inputs().size() > 0 && !danglingMergeFrameState(n)); //TODO (gd) hum
+                || (!inOrBefore.isNew(n) && !inOrBefore.isMarked(n) && n.inputs().size() > 0 && !afterColoringFramestate(n)); //TODO (gd) hum
             }
-            public boolean danglingMergeFrameState(Node n) {
+            public boolean afterColoringFramestate(Node n) {
                 if (!(n instanceof FrameState)) {
                     return false;
                 }
-                Merge block = ((FrameState) n).block();
-                return block != null && colors.get(block.next()) == null;
+                final FrameState frameState = (FrameState) n;
+                Merge block = frameState.block();
+                if (block != null) {
+                    return colors.get(block.next()) == null;
+                }
+                StateSplit stateSplit = frameState.stateSplit();
+                if (stateSplit != null) {
+                    return colors.get(stateSplit) == null;
+                }
+                for (FrameState inner : frameState.innerFrameStates()) {
+                    if (!afterColoringFramestate(inner)) {
+                        return false;
+                    }
+                }
+                return true;
             }
             @Override
             public void fixNode(Node node, Node color) {
