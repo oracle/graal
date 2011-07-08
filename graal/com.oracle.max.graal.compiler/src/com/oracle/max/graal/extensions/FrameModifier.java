@@ -20,21 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples;
+package com.oracle.max.graal.extensions;
 
-import com.oracle.max.graal.examples.deopt.*;
-import com.oracle.max.graal.examples.inlining.*;
-import com.oracle.max.graal.examples.intrinsics.*;
-import com.oracle.max.graal.examples.opt.*;
+import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
 
-public class Main {
-
-    public static void main(String[] args) {
-//        InliningExample.run();
-//        SafeAddExample.run();
-//        OptimizationExample.run();
-        DeoptExample.run();
-    }
-
+public interface FrameModifier {
+    CiFrame getFrame(RiRuntime runtime, CiFrame frame);
 }

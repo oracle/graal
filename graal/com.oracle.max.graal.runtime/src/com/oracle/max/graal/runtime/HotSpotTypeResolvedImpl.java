@@ -230,4 +230,9 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         }
         return fields;
     }
+
+    @Override
+    public RiMethod getMethod(String name, String signature) {
+        return compiler.getVMEntries().RiType_resolveMethodImpl(this, name, signature);
+    }
 }

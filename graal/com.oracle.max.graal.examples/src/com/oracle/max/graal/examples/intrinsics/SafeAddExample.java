@@ -32,11 +32,11 @@ public class SafeAddExample {
         System.out.println();
         System.out.println("Running SafeAdd Example");
         long start = System.currentTimeMillis();
-        System.out.println("result=" + test());
+        System.out.println("result=" + testSafeAdd());
         System.out.println("time=" + (System.currentTimeMillis() - start) + "ms");
     }
 
-    private static int test() {
+    private static int testSafeAdd() {
         int sum = 0;
         int j = N;
         for (int i = -N; i < N; ++i) {

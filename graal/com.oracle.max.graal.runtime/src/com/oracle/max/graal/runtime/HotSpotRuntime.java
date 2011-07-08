@@ -526,4 +526,9 @@ public class HotSpotRuntime implements RiRuntime {
     private ReadNode readHub(Graph graph, Value value) {
         return new ReadNode(CiKind.Object, value, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
     }
+
+    @Override
+    public RiType getType(Class<?> clazz) {
+        return compiler.getVMEntries().getType(clazz);
+    }
 }

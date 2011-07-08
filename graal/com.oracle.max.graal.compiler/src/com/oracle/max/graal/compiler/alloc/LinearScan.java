@@ -42,6 +42,7 @@ import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.compiler.value.FrameState.ValueProcedure;
+import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -1840,6 +1841,23 @@ public final class LinearScan {
         }
     }
 
+    public static ThreadLocal<ServiceLoader<FrameModifier>> frameModifierLoader = new ThreadLocal<ServiceLoader<FrameModifier>>();
+
+    private CiFrame overrideFrame(CiFrame frame) {
+        ServiceLoader<FrameModifier> serviceLoader = frameModifierLoader.get();
+        if (serviceLoader == null) {
+            serviceLoader = ServiceLoader.load(FrameModifier.class);
+            frameModifierLoader.set(serviceLoader);
+        }
+
+        CiFrame result = frame;
+        for (FrameModifier modifier : serviceLoader) {
+            result = modifier.getFrame(compilation.runtime, result);
+        }
+        return result;
+    }
+
+
     private class DebugFrameBuilder {
 
         private final FrameState topState;
@@ -1942,7 +1960,11 @@ public final class LinearScan {
             if (state.outerFrameState() != null) {
                 caller = computeFrameForState(state.outerFrameState());
             }
-            return new CiFrame(caller, state.method, state.bci, state.rethrowException(), values, state.localsSize(), state.stackSize(), state.locksSize());
+            CiFrame frame = new CiFrame(caller, state.method, state.bci, state.rethrowException(), values, state.localsSize(), state.stackSize(), state.locksSize());
+            if (GraalOptions.Extend) {
+                frame = overrideFrame(frame);
+            }
+            return frame;
         }
 
         public CiFrame build() {
