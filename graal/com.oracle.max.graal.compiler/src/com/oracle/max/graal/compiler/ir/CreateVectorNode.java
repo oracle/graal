@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -98,7 +99,7 @@ public final class CreateVectorNode extends AbstractVectorNode {
         EndNode end = new EndNode(graph());
         LoopBegin loopBegin = new LoopBegin(graph());
         loopBegin.addEnd(end);
-        Phi loopVariable = new Phi(CiKind.Int, loopBegin, graph());
+        Phi loopVariable = new Phi(CiKind.Int, loopBegin, PhiType.Value, graph());
 
         if (reversed) {
             IntegerSub add = new IntegerSub(CiKind.Int, loopVariable, Constant.forInt(1, graph()), graph());
@@ -112,6 +113,7 @@ public final class CreateVectorNode extends AbstractVectorNode {
 
         LoopEnd loopEnd = new LoopEnd(graph());
         loopEnd.setLoopBegin(loopBegin);
+        loopBegin.setStateAfter(stateAfter());
         Compare condition;
         if (reversed) {
             condition = new Compare(loopVariable, Condition.GE, Constant.forInt(0, graph()), graph());

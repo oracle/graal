@@ -42,7 +42,7 @@ final class ControlFlowOptimizer {
      */
     public static void optimize(IR ir) {
         ControlFlowOptimizer optimizer = new ControlFlowOptimizer(ir);
-        List<LIRBlock> code = ir.linearScanOrder();
+        List<LIRBlock> code = ir.codeEmittingOrder();
         optimizer.reorderShortLoops(code);
         optimizer.deleteEmptyBlocks(code);
         optimizer.deleteUnnecessaryJumps(code);

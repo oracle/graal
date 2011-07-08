@@ -76,20 +76,20 @@ public class Merge extends StateSplit{
     }
 
     public int endIndex(EndNode end) {
-        assert inputs().variablePart().contains(end);
-        return inputs().variablePart().indexOf(end);
+        assert variableInputs().contains(end);
+        return variableInputs().indexOf(end);
     }
 
     public void addEnd(EndNode end) {
-        inputs().variablePart().add(end);
+        variableInputs().add(end);
     }
 
     public int endCount() {
-        return inputs().variablePart().size();
+        return variableInputs().size();
     }
 
     public EndNode endAt(int index) {
-        return (EndNode) inputs().variablePart().get(index);
+        return (EndNode) variableInputs().get(index);
     }
 
     @Override
@@ -197,7 +197,7 @@ public class Merge extends StateSplit{
             while (!hasPhisOnStack && i < state.stackSize()) {
                 Value value = state.stackAt(i);
                 hasPhisOnStack = isPhiAtBlock(value);
-                if (value != null && !(value instanceof Phi && ((Phi) value).isDead())) {
+                if (value != null) {
                     i += value.kind.sizeInSlots();
                 } else {
                     i++;
@@ -208,7 +208,7 @@ public class Merge extends StateSplit{
                 Value value = state.localAt(i);
                 hasPhisInLocals = isPhiAtBlock(value);
                 // also ignore illegal HiWords
-                if (value != null && !(value instanceof Phi && ((Phi) value).isDead())) {
+                if (value != null) {
                     i += value.kind.sizeInSlots();
                 } else {
                     i++;
@@ -227,11 +227,7 @@ public class Merge extends StateSplit{
                 if (value != null) {
                     out.println(stateString(j, value));
                     // also ignore illegal HiWords
-                    if (value instanceof Phi && ((Phi) value).isDead()) {
-                        j +=  1;
-                    } else {
-                        j += value.kind.sizeInSlots();
-                    }
+                    j += value.kind.sizeInSlots();
                 } else {
                     j++;
                 }
@@ -314,16 +310,13 @@ public class Merge extends StateSplit{
     }
 
     public void removeEnd(EndNode pred) {
-        int predIndex = inputs().variablePart().indexOf(pred);
+        int predIndex = variableInputs().indexOf(pred);
         assert predIndex != -1;
-        inputs().variablePart().remove(predIndex);
+        variableInputs().remove(predIndex);
 
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
-                Phi phi = (Phi) usage;
-                if (!phi.isDead()) {
-                    phi.removeInput(predIndex);
-                }
+                ((Phi) usage).removeInput(predIndex);
             }
         }
     }
@@ -346,6 +339,6 @@ public class Merge extends StateSplit{
     }
 
     public List<Node> phiPredecessors() {
-        return Collections.unmodifiableList(inputs().variablePart());
+        return Collections.unmodifiableList(variableInputs());
     }
 }

@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
 import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -35,8 +34,6 @@ import com.sun.cri.ci.*;
  * The {@code NewArray} class is the base of all instructions that allocate arrays.
  */
 public abstract class NewArray extends FixedNodeWithNext {
-
-    private static final EscapeOp ESCAPE = new NewArrayEscapeOp();
 
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_LENGTH = 0;
@@ -109,7 +106,7 @@ public abstract class NewArray extends FixedNodeWithNext {
         return super.lookup(clazz);
     }
 
-    private static class NewArrayEscapeOp implements EscapeOp {
+    private static final EscapeOp ESCAPE = new EscapeOp() {
 
         @Override
         public boolean canAnalyze(Node node) {
@@ -120,19 +117,7 @@ public abstract class NewArray extends FixedNodeWithNext {
 
         @Override
         public boolean escape(Node node, Node usage) {
-            if (usage instanceof IsNonNull) {
-                IsNonNull x = (IsNonNull) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof IsType) {
-                IsType x = (IsType) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof FrameState) {
-                FrameState x = (FrameState) usage;
-                assert x.inputs().contains(node);
-                return true;
-            } else if (usage instanceof LoadIndexed) {
+            if (usage instanceof LoadIndexed) {
                 LoadIndexed x = (LoadIndexed) usage;
                 assert x.array() == node;
                 CiConstant index = x.index().asConstant();
@@ -152,19 +137,15 @@ public abstract class NewArray extends FixedNodeWithNext {
                 if (index == null || length == null || index.asInt() < 0 || index.asInt() >= length.asInt()) {
                     return true;
                 }
-                return x.value() == node;
-            } else if (usage instanceof AccessMonitor) {
-                AccessMonitor x = (AccessMonitor) usage;
-                assert x.object() == node;
-                return false;
+                return x.value() == node && x.array() != node;
             } else if (usage instanceof ArrayLength) {
                 ArrayLength x = (ArrayLength) usage;
                 assert x.array() == node;
                 return false;
-            } else if (usage instanceof VirtualObject) {
+            } else if (usage instanceof VirtualObjectField) {
                 return false;
             } else {
-                return true;
+                return super.escape(node, usage);
             }
         }
 
@@ -182,56 +163,33 @@ public abstract class NewArray extends FixedNodeWithNext {
 
         @Override
         public void beforeUpdate(Node node, Node usage) {
-            if (usage instanceof IsNonNull) {
-                IsNonNull x = (IsNonNull) usage;
-                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
-                    FixedGuard guard = (FixedGuard) x.usages().get(0);
-                    guard.replaceAndDelete(guard.next());
-                }
-                x.delete();
-            } else if (usage instanceof IsType) {
-                IsType x = (IsType) usage;
-                assert x.type() == ((NewArray) node).exactType();
-                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
-                    FixedGuard guard = (FixedGuard) x.usages().get(0);
-                    guard.replaceAndDelete(guard.next());
-                }
-                x.delete();
-            } else if (usage instanceof AccessMonitor) {
-                AccessMonitor x = (AccessMonitor) usage;
-                x.replaceAndDelete(x.next());
-            } else if (usage instanceof ArrayLength) {
+            if (usage instanceof ArrayLength) {
                 ArrayLength x = (ArrayLength) usage;
                 x.replaceAndDelete(((NewArray) node).dimension(0));
+            } else {
+                super.beforeUpdate(node, usage);
             }
         }
 
         @Override
-        public EscapeField updateState(Node node, Node current, Map<Object, EscapeField> fields, Map<EscapeField, Value> fieldState) {
+        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, Value[] fieldState) {
             if (current instanceof AccessIndexed) {
-                int index = ((AccessIndexed) current).index().asConstant().asInt();
-                EscapeField field = fields.get(index);
-                if (current instanceof LoadIndexed) {
-                    LoadIndexed x = (LoadIndexed) current;
-                    if (x.array() == node) {
-                        x.replaceAtUsages(fieldState.get(field));
+                AccessIndexed x = (AccessIndexed) current;
+                if (x.array() == node) {
+                    int index = ((AccessIndexed) current).index().asConstant().asInt();
+                    if (current instanceof LoadIndexed) {
+                        x.replaceAtUsages(fieldState[index]);
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
-                    }
-                } else if (current instanceof StoreIndexed) {
-                    StoreIndexed x = (StoreIndexed) current;
-                    if (x.array() == node) {
-                        fieldState.put(field, x.value());
+                    } else if (current instanceof StoreIndexed) {
+                        fieldState[index] = ((StoreIndexed) x).value();
                         assert x.usages().size() == 0;
-                        WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(x.graph());
-                        checkpoint.setStateAfter(x.stateAfter());
-                        checkpoint.setNext(x.next());
-                        x.replaceAndDelete(checkpoint);
-                        return field;
+                        x.replaceAndDelete(x.next());
+                        return index;
                     }
                 }
             }
-            return null;
+            return -1;
         }
-    }
+    };
 }

@@ -28,6 +28,7 @@ import java.util.Map.Entry;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Phi.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -155,8 +156,7 @@ public class MemoryPhase extends Phase {
                 assert phi.valueCount() <= phi.merge().endCount();
                 return original;
             } else {
-                Phi phi = new Phi(CiKind.Illegal, m, m.graph());
-                phi.makeDead(); // Phi does not produce a value, it is only a memory phi.
+                Phi phi = new Phi(CiKind.Illegal, m, PhiType.Memory, m.graph());
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
                     phi.addInput(original);
                 }
@@ -198,7 +198,7 @@ public class MemoryPhase extends Phase {
             }
 
             // Create dependency on previous write to same location.
-            node.inputs().variablePart().add(getLocationForWrite(node));
+            node.addDependency(getLocationForWrite(node));
 
             locationForWrite.put(location, node);
             locationForRead.put(location, node);
@@ -220,7 +220,7 @@ public class MemoryPhase extends Phase {
             }
 
             // Create dependency on previous node that creates the memory state for this location.
-            node.inputs().variablePart().add(getLocationForRead(node));
+            node.addDependency(getLocationForRead(node));
         }
 
         public Node getLocationForRead(ReadNode node) {
@@ -315,6 +315,8 @@ public class MemoryPhase extends Phase {
             LoopBegin begin = end.loopBegin();
             Block beginBlock = nodeMap.get(begin);
             MemoryMap memoryMap = memoryMaps[beginBlock.blockID()];
+            assert memoryMap != null : beginBlock.name();
+            assert memoryMap.getLoopEntryMap() != null;
             memoryMap.getLoopEntryMap().resetMergeOperationCount();
             memoryMap.getLoopEntryMap().mergeWith(map, beginBlock);
             Node loopCheckPoint = memoryMap.getLoopCheckPoint();

@@ -23,6 +23,8 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -80,6 +82,15 @@ public final class StoreIndexed extends AccessIndexed {
     @Override
     public void print(LogStream out) {
         out.print(array()).print('[').print(index()).print("] := ").print(value()).print(" (").print(kind.typeChar).print(')');
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LoweringOp.class) {
+            return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
+        }
+        return super.lookup(clazz);
     }
 
     @Override

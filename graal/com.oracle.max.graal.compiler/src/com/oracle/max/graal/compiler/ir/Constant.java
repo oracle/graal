@@ -55,14 +55,6 @@ public final class Constant extends BooleanNode {
         v.visitConstant(this);
     }
 
-    @Override
-    public BooleanNode negate() {
-        if (kind != CiKind.Boolean) {
-            throw new IllegalStateException();
-        }
-        return Constant.forBoolean(!value.asBoolean(), graph());
-    }
-
     /**
      * Creates an instruction for a double constant.
      * @param d the double value for which to create the instruction

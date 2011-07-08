@@ -106,8 +106,6 @@ public final class GraphBuilderPhase extends Phase {
     private final Set<Block> blocksOnWorklist = new HashSet<Block>();
     private final Set<Block> blocksVisited = new HashSet<Block>();
 
-    private final boolean createUnwind;
-
     public static final Map<RiMethod, CompilerGraph> cachedGraphs = new WeakHashMap<RiMethod, CompilerGraph>();
 
     /**
@@ -117,9 +115,11 @@ public final class GraphBuilderPhase extends Phase {
      * @param ir the IR to build the graph into
      * @param graph
      */
-    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean createUnwind, boolean inline) {
+    public GraphBuilderPhase(GraalCompilation compilation, RiMethod method, boolean inline) {
         super(inline ? "BuildInlineGraph" : "BuildGraph");
         this.compilation = compilation;
+
+        setDetailedName(getName() + " " + method.holder().name() + "." + method.name() + method.signature().asString());
 
         this.runtime = compilation.runtime;
         this.method = method;
@@ -128,7 +128,6 @@ public final class GraphBuilderPhase extends Phase {
         this.stream = new BytecodeStream(method.code());
 
         this.constantPool = runtime.getConstantPool(method);
-        this.createUnwind = createUnwind;
         this.storeResultGraph = GraalOptions.CacheGraphs;
     }
 
@@ -178,19 +177,11 @@ public final class GraphBuilderPhase extends Phase {
             // 4A.1 add a monitor enter to the start block
             methodSynchronizedObject = synchronizedObject(frameState, method);
             genMonitorEnter(methodSynchronizedObject, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI);
-            // 4A.2 finish the start block
-            finishStartBlock(startBlock);
-
-            // 4A.3 setup an exception handler to unlock the root method synchronized object
-            unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
-        } else {
-            // 4B.1 simply finish the start block
-            finishStartBlock(startBlock);
-
-            if (createUnwind) {
-                unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
-            }
         }
+
+        // 4B.1 simply finish the start block
+        finishStartBlock(startBlock);
+        unwindHandler = new CiExceptionHandler(0, method.code().length, FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI, 0, null);
 
         // 5. SKIPPED: look for intrinsics
 
@@ -732,21 +723,22 @@ public final class GraphBuilderPhase extends Phase {
         if (entry != null) {
             append(entry);
         } else {
-            frameState.clearStack();
-            frameState.apush(exception);
-            appendGoto(createTarget(unwindBlock(bci), frameState));
+            appendGoto(createTarget(unwindBlock(bci), frameState.duplicateWithException(bci, exception)));
         }
     }
 
     private void genCheckCast() {
         int cpi = stream().readCPI();
         RiType type = constantPool.lookupType(cpi, CHECKCAST);
-        boolean isInitialized = type.isResolved();
-        Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
+        Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, type.isResolved());
         Value object = frameState.apop();
         if (typeInstruction != null) {
-//            append(new FixedGuard(new InstanceOf(typeInstruction, object, graph), graph));
-//            frameState.apush(object);
+//            InstanceOf instanceOf = new InstanceOf(typeInstruction, object, true, graph);
+//            FixedGuard fixedGuard = new FixedGuard(instanceOf, graph);
+//            append(fixedGuard);
+//            CastNode castNode = new CastNode(object.kind, object, graph);
+//            castNode.inputs().add(fixedGuard);
+//            frameState.apush(castNode);
             frameState.apush(new CheckCast(typeInstruction, object, graph));
         } else {
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
@@ -756,11 +748,10 @@ public final class GraphBuilderPhase extends Phase {
     private void genInstanceOf() {
         int cpi = stream().readCPI();
         RiType type = constantPool.lookupType(cpi, INSTANCEOF);
-        boolean isInitialized = type.isResolved();
-        Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, isInitialized, cpi);
+        Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, type.isResolved());
         Value object = frameState.apop();
         if (typeInstruction != null) {
-            frameState.ipush(append(new MaterializeNode(new InstanceOf(typeInstruction, object, graph), graph)));
+            frameState.ipush(append(new MaterializeNode(new InstanceOf(typeInstruction, object, false, graph), graph)));
         } else {
             frameState.ipush(appendConstant(CiConstant.INT_0));
         }
@@ -851,7 +842,7 @@ public final class GraphBuilderPhase extends Phase {
         if (constantValue != null) {
             frameState.push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
-            Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized, cpi);
+            Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
             CiKind kind = field.kind();
             if (container != null) {
                 LoadField load = new LoadField(container, field, graph);
@@ -865,7 +856,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genPutStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && field.holder().isInitialized(), cpi);
+        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && field.holder().isInitialized());
         Value value = frameState.pop(field.kind().stackKind());
         if (container != null) {
             StoreField store = new StoreField(container, field, value, graph);
@@ -875,7 +866,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private Constant genTypeOrDeopt(RiType.Representation representation, RiType holder, boolean initialized, int cpi) {
+    private Constant genTypeOrDeopt(RiType.Representation representation, RiType holder, boolean initialized) {
         if (initialized) {
             return appendConstant(holder.getEncoding(representation));
         } else {
@@ -902,7 +893,7 @@ public final class GraphBuilderPhase extends Phase {
             // Re-use the same resolution code as for accessing a static field. Even though
             // the result of resolution is not used by the invocation (only the side effect
             // of initialization is required), it can be commoned with static field accesses.
-            genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized, cpi);
+            genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
         }
         Value[] args = frameState.popArguments(target.signature().argumentSlots(false));
         appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
@@ -972,6 +963,9 @@ public final class GraphBuilderPhase extends Phase {
             Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
             Value result = appendWithBCI(invoke);
             invoke.setExceptionEdge(handleException(null, bci()));
+            if (invoke.exceptionEdge() == null) {
+                TTY.println("no exception edge" + unwindHandler);
+            }
             frameState.pushReturn(resultType, result);
         }
     }
@@ -1256,6 +1250,7 @@ public final class GraphBuilderPhase extends Phase {
                 } else if (block instanceof DeoptBlock) {
                     createDeoptBlock((DeoptBlock) block);
                 } else {
+                    frameState.setRethrowException(false);
                     iterateBytecodesForBlock(block);
                 }
             }
@@ -1334,14 +1329,18 @@ public final class GraphBuilderPhase extends Phase {
             assert frameState.stackSize() == 1 : frameState;
 
             Block nextBlock = block.next == null ? unwindBlock(block.deoptBci) : block.next;
-            if (block.handler.catchType().isResolved()) {
+
+
+            RiType catchType = block.handler.catchType();
+            Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, catchType, catchType.isResolved());
+            if (typeInstruction != null) {
                 FixedNode catchSuccessor = createTarget(blockFromBci[block.handler.handlerBCI()], frameState);
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                append(new ExceptionDispatch(frameState.stackAt(0), catchSuccessor, nextDispatch, block.handler.catchType(), graph));
-            } else {
-                Deoptimize deopt = new Deoptimize(DeoptAction.InvalidateRecompile, graph);
-                deopt.setMessage("unresolved " + block.handler.catchType().name());
-                append(deopt);
+                Value exception = frameState.stackAt(0);
+                If ifNode = new If(new InstanceOf(typeInstruction, exception, false, graph), graph);
+                append(ifNode);
+                ifNode.setTrueSuccessor(catchSuccessor);
+                ifNode.setFalseSuccessor(nextDispatch);
             }
         }
     }

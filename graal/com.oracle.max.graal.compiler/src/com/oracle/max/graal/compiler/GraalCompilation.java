@@ -30,7 +30,7 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.gen.LIRGenerator.*;
+import com.oracle.max.graal.compiler.gen.LIRGenerator.DeoptimizationStub;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
@@ -239,8 +239,8 @@ public final class GraalCompilation {
 
             lirGenerator = compiler.backend.newLIRGenerator(this);
 
-            for (LIRBlock begin : hir.linearScanOrder()) {
-                lirGenerator.doBlock(begin);
+            for (LIRBlock b : hir.linearScanOrder()) {
+                lirGenerator.doBlock(b);
             }
 
             if (GraalOptions.Time) {
@@ -258,7 +258,7 @@ public final class GraalCompilation {
     private CiTargetMethod emitCode() {
         if (GraalOptions.GenLIR && GraalOptions.GenCode) {
             final LIRAssembler lirAssembler = compiler.backend.newLIRAssembler(this);
-            lirAssembler.emitCode(hir.linearScanOrder());
+            lirAssembler.emitCode(hir.codeEmittingOrder());
 
             // generate code for slow cases
             lirAssembler.emitLocalStubs();

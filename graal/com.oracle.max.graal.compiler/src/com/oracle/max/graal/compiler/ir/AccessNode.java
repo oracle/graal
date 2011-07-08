@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -70,6 +72,14 @@ public abstract class AccessNode extends AbstractMemoryCheckpointNode {
         super(kind, INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
         setLocation(location);
         setObject(object);
+    }
+
+    public void addDependency(Node x) {
+        variableInputs().add(x);
+    }
+
+    public List<Node> dependencies() {
+        return variableInputs();
     }
 
     @Override

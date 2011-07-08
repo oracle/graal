@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.sun.cri.bytecode.Bytecodes.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -79,6 +78,16 @@ public enum Condition {
      * Unsigned less than ("below than").
      */
     BT("|<|"),
+
+    /**
+     * Operation produced an overflow.
+     */
+    OF("overflow"),
+
+    /**
+     * Operation did not produce an overflow.
+     */
+    NOF("noOverflow"),
 
     TRUE("TRUE");
 

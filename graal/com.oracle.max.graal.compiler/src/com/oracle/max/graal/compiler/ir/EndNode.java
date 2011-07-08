@@ -66,7 +66,7 @@ public final class EndNode extends FixedNode {
         assertTrue(inputs().size() == 0, "inputs empty");
         assertTrue(successors().size() == 0, "successors empty");
         assertTrue(usages().size() <= 1, "at most one usage");
-        assertTrue(predecessors().size() <= 1, "at most one predecessor");
+        assertTrue(predecessors().size() <= 1, "at most one predecessor " + predecessors());
         return true;
     }
 

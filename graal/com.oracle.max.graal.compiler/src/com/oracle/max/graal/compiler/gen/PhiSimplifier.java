@@ -62,9 +62,6 @@ public final class PhiSimplifier {
         } else if (visited.isMarked(phi)) {
             // break cycles in phis
             return phi;
-        } else if (phi.isDead()) {
-            // don't bother with illegals
-            return phi;
         } else {
             // attempt to simplify the phi by recursively simplifying its operands
             visited.mark(phi);
@@ -74,20 +71,20 @@ public final class PhiSimplifier {
             for (int i = 0; i < max; i++) {
                 Value oldInstr = phi.valueAt(i);
 
-                if (oldInstr == null || (oldInstr instanceof Phi && ((Phi) oldInstr).isDead())) {
+                if (oldInstr == null) {
                     // if one operand is illegal, make the entire phi illegal
-                    phi.makeDead();
                     visited.clear(phi);
-                    return phi;
+                    phi.replaceAndDelete(null);
+                    return null;
                 }
 
                 Value newInstr = simplify(oldInstr);
 
-                if (newInstr == null || (newInstr instanceof Phi && ((Phi) newInstr).isDead())) {
+                if (newInstr == null) {
                     // if the subst instruction is illegal, make the entire phi illegal
-                    phi.makeDead();
                     visited.clear(phi);
-                    return phi;
+                    phi.replaceAndDelete(null);
+                    return null;
                 }
 
                 // attempt to simplify this operand

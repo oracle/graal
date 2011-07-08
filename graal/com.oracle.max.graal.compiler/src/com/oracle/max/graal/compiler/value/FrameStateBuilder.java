@@ -28,6 +28,7 @@ import static java.lang.reflect.Modifier.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -42,6 +43,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     private final ArrayList<Value> locks;
 
     private int stackIndex;
+    private boolean rethrowException;
 
     private final RiMethod method;
 
@@ -101,10 +103,11 @@ public class FrameStateBuilder implements FrameStateAccess {
         for (int i = 0; i < other.locksSize(); i++) {
             locks.add(other.lockAt(i));
         }
+        this.rethrowException = other.rethrowException();
     }
 
     public FrameState create(int bci) {
-        return new FrameState(method, bci, locals, stack, stackIndex, locks, false, graph);
+        return new FrameState(method, bci, locals, stack, stackIndex, locks, rethrowException, graph);
     }
 
     public FrameState duplicateWithException(int bci, Value exceptionObject) {
@@ -332,8 +335,11 @@ public class FrameStateBuilder implements FrameStateAccess {
     public Value loadLocal(int i) {
         Value x = locals[i];
         if (x != null) {
-            if (x instanceof Phi && ((Phi) x).isDead()) {
-                return null;
+            if (x instanceof Phi) {
+                assert ((Phi) x).type() == PhiType.Value;
+                if (x.isDeleted()) {
+                    return null;
+                }
             }
             assert x.kind.isSingleWord() || locals[i + 1] == null || locals[i + 1] instanceof Phi;
         }
@@ -512,5 +518,15 @@ public class FrameStateBuilder implements FrameStateAccess {
         FrameState frameState = new FrameState(method, bci, locals, new Value[0], 0, locks, false, graph);
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
+    }
+
+    @Override
+    public boolean rethrowException() {
+        return rethrowException;
+    }
+
+    @Override
+    public void setRethrowException(boolean b) {
+        rethrowException = b;
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
@@ -54,7 +56,7 @@ public final class FixedGuard extends FixedNodeWithNext {
     }
 
     public void addNode(BooleanNode node) {
-        inputs().add(node);
+        variableInputs().add(node);
     }
 
     @Override
@@ -75,14 +77,16 @@ public final class FixedGuard extends FixedNodeWithNext {
         @Override
         public Node canonical(Node node) {
             FixedGuard fixedGuard = (FixedGuard) node;
-            for (Node n : fixedGuard.inputs()) {
+            Iterator<Node> iter = fixedGuard.variableInputs().iterator();
+            while (iter.hasNext()) {
+                Node n = iter.next();
                 if (n instanceof Constant) {
                     Constant c = (Constant) n;
                     if (c.asConstant().asBoolean()) {
                         if (GraalOptions.TraceCanonicalizer) {
                             TTY.println("Removing redundant fixed guard " + fixedGuard);
                         }
-                        fixedGuard.inputs().remove(c);
+                        iter.remove();
                     } else {
                         if (GraalOptions.TraceCanonicalizer) {
                             TTY.println("Replacing fixed guard " + fixedGuard + " with deoptimization node");
@@ -92,7 +96,7 @@ public final class FixedGuard extends FixedNodeWithNext {
                 }
             }
 
-            if (fixedGuard.inputs().size() == 0) {
+            if (fixedGuard.variableInputs().size() == 0) {
                 return fixedGuard.next();
             }
             return fixedGuard;

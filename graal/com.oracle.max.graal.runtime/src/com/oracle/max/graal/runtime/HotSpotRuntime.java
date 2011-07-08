@@ -27,16 +27,18 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Call;
 import com.sun.cri.ci.CiTargetMethod.DataPatch;
 import com.sun.cri.ci.CiTargetMethod.Safepoint;
 import com.sun.cri.ri.*;
+import com.sun.cri.ri.RiType.Representation;
 import com.sun.max.asm.dis.*;
 import com.sun.max.lang.*;
 
@@ -247,6 +249,10 @@ public class HotSpotRuntime implements RiRuntime {
 
     @Override
     public void lower(Node n, CiLoweringTool tool) {
+        if (!GraalOptions.Lower) {
+            return;
+        }
+
         if (n instanceof LoadField) {
             LoadField field = (LoadField) n;
             if (field.isVolatile()) {
@@ -278,11 +284,78 @@ public class HotSpotRuntime implements RiRuntime {
                 memoryWrite.setNext(field.next());
             }
             field.replaceAndDelete(memoryWrite);
+        } else if (n instanceof LoadIndexed) {
+            LoadIndexed loadIndexed = (LoadIndexed) n;
+            Graph graph = loadIndexed.graph();
+            GuardNode boundsCheck = createBoundsCheck(loadIndexed, tool);
+
+            CiKind elementKind = loadIndexed.elementKind();
+            LocationNode arrayLocation = createArrayLocation(graph, elementKind);
+            arrayLocation.setIndex(loadIndexed.index());
+            ReadNode memoryRead = new ReadNode(elementKind.stackKind(), loadIndexed.array(), arrayLocation, graph);
+            memoryRead.setGuard(boundsCheck);
+            memoryRead.setNext(loadIndexed.next());
+            loadIndexed.replaceAndDelete(memoryRead);
+        } else if (n instanceof StoreIndexed) {
+            StoreIndexed storeIndexed = (StoreIndexed) n;
+            Graph graph = storeIndexed.graph();
+            Anchor anchor = new Anchor(graph);
+            GuardNode boundsCheck = createBoundsCheck(storeIndexed, tool);
+            anchor.addGuard(boundsCheck);
+
+
+            CiKind elementKind = storeIndexed.elementKind();
+            LocationNode arrayLocation = createArrayLocation(graph, elementKind);
+            arrayLocation.setIndex(storeIndexed.index());
+            Value value = storeIndexed.value();
+            Value array = storeIndexed.array();
+            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+                // Store check!
+                if (array.exactType() != null) {
+                    RiType elementType = array.exactType().componentType();
+                    if (elementType.superType() != null) {
+                        Constant type = new Constant(elementType.getEncoding(Representation.ObjectHub), graph);
+                        value = new CheckCast(type, value, graph);
+                    } else {
+                        assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
+                    }
+                } else {
+                    ReadNode arrayElementKlass = readArrayElementKlass(graph, array);
+                    value = new CheckCast(arrayElementKlass, value, graph);
+                }
+            }
+            WriteNode memoryWrite = new WriteNode(elementKind.stackKind(), array, value, arrayLocation, graph);
+            memoryWrite.setGuard(boundsCheck);
+            memoryWrite.setStateAfter(storeIndexed.stateAfter());
+            anchor.setNext(memoryWrite);
+            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+                ArrayWriteBarrier writeBarrier = new ArrayWriteBarrier(array, arrayLocation, graph);
+                memoryWrite.setNext(writeBarrier);
+                writeBarrier.setNext(storeIndexed.next());
+            } else {
+                memoryWrite.setNext(storeIndexed.next());
+            }
+            storeIndexed.replaceAtPredecessors(anchor);
+            storeIndexed.delete();
         }
     }
 
+    private ReadNode readArrayElementKlass(Graph graph, Value array) {
+        ReadNode arrayKlass = readHub(graph, array);
+        ReadNode arrayElementKlass = new ReadNode(CiKind.Object, arrayKlass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), graph);
+        return arrayElementKlass;
+    }
+
+    private LocationNode createArrayLocation(Graph graph, CiKind elementKind) {
+        return LocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), graph);
+    }
+
+    private GuardNode createBoundsCheck(AccessIndexed n, CiLoweringTool tool) {
+        return (GuardNode) tool.createGuard(new Compare(n.index(), Condition.BT, n.length(), n.graph()));
+    }
+
     @Override
-    public Graph intrinsicGraph(RiMethod method, List<? extends Node> parameters) {
+    public Graph intrinsicGraph(RiMethod caller, int bci, RiMethod method, List<? extends Node> parameters) {
         if (!intrinsicGraphs.containsKey(method)) {
             RiType holder = method.holder();
             String fullName = method.name() + method.signature().asString();
@@ -291,7 +364,7 @@ public class HotSpotRuntime implements RiRuntime {
                 if (fullName.equals("getClass()Ljava/lang/Class;")) {
                     CompilerGraph graph = new CompilerGraph(this);
                     Local receiver = new Local(CiKind.Object, 0, graph);
-                    ReadNode klassOop = new ReadNode(CiKind.Object, receiver, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
+                    ReadNode klassOop = readHub(graph, receiver);
                     Return ret = new Return(new ReadNode(CiKind.Object, klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), graph), graph);
                     graph.start().setNext(ret);
                     graph.setReturn(ret);
@@ -304,7 +377,7 @@ public class HotSpotRuntime implements RiRuntime {
                     Local srcPos = new Local(CiKind.Int, 1, graph);
                     Local dest = new Local(CiKind.Object, 2, graph);
                     Local destPos = new Local(CiKind.Int, 3, graph);
-                    Local length = new Local(CiKind.Int, 4, graph);
+                    Value length = new Local(CiKind.Int, 4, graph);
                     src.setDeclaredType(((Value) parameters.get(0)).declaredType());
                     dest.setDeclaredType(((Value) parameters.get(2)).declaredType());
 
@@ -321,10 +394,12 @@ public class HotSpotRuntime implements RiRuntime {
                     }
 
                     CiKind componentType = src.declaredType().componentType().kind();
-
                     if (componentType == CiKind.Object) {
                         return null;
                     }
+
+                    FrameState stateBefore = new FrameState(method, FrameState.BEFORE_BCI, 0, 0, 0, false, graph);
+                    FrameState stateAfter = new FrameState(method, FrameState.AFTER_BCI, 0, 0, 0, false, graph);
 
                     // Add preconditions.
                     FixedGuard guard = new FixedGuard(graph);
@@ -345,11 +420,13 @@ public class HotSpotRuntime implements RiRuntime {
                     CreateVectorNode normalVector = new CreateVectorNode(false, length, graph);
                     ReadVectorNode values = new ReadVectorNode(new IntegerAddVectorNode(normalVector, srcPos, graph), src, location, graph);
                     new WriteVectorNode(new IntegerAddVectorNode(normalVector, destPos, graph), dest, location, values, graph);
+                    normalVector.setStateAfter(stateAfter);
 
                     // Build reverse vector instruction.
                     CreateVectorNode reverseVector = new CreateVectorNode(true, length, graph);
                     ReadVectorNode reverseValues = new ReadVectorNode(new IntegerAddVectorNode(reverseVector, srcPos, graph), src, location, graph);
                     new WriteVectorNode(new IntegerAddVectorNode(reverseVector, destPos, graph), dest, location, reverseValues, graph);
+                    reverseVector.setStateAfter(stateAfter);
 
                     If ifNode = new If(new Compare(src, Condition.EQ, dest, graph), graph);
                     guard.setNext(ifNode);
@@ -362,22 +439,80 @@ public class HotSpotRuntime implements RiRuntime {
                     Merge merge1 = new Merge(graph);
                     merge1.addEnd(new EndNode(graph));
                     merge1.addEnd(new EndNode(graph));
+                    merge1.setStateAfter(stateBefore);
 
-                    ifNode.setFalseSuccessor(merge1.endAt(0));
+
+                    Invoke newInvoke = null;
+                    if (componentType == CiKind.Object) {
+                        Value srcClass = readHub(graph, src);
+                        Value destClass = readHub(graph, dest);
+                        If elementClassIf = new If(new Compare(srcClass, Condition.EQ, destClass, graph), graph);
+                        ifNode.setFalseSuccessor(elementClassIf);
+                        newInvoke = new Invoke(bci, Bytecodes.INVOKESTATIC, CiKind.Void, new Value[]{src, srcPos, dest, destPos, length}, method, method.signature().returnType(method.holder()), graph);
+                        newInvoke.setCanInline(false);
+                        newInvoke.setStateAfter(stateAfter);
+                        elementClassIf.setFalseSuccessor(newInvoke);
+                        elementClassIf.setTrueSuccessor(merge1.endAt(0));
+                    } else {
+                        ifNode.setFalseSuccessor(merge1.endAt(0));
+                    }
+
                     secondIf.setFalseSuccessor(merge1.endAt(1));
                     merge1.setNext(normalVector);
 
                     Merge merge2 = new Merge(graph);
                     merge2.addEnd(new EndNode(graph));
                     merge2.addEnd(new EndNode(graph));
+                    merge2.setStateAfter(stateAfter);
 
                     normalVector.setNext(merge2.endAt(0));
                     reverseVector.setNext(merge2.endAt(1));
+
+                    if (newInvoke != null) {
+                        merge2.addEnd(new EndNode(graph));
+                        newInvoke.setNext(merge2.endAt(2));
+                    }
 
                     Return ret = new Return(null, graph);
                     merge2.setNext(ret);
                     graph.setReturn(ret);
                     return graph;
+                }
+            } else if (holderName.equals("Ljava/lang/Float;")) {
+                if (fullName.equals("floatToRawIntBits(F)I") || fullName.equals("floatToIntBits(F)I")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Int, new Local(CiKind.Float, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("intBitsToFloat(I)F")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Float, new Local(CiKind.Int, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
+            } else if (holderName.equals("Ljava/lang/Double;")) {
+                if (fullName.equals("doubleToRawLongBits(D)J") || fullName.equals("doubleToLongBits(D)J")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Long, new Local(CiKind.Double, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("longBitsToDouble(J)D")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new FPConversionNode(CiKind.Double, new Local(CiKind.Long, 0, graph), graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
+            } else if (holderName.equals("Ljava/lang/Thread;")) {
+                if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Return ret = new Return(new CurrentThread(config.threadObjectOffset, graph), graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
                 }
             }
 
@@ -386,5 +521,14 @@ public class HotSpotRuntime implements RiRuntime {
             }
         }
         return intrinsicGraphs.get(method);
+    }
+
+    private ReadNode readHub(Graph graph, Value value) {
+        return new ReadNode(CiKind.Object, value, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
+    }
+
+    @Override
+    public RiType getType(Class<?> clazz) {
+        return compiler.getVMEntries().getType(clazz);
     }
 }

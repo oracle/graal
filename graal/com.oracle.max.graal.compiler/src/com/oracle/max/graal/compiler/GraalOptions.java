@@ -85,6 +85,8 @@ public final class GraalOptions {
     public static boolean PrintDOTGraphToPdf                 = ____;
     public static boolean OmitDOTFrameStates                 = ____;
 
+    public static boolean Extend                             = ____;
+
     // Ideal graph visualizer output settings
     public static boolean Plot                               = ____;
     public static boolean PlotOnError                        = ____;
@@ -129,6 +131,7 @@ public final class GraalOptions {
     public static boolean UseBranchPrediction                = true;
     public static boolean UseExceptionProbability            = ____;
     public static int     MatureInvocationCount              = 100;
+    public static boolean GenSafepoints                      = true;
 
     public static boolean UseConstDirectCall                 = ____;
 
@@ -153,8 +156,11 @@ public final class GraalOptions {
     public static boolean CommentedAssembly                  = ____;
     public static boolean PrintLIRWithAssembly               = ____;
 
+    public static boolean OptReadElimination                 = ____;
     public static boolean OptGVN                             = ____;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = ____;
+    public static boolean OptOptimisticSchedule              = ____;
+    public static boolean OptReorderLoops                    = ____;
     public static boolean LoopPeeling                        = ____;
 }

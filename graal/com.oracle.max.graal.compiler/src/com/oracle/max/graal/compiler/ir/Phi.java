@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.StateSplit.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -42,7 +43,7 @@ public final class Phi extends FloatingNode {
 
     private static final int SUCCESSOR_COUNT = 0;
 
-    private boolean isDead;
+    private final PhiType type;
 
     @Override
     protected int inputCount() {
@@ -66,21 +67,31 @@ public final class Phi extends FloatingNode {
         inputs().set(super.inputCount() + INPUT_MERGE, n);
     }
 
-    public Phi(CiKind kind, Merge merge, Graph graph) {
+    public static enum PhiType {
+        Value,          // normal value phis
+        Memory,         // memory phis
+        Virtual         // phis used for VirtualObjectField merges
+    }
+
+    public Phi(CiKind kind, Merge merge, PhiType type, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.type = type;
         setMerge(merge);
     }
 
-    Phi(CiKind kind, Graph graph) {
+    private Phi(CiKind kind, PhiType type, Graph graph) {
         super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        this.type = type;
+    }
+
+    public PhiType type() {
+        return type;
     }
 
     @Override
     public boolean verify() {
         assertTrue(merge() != null);
-        if (!isDead()) {
-            assertTrue(merge().phiPredecessorCount() == valueCount());
-        }
+        assertTrue(merge().phiPredecessorCount() == valueCount(), merge().phiPredecessorCount() + "==" + valueCount());
         return true;
     }
 
@@ -91,7 +102,7 @@ public final class Phi extends FloatingNode {
      * @return the instruction that produced the value in the i'th predecessor
      */
     public Value valueAt(int i) {
-        return (Value) inputs().variablePart().get(i);
+        return (Value) variableInputs().get(i);
     }
 
     public void setValueAt(int i, Value x) {
@@ -103,23 +114,12 @@ public final class Phi extends FloatingNode {
      * @return the number of inputs in this phi
      */
     public int valueCount() {
-        return inputs().variablePart().size();
+        return variableInputs().size();
     }
 
     @Override
     public void accept(ValueVisitor v) {
         v.visitPhi(this);
-    }
-
-    /**
-     * Make this phi illegal if types were not merged correctly.
-     */
-    public void makeDead() {
-        isDead = true;
-    }
-
-    public boolean isDead() {
-        return isDead;
     }
 
     @Override
@@ -143,25 +143,24 @@ public final class Phi extends FloatingNode {
             }
             str.append(valueAt(i) == null ? "-" : valueAt(i).id());
         }
-        if (isDead()) {
-            return "Phi: dead (" + str + ")";
-        } else {
+        if (type == PhiType.Value) {
             return "Phi: (" + str + ")";
+        } else {
+            return type + "Phi: (" + str + ")";
         }
     }
 
     public void addInput(Node y) {
-        inputs().variablePart().add(y);
+        variableInputs().add(y);
     }
 
     public void removeInput(int index) {
-        inputs().variablePart().remove(index);
+        variableInputs().remove(index);
     }
 
     @Override
     public Node copy(Graph into) {
-        Phi x = new Phi(kind, into);
-        x.isDead = isDead;
+        Phi x = new Phi(kind, type, into);
         return x;
     }
 
@@ -176,4 +175,62 @@ public final class Phi extends FloatingNode {
             }
         };
     }
+
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == CanonicalizerOp.class) {
+            return (T) CANONICALIZER;
+        }
+        return super.lookup(clazz);
+    }
+
+    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
+
+        @Override
+        public Node canonical(Node node) {
+            Phi phiNode = (Phi) node;
+//            if (phiNode.valueCount() != 2 || phiNode.merge().endCount() != 2 || phiNode.merge().phis().size() != 1) {
+//                return phiNode;
+//            }
+//            if (!(phiNode.valueAt(0) instanceof Constant && phiNode.valueAt(1) instanceof Constant)) {
+//                return phiNode;
+//            }
+//            Merge merge = phiNode.merge();
+//            Node end0 = merge.endAt(0);
+//            Node end1 = merge.endAt(1);
+//            if (end0.predecessors().size() != 1 || end1.predecessors().size() != 1) {
+//                return phiNode;
+//            }
+//            Node endPred0 = end0.predecessors().get(0);
+//            Node endPred1 = end1.predecessors().get(0);
+//            if (endPred0 != endPred1 || !(endPred0 instanceof If)) {
+//                return phiNode;
+//            }
+//            If ifNode = (If) endPred0;
+//            if (ifNode.predecessors().size() != 1) {
+//                return phiNode;
+//            }
+//            boolean inverted = ((If) endPred0).trueSuccessor() == end1;
+//            CiConstant trueValue = phiNode.valueAt(inverted ? 1 : 0).asConstant();
+//            CiConstant falseValue = phiNode.valueAt(inverted ? 0 : 1).asConstant();
+//            if (trueValue.kind != CiKind.Int || falseValue.kind != CiKind.Int) {
+//                return phiNode;
+//            }
+//            if ((trueValue.asInt() == 0 || trueValue.asInt() == 1) && (falseValue.asInt() == 0 || falseValue.asInt() == 1) && (trueValue.asInt() != falseValue.asInt())) {
+//                MaterializeNode result;
+//                if (trueValue.asInt() == 1) {
+//                    result = new MaterializeNode(ifNode.compare(), phiNode.graph());
+//                } else {
+//                    result = new MaterializeNode(new NegateBooleanNode(ifNode.compare(), phiNode.graph()), phiNode.graph());
+//                }
+//                Node next = merge.next();
+//                merge.setNext(null);
+//                ifNode.predecessors().get(0).successors().replace(ifNode, next);
+//                return result;
+//            }
+            return phiNode;
+        }
+    };
 }

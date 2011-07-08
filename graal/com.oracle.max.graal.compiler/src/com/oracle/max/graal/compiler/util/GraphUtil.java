@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
@@ -232,7 +233,7 @@ public class GraphUtil {
                                     colorQueue.offer(color);
                                     continue;
                                 }
-                                Phi phi = new Phi(((Value) node).kind, lambda.merge(color), node.graph());
+                                Phi phi = new Phi(((Value) node).kind, lambda.merge(color), PhiType.Value, node.graph());
                                 for (T parentColor : parentColors) {
                                     Node input = newNodes.get(parentColor);
                                     phi.addInput(input);

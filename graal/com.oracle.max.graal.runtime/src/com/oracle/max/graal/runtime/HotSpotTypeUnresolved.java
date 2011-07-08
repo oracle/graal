@@ -205,4 +205,9 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     public RiField[] fields() {
         return null;
     }
+
+    @Override
+    public RiMethod getMethod(String name, String signature) {
+        return null;
+    }
 }

@@ -126,7 +126,7 @@ public final class BlockMap {
         final HashSet<Block> successors = new LinkedHashSet<Block>();
         private boolean visited;
         private boolean active;
-        private int loops;
+        private long loops;
     }
 
     public static class ExceptionBlock  extends Block {
@@ -485,7 +485,7 @@ public final class BlockMap {
     }
 
     private void computeBlockOrder() {
-        int loop = computeBlockOrder(blockMap[0]);
+        long loop = computeBlockOrder(blockMap[0]);
 
         if (loop != 0) {
             // There is a path from a loop end to the method entry that does not pass the loop header.
@@ -501,7 +501,7 @@ public final class BlockMap {
     /**
      * The next available loop number.
      */
-    private int nextLoop = 0;
+    private int nextLoop;
 
     /**
      * Mark the block as a loop header, using the next available loop number.
@@ -516,17 +516,17 @@ public final class BlockMap {
                 // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
                 throw new CiBailout("Loop formed by an exception handler");
             }
-            if (nextLoop >= Integer.SIZE) {
+            if (nextLoop >= Long.SIZE) {
                 // This restriction can be removed by using a fall-back to a BitSet in case we have more than 32 loops
                 // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
                 throw new CiBailout("Too many loops in method");
             }
 
             assert block.loops == 0;
-            block.loops = 1 << nextLoop;
+            block.loops = (long) 1 << (long) nextLoop;
             nextLoop++;
         }
-        assert Integer.bitCount(block.loops) == 1;
+        assert Long.bitCount(block.loops) == 1;
     }
 
     /**
@@ -534,7 +534,7 @@ public final class BlockMap {
      * visit every block only once. The flag {@linkplain Block#active} is used to detect cycles (backward
      * edges).
      */
-    private int computeBlockOrder(Block block) {
+    private long computeBlockOrder(Block block) {
         if (block.visited) {
             if (block.active) {
                 // Reached block via backward branch.
@@ -557,7 +557,7 @@ public final class BlockMap {
             processLoopBlock(block);
         }
         if (block.isLoopHeader) {
-            assert Integer.bitCount(block.loops) == 1;
+            assert Long.bitCount(block.loops) == 1;
             loops &= ~block.loops;
         }
 
@@ -694,6 +694,6 @@ public final class BlockMap {
         }
         out.println();
 
-        out.print("loop_depth ").println(Integer.bitCount(block.loops));
+        out.print("loop_depth ").println(Long.bitCount(block.loops));
     }
 }

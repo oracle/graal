@@ -109,7 +109,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
                 return;
             }
 
-            printer = new IdealGraphPrinter(stream);
+            printer = new IdealGraphPrinter(new BufferedOutputStream(stream));
             if (GraalOptions.OmitDOTFrameStates) {
                 printer.addOmittedClass(FrameState.class);
             }

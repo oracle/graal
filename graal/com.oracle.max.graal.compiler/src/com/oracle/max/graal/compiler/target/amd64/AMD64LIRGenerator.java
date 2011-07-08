@@ -33,9 +33,6 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.*;
-import com.sun.cri.xir.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.
@@ -367,7 +364,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             return;
         }
 
-        assert Util.archKindsEqual(x.x().kind, x.kind) && Util.archKindsEqual(x.y().kind, x.kind) : "wrong parameter types: " + Bytecodes.nameOf(x.opcode);
+        assert Util.archKindsEqual(x.x().kind, x.kind) && Util.archKindsEqual(x.y().kind, x.kind) : "wrong parameter types: " + Bytecodes.nameOf(x.opcode) + ", x: " + x.x() + ", y: " + x.y() + ", kind: " + x.kind;
         switch (x.kind) {
             case Float:
             case Double:
@@ -466,30 +463,11 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitExceptionDispatch(ExceptionDispatch x) {
-        // TODO ls: this needs some more work...
-
-        RiType riType = x.catchType();
-        assert riType.isResolved();
-
-        XirArgument obj = toXirArgument(x.exception());
-        XirArgument clazz = toXirArgument(riType.getEncoding(Representation.ObjectHub));
-        XirSnippet snippet = xir.genInstanceOf(site(x), obj, clazz, riType);
-        emitXir(snippet, x, stateFor(x), null, false);
-
-        LIRXirInstruction instr = (LIRXirInstruction) lir.instructionsList().get(lir.instructionsList().size() - 1);
-        instr.setTrueSuccessor(getLIRBlock(x.catchSuccessor()));
-        lir.jump(getLIRBlock(x.otherSuccessor()));
-    }
-
-    @Override
     public void visitLoopBegin(LoopBegin x) {
-
     }
 
     @Override
     public void visitValueAnchor(ValueAnchor valueAnchor) {
         // nothing to do for ValueAnchors
     }
-
 }

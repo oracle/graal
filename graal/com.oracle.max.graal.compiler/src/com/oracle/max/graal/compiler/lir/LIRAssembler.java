@@ -30,12 +30,12 @@ import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.lir.FrameMap.*;
+import com.oracle.max.graal.compiler.lir.FrameMap.StackBlock;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.*;
+import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;
-import com.sun.cri.xir.CiXirAssembler.*;
+import com.sun.cri.xir.CiXirAssembler.XirMark;
 
 /**
  * The {@code LIRAssembler} class definition.
@@ -107,6 +107,10 @@ public abstract class LIRAssembler {
     }
 
     void emitBlock(LIRBlock block) {
+
+        if (block.align()) {
+            emitAlignment();
+        }
 
         block.setBlockEntryPco(codePos());
 
