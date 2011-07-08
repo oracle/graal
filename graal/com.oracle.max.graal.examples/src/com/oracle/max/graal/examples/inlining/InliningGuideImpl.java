@@ -31,11 +31,11 @@ public class InliningGuideImpl implements InliningGuide {
     @Override
     public InliningHint getHint(int depth, RiMethod caller, int bci, RiMethod target) {
         if (target.name().equals("neverInline")) {
-            return InliningHint.NEVER_INLINE;
+            return InliningHint.NEVER;
         } else if (target.name().equals("alwaysInline") && depth < 50) {
-            return InliningHint.ALWAYS_INLINE;
+            return InliningHint.ALWAYS;
         } else if (target.name().equals("fib") && depth < 5) {
-            return InliningHint.ALWAYS_INLINE;
+            return InliningHint.ALWAYS;
         }
         return InliningHint.NONE;
     }

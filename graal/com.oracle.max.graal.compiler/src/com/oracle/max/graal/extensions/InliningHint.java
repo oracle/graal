@@ -25,6 +25,8 @@ package com.oracle.max.graal.extensions;
 
 public enum InliningHint {
     NONE,
-    ALWAYS_INLINE,
-    NEVER_INLINE
+    NEVER,
+    LESS,
+    MORE,
+    ALWAYS
 }

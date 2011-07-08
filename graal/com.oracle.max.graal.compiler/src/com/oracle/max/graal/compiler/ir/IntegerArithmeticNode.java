@@ -26,9 +26,9 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class IntegerArithmetic extends Arithmetic {
+public abstract class IntegerArithmeticNode extends Arithmetic {
 
-    public IntegerArithmetic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+    public IntegerArithmeticNode(CiKind kind, int opcode, Value x, Value y, Graph graph) {
         super(kind, opcode, x, y, false, graph);
         assert kind == CiKind.Int || kind == CiKind.Long;
     }

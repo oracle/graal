@@ -32,10 +32,6 @@ public class InliningExample {
         System.out.println(System.currentTimeMillis() - start);
     }
 
-    private static int test() {
-        return alwaysInline(30);
-    }
-
     public static int testFib() {
         int sum = 0;
         for (int i = 0; i < 10000000; ++i) {
@@ -44,18 +40,19 @@ public class InliningExample {
         return sum;
     }
 
+    private static int test() {
+        return alwaysInline(30);
+    }
+
     public static int alwaysInline(int value) {
-        if (value == 0) {
+        if (value < 0) {
             return neverInline(value);
         }
         return alwaysInline(value - 1);
     }
 
     public static int neverInline(int value) {
-        if (value == 0) {
-            return 0;
-        }
-        return neverInline(value - 1);
+        return value;
     }
 
     public static int fib(int val) {

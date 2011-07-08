@@ -28,7 +28,7 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
-public final class IntegerDiv extends IntegerArithmetic {
+public final class IntegerDiv extends IntegerArithmeticNode {
     private static final IntegerDivCanonicalizerOp CANONICALIZER = new IntegerDivCanonicalizerOp();
 
     public IntegerDiv(CiKind kind, Value x, Value y, Graph graph) {
