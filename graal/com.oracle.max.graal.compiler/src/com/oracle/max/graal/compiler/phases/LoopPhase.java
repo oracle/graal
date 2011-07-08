@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.compiler.value.*;
@@ -43,6 +44,15 @@ public class LoopPhase extends Phase {
         if (GraalOptions.LoopPeeling) {
 peeling:
             for (Loop loop : loops) {
+                GraalCompilation compilation = GraalCompilation.compilation();
+                if (compilation.compiler.isObserved()) {
+                    Map<String, Object> debug = new HashMap<String, Object>();
+                    debug.put("loopExits", loop.exits());
+                    debug.put("inOrBefore", loop.inOrBefore());
+                    debug.put("inOrAfter", loop.inOrAfter());
+                    debug.put("nodes", loop.nodes());
+                    compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Loop #" + loop.loopBegin().id(), graph, true, false, debug));
+                }
                 //System.out.println("Peel loop : " + loop.loopBegin());
                 for (Node exit : loop.exits()) {
                     if (!(exit instanceof StateSplit) || ((StateSplit) exit).stateAfter() == null) {

@@ -74,4 +74,9 @@ public final class EndNode extends FixedNode {
     public Iterable< ? extends Node> dataUsages() {
         return Collections.emptyList();
     }
+
+    @Override
+    public Iterable< ? extends Node> cfgSuccessors() {
+        return Arrays.asList(this.merge());
+    }
 }
