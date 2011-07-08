@@ -36,20 +36,25 @@ public class OptimizerImpl implements Optimizer {
 
     @Override
     public void optimize(RiRuntime runtime, Graph graph) {
-        for (SafeAdd safeAdd : graph.getNodes(SafeAdd.class)) {
-            if (safeAdd.y().isConstant() && safeAdd.y().asConstant().asLong() == 1) {
-                if (safeAdd.x() instanceof Phi) {
-                    Phi phi = (Phi) safeAdd.x();
-                    if (phi.merge() instanceof LoopBegin && phi.valueAt(1) == safeAdd) {
-                        LoopBegin loopBegin = (LoopBegin) phi.merge();
-                        if (!canOverflow(phi, loopBegin)) {
-                            IntegerAdd add = new IntegerAdd(CiKind.Int, safeAdd.x(), safeAdd.y(), graph);
-                            safeAdd.replaceAndDelete(add);
-                        }
-                    }
+        for (SafeAddNode safeAdd : graph.getNodes(SafeAddNode.class)) {
+            if (!canOverflow(safeAdd)) {
+                IntegerAdd add = new IntegerAdd(CiKind.Int, safeAdd.x(), safeAdd.y(), graph);
+                safeAdd.replaceAndDelete(add);
+            }
+        }
+    }
+
+    private boolean canOverflow(SafeAddNode safeAdd) {
+        if (safeAdd.y().isConstant() && safeAdd.y().asConstant().asLong() == 1) {
+            if (safeAdd.x() instanceof Phi) {
+                Phi phi = (Phi) safeAdd.x();
+                if (phi.merge() instanceof LoopBegin && phi.valueAt(1) == safeAdd) {
+                    LoopBegin loopBegin = (LoopBegin) phi.merge();
+                    return canOverflow(phi, loopBegin);
                 }
             }
         }
+        return true;
     }
 
     private boolean canOverflow(Phi phi, LoopBegin loopBegin) {

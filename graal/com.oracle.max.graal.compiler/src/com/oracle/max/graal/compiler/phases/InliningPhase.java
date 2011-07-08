@@ -352,9 +352,9 @@ public class InliningPhase extends Phase {
         for (InliningGuide guide : serviceLoader) {
             InliningHint hint = guide.getHint(iteration, caller, bci, target);
 
-            if (hint == InliningHint.ALWAYS_INLINE) {
+            if (hint == InliningHint.ALWAYS) {
                 alwaysInline = true;
-            } else if (hint == InliningHint.NEVER_INLINE) {
+            } else if (hint == InliningHint.NEVER) {
                 neverInline = true;
             }
         }

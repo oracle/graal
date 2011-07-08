@@ -28,7 +28,7 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
-public final class IntegerRem extends IntegerArithmetic {
+public final class IntegerRem extends IntegerArithmeticNode {
     private static final IntegerRemCanonicalizerOp CANONICALIZER = new IntegerRemCanonicalizerOp();
 
     public IntegerRem(CiKind kind, Value x, Value y, Graph graph) {

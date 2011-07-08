@@ -45,6 +45,7 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.compiler.value.FrameState.ValueProcedure;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.bytecode.*;
 import com.sun.cri.bytecode.Bytecodes.MemoryBarriers;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -1238,6 +1239,10 @@ public abstract class LIRGenerator extends ValueVisitor {
             default:
                 Util.shouldNotReachHere();
         }
+    }
+
+    public void integerAdd(Value result, Value left, Value right) {
+        arithmeticOpInt(Bytecodes.IADD, createResultVariable(result), load(left), load(right), CiValue.IllegalValue);
     }
 
     public void arithmeticOpInt(int code, CiValue result, CiValue left, CiValue right, CiValue tmp) {

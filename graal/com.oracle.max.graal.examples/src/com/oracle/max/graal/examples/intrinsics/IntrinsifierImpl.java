@@ -38,7 +38,7 @@ public class IntrinsifierImpl implements Intrinsifier {
     public Graph intrinsicGraph(RiRuntime runtime, RiMethod caller, int bci, RiMethod method, List<? extends Node> parameters) {
         if (method.holder().name().equals("Lcom/oracle/max/graal/examples/intrinsics/SafeAddExample;") && method.name().equals("safeAdd")) {
             CompilerGraph graph = new CompilerGraph(runtime);
-            Return returnNode = new Return(new SafeAdd(new Local(CiKind.Long, 0, graph), new Local(CiKind.Long, 1, graph), graph), graph);
+            Return returnNode = new Return(new SafeAddNode(new Local(CiKind.Long, 0, graph), new Local(CiKind.Long, 1, graph), graph), graph);
             graph.start().setNext(returnNode);
             graph.setReturn(returnNode);
             return graph;

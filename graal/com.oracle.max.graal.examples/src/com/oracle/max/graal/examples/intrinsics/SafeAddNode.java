@@ -29,14 +29,14 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
-public final class SafeAdd extends IntegerArithmetic {
-    public SafeAdd(Value x, Value y, Graph graph) {
+public final class SafeAddNode extends IntegerArithmeticNode {
+    public SafeAddNode(Value x, Value y, Graph graph) {
         super(CiKind.Int, Bytecodes.LADD, x, y, graph);
     }
 
     @Override
     public Node copy(Graph into) {
-        return new SafeAdd(null, null, into);
+        return new SafeAddNode(null, null, into);
     }
 
     @Override
@@ -56,8 +56,8 @@ public final class SafeAdd extends IntegerArithmetic {
     private static final LIRGenerator.LIRGeneratorOp GENERATOR_OP = new LIRGenerator.LIRGeneratorOp() {
         @Override
         public void generate(Node n, LIRGenerator generator) {
-            SafeAdd add = (SafeAdd) n;
-            generator.arithmeticOpInt(Bytecodes.IADD, generator.createResultVariable(add), generator.load(add.x()), generator.load(add.y()), CiValue.IllegalValue);
+            SafeAddNode add = (SafeAddNode) n;
+            generator.integerAdd(add, add.x(), add.y());
             generator.deoptimizeOn(Condition.OF);
         }
     };

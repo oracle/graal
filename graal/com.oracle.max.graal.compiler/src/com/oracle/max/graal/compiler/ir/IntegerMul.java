@@ -28,7 +28,7 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 
-public final class IntegerMul extends IntegerArithmetic {
+public final class IntegerMul extends IntegerArithmeticNode {
     private static final IntegerMulCanonicalizerOp CANONICALIZER = new IntegerMulCanonicalizerOp();
 
     public IntegerMul(CiKind kind, Value x, Value y, Graph graph) {
