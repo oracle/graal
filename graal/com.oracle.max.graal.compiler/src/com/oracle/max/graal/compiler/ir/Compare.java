@@ -81,7 +81,7 @@ public final class Compare extends BooleanNode {
     boolean unorderedIsTrue;
 
     /**
-     * Constructs a new If instruction.
+     * Constructs a new Compare instruction.
      * @param x the instruction producing the first input to the instruction
      * @param condition the condition (comparison operation)
      * @param y the instruction that produces the second input to this instruction
@@ -121,7 +121,7 @@ public final class Compare extends BooleanNode {
     }
 
     /**
-     * Swaps the operands to this if and reverses the condition (e.g. > goes to <=).
+     * Swaps the operands to this if and mirrors the condition (e.g. > becomes <).
      * @see Condition#mirror()
      */
     public void swapOperands() {
@@ -188,6 +188,10 @@ public final class Compare extends BooleanNode {
                 return optimizeMaterialize(compare, compare.x().asConstant(), (MaterializeNode) compare.y());
             } else if (compare.y().isConstant() && compare.x() instanceof MaterializeNode) {
                 return optimizeMaterialize(compare, compare.y().asConstant(), (MaterializeNode) compare.x());
+            } else if (compare.x().isConstant() && compare.y() instanceof NormalizeCompare) {
+                return optimizeNormalizeCmp(compare, compare.x().asConstant(), (NormalizeCompare) compare.y());
+            } else if (compare.y().isConstant() && compare.x() instanceof NormalizeCompare) {
+                return optimizeNormalizeCmp(compare, compare.y().asConstant(), (NormalizeCompare) compare.x());
             }
             return compare;
         }
@@ -208,6 +212,21 @@ public final class Compare extends BooleanNode {
                     }
                     return result;
                 }
+            }
+            return compare;
+        }
+
+        private Node optimizeNormalizeCmp(Compare compare, CiConstant constant, NormalizeCompare normalizeNode) {
+            if (constant.kind == CiKind.Int && constant.asInt() == 0) {
+                Condition condition = compare.condition();
+                if (normalizeNode == compare.y()) {
+                    condition = condition.mirror();
+                }
+                Compare result = new Compare(normalizeNode.x(), condition, normalizeNode.y(), compare.graph());
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("Replaced Compare+NormalizeCompare with " + result);
+                }
+                return result;
             }
             return compare;
         }

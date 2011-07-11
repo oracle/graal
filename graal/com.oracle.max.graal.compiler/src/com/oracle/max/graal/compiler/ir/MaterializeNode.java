@@ -29,9 +29,6 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code Convert} class represents a conversion between primitive types.
- */
 public final class MaterializeNode extends FloatingNode {
 
     private static final int INPUT_COUNT = 1;
@@ -60,13 +57,6 @@ public final class MaterializeNode extends FloatingNode {
         inputs().set(super.inputCount() + INPUT_VALUE, n);
     }
 
-    /**
-     * Constructs a new Convert instance.
-     * @param opcode the bytecode representing the operation
-     * @param value the instruction producing the input value
-     * @param kind the result type of this instruction
-     * @param graph
-     */
     public MaterializeNode(Value value, Graph graph) {
         super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);

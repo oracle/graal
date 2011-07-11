@@ -27,9 +27,6 @@ import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-/**
- * The {@code ArrayLength} instruction gets the length of an array.
- */
 public final class NegateBooleanNode extends BooleanNode {
     private static final int INPUT_COUNT = 1;
     private static final int INPUT_NODE = 0;
@@ -57,11 +54,6 @@ public final class NegateBooleanNode extends BooleanNode {
         return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    /**
-     * Constructs a new ArrayLength instruction.
-     * @param array the instruction producing the array
-     * @param newFrameState the state after executing this instruction
-     */
     public NegateBooleanNode(Value value, Graph graph) {
         super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
