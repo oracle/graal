@@ -215,6 +215,7 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
     public Node copy(Graph into) {
         Invoke x = new Invoke(bci, opcode, kind, new Value[argumentCount], target, returnType, into);
         x.setCanInline(canInline);
+        super.copyInto(x);
         return x;
     }
 }

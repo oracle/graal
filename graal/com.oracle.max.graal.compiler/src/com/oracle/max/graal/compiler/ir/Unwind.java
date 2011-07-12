@@ -76,6 +76,7 @@ public final class Unwind extends FixedNode {
     @Override
     public Node copy(Graph into) {
         Unwind x = new Unwind(null, into);
+        super.copyInto(x);
         return x;
     }
 }

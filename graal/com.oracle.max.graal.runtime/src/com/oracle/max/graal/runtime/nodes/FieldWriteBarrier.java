@@ -81,6 +81,8 @@ public final class FieldWriteBarrier extends WriteBarrier {
 
     @Override
     public Node copy(Graph into) {
-        return new FieldWriteBarrier(null, into);
+        FieldWriteBarrier x = new FieldWriteBarrier(null, into);
+        super.copyInto(x);
+        return x;
     }
 }

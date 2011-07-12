@@ -29,8 +29,20 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 
 public class LoopBegin extends Merge {
+
+    private double loopFrequency;
+
     public LoopBegin(Graph graph) {
         super(graph);
+        loopFrequency = 1;
+    }
+
+    public double loopFrequency() {
+        return loopFrequency;
+    }
+
+    public void setLoopFrequency(double loopFrequency) {
+        this.loopFrequency = loopFrequency;
     }
 
     public LoopEnd loopEnd() {
@@ -62,7 +74,10 @@ public class LoopBegin extends Merge {
 
     @Override
     public Node copy(Graph into) {
-        return new LoopBegin(into);
+        LoopBegin x = new LoopBegin(into);
+        x.setLoopFrequency(loopFrequency);
+        super.copyInto(x);
+        return x;
     }
 
     @Override
@@ -130,5 +145,12 @@ public class LoopBegin extends Merge {
                 return new StateSplit.FilteringIterator(dataUsages, LoopBegin.class);
             }
         };
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("loopFrequency", String.format("%7.1f", loopFrequency));
+        return properties;
     }
 }

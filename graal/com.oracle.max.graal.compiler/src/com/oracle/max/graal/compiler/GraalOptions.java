@@ -57,9 +57,12 @@ public final class GraalOptions {
 
     // escape analysis settings
     public static boolean EscapeAnalysis                     = ____;
-    public static int     ForcedInlineEscapeWeight           = 0;
+    public static int     ForcedInlineEscapeWeight           = 100;
     public static int     MaximumEscapeAnalysisArrayLength   = 32;
     public static boolean PrintEscapeAnalysis                = ____;
+
+    // absolute probability analysis
+    public static boolean ProbabilityAnalysis                = true;
 
     // debugging settings
     public static boolean VerifyPointerMaps                  = ____;
@@ -114,6 +117,7 @@ public final class GraalOptions {
     public static boolean TraceEscapeAnalysis                = ____;
     public static boolean TraceCanonicalizer                 = ____;
     public static boolean TraceMemoryMaps                    = ____;
+    public static boolean TraceProbability                 = ____;
     public static boolean TraceReadElimination               = ____;
     public static boolean TraceGVN                           = ____;
     public static int     TraceBytecodeParserLevel           = 0;

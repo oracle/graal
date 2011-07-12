@@ -79,6 +79,7 @@ public class LoopEnd extends FixedNode {
     @Override
     public Node copy(Graph into) {
         LoopEnd x = new LoopEnd(into);
+        super.copyInto(x);
         return x;
     }
 

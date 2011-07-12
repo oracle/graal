@@ -109,7 +109,9 @@ public final class LoadField extends AccessField {
 
     @Override
     public Node copy(Graph into) {
-        return new LoadField(null, field, into);
+        LoadField x = new LoadField(null, field, into);
+        super.copyInto(x);
+        return x;
     }
 
     @SuppressWarnings("unchecked")

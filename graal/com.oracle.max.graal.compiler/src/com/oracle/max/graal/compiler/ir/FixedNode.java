@@ -22,14 +22,36 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import java.util.*;
+
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-
 public abstract class FixedNode extends Value {
+
+    private double probability;
 
     public FixedNode(CiKind kind, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount, successorCount, graph);
+    }
+
+    public double probability() {
+        return probability;
+    }
+
+    public void setProbability(double probability) {
+        this.probability = probability;
+    }
+
+    protected void copyInto(FixedNode newNode) {
+        newNode.setProbability(probability);
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("probability", String.format("%7.5f", probability));
+        return properties;
     }
 
 }

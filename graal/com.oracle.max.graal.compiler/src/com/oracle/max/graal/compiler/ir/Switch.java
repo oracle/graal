@@ -65,8 +65,8 @@ public abstract class Switch extends ControlSplit {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public Switch(Value value, List<? extends FixedNode> successors, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Illegal, successors, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public Switch(Value value, List<? extends FixedNode> successors, double[] probability, int inputCount, int successorCount, Graph graph) {
+        super(CiKind.Illegal, successors, probability, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
         setValue(value);
     }
 

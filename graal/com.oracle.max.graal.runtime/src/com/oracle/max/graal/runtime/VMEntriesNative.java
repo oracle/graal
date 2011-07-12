@@ -60,7 +60,10 @@ public class VMEntriesNative implements VMEntries, Remote {
     public native RiTypeProfile RiMethod_typeProfile(HotSpotMethodResolved method, int bci);
 
     @Override
-    public native int RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
+    public native double RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
+
+    @Override
+    public native double[] RiMethod_switchProbability(HotSpotMethodResolved method, int bci);
 
     @Override
     public native RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass);

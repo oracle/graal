@@ -676,7 +676,15 @@ public final class GraphBuilderPhase extends Phase {
 
     private void ifNode(Value x, Condition cond, Value y) {
         assert !x.isDeleted() && !y.isDeleted();
-        If ifNode = new If(new Compare(x, cond, y, graph), graph);
+        double probability = method.branchProbability(bci());
+        if (probability < 0) {
+            if (GraalOptions.TraceProbability) {
+                TTY.println("missing probability in " + method + " at bci " + bci());
+            }
+            probability = 0.5;
+        }
+
+        If ifNode = new If(new Compare(x, cond, y, graph), probability, graph);
         append(ifNode);
         BlockMap.BranchOverride override = branchOverride.get(bci());
         FixedNode tsucc;
@@ -1053,11 +1061,27 @@ public final class GraphBuilderPhase extends Phase {
         int offset = ts.defaultOffset();
         list.add(null);
         offsetList.add(offset);
-        TableSwitch tableSwitch = new TableSwitch(value, list, ts.lowKey(), graph);
+        TableSwitch tableSwitch = new TableSwitch(value, list, ts.lowKey(), switchProbability(list.size(), bci), graph);
         for (int i = 0; i < offsetList.size(); ++i) {
             tableSwitch.setBlockSuccessor(i, createTargetAt(bci + offsetList.get(i), frameState));
         }
         append(tableSwitch);
+    }
+
+    private double[] switchProbability(int numberOfCases, int bci) {
+        double[] prob = method.switchProbability(bci);
+        if (prob != null) {
+            assert prob.length == numberOfCases;
+        } else {
+            if (GraalOptions.TraceProbability) {
+                TTY.println("Missing probability (switch) in " + method + " at bci " + bci);
+            }
+            prob = new double[numberOfCases];
+            for (int i = 0; i < numberOfCases; i++) {
+                prob[i] = 1.0d / numberOfCases;
+            }
+        }
+        return prob;
     }
 
     private void genLookupswitch() {
@@ -1078,7 +1102,7 @@ public final class GraphBuilderPhase extends Phase {
         int offset = ls.defaultOffset();
         list.add(null);
         offsetList.add(offset);
-        LookupSwitch lookupSwitch = new LookupSwitch(value, list, keys, graph);
+        LookupSwitch lookupSwitch = new LookupSwitch(value, list, keys, switchProbability(list.size(), bci), graph);
         for (int i = 0; i < offsetList.size(); ++i) {
             lookupSwitch.setBlockSuccessor(i, createTargetAt(bci + offsetList.get(i), frameState));
         }
@@ -1337,7 +1361,7 @@ public final class GraphBuilderPhase extends Phase {
                 FixedNode catchSuccessor = createTarget(blockFromBci[block.handler.handlerBCI()], frameState);
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
                 Value exception = frameState.stackAt(0);
-                If ifNode = new If(new InstanceOf(typeInstruction, exception, false, graph), graph);
+                If ifNode = new If(new InstanceOf(typeInstruction, exception, false, graph), 0.5, graph);
                 append(ifNode);
                 ifNode.setTrueSuccessor(catchSuccessor);
                 ifNode.setFalseSuccessor(nextDispatch);

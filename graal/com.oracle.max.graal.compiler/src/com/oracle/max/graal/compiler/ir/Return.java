@@ -91,6 +91,7 @@ public final class Return extends FixedNode {
     @Override
     public Node copy(Graph into) {
         Return x = new Return(kind, into);
+        super.copyInto(x);
         return x;
     }
 }

@@ -41,9 +41,10 @@ public class EscapeAnalysisPhase extends Phase {
 
     public interface MergeableState <T> {
         T clone();
-        void merge(Merge merge, Collection<T> withStates);
+        boolean merge(Merge merge, Collection<T> withStates);
         void loopBegin(LoopBegin loopBegin);
         void loopEnd(LoopEnd loopEnd, T loopEndState);
+        void afterSplit(FixedNode node);
     }
 
     public abstract static class PostOrderNodeIterator<T extends MergeableState<T>> {
@@ -73,7 +74,8 @@ public class EscapeAnalysisPhase extends Phase {
                     current = nextQueuedNode();
                 } else if (current instanceof LoopBegin) {
                     state.loopBegin((LoopBegin) current);
-                    nodeStates.put(current, state.clone());
+                    nodeStates.put(current, state);
+                    state = state.clone();
                     loopBegin((LoopBegin) current);
                     current = ((LoopBegin) current).next();
                     assert current != null;
@@ -138,11 +140,16 @@ public class EscapeAnalysisPhase extends Phase {
                         assert other != null;
                         states.add(other);
                     }
-                    state.merge(merge, states);
-                    return merge;
+                    boolean ready = state.merge(merge, states);
+                    if (ready) {
+                        return merge;
+                    } else {
+                        nodeQueue.addLast(merge);
+                    }
                 } else {
                     assert node.predecessors().size() == 1;
                     state = nodeStates.get(node.predecessors().get(0)).clone();
+                    state.afterSplit(node);
                     return node;
                 }
             }
@@ -237,7 +244,7 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public void merge(Merge merge, Collection<BlockExitState> withStates) {
+        public boolean merge(Merge merge, Collection<BlockExitState> withStates) {
             Phi vobjPhi = null;
             Phi[] valuePhis = new Phi[fieldState.length];
             for (BlockExitState other : withStates) {
@@ -271,6 +278,7 @@ public class EscapeAnalysisPhase extends Phase {
                     assert valuePhis[i2].valueCount() == withStates.size() + 1;
                 }
             }
+            return true;
         }
 
         @Override
@@ -298,6 +306,11 @@ public class EscapeAnalysisPhase extends Phase {
                 ((Phi) fieldState[i2]).addInput(loopEndState.fieldState[i2]);
                 assert ((Phi) fieldState[i2]).valueCount() == 2;
             }
+        }
+
+        @Override
+        public void afterSplit(FixedNode node) {
+            // nothing to do...
         }
     }
 
@@ -382,10 +395,9 @@ public class EscapeAnalysisPhase extends Phase {
                 Set<Invoke> invokes = new HashSet<Invoke>();
                 int iterations = 0;
 
-                int weight;
                 int minimumWeight = GraalOptions.ForcedInlineEscapeWeight;
                 do {
-                    weight = analyze(op, node, exits, invokes);
+                    double weight = analyze(op, node, exits, invokes);
                     if (exits.size() != 0) {
                         if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
                             TTY.println("%n####### escaping object: %d %s (%s) in %s", node.id(), node.shortName(), ((Value) node).exactType(), compilation.method);
@@ -444,8 +456,8 @@ public class EscapeAnalysisPhase extends Phase {
         }
     }
 
-    private int analyze(EscapeOp op, Node node, Collection<Node> exits, Collection<Invoke> invokes) {
-        int weight = 0;
+    private double analyze(EscapeOp op, Node node, Collection<Node> exits, Collection<Invoke> invokes) {
+        double weight = 0;
         for (Node usage : node.usages()) {
             boolean escapes = op.escape(node, usage);
             if (escapes) {
@@ -460,7 +472,11 @@ public class EscapeAnalysisPhase extends Phase {
                     }
                 }
             } else {
-                weight++;
+                if (GraalOptions.ProbabilityAnalysis && usage instanceof FixedNode) {
+                    weight += ((FixedNode) usage).probability();
+                } else {
+                    weight++;
+                }
             }
         }
         return weight;

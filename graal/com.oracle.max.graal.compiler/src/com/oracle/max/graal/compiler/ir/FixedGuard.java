@@ -61,7 +61,9 @@ public final class FixedGuard extends FixedNodeWithNext {
 
     @Override
     public Node copy(Graph into) {
-        return new FixedGuard(into);
+        FixedGuard x = new FixedGuard(into);
+        super.copyInto(x);
+        return x;
     }
 
     @SuppressWarnings("unchecked")

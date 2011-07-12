@@ -50,6 +50,8 @@ public final class WriteMemoryCheckpointNode extends AbstractMemoryCheckpointNod
 
     @Override
     public Node copy(Graph into) {
-        return new WriteMemoryCheckpointNode(into);
+        WriteMemoryCheckpointNode x = new WriteMemoryCheckpointNode(into);
+        super.copyInto(x);
+        return x;
     }
 }

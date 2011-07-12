@@ -57,7 +57,9 @@ public final class IntegerAddVectorNode extends AbstractVectorNode {
 
     @Override
     public Node copy(Graph into) {
-        return new IntegerAddVectorNode(null, null, into);
+        IntegerAddVectorNode x = new IntegerAddVectorNode(null, null, into);
+        super.copyInto(x);
+        return x;
     }
 
     @Override
