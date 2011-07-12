@@ -36,7 +36,6 @@ public final class GraalOptions {
     private static final boolean ____ = false;
     // Checkstyle: resume
 
-
     public static boolean Lower                              = true;
 
     // inlining settings
@@ -163,4 +162,5 @@ public final class GraalOptions {
     public static boolean OptOptimisticSchedule              = ____;
     public static boolean OptReorderLoops                    = ____;
     public static boolean LoopPeeling                        = ____;
+    public static boolean LoopInversion                      = ____;
 }

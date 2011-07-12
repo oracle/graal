@@ -41,28 +41,21 @@ public class LoopPhase extends Phase {
     protected void run(Graph graph) {
         List<Loop> loops = LoopUtil.computeLoops(graph);
 
-        // TODO (gd) currently counter detection is disabled when loop peeling is active
-        if (GraalOptions.LoopPeeling) {
-peeling:
+        if (GraalOptions.LoopPeeling || GraalOptions.LoopInversion) {
             for (Loop loop : loops) {
-                GraalCompilation compilation = GraalCompilation.compilation();
-                if (compilation.compiler.isObserved()) {
-                    Map<String, Object> debug = new HashMap<String, Object>();
-                    debug.put("loopExits", loop.exits());
-                    debug.put("inOrBefore", loop.inOrBefore());
-                    debug.put("inOrAfter", loop.inOrAfter());
-                    debug.put("nodes", loop.nodes());
-                    compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Loop #" + loop.loopBegin().id(), graph, true, false, debug));
-                }
-                //System.out.println("Peel loop : " + loop.loopBegin());
+                boolean hasBadExit = false;
                 for (Node exit : loop.exits()) {
                     if (!(exit instanceof StateSplit) || ((StateSplit) exit).stateAfter() == null) {
                         // TODO (gd) can not do loop peeling if an exit has no state. see LoopUtil.findNearestMergableExitPoint
-                        continue peeling;
+                        hasBadExit = true;
+                        break;
                     }
                 }
+                if (hasBadExit) {
+                    continue;
+                }
                 boolean canInvert = false;
-                if (loop.loopBegin().next() instanceof If) {
+                if (GraalOptions.LoopInversion  && loop.loopBegin().next() instanceof If) {
                     If ifNode = (If) loop.loopBegin().next();
                     if (loop.exits().isMarked(ifNode.trueSuccessor()) || loop.exits().isMarked(ifNode.falseSuccessor())) {
                         canInvert = true;
@@ -70,16 +63,25 @@ peeling:
                 }
                 if (canInvert) {
                     LoopUtil.inverseLoop(loop, (If) loop.loopBegin().next());
-                } else {
+                } else if (GraalOptions.LoopPeeling) {
+                    GraalCompilation compilation = GraalCompilation.compilation();
+                    if (compilation.compiler.isObserved()) {
+                        Map<String, Object> debug = new HashMap<String, Object>();
+                        debug.put("loopExits", loop.exits());
+                        debug.put("inOrBefore", loop.inOrBefore());
+                        debug.put("inOrAfter", loop.inOrAfter());
+                        debug.put("nodes", loop.nodes());
+                        compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Loop #" + loop.loopBegin().id(), graph, true, false, debug));
+                    }
                     LoopUtil.peelLoop(loop);
                 }
             }
-        } else {
-//            loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
-            for (Loop loop : loops) {
-                doLoopCounters(loop);
-            }
         }
+
+        /*
+        for (Loop loop : loops) {
+            doLoopCounters(loop);
+        }*/
     }
 
     private void doLoopCounters(Loop loop) {
@@ -172,7 +174,7 @@ peeling:
                             useCounterAfterAdd = true;
                         }
                     }
-                    if (stride != null && !loopNodes.isNotNewNotMarked(stride)) {
+                    if (stride != null && loopNodes.isNotNewNotMarked(stride)) {
                         Graph graph = loopBegin.graph();
                         LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
                         counters.add(counter);

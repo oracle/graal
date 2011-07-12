@@ -176,7 +176,7 @@ public class LoopUtil {
         loopNodes.mark(loopBegin);
         NodeBitMap inOrAfter = inOrAfter(loop, loopNodes, false);
         NodeBitMap inOrBefore = inOrBefore(loop, inOrAfter, loopNodes, false);
-        /*if (!recurse) {
+        if (!recurse) {
             recurse = true;
             GraalCompilation compilation = GraalCompilation.compilation();
             if (compilation.compiler.isObserved()) {
@@ -187,7 +187,7 @@ public class LoopUtil {
                 compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Compute loop nodes loop#" + loopBegin.id(), loopBegin.graph(), true, false, debug));
             }
             recurse = false;
-        }*/
+        }
         inOrAfter.setIntersect(inOrBefore);
         loopNodes.setUnion(inOrAfter);
         if (from == loopBegin.loopEnd()) { // fill the Loop cache value for loop nodes this is correct even if after/before were partial
@@ -196,7 +196,11 @@ public class LoopUtil {
         return loopNodes;
     }
 
-    private static NodeBitMap markUpCFG(LoopBegin loopBegin, FixedNode from) {
+    public static NodeBitMap markUpCFG(LoopBegin loopBegin) {
+        return markUpCFG(loopBegin, loopBegin.loopEnd());
+    }
+
+    public static NodeBitMap markUpCFG(LoopBegin loopBegin, FixedNode from) {
         NodeFlood workCFG = loopBegin.graph().createNodeFlood();
         workCFG.add(from);
         NodeBitMap loopNodes = loopBegin.graph().createNodeBitMap();
@@ -285,6 +289,17 @@ public class LoopUtil {
             }
         }
 
+        loop.invalidateCached();
+
+        // update parents
+        Loop parent = loop.parent();
+        while (parent != null) {
+            parent.cfgNodes = markUpCFG(parent.loopBegin, parent.loopBegin.loopEnd());
+            parent.invalidateCached();
+            parent.exits = computeLoopExits(parent.loopBegin, parent.cfgNodes);
+            parent = parent.parent;
+        }
+
         GraalMetrics.LoopsInverted++;
     }
 
@@ -318,6 +333,7 @@ public class LoopUtil {
         /*if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After rewirePeeling", loopEnd.graph(), true, false));
         }*/
+        loop.invalidateCached();
         // update parents
         Loop parent = loop.parent();
         while (parent != null) {
@@ -417,7 +433,7 @@ public class LoopUtil {
                 Value backValue = null;
                 if (inversion && originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
                     backValue = ((Phi) originalValue).valueAt(phiBackIndex);
-                    if (!loop.nodes().isMarked(backValue) || peeling.peeledNodes.isNotNewMarked(backValue)) {
+                    if (peeling.peeledNodes.isNotNewMarked(backValue)) {
                         backValue = null;
                     }
                 }
@@ -732,9 +748,13 @@ public class LoopUtil {
             Value backValue = phi.valueAt(backIndex);
             if (marked.isMarked(backValue)) {
                 phiInits.set(phi, duplicates.get(backValue));
-            } else if (from == loopBegin.loopEnd() && backValue instanceof Phi && ((Phi) backValue).merge() == loopBegin) {
-                Phi backPhi = (Phi) backValue;
-                phiInits.set(phi, backPhi.valueAt(fowardIndex));
+            } else if (from == loopBegin.loopEnd()) {
+                if (backValue instanceof Phi && ((Phi) backValue).merge() == loopBegin) {
+                    Phi backPhi = (Phi) backValue;
+                    phiInits.set(phi, backPhi.valueAt(fowardIndex));
+                } else {
+                    phiInits.set(phi, backValue);
+                }
             }
         }
 
@@ -864,6 +884,21 @@ public class LoopUtil {
                         }
                         if (!isParent) {
                             work.add(((LoopBegin) n).loopEnd());
+                        }
+                    }
+                }
+                if (cfgNodes.isNotNewMarked(n)) { //add all values from the exits framestates
+                    for (Node sux : n.cfgSuccessors()) {
+                        if (loop.exits().isNotNewMarked(sux) && sux instanceof StateSplit) {
+                            FrameState stateAfter = ((StateSplit) sux).stateAfter();
+                            while (stateAfter != null) {
+                                for (Node in : stateAfter.inputs()) {
+                                    if (!(in instanceof FrameState)) {
+                                        work.add(in);
+                                    }
+                                }
+                                stateAfter = stateAfter.outerFrameState();
+                            }
                         }
                     }
                 }

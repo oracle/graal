@@ -59,7 +59,7 @@ public class OptimizerImpl implements Optimizer {
 
     private boolean canOverflow(Phi phi, LoopBegin loopBegin) {
 
-        NodeBitMap nodes = LoopUtil.computeLoopNodes(loopBegin);
+        NodeBitMap nodes = LoopUtil.markUpCFG(loopBegin);
         NodeBitMap exits = LoopUtil.computeLoopExits(loopBegin, nodes);
         for (Node exit : exits) {
             TTY.println("exit: " + exit);
