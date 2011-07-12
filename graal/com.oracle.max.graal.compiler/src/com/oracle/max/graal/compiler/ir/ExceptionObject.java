@@ -56,6 +56,7 @@ public final class ExceptionObject extends StateSplit {
     @Override
     public Node copy(Graph into) {
         ExceptionObject x = new ExceptionObject(into);
+        super.copyInto(x);
         return x;
     }
 }

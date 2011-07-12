@@ -85,12 +85,15 @@ public class IR {
             new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
 //        }
 
-
         if (GraalOptions.TestGraphDuplication) {
             new DuplicationPhase().apply(compilation.graph);
         }
 
         new DeadCodeEliminationPhase().apply(compilation.graph);
+
+        if (GraalOptions.ProbabilityAnalysis) {
+            new ComputeProbabilityPhase().apply(compilation.graph);
+        }
 
         if (GraalOptions.Inline) {
             new InliningPhase(compilation, this, null).apply(compilation.graph);

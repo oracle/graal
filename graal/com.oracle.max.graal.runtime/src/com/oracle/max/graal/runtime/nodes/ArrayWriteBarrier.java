@@ -94,6 +94,8 @@ public final class ArrayWriteBarrier extends WriteBarrier {
 
     @Override
     public Node copy(Graph into) {
-        return new ArrayWriteBarrier(null, null, into);
+        ArrayWriteBarrier x = new ArrayWriteBarrier(null, null, into);
+        super.copyInto(x);
+        return x;
     }
 }

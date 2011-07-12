@@ -202,8 +202,12 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         return compiler.getVMEntries().RiMethod_typeProfile(this, bci);
     }
 
-    public int branchProbability(int bci) {
+    public double branchProbability(int bci) {
         return compiler.getVMEntries().RiMethod_branchProbability(this, bci);
+    }
+
+    public double[] switchProbability(int bci) {
+        return compiler.getVMEntries().RiMethod_switchProbability(this, bci);
     }
 
     public void dumpProfile() {
@@ -211,15 +215,15 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         TTY.println("canBeStaticallyBound: " + canBeStaticallyBound());
         TTY.println("invocationCount: " + invocationCount());
         for (int i = 0; i < codeSize(); i++) {
-            if (exceptionProbability(i) != -1) {
-                TTY.println("exceptionProbability@%d: %d", i, exceptionProbability(i));
+            if (exceptionProbability(i) > 0) {
+                TTY.println("  exceptionProbability@%d: %d", i, exceptionProbability(i));
             }
             if (branchProbability(i) != -1) {
-                TTY.println("branchProbability@%d: %d", i, branchProbability(i));
+                TTY.println("  branchProbability@%d: %f", i, branchProbability(i));
             }
             RiTypeProfile profile = typeProfile(i);
             if (profile != null && profile.count > 0) {
-                TTY.println("profile@%d: count: %d, morphism: %d", i, profile.count, profile.morphism);
+                TTY.println("  profile@%d: count: %d, morphism: %d", i, profile.count, profile.morphism);
             }
         }
     }

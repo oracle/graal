@@ -53,6 +53,8 @@ public final class ReadNode extends AccessNode {
 
     @Override
     public Node copy(Graph into) {
-        return new ReadNode(super.kind, null, null, into);
+        ReadNode x = new ReadNode(super.kind, null, null, into);
+        super.copyInto(x);
+        return x;
     }
 }

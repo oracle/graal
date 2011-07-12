@@ -62,21 +62,33 @@ public abstract class ControlSplit extends FixedNode {
         return blockSuccessorCount;
     }
 
+    protected final double[] branchProbability;
+
     /**
      * Constructs a new block end with the specified value type.
      * @param kind the type of the value produced by this instruction
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
-    public ControlSplit(CiKind kind, List<? extends FixedNode> blockSuccessors, int inputCount, int successorCount, Graph graph) {
-        this(kind, blockSuccessors.size(), inputCount, successorCount, graph);
+    public ControlSplit(CiKind kind, List<? extends FixedNode> blockSuccessors, double[] branchProbability, int inputCount, int successorCount, Graph graph) {
+        this(kind, blockSuccessors.size(), branchProbability, inputCount, successorCount, graph);
         for (int i = 0; i < blockSuccessors.size(); i++) {
             setBlockSuccessor(i, blockSuccessors.get(i));
         }
     }
 
-    public ControlSplit(CiKind kind, int blockSuccessorCount, int inputCount, int successorCount, Graph graph) {
+    public ControlSplit(CiKind kind, int blockSuccessorCount, double[] branchProbability, int inputCount, int successorCount, Graph graph) {
         super(kind, inputCount + INPUT_COUNT, successorCount + blockSuccessorCount + SUCCESSOR_COUNT, graph);
         this.blockSuccessorCount = blockSuccessorCount;
+        assert branchProbability.length == blockSuccessorCount;
+        this.branchProbability = branchProbability;
+    }
+
+    public double probability(int successorIndex) {
+        return branchProbability[successorIndex];
+    }
+
+    public void setProbability(int successorIndex, double x) {
+        branchProbability[successorIndex] = x;
     }
 
     /**
@@ -109,5 +121,16 @@ public abstract class ControlSplit extends FixedNode {
                 };
             }
         };
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        StringBuilder str = new StringBuilder();
+        for (int i = 0; i < branchProbability.length; i++) {
+            str.append(i == 0 ? "" : ", ").append(String.format("%7.5f", branchProbability[i]));
+        }
+        properties.put("branchProbability", str.toString());
+        return properties;
     }
 }

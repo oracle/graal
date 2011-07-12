@@ -49,7 +49,9 @@ public interface VMEntries {
 
     RiTypeProfile RiMethod_typeProfile(HotSpotMethodResolved method, int bci);
 
-    int RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
+    double RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
+
+    double[] RiMethod_switchProbability(HotSpotMethodResolved method, int bci);
 
     RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass);
 

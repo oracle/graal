@@ -62,6 +62,8 @@ public final class WriteNode extends AccessNode {
 
     @Override
     public Node copy(Graph into) {
-        return new WriteNode(super.kind, null, null, null, into);
+        WriteNode x = new WriteNode(super.kind, null, null, null, into);
+        super.copyInto(x);
+        return x;
     }
 }

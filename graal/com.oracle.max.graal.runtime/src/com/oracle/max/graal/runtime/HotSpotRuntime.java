@@ -428,10 +428,10 @@ public class HotSpotRuntime implements RiRuntime {
                     new WriteVectorNode(new IntegerAddVectorNode(reverseVector, destPos, graph), dest, location, reverseValues, graph);
                     reverseVector.setStateAfter(stateAfter);
 
-                    If ifNode = new If(new Compare(src, Condition.EQ, dest, graph), graph);
+                    If ifNode = new If(new Compare(src, Condition.EQ, dest, graph), 0.5, graph);
                     guard.setNext(ifNode);
 
-                    If secondIf = new If(new Compare(srcPos, Condition.LT, destPos, graph), graph);
+                    If secondIf = new If(new Compare(srcPos, Condition.LT, destPos, graph), 0.5, graph);
                     ifNode.setTrueSuccessor(secondIf);
 
                     secondIf.setTrueSuccessor(reverseVector);
@@ -446,7 +446,7 @@ public class HotSpotRuntime implements RiRuntime {
                     if (componentType == CiKind.Object) {
                         Value srcClass = readHub(graph, src);
                         Value destClass = readHub(graph, dest);
-                        If elementClassIf = new If(new Compare(srcClass, Condition.EQ, destClass, graph), graph);
+                        If elementClassIf = new If(new Compare(srcClass, Condition.EQ, destClass, graph), 0.5, graph);
                         ifNode.setFalseSuccessor(elementClassIf);
                         newInvoke = new Invoke(bci, Bytecodes.INVOKESTATIC, CiKind.Void, new Value[]{src, srcPos, dest, destPos, length}, method, method.signature().returnType(method.holder()), graph);
                         newInvoke.setCanInline(false);

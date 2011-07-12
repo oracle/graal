@@ -84,6 +84,7 @@ public final class NewObjectArray extends NewArray {
     @Override
     public Node copy(Graph into) {
         NewObjectArray x = new NewObjectArray(elementClass, null, into);
+        super.copyInto(x);
         return x;
     }
 }

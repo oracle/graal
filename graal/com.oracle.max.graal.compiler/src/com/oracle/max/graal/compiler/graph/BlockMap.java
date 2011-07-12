@@ -279,10 +279,10 @@ public final class BlockMap {
                 case IFNONNULL: {
                     current = null;
 
-                    int probability = GraalOptions.UseBranchPrediction ? method.branchProbability(bci) : -1;
+                    double probability = GraalOptions.UseBranchPrediction ? method.branchProbability(bci) : -1;
 
-                    Block b1 = probability == 100 ? makeBranchOverrideBlock(bci, bci + 3, false) : makeBlock(bci + 3);
-                    Block b2 = probability == 0 ? makeBranchOverrideBlock(bci, bci + Bytes.beS2(code, bci + 1), true) : makeBlock(bci + Bytes.beS2(code, bci + 1));
+                    Block b1 = probability == 1.0 ? makeBranchOverrideBlock(bci, bci + 3, false) : makeBlock(bci + 3);
+                    Block b2 = probability == 0.0 ? makeBranchOverrideBlock(bci, bci + Bytes.beS2(code, bci + 1), true) : makeBlock(bci + Bytes.beS2(code, bci + 1));
                     setSuccessors(bci, b1, b2);
 
                     assert lengthOf(code, bci) == 3;

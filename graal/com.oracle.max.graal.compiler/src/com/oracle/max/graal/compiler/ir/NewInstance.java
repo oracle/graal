@@ -95,6 +95,7 @@ public final class NewInstance extends FixedNodeWithNext {
     @Override
     public Node copy(Graph into) {
         NewInstance x = new NewInstance(instanceClass, cpi, constantPool, into);
+        super.copyInto(x);
         return x;
     }
 

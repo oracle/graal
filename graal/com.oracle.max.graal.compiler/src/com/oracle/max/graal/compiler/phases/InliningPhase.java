@@ -39,6 +39,10 @@ import com.sun.cri.ri.*;
 
 
 public class InliningPhase extends Phase {
+    /*
+     * - Detect method which only call another method with some parameters set to constants: void foo(a) -> void foo(a, b) -> void foo(a, b, c) ...
+     *   These should not be taken into account when determining inlining depth.
+     */
 
     public static final HashMap<RiMethod, Integer> methodCount = new HashMap<RiMethod, Integer>();
 
@@ -299,13 +303,17 @@ public class InliningPhase extends Phase {
 
     private boolean checkSizeConditions(RiMethod caller, int iterations, RiMethod method, Invoke invoke, RiTypeProfile profile, float adjustedRatio) {
         int maximumSize = GraalOptions.MaximumTrivialSize;
-        float ratio = 0;
+        double ratio = 0;
         if (profile != null && profile.count > 0) {
             RiMethod parent = invoke.stateAfter().method();
-            ratio = profile.count / (float) parent.invocationCount();
+            if (GraalOptions.ProbabilityAnalysis) {
+                ratio = invoke.probability();
+            } else {
+                ratio = profile.count / (float) parent.invocationCount();
+            }
             if (ratio >= GraalOptions.FreqInlineRatio) {
                 maximumSize = GraalOptions.MaximumFreqInlineSize;
-            } else if (ratio >= (1 - adjustedRatio)) {
+            } else if (ratio >= 1 * (1 - adjustedRatio)) {
                 maximumSize = GraalOptions.MaximumInlineSize;
             }
         }
@@ -439,6 +447,10 @@ public class InliningPhase extends Phase {
             }
             graph = new CompilerGraph(null);
             new GraphBuilderPhase(compilation, method, true).apply(graph);
+            if (GraalOptions.ProbabilityAnalysis) {
+                new DeadCodeEliminationPhase().apply(graph);
+                new ComputeProbabilityPhase().apply(graph);
+            }
         }
 
         invoke.inputs().clearAll();
@@ -484,7 +496,14 @@ public class InliningPhase extends Phase {
         Map<Node, Node> duplicates = compilation.graph.addDuplicate(nodes, replacements);
 
         FrameState stateBefore = null;
+        double invokeProbability = invoke.probability();
         for (Node node : duplicates.values()) {
+            if (GraalOptions.ProbabilityAnalysis) {
+                if (node instanceof FixedNode) {
+                    FixedNode fixed = (FixedNode) node;
+                    fixed.setProbability(fixed.probability() * invokeProbability);
+                }
+            }
             if (node instanceof Invoke && ((Invoke) node).canInline()) {
                 newInvokes.add((Invoke) node);
             } else if (node instanceof FrameState) {

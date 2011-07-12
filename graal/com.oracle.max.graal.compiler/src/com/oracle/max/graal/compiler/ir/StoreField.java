@@ -100,6 +100,8 @@ public final class StoreField extends AccessField {
 
     @Override
     public Node copy(Graph into) {
-        return new StoreField(null, field, null, into);
+        StoreField x = new StoreField(null, field, null, into);
+        super.copyInto(x);
+        return x;
     }
 }

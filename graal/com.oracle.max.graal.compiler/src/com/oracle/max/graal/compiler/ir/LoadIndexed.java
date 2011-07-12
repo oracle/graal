@@ -100,6 +100,7 @@ public final class LoadIndexed extends AccessIndexed {
     @Override
     public Node copy(Graph into) {
         LoadIndexed x = new LoadIndexed(null, null, null, elementKind(), into);
+        super.copyInto(x);
         return x;
     }
 }

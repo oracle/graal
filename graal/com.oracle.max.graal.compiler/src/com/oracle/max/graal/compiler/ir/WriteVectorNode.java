@@ -63,7 +63,9 @@ public final class WriteVectorNode extends AccessVectorNode {
 
     @Override
     public Node copy(Graph into) {
-        return new WriteVectorNode(null, null, null, null, into);
+        WriteVectorNode x = new WriteVectorNode(null, null, null, null, into);
+        super.copyInto(x);
+        return x;
     }
 
 

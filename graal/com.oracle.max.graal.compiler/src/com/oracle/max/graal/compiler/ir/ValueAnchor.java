@@ -80,6 +80,7 @@ public final class ValueAnchor extends FixedNodeWithNext {
     @Override
     public Node copy(Graph into) {
         ValueAnchor x = new ValueAnchor(null, into);
+        super.copyInto(x);
         return x;
     }
 }
