@@ -63,6 +63,7 @@ public final class GraalMetrics {
     public static int FrameStateValuesCreated;
     public static int NodesCanonicalized;
     public static int LoopsPeeled;
+    public static int LoopsInverted;
 
     public static void print() {
         for (Entry<String, GraalMetrics> m : map.entrySet()) {

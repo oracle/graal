@@ -61,7 +61,18 @@ peeling:
                         continue peeling;
                     }
                 }
-                LoopUtil.peelLoop(loop);
+                boolean canInvert = false;
+                if (loop.loopBegin().next() instanceof If) {
+                    If ifNode = (If) loop.loopBegin().next();
+                    if (loop.exits().isMarked(ifNode.trueSuccessor()) || loop.exits().isMarked(ifNode.falseSuccessor())) {
+                        canInvert = true;
+                    }
+                }
+                if (canInvert) {
+                    LoopUtil.inverseLoop(loop, (If) loop.loopBegin().next());
+                } else {
+                    LoopUtil.peelLoop(loop);
+                }
             }
         } else {
 //            loops = LoopUtil.computeLoops(graph); // TODO (gd) avoid recomputing loops
@@ -161,7 +172,7 @@ peeling:
                             useCounterAfterAdd = true;
                         }
                     }
-                    if (stride != null && !loopNodes.isNew(stride) &&  !loopNodes.isMarked(stride)) {
+                    if (stride != null && !loopNodes.isNotNewNotMarked(stride)) {
                         Graph graph = loopBegin.graph();
                         LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
                         counters.add(counter);
