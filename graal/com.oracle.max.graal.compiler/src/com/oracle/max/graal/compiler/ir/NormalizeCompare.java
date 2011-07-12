@@ -64,4 +64,8 @@ public final class NormalizeCompare extends Binary {
     public Node copy(Graph into) {
         return new NormalizeCompare(opcode, kind, null, null, into);
     }
+
+    public boolean isUnorderedLess() {
+        return this.opcode == Bytecodes.FCMPL || this.opcode == Bytecodes.DCMPL;
+    }
 }

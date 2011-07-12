@@ -427,8 +427,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             lir.cmp(Condition.TRUE, left.result(), right.result());
         } else if (x.x().kind.isFloat() || x.x().kind.isDouble()) {
             CiValue reg = createResultVariable(x);
-            int code = x.opcode;
-            lir.fcmp2int(left.result(), right.result(), reg, code == Bytecodes.FCMPL || code == Bytecodes.DCMPL);
+            lir.fcmp2int(left.result(), right.result(), reg, x.isUnorderedLess());
         } else if (x.x().kind.isLong() || x.x().kind.isWord()) {
             CiValue reg = createResultVariable(x);
             lir.lcmp2int(left.result(), right.result(), reg);

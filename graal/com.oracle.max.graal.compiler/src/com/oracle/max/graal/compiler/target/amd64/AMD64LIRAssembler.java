@@ -563,7 +563,7 @@ public final class AMD64LIRAssembler extends LIRAssembler {
                 // Checkstyle: on
             }
             masm.jcc(acond, op.label());
-            if (unorderedLabel != null) {
+            if (unorderedLabel != null && op.unorderedBlock() == null) {
                 masm.bind(unorderedLabel);
             }
         }

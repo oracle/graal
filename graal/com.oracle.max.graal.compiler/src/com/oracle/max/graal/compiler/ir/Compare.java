@@ -223,6 +223,8 @@ public final class Compare extends BooleanNode {
                     condition = condition.mirror();
                 }
                 Compare result = new Compare(normalizeNode.x(), condition, normalizeNode.y(), compare.graph());
+                boolean isLess = condition == Condition.LE || condition == Condition.LT || condition == Condition.BE || condition == Condition.BT;
+                result.unorderedIsTrue = condition != Condition.EQ && (condition == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess()));
                 if (GraalOptions.TraceCanonicalizer) {
                     TTY.println("Replaced Compare+NormalizeCompare with " + result);
                 }
