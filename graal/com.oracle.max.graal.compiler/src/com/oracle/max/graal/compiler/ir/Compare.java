@@ -193,6 +193,9 @@ public final class Compare extends BooleanNode {
             } else if (compare.y().isConstant() && compare.x() instanceof NormalizeCompare) {
                 return optimizeNormalizeCmp(compare, compare.y().asConstant(), (NormalizeCompare) compare.x());
             }
+            if (compare.x() == compare.y() && compare.x().kind != CiKind.Float && compare.x().kind != CiKind.Double) {
+                return Constant.forBoolean(compare.condition().check(1, 1), compare.graph());
+            }
             return compare;
         }
 
