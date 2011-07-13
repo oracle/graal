@@ -232,49 +232,18 @@ public class LoopUtil {
         assert loop.cfgNodes().isMarked(noExit);
 
         PeelingResult peeling = preparePeeling(loop, split);
-        rewirePeeling(peeling, loop, split, true);
+        rewireInversion(peeling, loop, split);
 
         // move peeled part to the end
         LoopBegin loopBegin = loop.loopBegin();
         LoopEnd loopEnd = loopBegin.loopEnd();
         FixedNode lastNode = (FixedNode) loopEnd.singlePredecessor();
-        Graph graph = loopBegin.graph();
         if (loopBegin.next() != lastNode) {
             lastNode.successors().replace(loopEnd, loopBegin.next());
             loopBegin.setNext(noExit);
             split.successors().replace(noExit, loopEnd);
         }
 
-        // rewire dataOut
-        NodeBitMap exitMergesPhis = graph.createNodeBitMap();
-        for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
-            StateSplit newExit = entry.getValue();
-            Merge merge = ((EndNode) newExit.next()).merge();
-            exitMergesPhis.markAll(merge.phis());
-        }
-        for (Entry<Node, Node> entry : peeling.dataOut.entries()) {
-            Value originalValue = (Value) entry.getKey();
-            if (originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
-                continue;
-            }
-            Value newValue = (Value) entry.getValue();
-            Phi phi = null;
-            List<Node> usages = new ArrayList<Node>(originalValue.usages());
-            for (Node usage : usages) {
-                if (exitMergesPhis.isMarked(usage) || (
-                                loop.nodes().isNotNewMarked(usage)
-                                && peeling.peeledNodes.isNotNewNotMarked(usage)
-                                && !(usage instanceof Phi && ((Phi) usage).merge() == loopBegin))
-                                && !(usage instanceof FrameState && ((FrameState) usage).block() == loopBegin)) {
-                    if (phi == null) {
-                        phi = new Phi(originalValue.kind, loopBegin, PhiType.Value, graph);
-                        phi.addInput(newValue);
-                        phi.addInput(originalValue);
-                    }
-                    usage.inputs().replace(originalValue, phi);
-                }
-            }
-        }
         //rewire phi usage in peeled part
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
         for (Phi phi : loopBegin.phis()) {
@@ -329,7 +298,7 @@ public class LoopUtil {
         for (Entry<Node, Node> entry : peeling.dataOut.entries()) {
             System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
         }*/
-        rewirePeeling(peeling, loop, loopEnd, false);
+        rewirePeeling(peeling, loop);
         /*if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After rewirePeeling", loopEnd.graph(), true, false));
         }*/
@@ -343,6 +312,14 @@ public class LoopUtil {
             parent = parent.parent;
         }
         GraalMetrics.LoopsPeeled++;
+    }
+
+    private static void rewireInversion(PeelingResult peeling, Loop loop, FixedNode from) {
+        rewirePeeling(peeling, loop, from, true);
+    }
+
+    private static void rewirePeeling(PeelingResult peeling, Loop loop) {
+        rewirePeeling(peeling, loop, loop.loopBegin().loopEnd(), false);
     }
 
     private static void rewirePeeling(PeelingResult peeling, Loop loop, FixedNode from, boolean inversion) {
@@ -398,6 +375,7 @@ public class LoopUtil {
         for (Node exit : peeling.unaffectedExits) {
             exitPoints.add(exit);
         }
+
         for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
             StateSplit original = (StateSplit) entry.getKey();
             StateSplit newExit = entry.getValue();
@@ -443,6 +421,43 @@ public class LoopUtil {
                     phiMap.set(original, (Value) originalValue);
                 }
                 phiMap.set(newExit, (Value) newValue);
+            }
+        }
+
+        if (inversion) {
+            // rewire dataOut in non-peeled body
+            NodeBitMap exitMergesPhis = graph.createNodeBitMap();
+            for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
+                StateSplit newExit = entry.getValue();
+                Merge merge = ((EndNode) newExit.next()).merge();
+                exitMergesPhis.markAll(merge.phis());
+            }
+            for (Entry<Node, Node> entry : peeling.dataOut.entries()) {
+                Value originalValue = (Value) entry.getKey();
+                if (originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
+                    continue;
+                }
+                Value newValue = (Value) entry.getValue();
+                Phi phi = null;
+                List<Node> usages = new ArrayList<Node>(originalValue.usages());
+                for (Node usage : usages) {
+                    if (exitMergesPhis.isMarked(usage) || (
+                                    loop.nodes().isNotNewMarked(usage)
+                                    && peeling.peeledNodes.isNotNewNotMarked(usage)
+                                    && !(usage instanceof Phi && ((Phi) usage).merge() == loopBegin))
+                                    && !(usage instanceof FrameState && ((FrameState) usage).block() == loopBegin)) {
+                        if (phi == null) {
+                            phi = new Phi(originalValue.kind, loopBegin, PhiType.Value, graph);
+                            phi.addInput(newValue);
+                            phi.addInput(originalValue);
+                            NodeMap<Value> exitMap = newExitValues.get(originalValue);
+                            for (Node exit : peeling.unaffectedExits) {
+                                exitMap.set(exit, phi);
+                            }
+                        }
+                        usage.inputs().replace(originalValue, phi);
+                    }
+                }
             }
         }
 
