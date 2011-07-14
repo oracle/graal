@@ -25,17 +25,25 @@ package com.oracle.max.graal.compiler.phases;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.graph.*;
 
-/* TODO (gd) Canonicalize :
- * - Compare & If
- * - InstanceOf (if it's not transformed into a Condition for Compare)
- * - Switches
- */
 public class CanonicalizerPhase extends Phase {
     private static final int MAX_ITERATION_PER_NODE = 10;
 
+    private boolean newNodes;
+
+    public CanonicalizerPhase() {
+        this(false);
+    }
+
+    public CanonicalizerPhase(boolean newNodes) {
+        this.newNodes = newNodes;
+    }
+
     @Override
     protected void run(Graph graph) {
-        NodeWorkList nodeWorkList = graph.createNodeWorkList(true, MAX_ITERATION_PER_NODE);
+        NodeWorkList nodeWorkList = graph.createNodeWorkList(!newNodes, MAX_ITERATION_PER_NODE);
+        if (newNodes) {
+            nodeWorkList.addAll(graph.getNewNodes());
+        }
         for (Node node : nodeWorkList) {
             CanonicalizerOp op = node.lookup(CanonicalizerOp.class);
             if (op != null) {
