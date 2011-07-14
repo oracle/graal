@@ -97,6 +97,8 @@ public class IR {
 
         if (GraalOptions.Inline) {
             new InliningPhase(compilation, this, null).apply(compilation.graph);
+            new CanonicalizerPhase().apply(compilation.graph);
+            new DeadCodeEliminationPhase().apply(compilation.graph);
         }
 
         Graph graph = compilation.graph;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.examples.simple;
 
-import java.util.*;
 
-import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
+public class SimpleExample {
 
-public abstract class FixedNode extends Value {
-
-    private double probability;
-
-    public FixedNode(CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount, successorCount, graph);
+    public static void run() {
+        System.out.println(mulAdd(1, 2, 3));
+        System.out.println(divAdd(1, 2, 3));
     }
 
-    public double probability() {
-        return probability;
+    private static int mulAdd(int a, int b, int c) {
+        return a * b + c;
     }
 
-    public void setProbability(double probability) {
-        this.probability = probability;
+    private static int divAdd(int a, int b, int c) {
+        return a / b + c;
     }
-
-    protected void copyInto(FixedNode newNode) {
-        newNode.setProbability(probability);
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("probability", String.format(Locale.ENGLISH, "%7.5f", probability));
-        return properties;
-    }
-
 }

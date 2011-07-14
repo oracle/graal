@@ -446,10 +446,10 @@ public class InliningPhase extends Phase {
                 TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(method, invoke), method.maxLocals(), method.maxStackSize());
             }
             graph = new CompilerGraph(null);
-            new GraphBuilderPhase(compilation, method, true).apply(graph);
+            new GraphBuilderPhase(compilation, method, true).apply(graph, true, false);
             if (GraalOptions.ProbabilityAnalysis) {
-                new DeadCodeEliminationPhase().apply(graph);
-                new ComputeProbabilityPhase().apply(graph);
+                new DeadCodeEliminationPhase().apply(graph, true, false);
+                new ComputeProbabilityPhase().apply(graph, true, false);
             }
         }
 
