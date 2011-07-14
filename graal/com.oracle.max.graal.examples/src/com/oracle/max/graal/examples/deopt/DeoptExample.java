@@ -32,20 +32,20 @@ public class DeoptExample {
         System.out.println();
         System.out.println("Running Deopt Example");
         long start = System.currentTimeMillis();
-        System.out.println("result1=" + test());
+        System.out.println("result1=" + new DeoptExample().test());
         System.out.println("time=" + (System.currentTimeMillis() - start) + "ms");
     }
 
-    private static int test() {
+    private int test() {
         try {
-            return testDeopt(3000000);
+            return testDeopt(90000);
         } catch (IllegalStateException e) {
             System.out.println(e.getMessage());
             return 0;
         }
     }
 
-    private static int testDeopt(int n) {
+    private int testDeopt(int n) {
         int sum = 0;
         for (int i = 0; i < n; i = SafeAddExample.safeAdd(i, 1)) {
             sum = SafeAddExample.safeAdd(sum, i);

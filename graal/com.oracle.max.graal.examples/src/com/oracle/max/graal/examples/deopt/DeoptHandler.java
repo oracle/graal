@@ -22,14 +22,58 @@
  */
 package com.oracle.max.graal.examples.deopt;
 
+import java.lang.reflect.*;
+
+import com.sun.cri.ri.*;
+
 
 public class DeoptHandler {
 
+    /**
+     * Deoptimization handler method for methods with a void return parameter.
+     */
+    public void handle_void(RiMethod method, int bci, Object[] values, int numLocals, int numStack, int numLocks) {
+        handle(method, bci, values, numLocals, numStack, numLocks);
+    }
 
-    public static int test(int bci, Object[] values) {
-        System.out.println("values at bci " + bci + ": ");
-        for (Object value : values) {
-            System.out.print(value + " ");
+    /**
+     * Deoptimization handler method for methods with an int return parameter.
+     */
+    public int handle_int(RiMethod method, int bci, Object[] values, int numLocals, int numStack, int numLocks) {
+        handle(method, bci, values, numLocals, numStack, numLocks);
+        return 123;
+    }
+
+    /**
+     * Deoptimization handler method for methods with an object return parameter.
+     */
+    public Object handle_object(RiMethod method, int bci, Object[] values, int numLocals, int numStack, int numLocks) {
+        handle(method, bci, values, numLocals, numStack, numLocks);
+        return null;
+    }
+
+    /**
+     * Deoptimization handler method: prints the current state of the method execution.
+     */
+    public int handle(RiMethod method, int bci, Object[] values, int numLocals, int numStack, int numLocks) {
+        System.out.printf("Deoptimization: %s@%d", method.name(), bci);
+        int p = 0;
+        System.out.print("\nArguments: ");
+        int argCount = method.signature().argumentCount(!Modifier.isStatic(method.accessFlags()));
+        for (int i = 0; i < argCount; i++) {
+            System.out.printf("%s ", values[p++]);
+        }
+        System.out.print("\nLocals: ");
+        for (int i = argCount; i < numLocals; i++) {
+            System.out.printf("%s ", values[p++]);
+        }
+        System.out.print("\nExpression stack: ");
+        for (int i = 0; i < numStack; i++) {
+            System.out.printf("%s ", values[p++]);
+        }
+        System.out.print("\nLocks: ");
+        for (int i = 0; i < numLocks; i++) {
+            System.out.printf("%s ", values[p++]);
         }
         System.out.println();
         return 2;

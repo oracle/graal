@@ -18,6 +18,6 @@ fi
 TEST=$1
 shift
 ant -f create_examples.xml
-COMMAND="${JDK7}/bin/java -client -d64 -graal -Xmx1g -esa -G:Extend -G:Plot -G:CacheGraphs -XX:+PrintCompilation -Xcomp -XX:CompileOnly=examples -XX:CompileCommand=quiet -XX:CompileCommand=exclude,*,<init> -XX:CompileCommand=exclude,*,run -XX:CompileCommand=exclude,com.oracle.max.graal.examples.Main::main $* -jar examples.jar ${TEST}"
+COMMAND="${JDK7}/bin/java -client -d64 -graal -Xmx1g -esa -ea -G:Extend -G:CacheGraphs -XX:+PrintCompilation -Xcomp -XX:CompileOnly=examples -XX:CompileCommand=quiet -XX:CompileCommand=exclude,*,<init> -XX:CompileCommand=exclude,*,<clinit> -XX:CompileCommand=exclude,*,run -XX:CompileCommand=exclude,com.oracle.max.graal.examples.Main::main $* -jar examples.jar ${TEST}"
 # echo $COMMAND
 $COMMAND

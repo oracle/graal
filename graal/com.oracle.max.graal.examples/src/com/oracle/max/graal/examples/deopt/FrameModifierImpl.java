@@ -22,38 +22,54 @@
  */
 package com.oracle.max.graal.examples.deopt;
 
+import java.util.*;
+
 import com.oracle.max.graal.extensions.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ci.CiVirtualObject.*;
 import com.sun.cri.ri.*;
 
 
 public class FrameModifierImpl implements FrameModifier {
+    private static DeoptHandler HANDLER = new DeoptHandler();
 
     @Override
     public CiFrame getFrame(RiRuntime runtime, CiFrame frame) {
-        try {
-            DeoptHandler.class.getMethod("test", Integer.TYPE, Object[].class);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return frame;
-        }
         if (frame.method.name().equals("testDeopt")) {
+            // get the handler method
             RiType type = runtime.getType(DeoptHandler.class);
-            RiMethod method = type.getMethod("test", "(I[Ljava/lang/Object;)I");
-            System.out.println("Size: " + method.maxLocals() + " " + method.maxStackSize());
-            RiType arrayType = runtime.getType(Object.class).arrayOf();
-            CiValue[] values = new CiValue[frame.values.length];
-            for (int i = 0; i < values.length; i++) {
-                values[i] = CiVirtualObject.proxy(runtime, frame.values[i], i + 2);
+            CiKind returnKind = frame.method.signature().returnKind();
+            String methodName = "handle_" + returnKind;
+            String methodSignature = "(Lcom/sun/cri/ri/RiMethod;I[Ljava/lang/Object;III)" + returnKind.signatureChar();
+            RiMethod handlerMethod = type.getMethod(methodName, methodSignature);
+            assert handlerMethod != null : methodName + " not found...";
+
+            // put the current state (local vars, expressions, etc.) into an array
+            CiVirtualObjectFactory factory = new CiVirtualObjectFactory(runtime);
+            ArrayList<CiValue> originalValues = new ArrayList<CiValue>();
+            for (int i = 0; i < frame.values.length; i += frame.values[i].kind.sizeInSlots()) {
+                originalValues.add(factory.proxy(frame.values[i]));
             }
-            CiVirtualObject local = CiVirtualObject.get(arrayType, values, 0);
-            CiValue[] values2 = new CiValue[method.maxLocals()];
-            values2[0] = CiConstant.forInt(frame.bci);
-            values2[1] = local;
-            for (int i = 2; i < values2.length; i++) {
-                values2[i] = CiValue.IllegalValue;
+            CiValue boxedValues = factory.arrayProxy(runtime.getType(Object[].class), originalValues.toArray(new CiValue[originalValues.size()]));
+
+            // build the list of arguments
+            CiValue[] newValues = new CiValue[handlerMethod.maxLocals()];
+            int p = 0;
+            newValues[p++] = CiConstant.forObject(HANDLER);         // receiver
+            newValues[p++] = CiConstant.forObject(frame.method);    // method that caused deoptimization
+            newValues[p++] = CiConstant.forInt(frame.bci);          // bytecode index
+            newValues[p++] = boxedValues;                           // original locals, expression stack and locks
+            newValues[p++] = CiConstant.forInt(frame.numLocals);    // number of locals
+            newValues[p++] = CiConstant.forInt(frame.numStack);     // size of expression stack
+            newValues[p++] = CiConstant.forInt(frame.numLocks);     // number of locks
+
+            // fill the rest of the local variables with zeros
+            while (p < newValues.length) {
+                newValues[p++] = CiValue.IllegalValue;
             }
-            return new CiFrame((CiFrame) frame.caller, method, 0, false, values2, method.maxLocals(), 0, 0);
+
+            // ... and return a new frame that points to the start of the handler method
+            return new CiFrame((CiFrame) frame.caller, handlerMethod, /*bci*/ 0, false, newValues, handlerMethod.maxLocals(), 0, 0);
         }
         return frame;
     }
