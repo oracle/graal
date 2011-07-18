@@ -34,17 +34,17 @@ public abstract class Phase {
     private static final ThreadLocal<Phase> currentPhase = new ThreadLocal<Phase>();
     private final boolean shouldVerify;
 
-    public Phase() {
+    protected Phase() {
         this.name = this.getClass().getSimpleName();
         this.shouldVerify = true;
         this.detailedName = name;
     }
 
-    public Phase(String name) {
+    protected Phase(String name) {
         this(name, true);
     }
 
-    public Phase(String name, boolean shouldVerify) {
+    protected Phase(String name, boolean shouldVerify) {
         this.name = name;
         this.shouldVerify = shouldVerify;
         this.detailedName = name;
@@ -55,10 +55,10 @@ public abstract class Phase {
     }
 
     public final void apply(Graph graph) {
-        apply(graph, true);
+        apply(graph, true, true);
     }
 
-    public final void apply(Graph graph, boolean plotOnError) {
+    public final void apply(Graph graph, boolean plotOnError, boolean plot) {
         assert graph != null && (!shouldVerify || graph.verify());
 
         int startDeletedNodeCount = graph.getDeletedNodeCount();
@@ -104,7 +104,7 @@ public abstract class Phase {
             GraalMetrics.get(getName().concat(".createdNodes")).increment(createdNodeCount);
         }
         GraalCompilation compilation = GraalCompilation.compilation();
-        if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class) {
+        if (compilation.compiler.isObserved() && this.getClass() != IdentifyBlocksPhase.class && (plot || GraalOptions.PlotVerbose)) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After " + detailedName, graph, true, false));
         }
 

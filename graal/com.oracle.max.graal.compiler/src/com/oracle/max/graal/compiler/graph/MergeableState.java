@@ -20,36 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples.deopt;
+package com.oracle.max.graal.compiler.graph;
 
-import com.oracle.max.graal.examples.intrinsics.*;
+import java.util.*;
 
+import com.oracle.max.graal.compiler.ir.*;
 
-public class DeoptExample {
-
-    public static void run() {
-        System.out.println();
-        System.out.println();
-        System.out.println("Running Deopt Example");
-        long start = System.currentTimeMillis();
-        System.out.println("result1=" + new DeoptExample().test());
-        System.out.println("time=" + (System.currentTimeMillis() - start) + "ms");
-    }
-
-    private int test() {
-        try {
-            return testDeopt(90000);
-        } catch (IllegalStateException e) {
-            System.out.println(e.getMessage());
-            return 0;
-        }
-    }
-
-    private int testDeopt(int n) {
-        int sum = 0;
-        for (int i = 0; i < n; i = SafeAddExample.safeAdd(i, 1)) {
-            sum = SafeAddExample.safeAdd(sum, i);
-        }
-        return sum;
-    }
+public interface MergeableState <T> {
+    T clone();
+    boolean merge(Merge merge, Collection<T> withStates);
+    void loopBegin(LoopBegin loopBegin);
+    void loopEnd(LoopEnd loopEnd, T loopEndState);
+    void afterSplit(FixedNode node);
 }

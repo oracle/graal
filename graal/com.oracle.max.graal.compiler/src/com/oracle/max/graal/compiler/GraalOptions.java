@@ -94,6 +94,7 @@ public final class GraalOptions {
 
     // Ideal graph visualizer output settings
     public static boolean Plot                               = ____;
+    public static boolean PlotVerbose                        = ____;
     public static boolean PlotOnError                        = ____;
     public static int     PrintIdealGraphLevel               = 0;
     public static boolean PrintIdealGraphFile                = ____;

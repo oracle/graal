@@ -20,36 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.examples.deopt;
-
-import com.oracle.max.graal.examples.intrinsics.*;
+package com.oracle.max.graal.examples.simple;
 
 
-public class DeoptExample {
+public class SimpleExample {
 
     public static void run() {
-        System.out.println();
-        System.out.println();
-        System.out.println("Running Deopt Example");
-        long start = System.currentTimeMillis();
-        System.out.println("result1=" + new DeoptExample().test());
-        System.out.println("time=" + (System.currentTimeMillis() - start) + "ms");
+        System.out.println(mulAdd(1, 2, 3));
+        System.out.println(divAdd(1, 2, 3));
     }
 
-    private int test() {
-        try {
-            return testDeopt(90000);
-        } catch (IllegalStateException e) {
-            System.out.println(e.getMessage());
-            return 0;
-        }
+    private static int mulAdd(int a, int b, int c) {
+        return a * b + c;
     }
 
-    private int testDeopt(int n) {
-        int sum = 0;
-        for (int i = 0; i < n; i = SafeAddExample.safeAdd(i, 1)) {
-            sum = SafeAddExample.safeAdd(sum, i);
-        }
-        return sum;
+    private static int divAdd(int a, int b, int c) {
+        return a / b + c;
     }
 }

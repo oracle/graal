@@ -50,7 +50,7 @@ public abstract class FixedNode extends Value {
     @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("probability", String.format("%7.5f", probability));
+        properties.put("probability", String.format(Locale.ENGLISH, "%7.5f", probability));
         return properties;
     }
 

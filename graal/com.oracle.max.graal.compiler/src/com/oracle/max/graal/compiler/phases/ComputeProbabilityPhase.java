@@ -26,10 +26,9 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.observer.*;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.MergeableState;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.PostOrderNodeIterator;
 import com.oracle.max.graal.graph.*;
 
 public class ComputeProbabilityPhase extends Phase {

@@ -36,8 +36,10 @@ public class OptimizerImpl implements Optimizer {
 
     @Override
     public void optimize(RiRuntime runtime, Graph graph) {
+        // iterate over all instanceof of SafeAddNode in the graph
         for (SafeAddNode safeAdd : graph.getNodes(SafeAddNode.class)) {
             if (!canOverflow(safeAdd)) {
+                // if an overflow is impossible: replace with normal add
                 IntegerAdd add = new IntegerAdd(CiKind.Int, safeAdd.x(), safeAdd.y(), graph);
                 safeAdd.replaceAndDelete(add);
             }
@@ -45,11 +47,15 @@ public class OptimizerImpl implements Optimizer {
     }
 
     private boolean canOverflow(SafeAddNode safeAdd) {
+        // if this SafeAddNode always adds 1 ...
         if (safeAdd.y().isConstant() && safeAdd.y().asConstant().asLong() == 1) {
+            // ... to a phi ...
             if (safeAdd.x() instanceof Phi) {
                 Phi phi = (Phi) safeAdd.x();
+                // ... that belongs to a loop and merges into itself ...
                 if (phi.merge() instanceof LoopBegin && phi.valueAt(1) == safeAdd) {
                     LoopBegin loopBegin = (LoopBegin) phi.merge();
+                    // ... then do the heavy analysis.
                     return canOverflow(phi, loopBegin);
                 }
             }
@@ -58,14 +64,16 @@ public class OptimizerImpl implements Optimizer {
     }
 
     private boolean canOverflow(Phi phi, LoopBegin loopBegin) {
-
         NodeBitMap nodes = LoopUtil.markUpCFG(loopBegin);
         NodeBitMap exits = LoopUtil.computeLoopExits(loopBegin, nodes);
+        // look at all loop exits:
         for (Node exit : exits) {
             TTY.println("exit: " + exit);
             Node pred = exit.predecessors().get(0);
+            // if this exit is an If node ...
             if (pred instanceof If) {
                 If ifNode = (If) pred;
+                // ... which compares ...
                 if (ifNode.compare() instanceof Compare) {
                     Compare compare = (Compare) ifNode.compare();
                     Condition cond = compare.condition();
@@ -74,6 +82,7 @@ public class OptimizerImpl implements Optimizer {
                     if (ifNode.trueSuccessor() == pred) {
                         cond = cond.negate();
                     }
+                    // ... the phi against a value, then this phi cannot overflow.
                     if (cond == Condition.LT && x == phi) {
                         return false;
                     }
@@ -81,7 +90,6 @@ public class OptimizerImpl implements Optimizer {
                         return false;
                     }
                 }
-
             }
         }
         TTY.println("can overflow");

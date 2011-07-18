@@ -26,15 +26,28 @@ import com.oracle.max.graal.examples.deopt.*;
 import com.oracle.max.graal.examples.inlining.*;
 import com.oracle.max.graal.examples.intrinsics.*;
 import com.oracle.max.graal.examples.opt.*;
-
+import com.oracle.max.graal.examples.simple.*;
 
 public class Main {
 
     public static void main(String[] args) {
-//        InliningExample.run();
-//        SafeAddExample.run();
-//        OptimizationExample.run();
-        DeoptExample.run();
+        System.err.println("== Graal Examples ==");
+        if (args.length == 1) {
+            if (args[0].equals("simple")) {
+                SimpleExample.run();
+            } else if (args[0].equals("inlining")) {
+                InliningExample.run();
+            } else if (args[0].equals("safeadd")) {
+                SafeAddExample.run();
+            } else if (args[0].equals("opt")) {
+                OptimizationExample.run();
+            } else if (args[0].equals("deopt")) {
+                DeoptExample.run();
+            } else {
+                System.out.println("unknown example: " + args[0]);
+            }
+        } else {
+            System.out.println("usage: java " + Main.class.getSimpleName() + " <example>");
+        }
     }
-
 }
