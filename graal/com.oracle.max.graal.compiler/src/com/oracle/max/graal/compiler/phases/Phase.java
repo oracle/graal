@@ -36,7 +36,7 @@ public abstract class Phase {
 
     protected Phase() {
         this.name = this.getClass().getSimpleName();
-        this.shouldVerify = true;
+        this.shouldVerify = GraalOptions.Verify;
         this.detailedName = name;
     }
 

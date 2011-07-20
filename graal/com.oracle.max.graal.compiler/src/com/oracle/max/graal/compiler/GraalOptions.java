@@ -73,7 +73,7 @@ public final class GraalOptions {
     public static boolean StressLinearScan                   = ____;
     public static boolean BailoutOnException                 = ____;
     public static boolean DeoptALot                          = ____;
-
+    public static boolean Verify                             = true;
     public static boolean TestGraphDuplication               = ____;
 
     /**

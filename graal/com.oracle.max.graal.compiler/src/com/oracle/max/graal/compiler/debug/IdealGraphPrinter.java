@@ -168,6 +168,7 @@ public class IdealGraphPrinter {
         }
 
         Map<Node, Set<Entry<String, Integer>>> colors = new HashMap<Node, Set<Entry<String, Integer>>>();
+        Map<Node, Set<Entry<String, String>>> colorsToString = new HashMap<Node, Set<Entry<String, String>>>();
         Map<Node, Set<String>> bits = new HashMap<Node, Set<String>>();
         if (debugObjects != null) {
             for (Entry<String, Object> entry : debugObjects.entrySet()) {
@@ -191,6 +192,12 @@ public class IdealGraphPrinter {
                             colors.put(node, nodeColors);
                         }
                         nodeColors.add(new SimpleImmutableEntry<String, Integer>(name + "Color", colorNumber));
+                        Set<Entry<String, String>> nodeColorStrings = colorsToString.get(node);
+                        if (nodeColorStrings == null) {
+                            nodeColorStrings = new HashSet<Entry<String, String>>();
+                            colorsToString.put(node, nodeColorStrings);
+                        }
+                        nodeColorStrings.add(new SimpleImmutableEntry<String, String>(name, color.toString()));
                     }
                 } else if (obj instanceof NodeBitMap) {
                     NodeBitMap bitmap = (NodeBitMap) obj;
@@ -259,6 +266,14 @@ public class IdealGraphPrinter {
                     String name = color.getKey();
                     Integer value = color.getValue();
                     stream.printf("    <p name='%s'>%d</p>%n", name, value);
+                }
+            }
+            Set<Entry<String, String>> nodeColorStrings = colorsToString.get(node);
+            if (nodeColorStrings != null) {
+                for (Entry<String, String> color : nodeColorStrings) {
+                    String name = color.getKey();
+                    String value = color.getValue();
+                    stream.printf("    <p name='%s'>%s</p>%n", name, value);
                 }
             }
             Set<String> nodeBits = bits.get(node);

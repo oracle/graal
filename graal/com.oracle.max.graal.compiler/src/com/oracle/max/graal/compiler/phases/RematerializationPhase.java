@@ -101,7 +101,7 @@ public class RematerializationPhase extends Phase {
                         Node copy = node.copyWithEdges();
                         newNodesToBlock.put(copy, sux);
                         GraalMetrics.Rematerializations++;
-                        //System.out.println("Rematerialized " + node + " : " + toString(usageProbability));
+                        //System.out.println("> Rematerialized " + node + " : " + toString(usageProbability));
                         for (Node usage : usages) {
                             usage.inputs().replace(node, copy);
                         }

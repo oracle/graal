@@ -85,23 +85,22 @@ public class IR {
             new GraphBuilderPhase(compilation, compilation.method, false).apply(compilation.graph);
 //        }
 
+        Graph graph = compilation.graph;
+
         if (GraalOptions.TestGraphDuplication) {
-            new DuplicationPhase().apply(compilation.graph);
+            new DuplicationPhase().apply(graph);
         }
 
-        new DeadCodeEliminationPhase().apply(compilation.graph);
+        new DeadCodeEliminationPhase().apply(graph);
 
         if (GraalOptions.ProbabilityAnalysis) {
-            new ComputeProbabilityPhase().apply(compilation.graph);
+            new ComputeProbabilityPhase().apply(graph);
         }
 
         if (GraalOptions.Inline) {
-            new InliningPhase(compilation, this, null).apply(compilation.graph);
-            new CanonicalizerPhase().apply(compilation.graph);
-            new DeadCodeEliminationPhase().apply(compilation.graph);
+            new InliningPhase(compilation, this, null).apply(graph);
         }
 
-        Graph graph = compilation.graph;
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase().apply(graph);
@@ -130,6 +129,7 @@ public class IR {
         if (GraalOptions.OptGVN) {
             new GlobalValueNumberingPhase().apply(graph);
             if (GraalOptions.Rematerialize) {
+                //new Rematerialization2Phase().apply(graph);
                 new RematerializationPhase().apply(graph);
             }
         }

@@ -31,6 +31,7 @@ Ideas
   }
  
   Here invoke 1 and 2 should always be inlined regardless of the size of the inlined graph/method size and without increasing the inlining depth
+  specializations should always be inlined if we are in a trivial method, not only he methods with only one invoke, we shoudl also do it for exemple for methods that invoke and only do simple operations on paramteres or result
 
 
 * 'computable' slots in Framstates/debug info
@@ -49,3 +50,29 @@ Ideas
   This requires going through the compiler and asking for further profiling there are 2 main options here :
    - Reprofile the method in interpreter with the new profiled expression (we may modify the method bytecode to insert a conditional branch on the expression we want to profile, thus using the classical branch probability infrastructure)
    - insert a profiling snippet in the compiled code and ask runtime to recompile the method after N executions
+
+
+* Transform some contiguous array accesses into phis when possible
+  Example : (most probably found in scientific code, for example relaxation code)
+  
+  for (int i = 1; i < A.length - 1; i++) {
+     vm1 = A[i-1];
+     v0  = A[i];
+     vp1 = A[i+1];
+     // ...
+  }
+
+  should be transformed into
+  vm1 = A[0];
+  v0 = A[1];
+  for (int i = 0; i < A.length - 1; i++) {
+     vp1 = A[i+1];
+     // ...
+     vm1 = v0;
+     v0 = vp1;
+  }
+
+  This could be done in the context of a more advanced induction varaible analysis to be able to detect such access patterns. In this example we removed 2 array access (2 loads + 2 address computation + 2 bounds checks if not hoisted) while only adding 2 moves (phis)
+
+
+* Implement array bounds check elimination

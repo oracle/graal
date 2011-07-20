@@ -35,7 +35,6 @@ public class CompilerGraph extends Graph {
     private Unwind unwindSingleton;
     private CiAssumptions assumptions = new CiAssumptions();
 
-
     public CompilerGraph(RiRuntime runtime) {
         this.runtime = runtime;
     }

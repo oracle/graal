@@ -170,7 +170,6 @@ public final class Phi extends FloatingNode {
         return new Iterable<Node>() {
             @Override
             public Iterator<Node> iterator() {
-                // TODO Auto-generated method stub
                 return new FilteringIterator(input, Merge.class);
             }
         };
