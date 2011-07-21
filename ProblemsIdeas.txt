@@ -76,3 +76,6 @@ Ideas
 
 
 * Implement array bounds check elimination
+
+* Rematerialize only the nodes that were affected by GVN
+  This will probably require something that tracks changes to the Graph, the cost of such a tracking should be evaluated

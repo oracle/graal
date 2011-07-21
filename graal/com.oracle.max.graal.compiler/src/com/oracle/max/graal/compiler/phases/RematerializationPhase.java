@@ -85,7 +85,7 @@ public class RematerializationPhase extends Phase {
                     Arrays.fill(probablityCache, null);
                     usageProbability = usageProbability(node, block); // recompute with usage maps
                 }
-                //System.out.println("going to remarterialize " + node + " at " + block + " : " + toString(usageProbability));
+                //TTY.println("going to remarterialize " + node + " at " + block + " : " + toString(usageProbability));
                 boolean first = true;
                 for (Block sux : block.getSuccessors()) {
                     if (first) {
@@ -101,9 +101,19 @@ public class RematerializationPhase extends Phase {
                         Node copy = node.copyWithEdges();
                         newNodesToBlock.put(copy, sux);
                         GraalMetrics.Rematerializations++;
-                        //System.out.println("> Rematerialized " + node + " : " + toString(usageProbability));
+                        //TTY.println("> Rematerialized " + node + " : " + toString(usageProbability));
                         for (Node usage : usages) {
                             usage.inputs().replace(node, copy);
+                            if (usageProbability.phiUsages != null) {
+                                Set<Phi> phis = usageProbability.phiUsages.get(usage);
+                                if (phis != null) {
+                                    for (Phi phi : phis) {
+                                        int index = phi.merge().phiPredecessorIndex(usage);
+                                        assert phi.valueAt(index) == node;
+                                        phi.setValueAt(index, (Value) copy);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -127,7 +137,7 @@ public class RematerializationPhase extends Phase {
                 Merge merge = phi.merge();
                 for (int i = 0; i < phi.valueCount(); i++) {
                     if (phi.valueAt(i) == n) {
-                        insertUsageInCache(merge.phiPredecessorAt(i));
+                        insertUsageInCache(merge.phiPredecessorAt(i), phi);
                     }
                 }
             } else {
@@ -138,6 +148,10 @@ public class RematerializationPhase extends Phase {
     }
 
     private void insertUsageInCache(Node usage) {
+        insertUsageInCache(usage, null);
+    }
+
+    private void insertUsageInCache(Node usage, Phi phi) {
         Block block = block(usage);
         if (block == null) {
             return;
@@ -145,9 +159,13 @@ public class RematerializationPhase extends Phase {
         int blockID = block.blockID();
         UsageProbability usageProbability = probablityCache[blockID];
         if (usageProbability == null) {
-            probablityCache[blockID] = new UsageProbability(usage);
+            usageProbability = new UsageProbability(usage);
+            probablityCache[blockID] = usageProbability;
         } else if (!ignoreUsages) {
             usageProbability.usages.mark(usage);
+        }
+        if (phi != null) {
+            usageProbability.addPhiUsage(phi, usage);
         }
     }
 
@@ -205,6 +223,7 @@ public class RematerializationPhase extends Phase {
     private class UsageProbability {
         double probability;
         NodeBitMap usages;
+        NodeMap<Set<Phi>> phiUsages;
         boolean computed;
 
         public UsageProbability(Node usage) {
@@ -228,18 +247,32 @@ public class RematerializationPhase extends Phase {
             }
             probability += suxProbability * sux.probability;
         }
+
+        public void addPhiUsage(Phi phi, Node usage) {
+            if (phiUsages == null) {
+                phiUsages = phi.graph().createNodeMap();
+            }
+            Set<Phi> phis = phiUsages.get(usage);
+            if (phis == null) {
+                phis = new HashSet<Phi>(2);
+                phiUsages.set(usage, phis);
+            }
+            phis.add(phi);
+        }
     }
 
     private String toString(UsageProbability up) {
         NumberFormat nf = NumberFormat.getPercentInstance();
         StringBuilder sb = new StringBuilder("p=");
         sb.append(nf.format(up.probability));
-        sb.append(" U=[");
-        for (Node n : up.usages) {
-            sb.append(n);
-            sb.append(", ");
+        if (up.usages != null) {
+            sb.append(" U=[");
+            for (Node n : up.usages) {
+                sb.append(n);
+                sb.append(", ");
+            }
+            sb.append("]");
         }
-        sb.append("]");
         return sb.toString();
     }
 }
