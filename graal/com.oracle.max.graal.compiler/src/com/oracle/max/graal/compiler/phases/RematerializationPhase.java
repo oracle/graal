@@ -42,27 +42,34 @@ public class RematerializationPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
+        Iterable<Node> modifiedNodes = graph.getModifiedNodes();
+        graph.stopRecordModifications();
+        NodeWorkList work = graph.createNodeWorkList();
+        for (Node modified : modifiedNodes) {
+            if (modified instanceof FloatingNode) {
+                work.add(modified);
+            }
+        }
+
+        if (work.isEmpty()) {
+            return;
+        }
+
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(true);
         s.apply(graph);
 
         newNodesToBlock = new HashMap<Node, Block>();
         nodeToBlock = s.getNodeToBlock();
         blocks = s.getBlocks();
-
         probablityCache = new UsageProbability[blocks.size()];
-
-        NodeWorkList work = graph.createNodeWorkList();
-        NodeBitMap done = graph.createNodeBitMap();
-        work.addAll(graph.getNodes(FloatingNode.class));
 
         for (Node node : work) {
             if (node instanceof Phi || node instanceof Local || node instanceof Constant || node instanceof LocationNode) {
-                done.mark(node);
                 continue;
             }
             boolean delay = false;
             for (Node usage : node.usages()) {
-                if (usage instanceof FloatingNode && !(usage instanceof Phi) && done.isNotNewNotMarked(usage)) {
+                if (usage instanceof FloatingNode && !(usage instanceof Phi) && work.isInQueue(usage)) {
                     delay = true;
                     break;
                 }
@@ -71,7 +78,6 @@ public class RematerializationPhase extends Phase {
                 work.addAgain(node);
                 continue;
             }
-            done.mark(node);
             Arrays.fill(probablityCache, null);
             ignoreUsages = true;
             Block block = nodeToBlock.get(node);

@@ -127,21 +127,25 @@ public class IR {
         }
 
         if (GraalOptions.OptGVN) {
+            graph.recordModifications(EdgeType.USAGES); // GVN 'ideals' will get new usages
             new GlobalValueNumberingPhase().apply(graph);
             if (GraalOptions.Rematerialize) {
                 //new Rematerialization2Phase().apply(graph);
                 new RematerializationPhase().apply(graph);
             }
+            graph.stopRecordModifications();
         }
 
         new LoweringPhase(compilation.runtime).apply(graph);
         if (GraalOptions.Lower) {
             new MemoryPhase().apply(graph);
             if (GraalOptions.OptGVN) {
+                graph.recordModifications(EdgeType.USAGES);
                 new GlobalValueNumberingPhase().apply(graph);
                 if (GraalOptions.Rematerialize) {
                     new RematerializationPhase().apply(graph);
                 }
+                graph.stopRecordModifications();
             }
             if (GraalOptions.OptReadElimination) {
                 new ReadEliminationPhase().apply(graph);
