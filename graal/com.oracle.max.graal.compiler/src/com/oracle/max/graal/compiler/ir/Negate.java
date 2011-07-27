@@ -35,9 +35,8 @@ import com.sun.cri.ci.*;
 public final class Negate extends FloatingNode {
     private static final NegateCanonicalizerOp CANONICALIZER = new NegateCanonicalizerOp();
 
-    private static final int INPUT_COUNT = 2;
+    private static final int INPUT_COUNT = 1;
     private static final int INPUT_X = 0;
-    private static final int INPUT_Y = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -128,6 +127,9 @@ public final class Negate extends FloatingNode {
                     case Float: return Constant.forFloat(-x.asConstant().asFloat(), graph);
                     case Double: return Constant.forDouble(-x.asConstant().asDouble(), graph);
                 }
+            }
+            if (x instanceof Negate && x.kind == CiKind.Int || x.kind == CiKind.Long) {
+                return ((Negate) x).x();
             }
             return negate;
         }
