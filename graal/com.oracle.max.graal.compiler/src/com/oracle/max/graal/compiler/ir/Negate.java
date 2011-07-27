@@ -128,7 +128,7 @@ public final class Negate extends FloatingNode {
                     case Double: return Constant.forDouble(-x.asConstant().asDouble(), graph);
                 }
             }
-            if (x instanceof Negate && x.kind == CiKind.Int || x.kind == CiKind.Long) {
+            if (x instanceof Negate) {
                 return ((Negate) x).x();
             }
             return negate;

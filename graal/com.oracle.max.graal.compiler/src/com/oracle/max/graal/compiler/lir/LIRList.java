@@ -104,9 +104,8 @@ public final class LIRList {
         append(new LIRLabel(lbl));
     }
 
-    public void negate(CiValue src, CiValue dst, GlobalStub globalStub) {
+    public void negate(CiValue src, CiValue dst) {
         LIRNegate op = new LIRNegate(src, dst);
-        op.globalStub = globalStub;
         append(op);
     }
 

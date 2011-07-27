@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
-import com.oracle.max.graal.compiler.globalstub.*;
 import com.sun.cri.ci.*;
 
 /**
@@ -32,8 +31,6 @@ import com.sun.cri.ci.*;
  *
  */
 public class LIRNegate extends LIROp1 {
-
-    public GlobalStub globalStub;
 
     /**
      * Constructs a new instruction LIRNegate for a given operand.

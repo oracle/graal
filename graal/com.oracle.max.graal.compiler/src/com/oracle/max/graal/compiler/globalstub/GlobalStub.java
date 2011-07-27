@@ -40,9 +40,6 @@ import com.sun.cri.ci.*;
 public class GlobalStub {
 
     public enum Id {
-
-        fneg(Float, Float),
-        dneg(Double, Double),
         f2i(Int, Float),
         f2l(Long, Float),
         d2i(Int, Double),
