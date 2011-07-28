@@ -33,33 +33,19 @@ import com.sun.cri.ci.*;
  */
 public abstract class ControlSplit extends FixedNode {
 
-    private static final int INPUT_COUNT = 0;
-
-    private static final int SUCCESSOR_COUNT = 0;
-    private final int blockSuccessorCount;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + blockSuccessorCount + SUCCESSOR_COUNT;
-    }
+    @NodeSuccessor
+    private final NodeSuccessorList<FixedNode> blockSuccessors;
 
     public FixedNode blockSuccessor(int index) {
-        assert index >= 0 && index < blockSuccessorCount;
-        return (FixedNode) successors().get(super.successorCount() + SUCCESSOR_COUNT + index);
+        return blockSuccessors.get(index);
     }
 
-    public FixedNode setBlockSuccessor(int index, FixedNode n) {
-        assert index >= 0 && index < blockSuccessorCount;
-        return (FixedNode) successors().set(super.successorCount() + SUCCESSOR_COUNT + index, n);
+    public void setBlockSuccessor(int index, FixedNode x) {
+        blockSuccessors.set(index, x);
     }
 
     public int blockSuccessorCount() {
-        return blockSuccessorCount;
+        return blockSuccessors.size();
     }
 
     protected final double[] branchProbability;
@@ -69,16 +55,16 @@ public abstract class ControlSplit extends FixedNode {
      * @param kind the type of the value produced by this instruction
      * @param successors the list of successor blocks. If {@code null}, a new one will be created.
      */
-    public ControlSplit(CiKind kind, List<? extends FixedNode> blockSuccessors, double[] branchProbability, int inputCount, int successorCount, Graph graph) {
-        this(kind, blockSuccessors.size(), branchProbability, inputCount, successorCount, graph);
+    public ControlSplit(CiKind kind, List<? extends FixedNode> blockSuccessors, double[] branchProbability, Graph graph) {
+        this(kind, blockSuccessors.size(), branchProbability, graph);
         for (int i = 0; i < blockSuccessors.size(); i++) {
             setBlockSuccessor(i, blockSuccessors.get(i));
         }
     }
 
-    public ControlSplit(CiKind kind, int blockSuccessorCount, double[] branchProbability, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount + INPUT_COUNT, successorCount + blockSuccessorCount + SUCCESSOR_COUNT, graph);
-        this.blockSuccessorCount = blockSuccessorCount;
+    public ControlSplit(CiKind kind, int blockSuccessorCount, double[] branchProbability, Graph graph) {
+        super(kind, graph);
+        this.blockSuccessors = new NodeSuccessorList<FixedNode>(this, blockSuccessorCount);
         assert branchProbability.length == blockSuccessorCount;
         this.branchProbability = branchProbability;
     }
@@ -96,7 +82,7 @@ public abstract class ControlSplit extends FixedNode {
      * @return the default successor
      */
     public FixedNode defaultSuccessor() {
-        return blockSuccessor(blockSuccessorCount - 1);
+        return blockSuccessor(blockSuccessorCount() - 1);
     }
 
     public Iterable<FixedNode> blockSuccessors() {
@@ -116,7 +102,7 @@ public abstract class ControlSplit extends FixedNode {
 
                     @Override
                     public boolean hasNext() {
-                        return i < ControlSplit.this.blockSuccessorCount;
+                        return i < ControlSplit.this.blockSuccessorCount();
                     }
                 };
             }

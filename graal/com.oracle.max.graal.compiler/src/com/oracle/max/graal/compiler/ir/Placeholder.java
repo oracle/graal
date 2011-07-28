@@ -29,22 +29,8 @@ import com.sun.cri.ci.*;
 
 public class Placeholder extends StateSplit {
 
-    private static final int INPUT_COUNT = 0;
-
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
     public Placeholder(Graph graph) {
-        super(CiKind.Void, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Void, graph);
     }
 
     @Override

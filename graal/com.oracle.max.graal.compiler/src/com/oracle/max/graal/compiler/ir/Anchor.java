@@ -33,19 +33,19 @@ import com.sun.cri.ci.*;
  */
 public final class Anchor extends FixedNodeWithNext {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private final NodeInputList<GuardNode> guards = new NodeInputList<GuardNode>(this);
 
     /**
      * Constructs a new Anchor instruction.
      * @param graph
      */
     public Anchor(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
     }
 
     public void addGuard(GuardNode x) {
-        variableInputs().add(x);
+        guards.add(x);
     }
 
     @Override

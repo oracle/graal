@@ -34,6 +34,7 @@ import com.oracle.max.graal.compiler.util.GraphUtil.ColorSplitingLambda;
 import com.oracle.max.graal.compiler.util.GraphUtil.ColoringLambda;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.collections.*;
 import com.sun.cri.ci.*;
 
 public class LoopUtil {

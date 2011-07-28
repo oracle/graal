@@ -36,9 +36,6 @@ import com.sun.cri.ri.*;
  */
 public final class NewInstance extends FixedNodeWithNext {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     final RiType instanceClass;
     public final int cpi;
     public final RiConstantPool constantPool;
@@ -50,7 +47,7 @@ public final class NewInstance extends FixedNodeWithNext {
      * @param graph
      */
     public NewInstance(RiType type, int cpi, RiConstantPool constantPool, Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, graph);
         this.instanceClass = type;
         this.cpi = cpi;
         this.constantPool = constantPool;

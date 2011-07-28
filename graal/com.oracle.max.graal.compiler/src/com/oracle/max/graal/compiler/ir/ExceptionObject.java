@@ -31,16 +31,12 @@ import com.sun.cri.ci.*;
  */
 public final class ExceptionObject extends StateSplit {
 
-    private static final int INPUT_COUNT = 0;
-
-    private static final int SUCCESSOR_COUNT = 0;
-
     /**
      * Constructs a new ExceptionObject instruction.
      * @param graph
      */
     public ExceptionObject(Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, graph);
     }
 
     @Override

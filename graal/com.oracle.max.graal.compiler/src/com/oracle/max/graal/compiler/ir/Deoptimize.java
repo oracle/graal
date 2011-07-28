@@ -30,9 +30,6 @@ import com.sun.cri.ci.*;
 
 public class Deoptimize extends FixedNode {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     public static enum DeoptAction {
         None,                           // just interpret, do not invalidate nmethod
         Recompile,                      // recompile the nmethod; need not invalidate
@@ -45,7 +42,7 @@ public class Deoptimize extends FixedNode {
     private final DeoptAction action;
 
     public Deoptimize(DeoptAction action, Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
         this.action = action;
     }
 

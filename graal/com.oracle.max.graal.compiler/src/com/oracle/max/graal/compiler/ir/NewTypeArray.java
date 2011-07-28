@@ -32,13 +32,10 @@ import com.sun.cri.ri.*;
  */
 public final class NewTypeArray extends NewArray {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     final RiType elementType;
 
     public NewTypeArray(Value length, RiType elementType, Graph graph) {
-        super(length, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(length, graph);
         this.elementType = elementType;
     }
 

@@ -31,39 +31,20 @@ import com.sun.cri.ci.*;
  */
 public final class ValueAnchor extends FixedNodeWithNext {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_OBJECT = 0;
+    @NodeInput
+    private Value object;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value object() {
+        return object;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setObject(Value x) {
+        updateUsages(object, x);
+        object = x;
     }
 
-    /**
-     * The instruction that should be scheduled before this anchor.
-     */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
-    }
-
-    public Value setObject(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
-    }
-
-    /**
-     * Constructs a new Anchor instruction.
-     * @param succ the successor block of the anchor
-     * @param graph
-     */
     public ValueAnchor(Value object, Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
         setObject(object);
     }
 

@@ -31,8 +31,8 @@ public abstract class FixedNode extends Value {
 
     private double probability;
 
-    public FixedNode(CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount, successorCount, graph);
+    public FixedNode(CiKind kind, Graph graph) {
+        super(kind, graph);
     }
 
     public double probability() {

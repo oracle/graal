@@ -31,35 +31,21 @@ import com.sun.cri.ci.*;
  */
 public final class Unwind extends FixedNode {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_EXCEPTION = 0;
+    @NodeInput
+    private Value exception;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value exception() {
+        return exception;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction that produces the exception object.
-     */
-     public Value exception() {
-        return (Value) inputs().get(super.inputCount() + INPUT_EXCEPTION);
-    }
-
-    public Value setException(Value n) {
-        assert n == null || n.kind == CiKind.Object;
-        return (Value) inputs().set(super.inputCount() + INPUT_EXCEPTION, n);
+    public void setException(Value x) {
+        assert x == null || x.kind == CiKind.Object;
+        updateUsages(this.exception, x);
+        this.exception = x;
     }
 
     public Unwind(Value exception, Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, graph);
         setException(exception);
     }
 

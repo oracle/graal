@@ -35,41 +35,25 @@ import com.sun.cri.ci.*;
  */
 public abstract class NewArray extends FixedNodeWithNext {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_LENGTH = 0;
+    @NodeInput
+    private Value length;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value length() {
+        return length;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction that produces the length of this array.
-     */
-     public Value length() {
-        return (Value) inputs().get(super.inputCount() + INPUT_LENGTH);
-    }
-
-    public Value setLength(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_LENGTH, n);
+    public void setLength(Value x) {
+        updateUsages(this.length, x);
+        this.length = x;
     }
 
     /**
      * Constructs a new NewArray instruction.
      * @param length the instruction that produces the length for this allocation
-     * @param inputCount
-     * @param successorCount
      * @param graph
      */
-    NewArray(Value length, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Object, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    NewArray(Value length, Graph graph) {
+        super(CiKind.Object, graph);
         setLength(length);
     }
 

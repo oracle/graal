@@ -284,6 +284,6 @@ public class IR {
     }
 
     public FixedNodeWithNext getHIRStartBlock() {
-        return (FixedNodeWithNext) compilation.graph.start().successors().get(0);
+        return (FixedNodeWithNext) compilation.graph.start().successors().first();
     }
 }

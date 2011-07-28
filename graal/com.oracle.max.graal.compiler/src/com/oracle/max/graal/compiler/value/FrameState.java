@@ -40,10 +40,6 @@ import com.sun.cri.ri.*;
  */
 public final class FrameState extends Value implements FrameStateAccess {
 
-    private static final int INPUT_COUNT = 1;
-
-    private static final int INPUT_OUTER_FRAME_STATE = 0;
-
     protected final int localsSize;
 
     protected final int stackSize;
@@ -52,32 +48,30 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     private boolean rethrowException;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
     public static final int BEFORE_BCI = -2;
     public static final int AFTER_BCI = -3;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + localsSize + stackSize + locksSize;
-    }
+    @NodeInput
+    private FrameState outerFrameState;
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
+    @NodeInput
+    private final NodeInputList<Value> values;
+
+    @NodeInput
+    private final NodeInputList<Node> virtualObjectMappings;
 
     public FrameState outerFrameState() {
-        return (FrameState) inputs().get(super.inputCount() + INPUT_OUTER_FRAME_STATE);
+        return outerFrameState;
     }
 
-    public FrameState setOuterFrameState(FrameState n) {
-        return (FrameState) inputs().set(super.inputCount() + INPUT_OUTER_FRAME_STATE, n);
+    public void setOuterFrameState(FrameState x) {
+        updateUsages(this.outerFrameState, x);
+        this.outerFrameState = x;
     }
 
     @Override
     public void setValueAt(int i, Value x) {
-        inputs().set(INPUT_COUNT + i, x);
+        values.set(i, x);
     }
 
     /**
@@ -97,12 +91,14 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param lockSize number of locks
      */
     public FrameState(RiMethod method, int bci, int localsSize, int stackSize, int locksSize, boolean rethrowException, Graph graph) {
-        super(CiKind.Illegal, localsSize + stackSize + locksSize + INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
         this.method = method;
         this.bci = bci;
         this.localsSize = localsSize;
         this.stackSize = stackSize;
         this.locksSize = locksSize;
+        this.values = new NodeInputList<Value>(this, localsSize + stackSize + locksSize);
+        this.virtualObjectMappings = new NodeInputList<Node>(this);
         this.rethrowException = rethrowException;
         GraalMetrics.FrameStatesCreated++;
         GraalMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
@@ -131,19 +127,19 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     public void addVirtualObjectMapping(Node virtualObject) {
         assert virtualObject instanceof VirtualObjectField || virtualObject instanceof Phi : virtualObject;
-        variableInputs().add(virtualObject);
+        virtualObjectMappings.add(virtualObject);
     }
 
     public int virtualObjectMappingCount() {
-        return variableInputs().size();
+        return virtualObjectMappings.size();
     }
 
     public Node virtualObjectMappingAt(int i) {
-        return variableInputs().get(i);
+        return virtualObjectMappings.get(i);
     }
 
-    public List<Node> virtualObjectMappings() {
-        return variableInputs();
+    public Iterable<Node> virtualObjectMappings() {
+        return virtualObjectMappings;
     }
 
     /**
@@ -155,8 +151,8 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     public FrameState duplicate(int bci, boolean duplicateOuter) {
         FrameState other = new FrameState(method, bci, localsSize, stackSize, locksSize, rethrowException, graph());
-        other.inputs().setAll(inputs());
-        other.variableInputs().addAll(variableInputs());
+        other.values.setAll(values);
+        other.virtualObjectMappings.setAll(virtualObjectMappings);
         FrameState outerFrameState = outerFrameState();
         if (duplicateOuter && outerFrameState != null) {
             outerFrameState = outerFrameState.duplicate(outerFrameState.bci, duplicateOuter);
@@ -192,7 +188,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         for (int i = 0; i < locksSize; i++) {
             other.setValueAt(localsSize + other.stackSize + i, lockAt(i));
         }
-        other.variableInputs().addAll(variableInputs());
+        other.virtualObjectMappings.setAll(virtualObjectMappings);
         other.setOuterFrameState(outerFrameState());
         return other;
     }
@@ -382,7 +378,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      */
     public Value valueAt(int i) {
         assert i < (localsSize + stackSize + locksSize);
-        return (Value) inputs().get(INPUT_COUNT + i);
+        return values.get(i);
     }
 
     /**
@@ -598,7 +594,7 @@ public final class FrameState extends Value implements FrameStateAccess {
                 for (VirtualObject obj : vobjs) {
                     TTY.println("+" + obj);
                 }
-                for (Node vobj : variableInputs()) {
+                for (Node vobj : virtualObjectMappings()) {
                     if (vobj instanceof VirtualObjectField) {
                         TTY.println("-" + ((VirtualObjectField) vobj).object());
                     } else {

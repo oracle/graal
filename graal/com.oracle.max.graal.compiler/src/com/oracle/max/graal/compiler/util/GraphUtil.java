@@ -31,7 +31,8 @@ import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.NodeWorkList.*;
+import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.graph.collections.NodeWorkList.*;
 
 public class GraphUtil {
 
@@ -86,6 +87,8 @@ public class GraphUtil {
     }
 
     private static <T> Collection<Merge> colorCFGDownToMerge(Node from, T color, NodeMap<T> colors) {
+        throw new UnsupportedOperationException();
+        /*
         //System.out.println("colorCFGDownToMerge(" + from + ", " + color + ", colors)");
         NodeFlood work = from.graph().createNodeFlood();
         Collection<Merge> merges = new LinkedList<Merge>();
@@ -124,7 +127,7 @@ public class GraphUtil {
             }
         }
         //System.out.println("return " + merges);
-        return merges;
+        return merges;*/
     }
 
     public static interface ColorSplitingLambda<T> {
@@ -138,6 +141,8 @@ public class GraphUtil {
 
     // TODO (gd) rework that code around Phi handling : too complicated
     public static <T> void splitFromColoring(NodeMap<T> coloring, ColorSplitingLambda<T> lambda) {
+        throw new UnsupportedOperationException();
+        /*
         Map<Node, T> internalColoring = new HashMap<Node, T>();
         NodeWorkList work = coloring.graph().createNodeWorkList();
         for (Entry<Node, T> entry : coloring.entries()) {
@@ -283,7 +288,7 @@ public class GraphUtil {
                                 }
                             }
                         }
-                        lambda.fixNode(node, null /*white*/);
+                        lambda.fixNode(node, null*/ /*white*/ /*);
                     }
                     if (node instanceof StateSplit) {
                         FrameState stateAfter = ((StateSplit) node).stateAfter();
@@ -341,6 +346,6 @@ public class GraphUtil {
             Map<String, Object> debug = new HashMap<String, Object>();
             debug.put("split", debugColoring);
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Split end!!", coloring.graph(), true, false, debug));
-        }
+        }*/
     }
 }

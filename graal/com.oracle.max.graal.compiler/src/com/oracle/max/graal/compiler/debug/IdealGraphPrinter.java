@@ -33,6 +33,7 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.collections.*;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
@@ -310,7 +311,7 @@ public class IdealGraphPrinter {
             int toIndex = 1;
             for (Node input : node.inputs()) {
                 if (input != Node.Null && !omittedClasses.contains(input.getClass())) {
-                    edges.add(new Edge(input.id(), input.successors().size(), node.id(), toIndex));
+                    edges.add(new Edge(input.id(), input.successors().explicitCount(), node.id(), toIndex));
                 }
                 toIndex++;
             }

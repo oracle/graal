@@ -31,34 +31,20 @@ import com.sun.cri.ci.*;
 
 public class LoopEnd extends FixedNode {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_LOOP_BEGIN = 0;
+    @NodeInput
+    private LoopBegin loopBegin;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public LoopBegin loopBegin() {
+        return loopBegin;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction which produces the input value to this instruction.
-     */
-     public LoopBegin loopBegin() {
-        return (LoopBegin) inputs().get(super.inputCount() + INPUT_LOOP_BEGIN);
-    }
-
-    public LoopBegin setLoopBegin(LoopBegin n) {
-        return (LoopBegin) inputs().set(super.inputCount() + INPUT_LOOP_BEGIN, n);
+    public void setLoopBegin(LoopBegin x) {
+        updateUsages(this.loopBegin, x);
+        this.loopBegin = x;
     }
 
     public LoopEnd(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
     }
 
     @Override
