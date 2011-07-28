@@ -170,7 +170,12 @@ public final class Compare extends BooleanNode {
         @Override
         public Node canonical(Node node) {
             Compare compare = (Compare) node;
-            if (compare.x().isConstant() && compare.y().isConstant()) {
+            if (compare.x().isConstant() && !compare.y().isConstant()) { // move constants to the left (y)
+                Value x = compare.x();
+                compare.setX(compare.y());
+                compare.setY(x);
+                compare.condition = compare.condition.mirror();
+            } else if (compare.x().isConstant() && compare.y().isConstant()) {
                 CiConstant constX = compare.x().asConstant();
                 CiConstant constY = compare.y().asConstant();
                 Boolean result = compare.condition().foldCondition(constX, constY, ((CompilerGraph) node.graph()).runtime());
@@ -184,17 +189,35 @@ public final class Compare extends BooleanNode {
                         TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
                     }
                 }
-            } else if (compare.x().isConstant() && compare.y() instanceof MaterializeNode) {
-                return optimizeMaterialize(compare, compare.x().asConstant(), (MaterializeNode) compare.y());
-            } else if (compare.y().isConstant() && compare.x() instanceof MaterializeNode) {
-                return optimizeMaterialize(compare, compare.y().asConstant(), (MaterializeNode) compare.x());
-            } else if (compare.x().isConstant() && compare.y() instanceof NormalizeCompare) {
-                return optimizeNormalizeCmp(compare, compare.x().asConstant(), (NormalizeCompare) compare.y());
-            } else if (compare.y().isConstant() && compare.x() instanceof NormalizeCompare) {
-                return optimizeNormalizeCmp(compare, compare.y().asConstant(), (NormalizeCompare) compare.x());
             }
-            if ((compare.x() == compare.y() || compare.x().valueEqual(compare.y())) && compare.x().kind != CiKind.Float && compare.x().kind != CiKind.Double) {
+
+            if (compare.y().isConstant()) {
+                if (compare.x() instanceof MaterializeNode) {
+                    return optimizeMaterialize(compare, compare.y().asConstant(), (MaterializeNode) compare.x());
+                } else if (compare.x() instanceof NormalizeCompare) {
+                    return optimizeNormalizeCmp(compare, compare.y().asConstant(), (NormalizeCompare) compare.x());
+                }
+            }
+
+            if (compare.x() == compare.y() && compare.x().kind != CiKind.Float && compare.x().kind != CiKind.Double) {
                 return Constant.forBoolean(compare.condition().check(1, 1), compare.graph());
+            }
+            if ((compare.condition == Condition.NE || compare.condition == Condition.EQ) && compare.x().kind == CiKind.Object) {
+                Value object = null;
+                if (compare.x().isNullConstant()) {
+                    object = compare.y();
+                } else if (compare.y().isNullConstant()) {
+                    object = compare.x();
+                }
+                if (object != null) {
+                    IsNonNull nonNull =  new IsNonNull(object, compare.graph());
+                    if (compare.condition == Condition.NE) {
+                        return nonNull;
+                    } else {
+                        assert compare.condition == Condition.EQ;
+                        return new NegateBooleanNode(nonNull, compare.graph());
+                    }
+                }
             }
             return compare;
         }
@@ -206,7 +229,7 @@ public final class Compare extends BooleanNode {
                     if (compare.condition == Condition.NE) {
                         isFalseCheck = !isFalseCheck;
                     }
-                    Value result = materializeNode.value();
+                    BooleanNode result = materializeNode.value();
                     if (isFalseCheck) {
                         result = new NegateBooleanNode(result, compare.graph());
                     }

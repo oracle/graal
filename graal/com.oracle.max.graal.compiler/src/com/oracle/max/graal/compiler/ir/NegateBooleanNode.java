@@ -46,15 +46,15 @@ public final class NegateBooleanNode extends BooleanNode {
     /**
      * The instruction that produces the array object.
      */
-     public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
+     public BooleanNode value() {
+        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
     }
 
-    public Value setValue(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
+    public BooleanNode setValue(BooleanNode n) {
+        return (BooleanNode) inputs().set(super.inputCount() + INPUT_NODE, n);
     }
 
-    public NegateBooleanNode(Value value, Graph graph) {
+    public NegateBooleanNode(BooleanNode value, Graph graph) {
         super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }

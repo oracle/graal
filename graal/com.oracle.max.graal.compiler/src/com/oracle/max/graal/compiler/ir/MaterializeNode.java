@@ -49,15 +49,15 @@ public final class MaterializeNode extends FloatingNode {
     /**
      * The instruction which produces the input value to this instruction.
      */
-     public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+     public BooleanNode value() {
+        return (BooleanNode) inputs().get(super.inputCount() + INPUT_VALUE);
     }
 
-    public void setValue(Value n) {
+    public void setValue(BooleanNode n) {
         inputs().set(super.inputCount() + INPUT_VALUE, n);
     }
 
-    public MaterializeNode(Value value, Graph graph) {
+    public MaterializeNode(BooleanNode value, Graph graph) {
         super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         setValue(value);
     }
