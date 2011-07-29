@@ -39,6 +39,7 @@ public class IdentifyBlocksPhase extends Phase {
 
     private final List<Block> blocks = new ArrayList<Block>();
     private NodeMap<Block> nodeToBlock;
+    private NodeMap<Block> earliestCache;
     private Graph graph;
     private boolean scheduleAllNodes;
     private boolean splitMaterialization;
@@ -63,6 +64,7 @@ public class IdentifyBlocksPhase extends Phase {
     protected void run(Graph graph) {
         this.graph = graph;
         nodeToBlock = graph.createNodeMap();
+        earliestCache = graph.createNodeMap();
         identifyBlocks();
     }
 
@@ -321,28 +323,28 @@ public class IdentifyBlocksPhase extends Phase {
         if (prevBlock != null) {
             return;
         }
-
-        Block earliest = earliestBlock(n);
         //TTY.println("Earliest for " + n + " : " + earliest);
         // if in CFG, schedule at the latest position possible in the outermost loop possible
         // if floating, use rematerialization to place the node, it tries to compute the value only when it will be used,
         // in the block with the smallest probability (outside of loops), while minimizing live ranges
-        int suxCount = 0;
-        for (Node sux : n.successors()) {
-            if (sux != null) {
-                suxCount++;
-            }
-        }
-        if (!splitMaterialization || noRematerialization(n) || n.predecessors().size() > 0 || suxCount > 0) {
+        if (!splitMaterialization || noRematerialization(n) || n.predecessors().size() > 0 || nonNullSuccessorCount(n) > 0) {
             Block latestBlock = latestBlock(n);
-            if (latestBlock == null) {
-                latestBlock = earliest;
-            }
             //TTY.println("Latest for " + n + " : " + latestBlock);
-            Block block = scheduleOutOfLoops(n, latestBlock, earliest);
+            Block block;
+            if (latestBlock == null) {
+                block = earliestBlock(n);
+            } else if (GraalOptions.ScheduleOutOfLoops) {
+                block = scheduleOutOfLoops(n, latestBlock, earliestBlock(n));
+            } else {
+                block = latestBlock;
+            }
             nodeToBlock.set(n, block);
             block.getInstructions().add(n);
         } else {
+            GraalTimers timer = GraalTimers.get("earliest");
+            timer.start();
+            Block earliest = earliestBlock(n);
+            timer.stop();
             Map<Block, Set<Usage>> usages = computeUsages(n, earliest);
             if (usages.isEmpty()) {
                 nodeToBlock.set(n, earliest);
@@ -351,6 +353,16 @@ public class IdentifyBlocksPhase extends Phase {
                 maybeMaterialize(n, earliest, usages, false);
             }
         }
+    }
+
+    private int nonNullSuccessorCount(Node n) {
+        int suxCount = 0;
+        for (Node sux : n.successors()) {
+            if (sux != null) {
+                suxCount++;
+            }
+        }
+        return suxCount;
     }
 
     private BitMap usagesBitMap(Set<Usage> usages) {
@@ -434,16 +446,30 @@ public class IdentifyBlocksPhase extends Phase {
             block = getCommonDominator(block, nodeToBlock.get(succ));
         }
         ensureScheduledUsages(n);
+        CommonDominatorBlockClosure cdbc = new CommonDominatorBlockClosure(block);
         for (Node usage : n.usages()) {
-            for (Block usageBlock : blocksForUsage(n, usage)) {
-                block = getCommonDominator(block, usageBlock);
-            }
+            blocksForUsage(n, usage, cdbc);
         }
-        return block;
+        return cdbc.block;
+    }
+
+    private class CommonDominatorBlockClosure implements BlockClosure {
+        public Block block;
+        public CommonDominatorBlockClosure(Block block) {
+            this.block = block;
+        }
+        @Override
+        public void apply(Block block) {
+            this.block = getCommonDominator(this.block, block);
+        }
     }
 
     private Block earliestBlock(Node n) {
         Block earliest = nodeToBlock.get(n);
+        if (earliest != null) {
+            return earliest;
+        }
+        earliest = earliestCache.get(n);
         if (earliest != null) {
             return earliest;
         }
@@ -469,6 +495,7 @@ public class IdentifyBlocksPhase extends Phase {
             assert start != null;
             return start;
         }
+        earliestCache.set(n, earliest);
         return earliest;
     }
 
@@ -482,9 +509,7 @@ public class IdentifyBlocksPhase extends Phase {
         return cur;
     }
 
-
-    private Set<Block> blocksForUsage(Node node, Node usage) {
-        Set<Block> blocks = new HashSet<Block>(2);
+    private void blocksForUsage(Node node, Node usage, BlockClosure closure) {
         if (usage instanceof Phi) {
             Phi phi = (Phi) usage;
             Merge merge = phi.merge();
@@ -499,7 +524,7 @@ public class IdentifyBlocksPhase extends Phase {
                         TTY.println(phi.inputs().toString());
                         TTY.println("value count: " + phi.valueCount());
                     }
-                    blocks.add(mergeBlock.getPredecessors().get(i));
+                    closure.apply(mergeBlock.getPredecessors().get(i));
                 }
             }
         } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
@@ -508,19 +533,18 @@ public class IdentifyBlocksPhase extends Phase {
             for (Node pred : merge.cfgPredecessors()) {
                 block = getCommonDominator(block, nodeToBlock.get(pred));
             }
-            blocks.add(block);
+            closure.apply(block);
         } else if (usage instanceof LoopCounter) {
             LoopCounter counter = (LoopCounter) usage;
             if (node == counter.init() || node == counter.stride()) {
                 LoopBegin loopBegin = counter.loopBegin();
                 Block mergeBlock = nodeToBlock.get(loopBegin);
-                blocks.add(mergeBlock.dominator());
+                closure.apply(mergeBlock.dominator());
             }
         } else {
             assignBlockToNode(usage);
-            blocks.add(nodeToBlock.get(usage));
+            closure.apply(nodeToBlock.get(usage));
         }
-        return blocks;
     }
 
     private void patch(Usage usage, Node original, Node patch) {
@@ -555,13 +579,16 @@ public class IdentifyBlocksPhase extends Phase {
         // now true usages are ready
     }
 
-    private Map<Block, Set<Usage>> computeUsages(Node node, Block from) { //TODO use a List instead of a Set here ?
-        Map<Block, Set<Usage>> blockUsages = new HashMap<Block, Set<Usage>>();
+    private Map<Block, Set<Usage>> computeUsages(Node node, final Block from) { //TODO use a List instead of a Set here ?
+        final Map<Block, Set<Usage>> blockUsages = new HashMap<Block, Set<Usage>>();
         ensureScheduledUsages(node);
-        for (Node usage : node.dataUsages()) {
-            for (Block b : blocksForUsage(node, usage)) {
-                addUsageToTree(usage, b, from, blockUsages);
-            }
+        for (final Node usage : node.dataUsages()) {
+            blocksForUsage(node, usage, new BlockClosure() {
+                @Override
+                public void apply(Block block) {
+                    addUsageToTree(usage, block, from, blockUsages);
+                }
+            });
         }
         /*TTY.println("Usages for " + node + " from " + from);
         for (Entry<Block, Set<Usage>> entry : blockUsages.entrySet()) {
@@ -599,7 +626,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private boolean noRematerialization(Node n) {
-        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState;
+        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState || n instanceof CheckCast; //TODO why CheckCast ??
     }
 
     private static class Usage {

@@ -169,7 +169,7 @@ public final class GraalOptions {
     public static boolean SplitMaterialization               = ____;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = ____;
-    public static boolean OptOptimisticSchedule              = ____;
+    public static boolean ScheduleOutOfLoops                 = ____;
     public static boolean OptReorderLoops                    = ____;
     public static boolean LoopPeeling                        = ____;
     public static boolean LoopInversion                      = ____;
