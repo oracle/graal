@@ -84,11 +84,6 @@ public class LoopEnd extends FixedNode {
     }
 
     @Override
-    public String toString() {
-        return "LoopEnd:" + super.toString();
-    }
-
-    @Override
     public Iterable< ? extends Node> dataInputs() {
         return Collections.emptyList();
     }

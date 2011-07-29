@@ -33,13 +33,15 @@ public class Block {
     private int blockID;
     private final List<Block> successors = new ArrayList<Block>();
     private final List<Block> predecessors = new ArrayList<Block>();
+    private final List<Block> dominated = new ArrayList<Block>();
     private List<Node> instructions = new ArrayList<Node>();
     private Block dominator;
     private Block javaBlock;
-    private final List<Block> dominators = new ArrayList<Block>();
     private Anchor anchor;
+    private EndNode end;
     private int loopDepth = 0;
     private int loopIndex = -1;
+    private double probability;
 
     private Node firstNode;
     private Node lastNode;
@@ -51,6 +53,14 @@ public class Block {
     public void setFirstNode(Node node) {
         this.firstNode = node;
         this.anchor = null;
+    }
+
+    public EndNode end() {
+        return end;
+    }
+
+    public void setEnd(EndNode end) {
+        this.end = end;
     }
 
     public Block javaBlock() {
@@ -79,6 +89,17 @@ public class Block {
 
     public void setLoopIndex(int i) {
         loopIndex = i;
+    }
+
+    public double probability() {
+        return probability;
+    }
+
+
+    public void setProbability(double probability) {
+        if (probability > this.probability) {
+            this.probability = probability;
+        }
     }
 
     public Anchor createAnchor() {
@@ -131,11 +152,11 @@ public class Block {
         assert this.dominator == null;
         assert dominator != null;
         this.dominator = dominator;
-        dominator.dominators.add(this);
+        dominator.dominated.add(this);
     }
 
-    public List<Block> getDominators() {
-        return Collections.unmodifiableList(dominators);
+    public List<Block> getDominated() {
+        return Collections.unmodifiableList(dominated);
     }
 
     public List<Node> getInstructions() {
