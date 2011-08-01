@@ -46,9 +46,12 @@ public final class GraalOptions {
     public static int     MaximumInstructionCount            = 3000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
+    public static int     MaximumInlineCompSize              = 350;
     public static int     MaximumFreqInlineSize              = 200;
+    public static int     MaximumFreqInlineCompSize          = 1500;
     public static int     FreqInlineRatio                    = 20;
     public static int     MaximumTrivialSize                 = 6;
+    public static int     MaximumTrivialCompSize             = 120;
     public static int     MaximumInlineLevel                 = 9;
     public static int     MaximumRecursiveInlineLevel        = 2;
     public static int     MaximumDesiredSize                 = 8000;

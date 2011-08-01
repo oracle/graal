@@ -83,6 +83,13 @@ public class InliningPhase extends Phase {
             newInvokes = new ArrayDeque<Invoke>();
             for (Invoke invoke : queue) {
                 if (!invoke.isDeleted()) {
+                    if (GraalOptions.Meter) {
+                        GraalMetrics.InlineConsidered++;
+                        if (!invoke.target.hasCompiledCode()) {
+                            GraalMetrics.InlineUncompiledConsidered++;
+                        }
+                    }
+
                     RiMethod code = inlineInvoke(invoke, iterations, ratio);
                     if (code != null) {
                         if (graph.getNodeCount() > GraalOptions.MaximumInstructionCount) {
@@ -95,6 +102,12 @@ public class InliningPhase extends Phase {
                                 methodCount.put(code, 1);
                             } else {
                                 methodCount.put(code, methodCount.get(code) + 1);
+                            }
+                        }
+                        if (GraalOptions.Meter) {
+                            GraalMetrics.InlinePerformed++;
+                            if (!invoke.target.hasCompiledCode()) {
+                                GraalMetrics.InlineUncompiledPerformed++;
                             }
                         }
                     }
@@ -303,6 +316,7 @@ public class InliningPhase extends Phase {
 
     private boolean checkSizeConditions(RiMethod caller, int iterations, RiMethod method, Invoke invoke, RiTypeProfile profile, float adjustedRatio) {
         int maximumSize = GraalOptions.MaximumTrivialSize;
+        int maximumCompiledSize = GraalOptions.MaximumTrivialCompSize;
         double ratio = 0;
         if (profile != null && profile.count > 0) {
             RiMethod parent = invoke.stateAfter().method();
@@ -313,16 +327,27 @@ public class InliningPhase extends Phase {
             }
             if (ratio >= GraalOptions.FreqInlineRatio) {
                 maximumSize = GraalOptions.MaximumFreqInlineSize;
+                maximumCompiledSize = GraalOptions.MaximumFreqInlineCompSize;
             } else if (ratio >= 1 * (1 - adjustedRatio)) {
                 maximumSize = GraalOptions.MaximumInlineSize;
+                maximumCompiledSize = GraalOptions.MaximumInlineCompSize;
             }
         }
         if (hints != null && hints.contains(invoke)) {
             maximumSize = GraalOptions.MaximumFreqInlineSize;
+            maximumCompiledSize = GraalOptions.MaximumFreqInlineCompSize;
         }
-        if (method.codeSize() > maximumSize || iterations >= GraalOptions.MaximumInlineLevel || (method == compilation.method && iterations > GraalOptions.MaximumRecursiveInlineLevel)) {
+        boolean oversize;
+        int compiledSize = method.compiledCodeSize();
+        if (compiledSize < 0) {
+            oversize = (method.codeSize() > maximumSize);
+        } else {
+            oversize = (compiledSize > maximumCompiledSize);
+        }
+        if (oversize || iterations >= GraalOptions.MaximumInlineLevel || (method == compilation.method && iterations > GraalOptions.MaximumRecursiveInlineLevel)) {
             if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because of code size (size: %d, max size: %d, ratio %5.3f, %s) or inling level", methodName(method, invoke), method.codeSize(), maximumSize, ratio, profile);
+                TTY.println("not inlining %s because of size (bytecode: %d, bytecode max: %d, compiled: %d, compiled max: %d, ratio %5.3f, %s) or inlining level",
+                                methodName(method, invoke), method.codeSize(), maximumSize, compiledSize, maximumCompiledSize, ratio, profile);
             }
             if (GraalOptions.Extend) {
                 boolean newResult = overrideInliningDecision(iterations, caller, invoke.bci, method, false);

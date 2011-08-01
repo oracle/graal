@@ -147,5 +147,11 @@ public class VMEntriesNative implements VMEntries, Remote {
     @Override
     public native RiField[] RiType_fields(HotSpotTypeResolved klass);
 
+    @Override
+    public native boolean RiMethod_hasCompiledCode(HotSpotMethodResolved method);
+
+    @Override
+    public native int RiMethod_compiledCodeSize(HotSpotMethodResolved method);
+
     // Checkstyle: resume
 }
