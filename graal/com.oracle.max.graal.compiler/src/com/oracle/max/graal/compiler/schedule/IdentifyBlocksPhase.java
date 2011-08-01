@@ -335,6 +335,10 @@ public class IdentifyBlocksPhase extends Phase {
                 block = earliestBlock(n);
             } else if (GraalOptions.ScheduleOutOfLoops) {
                 block = scheduleOutOfLoops(n, latestBlock, earliestBlock(n));
+                Block b2 = scheduleOutOfLoops(n, latestBlock);
+                if (block != b2) {
+                    TTY.println(":> scheduleOutOfLoops disagreement for " + n + " : " + block + " vs. " + b2);
+                }
             } else {
                 block = latestBlock;
             }
@@ -503,10 +507,15 @@ public class IdentifyBlocksPhase extends Phase {
     private Block scheduleOutOfLoops(Node n, Block latestBlock, Block earliest) {
         assert latestBlock != null : "no latest : " + n;
         Block cur = latestBlock;
+        Block prevDepth = latestBlock;
         while (cur.loopDepth() != 0 && cur != earliest && cur.dominator() != null && cur.dominator().loopDepth() <= cur.loopDepth()) {
-            cur = cur.dominator();
+            Block dom = cur.dominator();
+            if (dom.loopDepth() < prevDepth.loopDepth()) {
+                prevDepth = dom;
+            }
+            cur = dom;
         }
-        return cur;
+        return prevDepth;
     }
 
     private void blocksForUsage(Node node, Node usage, BlockClosure closure) {
@@ -849,5 +858,63 @@ public class IdentifyBlocksPhase extends Phase {
             }
         }
         return i;
+    }
+
+    private Block scheduleOutOfLoops(Node n, Block latestBlock) {
+        Block cur = latestBlock;
+        while (cur.loopDepth() != 0) {
+            if (cur.isLoopHeader()) {
+                assert cur.getPredecessors().size() == 2 : cur.getPredecessors().size();
+                if (canSchedule(n, cur.getPredecessors().get(0))) {
+                   // TTY.println("can schedule out of loop!" + n);
+                    return scheduleOutOfLoops(n, cur.getPredecessors().get(0));
+                } else {
+                    break;
+                }
+            }
+            Block prev = cur;
+            cur = cur.dominator();
+
+            // This must be a loop exit.
+            if (cur.loopDepth() > prev.loopDepth()) {
+//                TTY.println("break out because of different loop depth");
+                break;
+            }
+        }
+        return latestBlock;
+    }
+
+    private boolean canSchedule(Node n, Block block) {
+        Set<Block> allowedBlocks = new HashSet<Block>();
+        Block cur = block;
+        while (cur != null) {
+            allowedBlocks.add(cur);
+            cur = cur.dominator();
+        }
+        // Now we know the allowed blocks for inputs and predecessors.
+        return checkNodesAbove(allowedBlocks, n);
+    }
+
+    private boolean checkNodesAbove(Set<Block> allowedBlocks, Node n) {
+        if (n == null) {
+            return true;
+        }
+
+        if (nodeToBlock.get(n) != null) {
+            return allowedBlocks.contains(nodeToBlock.get(n));
+        } else {
+            assert !(n instanceof Phi) : ((Phi) n).merge();
+            for (Node input : n.inputs()) {
+                if (!checkNodesAbove(allowedBlocks, input)) {
+                    return false;
+                }
+            }
+            for (Node pred : n.predecessors()) {
+                if (!checkNodesAbove(allowedBlocks, pred)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }
