@@ -379,6 +379,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             }
         }
+        //TODO (gd) if materializedInDominator, compare cost of materialization to cost of current live range instead
         if (forced || materializationCost(block, blockUsages) < materializationCostAtChildren(block, usages)) {
             Node n;
             if (nodeToBlock.get(node) == null) {
