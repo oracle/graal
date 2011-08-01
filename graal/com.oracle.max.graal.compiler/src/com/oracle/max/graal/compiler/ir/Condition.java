@@ -129,6 +129,8 @@ public enum Condition {
             case BE: return AT;
             case AT: return BE;
             case AE: return BT;
+            case OF: return NOF;
+            case NOF: return OF;
         }
         throw new IllegalArgumentException(this.toString());
     }

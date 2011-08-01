@@ -190,46 +190,32 @@ public final class Phi extends FloatingNode {
         @Override
         public Node canonical(Node node) {
             Phi phiNode = (Phi) node;
-//            if (phiNode.valueCount() != 2 || phiNode.merge().endCount() != 2 || phiNode.merge().phis().size() != 1) {
-//                return phiNode;
-//            }
-//            if (!(phiNode.valueAt(0) instanceof Constant && phiNode.valueAt(1) instanceof Constant)) {
-//                return phiNode;
-//            }
-//            Merge merge = phiNode.merge();
-//            Node end0 = merge.endAt(0);
-//            Node end1 = merge.endAt(1);
-//            if (end0.predecessors().size() != 1 || end1.predecessors().size() != 1) {
-//                return phiNode;
-//            }
-//            Node endPred0 = end0.predecessors().get(0);
-//            Node endPred1 = end1.predecessors().get(0);
-//            if (endPred0 != endPred1 || !(endPred0 instanceof If)) {
-//                return phiNode;
-//            }
-//            If ifNode = (If) endPred0;
-//            if (ifNode.predecessors().size() != 1) {
-//                return phiNode;
-//            }
-//            boolean inverted = ((If) endPred0).trueSuccessor() == end1;
-//            CiConstant trueValue = phiNode.valueAt(inverted ? 1 : 0).asConstant();
-//            CiConstant falseValue = phiNode.valueAt(inverted ? 0 : 1).asConstant();
-//            if (trueValue.kind != CiKind.Int || falseValue.kind != CiKind.Int) {
-//                return phiNode;
-//            }
-//            if ((trueValue.asInt() == 0 || trueValue.asInt() == 1) && (falseValue.asInt() == 0 || falseValue.asInt() == 1) && (trueValue.asInt() != falseValue.asInt())) {
-//                MaterializeNode result;
-//                if (trueValue.asInt() == 1) {
-//                    result = new MaterializeNode(ifNode.compare(), phiNode.graph());
-//                } else {
-//                    result = new MaterializeNode(new NegateBooleanNode(ifNode.compare(), phiNode.graph()), phiNode.graph());
-//                }
-//                Node next = merge.next();
-//                merge.setNext(null);
-//                ifNode.predecessors().get(0).successors().replace(ifNode, next);
-//                return result;
-//            }
-            return phiNode;
+            if (phiNode.valueCount() != 2 || phiNode.merge().endCount() != 2) {
+                return phiNode;
+            }
+            Merge merge = phiNode.merge();
+            Node end0 = merge.endAt(0);
+            Node end1 = merge.endAt(1);
+            if (end0.predecessors().size() != 1 || end1.predecessors().size() != 1) {
+                return phiNode;
+            }
+            Node endPred0 = end0.predecessors().get(0);
+            Node endPred1 = end1.predecessors().get(0);
+            if (endPred0 != endPred1 || !(endPred0 instanceof If)) {
+                return phiNode;
+            }
+            If ifNode = (If) endPred0;
+            if (ifNode.predecessors().size() != 1) {
+                return phiNode;
+            }
+            boolean inverted = ifNode.trueSuccessor() == end1;
+            Value trueValue = phiNode.valueAt(inverted ? 1 : 0);
+            Value falseValue = phiNode.valueAt(inverted ? 0 : 1);
+            if (trueValue.kind != CiKind.Int || falseValue.kind != CiKind.Int) {
+                return phiNode;
+            }
+            TTY.println("> Phi canon'ed to Conditional");
+            return new Conditional(ifNode.compare(), trueValue, falseValue, node.graph());
         }
     };
 }

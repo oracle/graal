@@ -618,32 +618,6 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    @Override
-    public void visitIfOp(Conditional i) {
-        Value x = i.x();
-        Value y = i.y();
-        CiKind xtype = x.kind;
-        CiKind ttype = i.trueValue().kind;
-        assert xtype.isInt() || xtype.isObject() : "cannot handle others";
-        assert ttype.isInt() || ttype.isObject() || ttype.isLong() || ttype.isWord() : "cannot handle others";
-        assert ttype.equals(i.falseValue().kind) : "cannot handle others";
-
-        CiValue left = load(x);
-        CiValue right = null;
-        if (!canInlineAsConstant(y)) {
-            right = load(y);
-        } else {
-            right = makeOperand(y);
-        }
-
-        CiValue tVal = makeOperand(i.trueValue());
-        CiValue fVal = makeOperand(i.falseValue());
-        CiValue reg = createResultVariable(i);
-
-        lir.cmp(i.condition(), left, right);
-        lir.cmove(i.condition(), tVal, fVal, reg);
-    }
-
     protected FrameState stateBeforeInvokeReturn(Invoke invoke) {
         return invoke.stateAfter().duplicateModified(invoke.bci, invoke.stateAfter().rethrowException(), invoke.kind);
     }
@@ -1787,7 +1761,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected abstract boolean canInlineAsConstant(Value i);
+    public abstract boolean canInlineAsConstant(Value i);
 
     protected abstract boolean canStoreAsConstant(Value i, CiKind kind);
 

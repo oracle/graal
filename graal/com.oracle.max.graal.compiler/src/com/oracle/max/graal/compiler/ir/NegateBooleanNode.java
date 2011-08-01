@@ -96,6 +96,10 @@ public final class NegateBooleanNode extends BooleanNode {
                 return ((NegateBooleanNode) value).value();
             } else if (value instanceof Constant) {
                 return Constant.forBoolean(!value.asConstant().asBoolean(), node.graph());
+            } else if (value instanceof Compare) {
+                Compare compare = (Compare) value;
+                compare.condition = compare.condition.negate();
+                return compare;
             }
             return negateNode;
         }

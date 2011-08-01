@@ -52,7 +52,7 @@ public final class If extends ControlSplit {
     /**
      * The instruction that produces the first input to this comparison.
      */
-     public BooleanNode compare() {
+    public BooleanNode compare() {
         return (BooleanNode) inputs().get(super.inputCount() + INPUT_COMPARE);
     }
 
@@ -160,6 +160,21 @@ public final class If extends ControlSplit {
                         TTY.println("Replacing if " + ifNode + " with false branch");
                     }
                     return ifNode.falseSuccessor();
+                }
+            }
+            if (ifNode.trueSuccessor() instanceof EndNode && ifNode.falseSuccessor() instanceof EndNode) {
+                EndNode trueEnd = (EndNode) ifNode.trueSuccessor();
+                EndNode falseEnd = (EndNode) ifNode.falseSuccessor();
+                if (trueEnd.merge() == falseEnd.merge() && trueEnd.merge().phis().size() == 0) {
+                    if (ifNode.compare().usages().size() == 1 && /*ifNode.compare().hasSideEffets()*/ true) { // TODO (gd) ifNode.compare().hasSideEffets() ?
+                        TTY.println("> Useless if with side effects Canon'ed to guard");
+                        FixedGuard guard = new FixedGuard(ifNode.compare(), node.graph());
+                        guard.setNext(trueEnd.merge().next());
+                        return guard;
+                    } else {
+                        TTY.println("> Useless if Canon'ed away");
+                        return trueEnd.merge().next();
+                    }
                 }
             }
             return ifNode;
