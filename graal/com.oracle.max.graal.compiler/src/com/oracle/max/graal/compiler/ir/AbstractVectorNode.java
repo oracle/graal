@@ -30,30 +30,20 @@ import com.sun.cri.ci.*;
 
 public abstract class AbstractVectorNode extends StateSplit {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VECTOR = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    public void setVector(AbstractVectorNode length) {
-        inputs().set(super.inputCount() + INPUT_VECTOR, length);
-    }
+    @NodeInput
+    private AbstractVectorNode vector;
 
     public AbstractVectorNode vector() {
-        return (AbstractVectorNode) inputs().get(super.inputCount() + INPUT_VECTOR);
+        return vector;
     }
 
-    public AbstractVectorNode(CiKind kind, int inputCount, int successorCount, AbstractVectorNode vector, Graph graph) {
-        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public void setVector(AbstractVectorNode x) {
+        updateUsages(vector, x);
+        vector = x;
+    }
+
+    public AbstractVectorNode(CiKind kind, AbstractVectorNode vector, Graph graph) {
+        super(kind, graph);
         setVector(vector);
     }
 

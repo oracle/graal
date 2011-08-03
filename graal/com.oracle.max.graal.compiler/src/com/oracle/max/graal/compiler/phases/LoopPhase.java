@@ -135,13 +135,12 @@ public class LoopPhase extends Phase {
     private List<LoopCounter> findLoopCounters(LoopBegin loopBegin, NodeBitMap loopNodes) {
         LoopEnd loopEnd = loopBegin.loopEnd();
         FrameState loopEndState = null;
-        Node loopEndPred = loopEnd.singlePredecessor();
+        Node loopEndPred = loopEnd.predecessor();
         if (loopEndPred instanceof Merge) {
             loopEndState = ((Merge) loopEndPred).stateAfter();
         }
-        List<Node> usages = new ArrayList<Node>(loopBegin.usages());
         List<LoopCounter> counters = new LinkedList<LoopCounter>();
-        for (Node usage : usages) {
+        for (Node usage : loopBegin.usages().snapshot()) {
             if (usage instanceof Phi) {
                 Phi phi = (Phi) usage;
                 if (phi.valueCount() == 2) {

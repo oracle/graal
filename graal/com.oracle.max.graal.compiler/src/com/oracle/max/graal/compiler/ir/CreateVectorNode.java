@@ -33,16 +33,20 @@ import com.sun.cri.ci.*;
 
 
 public final class CreateVectorNode extends AbstractVectorNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_LENGTH = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+
+    @NodeInput
+    private Value length;
+
+    public Value length() {
+        return length;
+    }
+
+    public void setLength(Value x) {
+        updateUsages(length, x);
+        length = x;
+    }
 
     private boolean reversed;
-
-    public void setLength(Value length) {
-        assert length == null || length.kind == CiKind.Int;
-        inputs().set(super.inputCount() + INPUT_LENGTH, length);
-    }
 
     public boolean reversed() {
         return reversed;
@@ -52,12 +56,8 @@ public final class CreateVectorNode extends AbstractVectorNode {
         reversed = r;
     }
 
-    public Value length() {
-        return (Value) inputs().get(super.inputCount() + INPUT_LENGTH);
-    }
-
     public CreateVectorNode(boolean reversed, Value length, Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, null, graph);
+        super(CiKind.Illegal, null, graph);
         setLength(length);
         setReversed(reversed);
     }

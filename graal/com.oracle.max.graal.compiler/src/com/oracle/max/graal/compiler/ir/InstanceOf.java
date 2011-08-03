@@ -35,9 +35,6 @@ import com.sun.cri.ri.*;
  */
 public final class InstanceOf extends TypeCheck {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     private boolean nullIsTrue;
 
     /**
@@ -47,7 +44,7 @@ public final class InstanceOf extends TypeCheck {
      * @param graph
      */
     public InstanceOf(Constant targetClassInstruction, Value object, boolean nullIsTrue, Graph graph) {
-        super(targetClassInstruction, object, CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(targetClassInstruction, object, CiKind.Illegal, graph);
     }
 
     @Override

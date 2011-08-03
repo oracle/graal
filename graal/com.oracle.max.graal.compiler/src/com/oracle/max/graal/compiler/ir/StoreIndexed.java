@@ -33,30 +33,16 @@ import com.sun.cri.ci.*;
  */
 public final class StoreIndexed extends AccessIndexed {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
+    @NodeInput
+    private Value value;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value value() {
+        return value;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction that produces the value that is to be stored into the array.
-     */
-     public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
-    }
-
-    public Value setValue(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+    public void setValue(Value x) {
+        updateUsages(value, x);
+        value = x;
     }
 
     /**
@@ -70,7 +56,7 @@ public final class StoreIndexed extends AccessIndexed {
      * @param graph
      */
     public StoreIndexed(Value array, Value index, Value length, CiKind elementKind, Value value, Graph graph) {
-        super(CiKind.Void, array, index, length, elementKind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Void, array, index, length, elementKind, graph);
         setValue(value);
     }
 

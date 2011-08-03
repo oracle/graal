@@ -550,7 +550,7 @@ public class InliningPhase extends Phase {
 
         if (exceptionEdge != null) {
             if (unwindNode != null) {
-                assert unwindNode.predecessor()!= null;
+                assert unwindNode.predecessor() != null;
                 assert exceptionEdge.successors().explicitCount() == 1;
                 ExceptionObject obj = (ExceptionObject) exceptionEdge;
 

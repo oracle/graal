@@ -70,7 +70,7 @@ public class OptimizerImpl implements Optimizer {
         // look at all loop exits:
         for (Node exit : exits) {
             TTY.println("exit: " + exit);
-            Node pred = exit.predecessors().get(0);
+            Node pred = exit.predecessor();
             // if this exit is an If node ...
             if (pred instanceof If) {
                 If ifNode = (If) pred;

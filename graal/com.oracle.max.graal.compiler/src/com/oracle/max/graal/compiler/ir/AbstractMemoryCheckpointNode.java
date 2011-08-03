@@ -30,15 +30,18 @@ import com.sun.cri.ci.*;
 
 public abstract class AbstractMemoryCheckpointNode extends StateSplit {
 
+    @NodeInput
+    private final NodeInputList<Node> mergedNodes = new NodeInputList<Node>(this);
+
     private static final int SUCCESSOR_COUNT = 0;
     private static final int INPUT_COUNT = 0;
 
     public AbstractMemoryCheckpointNode(Graph graph) {
-        this(CiKind.Illegal, 0, 0, graph);
+        this(CiKind.Illegal, graph);
     }
 
-    public AbstractMemoryCheckpointNode(CiKind result, int inputCount, int successorCount, Graph graph) {
-        super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AbstractMemoryCheckpointNode(CiKind result, Graph graph) {
+        super(result, graph);
     }
 
     @Override
@@ -48,7 +51,7 @@ public abstract class AbstractMemoryCheckpointNode extends StateSplit {
         return debugProperties;
     }
 
-    public List<Node> mergedNodes() {
-        return variableInputs();
+    public NodeInputList<Node> mergedNodes() {
+        return mergedNodes;
     }
 }

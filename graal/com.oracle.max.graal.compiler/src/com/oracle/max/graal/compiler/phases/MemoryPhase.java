@@ -73,8 +73,9 @@ public class MemoryPhase extends Phase {
             StartNode startNode = b.firstNode().graph().start();
             if (b.firstNode() == startNode) {
                 WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(startNode.graph());
-                checkpoint.setNext((FixedNode) startNode.next());
+                FixedNode next = (FixedNode) startNode.next();
                 startNode.setNext(checkpoint);
+                checkpoint.setNext(next);
                 mergeForWrite = checkpoint;
                 mergeForRead = checkpoint;
             }
@@ -150,7 +151,7 @@ public class MemoryPhase extends Phase {
             Merge m = (Merge) block.firstNode();
             if (original instanceof Phi && ((Phi) original).merge() == m) {
                 Phi phi = (Phi) original;
-                phi.addInput(newValue);
+                phi.addInput((Value) newValue);
                 if (GraalOptions.TraceMemoryMaps) {
                     TTY.println("Add new input to phi " + original.id());
                 }
@@ -159,9 +160,9 @@ public class MemoryPhase extends Phase {
             } else {
                 Phi phi = new Phi(CiKind.Illegal, m, PhiType.Memory, m.graph());
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
-                    phi.addInput(original);
+                    phi.addInput((Value) original);
                 }
-                phi.addInput(newValue);
+                phi.addInput((Value) newValue);
                 if (GraalOptions.TraceMemoryMaps) {
                     TTY.println("Creating new phi " + phi.id());
                 }
@@ -291,16 +292,18 @@ public class MemoryPhase extends Phase {
         for (final Node n : b.getInstructions()) {
             if (n instanceof ReadNode) {
                 ReadNode readNode = (ReadNode) n;
-                readNode.replaceAtPredecessors(readNode.next());
+                FixedNode next = readNode.next();
                 readNode.setNext(null);
+                readNode.replaceAtPredecessors(next);
                 map.registerRead(readNode);
             } else if (n instanceof WriteNode) {
                 WriteNode writeNode = (WriteNode) n;
                 WriteMemoryCheckpointNode checkpoint = new WriteMemoryCheckpointNode(writeNode.graph());
                 checkpoint.setStateAfter(writeNode.stateAfter());
                 writeNode.setStateAfter(null);
-                checkpoint.setNext(writeNode.next());
+                FixedNode next = writeNode.next();
                 writeNode.setNext(null);
+                checkpoint.setNext(next);
                 writeNode.replaceAtPredecessors(checkpoint);
                 map.registerWrite(writeNode);
                 map.createWriteMemoryMerge(checkpoint);

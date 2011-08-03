@@ -296,7 +296,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         if (block.blockSuccessors().size() >= 1 && !block.endsWithJump()) {
-            NodeSuccessorsIterable<Node> successors = block.lastInstruction().successors();
+            NodeSuccessorsIterable successors = block.lastInstruction().successors();
             assert successors.explicitCount() >= 1 : "should have at least one successor : " + block.lastInstruction();
             block.lir().jump(getLIRBlock((FixedNode) successors.first()));
         }

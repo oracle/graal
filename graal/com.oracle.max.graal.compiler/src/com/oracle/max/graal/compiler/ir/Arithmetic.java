@@ -32,9 +32,6 @@ import com.sun.cri.ci.*;
  */
 public abstract class Arithmetic extends Binary {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     private final boolean isStrictFP;
 
     /**
@@ -46,7 +43,7 @@ public abstract class Arithmetic extends Binary {
      * @param isStrictFP indicates this operation has strict rounding semantics
      */
     public Arithmetic(CiKind kind, int opcode, Value x, Value y, boolean isStrictFP, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, opcode, x, y, graph);
         this.isStrictFP = isStrictFP;
     }
 

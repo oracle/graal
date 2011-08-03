@@ -1134,6 +1134,7 @@ public final class GraphBuilderPhase extends Phase {
                 If ifNode = (If) cur;
                 if (ifNode.falseSuccessor() == prev) {
                     FixedNode successor = ifNode.trueSuccessor();
+                    ifNode.setTrueSuccessor(null);
                     BooleanNode condition = ifNode.compare();
                     FixedGuard fixedGuard = new FixedGuard(condition, graph);
                     fixedGuard.setNext(successor);
@@ -1301,7 +1302,9 @@ public final class GraphBuilderPhase extends Phase {
                     loopEnd.delete();
                     Merge merge = new Merge(graph);
                     merge.addEnd(begin.forwardEdge());
-                    merge.setNext(begin.next());
+                    FixedNode next = begin.next();
+                    begin.setNext(null);
+                    merge.setNext(next);
                     merge.setStateAfter(begin.stateAfter());
                     begin.replaceAndDelete(merge);
                 }

@@ -35,45 +35,29 @@ import com.sun.cri.ci.*;
  */
 public final class Conditional extends Binary {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_TRUE_VALUE = 0;
-    private static final int INPUT_FALSE_VALUE = 1;
+    @NodeInput
+    private Value trueValue;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value falseValue;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-
-    /**
-     * The instruction that produces the value if the comparison is true.
-     */
     public Value trueValue() {
-        return (Value) inputs().get(super.inputCount() + INPUT_TRUE_VALUE);
+        return trueValue;
     }
 
-    public Value setTrueValue(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_TRUE_VALUE, n);
+    public void setTrueValue(Value x) {
+        updateUsages(trueValue, x);
+        trueValue = x;
     }
 
-    /**
-     * The instruction that produces the value if the comparison is false.
-     */
     public Value falseValue() {
-        return (Value) inputs().get(super.inputCount() + INPUT_FALSE_VALUE);
+        return falseValue;
     }
 
-    public Value setFalseValue(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_FALSE_VALUE, n);
+    public void setFalseValue(Value x) {
+        updateUsages(falseValue, x);
+        falseValue = x;
     }
-
 
     Condition condition;
 
@@ -87,7 +71,7 @@ public final class Conditional extends Binary {
      */
     public Conditional(Value x, Condition condition, Value y, Value trueValue, Value falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
-        super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, x, y, graph);
         this.condition = condition;
         setTrueValue(trueValue);
         setFalseValue(falseValue);
@@ -95,7 +79,7 @@ public final class Conditional extends Binary {
 
     // for copying
     private Conditional(CiKind kind, Condition cond, Graph graph) {
-        super(kind, Bytecodes.ILLEGAL, null, null, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, Bytecodes.ILLEGAL, null, null, graph);
         this.condition = cond;
     }
 

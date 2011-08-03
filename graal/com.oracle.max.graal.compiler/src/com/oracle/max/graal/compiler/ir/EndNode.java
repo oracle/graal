@@ -57,7 +57,7 @@ public final class EndNode extends FixedNode {
             return null;
         } else {
             assert usages().size() == 1;
-            return (Merge) usages().get(0);
+            return (Merge) usages().iterator().next();
         }
     }
 

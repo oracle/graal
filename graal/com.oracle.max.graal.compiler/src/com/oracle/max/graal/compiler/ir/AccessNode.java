@@ -22,64 +22,64 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import java.util.*;
-
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public abstract class AccessNode extends AbstractMemoryCheckpointNode {
-    private static final int INPUT_COUNT = 3;
-    private static final int INPUT_NODE = 0;
-    private static final int INPUT_LOCATION = 1;
-    private static final int INPUT_GUARD = 2;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value object;
 
+    @NodeInput
+    private GuardNode guard;
+
+    @NodeInput
     private LocationNode location;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
+    @NodeInput
+    private final NodeInputList<Node> dependencies = new NodeInputList<Node>(this);
 
     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_NODE);
+        return object;
     }
 
-    public Value setObject(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_NODE, n);
+    public void setObject(Value x) {
+        updateUsages(object, x);
+        object = x;
     }
 
     public GuardNode guard() {
-        return (GuardNode) inputs().get(super.inputCount() + INPUT_GUARD);
+        return guard;
     }
 
-    public void setGuard(GuardNode n) {
-        inputs().set(super.inputCount() + INPUT_GUARD, n);
+    public void setGuard(GuardNode x) {
+        updateUsages(guard, x);
+        guard = x;
     }
 
     public LocationNode location() {
-        return (LocationNode) inputs().get(super.inputCount() + INPUT_LOCATION);
+        return location;
     }
 
-    public void setLocation(LocationNode n) {
-        inputs().set(super.inputCount() + INPUT_LOCATION, n);
+    public void setLocation(LocationNode x) {
+        updateUsages(location, x);
+        location = x;
     }
 
-    public AccessNode(CiKind kind, Value object, LocationNode location, int inputCount, int successorCount, Graph graph) {
-        super(kind, INPUT_COUNT + inputCount, SUCCESSOR_COUNT + successorCount, graph);
+    public AccessNode(CiKind kind, Value object, LocationNode location, Graph graph) {
+        super(kind, graph);
         setLocation(location);
         setObject(object);
     }
 
     public void addDependency(Node x) {
-        variableInputs().add(x);
+        dependencies.add(x);
     }
 
-    public List<Node> dependencies() {
-        return variableInputs();
+    public NodeInputList<Node> dependencies() {
+        return dependencies;
     }
 
     @Override

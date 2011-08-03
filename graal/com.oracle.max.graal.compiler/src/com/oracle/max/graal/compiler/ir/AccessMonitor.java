@@ -30,42 +30,28 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessMonitor extends AbstractMemoryCheckpointNode {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_OBJECT = 0;
-    private static final int INPUT_LOCK_ADDRESS = 1;
+    @NodeInput
+    private Value object;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value lockAddress;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value object() {
+        return object;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setObject(Value x) {
+        updateUsages(object, x);
+        object = x;
     }
 
-    /**
-     * The instruction producing the object locked or unlocked by this instruction.
-     */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
-    }
-
-    public Value setObject(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
-    }
-
-    /**
-     * The instruction producing the address of the lock object.
-     */
     public Value lockAddress() {
-        return (Value) inputs().get(super.inputCount() + INPUT_LOCK_ADDRESS);
+        return lockAddress;
     }
 
-    public Value setLockAddress(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_LOCK_ADDRESS, n);
+    public void setLockAddress(Value x) {
+        updateUsages(lockAddress, x);
+        lockAddress = x;
     }
 
     /**
@@ -79,12 +65,10 @@ public abstract class AccessMonitor extends AbstractMemoryCheckpointNode {
      * @param object the instruction producing the object
      * @param lockAddress the address of the on-stack lock object or {@code null} if the runtime does not place locks on the stack
      * @param lockNumber the number of the lock being acquired
-     * @param inputCount
-     * @param successorCount
      * @param graph
      */
-    public AccessMonitor(Value object, Value lockAddress, int lockNumber, int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Illegal, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public AccessMonitor(Value object, Value lockAddress, int lockNumber, Graph graph) {
+        super(CiKind.Illegal, graph);
         this.lockNumber = lockNumber;
         setObject(object);
         setLockAddress(lockAddress);

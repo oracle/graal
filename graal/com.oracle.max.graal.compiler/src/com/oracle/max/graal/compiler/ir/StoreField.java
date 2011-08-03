@@ -34,30 +34,16 @@ import com.sun.cri.ri.*;
  */
 public final class StoreField extends AccessField {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
+    @NodeInput
+    private Value value;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value value() {
+        return value;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The value that is written to the field.
-     */
-     public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
-    }
-
-    public Value setValue(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_VALUE, n);
+    public void setValue(Value x) {
+        updateUsages(value, x);
+        value = x;
     }
 
     /**
@@ -69,7 +55,7 @@ public final class StoreField extends AccessField {
      * @param graph
      */
     public StoreField(Value object, RiField field, Value value, Graph graph) {
-        super(CiKind.Void, object, field, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Void, object, field, graph);
         setValue(value);
     }
 

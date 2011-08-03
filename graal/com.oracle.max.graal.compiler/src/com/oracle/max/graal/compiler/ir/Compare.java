@@ -39,42 +39,28 @@ import com.sun.cri.ci.*;
  */
 public final class Compare extends BooleanNode {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_X = 0;
-    private static final int INPUT_Y = 1;
+    @NodeInput
+    private Value x;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value y;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value x() {
+        return x;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setX(Value x) {
+        updateUsages(this.x, x);
+        this.x = x;
     }
 
-    /**
-     * The instruction that produces the first input to this comparison.
-     */
-     public Value x() {
-        return (Value) inputs().get(super.inputCount() + INPUT_X);
-    }
-
-    public Value setX(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_X, n);
-    }
-
-    /**
-     * The instruction that produces the second input to this comparison.
-     */
     public Value y() {
-        return (Value) inputs().get(super.inputCount() + INPUT_Y);
+        return y;
     }
 
-    public Value setY(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_Y, n);
+    public void setY(Value x) {
+        updateUsages(y, x);
+        this.y = x;
     }
 
     Condition condition;
@@ -88,7 +74,7 @@ public final class Compare extends BooleanNode {
      * @param graph
      */
     public Compare(Value x, Condition condition, Value y, Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
         assert (x == null && y == null) || Util.archKindsEqual(x, y);
         this.condition = condition;
         setX(x);

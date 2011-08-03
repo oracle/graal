@@ -110,7 +110,7 @@ public class LoopBegin extends Merge {
     }
 
     @Override
-    public List<Node> phiPredecessors() {
+    public Iterable<Node> phiPredecessors() {
         return Arrays.asList(new Node[]{this.forwardEdge(), this.loopEnd()});
     }
 

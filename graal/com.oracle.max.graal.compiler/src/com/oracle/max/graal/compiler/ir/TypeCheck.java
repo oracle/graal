@@ -31,44 +31,29 @@ import com.sun.cri.ri.*;
  */
 public abstract class TypeCheck extends BooleanNode {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_OBJECT = 0;
-    private static final int INPUT_TARGET_CLASS_INSTRUCTION = 1;
+    @NodeInput
+    private Value object;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value targetClassInstruction;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value object() {
+        return object;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setObject(Value x) {
+        updateUsages(object, x);
+        object = x;
     }
 
-    /**
-     * The instruction which produces the object input.
-     */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
+    public Value targetClassInstruction() {
+        return targetClassInstruction;
     }
 
-    public Value setObject(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    public void setTargetClassInstruction(Value x) {
+        updateUsages(targetClassInstruction, x);
+        targetClassInstruction = x;
     }
-
-    /**
-     * The instruction that loads the target class object that is used by this checkcast.
-     */
-     public Value targetClassInstruction() {
-        return (Value) inputs().get(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION);
-    }
-
-    private void setTargetClassInstruction(Value n) {
-        inputs().set(super.inputCount() + INPUT_TARGET_CLASS_INSTRUCTION, n);
-    }
-
 
     /**
      * Gets the target class, i.e. the class being cast to, or the class being tested against.
@@ -83,12 +68,10 @@ public abstract class TypeCheck extends BooleanNode {
      * @param targetClass the class which is being casted to or checked against
      * @param object the instruction which produces the object
      * @param kind the result type of this instruction
-     * @param inputCount
-     * @param successorCount
      * @param graph
      */
-    public TypeCheck(Value targetClassInstruction, Value object, CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public TypeCheck(Value targetClassInstruction, Value object, CiKind kind, Graph graph) {
+        super(kind, graph);
         setObject(object);
         setTargetClassInstruction(targetClassInstruction);
     }

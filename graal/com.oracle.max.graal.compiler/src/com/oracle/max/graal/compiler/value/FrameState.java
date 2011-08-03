@@ -378,7 +378,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      */
     public Value valueAt(int i) {
         assert i < (localsSize + stackSize + locksSize);
-        return values.get(i);
+        return values.isEmpty() ? null : values.get(i);
     }
 
     /**

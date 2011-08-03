@@ -28,25 +28,21 @@ import com.sun.cri.ci.*;
 
 
 public final class WriteNode extends AccessNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
-    private static final int SUCCESSOR_COUNT = 0;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
+    @NodeInput
+    private Value value;
 
     public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_VALUE);
+        return value;
     }
 
-    public void setValue(Value v) {
-        inputs().set(super.inputCount() + INPUT_VALUE, v);
+    public void setValue(Value x) {
+        updateUsages(value, x);
+        value = x;
     }
 
     public WriteNode(CiKind kind, Value object, Value value, LocationNode location, Graph graph) {
-        super(kind, object, location, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, object, location, graph);
         setValue(value);
     }
 

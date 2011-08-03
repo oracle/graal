@@ -32,42 +32,28 @@ import com.sun.cri.ci.*;
  */
 public abstract class Binary extends FloatingNode {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_X = 0;
-    private static final int INPUT_Y = 1;
+    @NodeInput
+    private Value x;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value y;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value x() {
+        return x;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setX(Value x) {
+        updateUsages(this.x, x);
+        this.x = x;
     }
 
-    /**
-     * The first input to this instruction.
-     */
-     public Value x() {
-        return (Value) inputs().get(super.inputCount() + INPUT_X);
-    }
-
-    public Value setX(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_X, n);
-    }
-
-    /**
-     * The second input to this instruction.
-     */
     public Value y() {
-        return (Value) inputs().get(super.inputCount() + INPUT_Y);
+        return y;
     }
 
-    public Value setY(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_Y, n);
+    public void setY(Value x) {
+        updateUsages(y, x);
+        this.y = x;
     }
 
     /**
@@ -82,8 +68,8 @@ public abstract class Binary extends FloatingNode {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public Binary(CiKind kind, int opcode, Value x, Value y, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public Binary(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+        super(kind, graph);
         this.opcode = opcode;
         setX(x);
         setY(y);

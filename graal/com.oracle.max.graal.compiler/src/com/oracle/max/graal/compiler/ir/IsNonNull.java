@@ -35,30 +35,16 @@ import com.sun.cri.ri.*;
  */
 public final class IsNonNull extends BooleanNode {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_OBJECT = 0;
+    @NodeInput
+    private Value object;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value object() {
+        return object;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction that produces the object tested against null.
-     */
-     public Value object() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
-    }
-
-    public Value setObject(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    public void setObject(Value x) {
+        updateUsages(object, x);
+        object = x;
     }
 
     /**
@@ -67,7 +53,7 @@ public final class IsNonNull extends BooleanNode {
      * @param graph
      */
     public IsNonNull(Value object, Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, graph);
         assert object == null || object.kind == CiKind.Object : object;
         setObject(object);
     }
