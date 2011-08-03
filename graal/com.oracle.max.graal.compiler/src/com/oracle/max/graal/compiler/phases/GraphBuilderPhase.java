@@ -119,8 +119,6 @@ public final class GraphBuilderPhase extends Phase {
         super(inline ? "BuildInlineGraph" : "BuildGraph");
         this.compilation = compilation;
 
-        setDetailedName(getName() + " " + method.holder().name() + "." + method.name() + method.signature().asString());
-
         this.runtime = compilation.runtime;
         this.method = method;
         this.stats = compilation.stats;
@@ -137,6 +135,11 @@ public final class GraphBuilderPhase extends Phase {
         this.graph = (CompilerGraph) graph;
         this.frameState = new FrameStateBuilder(method, graph);
         build();
+    }
+
+    @Override
+    protected String getDetailedName() {
+        return getName() + " " + method.holder().name() + "." + method.name() + method.signature().asString();
     }
 
     /**
