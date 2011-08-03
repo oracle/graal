@@ -337,6 +337,31 @@ public class HotSpotRuntime implements RiRuntime {
             }
             storeIndexed.replaceAtPredecessors(anchor);
             storeIndexed.delete();
+        } else if (n instanceof UnsafeLoad) {
+            UnsafeLoad load = (UnsafeLoad) n;
+            Graph graph = load.graph();
+            assert load.kind != CiKind.Illegal;
+            LocationNode location = LocationNode.create(LocationNode.UNSAFE_ACCESS_LOCATION, load.kind, 0, graph);
+            location.setIndex(load.offset());
+            location.setIndexScalingEnabled(false);
+            ReadNode memoryRead = new ReadNode(load.kind.stackKind(), load.object(), location, graph);
+            memoryRead.setGuard((GuardNode) tool.createGuard(new IsNonNull(load.object(), graph)));
+            memoryRead.setNext(load.next());
+            load.replaceAndDelete(memoryRead);
+        } else if (n instanceof UnsafeStore) {
+            UnsafeStore store = (UnsafeStore) n;
+            Graph graph = store.graph();
+            assert store.kind != CiKind.Illegal;
+            LocationNode location = LocationNode.create(LocationNode.UNSAFE_ACCESS_LOCATION, store.kind, 0, graph);
+            location.setIndex(store.offset());
+            location.setIndexScalingEnabled(false);
+            WriteNode write = new WriteNode(store.kind.stackKind(), store.object(), store.value(), location, graph);
+            FieldWriteBarrier barrier = new FieldWriteBarrier(store.object(), graph);
+            barrier.setNext(store.next());
+            write.setNext(barrier);
+            write.setStateAfter(store.stateAfter());
+            store.replaceAtPredecessors(write);
+            store.delete();
         }
     }
 
@@ -511,6 +536,29 @@ public class HotSpotRuntime implements RiRuntime {
                     CompilerGraph graph = new CompilerGraph(this);
                     Return ret = new Return(new CurrentThread(config.threadObjectOffset, graph), graph);
                     graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
+            } else if (holderName.equals("Lsun/misc/Unsafe;")) {
+                if (fullName.equals("getObject(Ljava/lang/Object;J)Ljava/lang/Object;")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local object = new Local(CiKind.Object, 1, graph);
+                    Local offset = new Local(CiKind.Long, 2, graph);
+                    UnsafeLoad load = new UnsafeLoad(object, offset, CiKind.Object, graph);
+                    Return ret = new Return(load, graph);
+                    load.setNext(ret);
+                    graph.start().setNext(load);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("putObject(Ljava/lang/Object;JLjava/lang/Object;)V")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local object = new Local(CiKind.Object, 1, graph);
+                    Local offset = new Local(CiKind.Long, 2, graph);
+                    Local value = new Local(CiKind.Object, 3, graph);
+                    UnsafeStore store = new UnsafeStore(object, offset, value, CiKind.Object, graph);
+                    Return ret = new Return(null, graph);
+                    store.setNext(ret);
+                    graph.start().setNext(store);
                     graph.setReturn(ret);
                     intrinsicGraphs.put(method, graph);
                 }
