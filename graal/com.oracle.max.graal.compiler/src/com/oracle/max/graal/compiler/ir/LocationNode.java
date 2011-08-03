@@ -43,6 +43,7 @@ public final class LocationNode extends FloatingNode {
         index = x;
     }
 
+    public static final Object UNSAFE_ACCESS_LOCATION = new Object();
     public static final Object FINAL_LOCATION = new Object();
 
     public static Object getArrayLocation(CiKind elementKind) {
@@ -50,11 +51,26 @@ public final class LocationNode extends FloatingNode {
     }
 
     private int displacement;
+    private boolean indexScalingEnabled = true;
     private CiKind valueKind;
     private Object locationIdentity;
 
     public int displacement() {
         return displacement;
+    }
+
+    /**
+     * @return whether scaling of the index by the value kind's size is enabled (the default) or disabled.
+     */
+    public boolean indexScalingEnabled() {
+        return indexScalingEnabled;
+    }
+
+    /**
+     * Enables or disables scaling of the index by the value kind's size. Has no effect if the index input is not used.
+     */
+    public void setIndexScalingEnabled(boolean enable) {
+        this.indexScalingEnabled = enable;
     }
 
     public static LocationNode create(Object identity, CiKind kind, int displacement, Graph graph) {
@@ -96,7 +112,9 @@ public final class LocationNode extends FloatingNode {
         Scale indexScale = Scale.Times1;
         if (this.index() != null) {
             indexValue = lirGenerator.load(this.index());
+            if (indexScalingEnabled) {
             indexScale = Scale.fromInt(valueKind.sizeInBytes(lirGenerator.target().wordSize));
+            }
         }
         return new CiAddress(valueKind, lirGenerator.load(object), indexValue, indexScale, displacement);
     }
