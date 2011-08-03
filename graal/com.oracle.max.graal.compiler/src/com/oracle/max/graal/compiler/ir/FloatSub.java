@@ -92,20 +92,6 @@ public final class FloatSub extends FloatArithmetic {
                     }
                     return new FloatAdd(kind, x, Constant.forDouble(-c, graph), sub.isStrictFP(), graph);
                 }
-            } else if (x.isConstant()) {
-                // TODO (gd) check that Negate impl for floating point is really faster/better than 0.0 - x
-                if (kind == CiKind.Float) {
-                    float c = x.asConstant().asFloat();
-                    if (c == 0.0f) {
-                        return new Negate(y, graph);
-                    }
-                } else {
-                    assert kind == CiKind.Double;
-                    double c = x.asConstant().asDouble();
-                    if (c == 0.0) {
-                        return new Negate(y, graph);
-                    }
-                }
             }
             return sub;
         }

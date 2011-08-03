@@ -27,9 +27,6 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 
-/**
- * Duplicates every node in the graph to test the implementation of the {@link com.oracle.max.graal.graph.Node#copy()} method in node subclasses.
- */
 public class ReadEliminationPhase extends Phase {
 
     @Override

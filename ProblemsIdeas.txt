@@ -79,3 +79,7 @@ Ideas
 
 * Rematerialize only the nodes that were affected by GVN
   This will probably require something that tracks changes to the Graph, the cost of such a tracking should be evaluated
+
+* Hints on register pressure
+
+  Sometimes we can make better decisions if we know the register pressure, it would be nice to have a way to know about it. Maybe we have register allocation on SSA we can somehow interact with it and try to lower the pressure in some areas on request?

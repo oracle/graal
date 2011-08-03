@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -33,4 +34,31 @@ public abstract class IntegerArithmeticNode extends Arithmetic {
         assert kind == CiKind.Int || kind == CiKind.Long;
     }
 
+    public static IntegerArithmeticNode add(Value v1, Value v2) {
+        assert v1.kind == v2.kind && v1.graph() == v2.graph();
+        Graph graph = v1.graph();
+        //TODO (gd) handle conversions here instead of strong assert ?
+        switch(v1.kind) {
+            case Int:
+                return new IntegerAdd(CiKind.Int, v1, v2, graph);
+            case Long:
+                return new IntegerAdd(CiKind.Long, v1, v2, graph);
+            default:
+                throw Util.shouldNotReachHere();
+        }
+    }
+
+    public static IntegerArithmeticNode mul(Value v1, Value v2) {
+        assert v1.kind == v2.kind && v1.graph() == v2.graph();
+        Graph graph = v1.graph();
+        //TODO (gd) handle conversions here instead of strong assert ?
+        switch(v1.kind) {
+            case Int:
+                return new IntegerMul(CiKind.Int, v1, v2, graph);
+            case Long:
+                return new IntegerMul(CiKind.Long, v1, v2, graph);
+            default:
+                throw Util.shouldNotReachHere();
+        }
+    }
 }
