@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.logging.*;
 import com.oracle.max.graal.runtime.server.*;
 import com.sun.cri.ci.*;
@@ -85,7 +86,6 @@ public class VMExitsNative implements VMExits, Remote {
             @Override
             public void run() {
                 if (GraalOptions.Meter) {
-
                     GraalMetrics.print();
                 }
                 if (GraalOptions.Time) {

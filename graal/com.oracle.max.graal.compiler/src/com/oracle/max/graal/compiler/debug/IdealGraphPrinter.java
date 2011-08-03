@@ -122,12 +122,21 @@ public class IdealGraphPrinter {
         stream.printf(" <graph name='%s'>%n", escape(title));
         noBlockNodes.clear();
         IdentifyBlocksPhase schedule = null;
-        try {
-            schedule = new IdentifyBlocksPhase(true);
-            schedule.apply(graph, false, false);
-        } catch (Throwable t) {
-            // nothing to do here...
-            //t.printStackTrace();
+        if (debugObjects != null) {
+            for (Object obj : debugObjects.values()) {
+                if (obj instanceof IdentifyBlocksPhase) {
+                    schedule = (IdentifyBlocksPhase) obj;
+                }
+            }
+        }
+        if (schedule == null) {
+            try {
+                schedule = new IdentifyBlocksPhase(true, false);
+                schedule.apply(graph, false, false);
+            } catch (Throwable t) {
+                // nothing to do here...
+                //t.printStackTrace();
+            }
         }
         List<Loop> loops = null;
         try {

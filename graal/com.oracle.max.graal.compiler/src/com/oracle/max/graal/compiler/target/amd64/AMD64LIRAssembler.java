@@ -1517,14 +1517,12 @@ public final class AMD64LIRAssembler extends LIRAssembler {
             if (asXmmFloatReg(left) != asXmmFloatReg(dest)) {
                 masm.movflt(asXmmFloatReg(dest), asXmmFloatReg(left));
             }
-            callGlobalStub(op.globalStub, null, asXmmFloatReg(dest), dest);
-
+            masm.xorps(asXmmFloatReg(dest), tasm.recordDataReferenceInCode(CiConstant.forLong(0x8000000080000000L)));
         } else if (dest.kind.isDouble()) {
             if (asXmmDoubleReg(left) != asXmmDoubleReg(dest)) {
                 masm.movdbl(asXmmDoubleReg(dest), asXmmDoubleReg(left));
             }
-
-            callGlobalStub(op.globalStub, null, asXmmDoubleReg(dest), dest);
+            masm.xorpd(asXmmDoubleReg(dest), tasm.recordDataReferenceInCode(CiConstant.forLong(0x8000000000000000L)));
         } else {
             CiRegister lreg = left.asRegister();
             CiRegister dreg = dest.asRegister();

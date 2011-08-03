@@ -46,8 +46,6 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
     private static final long DoubleSignFlip = 0x8000000000000000L;
     private static final CiRegister convertArgument = AMD64.xmm0;
     private static final CiRegister convertResult = AMD64.rax;
-    private static final CiRegister negateArgument = AMD64.xmm0;
-    private static final CiRegister negateTemp = AMD64.xmm1;
 
     private TargetMethodAssembler tasm;
     private AMD64MacroAssembler asm;
@@ -117,12 +115,6 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
                 break;
             case d2l:
                 emitD2L();
-                break;
-            case fneg:
-                emitFNEG();
-                break;
-            case dneg:
-                emitDNEG();
                 break;
         }
 
@@ -249,30 +241,6 @@ public class AMD64GlobalStubEmitter implements GlobalStubEmitter {
             result[i] = params[i].kind;
         }
         return result;
-    }
-
-    private void negatePrologue() {
-        partialSavePrologue(negateArgument, negateTemp);
-        loadArgument(0, negateArgument);
-    }
-
-    private void negateEpilogue() {
-        storeArgument(0, negateArgument);
-        epilogue();
-    }
-
-    private void emitDNEG() {
-        negatePrologue();
-        asm.movsd(negateTemp, tasm.recordDataReferenceInCode(CiConstant.forLong(DoubleSignFlip)));
-        asm.xorpd(negateArgument, negateTemp);
-        negateEpilogue();
-    }
-
-    private void emitFNEG() {
-        negatePrologue();
-        asm.movsd(negateTemp, tasm.recordDataReferenceInCode(CiConstant.forLong(FloatSignFlip)));
-        asm.xorps(negateArgument, negateTemp);
-        negateEpilogue();
     }
 
     private void convertPrologue() {

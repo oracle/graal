@@ -504,9 +504,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         lir.branch(cond, trueSuccessor);
     }
 
-    public void emitBooleanBranch(Node node, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
+    public void emitBooleanBranch(BooleanNode node, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
         if (node instanceof NegateBooleanNode) {
             emitBooleanBranch(((NegateBooleanNode) node).value(), falseSuccessor, trueSuccessor, info);
+        } else if (node instanceof IsNonNull) {
+            emitIsNonNullBranch((IsNonNull) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof Compare) {
             emitCompare((Compare) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof InstanceOf) {
@@ -515,6 +517,25 @@ public abstract class LIRGenerator extends ValueVisitor {
             emitConstantBranch(((Constant) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
         } else {
             throw Util.unimplemented(node.toString());
+        }
+    }
+
+    private void emitIsNonNullBranch(IsNonNull node, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
+        Condition cond = Condition.NE;
+        if (trueSuccessor == null) {
+            cond = cond.negate();
+            trueSuccessor = falseSuccessor;
+            falseSuccessor = null;
+        }
+
+        LIRItem xitem = new LIRItem(node.object(), this);
+        xitem.loadItem();
+
+        lir.cmp(cond, xitem.result(), CiConstant.NULL_OBJECT);
+        lir.branch(cond, trueSuccessor);
+
+        if (falseSuccessor != null) {
+            lir.jump(falseSuccessor);
         }
     }
 

@@ -30,19 +30,34 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.NodeClass.*;
 import com.oracle.max.graal.graph.collections.*;
 
 
 public class IdentifyBlocksPhase extends Phase {
+    private static final double LIVE_RANGE_COST_FACTOR = 0.05;
+    private static final double MATERIALIZATION_COST_FACTOR = 1.0 - LIVE_RANGE_COST_FACTOR;
+
     private final List<Block> blocks = new ArrayList<Block>();
     private NodeMap<Block> nodeToBlock;
+    private NodeMap<Block> earliestCache;
     private Graph graph;
     private boolean scheduleAllNodes;
+    private boolean splitMaterialization;
     private int loopCount;
 
     public IdentifyBlocksPhase(boolean scheduleAllNodes) {
+        this(scheduleAllNodes, GraalOptions.SplitMaterialization && filter());
+    }
+
+    public static boolean filter() {
+        return true; //GraalCompilation.compilation().method.name().contains("mergeOrClone");
+    }
+
+    public IdentifyBlocksPhase(boolean scheduleAllNodes, boolean splitMaterialization) {
         super(scheduleAllNodes ? "FullSchedule" : "PartSchedule", false);
         this.scheduleAllNodes = scheduleAllNodes;
+        this.splitMaterialization = splitMaterialization;
     }
 
 
@@ -50,6 +65,7 @@ public class IdentifyBlocksPhase extends Phase {
     protected void run(Graph graph) {
         this.graph = graph;
         nodeToBlock = graph.createNodeMap();
+        earliestCache = graph.createNodeMap();
         identifyBlocks();
     }
 
@@ -92,6 +108,10 @@ public class IdentifyBlocksPhase extends Phase {
 
             }
         }
+        if (n instanceof EndNode) {
+            assert b.end() == null || n == b.end();
+            b.setEnd((EndNode) n);
+        }
         if (b.lastNode() == null) {
             b.setFirstNode(n);
             b.setLastNode(n);
@@ -119,7 +139,7 @@ public class IdentifyBlocksPhase extends Phase {
         System.out.println(nodeToBlock);
         System.out.println("Blocks :");
         for (Block b : blocks) {
-            System.out.println(b + " [S:" + b.getSuccessors() + ", P:" + b.getPredecessors() + ", D:" + b.getDominators());
+            System.out.println(b + " [S:" + b.getSuccessors() + ", P:" + b.getPredecessors() + ", D:" + b.getDominated());
             System.out.println("  f " + b.firstNode());
             for (Node n : b.getInstructions()) {
                 System.out.println("  - " + n);
@@ -141,6 +161,9 @@ public class IdentifyBlocksPhase extends Phase {
                         block = null;
                     }
                     block = assignBlockNew(currentNode, block);
+                    if (currentNode instanceof FixedNode) {
+                        block.setProbability(((FixedNode) currentNode).probability());
+                    }
                     if (currentNode.predecessor() == null) {
                         // Either dead code or at a merge node => stop iteration.
                         break;
@@ -176,7 +199,7 @@ public class IdentifyBlocksPhase extends Phase {
 
         if (scheduleAllNodes) {
             computeLoopInformation(); // Will make the graph cyclic.
-            assignLatestPossibleBlockToNodes();
+            assignBlockToNodes();
             sortNodesWithinBlocks();
         } else {
             computeJavaBlocks();
@@ -284,132 +307,357 @@ public class IdentifyBlocksPhase extends Phase {
         }
     }
 
-    private void assignLatestPossibleBlockToNodes() {
+    private void assignBlockToNodes() {
         for (Node n : graph.getNodes()) {
-            assignLatestPossibleBlockToNode(n);
+            assignBlockToNode(n);
         }
     }
 
-    private Block assignLatestPossibleBlockToNode(Node n) {
+    private void assignBlockToNode(Node n) {
         if (n == null) {
-            return null;
+            return;
         }
 
         assert !n.isDeleted();
 
         Block prevBlock = nodeToBlock.get(n);
         if (prevBlock != null) {
-            return prevBlock;
+            return;
         }
-
-        Block block = null;
-        for (Node succ : n.successors()) {
-            block = getCommonDominator(block, assignLatestPossibleBlockToNode(succ));
-        }
-        for (Node usage : n.usages()) {
-            if (usage instanceof Phi) {
-                Phi phi = (Phi) usage;
-                Merge merge = phi.merge();
-                Block mergeBlock = nodeToBlock.get(merge);
-                assert mergeBlock != null : "no block for merge " + merge.id();
-                for (int i = 0; i < phi.valueCount(); ++i) {
-                    if (phi.valueAt(i) == n) {
-                        if (mergeBlock.getPredecessors().size() <= i) {
-                            TTY.println(merge.toString());
-                            TTY.println(phi.toString());
-                            TTY.println(merge.phiPredecessors().toString());
-                            TTY.println(phi.inputs().toString());
-                            TTY.println("value count: " + phi.valueCount());
-                        }
-                        block = getCommonDominator(block, mergeBlock.getPredecessors().get(i));
-                    }
-                }
-            } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
-                Merge merge = ((FrameState) usage).block();
-                for (Node pred : merge.cfgPredecessors()) {
-                    block = getCommonDominator(block, nodeToBlock.get(pred));
-                }
-            } else if (usage instanceof LoopCounter) {
-                LoopCounter counter = (LoopCounter) usage;
-                if (n == counter.init() || n == counter.stride()) {
-                    LoopBegin loopBegin = counter.loopBegin();
-                    Block mergeBlock = nodeToBlock.get(loopBegin);
-                    block = getCommonDominator(block, mergeBlock.dominator());
-                }
+        //TTY.println("Earliest for " + n + " : " + earliest);
+        // if in CFG, schedule at the latest position possible in the outermost loop possible
+        // if floating, use rematerialization to place the node, it tries to compute the value only when it will be used,
+        // in the block with the smallest probability (outside of loops), while minimizing live ranges
+        if (!splitMaterialization || noRematerialization(n) || n.predecessor() != null || nonNullSuccessorCount(n) > 0) {
+            Block latestBlock = latestBlock(n);
+            //TTY.println("Latest for " + n + " : " + latestBlock);
+            Block block;
+            if (latestBlock == null) {
+                block = earliestBlock(n);
+            } else if (GraalOptions.ScheduleOutOfLoops) {
+                block = scheduleOutOfLoops(n, latestBlock, earliestBlock(n));
             } else {
-                block = getCommonDominator(block, assignLatestPossibleBlockToNode(usage));
-            }
-        }
-
-
-        if (block != null) {
-            if (GraalOptions.OptOptimisticSchedule) {
-                block = scheduleOutOfLoops(n, block);
+                block = latestBlock;
             }
             nodeToBlock.set(n, block);
             block.getInstructions().add(n);
+        } else {
+            GraalTimers timer = GraalTimers.get("earliest");
+            timer.start();
+            Block earliest = earliestBlock(n);
+            timer.stop();
+            Map<Block, Set<Usage>> usages = computeUsages(n, earliest);
+            if (usages.isEmpty()) {
+                nodeToBlock.set(n, earliest);
+                earliest.getInstructions().add(n);
+            } else {
+                maybeMaterialize(n, earliest, usages, false);
+            }
         }
-        return block;
     }
 
-    private Block scheduleOutOfLoops(Node n, Block latestBlock) {
-        Block cur = latestBlock;
-        while (cur.loopDepth() != 0) {
-            if (cur.isLoopHeader()) {
-                assert cur.getPredecessors().size() == 2 : cur.getPredecessors().size();
-                if (canSchedule(n, cur.getPredecessors().get(0))) {
-                   // TTY.println("can schedule out of loop!" + n);
-                    return scheduleOutOfLoops(n, cur.getPredecessors().get(0));
-                } else {
+    private int nonNullSuccessorCount(Node n) {
+        int suxCount = 0;
+        for (Node sux : n.successors()) {
+            if (sux != null) {
+                suxCount++;
+            }
+        }
+        return suxCount;
+    }
+
+
+    private void maybeMaterialize(Node node, Block block, Map<Block, Set<Usage>> usages, boolean materializedInDominator) {
+        Set<Usage> blockUsages = usages.get(block);
+        if (blockUsages == null || blockUsages.isEmpty()) {
+            return;
+        }
+        boolean forced = false;
+        if (!materializedInDominator) {
+            for (Usage usage : blockUsages) {
+                if (usage.block == block) {
+                    forced = true;
                     break;
                 }
             }
-            Block prev = cur;
-            cur = cur.dominator();
-
-            // This must be a loop exit.
-            if (cur.loopDepth() > prev.loopDepth()) {
-//                TTY.println("break out because of different loop depth");
-                break;
+        }
+        //TODO (gd) if materializedInDominator, compare cost of materialization to cost of current live range instead
+        if (forced || materializationCost(block, blockUsages) < materializationCostAtChildren(block, usages)) {
+            Node n;
+            if (nodeToBlock.get(node) == null) {
+                n = node;
+            } else {
+                n = node.copy(node.graph());
+                for (NodeClassIterator iter = node.inputs().iterator(); iter.hasNext();) {
+                    Position pos = iter.nextPosition();
+                    n.getNodeClass().set(n, pos, node.getNodeClass().get(node, pos));
+                }
+                for (Usage usage : blockUsages) {
+                    patch(usage, node, n);
+                }
+                //TTY.println("> Rematerialized " + node + " (new node id = " + n.id() + ") in " + block);
+                GraalMetrics.Rematerializations++;
+                nodeToBlock.grow(n);
+            }
+            materializedInDominator = true;
+            nodeToBlock.set(n, block);
+            block.getInstructions().add(n);
+        }
+        if (!materializedInDominator || GraalOptions.Rematerialize) {
+            for (Block child : block.getDominated()) {
+                maybeMaterialize(node, child, usages, materializedInDominator);
             }
         }
-        return latestBlock;
     }
 
-    private boolean canSchedule(Node n, Block block) {
-        Set<Block> allowedBlocks = new HashSet<Block>();
-        Block cur = block;
-        while (cur != null) {
-            allowedBlocks.add(cur);
-            cur = cur.dominator();
+    private double materializationCostAtChildren(Block block, Map<Block, Set<Usage>> usages) {
+        double cost = 0.0;
+        for (Block child : block.getDominated()) {
+            Set<Usage> blockUsages = usages.get(child);
+            if (blockUsages != null && !blockUsages.isEmpty()) { // XXX should never be empty if not null
+                cost += materializationCost(child, blockUsages);
+            }
         }
-        // Now we know the allowed blocks for inputs and predecessors.
-        return checkNodesAbove(allowedBlocks, n);
+        return cost;
     }
 
-    private boolean checkNodesAbove(Set<Block> allowedBlocks, Node n) {
-        if (n == null) {
-            return true;
-        }
+    private double materializationCost(Block block, Set<Usage> usages) {
+        //TODO node cost
+        return /*LIVE_RANGE_COST_FACTOR * liveRange(block, usages) + MATERIALIZATION_COST_FACTOR **/ block.probability() * 1.0;
+    }
 
-        if (nodeToBlock.get(n) != null) {
-            return allowedBlocks.contains(nodeToBlock.get(n));
+
+    private Block latestBlock(Node n) {
+        Block block = null;
+        for (Node succ : n.successors()) {
+            if (succ == null) {
+                continue;
+            }
+            assignBlockToNode(succ);
+            block = getCommonDominator(block, nodeToBlock.get(succ));
+        }
+        ensureScheduledUsages(n);
+        CommonDominatorBlockClosure cdbc = new CommonDominatorBlockClosure(block);
+        for (Node usage : n.usages()) {
+            blocksForUsage(n, usage, cdbc);
+        }
+        return cdbc.block;
+    }
+
+    private class CommonDominatorBlockClosure implements BlockClosure {
+        public Block block;
+        public CommonDominatorBlockClosure(Block block) {
+            this.block = block;
+        }
+        @Override
+        public void apply(Block block) {
+            this.block = getCommonDominator(this.block, block);
+        }
+    }
+
+    private Block earliestBlock(Node n) {
+        Block earliest = nodeToBlock.get(n);
+        if (earliest != null) {
+            return earliest;
+        }
+        earliest = earliestCache.get(n);
+        if (earliest != null) {
+            return earliest;
+        }
+        BitMap bits = new BitMap(blocks.size());
+        ArrayList<Node> before = new ArrayList<Node>();
+        if (n.predecessor() != null) {
+            before.add(n.predecessor());
+        }
+        for (Node input : n.inputs()) {
+            before.add(input);
+        }
+        for (Node pred : before) {
+            if (pred == null) {
+                continue;
+            }
+            Block b = earliestBlock(pred);
+            if (!bits.get(b.blockID())) {
+                earliest = b;
+                do {
+                    bits.set(b.blockID());
+                    b = b.dominator();
+                } while(b != null && !bits.get(b.blockID()));
+            }
+        }
+        if (earliest == null) {
+            Block start = nodeToBlock.get(graph.start());
+            assert start != null;
+            return start;
+        }
+        earliestCache.set(n, earliest);
+        return earliest;
+    }
+
+
+    private Block scheduleOutOfLoops(Node n, Block latestBlock, Block earliest) {
+        assert latestBlock != null : "no latest : " + n;
+        Block cur = latestBlock;
+        Block prevDepth = latestBlock;
+        while (cur.loopDepth() != 0 && cur != earliest && cur.dominator() != null && cur.dominator().loopDepth() <= cur.loopDepth()) {
+            Block dom = cur.dominator();
+            if (dom.loopDepth() < prevDepth.loopDepth()) {
+                prevDepth = dom;
+            }
+            cur = dom;
+        }
+        return prevDepth;
+    }
+
+    private void blocksForUsage(Node node, Node usage, BlockClosure closure) {
+        if (usage instanceof Phi) {
+            Phi phi = (Phi) usage;
+            Merge merge = phi.merge();
+            Block mergeBlock = nodeToBlock.get(merge);
+            assert mergeBlock != null : "no block for merge " + merge.id();
+            for (int i = 0; i < phi.valueCount(); ++i) {
+                if (phi.valueAt(i) == node) {
+                    if (mergeBlock.getPredecessors().size() <= i) {
+                        TTY.println(merge.toString());
+                        TTY.println(phi.toString());
+                        TTY.println(merge.phiPredecessors().toString());
+                        TTY.println(phi.inputs().toString());
+                        TTY.println("value count: " + phi.valueCount());
+                    }
+                closure.apply(mergeBlock.getPredecessors().get(i));
+                }
+            }
+        } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
+            Merge merge = ((FrameState) usage).block();
+            Block block = null;
+            for (Node pred : merge.cfgPredecessors()) {
+                block = getCommonDominator(block, nodeToBlock.get(pred));
+            }
+            closure.apply(block);
+        } else if (usage instanceof LoopCounter) {
+            LoopCounter counter = (LoopCounter) usage;
+            if (node == counter.init() || node == counter.stride()) {
+                LoopBegin loopBegin = counter.loopBegin();
+                Block mergeBlock = nodeToBlock.get(loopBegin);
+                closure.apply(mergeBlock.dominator());
+            }
         } else {
-            assert !(n instanceof Phi) : ((Phi) n).merge();
-            for (Node input : n.inputs()) {
-                if (!checkNodesAbove(allowedBlocks, input)) {
-                    return false;
-                }
-            }
-            if (n.predecessor() != null) {
-                if (!checkNodesAbove(allowedBlocks, n.predecessor())) {
-                    return false;
-                }
-            }
-            return true;
+            assignBlockToNode(usage);
+            closure.apply(nodeToBlock.get(usage));
         }
     }
 
+    private void patch(Usage usage, Node original, Node patch) {
+        if (usage.node instanceof Phi) {
+            Phi phi = (Phi) usage.node;
+            Node pred;
+            Block phiBlock = nodeToBlock.get(phi);
+            if (phiBlock.isLoopHeader()) {
+                LoopBegin loopBegin = (LoopBegin) phiBlock.firstNode();
+                if (usage.block == phiBlock.dominator()) {
+                    pred = loopBegin.forwardEdge();
+                } else {
+                    assert usage.block == nodeToBlock.get(loopBegin.loopEnd());
+                    pred = loopBegin.loopEnd();
+                }
+            } else {
+                pred = usage.block.end();
+            }
+            int index = phi.merge().phiPredecessorIndex(pred);
+            phi.setValueAt(index, (Value) patch);
+        } else {
+            usage.node.inputs().replace(original, patch);
+        }
+    }
+
+    private void ensureScheduledUsages(Node node) {
+        //  assign block to all usages to ensure that any splitting/rematerialization is done on them
+        for (Node usage : node.usages().snapshot()) {
+            assignBlockToNode(usage);
+        }
+        // now true usages are ready
+    }
+
+    private Map<Block, Set<Usage>> computeUsages(Node node, final Block from) { //TODO use a List instead of a Set here ?
+        final Map<Block, Set<Usage>> blockUsages = new HashMap<Block, Set<Usage>>();
+        ensureScheduledUsages(node);
+        for (final Node usage : node.dataUsages()) {
+            blocksForUsage(node, usage, new BlockClosure() {
+                @Override
+                public void apply(Block block) {
+                    addUsageToTree(usage, block, from, blockUsages);
+                }
+            });
+        }
+        /*TTY.println("Usages for " + node + " from " + from);
+        for (Entry<Block, Set<Usage>> entry : blockUsages.entrySet()) {
+            TTY.println(" - " + entry.getKey() + " :");
+            for (Usage usage : entry.getValue()) {
+                TTY.println(" + " + usage.node + " in  " + usage.block);
+            }
+        }*/
+        return blockUsages;
+    }
+
+    private void addUsageToTree(Node usage, Block usageBlock, Block from, Map<Block, Set<Usage>> blockUsages) {
+        Block current = usageBlock;
+        while (current != null) {
+            Set<Usage> usages = blockUsages.get(current);
+            if (usages == null) {
+                usages = new HashSet<Usage>();
+                blockUsages.put(current, usages);
+            }
+            usages.add(new Usage(usageBlock, usage));
+            if (current == from) {
+                current = null;
+            } else {
+                current = current.dominator();
+            }
+        }
+    }
+
+    private static class Usage {
+        public final Block block;
+        public final Node node;
+        public Usage(Block block, Node node) {
+            this.block = block;
+            this.node = node;
+        }
+    }
+
+    private boolean noRematerialization(Node n) {
+        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState;
+    }
+
+    private double liveRange(Block from, Set<Usage> usages) {
+        BitMap subTree = new BitMap(blocks.size());
+        markSubTree(from, subTree);
+        double range = 0.0;
+        for (Usage usage : usages) {
+            range += markRangeUp(usage.block, subTree);
+        }
+        return range;
+    }
+
+    private void markSubTree(Block from, BitMap subTree) {
+        subTree.set(from.blockID());
+        for (Block b : from.getDominated()) {
+            markSubTree(b, subTree);
+        }
+    }
+
+    private double markRangeUp(Block from, BitMap subTree) {
+        int blockID = from.blockID();
+        if (!subTree.get(blockID)) {
+            return 0.0;
+        }
+        subTree.clear(blockID);
+        double range = from.probability() * (from.getInstructions().size() + 2);
+        for (Block pred : from.getPredecessors()) {
+            range += markRangeUp(pred, subTree);
+        }
+        return range;
+    }
 
     private Block getCommonDominator(Block a, Block b) {
         if (a == null) {
@@ -445,7 +693,7 @@ public class IdentifyBlocksPhase extends Phase {
             int idx = sortedInstructions.indexOf(b.lastNode());
             boolean canNotMove = false;
             for (int i = idx + 1; i < sortedInstructions.size(); i++) {
-                if (sortedInstructions.get(i).inputContains(b.lastNode())) {
+                if (sortedInstructions.get(i).inputs().contains(b.lastNode())) {
                     canNotMove = true;
                     break;
                 }

@@ -170,9 +170,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     public boolean hasCompiledCode() {
-        // TODO: needs a VMEntries to go cache the result of that method.
-        // This isn't used by GRAAL for now, so this is enough.throwoutCount
-        return false;
+        return compiler.getVMEntries().RiMethod_hasCompiledCode(this);
     }
 
     @Override
@@ -208,6 +206,11 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     public double[] switchProbability(int bci) {
         return compiler.getVMEntries().RiMethod_switchProbability(this, bci);
+    }
+
+    @Override
+    public int compiledCodeSize() {
+        return compiler.getVMEntries().RiMethod_compiledCodeSize(this);
     }
 
     public void dumpProfile() {

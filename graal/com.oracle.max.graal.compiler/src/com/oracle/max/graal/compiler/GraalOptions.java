@@ -46,9 +46,12 @@ public final class GraalOptions {
     public static int     MaximumInstructionCount            = 3000;
     public static float   MaximumInlineRatio                 = 0.90f;
     public static int     MaximumInlineSize                  = 35;
+    public static int     MaximumInlineCompSize              = 350;
     public static int     MaximumFreqInlineSize              = 200;
+    public static int     MaximumFreqInlineCompSize          = 1500;
     public static int     FreqInlineRatio                    = 20;
     public static int     MaximumTrivialSize                 = 6;
+    public static int     MaximumTrivialCompSize             = 120;
     public static int     MaximumInlineLevel                 = 9;
     public static int     MaximumRecursiveInlineLevel        = 2;
     public static int     MaximumDesiredSize                 = 8000;
@@ -166,9 +169,10 @@ public final class GraalOptions {
     public static boolean OptReadElimination                 = ____;
     public static boolean OptGVN                             = ____;
     public static boolean Rematerialize                      = ____;
+    public static boolean SplitMaterialization               = ____;
     public static boolean OptCanonicalizer                   = true;
     public static boolean OptLoops                           = ____;
-    public static boolean OptOptimisticSchedule              = ____;
+    public static boolean ScheduleOutOfLoops                 = true;
     public static boolean OptReorderLoops                    = ____;
     public static boolean LoopPeeling                        = ____;
     public static boolean LoopInversion                      = ____;

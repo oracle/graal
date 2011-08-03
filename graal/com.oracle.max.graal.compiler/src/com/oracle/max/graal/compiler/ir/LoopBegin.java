@@ -136,7 +136,7 @@ public class LoopBegin extends Merge {
         return new Iterable<Node>() {
             @Override
             public Iterator<Node> iterator() {
-                return new StateSplit.FilteringIterator(dataUsages, LoopBegin.class);
+                return new StateSplit.FilteringIterator(dataUsages, LoopEnd.class);
             }
         };
     }

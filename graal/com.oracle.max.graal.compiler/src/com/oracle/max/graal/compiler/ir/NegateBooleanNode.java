@@ -30,18 +30,18 @@ import com.sun.cri.ci.*;
 public final class NegateBooleanNode extends BooleanNode {
 
     @NodeInput
-    private Value value;
+    private BooleanNode value;
 
-    public Value value() {
+    public BooleanNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(BooleanNode x) {
         updateUsages(value, x);
         value = x;
     }
 
-    public NegateBooleanNode(Value value, Graph graph) {
+    public NegateBooleanNode(BooleanNode value, Graph graph) {
         super(CiKind.Int, graph);
         setValue(value);
     }
