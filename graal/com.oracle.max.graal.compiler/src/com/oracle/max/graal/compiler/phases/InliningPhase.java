@@ -555,7 +555,6 @@ public class InliningPhase extends Phase {
         }
 
         if (pred instanceof Placeholder) {
-            System.out.println("preds: " + ((Placeholder) pred).next().predecessor());
             FixedNode next = ((Placeholder) pred).next();
             ((Placeholder) pred).setNext(null);
             pred.replaceAndDelete(next);

@@ -553,6 +553,7 @@ public class HotSpotRuntime implements RiRuntime {
             } else if (holderName.equals("Lsun/misc/Unsafe;")) {
                 if (fullName.equals("getObject(Ljava/lang/Object;J)Ljava/lang/Object;")) {
                     CompilerGraph graph = new CompilerGraph(this);
+                    Local unsafe = new Local(CiKind.Object, 0, graph);
                     Local object = new Local(CiKind.Object, 1, graph);
                     Local offset = new Local(CiKind.Long, 2, graph);
                     UnsafeLoad load = new UnsafeLoad(object, offset, CiKind.Object, graph);
@@ -563,10 +564,17 @@ public class HotSpotRuntime implements RiRuntime {
                     intrinsicGraphs.put(method, graph);
                 } else if (fullName.equals("putObject(Ljava/lang/Object;JLjava/lang/Object;)V")) {
                     CompilerGraph graph = new CompilerGraph(this);
+                    Local unsafe = new Local(CiKind.Object, 0, graph);
                     Local object = new Local(CiKind.Object, 1, graph);
                     Local offset = new Local(CiKind.Long, 2, graph);
                     Local value = new Local(CiKind.Object, 3, graph);
                     UnsafeStore store = new UnsafeStore(object, offset, value, CiKind.Object, graph);
+                    FrameState frameState = new FrameState(method, 0, parameters.size(), 0, 0, false, graph);
+                    store.setStateAfter(frameState);
+                    frameState.setValueAt(0, unsafe);
+                    frameState.setValueAt(1, object);
+                    frameState.setValueAt(2, offset);
+                    frameState.setValueAt(3, value);
                     Return ret = new Return(null, graph);
                     store.setNext(ret);
                     graph.start().setNext(store);
