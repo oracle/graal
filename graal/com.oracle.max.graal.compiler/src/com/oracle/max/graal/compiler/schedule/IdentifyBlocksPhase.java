@@ -334,7 +334,7 @@ public class IdentifyBlocksPhase extends Phase {
             Block block;
             if (latestBlock == null) {
                 block = earliestBlock(n);
-            } else if (GraalOptions.ScheduleOutOfLoops) {
+            } else if (GraalOptions.ScheduleOutOfLoops && !(n instanceof VirtualObjectField) && !(n instanceof VirtualObject)) {
                 block = scheduleOutOfLoops(n, latestBlock, earliestBlock(n));
             } else {
                 block = latestBlock;
@@ -626,7 +626,8 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private boolean noRematerialization(Node n) {
-        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState;
+        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState || n instanceof VirtualObject ||
+                        n instanceof VirtualObjectField;
     }
 
     private double liveRange(Block from, Set<Usage> usages) {

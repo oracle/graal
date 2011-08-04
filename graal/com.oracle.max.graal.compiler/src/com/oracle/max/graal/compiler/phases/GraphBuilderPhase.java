@@ -974,9 +974,9 @@ public final class GraphBuilderPhase extends Phase {
             Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
             Value result = appendWithBCI(invoke);
             invoke.setExceptionEdge(handleException(null, bci()));
-            if (invoke.exceptionEdge() == null) {
-                TTY.println("no exception edge" + unwindHandler);
-            }
+//            if (invoke.exceptionEdge() == null) {
+//                TTY.println("no exception edge" + unwindHandler);
+//            }
             frameState.pushReturn(resultType, result);
         }
     }

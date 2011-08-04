@@ -95,7 +95,7 @@ public class GraalCompiler extends ObservableCompiler {
         }
 
         CiResult result = null;
-        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, CiUtil.format("%H.%n", method, false));
         GraalCompilation compilation = new GraalCompilation(this, method, osrBCI, stats);
         currentCompilation = compilation;
         try {

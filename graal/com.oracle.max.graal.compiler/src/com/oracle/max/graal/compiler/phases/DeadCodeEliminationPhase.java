@@ -22,8 +22,6 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import java.util.*;
-
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;

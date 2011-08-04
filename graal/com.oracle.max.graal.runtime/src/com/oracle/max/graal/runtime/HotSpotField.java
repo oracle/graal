@@ -26,8 +26,7 @@ package com.oracle.max.graal.runtime;
 import java.lang.reflect.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.sun.cri.ci.CiConstant;
-import com.sun.cri.ci.CiKind;
+import com.sun.cri.ci.*;
 import com.sun.cri.ri.RiField;
 import com.sun.cri.ri.RiType;
 
@@ -130,7 +129,7 @@ public class HotSpotField extends CompilerObject implements RiField {
 
     @Override
     public String toString() {
-        return "HotSpotField<" + holder.name() + "." + name + ":" + offset + ">";
+        return "HotSpotField<" + CiUtil.format("%h.%n", this, false) + ":" + offset + ">";
     }
 
 }
