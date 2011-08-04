@@ -1333,7 +1333,7 @@ public final class LinearScan {
 
     }
 
-    boolean isSorted(Interval[] intervals) {
+    private boolean isSorted(Interval[] intervals) {
         int from = -1;
         for (Interval interval : intervals) {
             assert interval != null;

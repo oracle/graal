@@ -68,11 +68,11 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     }
 
     private String getFullName(String name, int dimensions) {
-        StringBuilder str = new StringBuilder();
+        StringBuilder str = new StringBuilder(name.length() + dimensions + 2);
         for (int i = 0; i < dimensions; i++) {
             str.append('[');
         }
-        str.append('L').append(simpleName).append(';');
+        str.append('L').append(name).append(';');
         return str.toString();
     }
 
