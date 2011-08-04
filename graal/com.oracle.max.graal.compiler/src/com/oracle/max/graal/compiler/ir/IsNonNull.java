@@ -53,7 +53,7 @@ public final class IsNonNull extends BooleanNode {
     /**
      * The instruction that produces the object tested against null.
      */
-     public Value object() {
+    public Value object() {
         return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
     }
 
