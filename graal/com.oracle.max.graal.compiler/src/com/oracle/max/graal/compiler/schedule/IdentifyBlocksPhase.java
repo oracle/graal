@@ -125,7 +125,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     public static boolean isFixed(Node n) {
-        return n != null && ((n instanceof FixedNode) || n == n.graph().start());
+        return n != null && ((n instanceof FixedNode) || n == n.graph().start()) && !(n instanceof AccessNode && n.predecessor() == null);
     }
 
     public static boolean isBlockEnd(Node n) {
@@ -170,6 +170,7 @@ public class IdentifyBlocksPhase extends Phase {
                     }
                     Node prev = currentNode;
                     currentNode = currentNode.predecessor();
+                    assert !(currentNode instanceof AccessNode && ((AccessNode) currentNode).next() != prev) : currentNode;
                     assert !currentNode.isDeleted() : prev + " " + currentNode;
                 }
             }

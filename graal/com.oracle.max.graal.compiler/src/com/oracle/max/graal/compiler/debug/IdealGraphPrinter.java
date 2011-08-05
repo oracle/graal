@@ -141,8 +141,15 @@ public class IdealGraphPrinter {
         List<Loop> loops = null;
         try {
             loops = LoopUtil.computeLoops(graph);
+            // loop.nodes() does some more calculations which may fail, so execute this here as well
+            if (loops != null) {
+                for (Loop loop : loops) {
+                    loop.nodes();
+                }
+            }
         } catch (Throwable t) {
             t.printStackTrace();
+            loops = null;
         }
 
         stream.println("  <nodes>");

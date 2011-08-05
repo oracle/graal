@@ -93,14 +93,17 @@ public class DeadCodeEliminationPhase extends Phase {
                     LoopBegin loop = ((LoopEnd) node).loopBegin();
                     if (flood.isMarked(loop)) {
                         if (GraalOptions.TraceDeadCodeElimination) {
-                            TTY.println("Building loop begin node back: " + loop);
+                            TTY.println("Removing loop with unreachable end: " + loop);
                         }
                         ((LoopEnd) node).setLoopBegin(null);
                         EndNode endNode = loop.endAt(0);
                         assert endNode.predecessor() != null;
-                        // replacePhis(loop);
+                        replacePhis(loop);
+                        loop.removeEnd(endNode);
 
-                        endNode.replaceAndDelete(loop.next());
+                        FixedNode next = loop.next();
+                        loop.setNext(null);
+                        endNode.replaceAndDelete(next);
                         loop.delete();
                     }
                 }
