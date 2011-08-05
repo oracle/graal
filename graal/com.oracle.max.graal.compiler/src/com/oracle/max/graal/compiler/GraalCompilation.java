@@ -230,27 +230,40 @@ public final class GraalCompilation {
     }
 
     private void emitLIR() {
-        if (GraalOptions.GenLIR) {
-            if (GraalOptions.Time) {
-                GraalTimers.LIR_CREATE.start();
+        try {
+            if (GraalOptions.GenLIR) {
+                if (GraalOptions.Time) {
+                    GraalTimers.LIR_CREATE.start();
+                }
+
+                initFrameMap(hir.maxLocks());
+
+                lirGenerator = compiler.backend.newLIRGenerator(this);
+
+                for (LIRBlock b : hir.linearScanOrder()) {
+                    lirGenerator.doBlock(b);
+                }
+
+                if (GraalOptions.Time) {
+                    GraalTimers.LIR_CREATE.stop();
+                }
+
+                if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
+                    LIRList.printLIR(hir.linearScanOrder());
+                }
+
+                new LinearScan(this, hir, lirGenerator, frameMap()).allocate();
             }
-
-            initFrameMap(hir.maxLocks());
-
-            lirGenerator = compiler.backend.newLIRGenerator(this);
-
-            for (LIRBlock b : hir.linearScanOrder()) {
-                lirGenerator.doBlock(b);
+        } catch (AssertionError e) {
+            if (compiler.isObserved() && GraalOptions.PlotOnError) {
+                compiler.fireCompilationEvent(new CompilationEvent(this, "AssertionError in emitLIR", graph, true, false, true));
             }
-
-            if (GraalOptions.Time) {
-                GraalTimers.LIR_CREATE.stop();
+            throw e;
+        } catch (RuntimeException e) {
+            if (compiler.isObserved() && GraalOptions.PlotOnError) {
+                compiler.fireCompilationEvent(new CompilationEvent(this, "RuntimeException in emitLIR", graph, true, false, true));
             }
-            if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
-                LIRList.printLIR(hir.linearScanOrder());
-            }
-
-            new LinearScan(this, hir, lirGenerator, frameMap()).allocate();
+            throw e;
         }
     }
 

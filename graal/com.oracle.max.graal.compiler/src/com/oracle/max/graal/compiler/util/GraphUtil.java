@@ -31,7 +31,9 @@ import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.NodeWorkList.*;
+import com.oracle.max.graal.graph.NodeClass.*;
+import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.graph.collections.NodeWorkList.InfiniteWorkException;
 
 public class GraphUtil {
 
@@ -230,18 +232,18 @@ public class GraphUtil {
                                 Phi phi = new Phi(((Value) node).kind, lambda.merge(color), PhiType.Value, node.graph());
                                 for (T parentColor : parentColors) {
                                     Node input = newNodes.get(parentColor);
-                                    phi.addInput(input);
+                                    phi.addInput((Value) input);
                                 }
                                 newNode = phi;
                             } else {
-                                newNode = node.copy();
-                                for (int i = 0; i < node.inputs().size(); i++) {
-                                    Node input = node.inputs().get(i);
-                                    newNode.inputs().setOrExpand(i, input);
+                                newNode = node.copy(node.graph());
+                                for (NodeClassIterator iter = node.inputs().iterator(); iter.hasNext();) {
+                                    Position pos = iter.nextPosition();
+                                    newNode.set(pos, node.get(pos));
                                 }
-                                for (int i = 0; i < node.successors().size(); i++) {
-                                    Node input = node.successors().get(i);
-                                    newNode.successors().setOrExpand(i, input);
+                                for (NodeClassIterator iter = node.successors().iterator(); iter.hasNext();) {
+                                    Position pos = iter.nextPosition();
+                                    newNode.set(pos, node.get(pos));
                                 }
                                 internalColoring.put(newNode, color);
                                 lambda.fixSplit(node, newNode, color);

@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.collections.*;
 
 public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
@@ -127,8 +128,8 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
                     nodeQueue.addLast(merge);
                 }
             } else {
-                assert node.predecessors().size() == 1;
-                state = nodeStates.get(node.predecessors().get(0)).clone();
+                assert node.predecessor() != null;
+                state = nodeStates.get(node.predecessor()).clone();
                 state.afterSplit(node);
                 return node;
             }

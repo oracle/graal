@@ -29,34 +29,21 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 public final class NegateBooleanNode extends BooleanNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_NODE = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private BooleanNode value;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public BooleanNode value() {
+        return value;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction that produces the array object.
-     */
-     public BooleanNode value() {
-        return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
-    }
-
-    public BooleanNode setValue(BooleanNode n) {
-        return (BooleanNode) inputs().set(super.inputCount() + INPUT_NODE, n);
+    public void setValue(BooleanNode x) {
+        updateUsages(value, x);
+        value = x;
     }
 
     public NegateBooleanNode(BooleanNode value, Graph graph) {
-        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Int, graph);
         setValue(value);
     }
 

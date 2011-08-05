@@ -28,6 +28,7 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.examples.intrinsics.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.collections.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -69,7 +70,7 @@ public class OptimizerImpl implements Optimizer {
         // look at all loop exits:
         for (Node exit : exits) {
             TTY.println("exit: " + exit);
-            Node pred = exit.predecessors().get(0);
+            Node pred = exit.predecessor();
             // if this exit is an If node ...
             if (pred instanceof If) {
                 If ifNode = (If) pred;

@@ -99,27 +99,31 @@ public class ConvertConditionalPhase extends Phase {
                     prev = (Merge) firstNode;
                 } else if (firstNode instanceof EndNode) {
                     EndNode end = (EndNode) firstNode;
-                    Node pred = end.singlePredecessor();
+                    Node pred = end.predecessor();
                     Anchor anchor = new Anchor(graph);
-                    pred.successors().replace(end, anchor);
+                    pred.replaceFirstSuccessor(end, anchor);
                     anchor.setNext(end);
                     prev = anchor;
                 } else if (firstNode instanceof StartNode) {
                     StartNode start = (StartNode) firstNode;
                     Anchor anchor = new Anchor(graph);
-                    anchor.setNext((FixedNode) start.next());
+                    Node next = start.next();
+                    start.setNext(null);
+                    anchor.setNext((FixedNode) next);
                     start.setNext(anchor);
                     prev = anchor;
                 } else if (firstNode instanceof If) {
-                    Node pred = firstNode.singlePredecessor();
+                    Node pred = firstNode.predecessor();
                     Anchor anchor = new Anchor(graph);
-                    pred.successors().replace(firstNode, anchor);
+                    pred.replaceFirstSuccessor(firstNode, anchor);
                     anchor.setNext((If) firstNode);
                     prev = anchor;
                 } else {
                     prev = (FixedNodeWithNext) firstNode;
                 }
-                merge.setNext(prev.next());
+                FixedNode next = prev.next();
+                prev.setNext(null);
+                merge.setNext(next);
                 prev.setNext(ifNode);
                 conditional.replaceAndDelete(phi);
             } else {

@@ -31,42 +31,28 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessIndexed extends AccessArray {
 
-    private static final int INPUT_COUNT = 2;
-    private static final int INPUT_INDEX = 0;
-    private static final int INPUT_LENGTH = 1;
+    @NodeInput
+    private Value index;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value length;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value index() {
+        return index;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setIndex(Value x) {
+        updateUsages(index, x);
+        index = x;
     }
 
-    /**
-     * The instruction producing the index into the array.
-     */
-     public Value index() {
-        return (Value) inputs().get(super.inputCount() + INPUT_INDEX);
-    }
-
-    public Value setIndex(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_INDEX, n);
-    }
-
-    /**
-     * The instruction that produces the length of the array.
-     */
     public Value length() {
-        return (Value) inputs().get(super.inputCount() + INPUT_LENGTH);
+        return length;
     }
 
-    public Value setLength(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_LENGTH, n);
+    public void setLength(Value x) {
+        updateUsages(length, x);
+        length = x;
     }
 
     private final CiKind elementType;
@@ -78,12 +64,10 @@ public abstract class AccessIndexed extends AccessArray {
      * @param index the instruction producing the index
      * @param length the instruction producing the length (used in bounds check elimination?)
      * @param elementKind the type of the elements of the array
-     * @param inputCount
-     * @param successorCount
      * @param graph
      */
-    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementKind, int inputCount, int successorCount, Graph graph) {
-        super(kind, array, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementKind, Graph graph) {
+        super(kind, array, graph);
         setIndex(index);
         setLength(length);
         this.elementType = elementKind;

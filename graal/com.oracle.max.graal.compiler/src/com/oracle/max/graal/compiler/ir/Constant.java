@@ -35,9 +35,6 @@ import com.sun.cri.ri.*;
  */
 public final class Constant extends BooleanNode {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     public final CiConstant value;
 
     /**
@@ -46,7 +43,7 @@ public final class Constant extends BooleanNode {
      * @param graph
      */
     public Constant(CiConstant value, Graph graph) {
-        super(value.kind.stackKind(), INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(value.kind.stackKind(), graph);
         this.value = value;
     }
 

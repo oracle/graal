@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,54 +20,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code StoreIndexed} instruction represents a write to an array element.
+ * Load of a value from a location specified as an offset relative to an object.
  */
-public final class StoreIndexed extends AccessIndexed {
+public class UnsafeLoad extends StateSplit {
 
     @NodeInput
-    private Value value;
+    private Value object;
 
-    public Value value() {
-        return value;
+    @NodeInput
+    private Value offset;
+
+    public Value object() {
+        return object;
     }
 
-    public void setValue(Value x) {
-        updateUsages(value, x);
-        value = x;
+    public void setObject(Value x) {
+        updateUsages(object, x);
+        object = x;
     }
 
-    /**
-     * Creates a new StoreIndexed instruction.
-     * @param array the instruction producing the array
-     * @param index the instruction producing the index
-     * @param length the instruction producing the length
-     * @param elementKind the element type
-     * @param value the value to store into the array
-     * @param stateAfter the state after executing this instruction
-     * @param graph
-     */
-    public StoreIndexed(Value array, Value index, Value length, CiKind elementKind, Value value, Graph graph) {
-        super(CiKind.Void, array, index, length, elementKind, graph);
-        setValue(value);
+    public Value offset() {
+        return offset;
     }
 
-    @Override
-    public void accept(ValueVisitor v) {
-        v.visitStoreIndexed(this);
+    public void setOffset(Value x) {
+        updateUsages(offset, x);
+        offset = x;
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print(array()).print('[').print(index()).print("] := ").print(value()).print(" (").print(kind.typeChar).print(')');
+    public UnsafeLoad(Value object, Value offset, CiKind kind, Graph graph) {
+        super(kind, graph);
+        setObject(object);
+        setOffset(offset);
     }
 
     @SuppressWarnings("unchecked")
@@ -81,8 +74,9 @@ public final class StoreIndexed extends AccessIndexed {
 
     @Override
     public Node copy(Graph into) {
-        StoreIndexed x = new StoreIndexed(null, null, null, elementKind(), null, into);
+        UnsafeLoad x = new UnsafeLoad(null, null, kind, into);
         super.copyInto(x);
         return x;
     }
+
 }

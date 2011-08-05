@@ -31,12 +31,11 @@ import com.sun.cri.ci.*;
 
 
 public final class CurrentThread extends FloatingNode {
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
+
     private int threadObjectOffset;
 
     public CurrentThread(int threadObjectOffset, Graph graph) {
-        super(CiKind.Object, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Object, graph);
         this.threadObjectOffset = threadObjectOffset;
     }
 

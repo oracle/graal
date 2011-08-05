@@ -202,8 +202,8 @@ public class ComputeProbabilityPhase extends Phase {
 
         @Override
         public void afterSplit(FixedNode node) {
-            assert node.predecessors().size() == 1;
-            Node pred = node.predecessors().get(0);
+            assert node.predecessor() != null;
+            Node pred = node.predecessor();
             if (pred instanceof Invoke) {
                 Invoke x = (Invoke) pred;
                 if (x.next() != node) {

@@ -33,6 +33,10 @@ import org.junit.Test;
 
 import com.oracle.max.graal.graph.Graph;
 import com.oracle.max.graal.graph.Node;
+import com.oracle.max.graal.graph.NodeInput;
+import com.oracle.max.graal.graph.NodeInputList;
+import com.oracle.max.graal.graph.NodeSuccessor;
+import com.oracle.max.graal.graph.NodeSuccessorList;
 import com.oracle.max.graal.graphviz.GraphvizPrinter;
 import com.oracle.max.graal.graphviz.GraphvizRunner;
 
@@ -78,39 +82,33 @@ public class GraphvizTest {
 
     private static class DummyNode extends Node {
 
-        private final int inputCount;
-        private final int successorCount;
-        private final String name;
+        @NodeInput
+        private final NodeInputList<Node> inputs;
+
+        @NodeSuccessor
+        private final NodeSuccessorList<Node> successors;
 
         public DummyNode(String name, int inputCount, int successorCount, Graph graph) {
-            super(inputCount, successorCount, graph);
+            super(graph);
             this.name = name;
-            this.inputCount = inputCount;
-            this.successorCount = successorCount;
+            inputs = new NodeInputList<Node>(this, inputCount);
+            successors = new NodeSuccessorList<Node>(this, successorCount);
+        }
+
+        public void setInput(int idx, Node n) {
+            inputs.set(idx, n);
+        }
+
+        public void setSuccessor(int idx, Node n) {
+            successors.set(idx, n);
         }
 
         @Override
         public Node copy(Graph into) {
-            return new DummyNode(name, inputCount, successorCount, into);
+            return new DummyNode(name, inputs.size(), successors.size(), into);
         }
 
-        public void setInput(int idx, Node n) {
-            inputs().set(idx, n);
-        }
-
-        public void setSuccessor(int idx, Node n) {
-            successors().set(idx, n);
-        }
-
-        @Override
-        protected int inputCount() {
-            return super.inputCount() + inputCount;
-        }
-
-        @Override
-        protected int successorCount() {
-            return super.inputCount() + successorCount;
-        }
+        private final String name;
 
         @Override
         public String toString() {

@@ -32,26 +32,21 @@ import com.sun.cri.ci.*;
 
 
 public final class FPConversionNode extends FloatingNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_OBJECT = 0;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private Value value;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value value() {
+        return value;
     }
 
-     public Value value() {
-        return (Value) inputs().get(super.inputCount() + INPUT_OBJECT);
-    }
-
-    public void setValue(Value n) {
-        inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    public void setValue(Value x) {
+        updateUsages(value, x);
+        value = x;
     }
 
     public FPConversionNode(CiKind kind, Value value, Graph graph) {
-        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, graph);
         this.setValue(value);
     }
 

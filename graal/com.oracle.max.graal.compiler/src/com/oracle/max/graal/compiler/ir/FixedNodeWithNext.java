@@ -27,31 +27,16 @@ import com.sun.cri.ci.*;
 
 public abstract class FixedNodeWithNext extends FixedNode {
 
-    private static final int INPUT_COUNT = 0;
+    @NodeSuccessor
+    private FixedNode next;
 
-    private static final int SUCCESSOR_COUNT = 1;
-    public static final int SUCCESSOR_NEXT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * Links to next instruction in a basic block, to {@code null} if this instruction is the end of a basic block or to
-     * itself if not in a block.
-     */
     public FixedNode next() {
-        return (FixedNode) successors().get(super.successorCount() + SUCCESSOR_NEXT);
+        return next;
     }
 
-    public Node setNext(FixedNode next) {
-        return successors().set(super.successorCount() + SUCCESSOR_NEXT, next);
+    public void setNext(FixedNode x) {
+        updatePredecessors(next, x);
+        next = x;
     }
 
     public static final int SYNCHRONIZATION_ENTRY_BCI = -1;
@@ -59,10 +44,8 @@ public abstract class FixedNodeWithNext extends FixedNode {
     /**
      * Constructs a new instruction with the specified value type.
      * @param kind the value type for this instruction
-     * @param inputCount
-     * @param successorCount
      */
-    public FixedNodeWithNext(CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public FixedNodeWithNext(CiKind kind, Graph graph) {
+        super(kind, graph);
     }
 }

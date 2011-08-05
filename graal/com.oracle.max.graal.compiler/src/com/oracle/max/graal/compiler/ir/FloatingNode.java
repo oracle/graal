@@ -28,14 +28,8 @@ import com.sun.cri.ci.*;
 
 public abstract class FloatingNode extends Value {
 
-    /**
-     * @param kind
-     * @param inputCount
-     * @param successorCount
-     * @param graph
-     */
-    public FloatingNode(CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(kind, inputCount, successorCount, graph);
+    public FloatingNode(CiKind kind, Graph graph) {
+        super(kind, graph);
     }
 
 }

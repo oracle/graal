@@ -33,32 +33,16 @@ import com.sun.cri.ri.*;
  */
 public final class NewMultiArray extends NewArray {
 
-    private final int dimensionCount;
+    @NodeInput
+    private final NodeInputList<Value> dimensions;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + dimensionCount;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The list of instructions which produce input for this instruction.
-     */
     @Override
     public Value dimension(int index) {
-        assert index >= 0 && index < dimensionCount;
-        return (Value) inputs().get(super.inputCount() + index);
+        return dimensions.get(index);
     }
 
-    public Value setDimension(int index, Value n) {
-        assert index >= 0 && index < dimensionCount;
-        return (Value) inputs().set(super.inputCount() + index, n);
+    public void setDimension(int index, Value x) {
+        dimensions.set(index, x);
     }
 
     /**
@@ -66,7 +50,7 @@ public final class NewMultiArray extends NewArray {
      */
     @Override
     public int dimensionCount() {
-        return dimensionCount;
+        return dimensions.size();
     }
 
     public final RiType elementType;
@@ -82,12 +66,12 @@ public final class NewMultiArray extends NewArray {
      * @param graph
      */
     public NewMultiArray(RiType elementType, Value[] dimensions, int cpi, RiConstantPool riConstantPool, Graph graph) {
-        super(null, dimensions.length, SUCCESSOR_COUNT, graph);
+        super(null, graph);
         this.constantPool = riConstantPool;
         this.elementType = elementType;
         this.cpi = cpi;
 
-        this.dimensionCount = dimensions.length;
+        this.dimensions = new NodeInputList<Value>(this, dimensions.length);
         for (int i = 0; i < dimensions.length; i++) {
             setDimension(i, dimensions[i]);
         }
@@ -124,7 +108,7 @@ public final class NewMultiArray extends NewArray {
     @Override
     public void print(LogStream out) {
         out.print("new multi array [");
-        for (int i = 0; i < dimensionCount; i++) {
+        for (int i = 0; i < dimensionCount(); i++) {
           if (i > 0) {
               out.print(", ");
           }
@@ -135,7 +119,7 @@ public final class NewMultiArray extends NewArray {
 
     @Override
     public Node copy(Graph into) {
-        NewMultiArray x = new NewMultiArray(elementType, new Value[dimensionCount], cpi, constantPool, into);
+        NewMultiArray x = new NewMultiArray(elementType, new Value[dimensionCount()], cpi, constantPool, into);
         super.copyInto(x);
         return x;
     }

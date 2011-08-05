@@ -31,20 +31,21 @@ import com.sun.cri.ci.*;
 
 
 public final class WriteVectorNode extends AccessVectorNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUES = 0;
-    private static final int SUCCESSOR_COUNT = 0;
 
-    public void setValues(AbstractVectorNode length) {
-        inputs().set(super.inputCount() + INPUT_VALUES, length);
-    }
+    @NodeInput
+    private AbstractVectorNode values;
 
     public AbstractVectorNode values() {
-        return (AbstractVectorNode) inputs().get(super.inputCount() + INPUT_VALUES);
+        return values;
+    }
+
+    public void setValues(AbstractVectorNode x) {
+        updateUsages(values, x);
+        values = x;
     }
 
     public WriteVectorNode(AbstractVectorNode vector, Value object, LocationNode location, AbstractVectorNode values, Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, vector, object, location, graph);
+        super(CiKind.Illegal, vector, object, location, graph);
         setValues(values);
     }
 

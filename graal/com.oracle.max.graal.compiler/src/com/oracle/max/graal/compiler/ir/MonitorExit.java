@@ -30,9 +30,6 @@ import com.oracle.max.graal.graph.*;
  */
 public final class MonitorExit extends AccessMonitor {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     /**
      * Creates a new MonitorExit instruction.
      *
@@ -42,7 +39,7 @@ public final class MonitorExit extends AccessMonitor {
      * @param graph
      */
     public MonitorExit(Value object, Value lockAddress, int lockNumber, Graph graph) {
-        super(object, lockAddress, lockNumber, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(object, lockAddress, lockNumber, graph);
     }
 
     @Override

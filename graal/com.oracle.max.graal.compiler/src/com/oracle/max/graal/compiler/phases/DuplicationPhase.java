@@ -44,7 +44,12 @@ public class DuplicationPhase extends Phase {
         // Delete nodes in original graph.
         for (Node n : graph.getNodes()) {
             if (n != graph.start()) {
-                n.forceDelete();
+                n.clearEdges();
+            }
+        }
+        for (Node n : graph.getNodes()) {
+            if (n != graph.start()) {
+                n.delete();
             }
         }
 

@@ -30,10 +30,20 @@ import com.sun.cri.ci.CiAddress.*;
 
 
 public final class LocationNode extends FloatingNode {
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_INDEX = 0;
-    private static final int SUCCESSOR_COUNT = 0;
 
+    @NodeInput
+    private Value index;
+
+    public Value index() {
+        return index;
+    }
+
+    public void setIndex(Value x) {
+        updateUsages(index, x);
+        index = x;
+    }
+
+    public static final Object UNSAFE_ACCESS_LOCATION = new Object();
     public static final Object FINAL_LOCATION = new Object();
 
     public static Object getArrayLocation(CiKind elementKind) {
@@ -41,6 +51,7 @@ public final class LocationNode extends FloatingNode {
     }
 
     private int displacement;
+    private boolean indexScalingEnabled = true;
     private CiKind valueKind;
     private Object locationIdentity;
 
@@ -48,12 +59,18 @@ public final class LocationNode extends FloatingNode {
         return displacement;
     }
 
-    public Value index() {
-        return (Value) inputs().get(super.inputCount() + INPUT_INDEX);
+    /**
+     * @return whether scaling of the index by the value kind's size is enabled (the default) or disabled.
+     */
+    public boolean indexScalingEnabled() {
+        return indexScalingEnabled;
     }
 
-    public void setIndex(Value index) {
-        inputs().set(super.inputCount() + INPUT_INDEX, index);
+    /**
+     * Enables or disables scaling of the index by the value kind's size. Has no effect if the index input is not used.
+     */
+    public void setIndexScalingEnabled(boolean enable) {
+        this.indexScalingEnabled = enable;
     }
 
     public static LocationNode create(Object identity, CiKind kind, int displacement, Graph graph) {
@@ -62,7 +79,7 @@ public final class LocationNode extends FloatingNode {
     }
 
     private LocationNode(Object identity, CiKind kind, int displacement, Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Illegal, graph);
         this.displacement = displacement;
         this.valueKind = kind;
         this.locationIdentity = identity;
@@ -95,7 +112,9 @@ public final class LocationNode extends FloatingNode {
         Scale indexScale = Scale.Times1;
         if (this.index() != null) {
             indexValue = lirGenerator.load(this.index());
+            if (indexScalingEnabled) {
             indexScale = Scale.fromInt(valueKind.sizeInBytes(lirGenerator.target().wordSize));
+            }
         }
         return new CiAddress(valueKind, lirGenerator.load(object), indexValue, indexScale, displacement);
     }

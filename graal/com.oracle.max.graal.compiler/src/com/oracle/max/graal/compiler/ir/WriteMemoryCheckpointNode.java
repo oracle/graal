@@ -29,15 +29,12 @@ import com.sun.cri.ci.*;
 
 public final class WriteMemoryCheckpointNode extends AbstractMemoryCheckpointNode {
 
-    private static final int SUCCESSOR_COUNT = 0;
-    private static final int INPUT_COUNT = 0;
-
     public WriteMemoryCheckpointNode(Graph graph) {
-        this(CiKind.Illegal, 0, 0, graph);
+        this(CiKind.Illegal, graph);
     }
 
-    public WriteMemoryCheckpointNode(CiKind result, int inputCount, int successorCount, Graph graph) {
-        super(result, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
+    public WriteMemoryCheckpointNode(CiKind result, Graph graph) {
+        super(result, graph);
     }
 
     @Override

@@ -197,8 +197,7 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         private void process() {
-            ArrayList<Node> arrayList = new ArrayList<Node>(node.usages());
-            for (Node usage : arrayList) {
+            for (Node usage : node.usages().snapshot()) {
                 op.beforeUpdate(node, usage);
             }
         }
@@ -353,7 +352,7 @@ public class EscapeAnalysisPhase extends Phase {
                 return false;
             } else if (usage instanceof FrameState) {
                 FrameState x = (FrameState) usage;
-                assert x.inputs().contains(node);
+                assert x.inputContains(node);
                 return true;
             } else if (usage instanceof AccessMonitor) {
                 AccessMonitor x = (AccessMonitor) usage;
@@ -369,19 +368,13 @@ public class EscapeAnalysisPhase extends Phase {
         public void beforeUpdate(Node node, Node usage) {
             if (usage instanceof IsNonNull) {
                 IsNonNull x = (IsNonNull) usage;
-                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
-                    FixedGuard guard = (FixedGuard) x.usages().get(0);
-                    guard.replaceAndDelete(guard.next());
-                }
-                x.delete();
+                // TODO (ls) not sure about this...
+                x.replaceAndDelete(Constant.forBoolean(true, node.graph()));
             } else if (usage instanceof IsType) {
                 IsType x = (IsType) usage;
                 assert x.type() == ((Value) node).exactType();
-                if (x.usages().size() == 1 && x.usages().get(0) instanceof FixedGuard) {
-                    FixedGuard guard = (FixedGuard) x.usages().get(0);
-                    guard.replaceAndDelete(guard.next());
-                }
-                x.delete();
+                // TODO (ls) not sure about this...
+                x.replaceAndDelete(Constant.forBoolean(true, node.graph()));
             } else if (usage instanceof AccessMonitor) {
                 AccessMonitor x = (AccessMonitor) usage;
                 x.replaceAndDelete(x.next());

@@ -296,9 +296,9 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         if (block.blockSuccessors().size() >= 1 && !block.endsWithJump()) {
-            NodeArray successors = block.lastInstruction().successors();
-            assert successors.size() >= 1 : "should have at least one successor : " + block.lastInstruction();
-            block.lir().jump(getLIRBlock((FixedNode) successors.get(0)));
+            NodeSuccessorsIterable successors = block.lastInstruction().successors();
+            assert successors.explicitCount() >= 1 : "should have at least one successor : " + block.lastInstruction();
+            block.lir().jump(getLIRBlock((FixedNode) successors.first()));
         }
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {

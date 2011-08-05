@@ -110,7 +110,7 @@ public class LoopBegin extends Merge {
     }
 
     @Override
-    public List<Node> phiPredecessors() {
+    public Iterable<Node> phiPredecessors() {
         return Arrays.asList(new Node[]{this.forwardEdge(), this.loopEnd()});
     }
 
@@ -128,12 +128,6 @@ public class LoopBegin extends Merge {
     @Override
     public String toString() {
         return "LoopBegin: " + super.toString();
-    }
-
-    @Override
-    public Node singlePredecessor() {
-        assert endCount() == 1;
-        return endAt(0).singlePredecessor();
     }
 
     @Override

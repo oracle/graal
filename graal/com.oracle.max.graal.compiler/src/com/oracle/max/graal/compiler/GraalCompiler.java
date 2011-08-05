@@ -74,8 +74,8 @@ public class GraalCompiler extends ObservableCompiler {
             public void verificationFailed(Node n, String message) {
                 GraalCompiler.this.fireCompilationEvent(new CompilationEvent(currentCompilation, "Verification Error on Node " + n.id(), currentCompilation.graph, true, false, true));
                 TTY.println(n.toString());
-                for (Node p : n.predecessors()) {
-                    TTY.println("predecessor: " + p);
+                if (n.predecessor() != null) {
+                    TTY.println("predecessor: " + n.predecessor());
                 }
                 for (Node p : n.usages()) {
                     TTY.println("usage: " + p);
@@ -95,7 +95,7 @@ public class GraalCompiler extends ObservableCompiler {
         }
 
         CiResult result = null;
-        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, CiUtil.format("%H.%n", method, false));
         GraalCompilation compilation = new GraalCompilation(this, method, osrBCI, stats);
         currentCompilation = compilation;
         try {

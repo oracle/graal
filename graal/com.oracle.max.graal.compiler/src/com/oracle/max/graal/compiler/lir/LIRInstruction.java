@@ -27,7 +27,8 @@ import static com.oracle.max.graal.compiler.GraalCompilation.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.lir.LIROperand.*;
+import com.oracle.max.graal.compiler.lir.LIROperand.LIRAddressOperand;
+import com.oracle.max.graal.compiler.lir.LIROperand.LIRVariableOperand;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 

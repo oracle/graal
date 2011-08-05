@@ -27,17 +27,17 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
-import com.oracle.max.graal.compiler.alloc.Interval.*;
+import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFormatter;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiAddress.*;
+import com.sun.cri.ci.CiAddress.Scale;
 import com.sun.cri.ri.*;
 
 /**

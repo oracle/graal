@@ -37,37 +37,16 @@ import com.sun.cri.ci.*;
  */
 public class Merge extends StateSplit{
 
-    private static final int INPUT_COUNT = 0;
+    @NodeInput
+    private final NodeInputList<Node> ends = new NodeInputList<Node>(this);
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public Merge(Graph graph) {
+        super(CiKind.Illegal, graph);
     }
 
     @Override
     public boolean needsStateAfter() {
         return false;
-    }
-
-    /**
-     * Constructs a new Merge at the specified bytecode index.
-     * @param bci the bytecode index of the start
-     * @param blockID the ID of the block
-     * @param graph
-     */
-    public Merge(Graph graph) {
-        super(CiKind.Illegal, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-    }
-
-    protected Merge(int inputCount, int successorCount, Graph graph) {
-        super(CiKind.Illegal, inputCount + INPUT_COUNT, successorCount + SUCCESSOR_COUNT, graph);
     }
 
     @Override
@@ -76,20 +55,19 @@ public class Merge extends StateSplit{
     }
 
     public int endIndex(EndNode end) {
-        assert variableInputs().contains(end);
-        return variableInputs().indexOf(end);
+        return ends.indexOf(end);
     }
 
     public void addEnd(EndNode end) {
-        variableInputs().add(end);
+        ends.add(end);
     }
 
     public int endCount() {
-        return variableInputs().size();
+        return ends.size();
     }
 
     public EndNode endAt(int index) {
-        return (EndNode) variableInputs().get(index);
+        return (EndNode) ends.get(index);
     }
 
     @Override
@@ -312,9 +290,9 @@ public class Merge extends StateSplit{
     }
 
     public void removeEnd(EndNode pred) {
-        int predIndex = variableInputs().indexOf(pred);
+        int predIndex = ends.indexOf(pred);
         assert predIndex != -1;
-        variableInputs().remove(predIndex);
+        ends.remove(predIndex);
 
         for (Node usage : usages()) {
             if (usage instanceof Phi) {
@@ -340,7 +318,7 @@ public class Merge extends StateSplit{
         return Util.filter(this.usages(), Phi.class);
     }
 
-    public List<Node> phiPredecessors() {
-        return Collections.unmodifiableList(variableInputs());
+    public Iterable<Node> phiPredecessors() {
+        return ends;
     }
 }

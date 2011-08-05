@@ -51,8 +51,8 @@ public abstract class Value extends Node {
      * @param successorCount
      * @param graph
      */
-    public Value(CiKind kind, int inputCount, int successorCount, Graph graph) {
-        super(inputCount, successorCount, graph);
+    public Value(CiKind kind, Graph graph) {
+        super(graph);
         assert kind != null && kind == kind.stackKind() : kind + " != " + kind.stackKind();
         this.kind = kind;
     }

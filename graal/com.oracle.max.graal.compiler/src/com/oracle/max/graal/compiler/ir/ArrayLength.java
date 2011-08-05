@@ -38,30 +38,16 @@ import com.sun.cri.ri.*;
 public final class ArrayLength extends FloatingNode {
     private static final ArrayLengthCanonicalizerOp CANONICALIZER = new ArrayLengthCanonicalizerOp();
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_ARRAY = 0;
+    @NodeInput
+    private Value array;
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    public Value array() {
+        return array;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction that produces the array object.
-     */
-     public Value array() {
-        return (Value) inputs().get(super.inputCount() + INPUT_ARRAY);
-    }
-
-    public Value setArray(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_ARRAY, n);
+    public void setArray(Value x) {
+        updateUsages(array, x);
+        array = x;
     }
 
     /**
@@ -70,7 +56,7 @@ public final class ArrayLength extends FloatingNode {
      * @param newFrameState the state after executing this instruction
      */
     public ArrayLength(Value array, Graph graph) {
-        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Int, graph);
         setArray(array);
     }
 

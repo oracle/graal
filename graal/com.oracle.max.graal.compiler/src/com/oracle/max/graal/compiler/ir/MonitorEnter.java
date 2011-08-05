@@ -30,15 +30,6 @@ import com.oracle.max.graal.graph.*;
  */
 public final class MonitorEnter extends AccessMonitor {
 
-    private static final int INPUT_COUNT = 0;
-
-    private static final int SUCCESSOR_COUNT = 1;
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
     /**
      * Creates a new MonitorEnter instruction.
      *
@@ -48,7 +39,7 @@ public final class MonitorEnter extends AccessMonitor {
      * @param graph
      */
     public MonitorEnter(Value object, Value lockAddress, int lockNumber, Graph graph) {
-        super(object, lockAddress, lockNumber, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(object, lockAddress, lockNumber, graph);
     }
 
     @Override

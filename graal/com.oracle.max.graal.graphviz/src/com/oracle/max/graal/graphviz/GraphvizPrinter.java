@@ -30,7 +30,8 @@ import java.util.HashSet;
 
 import com.oracle.max.graal.graph.Graph;
 import com.oracle.max.graal.graph.Node;
-import com.oracle.max.graal.graph.NodeArray;
+import com.oracle.max.graal.graph.NodeInputsIterable;
+import com.oracle.max.graal.graph.NodeSuccessorsIterable;
 
 /**
  * Generates a representation of {@link Node Nodes} or entire {@link Graph Graphs} in the DOT language that can be
@@ -105,32 +106,34 @@ public class GraphvizPrinter {
         }
         int id = node.id();
         String name = "n" + id;
-        NodeArray inputs = node.inputs();
-        NodeArray successors = node.successors();
+        NodeInputsIterable inputs = node.inputs();
+        NodeSuccessorsIterable successors = node.successors();
 
         String color = classColors.get(node.getClass());
 
         if (shortNames) {
-            printNode(name, node.id(), excapeLabel(node.shortName()), color, inputs.size(), successors.size());
+            printNode(name, node.id(), excapeLabel(node.shortName()), color, inputs.explicitCount(), successors.explicitCount());
         } else {
-            printNode(name, node.id(), excapeLabel(node.toString()), color, inputs.size(), successors.size());
+            printNode(name, node.id(), excapeLabel(node.toString()), color, inputs.explicitCount(), successors.explicitCount());
         }
 
-        for (int i = 0; i < successors.size(); ++i) {
-            Node successor = successors.get(i);
+        int i = 0;
+        for (Node successor : successors) {
             if (successor != Node.Null && !omittedClasses.contains(successor.getClass())) {
                 printControlEdge(id, i, successor.id());
             }
+            i++;
         }
 
-        for (int i = 0; i < inputs.size(); ++i) {
-            Node input = inputs.get(i);
+        i = 0;
+        for (Node input : inputs) {
             if (input != Node.Null && !omittedClasses.contains(input.getClass())) {
                 if (node.getClass().getSimpleName().equals("FrameState") && input.getClass().getSimpleName().equals("Local")) {
                     continue;
                 }
                 printDataEdge(id, i, input.id());
             }
+            i++;
         }
     }
 

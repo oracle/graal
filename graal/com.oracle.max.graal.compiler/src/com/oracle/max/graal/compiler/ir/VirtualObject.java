@@ -33,25 +33,11 @@ import com.sun.cri.ri.*;
 
 public class VirtualObject extends FloatingNode {
 
-    private static final int INPUT_COUNT = 0;
-
-    private static final int SUCCESSOR_COUNT = 0;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
     private EscapeField[] fields;
     private RiType type;
 
     public VirtualObject(RiType type, EscapeField[] fields, Graph graph) {
-        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Int, graph);
         this.type = type;
         this.fields = fields;
     }

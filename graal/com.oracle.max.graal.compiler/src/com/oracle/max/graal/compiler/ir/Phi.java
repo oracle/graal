@@ -38,35 +38,19 @@ import com.sun.cri.ci.*;
  */
 public final class Phi extends FloatingNode {
 
-    private static final int DEFAULT_MAX_VALUES = 2;
+    @NodeInput
+    private Merge merge;
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_MERGE = 0;
+    @NodeInput
+    private final NodeInputList<Value> values = new NodeInputList<Value>(this);
 
-    private static final int SUCCESSOR_COUNT = 0;
-
-    private final PhiType type;
-
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The merge node for this phi.
-     */
     public Merge merge() {
-        return (Merge) inputs().get(super.inputCount() + INPUT_MERGE);
+        return merge;
     }
 
-    public void setMerge(Merge n) {
-        assert n != null;
-        inputs().set(super.inputCount() + INPUT_MERGE, n);
+    public void setMerge(Merge x) {
+        updateUsages(merge, x);
+        merge = x;
     }
 
     public static enum PhiType {
@@ -75,14 +59,16 @@ public final class Phi extends FloatingNode {
         Virtual         // phis used for VirtualObjectField merges
     }
 
+    private final PhiType type;
+
     public Phi(CiKind kind, Merge merge, PhiType type, Graph graph) {
-        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, graph);
         this.type = type;
         setMerge(merge);
     }
 
     private Phi(CiKind kind, PhiType type, Graph graph) {
-        super(kind, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, graph);
         this.type = type;
     }
 
@@ -104,11 +90,11 @@ public final class Phi extends FloatingNode {
      * @return the instruction that produced the value in the i'th predecessor
      */
     public Value valueAt(int i) {
-        return (Value) variableInputs().get(i);
+        return values.get(i);
     }
 
     public void setValueAt(int i, Value x) {
-        inputs().set(INPUT_COUNT + i, x);
+        values.set(i, x);
     }
 
     /**
@@ -116,7 +102,7 @@ public final class Phi extends FloatingNode {
      * @return the number of inputs in this phi
      */
     public int valueCount() {
-        return variableInputs().size();
+        return values.size();
     }
 
     @Override
@@ -152,12 +138,12 @@ public final class Phi extends FloatingNode {
         }
     }
 
-    public void addInput(Node y) {
-        variableInputs().add(y);
+    public void addInput(Value x) {
+        values.add(x);
     }
 
     public void removeInput(int index) {
-        variableInputs().remove(index);
+        values.remove(index);
     }
 
     @Override
@@ -201,18 +187,12 @@ public final class Phi extends FloatingNode {
             }
             Node end0 = merge.endAt(0);
             Node end1 = merge.endAt(1);
-            if (end0.predecessors().size() != 1 || end1.predecessors().size() != 1) {
-                return phiNode;
-            }
-            Node endPred0 = end0.predecessors().get(0);
-            Node endPred1 = end1.predecessors().get(0);
+            Node endPred0 = end0.predecessor();
+            Node endPred1 = end1.predecessor();
             if (endPred0 != endPred1 || !(endPred0 instanceof If)) {
                 return phiNode;
             }
             If ifNode = (If) endPred0;
-            if (ifNode.predecessors().size() != 1) {
-                return phiNode;
-            }
             boolean inverted = ifNode.trueSuccessor() == end1;
             Value trueValue = phiNode.valueAt(inverted ? 1 : 0);
             Value falseValue = phiNode.valueAt(inverted ? 0 : 1);

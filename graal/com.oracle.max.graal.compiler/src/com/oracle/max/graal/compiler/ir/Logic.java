@@ -31,9 +31,6 @@ import com.sun.cri.ci.*;
  */
 public abstract class Logic extends Binary {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     /**
      * Constructs a new logic operation instruction.
      * @param opcode the opcode of the logic operation
@@ -41,7 +38,7 @@ public abstract class Logic extends Binary {
      * @param y the second input into this instruction
      */
     public Logic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
-        super(kind, opcode, x, y, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, opcode, x, y, graph);
     }
 
     @Override

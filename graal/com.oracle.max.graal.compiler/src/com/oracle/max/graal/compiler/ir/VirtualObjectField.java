@@ -31,54 +31,40 @@ import com.sun.cri.ci.*;
 
 public class VirtualObjectField extends FloatingNode {
 
-    private static final int INPUT_COUNT = 3;
-    private static final int INPUT_OBJECT = 0;
-    private static final int INPUT_LAST_STATE = 1;
-    private static final int INPUT_INPUT = 2;
+    @NodeInput
+    private VirtualObject object;
 
-    private static final int SUCCESSOR_COUNT = 0;
+    @NodeInput
+    private FloatingNode lastState;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
+    @NodeInput
+    private Value input;
+
+    public VirtualObject object() {
+        return object;
     }
 
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
+    public void setObject(VirtualObject x) {
+        updateUsages(object, x);
+        object = x;
     }
 
-    /**
-     * The instruction that specifies the virtual object instance.
-     */
-     public VirtualObject object() {
-        return (VirtualObject) inputs().get(super.inputCount() + INPUT_OBJECT);
+    public FloatingNode lastState() {
+        return lastState;
     }
 
-    private VirtualObject setObject(VirtualObject n) {
-        return (VirtualObject) inputs().set(super.inputCount() + INPUT_OBJECT, n);
+    public void setLastState(FloatingNode x) {
+        updateUsages(lastState, x);
+        lastState = x;
     }
 
-    /**
-     * The instruction that specifies the old state of the virtual object.
-     */
-     public FloatingNode lastState() {
-        return (FloatingNode) inputs().get(super.inputCount() + INPUT_LAST_STATE);
+    public Value input() {
+        return input;
     }
 
-    private FloatingNode setLastState(FloatingNode n) {
-        return (FloatingNode) inputs().set(super.inputCount() + INPUT_LAST_STATE, n);
-    }
-
-    /**
-     * The instruction that contains the new state of the specified field.
-     */
-     public Value input() {
-        return (Value) inputs().get(super.inputCount() + INPUT_INPUT);
-    }
-
-    public Value setInput(Value n) {
-        return (Value) inputs().set(super.inputCount() + INPUT_INPUT, n);
+    public void setInput(Value x) {
+        updateUsages(input, x);
+        input = x;
     }
 
     private int index;
@@ -89,7 +75,7 @@ public class VirtualObjectField extends FloatingNode {
      * @param newFrameState the state after executing this instruction
      */
     public VirtualObjectField(VirtualObject object, FloatingNode lastState, Value input, int index, Graph graph) {
-        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(CiKind.Int, graph);
         this.index = index;
         setObject(object);
         setLastState(lastState);

@@ -31,9 +31,6 @@ import com.sun.cri.ci.*;
  */
 public abstract class Shift extends Binary {
 
-    private static final int INPUT_COUNT = 0;
-    private static final int SUCCESSOR_COUNT = 0;
-
     /**
      * Creates a new shift operation.
      * @param opcode the opcode of the shift
@@ -41,7 +38,7 @@ public abstract class Shift extends Binary {
      * @param s the second input value
      */
     public Shift(CiKind kind, int opcode, Value x, Value s, Graph graph) {
-        super(kind, opcode, x, s, INPUT_COUNT, SUCCESSOR_COUNT, graph);
+        super(kind, opcode, x, s, graph);
         assert x == null || x.kind == kind;
     }
 
