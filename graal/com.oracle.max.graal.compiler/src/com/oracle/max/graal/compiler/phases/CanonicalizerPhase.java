@@ -40,25 +40,38 @@ public class CanonicalizerPhase extends Phase {
 
     @Override
     protected void run(Graph graph) {
-        NodeWorkList nodeWorkList = graph.createNodeWorkList(!newNodes, MAX_ITERATION_PER_NODE);
+        final NodeWorkList nodeWorkList = graph.createNodeWorkList(!newNodes, MAX_ITERATION_PER_NODE);
         if (newNodes) {
             nodeWorkList.addAll(graph.getNewNodes());
         }
+        NotifyReProcess reProcess = new NotifyReProcess() {
+            @Override
+            public void reProccess(Node n) {
+                nodeWorkList.addAgain(n);
+            }
+        };
         for (Node node : nodeWorkList) {
             CanonicalizerOp op = node.lookup(CanonicalizerOp.class);
             if (op != null) {
-                Node canonical = op.canonical(node);
+                graph.mark();
+                Node canonical = op.canonical(node, reProcess);
                 if (canonical != node) {
                     node.replaceAndDelete(canonical);
-                    nodeWorkList.replaced(canonical, node, true, EdgeType.USAGES);
-                    //System.out.println("-->" + n + " canonicalized to " + canonical);
+                    nodeWorkList.replaced(canonical, node, false, EdgeType.USAGES);
+                    for (Node newNode : graph.getNewNodes()) {
+                        nodeWorkList.add(newNode);
+                    }
                     GraalMetrics.NodesCanonicalized++;
                 }
             }
         }
     }
 
+    public interface NotifyReProcess {
+        void reProccess(Node n);
+    }
+
     public interface CanonicalizerOp extends Op {
-        Node canonical(Node node);
+        Node canonical(Node node, NotifyReProcess reProcess);
     }
 }

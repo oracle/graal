@@ -24,9 +24,11 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.StateSplit.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.ir.StateSplit.FilteringIterator;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -188,12 +190,15 @@ public final class Phi extends FloatingNode {
     private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
 
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             Phi phiNode = (Phi) node;
             if (phiNode.valueCount() != 2 || phiNode.merge().endCount() != 2) {
                 return phiNode;
             }
             Merge merge = phiNode.merge();
+            if (merge.phis().size() > 1) { // XXX (gd) disable canonicalization of multiple conditional while we are not able to fuse them and the potentially leftover If in the backend
+                return phiNode;
+            }
             Node end0 = merge.endAt(0);
             Node end1 = merge.endAt(1);
             if (end0.predecessors().size() != 1 || end1.predecessors().size() != 1) {
@@ -211,11 +216,25 @@ public final class Phi extends FloatingNode {
             boolean inverted = ifNode.trueSuccessor() == end1;
             Value trueValue = phiNode.valueAt(inverted ? 1 : 0);
             Value falseValue = phiNode.valueAt(inverted ? 0 : 1);
-            if (trueValue.kind != CiKind.Int || falseValue.kind != CiKind.Int) {
+            if ((trueValue.kind != CiKind.Int && trueValue.kind != CiKind.Long) || (falseValue.kind != CiKind.Int && falseValue.kind != CiKind.Long)) {
                 return phiNode;
             }
-            TTY.println("> Phi canon'ed to Conditional");
-            return new Conditional(ifNode.compare(), trueValue, falseValue, node.graph());
+            if ((!(trueValue instanceof Constant) && trueValue.usages().size() == 1) || (!(falseValue instanceof Constant) && falseValue.usages().size() == 1)) {
+                return phiNode;
+            }
+            BooleanNode compare = ifNode.compare();
+            while (compare instanceof NegateBooleanNode) {
+                compare = ((NegateBooleanNode) compare).value();
+            }
+            if (!(compare instanceof Compare || compare instanceof IsNonNull || compare instanceof NegateBooleanNode || compare instanceof Constant)) {
+                return phiNode;
+            }
+            if (GraalOptions.TraceCanonicalizer) {
+                TTY.println("> Phi canon'ed to Conditional");
+            }
+            reProcess.reProccess(ifNode);
+            Conditional conditional = new Conditional(ifNode.compare(), trueValue, falseValue, node.graph());
+            return conditional;
         }
     };
 }

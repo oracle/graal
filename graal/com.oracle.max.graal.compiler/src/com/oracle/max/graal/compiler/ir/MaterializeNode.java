@@ -22,48 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.asm.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
 
-public final class MaterializeNode extends FloatingNode {
+public final class MaterializeNode extends Conditional {
 
-    private static final int INPUT_COUNT = 1;
-    private static final int INPUT_VALUE = 0;
-
+    private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
 
-    @Override
-    protected int inputCount() {
-        return super.inputCount() + INPUT_COUNT;
-    }
-
-    @Override
-    protected int successorCount() {
-        return super.successorCount() + SUCCESSOR_COUNT;
-    }
-
-    /**
-     * The instruction which produces the input value to this instruction.
-     */
-     public BooleanNode value() {
-        return (BooleanNode) inputs().get(super.inputCount() + INPUT_VALUE);
-    }
-
-    public void setValue(BooleanNode n) {
-        inputs().set(super.inputCount() + INPUT_VALUE, n);
-    }
 
     public MaterializeNode(BooleanNode value, Graph graph) {
-        super(CiKind.Int, INPUT_COUNT, SUCCESSOR_COUNT, graph);
-        setValue(value);
-    }
-
-    @Override
-    public void accept(ValueVisitor v) {
+        super(value, Constant.forInt(1, graph), Constant.forInt(0, graph), graph);
     }
 
     @Override
@@ -71,35 +40,9 @@ public final class MaterializeNode extends FloatingNode {
         return (i instanceof MaterializeNode);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) LIR_GENERATOR_OP;
-        }
-        return super.lookup(clazz);
-    }
-
-    public static final LIRGenerator.LIRGeneratorOp LIR_GENERATOR_OP = new LIRGenerator.LIRGeneratorOp() {
-
-        @Override
-        public void generate(Node n, LIRGenerator generator) {
-            LIRBlock trueSuccessor = new LIRBlock(new Label(), null);
-            generator.emitBooleanBranch(((MaterializeNode) n).value(), trueSuccessor, null, null);
-            CiValue result = generator.createResultVariable((Value) n);
-            LIRList lir = generator.lir();
-            lir.move(CiConstant.FALSE, result);
-            Label label = new Label();
-            lir.branch(Condition.TRUE, label);
-            lir.branchDestination(trueSuccessor.label);
-            lir.move(CiConstant.TRUE, result);
-            lir.branchDestination(label);
-        }
-    };
-
     @Override
     public void print(LogStream out) {
-        out.print("materialize(").print(value().toString()).print(')');
+        out.print("materialize(").print(condition().toString()).print(')');
     }
 
     @Override

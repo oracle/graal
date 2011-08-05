@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -57,7 +58,7 @@ public final class LeftShift extends Shift {
 
     private static class LeftShiftCanonicalizerOp implements CanonicalizerOp {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             LeftShift leftShift = (LeftShift) node;
             CiKind kind = leftShift.kind;
             Graph graph = leftShift.graph();

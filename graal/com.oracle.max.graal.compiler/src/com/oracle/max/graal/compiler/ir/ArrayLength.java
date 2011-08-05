@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -109,7 +110,7 @@ public final class ArrayLength extends FloatingNode {
 
     private static class ArrayLengthCanonicalizerOp implements CanonicalizerOp {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             ArrayLength arrayLength = (ArrayLength) node;
             Value array = arrayLength.array();
             if (array instanceof NewArray) {

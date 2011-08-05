@@ -246,7 +246,6 @@ public final class GraalCompilation {
             if (GraalOptions.Time) {
                 GraalTimers.LIR_CREATE.stop();
             }
-
             if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
                 LIRList.printLIR(hir.linearScanOrder());
             }

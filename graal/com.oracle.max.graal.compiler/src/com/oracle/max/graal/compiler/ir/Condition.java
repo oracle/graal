@@ -171,7 +171,7 @@ public enum Condition {
      * @return {@link Boolean#TRUE} if the comparison is known to be true,
      * {@link Boolean#FALSE} if the comparison is known to be false, {@code null} otherwise.
      */
-    public Boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime) {
+    public Boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime, boolean unorderedIsTrue) {
         switch (lt.kind) {
             case Boolean:
             case Int: {
@@ -211,7 +211,44 @@ public enum Condition {
                 }
                 break;
             }
-            // XXX: folding of floating comparisons should be possible
+            case Float: {
+                float x = lt.asFloat();
+                float y = rt.asFloat();
+                if (Float.isNaN(x) || Float.isNaN(y)) {
+                    return unorderedIsTrue;
+                }
+                switch (this) {
+                    case EQ: return x == y;
+                    case NE: return x != y;
+                    case BT:
+                    case LT: return x < y;
+                    case BE:
+                    case LE: return x <= y;
+                    case AT:
+                    case GT: return x > y;
+                    case AE:
+                    case GE: return x >= y;
+                }
+            }
+            case Double: {
+                double x = lt.asDouble();
+                double y = rt.asDouble();
+                if (Double.isNaN(x) || Double.isNaN(y)) {
+                    return unorderedIsTrue;
+                }
+                switch (this) {
+                    case EQ: return x == y;
+                    case NE: return x != y;
+                    case BT:
+                    case LT: return x < y;
+                    case BE:
+                    case LE: return x <= y;
+                    case AT:
+                    case GT: return x > y;
+                    case AE:
+                    case GE: return x >= y;
+                }
+            }
         }
         return null;
     }

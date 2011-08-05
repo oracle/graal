@@ -276,8 +276,14 @@ public abstract class LIRAssembler {
                 emitCompare2Int(op.code, op.operand1(), op.operand2(), op.result(), op);
                 break;
 
+            case FCmove:
+                emitConditionalMove(op.condition(), op.operand1(), op.operand2(), op.result(), true, false);
+                break;
+            case UFCmove:
+                emitConditionalMove(op.condition(), op.operand1(), op.operand2(), op.result(), true, true);
+                break;
             case Cmove:
-                emitConditionalMove(op.condition(), op.operand1(), op.operand2(), op.result());
+                emitConditionalMove(op.condition(), op.operand1(), op.operand2(), op.result(), false, false);
                 break;
 
             case Shl:
@@ -418,7 +424,7 @@ public abstract class LIRAssembler {
 
     protected abstract void emitSignificantBitOp(boolean most, CiValue inOpr1, CiValue dst);
 
-    protected abstract void emitConditionalMove(Condition condition, CiValue inOpr1, CiValue inOpr2, CiValue dst);
+    protected abstract void emitConditionalMove(Condition condition, CiValue inOpr1, CiValue inOpr2, CiValue dst, boolean mayBeUnordered, boolean unorderedcmovOpr1);
 
     protected abstract void emitCompare2Int(LIROpcode code, CiValue inOpr1, CiValue inOpr2, CiValue dst, LIROp2 op);
 
@@ -470,4 +476,15 @@ public abstract class LIRAssembler {
 
     protected abstract void reg2reg(CiValue src, CiValue dest);
 
+    protected abstract boolean trueOnUnordered(Condition condition);
+
+    protected abstract boolean falseOnUnordered(Condition condition);
+
+    protected boolean mayBeTrueOnUnordered(Condition condition) {
+        return trueOnUnordered(condition) || !falseOnUnordered(condition);
+    }
+
+    protected boolean mayBeFalseOnUnordered(Condition condition) {
+        return falseOnUnordered(condition) || !trueOnUnordered(condition);
+    }
 }

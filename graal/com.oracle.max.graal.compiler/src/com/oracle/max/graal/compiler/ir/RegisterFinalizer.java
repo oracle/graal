@@ -26,6 +26,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -83,7 +84,7 @@ public final class RegisterFinalizer extends StateSplit {
     private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
 
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             RegisterFinalizer finalizer = (RegisterFinalizer) node;
             Value object = finalizer.object();
 

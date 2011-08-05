@@ -195,6 +195,10 @@ public final class LIRList {
         append(new LIROp2(LIROpcode.Cmove, condition, src1, src2, dst));
     }
 
+    public void fcmove(Condition condition, CiValue src1, CiValue src2, CiValue dst, boolean unorderedIsSecond) {
+        append(new LIROp2(unorderedIsSecond ? LIROpcode.FCmove : LIROpcode.UFCmove, condition, src1, src2, dst));
+    }
+
     public void abs(CiValue from, CiValue to, CiValue tmp) {
         append(new LIROp2(LIROpcode.Abs, from, tmp, to));
     }

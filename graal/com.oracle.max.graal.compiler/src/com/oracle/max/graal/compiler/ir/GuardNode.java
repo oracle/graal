@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -45,7 +46,7 @@ public final class GuardNode extends FloatingNode {
     }
 
     /**
-     * The instruction that produces the object tested against null.
+     * The instruction that produces the tested boolean value.
      */
     public BooleanNode node() {
         return (BooleanNode) inputs().get(super.inputCount() + INPUT_NODE);
@@ -91,7 +92,7 @@ public final class GuardNode extends FloatingNode {
 
     private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             GuardNode guard = (GuardNode) node;
             if (guard.node() instanceof Constant) {
                 Constant c = (Constant) guard.node();

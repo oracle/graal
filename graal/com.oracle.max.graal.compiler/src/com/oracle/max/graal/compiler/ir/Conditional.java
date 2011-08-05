@@ -22,12 +22,14 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.asm.*;
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.gen.LIRGenerator.LIRGeneratorOp;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -37,10 +39,11 @@ import com.sun.cri.ci.*;
  * Note that these nodes are not built directly from the bytecode but are introduced
  * by conditional expression elimination.
  */
-public final class Conditional extends Binary {
+public class Conditional extends Binary {
 
-    private static final int INPUT_COUNT = 1;
+    private static final int INPUT_COUNT = 2;
     private static final int INPUT_CONDITION = 0;
+    private static final int INPUT_STATE = 1;
 
     private static final int SUCCESSOR_COUNT = 0;
 
@@ -60,6 +63,14 @@ public final class Conditional extends Binary {
 
     public void setCondition(BooleanNode n) {
         inputs().set(super.inputCount() + INPUT_CONDITION, n);
+    }
+
+    public FrameState stateDuring() {
+        return (FrameState) inputs().get(super.inputCount() + INPUT_STATE);
+    }
+
+    public void setStateDuring(FrameState n) {
+        inputs().set(super.inputCount() + INPUT_STATE, n);
     }
 
     /**
@@ -87,6 +98,14 @@ public final class Conditional extends Binary {
 
     public Value falseValue() {
         return y();
+    }
+
+    public Value setTrueValue(Value value) {
+        return setX(value);
+    }
+
+    public Value setFalseValue(Value value) {
+        return setY(value);
     }
 
     @Override
@@ -130,7 +149,7 @@ public final class Conditional extends Binary {
 
     private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             Conditional conditional = (Conditional) node;
             BooleanNode condition = conditional.condition();
             Value trueValue = conditional.trueValue();
@@ -146,17 +165,31 @@ public final class Conditional extends Binary {
             if (trueValue == falseValue) {
                 return trueValue;
             }
-            if (trueValue instanceof Constant && falseValue instanceof Constant
+            if (!(conditional instanceof MaterializeNode) && trueValue instanceof Constant && falseValue instanceof Constant
                             && trueValue.kind == CiKind.Int && falseValue.kind == CiKind.Int) {
                 int trueInt = trueValue.asConstant().asInt();
                 int falseInt = falseValue.asConstant().asInt();
                 if (trueInt == 0 && falseInt == 1) {
-                    TTY.println("> Conditional canon'ed to Materialize");
-                    return new MaterializeNode(new NegateBooleanNode(condition, node.graph()), node.graph());
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("> Conditional canon'ed to ~Materialize");
+                    }
+                    reProcess.reProccess(condition); // because we negate it
+                    MaterializeNode materializeNode = new MaterializeNode(new NegateBooleanNode(condition, node.graph()), node.graph());
+                    materializeNode.setStateDuring(conditional.stateDuring());
+                    return materializeNode;
                 } else if (trueInt == 1 && falseInt == 0) {
-                    TTY.println("> Conditional canon'ed to Materialize");
-                    return new MaterializeNode(condition, node.graph());
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("> Conditional canon'ed to Materialize");
+                    }
+                    MaterializeNode materializeNode = new MaterializeNode(condition, node.graph());
+                    materializeNode.setStateDuring(conditional.stateDuring());
+                    return materializeNode;
                 }
+            } else if (falseValue instanceof Constant && !(trueValue instanceof Constant)) {
+                conditional.setTrueValue(falseValue);
+                conditional.setFalseValue(trueValue);
+                condition = new NegateBooleanNode(condition, node.graph());
+                conditional.setCondition(condition);
             }
             return conditional;
         }
@@ -174,39 +207,52 @@ public final class Conditional extends Binary {
             Condition cond = null;
             CiValue left = null;
             CiValue right = null;
+            boolean floating = false;
+            boolean unOrderedIsSecond = false;
+            boolean negate = false;
+            while (condition instanceof NegateBooleanNode) {
+                negate = !negate;
+                condition = ((NegateBooleanNode) condition).value();
+            }
             if (condition instanceof Compare) {
                 Compare compare = (Compare) condition;
                 Value x = compare.x();
                 Value y = compare.y();
+                cond = compare.condition();
+                if (x.kind.isFloatOrDouble()) {
+                    floating = true;
+                    unOrderedIsSecond = !compare.unorderedIsTrue();
+                    cond = generator.floatingPointCondition(cond);
+                }
                 left = generator.load(x);
                 if (!generator.canInlineAsConstant(y)) {
                     right = generator.load(y);
                 } else {
                     right = generator.makeOperand(y);
                 }
-                cond = compare.condition;
             } else if (condition instanceof IsNonNull) {
                 IsNonNull isNonNull = (IsNonNull) condition;
                 left = generator.load(isNonNull.object());
                 right = CiConstant.NULL_OBJECT;
                 cond = Condition.NE;
+            } else if (condition instanceof Constant) {
+                generator.lir().move(result, condition.asConstant());
+            } else {
+                throw Util.shouldNotReachHere("Currently not implemented because we can not create blocks during LIRGen : " + condition);
             }
             CiValue tVal = generator.makeOperand(conditional.trueValue());
             CiValue fVal = generator.makeOperand(conditional.falseValue());
             if (cond != null) {
+                if (negate) {
+                    cond = cond.negate();
+                }
                 assert left != null && right != null;
                 generator.lir().cmp(cond, left, right);
-                generator.lir().cmove(cond, tVal, fVal, result);
-            } else {
-                LIRBlock trueSuccessor = new LIRBlock(new Label(), null);
-                generator.emitBooleanBranch(condition, trueSuccessor, null, null);
-                LIRList lir = generator.lir();
-                lir.move(fVal, result);
-                Label label = new Label();
-                lir.branch(Condition.TRUE, label);
-                lir.branchDestination(trueSuccessor.label);
-                lir.move(tVal, result);
-                lir.branchDestination(label);
+                if (floating) {
+                    generator.lir().fcmove(cond, tVal, fVal, result, unOrderedIsSecond);
+                } else {
+                    generator.lir().cmove(cond, tVal, fVal, result);
+                }
             }
         }
     };

@@ -276,32 +276,13 @@ public class LoopUtil {
         LoopEnd loopEnd = loop.loopBegin().loopEnd();
         PeelingResult peeling = preparePeeling(loop, loopEnd);
         GraalCompilation compilation = GraalCompilation.compilation();
+
         if (compilation.compiler.isObserved()) {
             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After peeling preparation", loopEnd.graph(), true, false));
         }
-        /*System.out.println("Peeling : ");
-        System.out.println(" begin = " + peeling.begin);
-        System.out.println(" end = " + peeling.end);
-        System.out.println(" Phis :");
-        for (Entry<Node, Placeholder> entry : peeling.phis.entries()) {
-            System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
-        }
-        System.out.println(" Exits :");
-        for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
-            System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
-        }
-        System.out.println(" PhiInits :");
-        for (Entry<Node, Node> entry : peeling.phiInits.entries()) {
-            System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
-        }
-        System.out.println(" DataOut :");
-        for (Entry<Node, Node> entry : peeling.dataOut.entries()) {
-            System.out.println("  - " + entry.getKey() + " -> " + entry.getValue());
-        }*/
+
         rewirePeeling(peeling, loop);
-        /*if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After rewirePeeling", loopEnd.graph(), true, false));
-        }*/
+
         loop.invalidateCached();
         // update parents
         Loop parent = loop.parent();
@@ -355,7 +336,6 @@ public class LoopUtil {
             for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
                 if (dataEntry.getValue() == p) {
                     dataEntry.setValue(init);
-                    //System.out.println("Patch dataOut : " + dataEntry.getKey() + " -> " + dataEntry.getValue());
                 }
             }
         }
@@ -484,14 +464,6 @@ public class LoopUtil {
             colors.set(exitPoint, exitPoint);
         }
 
-        /*System.out.println("newExitValues");
-        for (Entry<Node, NodeMap<Value>> entry : newExitValues.entries()) {
-            System.out.println(" - " + entry.getKey() + " :");
-            for (Entry<Node, Value> entry2 : entry.getValue().entries()) {
-                System.out.println("    + " + entry2.getKey() + " -> " + entry2.getValue());
-            }
-        }*/
-
         // color
         GraphUtil.colorCFGDown(colors, new ColoringLambda<Node>() {
             @Override
@@ -548,7 +520,6 @@ public class LoopUtil {
             private Value getValueAt(Node point, NodeMap<Value> valueMap, CiKind kind) {
                 Value value = valueMap.get(point);
                 if (value != null) {
-                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = (cached) " + value);
                     return value;
                 }
                 Merge merge = (Merge) point;
@@ -570,24 +541,16 @@ public class LoopUtil {
                     for (EndNode end : merge.cfgPredecessors()) {
                         phi.addInput(getValueAt(colors.get(end), valueMap, kind));
                     }
-                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = (new-phi) " + phi);
                     return phi;
                 } else {
                     assert v != null;
                     valueMap.set(point, v);
-                    //System.out.println("getValueAt(" + point + ", valueMap, kind) = (unique) " + v);
                     return v;
                 }
             }
             @Override
             public boolean explore(Node n) {
-                /*System.out.println("Explore " + n + "?");
-                System.out.println(" - exitFS : " + (!exitFrameStates.isNew(n) && exitFrameStates.isMarked(n)));
-                System.out.println(" - !inOrBefore : " + (!inOrBefore.isNew(n) && !inOrBefore.isMarked(n)));
-                System.out.println(" - inputs > 0 : " + (n.inputs().size() > 0));
-                System.out.println(" - !danglingMergeFrameState : " + (!danglingMergeFrameState(n)));*/
-                return exitFrameStates.isNotNewMarked(n)
-                || (inOrBefore.isNotNewNotMarked(n) && n.inputs().size() > 0 && !afterColoringFramestate(n)); //TODO (gd) hum
+                return exitFrameStates.isNotNewMarked(n) || (inOrBefore.isNotNewNotMarked(n) && n.inputs().size() > 0 && !afterColoringFramestate(n)); //TODO (gd) hum
             }
             public boolean afterColoringFramestate(Node n) {
                 if (!(n instanceof FrameState)) {
@@ -611,7 +574,6 @@ public class LoopUtil {
             }
             @Override
             public void fixNode(Node node, Node color) {
-                //System.out.println("fixNode(" + node + ", " + color + ")");
                 if (color == null) {
                     // 'white' it out : make non-explorable
                     if (!exitFrameStates.isNew(node)) {
@@ -660,22 +622,12 @@ public class LoopUtil {
                 return (Merge) color;
             }
         });
-
-        /*if (compilation.compiler.isObserved()) {
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After split from colors", graph, true, false));
-        }*/
     }
 
     private static PeelingResult preparePeeling(Loop loop, FixedNode from) {
         LoopBegin loopBegin = loop.loopBegin();
         Graph graph = loopBegin.graph();
         NodeBitMap marked = computeLoopNodesFrom(loop, from);
-        GraalCompilation compilation = GraalCompilation.compilation();
-        /*if (compilation.compiler.isObserved()) {
-            Map<String, Object> debug = new HashMap<String, Object>();
-            debug.put("marked", marked);
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "After computeLoopNodesFrom", loopBegin.graph(), true, false, debug));
-        }*/
         if (from == loopBegin.loopEnd()) {
             clearWithState(from, marked);
         }
@@ -728,19 +680,7 @@ public class LoopUtil {
             }
         }
 
-        //GraalCompilation compilation = GraalCompilation.compilation();
-        if (compilation.compiler.isObserved()) {
-            Map<String, Object> debug = new HashMap<String, Object>();
-            debug.put("marked", marked);
-            compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Before addDuplicate loop#" + loopBegin.id(), loopBegin.graph(), true, false, debug));
-        }
-
         Map<Node, Node> duplicates = graph.addDuplicate(marked, replacements);
-
-        /*System.out.println("Dup mapping :");
-        for (Entry<Node, Node> entry : duplicates.entrySet()) {
-            System.out.println(" - " + entry.getKey().id() + " -> " + entry.getValue().id());
-        }*/
 
         NodeMap<Node> dataOutMapping = graph.createNodeMap();
         for (Node n : dataOut) {
@@ -809,7 +749,6 @@ public class LoopUtil {
         NodeFlood work = graph.createNodeFlood();
         work.addAll(cfgNodes);
         for (Node n : work) {
-            //inOrAfter.mark(n);
             markWithState(n, inOrAfter);
             if (full) {
                 for (Node sux : n.successors()) {

@@ -59,6 +59,8 @@ public enum LIROpcode {
         Ucmpfd2i,
         Cmpfd2i,
         Cmove,
+        FCmove,
+        UFCmove,
         Add,
         Sub,
         Mul,

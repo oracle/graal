@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -57,7 +58,7 @@ public final class UnsignedRightShift extends Shift {
 
     private static class UnsignedRightShiftCanonicalizerOp implements CanonicalizerOp {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             UnsignedRightShift ushr = (UnsignedRightShift) node;
             CiKind kind = ushr.kind;
             Graph graph = ushr.graph();

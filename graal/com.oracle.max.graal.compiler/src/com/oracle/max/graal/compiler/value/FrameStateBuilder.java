@@ -47,6 +47,16 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     private final RiMethod method;
 
+    public FrameStateBuilder(FrameState fs) {
+        this.method = fs.method;
+        this.graph = fs.graph();
+        this.locals = new Value[method.maxLocals()];
+        int stackSize = Math.max(1, method.maxStackSize());
+        this.stack = new Value[stackSize];
+        this.locks = new ArrayList<Value>();
+        this.initializeFrom(fs);
+    }
+
     public FrameStateBuilder(RiMethod method, Graph graph) {
         assert graph != null;
         this.method = method;

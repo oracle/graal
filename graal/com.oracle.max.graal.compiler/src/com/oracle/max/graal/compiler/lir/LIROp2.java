@@ -63,7 +63,7 @@ public class LIROp2 extends LIRInstruction {
     public LIROp2(LIROpcode opcode, Condition condition, CiValue opr1, CiValue opr2, CiValue result) {
         super(opcode, result, null, false, 0, 0, opr1, opr2);
         this.condition = condition;
-        assert opcode == LIROpcode.Cmove : "Instruction opcode should be of type LIROpcode.Cmove";
+        assert opcode == LIROpcode.Cmove || opcode == LIROpcode.FCmove || opcode == LIROpcode.UFCmove : "Instruction opcode should be of type LIROpcode.Cmove";
     }
 
     /**
@@ -156,7 +156,7 @@ public class LIROp2 extends LIRInstruction {
      * @return condition the condition of this instruction
      */
     public Condition condition() {
-        assert code == LIROpcode.Cmp || code == LIROpcode.Cmove : "Field access only valid for cmp and cmove";
+        assert code == LIROpcode.Cmp || code == LIROpcode.Cmove || code == LIROpcode.FCmove || code == LIROpcode.UFCmove : "Field access only valid for cmp and cmove";
         return condition;
     }
 

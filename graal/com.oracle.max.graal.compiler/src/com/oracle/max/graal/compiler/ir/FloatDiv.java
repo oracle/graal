@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -56,7 +57,7 @@ public final class FloatDiv extends FloatArithmetic {
 
     private static class FloatDivCanonicalizerOp implements CanonicalizerOp {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             FloatDiv div = (FloatDiv) node;
             Value x = div.x();
             Value y = div.y();

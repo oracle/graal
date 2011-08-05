@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -127,7 +128,7 @@ public final class LoadField extends AccessField {
 
     private static class LoadFieldCanonicalizerOp implements CanonicalizerOp {
         @Override
-        public Node canonical(Node node) {
+        public Node canonical(Node node, NotifyReProcess reProcess) {
             LoadField loadField = (LoadField) node;
             Graph graph = node.graph();
             CiConstant constant = null;
