@@ -567,7 +567,7 @@ public class IdentifyBlocksPhase extends Phase {
             int index = phi.merge().phiPredecessorIndex(pred);
             phi.setValueAt(index, (Value) patch);
         } else {
-            usage.node.inputs().replace(original, patch);
+            usage.node.replaceFirstInput(original, patch);
         }
     }
 
