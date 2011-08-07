@@ -30,8 +30,7 @@ import com.sun.cri.ci.*;
 
 public final class NegateBooleanNode extends BooleanNode {
 
-    @NodeInput
-    private BooleanNode value;
+    @Input    private BooleanNode value;
 
     public BooleanNode value() {
         return value;

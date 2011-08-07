@@ -33,9 +33,7 @@ import org.junit.Test;
 
 import com.oracle.max.graal.graph.Graph;
 import com.oracle.max.graal.graph.Node;
-import com.oracle.max.graal.graph.NodeInput;
 import com.oracle.max.graal.graph.NodeInputList;
-import com.oracle.max.graal.graph.NodeSuccessor;
 import com.oracle.max.graal.graph.NodeSuccessorList;
 import com.oracle.max.graal.graphviz.GraphvizPrinter;
 import com.oracle.max.graal.graphviz.GraphvizRunner;
@@ -82,11 +80,9 @@ public class GraphvizTest {
 
     private static class DummyNode extends Node {
 
-        @NodeInput
-        private final NodeInputList<Node> inputs;
+        @Input        private final NodeInputList<Node> inputs;
 
-        @NodeSuccessor
-        private final NodeSuccessorList<Node> successors;
+        @Successor        private final NodeSuccessorList<Node> successors;
 
         public DummyNode(String name, int inputCount, int successorCount, Graph graph) {
             super(graph);

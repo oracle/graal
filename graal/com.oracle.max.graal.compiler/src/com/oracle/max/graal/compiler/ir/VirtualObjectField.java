@@ -31,14 +31,11 @@ import com.sun.cri.ci.*;
 
 public class VirtualObjectField extends FloatingNode {
 
-    @NodeInput
-    private VirtualObject object;
+    @Input    private VirtualObject object;
 
-    @NodeInput
-    private FloatingNode lastState;
+    @Input    private FloatingNode lastState;
 
-    @NodeInput
-    private Value input;
+    @Input    private Value input;
 
     public VirtualObject object() {
         return object;

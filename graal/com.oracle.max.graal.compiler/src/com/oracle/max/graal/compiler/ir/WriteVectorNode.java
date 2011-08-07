@@ -31,9 +31,7 @@ import com.sun.cri.ci.*;
 
 
 public final class WriteVectorNode extends AccessVectorNode {
-
-    @NodeInput
-    private AbstractVectorNode values;
+    @Input private AbstractVectorNode values;
 
     public AbstractVectorNode values() {
         return values;

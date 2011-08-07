@@ -31,8 +31,7 @@ import com.sun.cri.ci.*;
  */
 public final class Unwind extends FixedNode {
 
-    @NodeInput
-    private Value exception;
+    @Input    private Value exception;
 
     public Value exception() {
         return exception;

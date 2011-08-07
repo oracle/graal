@@ -30,8 +30,7 @@ import com.sun.cri.ci.*;
 
 public abstract class AbstractMemoryCheckpointNode extends StateSplit {
 
-    @NodeInput
-    private final NodeInputList<Node> mergedNodes = new NodeInputList<Node>(this);
+    @Input    private final NodeInputList<Node> mergedNodes = new NodeInputList<Node>(this);
 
     private static final int SUCCESSOR_COUNT = 0;
     private static final int INPUT_COUNT = 0;

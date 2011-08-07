@@ -33,11 +33,9 @@ import com.sun.cri.ci.*;
  */
 public class UnsafeLoad extends StateSplit {
 
-    @NodeInput
-    private Value object;
+    @Input    private Value object;
 
-    @NodeInput
-    private Value offset;
+    @Input    private Value offset;
 
     public Value object() {
         return object;

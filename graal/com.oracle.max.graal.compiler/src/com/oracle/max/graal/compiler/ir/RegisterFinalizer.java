@@ -35,9 +35,7 @@ import com.sun.cri.ri.*;
  * This instruction is used to perform the finalizer registration at the end of the java.lang.Object constructor.
  */
 public final class RegisterFinalizer extends StateSplit {
-
-    @NodeInput
-    private Value object;
+    @Input private Value object;
 
     public Value object() {
         return object;

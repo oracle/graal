@@ -30,11 +30,9 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessMonitor extends AbstractMemoryCheckpointNode {
 
-    @NodeInput
-    private Value object;
+    @Input    private Value object;
 
-    @NodeInput
-    private Value lockAddress;
+    @Input    private Value lockAddress;
 
     public Value object() {
         return object;

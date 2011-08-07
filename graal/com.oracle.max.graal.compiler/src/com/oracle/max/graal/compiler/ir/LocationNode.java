@@ -30,9 +30,7 @@ import com.sun.cri.ci.CiAddress.*;
 
 
 public final class LocationNode extends FloatingNode {
-
-    @NodeInput
-    private Value index;
+    @Input private Value index;
 
     public Value index() {
         return index;

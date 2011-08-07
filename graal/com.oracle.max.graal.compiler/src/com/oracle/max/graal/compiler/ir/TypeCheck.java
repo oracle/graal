@@ -31,11 +31,9 @@ import com.sun.cri.ri.*;
  */
 public abstract class TypeCheck extends BooleanNode {
 
-    @NodeInput
-    private Value object;
+    @Input    private Value object;
 
-    @NodeInput
-    private Value targetClassInstruction;
+    @Input    private Value targetClassInstruction;
 
     public Value object() {
         return object;

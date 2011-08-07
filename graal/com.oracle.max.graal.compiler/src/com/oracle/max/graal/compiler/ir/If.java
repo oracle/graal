@@ -35,8 +35,7 @@ import com.sun.cri.ci.*;
  */
 public final class If extends ControlSplit {
 
-    @NodeInput
-    private BooleanNode compare;
+    @Input    private BooleanNode compare;
 
     public BooleanNode compare() {
         return compare;

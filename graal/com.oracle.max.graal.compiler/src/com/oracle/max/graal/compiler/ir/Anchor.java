@@ -33,8 +33,7 @@ import com.sun.cri.ci.*;
  */
 public final class Anchor extends FixedNodeWithNext {
 
-    @NodeInput
-    private final NodeInputList<GuardNode> guards = new NodeInputList<GuardNode>(this);
+    @Input    private final NodeInputList<GuardNode> guards = new NodeInputList<GuardNode>(this);
 
     /**
      * Constructs a new Anchor instruction.

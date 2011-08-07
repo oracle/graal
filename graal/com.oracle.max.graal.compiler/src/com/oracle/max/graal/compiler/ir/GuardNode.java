@@ -31,12 +31,8 @@ import com.sun.cri.ci.*;
 
 
 public final class GuardNode extends FloatingNode {
-
-    @NodeInput
-    private FixedNode anchor;
-
-    @NodeInput
-    private BooleanNode node;
+    @Input private FixedNode anchor;
+    @Input private BooleanNode node;
 
     public FixedNode anchor() {
         return anchor;

@@ -36,8 +36,7 @@ import com.sun.cri.ci.*;
 public final class Negate extends FloatingNode {
     private static final NegateCanonicalizerOp CANONICALIZER = new NegateCanonicalizerOp();
 
-    @NodeInput
-    private Value x;
+    @Input    private Value x;
 
     public Value x() {
         return x;

@@ -35,8 +35,7 @@ import com.sun.cri.ci.*;
  */
 public abstract class NewArray extends FixedNodeWithNext {
 
-    @NodeInput
-    private Value length;
+    @Input    private Value length;
 
     public Value length() {
         return length;

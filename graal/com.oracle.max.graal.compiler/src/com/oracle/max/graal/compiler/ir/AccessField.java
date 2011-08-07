@@ -34,8 +34,7 @@ import com.sun.cri.ri.*;
  */
 public abstract class AccessField extends StateSplit {
 
-    @NodeInput
-    private Value object;
+    @Input    private Value object;
 
     public Value object() {
         return object;

@@ -31,8 +31,7 @@ import com.sun.cri.ci.*;
  */
 public final class ValueAnchor extends FixedNodeWithNext {
 
-    @NodeInput
-    private Value object;
+    @Input    private Value object;
 
     public Value object() {
         return object;

@@ -51,14 +51,11 @@ public final class FrameState extends Value implements FrameStateAccess {
     public static final int BEFORE_BCI = -2;
     public static final int AFTER_BCI = -3;
 
-    @NodeInput
-    private FrameState outerFrameState;
+    @Input    private FrameState outerFrameState;
 
-    @NodeInput
-    private final NodeInputList<Value> values;
+    @Input    private final NodeInputList<Value> values;
 
-    @NodeInput
-    private final NodeInputList<Node> virtualObjectMappings;
+    @Input    private final NodeInputList<Node> virtualObjectMappings;
 
     public FrameState outerFrameState() {
         return outerFrameState;

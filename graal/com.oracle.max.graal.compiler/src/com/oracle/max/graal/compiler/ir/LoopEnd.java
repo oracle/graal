@@ -31,8 +31,7 @@ import com.sun.cri.ci.*;
 
 public class LoopEnd extends FixedNode {
 
-    @NodeInput
-    private LoopBegin loopBegin;
+    @Input    private LoopBegin loopBegin;
 
     public LoopBegin loopBegin() {
         return loopBegin;

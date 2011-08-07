@@ -38,11 +38,9 @@ import com.sun.cri.ci.*;
  */
 public final class Phi extends FloatingNode {
 
-    @NodeInput
-    private Merge merge;
+    @Input    private Merge merge;
 
-    @NodeInput
-    private final NodeInputList<Value> values = new NodeInputList<Value>(this);
+    @Input    private final NodeInputList<Value> values = new NodeInputList<Value>(this);
 
     public Merge merge() {
         return merge;

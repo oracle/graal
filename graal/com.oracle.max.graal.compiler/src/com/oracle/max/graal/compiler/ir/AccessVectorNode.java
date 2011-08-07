@@ -27,15 +27,9 @@ import com.sun.cri.ci.*;
 
 
 public abstract class AccessVectorNode extends AbstractVectorNode {
-
-    @NodeInput
-    private Value object;
-
-    @NodeInput
-    private LocationNode location;
-
-    @NodeInput
-    private final NodeInputList<Node> dependencies = new NodeInputList<Node>(this);
+    @Input private Value object;
+    @Input private LocationNode location;
+    @Input private final NodeInputList<Node> dependencies = new NodeInputList<Node>(this);
 
     public Value object() {
         return object;

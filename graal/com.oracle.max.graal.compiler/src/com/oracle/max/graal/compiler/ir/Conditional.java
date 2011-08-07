@@ -40,8 +40,8 @@ import com.sun.cri.ci.*;
  * by conditional expression elimination.
  */
 public class Conditional extends Binary {
-    @NodeInput private BooleanNode condition;
-    @NodeInput private FrameState stateDuring;
+    @Input private BooleanNode condition;
+    @Input private FrameState stateDuring;
 
     public BooleanNode condition() {
         return condition;

@@ -40,12 +40,8 @@ import com.sun.cri.ci.*;
  *
  */
 public final class Compare extends BooleanNode {
-
-    @NodeInput
-    private Value x;
-
-    @NodeInput
-    private Value y;
+    @Input private Value x;
+    @Input private Value y;
 
     public Value x() {
         return x;

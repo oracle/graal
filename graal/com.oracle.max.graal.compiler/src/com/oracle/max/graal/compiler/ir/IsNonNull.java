@@ -36,8 +36,7 @@ import com.sun.cri.ri.*;
  */
 public final class IsNonNull extends BooleanNode {
 
-    @NodeInput
-    private Value object;
+    @Input    private Value object;
 
     public Value object() {
         return object;

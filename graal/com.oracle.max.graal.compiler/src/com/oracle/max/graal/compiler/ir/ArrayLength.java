@@ -38,8 +38,7 @@ import com.sun.cri.ri.*;
 public final class ArrayLength extends FloatingNode {
     private static final ArrayLengthCanonicalizerOp CANONICALIZER = new ArrayLengthCanonicalizerOp();
 
-    @NodeInput
-    private Value array;
+    @Input    private Value array;
 
     public Value array() {
         return array;

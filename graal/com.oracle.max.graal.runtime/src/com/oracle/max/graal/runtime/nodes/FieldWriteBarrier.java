@@ -30,9 +30,7 @@ import com.sun.cri.ci.*;
 
 
 public final class FieldWriteBarrier extends WriteBarrier {
-
-    @NodeInput
-    private Value object;
+    @Input private Value object;
 
     public Value object() {
         return object;

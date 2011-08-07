@@ -32,9 +32,7 @@ import com.sun.cri.ci.*;
 
 
 public final class FixedGuard extends FixedNodeWithNext {
-
-    @NodeInput
-    private final NodeInputList<BooleanNode> conditions = new NodeInputList<BooleanNode>(this);
+    @Input private final NodeInputList<BooleanNode> conditions = new NodeInputList<BooleanNode>(this);
 
     public FixedGuard(BooleanNode node, Graph graph) {
         this(graph);

@@ -34,8 +34,7 @@ import com.sun.cri.ci.*;
  */
 public abstract class StateSplit extends FixedNodeWithNext {
 
-    @NodeInput
-    private FrameState stateAfter;
+    @Input    private FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;

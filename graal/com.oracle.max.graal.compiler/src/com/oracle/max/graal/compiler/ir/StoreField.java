@@ -34,8 +34,7 @@ import com.sun.cri.ri.*;
  */
 public final class StoreField extends AccessField {
 
-    @NodeInput
-    private Value value;
+    @Input    private Value value;
 
     public Value value() {
         return value;

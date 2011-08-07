@@ -32,8 +32,7 @@ import com.sun.cri.ci.*;
  */
 public abstract class Switch extends ControlSplit {
 
-    @NodeInput
-    private Value value;
+    @Input    private Value value;
 
     public Value value() {
         return value;

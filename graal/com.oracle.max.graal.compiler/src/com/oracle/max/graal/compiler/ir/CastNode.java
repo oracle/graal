@@ -29,9 +29,7 @@ import com.sun.cri.ci.*;
 
 
 public final class CastNode extends FloatingNode {
-
-    @NodeInput
-    private Value value;
+    @Input private Value value;
 
     public Value value() {
         return value;

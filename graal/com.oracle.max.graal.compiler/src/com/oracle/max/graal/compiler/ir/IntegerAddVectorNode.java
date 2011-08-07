@@ -30,9 +30,7 @@ import com.sun.cri.ci.*;
 
 
 public final class IntegerAddVectorNode extends AbstractVectorNode {
-
-    @NodeInput
-    private Value value;
+    @Input private Value value;
 
     public Value value() {
         return value;
