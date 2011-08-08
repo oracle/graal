@@ -466,14 +466,19 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitMathIntrinsic(MathIntrinsic node) {
+        assert node.kind == CiKind.Double;
         LIRItem opd = new LIRItem(node.x(), this);
         opd.setDestroysRegister();
         opd.loadItem();
         CiVariable dest = createResultVariable(node);
         switch (node.operation()) {
+            case ABS:
+                lir.abs(opd.result(), dest, CiValue.IllegalValue);
+                break;
             case SQRT:
                 lir.sqrt(opd.result(), dest, CiValue.IllegalValue);
                 break;
+
             default:
                 throw Util.shouldNotReachHere();
         }

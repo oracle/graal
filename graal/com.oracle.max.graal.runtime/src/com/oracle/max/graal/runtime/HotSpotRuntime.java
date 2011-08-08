@@ -30,6 +30,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Conditional.ConditionalStructure;
+import com.oracle.max.graal.compiler.ir.MathIntrinsic.Operation;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
@@ -603,10 +604,16 @@ public class HotSpotRuntime implements RiRuntime {
                     intrinsicGraphs.put(method, graph);
                 }
             } else if (holderName.equals("Ljava/lang/Math;")) {
-                if (fullName.equals("sqrt(D)D")) {
+                MathIntrinsic.Operation op = null;
+                if (fullName.equals("abs(D)D")) {
+                    op = MathIntrinsic.Operation.ABS;
+                } else if (fullName.equals("sqrt(D)D")) {
+                    op = MathIntrinsic.Operation.SQRT;
+                }
+                if (op != null) {
                     CompilerGraph graph = new CompilerGraph(this);
                     Local value = new Local(CiKind.Double, 0, graph);
-                    MathIntrinsic min = new MathIntrinsic(value, MathIntrinsic.Operation.SQRT, graph);
+                    MathIntrinsic min = new MathIntrinsic(value, op, graph);
                     Return ret = new Return(min, graph);
                     graph.start().setNext(ret);
                     graph.setReturn(ret);

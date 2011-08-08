@@ -146,7 +146,7 @@ public final class GraalOptions {
 
     public static boolean UseConstDirectCall                 = ____;
 
-    public static boolean GenSpecialDivChecks                = ____;
+    public static boolean GenSpecialDivChecks                = true;
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;
     public static boolean NullCheckUniquePc                  = ____;

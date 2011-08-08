@@ -1121,22 +1121,6 @@ public final class AMD64LIRAssembler extends LIRAssembler {
             moveRegs(lreg, AMD64.rax);
 
             Label continuation = new Label();
-
-            if (GraalOptions.GenSpecialDivChecks) {
-                // check for special case of Integer.MIN_VALUE / -1
-                Label normalCase = new Label();
-                masm.cmpl(AMD64.rax, Integer.MIN_VALUE);
-                masm.jcc(ConditionFlag.notEqual, normalCase);
-                if (code == LIROpcode.Irem) {
-                    // prepare X86Register.rdx for possible special case where remainder = 0
-                    masm.xorl(AMD64.rdx, AMD64.rdx);
-                }
-                masm.cmpl(rreg, -1);
-                masm.jcc(ConditionFlag.equal, continuation);
-
-                // handle normal case
-                masm.bind(normalCase);
-            }
             masm.cdql();
             int offset = masm.codeBuffer.position();
             masm.idivl(rreg);
@@ -1170,7 +1154,8 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
         Label continuation = new Label();
 
-        if (GraalOptions.GenSpecialDivChecks && code == LIROpcode.Div) {
+        System.out.println("gen check" + code);
+        if (GraalOptions.GenSpecialDivChecks && code == LIROpcode.Ldiv) {
             // check for special case of Long.MIN_VALUE / -1
             Label normalCase = new Label();
             masm.movq(AMD64.rdx, java.lang.Long.MIN_VALUE);
