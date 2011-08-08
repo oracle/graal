@@ -236,7 +236,7 @@ public class GraphUtil {
                                 }
                                 newNode = phi;
                             } else {
-                                newNode = node.copy(node.graph());
+                                newNode = node.clone(node.graph());
                                 for (NodeClassIterator iter = node.inputs().iterator(); iter.hasNext();) {
                                     Position pos = iter.nextPosition();
                                     newNode.set(pos, node.get(pos));
