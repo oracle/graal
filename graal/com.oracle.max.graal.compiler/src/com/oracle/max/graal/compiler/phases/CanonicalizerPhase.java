@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
 
@@ -54,6 +55,9 @@ public class CanonicalizerPhase extends Phase {
         for (Node node : nodeWorkList) {
             CanonicalizerOp op = node.lookup(CanonicalizerOp.class);
             if (op != null) {
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("Canonicalizer: work on " + node);
+                }
                 graph.mark();
                 Node canonical = op.canonical(node, reProcess);
                 if (canonical != node) {

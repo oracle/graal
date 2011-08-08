@@ -255,19 +255,24 @@ public abstract class LIRGenerator extends ValueVisitor {
                 }
             }
             lastState = fs;
-        } else if (block.blockPredecessors().size() > 1) {
-            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
-                TTY.println("STATE RESET");
+        } else if (block.blockPredecessors().size() > 0) {
+            FrameState fs = null;
+            for (LIRBlock pred : block.blockPredecessors()) {
+                if (fs == null) {
+                    fs = pred.lastState();
+                } else if (fs != pred.lastState()) {
+                    fs = null;
+                    break;
+                }
             }
-            lastState = null;
-        }  else if (block.blockPredecessors().size() == 1) {
-            LIRBlock pred = block.blockPredecessors().get(0);
-            FrameState fs = pred.lastState();
-            assert fs != null : "block B" + block.blockID() + " pred block B" + pred.blockID();
             if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
-                TTY.println("STATE CHANGE (singlePred)");
-                if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                    TTY.println(fs.toString());
+                if (fs == null) {
+                    TTY.println("STATE RESET");
+                } else {
+                    TTY.println("STATE CHANGE (singlePred)");
+                    if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                        TTY.println(fs.toString());
+                    }
                 }
             }
             lastState = fs;
