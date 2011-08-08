@@ -36,7 +36,6 @@ import com.sun.cri.ci.CiRegister.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.ri.RiType.*;
 import com.sun.cri.xir.*;
-import com.sun.cri.xir.CiXirAssembler.XirLabel;
 import com.sun.cri.xir.CiXirAssembler.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
@@ -667,6 +666,49 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     };
 
+    private SimpleTemplates materializeInstanceOfTemplates = new SimpleTemplates(NULL_CHECK) {
+
+        @Override
+        protected XirTemplate create(CiXirAssembler asm, long flags) {
+            XirOperand result = asm.restart(CiKind.Int);
+            XirParameter object = asm.createInputParameter("object", CiKind.Object);
+            final XirOperand hub;
+            hub = asm.createConstantInputParameter("hub", CiKind.Object);
+
+            XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
+
+            XirLabel slowPath = asm.createOutOfLineLabel("slow path");
+            XirLabel trueSucc = asm.createInlineLabel("ok");
+            XirLabel falseSucc = asm.createInlineLabel("ko");
+            XirLabel end = asm.createInlineLabel("end");
+
+            if (is(NULL_CHECK, flags)) {
+                // null isn't "instanceof" anything
+                asm.jeq(falseSucc, object, asm.o(null));
+            }
+
+            asm.pload(CiKind.Object, objHub, object, asm.i(config.hubOffset), false);
+            // if we get an exact match: succeed immediately
+            asm.jeq(trueSucc, objHub, hub);
+            asm.jmp(slowPath);
+
+            asm.bindInline(trueSucc);
+            asm.mov(result, asm.i(1));
+            asm.jmp(end);
+            asm.bindInline(falseSucc);
+            asm.mov(result, asm.i(0));
+            asm.bindInline(end);
+
+            // -- out of line -------------------------------------------------------
+            asm.bindOutOfLine(slowPath);
+            checkSubtype(asm, objHub, objHub, hub);
+            asm.jeq(falseSucc, objHub, asm.o(null));
+            asm.jmp(trueSucc);
+
+            return asm.finishTemplate("instanceof");
+        }
+    };
+
     private XirOperand genArrayLength(CiXirAssembler asm, XirOperand array, boolean implicitNullException) {
         XirOperand length = asm.createTemp("length", CiKind.Int);
         genArrayLength(asm, length, array, implicitNullException);
@@ -1186,6 +1228,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     public XirSnippet genInstanceOf(XirSite site, XirArgument object, XirArgument hub, RiType type) {
         assert type.isResolved();
         return new XirSnippet(instanceOfTemplates.get(site), object, hub);
+    }
+
+    @Override
+    public XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument object, XirArgument hub, RiType type) {
+        assert type.isResolved();
+        return new XirSnippet(materializeInstanceOfTemplates.get(site), object, hub);
     }
 
     @Override

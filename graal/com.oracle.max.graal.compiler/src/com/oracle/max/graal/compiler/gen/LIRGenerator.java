@@ -553,6 +553,13 @@ public abstract class LIRGenerator extends ValueVisitor {
         instr.setFalseSuccessor(falseSuccessor);
     }
 
+    public void emitMaterializeInstanceOf(MaterializeNode materialize, Value resultValue, LIRDebugInfo info) {
+        TypeCheck x = (TypeCheck) materialize.condition();
+        XirArgument obj = toXirArgument(x.object());
+        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
+        emitXir(snippet, resultValue, info, null, true);
+    }
+
 
     public void emitConstantBranch(boolean value, LIRBlock trueSuccessorBlock, LIRBlock falseSuccessorBlock, LIRDebugInfo info) {
         if (value) {

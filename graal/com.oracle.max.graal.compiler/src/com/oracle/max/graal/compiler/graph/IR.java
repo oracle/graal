@@ -136,8 +136,6 @@ public class IR {
             graph.stopRecordModifications();
         }
 
-        new ConvertConditionalPhase().apply(graph);
-
         new LoweringPhase(compilation.runtime).apply(graph);
         if (GraalOptions.Lower) {
             new MemoryPhase().apply(graph);

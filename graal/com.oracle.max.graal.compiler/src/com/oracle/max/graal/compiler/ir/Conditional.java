@@ -208,7 +208,6 @@ public class Conditional extends Binary {
             Conditional conditional = (Conditional) n;
             BooleanNode condition = conditional.condition();
 
-            CiVariable result = generator.createResultVariable(conditional);
             // try to use cmp + cmov first
             Condition cond = null;
             CiValue left = null;
@@ -242,13 +241,24 @@ public class Conditional extends Binary {
                 right = CiConstant.NULL_OBJECT;
                 cond = Condition.NE;
             } else if (condition instanceof Constant) {
-                generator.lir().move(result, condition.asConstant());
+                generator.lir().move(generator.createResultVariable(conditional), condition.asConstant());
+            } else if (condition instanceof InstanceOf) {
+                if (conditional instanceof MaterializeNode) {
+                    generator.emitMaterializeInstanceOf((MaterializeNode) conditional, conditional, null);
+                } else {
+                    generator.emitMaterializeInstanceOf((MaterializeNode) conditional, condition, null);
+                    left = condition.operand();
+                    right = CiConstant.INT_1;
+                    cond = Condition.EQ;
+                }
             } else {
                 throw Util.shouldNotReachHere("Currently not implemented because we can not create blocks during LIRGen : " + condition);
             }
-            CiValue tVal = generator.makeOperand(conditional.trueValue());
-            CiValue fVal = generator.makeOperand(conditional.falseValue());
+
             if (cond != null) {
+                CiVariable result = generator.createResultVariable(conditional);
+                CiValue tVal = generator.makeOperand(conditional.trueValue());
+                CiValue fVal = generator.makeOperand(conditional.falseValue());
                 if (negate) {
                     cond = cond.negate();
                 }
