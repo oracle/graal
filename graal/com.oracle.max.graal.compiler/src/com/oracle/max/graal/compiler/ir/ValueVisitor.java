@@ -73,4 +73,5 @@ public abstract class ValueVisitor {
     public abstract void visitLoopEnd(LoopEnd loopEnd);
     public abstract void visitValueAnchor(ValueAnchor valueAnchor);
     public abstract void visitGuardNode(GuardNode guardNode);
+    public abstract void visitMathIntrinsic(MathIntrinsic node);
 }

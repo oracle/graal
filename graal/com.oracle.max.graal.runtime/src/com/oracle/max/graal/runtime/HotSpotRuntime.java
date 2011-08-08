@@ -575,6 +575,16 @@ public class HotSpotRuntime implements RiRuntime {
                     graph.setReturn(ret);
                     intrinsicGraphs.put(method, graph);
                 }
+            } else if (holderName.equals("Ljava/lang/Math;")) {
+                if (fullName.equals("sqrt(D)D")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local value = new Local(CiKind.Double, 0, graph);
+                    MathIntrinsic min = new MathIntrinsic(value, MathIntrinsic.Operation.SQRT, graph);
+                    Return ret = new Return(min, graph);
+                    graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                }
             }
 
             if (!intrinsicGraphs.containsKey(method)) {
