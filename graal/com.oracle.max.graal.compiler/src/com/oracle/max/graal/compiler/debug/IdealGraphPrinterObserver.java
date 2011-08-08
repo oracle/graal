@@ -30,6 +30,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ri.*;
 
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation that can be
@@ -73,14 +74,14 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
             name = name + "." + event.getMethod().name();
 
             if (host != null) {
-                openNetworkPrinter(name);
+                openNetworkPrinter(name, event.getMethod());
             } else {
-                openFilePrinter(name);
+                openFilePrinter(name, event.getMethod());
             }
         }
     }
 
-    private void openFilePrinter(String name) {
+    private void openFilePrinter(String name, RiMethod method) {
         String filename = name + ".igv.xml";
         filename = INVALID_CHAR.matcher(filename).replaceAll("_");
 
@@ -91,13 +92,13 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
                 printer.addOmittedClass(FrameState.class);
             }
             printer.begin();
-            printer.beginGroup(name, name, -1);
+            printer.beginGroup(name, name, method, -1);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void openNetworkPrinter(String name) {
+    private void openNetworkPrinter(String name, RiMethod method) {
         try {
             socket = new Socket(host, port);
             if (socket.getInputStream().read() == 'y') {
@@ -114,7 +115,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
                 printer.addOmittedClass(FrameState.class);
             }
             printer.begin();
-            printer.beginGroup(name, name, -1);
+            printer.beginGroup(name, name, method, -1);
             printer.flush();
             if (socket.getInputStream().read() != 'y') {
                 // server declines input for this method
