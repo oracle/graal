@@ -93,34 +93,7 @@ public class ConvertConditionalPhase extends Phase {
                 }
                 schedule.assignBlockToNode(conditional);
                 Block block = schedule.getNodeToBlock().get(conditional);
-                FixedNodeWithNext prev;
-                Node firstNode = block.firstNode();
-                if (firstNode instanceof Merge) {
-                    prev = (Merge) firstNode;
-                } else if (firstNode instanceof EndNode) {
-                    EndNode end = (EndNode) firstNode;
-                    Node pred = end.predecessor();
-                    Anchor anchor = new Anchor(graph);
-                    pred.replaceFirstSuccessor(end, anchor);
-                    anchor.setNext(end);
-                    prev = anchor;
-                } else if (firstNode instanceof StartNode) {
-                    StartNode start = (StartNode) firstNode;
-                    Anchor anchor = new Anchor(graph);
-                    Node next = start.next();
-                    start.setNext(null);
-                    anchor.setNext((FixedNode) next);
-                    start.setNext(anchor);
-                    prev = anchor;
-                } else if (firstNode instanceof If) {
-                    Node pred = firstNode.predecessor();
-                    Anchor anchor = new Anchor(graph);
-                    pred.replaceFirstSuccessor(firstNode, anchor);
-                    anchor.setNext((If) firstNode);
-                    prev = anchor;
-                } else {
-                    prev = (FixedNodeWithNext) firstNode;
-                }
+                Anchor prev = block.createAnchor();
                 FixedNode next = prev.next();
                 prev.setNext(null);
                 merge.setNext(next);
