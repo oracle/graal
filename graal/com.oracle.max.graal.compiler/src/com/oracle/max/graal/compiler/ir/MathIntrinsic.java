@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 public class MathIntrinsic extends FloatingNode {
 
     public enum Operation {
-        SQRT
+        ABS, SQRT,
     }
 
     @Input private Value x;
