@@ -104,6 +104,11 @@ public final class Compare extends BooleanNode {
         return unorderedIsTrue;
     }
 
+
+    public void setUnorderedIsTrue(boolean unorderedIsTrue) {
+        this.unorderedIsTrue = unorderedIsTrue;
+    }
+
     /**
      * Swaps the operands to this if and mirrors the condition (e.g. > becomes <).
      * @see Condition#mirror()
