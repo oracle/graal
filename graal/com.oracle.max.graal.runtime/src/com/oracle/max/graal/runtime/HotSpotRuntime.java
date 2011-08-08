@@ -514,7 +514,7 @@ public class HotSpotRuntime implements RiRuntime {
                     graph.setReturn(ret);
                     return graph;
                 }
-            } else if (holderName.equals("Ljava/lang/Float;")) { //XXX (gd) the non-raw versions of (F/D)2(I/L) should return a sanitized NaN in the NaN case. also check NaN case for (I/L)2(F/D)
+            } else if (holderName.equals("Ljava/lang/Float;")) { //XXX (gd) the non-raw versions of (F/D)2(I/L) should return a sanitized NaN in the NaN case.
                 if (fullName.equals("floatToRawIntBits(F)I") || fullName.equals("floatToIntBits(F)I")) {
                     CompilerGraph graph = new CompilerGraph(this);
                     Return ret = new Return(new FPConversionNode(CiKind.Int, new Local(CiKind.Float, 0, graph), graph), graph);
