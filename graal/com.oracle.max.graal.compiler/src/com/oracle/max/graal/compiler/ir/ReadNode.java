@@ -27,7 +27,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class ReadNode extends AccessNode {
+public final class ReadNode extends AccessNode implements Node.GlobalValueNumberable {
 
     public ReadNode(CiKind kind, Value object, LocationNode location, Graph graph) {
         super(kind, object, location, graph);
@@ -41,11 +41,6 @@ public final class ReadNode extends AccessNode {
     @Override
     public void print(LogStream out) {
         out.print("mem read from ").print(object());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof ReadNode;
     }
 
     @Override

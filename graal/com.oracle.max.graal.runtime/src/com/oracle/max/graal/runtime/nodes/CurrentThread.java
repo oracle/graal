@@ -30,7 +30,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class CurrentThread extends FloatingNode {
+public final class CurrentThread extends FloatingNode implements Node.GlobalValueNumberable {
 
     private int threadObjectOffset;
 
@@ -53,11 +53,6 @@ public final class CurrentThread extends FloatingNode {
             };
         }
         return super.lookup(clazz);
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof CurrentThread;
     }
 
     @Override

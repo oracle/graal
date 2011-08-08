@@ -33,11 +33,6 @@ public final class MaterializeNode extends Conditional {
     }
 
     @Override
-    public boolean valueEqual(Node i) {
-        return (i instanceof MaterializeNode);
-    }
-
-    @Override
     public void print(LogStream out) {
         out.print("materialize(").print(condition().toString()).print(')');
     }

@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -30,11 +29,11 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
  */
-public abstract class Binary extends FloatingNode {
+public abstract class Binary extends FloatingNode implements Node.GlobalValueNumberable {
 
-    @Input    private Value x;
-
-    @Input    private Value y;
+    @Input private Value x;
+    @Input private Value y;
+    @Data public final int opcode;
 
     public Value x() {
         return x;
@@ -53,11 +52,6 @@ public abstract class Binary extends FloatingNode {
         updateUsages(y, x);
         this.y = x;
     }
-
-    /**
-     * The opcode of this instruction.
-     */
-    public final int opcode;
 
     /**
      * Creates a new Op2 instance.
@@ -81,19 +75,5 @@ public abstract class Binary extends FloatingNode {
         Value t = x();
         setX(y());
         setY(t);
-    }
-
-    @Override
-    public int valueNumber() {
-        return Util.hash2(opcode, x(), y());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        if (i instanceof Binary) {
-            Binary o = (Binary) i;
-            return opcode == o.opcode && x() == o.x() && y() == o.y();
-        }
-        return false;
     }
 }

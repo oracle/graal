@@ -32,6 +32,11 @@ import com.sun.cri.ci.CiAddress.*;
 public final class LocationNode extends FloatingNode {
     @Input private Value index;
 
+    @Data private int displacement;
+    @Data private boolean indexScalingEnabled = true;
+    @Data private CiKind valueKind;
+    @Data private Object locationIdentity;
+
     public Value index() {
         return index;
     }
@@ -47,11 +52,6 @@ public final class LocationNode extends FloatingNode {
     public static Object getArrayLocation(CiKind elementKind) {
         return elementKind;
     }
-
-    private int displacement;
-    private boolean indexScalingEnabled = true;
-    private CiKind valueKind;
-    private Object locationIdentity;
 
     public int displacement() {
         return displacement;
@@ -111,7 +111,7 @@ public final class LocationNode extends FloatingNode {
         if (this.index() != null) {
             indexValue = lirGenerator.load(this.index());
             if (indexScalingEnabled) {
-            indexScale = Scale.fromInt(valueKind.sizeInBytes(lirGenerator.target().wordSize));
+                indexScale = Scale.fromInt(valueKind.sizeInBytes(lirGenerator.target().wordSize));
             }
         }
         return new CiAddress(valueKind, lirGenerator.load(object), indexValue, indexScale, displacement);
@@ -119,19 +119,5 @@ public final class LocationNode extends FloatingNode {
 
     public Object locationIdentity() {
         return locationIdentity;
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        if (i instanceof LocationNode) {
-            LocationNode locationNode = (LocationNode) i;
-            return locationNode.locationIdentity == locationIdentity && locationNode.displacement == displacement;
-        }
-        return false;
-    }
-
-    @Override
-    public int valueNumber() {
-        return locationIdentity.hashCode() + displacement;
     }
 }

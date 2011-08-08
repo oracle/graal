@@ -35,7 +35,7 @@ import com.sun.cri.ri.*;
  */
 public final class Constant extends BooleanNode {
 
-    public final CiConstant value;
+    @Data public final CiConstant value;
 
     /**
      * Constructs a new instruction representing the specified constant.
@@ -157,11 +157,6 @@ public final class Constant extends BooleanNode {
     @Override
     public int valueNumber() {
         return 0x50000000 | value.hashCode();
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof Constant && ((Constant) i).value.equivalent(this.value);
     }
 
     @Override

@@ -25,9 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -61,16 +59,6 @@ public final class IsNonNull extends BooleanNode {
     @Override
     public void accept(ValueVisitor v) {
         // Nothing to do.
-    }
-
-    @Override
-    public int valueNumber() {
-        return Util.hash1(Bytecodes.IFNONNULL, object());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof IsNonNull;
     }
 
     @Override

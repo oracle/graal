@@ -68,16 +68,6 @@ public final class CheckCast extends TypeCheck {
         v.visitCheckCast(this);
     }
 
-//    @Override
-//    public int valueNumber() {
-//        return targetClass().isResolved() ? Util.hash1(Bytecodes.CHECKCAST, object()) : 0;
-//    }
-//
-//    @Override
-//    public boolean valueEqual(Node i) {
-//        return i instanceof CheckCast;
-//    }
-
     @Override
     public void print(LogStream out) {
         out.print("checkcast(").

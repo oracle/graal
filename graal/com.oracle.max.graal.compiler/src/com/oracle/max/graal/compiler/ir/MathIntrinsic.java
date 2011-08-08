@@ -22,25 +22,23 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ci.*;
+import com.oracle.max.graal.graph.Node.*;
 
-public class MathIntrinsic extends FloatingNode {
+public class MathIntrinsic extends FloatingNode implements GlobalValueNumberable {
+
+    @Input private Value x;
+    @Data private final Operation operation;
 
     public enum Operation {
         ABS, SQRT,
     }
 
-    @Input private Value x;
-
-    private final Operation operation;
-
     public Value x() {
         return x;
     }
 
-    public void setX(Value x) {
+    private void setX(Value x) {
         updateUsages(this.x, x);
         this.x = x;
     }
@@ -55,34 +53,8 @@ public class MathIntrinsic extends FloatingNode {
         this.operation = op;
     }
 
-    // for copying
-    private MathIntrinsic(CiKind kind, Operation op, Graph graph) {
-        super(kind, graph);
-        this.operation = op;
-    }
-
     @Override
     public void accept(ValueVisitor v) {
         v.visitMathIntrinsic(this);
     }
-
-    @Override
-    public int valueNumber() {
-        return Util.hash1(operation.hashCode(), x);
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        if (i instanceof MathIntrinsic) {
-            MathIntrinsic mi = (MathIntrinsic) i;
-            return (operation() == mi.operation && x() == mi.x());
-        }
-        return false;
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        return new MathIntrinsic(kind, operation, into);
-    }
-
 }

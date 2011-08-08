@@ -27,9 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -71,20 +69,6 @@ public final class IsType extends BooleanNode {
     @Override
     public void accept(ValueVisitor v) {
         // Nothing to do.
-    }
-
-    @Override
-    public int valueNumber() {
-        return Util.hash1(Bytecodes.CHECKCAST, object());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        if (i instanceof IsType) {
-            IsType o = (IsType) i;
-            return type == o.type();
-        }
-        return false;
     }
 
     @Override

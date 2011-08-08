@@ -40,7 +40,7 @@ public abstract class Value extends Node {
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain CiKind#stackKind() stack kind}.
      */
-    public final CiKind kind;
+    @Data public final CiKind kind;
 
     protected CiValue operand = CiValue.IllegalValue;
 

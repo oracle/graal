@@ -30,7 +30,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class GuardNode extends FloatingNode {
+public final class GuardNode extends FloatingNode implements Node.GlobalValueNumberable {
     @Input private FixedNode anchor;
     @Input private BooleanNode node;
 
@@ -73,11 +73,6 @@ public final class GuardNode extends FloatingNode {
     @Override
     public Node copy(Graph into) {
         return new GuardNode(null, into);
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof GuardNode;
     }
 
     @SuppressWarnings("unchecked")

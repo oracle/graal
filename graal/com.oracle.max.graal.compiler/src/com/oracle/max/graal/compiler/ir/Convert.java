@@ -23,7 +23,6 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -31,9 +30,10 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Convert} class represents a conversion between primitive types.
  */
-public final class Convert extends FloatingNode {
+public final class Convert extends FloatingNode implements Node.GlobalValueNumberable {
+    @Input private Value value;
 
-    @Input    private Value value;
+    @Data public final int opcode;
 
     public Value value() {
         return value;
@@ -43,11 +43,6 @@ public final class Convert extends FloatingNode {
         updateUsages(value, x);
         value = x;
     }
-
-    /**
-     * The opcode for this conversion operation.
-     */
-    public final int opcode;
 
     /**
      * Constructs a new Convert instance.
@@ -65,20 +60,6 @@ public final class Convert extends FloatingNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitConvert(this);
-    }
-
-    @Override
-    public int valueNumber() {
-        return Util.hash1(opcode, value());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        if (i instanceof Convert) {
-            Convert o = (Convert) i;
-            return opcode == o.opcode && value() == o.value();
-        }
-        return false;
     }
 
     @Override

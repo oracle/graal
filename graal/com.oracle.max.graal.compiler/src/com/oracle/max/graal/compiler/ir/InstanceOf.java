@@ -25,9 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -35,8 +33,6 @@ import com.sun.cri.ri.*;
  * The {@code InstanceOf} instruction represents an instanceof test.
  */
 public final class InstanceOf extends TypeCheck {
-
-    private boolean nullIsTrue;
 
     /**
      * Constructs a new InstanceOf instruction.
@@ -53,23 +49,8 @@ public final class InstanceOf extends TypeCheck {
     }
 
     @Override
-    public int valueNumber() {
-        return Util.hash1(Bytecodes.INSTANCEOF, object());
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof InstanceOf;
-    }
-
-    @Override
     public void print(LogStream out) {
         out.print("instanceof(").print(object()).print(") ").print(CiUtil.toJavaName(targetClass()));
-    }
-
-    @Override
-    public Node copy(Graph into) {
-        return new InstanceOf(null, null, nullIsTrue, into);
     }
 
     @SuppressWarnings("unchecked")

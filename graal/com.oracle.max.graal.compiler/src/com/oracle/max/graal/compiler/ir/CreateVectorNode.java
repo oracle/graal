@@ -32,7 +32,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class CreateVectorNode extends AbstractVectorNode {
+public final class CreateVectorNode extends AbstractVectorNode implements Node.GlobalValueNumberable {
     @Input private Value length;
 
     public Value length() {
@@ -88,11 +88,6 @@ public final class CreateVectorNode extends AbstractVectorNode {
         CreateVectorNode x = new CreateVectorNode(reversed, null, into);
         super.copyInto(x);
         return x;
-    }
-
-    @Override
-    public boolean valueEqual(Node i) {
-        return (i instanceof CreateVectorNode);
     }
 
     private LoopBegin createLoop(Map<AbstractVectorNode, Value> map) {

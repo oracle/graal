@@ -51,11 +51,6 @@ public final class NegateBooleanNode extends BooleanNode {
     }
 
     @Override
-    public boolean valueEqual(Node i) {
-        return i instanceof NegateBooleanNode;
-    }
-
-    @Override
     public void print(LogStream out) {
         out.print(value()).print("!");
     }
