@@ -29,6 +29,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.ir.Conditional.ConditionalStructure;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
@@ -46,6 +47,8 @@ import com.sun.max.lang.*;
  * CRI runtime implementation for the HotSpot VM.
  */
 public class HotSpotRuntime implements RiRuntime {
+    private static final long DOUBLENAN_RAW_LONG_BITS = Double.doubleToRawLongBits(Double.NaN);
+    private static final int FLOATNAN_RAW_INT_BITS = Float.floatToRawIntBits(Float.NaN);
 
     final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
@@ -515,10 +518,22 @@ public class HotSpotRuntime implements RiRuntime {
                     return graph;
                 }
             } else if (holderName.equals("Ljava/lang/Float;")) { //XXX (gd) the non-raw versions of (F/D)2(I/L) should return a sanitized NaN in the NaN case.
-                if (fullName.equals("floatToRawIntBits(F)I") || fullName.equals("floatToIntBits(F)I")) {
+                if (fullName.equals("floatToRawIntBits(F)I")) {
                     CompilerGraph graph = new CompilerGraph(this);
                     Return ret = new Return(new FPConversionNode(CiKind.Int, new Local(CiKind.Float, 0, graph), graph), graph);
                     graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("floatToIntBits(F)I")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local arg = new Local(CiKind.Float, 0, graph);
+                    Compare isNan = new Compare(arg, Condition.NE, arg, graph);
+                    isNan.setUnorderedIsTrue(true);
+                    FPConversionNode fpConv = new FPConversionNode(CiKind.Int, arg, graph);
+                    ConditionalStructure conditionalStructure = Conditional.createConditionalStructure(isNan, Constant.forInt(FLOATNAN_RAW_INT_BITS, graph), fpConv, 0.1);
+                    Return ret = new Return(conditionalStructure.phi, graph);
+                    graph.start().setNext(conditionalStructure.ifNode);
+                    conditionalStructure.merge.setNext(ret);
                     graph.setReturn(ret);
                     intrinsicGraphs.put(method, graph);
                 } else if (fullName.equals("intBitsToFloat(I)F")) {
@@ -529,10 +544,22 @@ public class HotSpotRuntime implements RiRuntime {
                     intrinsicGraphs.put(method, graph);
                 }
             } else if (holderName.equals("Ljava/lang/Double;")) {
-                if (fullName.equals("doubleToRawLongBits(D)J") || fullName.equals("doubleToLongBits(D)J")) {
+                if (fullName.equals("doubleToRawLongBits(D)J")) {
                     CompilerGraph graph = new CompilerGraph(this);
                     Return ret = new Return(new FPConversionNode(CiKind.Long, new Local(CiKind.Double, 0, graph), graph), graph);
                     graph.start().setNext(ret);
+                    graph.setReturn(ret);
+                    intrinsicGraphs.put(method, graph);
+                } else if (fullName.equals("doubleToLongBits(D)J")) {
+                    CompilerGraph graph = new CompilerGraph(this);
+                    Local arg = new Local(CiKind.Double, 0, graph);
+                    Compare isNan = new Compare(arg, Condition.NE, arg, graph);
+                    isNan.setUnorderedIsTrue(true);
+                    FPConversionNode fpConv = new FPConversionNode(CiKind.Long, arg, graph);
+                    ConditionalStructure conditionalStructure = Conditional.createConditionalStructure(isNan, Constant.forLong(DOUBLENAN_RAW_LONG_BITS, graph), fpConv, 0.1);
+                    Return ret = new Return(conditionalStructure.phi, graph);
+                    graph.start().setNext(conditionalStructure.ifNode);
+                    conditionalStructure.merge.setNext(ret);
                     graph.setReturn(ret);
                     intrinsicGraphs.put(method, graph);
                 } else if (fullName.equals("longBitsToDouble(J)D")) {
