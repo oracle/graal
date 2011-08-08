@@ -843,7 +843,7 @@ public final class LinearScan {
                     TTY.println("pred count on blockbegin: " + phi.merge().phiPredecessorCount());
                     TTY.println("phi values: " + phi.valueCount());
                     TTY.println("phi block preds:");
-                    for (Node n : phi.merge().phiPredecessors()) {
+                    for (EndNode n : phi.merge().cfgPredecessors()) {
                         TTY.println(n.toString());
                     }
                 }

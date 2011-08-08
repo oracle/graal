@@ -521,7 +521,7 @@ public class IdentifyBlocksPhase extends Phase {
                     if (mergeBlock.getPredecessors().size() <= i) {
                         TTY.println(merge.toString());
                         TTY.println(phi.toString());
-                        TTY.println(merge.phiPredecessors().toString());
+                        TTY.println(merge.cfgPredecessors().toString());
                         TTY.println(phi.inputs().toString());
                         TTY.println("value count: " + phi.valueCount());
                     }

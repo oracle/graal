@@ -613,7 +613,7 @@ public class LoopUtil {
                 }
                 Merge merge = (Merge) color;
                 List<Node> parentColors = new ArrayList<Node>(merge.phiPredecessorCount());
-                for (Node pred : merge.phiPredecessors()) {
+                for (EndNode pred : merge.cfgPredecessors()) {
                     parentColors.add(colors.get(pred));
                 }
                 return parentColors;
