@@ -163,14 +163,14 @@ public class TargetMethodAssembler {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, target, debugInfo, true);
+        targetMethod.recordCall(posBefore, posAfter - posBefore, target, debugInfo, true);
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, target, debugInfo, false);
+        targetMethod.recordCall(posBefore, posAfter - posBefore, target, debugInfo, false);
     }
 
     public void recordSafepoint(int pos, LIRDebugInfo info) {

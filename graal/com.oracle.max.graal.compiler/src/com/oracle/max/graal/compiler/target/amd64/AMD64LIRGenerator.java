@@ -465,6 +465,21 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void visitMathIntrinsic(MathIntrinsic node) {
+        LIRItem opd = new LIRItem(node.x(), this);
+        opd.setDestroysRegister();
+        opd.loadItem();
+        CiVariable dest = createResultVariable(node);
+        switch (node.operation()) {
+            case SQRT:
+                lir.sqrt(opd.result(), dest, CiValue.IllegalValue);
+                break;
+            default:
+                throw Util.shouldNotReachHere();
+        }
+    }
+
+    @Override
     public Condition floatingPointCondition(Condition cond) {
         switch(cond) {
             case LT:
