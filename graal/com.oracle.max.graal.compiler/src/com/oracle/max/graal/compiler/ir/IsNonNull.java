@@ -78,11 +78,6 @@ public final class IsNonNull extends BooleanNode {
         out.print("null_check(").print(object()).print(')');
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new IsNonNull(null, into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

@@ -66,11 +66,6 @@ public final class FPConversionNode extends FloatingNode implements Node.GlobalV
         out.print("fp conversion node ").print(value());
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new FPConversionNode(kind, null, into);
-    }
-
     private static final CanonicalizerOp CANON = new CanonicalizerOp() {
         @Override
         public Node canonical(Node node, NotifyReProcess reProcess) {

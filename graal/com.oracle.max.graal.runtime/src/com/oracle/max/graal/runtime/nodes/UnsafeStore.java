@@ -81,12 +81,4 @@ public class UnsafeStore extends StateSplit {
         }
         return super.lookup(clazz);
     }
-
-    @Override
-    public Node copy(Graph into) {
-        UnsafeStore x = new UnsafeStore(null, null, null, kind, into);
-        super.copyInto(x);
-        return x;
-    }
-
 }

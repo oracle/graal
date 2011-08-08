@@ -145,12 +145,6 @@ public final class Phi extends FloatingNode {
     }
 
     @Override
-    public Node copy(Graph into) {
-        Phi x = new Phi(kind, type, into);
-        return x;
-    }
-
-    @Override
     public Iterable<? extends Node> dataInputs() {
         final Iterator< ? extends Node> input = super.dataInputs().iterator();
         return new Iterable<Node>() {

@@ -44,11 +44,4 @@ public final class WriteMemoryCheckpointNode extends AbstractMemoryCheckpointNod
         }
         return super.lookup(clazz);
     }
-
-    @Override
-    public Node copy(Graph into) {
-        WriteMemoryCheckpointNode x = new WriteMemoryCheckpointNode(into);
-        super.copyInto(x);
-        return x;
-    }
 }

@@ -77,11 +77,4 @@ public final class StoreIndexed extends AccessIndexed {
         }
         return super.lookup(clazz);
     }
-
-    @Override
-    public Node copy(Graph into) {
-        StoreIndexed x = new StoreIndexed(null, null, null, elementKind(), null, into);
-        super.copyInto(x);
-        return x;
-    }
 }

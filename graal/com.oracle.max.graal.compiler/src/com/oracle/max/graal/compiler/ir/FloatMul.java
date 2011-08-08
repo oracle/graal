@@ -52,11 +52,6 @@ public final class FloatMul extends FloatArithmetic {
         return "*";
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new FloatMul(kind, null, null, isStrictFP(), into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

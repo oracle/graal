@@ -41,12 +41,6 @@ public final class FloatAdd extends FloatArithmetic {
         return "+";
     }
 
-    @Override
-    public Node copy(Graph into) {
-        FloatAdd x = new FloatAdd(kind, null, null, isStrictFP(), into);
-        return x;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

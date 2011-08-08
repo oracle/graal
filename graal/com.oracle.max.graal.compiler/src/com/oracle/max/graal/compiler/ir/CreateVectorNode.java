@@ -83,13 +83,6 @@ public final class CreateVectorNode extends AbstractVectorNode implements Node.G
         out.print("vector with length ").print(length().toString());
     }
 
-    @Override
-    public Node copy(Graph into) {
-        CreateVectorNode x = new CreateVectorNode(reversed, null, into);
-        super.copyInto(x);
-        return x;
-    }
-
     private LoopBegin createLoop(Map<AbstractVectorNode, Value> map) {
         EndNode end = new EndNode(graph());
         LoopBegin loopBegin = new LoopBegin(graph());

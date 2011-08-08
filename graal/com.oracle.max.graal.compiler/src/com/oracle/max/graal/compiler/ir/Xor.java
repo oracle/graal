@@ -47,12 +47,6 @@ public final class Xor extends Logic {
         return "^";
     }
 
-    @Override
-    public Node copy(Graph into) {
-        Xor x = new Xor(kind, null, null, into);
-        return x;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

@@ -73,14 +73,6 @@ public class LoopBegin extends Merge {
     }
 
     @Override
-    public Node copy(Graph into) {
-        LoopBegin x = new LoopBegin(into);
-        x.setLoopFrequency(loopFrequency);
-        super.copyInto(x);
-        return x;
-    }
-
-    @Override
     public int phiPredecessorCount() {
         return 2;
     }

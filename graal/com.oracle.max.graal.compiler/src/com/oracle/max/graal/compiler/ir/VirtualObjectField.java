@@ -104,10 +104,4 @@ public class VirtualObjectField extends FloatingNode {
     public void print(LogStream out) {
         out.print(object()).print(".").print(object().fields()[index].name()).print("=").print(input());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        VirtualObjectField x = new VirtualObjectField(null, null, null, index, into);
-        return x;
-    }
 }

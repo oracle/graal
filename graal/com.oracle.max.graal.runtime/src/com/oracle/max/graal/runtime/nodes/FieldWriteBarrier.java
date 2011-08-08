@@ -68,11 +68,4 @@ public final class FieldWriteBarrier extends WriteBarrier {
     public void print(LogStream out) {
         out.print("field write barrier ").print(object());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        FieldWriteBarrier x = new FieldWriteBarrier(null, into);
-        super.copyInto(x);
-        return x;
-    }
 }

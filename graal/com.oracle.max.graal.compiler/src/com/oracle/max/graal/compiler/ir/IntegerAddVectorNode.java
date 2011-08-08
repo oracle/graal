@@ -55,13 +55,6 @@ public final class IntegerAddVectorNode extends AbstractVectorNode {
     }
 
     @Override
-    public Node copy(Graph into) {
-        IntegerAddVectorNode x = new IntegerAddVectorNode(null, null, into);
-        super.copyInto(x);
-        return x;
-    }
-
-    @Override
     public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
         nodes.put(this, new IntegerAdd(CiKind.Int, nodes.get(vector()), value(), graph()));
     }

@@ -66,10 +66,4 @@ public final class Convert extends FloatingNode implements Node.GlobalValueNumbe
     public void print(LogStream out) {
         out.print(Bytecodes.nameOf(opcode)).print('(').print(value()).print(')');
     }
-
-    @Override
-    public Node copy(Graph into) {
-        Convert x = new Convert(opcode, null, kind, into);
-        return x;
-    }
 }

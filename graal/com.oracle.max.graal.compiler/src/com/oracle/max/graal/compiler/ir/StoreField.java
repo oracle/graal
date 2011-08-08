@@ -82,11 +82,4 @@ public final class StoreField extends AccessField {
         print(" [type: ").print(CiUtil.format("%h.%n:%t", field(), false)).
         print(']');
     }
-
-    @Override
-    public Node copy(Graph into) {
-        StoreField x = new StoreField(null, field, null, into);
-        super.copyInto(x);
-        return x;
-    }
 }

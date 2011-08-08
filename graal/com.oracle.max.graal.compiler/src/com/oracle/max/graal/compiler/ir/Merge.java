@@ -265,14 +265,6 @@ public class Merge extends StateSplit{
         return "Merge #" + id();
     }
 
-    @Override
-    public Node copy(Graph into) {
-        assert getClass() == Merge.class : "copy of " + getClass();
-        Merge x = new Merge(into);
-        super.copyInto(x);
-        return x;
-    }
-
     public void removeEnd(EndNode pred) {
         int predIndex = ends.indexOf(pred);
         assert predIndex != -1;

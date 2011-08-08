@@ -105,13 +105,6 @@ public final class LoadField extends AccessField {
         return null;
     }
 
-    @Override
-    public Node copy(Graph into) {
-        LoadField x = new LoadField(null, field, into);
-        super.copyInto(x);
-        return x;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

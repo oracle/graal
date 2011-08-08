@@ -42,11 +42,4 @@ public final class ReadNode extends AccessNode implements Node.GlobalValueNumber
     public void print(LogStream out) {
         out.print("mem read from ").print(object());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        ReadNode x = new ReadNode(super.kind, null, null, into);
-        super.copyInto(x);
-        return x;
-    }
 }

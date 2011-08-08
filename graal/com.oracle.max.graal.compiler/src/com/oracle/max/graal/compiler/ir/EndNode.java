@@ -45,13 +45,6 @@ public final class EndNode extends FixedNode {
         out.print("end");
     }
 
-    @Override
-    public Node copy(Graph into) {
-        EndNode x = new EndNode(into);
-        super.copyInto(x);
-        return x;
-    }
-
     public Merge merge() {
         if (usages().size() == 0) {
             return null;

@@ -67,11 +67,6 @@ public final class ArrayLength extends FloatingNode implements Node.GlobalValueN
         out.print(array()).print(".length");
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new ArrayLength(null, into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

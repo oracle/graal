@@ -83,11 +83,4 @@ public final class LookupSwitch extends Switch {
         INSTRUCTION.advance(out);
         out.print("default   : ").print(defaultSuccessor());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        LookupSwitch x = new LookupSwitch(null, Arrays.asList(new FixedNodeWithNext[numberOfCases() + 1]), keys.clone(), branchProbability.clone(), into);
-        super.copyInto(x);
-        return x;
-    }
 }

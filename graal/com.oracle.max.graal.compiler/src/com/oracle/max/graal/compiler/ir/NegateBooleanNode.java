@@ -55,11 +55,6 @@ public final class NegateBooleanNode extends BooleanNode {
         out.print(value()).print("!");
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new NegateBooleanNode(null, into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

@@ -69,12 +69,6 @@ public final class Negate extends FloatingNode implements Node.GlobalValueNumber
         out.print("- ").print(x());
     }
 
-    @Override
-    public Node copy(Graph into) {
-        Negate x = new Negate(kind, into);
-        return x;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

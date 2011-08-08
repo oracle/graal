@@ -41,11 +41,6 @@ public final class IntegerMul extends IntegerArithmeticNode {
         return "*";
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new IntegerMul(kind, null, null, into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

@@ -46,12 +46,6 @@ public final class And extends Logic {
         return "&";
     }
 
-    @Override
-    public Node copy(Graph into) {
-        And x = new And(kind, null, null, into);
-        return x;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

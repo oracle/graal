@@ -41,11 +41,6 @@ public final class FloatRem extends FloatArithmetic {
         return "%";
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new FloatRem(kind, null, null, isStrictFP(), into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

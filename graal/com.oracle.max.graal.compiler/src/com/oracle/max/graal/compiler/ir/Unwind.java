@@ -57,11 +57,4 @@ public final class Unwind extends FixedNode {
     public void print(LogStream out) {
         out.print(kind.typeChar).print("unwind ").print(exception());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        Unwind x = new Unwind(null, into);
-        super.copyInto(x);
-        return x;
-    }
 }

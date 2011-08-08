@@ -36,9 +36,4 @@ public final class MaterializeNode extends Conditional {
     public void print(LogStream out) {
         out.print("materialize(").print(condition().toString()).print(')');
     }
-
-    @Override
-    public Node copy(Graph into) {
-        return new MaterializeNode(null, into);
-    }
 }

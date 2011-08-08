@@ -44,14 +44,6 @@ public final class ReadVectorNode extends AccessVectorNode {
     }
 
     @Override
-    public Node copy(Graph into) {
-        ReadVectorNode x = new ReadVectorNode(null, null, null, into);
-        super.copyInto(x);
-        return x;
-    }
-
-
-    @Override
     public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
         LocationNode newLocation = LocationNode.create(LocationNode.getArrayLocation(location().getValueKind()), location().getValueKind(), location().displacement(), graph());
         Value index = nodes.get(vector());

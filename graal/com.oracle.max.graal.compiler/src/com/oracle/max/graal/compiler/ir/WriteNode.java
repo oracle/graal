@@ -53,11 +53,4 @@ public final class WriteNode extends AccessNode {
     public void print(LogStream out) {
         out.print("mem write to ").print(object()).print(" with value").print(value());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        WriteNode x = new WriteNode(super.kind, null, null, null, into);
-        super.copyInto(x);
-        return x;
-    }
 }

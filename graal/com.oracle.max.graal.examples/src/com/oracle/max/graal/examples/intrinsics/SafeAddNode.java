@@ -35,11 +35,6 @@ public final class SafeAddNode extends IntegerArithmeticNode {
     }
 
     @Override
-    public Node copy(Graph into) {
-        return new SafeAddNode(null, null, into);
-    }
-
-    @Override
     public String shortName() {
         return "[+]";
     }

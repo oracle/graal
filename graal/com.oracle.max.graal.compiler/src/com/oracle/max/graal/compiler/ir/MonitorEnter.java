@@ -51,11 +51,4 @@ public final class MonitorEnter extends AccessMonitor {
     public void print(LogStream out) {
         out.print("enter monitor[").print(lockNumber).print("](").print(object()).print(')');
     }
-
-    @Override
-    public Node copy(Graph into) {
-        MonitorEnter x = new MonitorEnter(null, null, lockNumber, into);
-        super.copyInto(x);
-        return x;
-    }
 }

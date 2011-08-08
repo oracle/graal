@@ -57,13 +57,6 @@ public final class FixedGuard extends FixedNodeWithNext {
         conditions.add(x);
     }
 
-    @Override
-    public Node copy(Graph into) {
-        FixedGuard x = new FixedGuard(into);
-        super.copyInto(x);
-        return x;
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

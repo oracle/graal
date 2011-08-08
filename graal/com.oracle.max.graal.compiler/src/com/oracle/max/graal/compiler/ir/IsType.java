@@ -94,11 +94,6 @@ public final class IsType extends BooleanNode {
         return properties;
     }
 
-    @Override
-    public Node copy(Graph into) {
-        return new IsType(null, type, into);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {

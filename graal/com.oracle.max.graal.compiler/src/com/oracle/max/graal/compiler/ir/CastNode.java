@@ -69,9 +69,4 @@ public final class CastNode extends FloatingNode {
     public void print(LogStream out) {
         out.print("cast node ").print(value().toString());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        return new CastNode(kind, null, into);
-    }
 }

@@ -63,11 +63,4 @@ public final class NewTypeArray extends NewArray {
     public void print(LogStream out) {
         out.print("new ").print(elementKind().name()).print(" array [").print(length()).print(']');
     }
-
-    @Override
-    public Node copy(Graph into) {
-        NewTypeArray x = new NewTypeArray(null, elementType, into);
-        super.copyInto(x);
-        return x;
-    }
 }

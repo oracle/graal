@@ -85,11 +85,4 @@ public final class TableSwitch extends Switch {
         INSTRUCTION.advance(out);
         out.print("default   : ").print(defaultSuccessor());
     }
-
-    @Override
-    public Node copy(Graph into) {
-        TableSwitch x = new TableSwitch(null, Arrays.asList(new FixedNodeWithNext[numberOfCases() + 1]), lowKey, branchProbability, into);
-        super.copyInto(x);
-        return x;
-    }
 }

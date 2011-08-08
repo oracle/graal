@@ -60,11 +60,6 @@ public final class NormalizeCompare extends Binary {
     }
 
     @Override
-    public Node copy(Graph into) {
-        return new NormalizeCompare(opcode, kind, null, null, into);
-    }
-
-    @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("isUnorderedLess", isUnorderedLess());
