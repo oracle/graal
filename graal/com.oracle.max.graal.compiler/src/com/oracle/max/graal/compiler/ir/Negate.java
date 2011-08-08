@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code NegateOp} instruction negates its operand.
  */
-public final class Negate extends FloatingNode implements Node.GlobalValueNumberable {
+public final class Negate extends FloatingNode {
     private static final NegateCanonicalizerOp CANONICALIZER = new NegateCanonicalizerOp();
 
     @Input    private Value x;

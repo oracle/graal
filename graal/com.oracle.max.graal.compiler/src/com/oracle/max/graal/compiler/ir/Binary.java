@@ -29,7 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * The {@code Op2} class is the base of arithmetic and logic operations with two inputs.
  */
-public abstract class Binary extends FloatingNode implements Node.GlobalValueNumberable {
+public abstract class Binary extends FloatingNode {
 
     @Input private Value x;
     @Input private Value y;

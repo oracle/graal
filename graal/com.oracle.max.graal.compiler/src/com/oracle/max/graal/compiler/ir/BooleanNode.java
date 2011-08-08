@@ -26,7 +26,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public abstract class BooleanNode extends FloatingNode implements Node.GlobalValueNumberable {
+public abstract class BooleanNode extends FloatingNode {
 
     public BooleanNode(CiKind kind, Graph graph) {
         super(kind, graph);

@@ -30,7 +30,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class CurrentThread extends FloatingNode implements Node.GlobalValueNumberable {
+public final class CurrentThread extends FloatingNode {
 
     private int threadObjectOffset;
 

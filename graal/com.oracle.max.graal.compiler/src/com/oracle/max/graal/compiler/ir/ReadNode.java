@@ -27,7 +27,7 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public final class ReadNode extends AccessNode implements Node.GlobalValueNumberable {
+public final class ReadNode extends AccessNode implements Node.ValueNumberable {
 
     public ReadNode(CiKind kind, Value object, LocationNode location, Graph graph) {
         super(kind, object, location, graph);

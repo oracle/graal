@@ -33,10 +33,10 @@ import com.sun.cri.ri.*;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class ArrayLength extends FloatingNode implements Node.GlobalValueNumberable {
+public final class ArrayLength extends FloatingNode {
     private static final ArrayLengthCanonicalizerOp CANONICALIZER = new ArrayLengthCanonicalizerOp();
 
-    @Input    private Value array;
+    @Input private Value array;
 
     public Value array() {
         return array;
