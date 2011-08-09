@@ -24,9 +24,8 @@ package com.oracle.max.graal.compiler.debug;
 
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * Prints a listing for a {@linkplain MergeNode block}.
@@ -81,7 +80,7 @@ public class BlockPrinter implements BlockClosure {
                 out.print(", ");
             }
             ValueNode value = newFrameState.stackAt(i);
-            out.print(i + ":" + Util.valueString(value));
+            out.print(i + ":" + ValueUtil.valueString(value));
             if (value == null) {
                 i++;
             } else {
@@ -113,7 +112,7 @@ public class BlockPrinter implements BlockClosure {
                     // synchronized methods push null on the lock stack
                     out.print("this");
                 } else {
-                    out.print(Util.valueString(value));
+                    out.print(ValueUtil.valueString(value));
                 }
             }
             out.print("]");

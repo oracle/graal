@@ -60,7 +60,6 @@ public final class GraalOptions {
     // escape analysis settings
     public static boolean EscapeAnalysis                     = ____;
     public static int     ForcedInlineEscapeWeight           = 100;
-    public static int     MaximumEscapeAnalysisArrayLength   = 32;
     public static boolean PrintEscapeAnalysis                = ____;
 
     // absolute probability analysis

@@ -28,7 +28,7 @@ import com.oracle.max.graal.examples.intrinsics.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;

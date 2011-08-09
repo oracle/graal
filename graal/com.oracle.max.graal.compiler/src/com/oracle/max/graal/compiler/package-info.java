@@ -75,7 +75,7 @@
  *
  * <li>
  * Add a field to optionally store an {@link com.oracle.max.graal.compiler.ir.Info} object for each HIR node, and remove the
- * {@link com.oracle.max.graal.nodes.base.FixedWithNextNode#exceptionHandlers} field, the {@link com.oracle.max.graal.nodes.base.FixedWithNextNode#bci} field, and any fields to store the Java
+ * {@link com.oracle.max.graal.nodes.FixedWithNextNode#exceptionHandlers} field, the {@link com.oracle.max.graal.nodes.FixedWithNextNode#bci} field, and any fields to store the Java
  * frame state in subclasses. Benefit: saves space if most HIR nodes do not have exception handlers, a bci or Java frame
  * state. Removes virtual dispatch on accessing debug information for nodes. Allows any node, regardless of its type, to
  * have info attached.</li>

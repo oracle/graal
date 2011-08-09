@@ -26,8 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -57,7 +56,7 @@ public class Util {
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {
-        throw new InternalError("Should not reach here: " + msg);
+        throw new InternalError("should not reach here: " + msg);
     }
 
     public static <T> boolean replaceInList(T a, T b, List<T> list) {
@@ -412,28 +411,5 @@ public class Util {
             }
         }
         return false;
-    }
-
-    /**
-     * Converts a given instruction to a value string. The representation of an instruction as
-     * a value is formed by concatenating the {@linkplain com.sun.cri.ci.CiKind#typeChar character} denoting its
-     * {@linkplain ValueNode#kind kind} and its {@linkplain ValueNode#id()}. For example, {@code "i13"}.
-     *
-     * @param value the instruction to convert to a value string. If {@code value == null}, then "-" is returned.
-     * @return the instruction representation as a string
-     */
-    public static String valueString(ValueNode value) {
-        return (value == null) ? "-" : ("" + value.kind.typeChar + value.id());
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends Node> Collection<T> filter(Iterable<Node> nodes, Class<T> clazz) {
-        ArrayList<T> phis = new ArrayList<T>();
-        for (Node node : nodes) {
-            if (clazz.isInstance(node)) {
-                phis.add((T) node);
-            }
-        }
-        return phis;
     }
 }

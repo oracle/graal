@@ -29,7 +29,7 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 
 public class ComputeProbabilityPhase extends Phase {
     private static final double EPSILON = 1d / Integer.MAX_VALUE;

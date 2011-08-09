@@ -32,8 +32,8 @@ import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.graph.collections.*;
 import com.oracle.max.graal.graph.collections.NodeWorkList.InfiniteWorkException;
-import com.oracle.max.graal.nodes.base.*;
-import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.extended.*;
 
 public class GraphUtil {

@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * The {@code BlockList} class implements a specialized list data structure for representing

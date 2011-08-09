@@ -6,5 +6,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.cri"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.graphviz"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.graph"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.extensions"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.oracle.max.graal.nodes"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

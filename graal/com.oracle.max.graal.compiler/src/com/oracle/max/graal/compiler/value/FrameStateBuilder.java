@@ -22,14 +22,15 @@
  */
 package com.oracle.max.graal.compiler.value;
 
-import static com.oracle.max.graal.compiler.value.ValueUtil.*;
+import static com.oracle.max.graal.nodes.ValueUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
-import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.PhiNode.PhiType;
+import com.oracle.max.graal.nodes.spi.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

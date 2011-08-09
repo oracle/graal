@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.util;
 
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * This class implements a worklist for dealing with blocks. The worklist can

@@ -23,7 +23,7 @@
 package com.oracle.max.graal.runtime.nodes;
 
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.sun.cri.ci.*;

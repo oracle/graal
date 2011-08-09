@@ -26,7 +26,7 @@ import static com.sun.cri.ci.CiValue.*;
 
 import java.util.*;
 
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 import com.sun.cri.ci.*;
 
 /**

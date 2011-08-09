@@ -32,9 +32,8 @@ import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFormatter;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiAddress.Scale;
 import com.sun.cri.ri.*;
@@ -292,7 +291,7 @@ public class CFGPrinter {
 
     private String stateValueToString(ValueNode value, OperandFormatter operandFmt) {
         if (operandFmt == null) {
-            return Util.valueString(value);
+            return ValueUtil.valueString(value);
         }
         if (value == null) {
             return "-";

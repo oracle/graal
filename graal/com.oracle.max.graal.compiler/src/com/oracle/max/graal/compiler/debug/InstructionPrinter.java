@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.debug;
 
 import static com.oracle.max.graal.compiler.debug.InstructionPrinter.InstructionLineColumn.*;
 
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 
 /**

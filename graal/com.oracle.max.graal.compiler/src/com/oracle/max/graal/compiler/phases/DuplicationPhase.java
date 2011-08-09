@@ -24,8 +24,8 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * Duplicates every node in the graph to test the implementation of the {@link com.oracle.max.graal.graph.Node#copy()} method in node subclasses.

@@ -29,7 +29,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graphviz.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * Observes compilation events and uses {@link GraphvizPrinter} to produce a control flow graph in the DOT language

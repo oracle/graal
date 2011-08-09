@@ -30,8 +30,8 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
-import com.oracle.max.graal.nodes.base.*;
-import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.extended.*;
 import com.sun.cri.ci.*;
 

@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.gen;
 
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
-import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * The {@code PhiSimplifier} class is a helper class that can reduce phi instructions.

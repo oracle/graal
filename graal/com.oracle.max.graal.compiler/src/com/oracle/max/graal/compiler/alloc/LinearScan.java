@@ -41,8 +41,8 @@ import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.base.*;
-import com.oracle.max.graal.nodes.base.FrameState.*;
+import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.FrameState.ValueProcedure;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.virtual.*;
 import com.sun.cri.ci.*;
@@ -647,7 +647,7 @@ public final class LinearScan {
                                 if (!liveKill.get(operandNum)) {
                                     liveGen.set(operandNum);
                                     if (GraalOptions.TraceLinearScanLevel >= 4) {
-                                        TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d because of state for %s", Util.valueString(value), op.id(), operandNum, op);
+                                        TTY.println("  Setting liveGen for value %s, LIR opId %d, operand %d because of state for %s", ValueUtil.valueString(value), op.id(), operandNum, op);
                                     }
                                 }
                             } else if (operand.isRegister()) {
