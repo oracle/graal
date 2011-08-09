@@ -26,9 +26,10 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.loop.*;
+import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
@@ -97,14 +98,14 @@ public class IdentifyBlocksPhase extends Phase {
         assert nodeToBlock.get(n) == null;
         nodeToBlock.set(n, b);
 
-        if (n instanceof Merge) {
+        if (n instanceof MergeNode) {
             for (Node usage : n.usages()) {
 
-                if (usage instanceof Phi) {
+                if (usage instanceof PhiNode) {
                     nodeToBlock.set(usage, b);
                 }
 
-                if (usage instanceof LoopCounter) {
+                if (usage instanceof LoopCounterNode) {
                     nodeToBlock.set(usage, b);
                 }
 
@@ -131,7 +132,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     public static boolean isBlockEnd(Node n) {
-        return trueSuccessorCount(n) > 1 || n instanceof Return || n instanceof UnwindNode || n instanceof Deoptimize;
+        return trueSuccessorCount(n) > 1 || n instanceof ReturnNode || n instanceof UnwindNode || n instanceof DeoptimizeNode;
     }
 
     private void print() {
@@ -154,11 +155,11 @@ public class IdentifyBlocksPhase extends Phase {
 
         // Identify blocks.
         for (Node n : graph.getNodes()) {
-            if (n instanceof EndNode || n instanceof Return || n instanceof UnwindNode || n instanceof LoopEnd || n instanceof Deoptimize) {
+            if (n instanceof EndNode || n instanceof ReturnNode || n instanceof UnwindNode || n instanceof LoopEndNode || n instanceof DeoptimizeNode) {
                 Block block = null;
                 Node currentNode = n;
                 while (nodeToBlock.get(currentNode) == null) {
-                    if (block != null && (currentNode instanceof ControlSplit || trueSuccessorCount(currentNode) > 1)) {
+                    if (block != null && (currentNode instanceof ControlSplitNode || trueSuccessorCount(currentNode) > 1)) {
                         // We are at a split node => start a new block.
                         block = null;
                     }
@@ -181,8 +182,8 @@ public class IdentifyBlocksPhase extends Phase {
         // Connect blocks.
         for (Block block : blocks) {
             Node n = block.firstNode();
-            if (n instanceof Merge) {
-                Merge m = (Merge) n;
+            if (n instanceof MergeNode) {
+                MergeNode m = (MergeNode) n;
                 for (Node pred : m.cfgPredecessors()) {
                     Block predBlock = nodeToBlock.get(pred);
                     predBlock.addSuccessor(block);
@@ -214,8 +215,8 @@ public class IdentifyBlocksPhase extends Phase {
         // Add successors of loop end nodes. Makes the graph cyclic.
         for (Block block : blocks) {
             Node n = block.lastNode();
-            if (n instanceof LoopEnd) {
-                LoopEnd loopEnd = (LoopEnd) n;
+            if (n instanceof LoopEndNode) {
+                LoopEndNode loopEnd = (LoopEndNode) n;
                 assert loopEnd.loopBegin() != null;
                 Block loopBeginBlock = nodeToBlock.get(loopEnd.loopBegin());
                 block.addSuccessor(loopBeginBlock);
@@ -251,7 +252,7 @@ public class IdentifyBlocksPhase extends Phase {
         }
 
         if (block.isLoopHeader()) {
-            markBlocks(nodeToBlock.get(((LoopBegin) block.firstNode()).loopEnd()), endBlock, map, loopIndex, initialDepth);
+            markBlocks(nodeToBlock.get(((LoopBeginNode) block.firstNode()).loopEnd()), endBlock, map, loopIndex, initialDepth);
         }
     }
 
@@ -513,9 +514,9 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private void blocksForUsage(Node node, Node usage, BlockClosure closure) {
-        if (usage instanceof Phi) {
-            Phi phi = (Phi) usage;
-            Merge merge = phi.merge();
+        if (usage instanceof PhiNode) {
+            PhiNode phi = (PhiNode) usage;
+            MergeNode merge = phi.merge();
             Block mergeBlock = nodeToBlock.get(merge);
             assert mergeBlock != null : "no block for merge " + merge.id();
             for (int i = 0; i < phi.valueCount(); ++i) {
@@ -531,16 +532,16 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             }
         } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {
-            Merge merge = ((FrameState) usage).block();
+            MergeNode merge = ((FrameState) usage).block();
             Block block = null;
             for (Node pred : merge.cfgPredecessors()) {
                 block = getCommonDominator(block, nodeToBlock.get(pred));
             }
             closure.apply(block);
-        } else if (usage instanceof LinearInductionVariable) {
-            LinearInductionVariable liv = (LinearInductionVariable) usage;
+        } else if (usage instanceof LinearInductionVariableNode) {
+            LinearInductionVariableNode liv = (LinearInductionVariableNode) usage;
             if (liv.isLinearInductionVariableInput(node)) {
-                LoopBegin loopBegin = liv.loopBegin();
+                LoopBeginNode loopBegin = liv.loopBegin();
                 Block mergeBlock = nodeToBlock.get(loopBegin);
                 closure.apply(mergeBlock.dominator());
             }
@@ -551,12 +552,12 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private void patch(Usage usage, Node original, Node patch) {
-        if (usage.node instanceof Phi) {
-            Phi phi = (Phi) usage.node;
+        if (usage.node instanceof PhiNode) {
+            PhiNode phi = (PhiNode) usage.node;
             Node pred;
             Block phiBlock = nodeToBlock.get(phi);
             if (phiBlock.isLoopHeader()) {
-                LoopBegin loopBegin = (LoopBegin) phiBlock.firstNode();
+                LoopBeginNode loopBegin = (LoopBeginNode) phiBlock.firstNode();
                 if (usage.block == phiBlock.dominator()) {
                     pred = loopBegin.forwardEdge();
                 } else {
@@ -629,7 +630,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private boolean noRematerialization(Node n) {
-        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState || n instanceof VirtualObjectNode ||
+        return n instanceof LocalNode || n instanceof LocationNode || n instanceof ConstantNode || n instanceof StateSplit || n instanceof FrameState || n instanceof VirtualObjectNode ||
                         n instanceof VirtualObjectFieldNode;
     }
 
@@ -703,7 +704,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             }
             if (canNotMove) {
-                assert !(b.lastNode() instanceof ControlSplit);
+                assert !(b.lastNode() instanceof ControlSplitNode);
                 //b.setLastNode(lastSorted);
             } else {
                 sortedInstructions.remove(b.lastNode());
@@ -719,7 +720,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
-        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof Phi || i instanceof Local || i instanceof LoopCounter) {
+        if (i == null || map.isMarked(i) || nodeToBlock.get(i) != b || i instanceof PhiNode || i instanceof LocalNode || i instanceof LoopCounterNode) {
             return;
         }
 

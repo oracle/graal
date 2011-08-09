@@ -26,9 +26,9 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
@@ -39,18 +39,18 @@ import com.oracle.max.graal.graph.collections.NodeWorkList.InfiniteWorkException
 public class GraphUtil {
 
     public static interface ColoringLambda<T> {
-        T color(Iterable<T> incomming, Merge merge);
-        T danglingColor(Iterable<T> incomming, Merge merge);
+        T color(Iterable<T> incomming, MergeNode merge);
+        T danglingColor(Iterable<T> incomming, MergeNode merge);
     }
 
     /**
      * colors down, applying the lambda at merge points, starting at the pre-colored points.
      */
     public static <T> void colorCFGDown(NodeMap<T> colors, ColoringLambda<T> lambda) {
-        Set<Merge> delayed = new HashSet<Merge>();
+        Set<MergeNode> delayed = new HashSet<MergeNode>();
         Set<Node> currentPoints = new HashSet<Node>();
         Set<Node> otherPoints = new HashSet<Node>();
-        Set<Merge> otherMerges = new HashSet<Merge>();
+        Set<MergeNode> otherMerges = new HashSet<MergeNode>();
         for (Entry<Node, T> entry : colors.entries()) {
             currentPoints.add(entry.getKey());
         }
@@ -59,7 +59,7 @@ public class GraphUtil {
             for (Node node : currentPoints) {
                 otherMerges.addAll(colorCFGDownToMerge(node, colors.get(node), colors));
             }
-            for (Merge merge : otherMerges) {
+            for (MergeNode merge : otherMerges) {
                 incomming.clear();
                 for (EndNode end : merge.cfgPredecessors()) {
                     incomming.add(colors.get(end));
@@ -80,7 +80,7 @@ public class GraphUtil {
             otherPoints.clear();
             otherMerges.clear();
         }
-        for (Merge merge : delayed) {
+        for (MergeNode merge : delayed) {
             T color = lambda.danglingColor(incomming, merge);
             if (color != null) {
                 colors.set(merge, color);
@@ -88,29 +88,29 @@ public class GraphUtil {
         }
     }
 
-    private static <T> Collection<Merge> colorCFGDownToMerge(Node from, T color, NodeMap<T> colors) {
+    private static <T> Collection<MergeNode> colorCFGDownToMerge(Node from, T color, NodeMap<T> colors) {
         NodeFlood work = from.graph().createNodeFlood();
-        Collection<Merge> merges = new LinkedList<Merge>();
+        Collection<MergeNode> merges = new LinkedList<MergeNode>();
         work.add(from);
         for (Node node : work) {
             Node current = node;
             while (current != null) {
-                if (current instanceof Merge) {
-                    merges.add((Merge) current);
+                if (current instanceof MergeNode) {
+                    merges.add((MergeNode) current);
                     break;
                 }
                 colors.set(current, color);
-                if (current instanceof FixedNodeWithNext && !(current instanceof AbstractVectorNode) && !(current instanceof Invoke && ((Invoke) current).exceptionEdge() != null)) {
-                    current = ((FixedNodeWithNext) current).next();
+                if (current instanceof FixedWithNextNode && !(current instanceof AbstractVectorNode) && !(current instanceof InvokeNode && ((InvokeNode) current).exceptionEdge() != null)) {
+                    current = ((FixedWithNextNode) current).next();
                 } else if (current instanceof EndNode) {
                     current = ((EndNode) current).merge();
                 } else {
-                    if (current instanceof ControlSplit) {
+                    if (current instanceof ControlSplitNode) {
                         for (Node sux : current.cfgSuccessors()) {
                             work.add(sux);
                         }
-                    } else if (current instanceof Invoke && ((Invoke) current).exceptionEdge() != null) {
-                        Invoke invoke = (Invoke) current;
+                    } else if (current instanceof InvokeNode && ((InvokeNode) current).exceptionEdge() != null) {
+                        InvokeNode invoke = (InvokeNode) current;
                         work.add(invoke.next());
                         work.add(invoke.exceptionEdge());
                     } else if (current instanceof AbstractVectorNode) {
@@ -132,7 +132,7 @@ public class GraphUtil {
         ValueNode fixPhiInput(ValueNode input, T color);
         boolean explore(Node n);
         List<T> parentColors(T color);
-        Merge merge(T color);
+        MergeNode merge(T color);
     }
 
     // TODO (gd) rework that code around Phi handling : too complicated
@@ -148,9 +148,9 @@ public class GraphUtil {
         Set<T> colors = new HashSet<T>();
         try {
             for (Node node : work) {
-                if (node instanceof Phi) {
-                    Phi phi = (Phi) node;
-                    Merge merge = phi.merge();
+                if (node instanceof PhiNode) {
+                    PhiNode phi = (PhiNode) node;
+                    MergeNode merge = phi.merge();
                     for (int i = 0; i < phi.valueCount(); i++) {
                         ValueNode v = phi.valueAt(i);
                         if (v != null) {
@@ -176,9 +176,9 @@ public class GraphUtil {
                     }
                     if (originalColoringColor == null) {
                         for (Node usage : node.dataUsages()) {
-                            if (usage instanceof Phi) {
-                                Phi phi = (Phi) usage;
-                                Merge merge = phi.merge();
+                            if (usage instanceof PhiNode) {
+                                PhiNode phi = (PhiNode) usage;
+                                MergeNode merge = phi.merge();
                                 for (int i = 0; i < phi.valueCount(); i++) {
                                     ValueNode v = phi.valueAt(i);
                                     if (v == node) {
@@ -230,7 +230,7 @@ public class GraphUtil {
                                     colorQueue.offer(color);
                                     continue;
                                 }
-                                Phi phi = new Phi(((ValueNode) node).kind, lambda.merge(color), PhiType.Value, node.graph());
+                                PhiNode phi = new PhiNode(((ValueNode) node).kind, lambda.merge(color), PhiType.Value, node.graph());
                                 for (T parentColor : parentColors) {
                                     Node input = newNodes.get(parentColor);
                                     phi.addInput((ValueNode) input);
@@ -255,9 +255,9 @@ public class GraphUtil {
                                 dataUsages.add(usage);
                             }
                             for (Node usage : dataUsages) {
-                                if (usage instanceof Phi) {
-                                    Phi phi = (Phi) usage;
-                                    Merge merge = phi.merge();
+                                if (usage instanceof PhiNode) {
+                                    PhiNode phi = (PhiNode) usage;
+                                    MergeNode merge = phi.merge();
                                     for (int i = 0; i < phi.valueCount(); i++) {
                                         ValueNode v = phi.valueAt(i);
                                         if (v == node) {
@@ -280,13 +280,13 @@ public class GraphUtil {
                     if (node instanceof StateSplit) {
                         FrameState stateAfter = ((StateSplit) node).stateAfter();
                         if (stateAfter != null && lambda.explore(stateAfter) && !work.isNew(stateAfter)) {
-                            if (!(node instanceof Merge && coloring.get(((Merge) node).next()) == null)) { // not dangling colored merge
+                            if (!(node instanceof MergeNode && coloring.get(((MergeNode) node).next()) == null)) { // not dangling colored merge
                                 work.add(stateAfter);
                             }
                         }
                     }
 
-                    if (node instanceof Merge) {
+                    if (node instanceof MergeNode) {
                         for (Node usage : node.usages()) {
                             if (!work.isNew(usage)) {
                                 work.add(usage);
@@ -294,8 +294,8 @@ public class GraphUtil {
                         }
                     }
 
-                    if (node instanceof LoopEnd) {
-                        work.add(((LoopEnd) node).loopBegin());
+                    if (node instanceof LoopEndNode) {
+                        work.add(((LoopEndNode) node).loopBegin());
                     }
 
                     for (Node input : node.dataInputs()) {

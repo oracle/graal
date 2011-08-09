@@ -27,9 +27,8 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -71,7 +70,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         int index = 0;
         if (!isStatic(method.accessFlags())) {
             // add the receiver and assume it is non null
-            Local local = new Local(method.holder().kind(), javaIndex, graph);
+            LocalNode local = new LocalNode(method.holder().kind(), javaIndex, graph);
             local.setDeclaredType(method.holder());
             storeLocal(javaIndex, local);
             javaIndex = 1;
@@ -83,7 +82,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         for (int i = 0; i < max; i++) {
             RiType type = sig.argumentTypeAt(i, accessingClass);
             CiKind kind = type.kind().stackKind();
-            Local local = new Local(kind, index, graph);
+            LocalNode local = new LocalNode(kind, index, graph);
             if (type.isResolved()) {
                 local.setDeclaredType(type);
             }
@@ -346,13 +345,13 @@ public class FrameStateBuilder implements FrameStateAccess {
     public ValueNode loadLocal(int i) {
         ValueNode x = locals[i];
         if (x != null) {
-            if (x instanceof Phi) {
-                assert ((Phi) x).type() == PhiType.Value;
+            if (x instanceof PhiNode) {
+                assert ((PhiNode) x).type() == PhiType.Value;
                 if (x.isDeleted()) {
                     return null;
                 }
             }
-            assert x.kind.isSingleWord() || locals[i + 1] == null || locals[i + 1] instanceof Phi;
+            assert x.kind.isSingleWord() || locals[i + 1] == null || locals[i + 1] instanceof PhiNode;
         }
         return x;
     }

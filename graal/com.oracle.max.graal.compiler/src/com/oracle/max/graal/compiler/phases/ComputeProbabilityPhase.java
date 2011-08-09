@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
 
@@ -85,14 +85,14 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     public static class LoopInfo {
-        public final LoopBegin loopBegin;
+        public final LoopBeginNode loopBegin;
 
         public final Set<LoopInfo> requires = new HashSet<LoopInfo>(4);
 
         private double loopFrequency = -1;
         public boolean ended = false;
 
-        public LoopInfo(LoopBegin loopBegin) {
+        public LoopInfo(LoopBeginNode loopBegin) {
             this.loopBegin = loopBegin;
         }
 
@@ -121,7 +121,7 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     public Set<LoopInfo> loopInfos = new HashSet<LoopInfo>();
-    public Map<Merge, Set<LoopInfo>> mergeLoops = new HashMap<Merge, Set<LoopInfo>>();
+    public Map<MergeNode, Set<LoopInfo>> mergeLoops = new HashMap<MergeNode, Set<LoopInfo>>();
 
     private class Probability implements MergeableState<Probability> {
         public double probability;
@@ -142,7 +142,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public boolean merge(Merge merge, Collection<Probability> withStates) {
+        public boolean merge(MergeNode merge, Collection<Probability> withStates) {
             if (merge.endCount() > 1) {
                 HashSet<LoopInfo> intersection = new HashSet<LoopInfo>(loops);
                 for (Probability other : withStates) {
@@ -183,14 +183,14 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public void loopBegin(LoopBegin loopBegin) {
+        public void loopBegin(LoopBeginNode loopBegin) {
             loopInfo = new LoopInfo(loopBegin);
             loopInfos.add(loopInfo);
             loops.add(loopInfo);
         }
 
         @Override
-        public void loopEnd(LoopEnd loopEnd, Probability loopEndState) {
+        public void loopEnd(LoopEndNode loopEnd, Probability loopEndState) {
             assert loopInfo != null;
             for (LoopInfo innerLoop : loopEndState.loops) {
                 if (innerLoop != loopInfo && !loops.contains(innerLoop)) {
@@ -204,14 +204,14 @@ public class ComputeProbabilityPhase extends Phase {
         public void afterSplit(FixedNode node) {
             assert node.predecessor() != null;
             Node pred = node.predecessor();
-            if (pred instanceof Invoke) {
-                Invoke x = (Invoke) pred;
+            if (pred instanceof InvokeNode) {
+                InvokeNode x = (InvokeNode) pred;
                 if (x.next() != node) {
                     probability = 0;
                 }
             } else {
-                assert pred instanceof ControlSplit;
-                ControlSplit x = (ControlSplit) pred;
+                assert pred instanceof ControlSplitNode;
+                ControlSplitNode x = (ControlSplitNode) pred;
                 double sum = 0;
                 for (int i = 0; i < x.blockSuccessorCount(); i++) {
                     if (x.blockSuccessor(i) == node) {
@@ -249,7 +249,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public boolean merge(Merge merge, Collection<LoopCount> withStates) {
+        public boolean merge(MergeNode merge, Collection<LoopCount> withStates) {
             assert merge.endCount() == withStates.size() + 1;
             if (merge.endCount() > 1) {
                 Set<LoopInfo> loops = mergeLoops.get(merge);
@@ -265,12 +265,12 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public void loopBegin(LoopBegin loopBegin) {
+        public void loopBegin(LoopBeginNode loopBegin) {
             count *= loopBegin.loopFrequency();
         }
 
         @Override
-        public void loopEnd(LoopEnd loopEnd, LoopCount loopEndState) {
+        public void loopEnd(LoopEndNode loopEnd, LoopCount loopEndState) {
             // nothing to do...
         }
 

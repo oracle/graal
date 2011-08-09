@@ -25,7 +25,7 @@ package com.oracle.max.graal.compiler.graph;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
@@ -289,7 +289,7 @@ public class IR {
         return maxLocks;
     }
 
-    public FixedNodeWithNext getHIRStartBlock() {
-        return (FixedNodeWithNext) compilation.graph.start().successors().first();
+    public FixedWithNextNode getHIRStartBlock() {
+        return (FixedWithNextNode) compilation.graph.start().successors().first();
     }
 }

@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.nodes.base;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -32,7 +31,7 @@ import com.sun.cri.ci.*;
  * The {@code StateSplit} class is the abstract base class of all instructions
  * that store an immutable copy of the frame state.
  */
-public abstract class StateSplit extends FixedNodeWithNext {
+public abstract class StateSplit extends FixedWithNextNode {
 
     @Input private FrameState stateAfter;
 

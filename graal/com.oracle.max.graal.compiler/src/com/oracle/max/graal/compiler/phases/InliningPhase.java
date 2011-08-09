@@ -28,10 +28,10 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.base.DeoptimizeNode.DeoptAction;
+import com.oracle.max.graal.compiler.nodes.calc.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -53,15 +53,15 @@ public class InliningPhase extends Phase {
     private final IR ir;
 
     private int inliningSize;
-    private final Collection<Invoke> hints;
+    private final Collection<InvokeNode> hints;
 
-    public InliningPhase(GraalCompilation compilation, IR ir, Collection<Invoke> hints) {
+    public InliningPhase(GraalCompilation compilation, IR ir, Collection<InvokeNode> hints) {
         this.compilation = compilation;
         this.ir = ir;
         this.hints = hints;
     }
 
-    private Queue<Invoke> newInvokes = new ArrayDeque<Invoke>();
+    private Queue<InvokeNode> newInvokes = new ArrayDeque<InvokeNode>();
     private CompilerGraph graph;
 
     @Override
@@ -74,15 +74,15 @@ public class InliningPhase extends Phase {
         if (hints != null) {
             newInvokes.addAll(hints);
         } else {
-            for (Invoke invoke : graph.getNodes(Invoke.class)) {
+            for (InvokeNode invoke : graph.getNodes(InvokeNode.class)) {
                 newInvokes.add(invoke);
             }
         }
 
         for (int iterations = 0; iterations < MAX_ITERATIONS; iterations++) {
-            Queue<Invoke> queue = newInvokes;
-            newInvokes = new ArrayDeque<Invoke>();
-            for (Invoke invoke : queue) {
+            Queue<InvokeNode> queue = newInvokes;
+            newInvokes = new ArrayDeque<InvokeNode>();
+            for (InvokeNode invoke : queue) {
                 if (!invoke.isDeleted()) {
                     if (GraalOptions.Meter) {
                         GraalMetrics.InlineConsidered++;
@@ -136,7 +136,7 @@ public class InliningPhase extends Phase {
         }
     }
 
-    private RiMethod inlineInvoke(Invoke invoke, int iterations, float ratio) {
+    private RiMethod inlineInvoke(InvokeNode invoke, int iterations, float ratio) {
         RiMethod parent = invoke.stateAfter().method();
         RiTypeProfile profile = parent.typeProfile(invoke.bci);
         if (GraalOptions.Intrinsify) {
@@ -195,8 +195,8 @@ public class InliningPhase extends Phase {
                 // type check and inlining...
                 concrete = profile.types[0].resolveMethodImpl(invoke.target);
                 if (concrete != null && checkTargetConditions(concrete, iterations) && checkSizeConditions(parent, iterations, concrete, invoke, profile, ratio)) {
-                    IsType isType = new IsType(invoke.receiver(), profile.types[0], compilation.graph);
-                    FixedGuard guard = new FixedGuard(isType, graph);
+                    IsTypeNode isType = new IsTypeNode(invoke.receiver(), profile.types[0], compilation.graph);
+                    FixedGuardNode guard = new FixedGuardNode(isType, graph);
                     assert invoke.predecessor() != null;
                     invoke.predecessor().replaceFirstSuccessor(invoke, guard);
                     guard.setNext(invoke);
@@ -225,7 +225,7 @@ public class InliningPhase extends Phase {
         return CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.codeSize() + " bytes)";
     }
 
-    private String methodName(RiMethod method, Invoke invoke) {
+    private String methodName(RiMethod method, InvokeNode invoke) {
         if (invoke != null) {
             RiMethod parent = invoke.stateAfter().method();
             return parent.name() + "@" + invoke.bci + ": " + CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.codeSize() + " bytes)";
@@ -234,7 +234,7 @@ public class InliningPhase extends Phase {
         }
     }
 
-    private boolean checkInvokeConditions(Invoke invoke) {
+    private boolean checkInvokeConditions(InvokeNode invoke) {
         if (!invoke.canInline()) {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because the invoke is manually set to be non-inlinable", methodName(invoke.target, invoke));
@@ -301,7 +301,7 @@ public class InliningPhase extends Phase {
         return true;
     }
 
-    private boolean checkStaticSizeConditions(RiMethod method, Invoke invoke) {
+    private boolean checkStaticSizeConditions(RiMethod method, InvokeNode invoke) {
         int maximumSize = GraalOptions.MaximumInlineSize;
         if (hints != null && hints.contains(invoke)) {
             maximumSize = GraalOptions.MaximumFreqInlineSize;
@@ -315,7 +315,7 @@ public class InliningPhase extends Phase {
         return true;
     }
 
-    private boolean checkSizeConditions(RiMethod caller, int iterations, RiMethod method, Invoke invoke, RiTypeProfile profile, float adjustedRatio) {
+    private boolean checkSizeConditions(RiMethod caller, int iterations, RiMethod method, InvokeNode invoke, RiTypeProfile profile, float adjustedRatio) {
         int maximumSize = GraalOptions.MaximumTrivialSize;
         int maximumCompiledSize = GraalOptions.MaximumTrivialCompSize;
         double ratio = 0;
@@ -424,12 +424,12 @@ public class InliningPhase extends Phase {
         return null;
     }
 
-    private void inlineMethod(Invoke invoke, RiMethod method) {
+    private void inlineMethod(InvokeNode invoke, RiMethod method) {
         RiMethod parent = invoke.stateAfter().method();
         FrameState stateAfter = invoke.stateAfter();
         FixedNode exceptionEdge = invoke.exceptionEdge();
-        if (exceptionEdge instanceof Placeholder) {
-            exceptionEdge = ((Placeholder) exceptionEdge).next();
+        if (exceptionEdge instanceof PlaceholderNode) {
+            exceptionEdge = ((PlaceholderNode) exceptionEdge).next();
         }
 
         boolean withReceiver = !invoke.isStatic();
@@ -484,18 +484,18 @@ public class InliningPhase extends Phase {
         HashMap<Node, Node> replacements = new HashMap<Node, Node>();
         ArrayList<Node> nodes = new ArrayList<Node>();
         ArrayList<Node> frameStates = new ArrayList<Node>();
-        Return returnNode = null;
+        ReturnNode returnNode = null;
         UnwindNode unwindNode = null;
         StartNode startNode = graph.start();
         for (Node node : graph.getNodes()) {
             if (node instanceof StartNode) {
                 assert startNode == node;
-            } else if (node instanceof Local) {
-                replacements.put(node, parameters[((Local) node).index()]);
+            } else if (node instanceof LocalNode) {
+                replacements.put(node, parameters[((LocalNode) node).index()]);
             } else {
                 nodes.add(node);
-                if (node instanceof Return) {
-                    returnNode = (Return) node;
+                if (node instanceof ReturnNode) {
+                    returnNode = (ReturnNode) node;
                 } else if (node instanceof UnwindNode) {
                     unwindNode = (UnwindNode) node;
                 } else if (node instanceof FrameState) {
@@ -510,11 +510,11 @@ public class InliningPhase extends Phase {
 
         assert invoke.successors().first() != null : invoke;
         assert invoke.predecessor() != null;
-        FixedNodeWithNext pred;
+        FixedWithNextNode pred;
         if (withReceiver) {
-            pred = new FixedGuard(new IsNonNull(parameters[0], compilation.graph), compilation.graph);
+            pred = new FixedGuardNode(new IsNonNullNode(parameters[0], compilation.graph), compilation.graph);
         } else {
-            pred = new Placeholder(compilation.graph);
+            pred = new PlaceholderNode(compilation.graph);
         }
         invoke.replaceAtPredecessors(pred);
         replacements.put(startNode, pred);
@@ -530,8 +530,8 @@ public class InliningPhase extends Phase {
                     fixed.setProbability(fixed.probability() * invokeProbability);
                 }
             }
-            if (node instanceof Invoke && ((Invoke) node).canInline()) {
-                newInvokes.add((Invoke) node);
+            if (node instanceof InvokeNode && ((InvokeNode) node).canInline()) {
+                newInvokes.add((InvokeNode) node);
             } else if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
                 if (frameState.bci == FrameState.BEFORE_BCI) {
@@ -548,22 +548,22 @@ public class InliningPhase extends Phase {
         int monitorIndexDelta = stateAfter.locksSize();
         if (monitorIndexDelta > 0) {
             for (Map.Entry<Node, Node> entry : duplicates.entrySet()) {
-                if (entry.getValue() instanceof MonitorAddress) {
-                    MonitorAddress address = (MonitorAddress) entry.getValue();
+                if (entry.getValue() instanceof MonitorAddressNode) {
+                    MonitorAddressNode address = (MonitorAddressNode) entry.getValue();
                     address.setMonitorIndex(address.monitorIndex() + monitorIndexDelta);
                 }
             }
         }
 
-        if (pred instanceof Placeholder) {
-            FixedNode next = ((Placeholder) pred).next();
-            ((Placeholder) pred).setNext(null);
+        if (pred instanceof PlaceholderNode) {
+            FixedNode next = ((PlaceholderNode) pred).next();
+            ((PlaceholderNode) pred).setNext(null);
             pred.replaceAndDelete(next);
         }
 
         if (returnNode != null) {
             for (Node usage : invoke.usages().snapshot()) {
-                if (returnNode.result() instanceof Local) {
+                if (returnNode.result() instanceof LocalNode) {
                     usage.replaceFirstInput(invoke, replacements.get(returnNode.result()));
                 } else {
                     usage.replaceFirstInput(invoke, duplicates.get(returnNode.result()));
@@ -580,7 +580,7 @@ public class InliningPhase extends Phase {
             if (unwindNode != null) {
                 assert unwindNode.predecessor() != null;
                 assert exceptionEdge.successors().explicitCount() == 1;
-                ExceptionObject obj = (ExceptionObject) exceptionEdge;
+                ExceptionObjectNode obj = (ExceptionObjectNode) exceptionEdge;
 
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
                 for (Node usage : obj.usages().snapshot()) {
@@ -594,7 +594,7 @@ public class InliningPhase extends Phase {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                unwindDuplicate.replaceAndDelete(new Deoptimize(DeoptAction.InvalidateRecompile, compilation.graph));
+                unwindDuplicate.replaceAndDelete(new DeoptimizeNode(DeoptAction.InvalidateRecompile, compilation.graph));
             }
         }
 

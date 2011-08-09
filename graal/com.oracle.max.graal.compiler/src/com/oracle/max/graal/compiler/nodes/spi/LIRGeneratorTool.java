@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.compiler.nodes.spi;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.sun.cri.ci.*;
 
 public abstract class LIRGeneratorTool extends ValueVisitor {

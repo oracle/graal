@@ -27,8 +27,8 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 
@@ -295,6 +295,6 @@ public final class LIRBlock {
     }
 
     public boolean isExceptionEntry() {
-        return firstInstruction() instanceof ExceptionObject;
+        return firstInstruction() instanceof ExceptionObjectNode;
     }
 }

@@ -25,7 +25,8 @@ package com.oracle.max.graal.compiler.phases;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
 
@@ -47,8 +48,8 @@ public class DeadCodeEliminationPhase extends Phase {
         deleteNodes();
 
         // remove chained Merges
-        for (Merge merge : graph.getNodes(Merge.class)) {
-            if (merge.endCount() == 1 && !(merge instanceof LoopBegin)) {
+        for (MergeNode merge : graph.getNodes(MergeNode.class)) {
+            if (merge.endCount() == 1 && !(merge instanceof LoopBeginNode)) {
                 replacePhis(merge);
                 EndNode endNode = merge.endAt(0);
                 FixedNode next = merge.next();
@@ -84,18 +85,18 @@ public class DeadCodeEliminationPhase extends Phase {
             if (!flood.isMarked(node)) {
                 if (node instanceof EndNode) {
                     EndNode end = (EndNode) node;
-                    Merge merge = end.merge();
+                    MergeNode merge = end.merge();
                     if (merge != null && flood.isMarked(merge)) {
                         // We are a dead end node leading to a live merge.
                         merge.removeEnd(end);
                     }
-                } else if (node instanceof LoopEnd) {
-                    LoopBegin loop = ((LoopEnd) node).loopBegin();
+                } else if (node instanceof LoopEndNode) {
+                    LoopBeginNode loop = ((LoopEndNode) node).loopBegin();
                     if (flood.isMarked(loop)) {
                         if (GraalOptions.TraceDeadCodeElimination) {
                             TTY.println("Removing loop with unreachable end: " + loop);
                         }
-                        ((LoopEnd) node).setLoopBegin(null);
+                        ((LoopEndNode) node).setLoopBegin(null);
                         EndNode endNode = loop.endAt(0);
                         assert endNode.predecessor() != null;
                         replacePhis(loop);
@@ -111,10 +112,10 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void replacePhis(Merge merge) {
+    private void replacePhis(MergeNode merge) {
         for (Node usage : merge.usages().snapshot()) {
-            assert usage instanceof Phi;
-            usage.replaceAndDelete(((Phi) usage).valueAt(0));
+            assert usage instanceof PhiNode;
+            usage.replaceAndDelete(((PhiNode) usage).valueAt(0));
         }
     }
 
@@ -133,7 +134,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private void iterateInputs() {
         for (Node node : graph.getNodes()) {
-            if (node instanceof Local) {
+            if (node instanceof LocalNode) {
                 flood.add(node);
             }
             if (flood.isMarked(node)) {

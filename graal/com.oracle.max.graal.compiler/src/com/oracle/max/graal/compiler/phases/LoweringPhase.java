@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
@@ -93,7 +93,7 @@ public class LoweringPhase extends Phase {
 
             @Override
             public Node createGuard(Node condition) {
-                Anchor anchor = (Anchor) getGuardAnchor();
+                AnchorNode anchor = (AnchorNode) getGuardAnchor();
                 GuardNode newGuard = new GuardNode((BooleanNode) condition, anchor.graph());
                 newGuard.setAnchor(anchor);
                 return newGuard;

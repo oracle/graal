@@ -28,11 +28,11 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
@@ -51,7 +51,7 @@ public class EscapeAnalysisPhase extends Phase {
             this.virtualObject = virtualObject;
             this.virtualObjectField = null;
             for (int i = 0; i < fields.length; i++) {
-                fieldState[i] = Constant.defaultForKind(fields[i].kind(), virtualObject.graph());
+                fieldState[i] = ConstantNode.defaultForKind(fields[i].kind(), virtualObject.graph());
                 virtualObjectField = new VirtualObjectFieldNode(virtualObject, virtualObjectField, fieldState[i], i, virtualObject.graph());
             }
         }
@@ -72,18 +72,18 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public boolean merge(Merge merge, Collection<BlockExitState> withStates) {
-            Phi vobjPhi = null;
-            Phi[] valuePhis = new Phi[fieldState.length];
+        public boolean merge(MergeNode merge, Collection<BlockExitState> withStates) {
+            PhiNode vobjPhi = null;
+            PhiNode[] valuePhis = new PhiNode[fieldState.length];
             for (BlockExitState other : withStates) {
                 if (virtualObjectField != other.virtualObjectField && vobjPhi == null) {
-                    vobjPhi = new Phi(CiKind.Illegal, merge, PhiType.Virtual, virtualObject.graph());
+                    vobjPhi = new PhiNode(CiKind.Illegal, merge, PhiType.Virtual, virtualObject.graph());
                     vobjPhi.addInput(virtualObjectField);
                     virtualObjectField = vobjPhi;
                 }
                 for (int i2 = 0; i2 < fieldState.length; i2++) {
                     if (fieldState[i2] != other.fieldState[i2] && valuePhis[i2] == null) {
-                        valuePhis[i2] = new Phi(fieldState[i2].kind, merge, PhiType.Value, virtualObject.graph());
+                        valuePhis[i2] = new PhiNode(fieldState[i2].kind, merge, PhiType.Value, virtualObject.graph());
                         valuePhis[i2].addInput(fieldState[i2]);
                         fieldState[i2] = valuePhis[i2];
                     }
@@ -110,13 +110,13 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public void loopBegin(LoopBegin loopBegin) {
-            Phi vobjPhi = null;
-            vobjPhi = new Phi(CiKind.Illegal, loopBegin, PhiType.Virtual, virtualObject.graph());
+        public void loopBegin(LoopBeginNode loopBegin) {
+            PhiNode vobjPhi = null;
+            vobjPhi = new PhiNode(CiKind.Illegal, loopBegin, PhiType.Virtual, virtualObject.graph());
             vobjPhi.addInput(virtualObjectField);
             virtualObjectField = vobjPhi;
             for (int i2 = 0; i2 < fieldState.length; i2++) {
-                Phi valuePhi = new Phi(fieldState[i2].kind, loopBegin, PhiType.Value, virtualObject.graph());
+                PhiNode valuePhi = new PhiNode(fieldState[i2].kind, loopBegin, PhiType.Value, virtualObject.graph());
                 valuePhi.addInput(fieldState[i2]);
                 fieldState[i2] = valuePhi;
                 updateField(i2);
@@ -124,15 +124,15 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public void loopEnd(LoopEnd x, BlockExitState loopEndState) {
-            while (!(virtualObjectField instanceof Phi)) {
+        public void loopEnd(LoopEndNode x, BlockExitState loopEndState) {
+            while (!(virtualObjectField instanceof PhiNode)) {
                 virtualObjectField = ((VirtualObjectFieldNode) virtualObjectField).lastState();
             }
-            ((Phi) virtualObjectField).addInput(loopEndState.virtualObjectField);
-            assert ((Phi) virtualObjectField).valueCount() == 2;
+            ((PhiNode) virtualObjectField).addInput(loopEndState.virtualObjectField);
+            assert ((PhiNode) virtualObjectField).valueCount() == 2;
             for (int i2 = 0; i2 < fieldState.length; i2++) {
-                ((Phi) fieldState[i2]).addInput(loopEndState.fieldState[i2]);
-                assert ((Phi) fieldState[i2]).valueCount() == 2;
+                ((PhiNode) fieldState[i2]).addInput(loopEndState.fieldState[i2]);
+                assert ((PhiNode) fieldState[i2]).valueCount() == 2;
             }
         }
 
@@ -166,7 +166,7 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         public void removeAllocation() {
-            assert node instanceof FixedNodeWithNext;
+            assert node instanceof FixedWithNextNode;
 
             escapeFields = op.fields(node);
             for (int i = 0; i < escapeFields.length; i++) {
@@ -177,7 +177,7 @@ public class EscapeAnalysisPhase extends Phase {
                 TTY.println("new virtual object: " + virtual);
             }
             node.replaceAtUsages(virtual);
-            final FixedNode next = ((FixedNodeWithNext) node).next();
+            final FixedNode next = ((FixedWithNextNode) node).next();
             node.replaceAndDelete(next);
 
             final BlockExitState startState = new BlockExitState(escapeFields, virtual);
@@ -219,7 +219,7 @@ public class EscapeAnalysisPhase extends Phase {
             EscapeOp op = node.lookup(EscapeOp.class);
             if (op != null && op.canAnalyze(node)) {
                 Set<Node> exits = new HashSet<Node>();
-                Set<Invoke> invokes = new HashSet<Invoke>();
+                Set<InvokeNode> invokes = new HashSet<InvokeNode>();
                 int iterations = 0;
 
                 int minimumWeight = GraalOptions.ForcedInlineEscapeWeight;
@@ -283,15 +283,15 @@ public class EscapeAnalysisPhase extends Phase {
         }
     }
 
-    private double analyze(EscapeOp op, Node node, Collection<Node> exits, Collection<Invoke> invokes) {
+    private double analyze(EscapeOp op, Node node, Collection<Node> exits, Collection<InvokeNode> invokes) {
         double weight = 0;
         for (Node usage : node.usages()) {
             boolean escapes = op.escape(node, usage);
             if (escapes) {
                 if (usage instanceof FrameState) {
                     // nothing to do...
-                } else if (usage instanceof Invoke) {
-                    invokes.add((Invoke) usage);
+                } else if (usage instanceof InvokeNode) {
+                    invokes.add((InvokeNode) usage);
                 } else {
                     exits.add(usage);
                     if (!GraalOptions.TraceEscapeAnalysis) {

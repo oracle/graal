@@ -75,7 +75,7 @@
  *
  * <li>
  * Add a field to optionally store an {@link com.oracle.max.graal.compiler.ir.Info} object for each HIR node, and remove the
- * {@link com.oracle.max.graal.compiler.ir.FixedNodeWithNext#exceptionHandlers} field, the {@link com.oracle.max.graal.compiler.ir.FixedNodeWithNext#bci} field, and any fields to store the Java
+ * {@link com.oracle.max.graal.compiler.nodes.base.FixedWithNextNode#exceptionHandlers} field, the {@link com.oracle.max.graal.compiler.nodes.base.FixedWithNextNode#bci} field, and any fields to store the Java
  * frame state in subclasses. Benefit: saves space if most HIR nodes do not have exception handlers, a bci or Java frame
  * state. Removes virtual dispatch on accessing debug information for nodes. Allows any node, regardless of its type, to
  * have info attached.</li>
@@ -113,7 +113,7 @@
  * <li>
  * Tiered compilation support. C1 supported the ability to add instrumentation to branches, invocations, and checkcasts
  * in order to feed profile information to the C2 compiler in a tiered compilation setup. It relied on adding some
- * information to the HIR nodes that represent these operations ({@link Invoke}, {@link CheckCast}, etc). All of this
+ * information to the HIR nodes that represent these operations ({@link InvokeNode}, {@link CheckCastNode}, etc). All of this
  * logic was removed to simplify both the front end and back end in anticipation of designing a future instrumentation
  * API. XIR should be general enough to allow instrumentation code to be added to invocation and checkcast sites, but
  * currently has no support for adding code at branches.

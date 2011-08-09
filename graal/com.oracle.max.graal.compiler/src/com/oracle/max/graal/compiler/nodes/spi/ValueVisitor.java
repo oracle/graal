@@ -22,10 +22,10 @@
  */
 package com.oracle.max.graal.compiler.nodes.spi;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 
 /**
  * The {@link ValueVisitor} implements one half of the visitor
@@ -34,48 +34,48 @@ import com.oracle.max.graal.compiler.nodes.extended.*;
  */
 public abstract class ValueVisitor {
     // Checkstyle: stop
-    public abstract void visitArithmetic(Arithmetic i);
-    public abstract void visitArrayLength(ArrayLength i);
-    public abstract void visitMerge(Merge i);
-    public abstract void visitCheckCast(CheckCast i);
-    public abstract void visitNormalizeCompare(NormalizeCompare i);
-    public abstract void visitConstant(Constant i);
-    public abstract void visitConvert(Convert i);
-    public abstract void visitConditional(Conditional i);
-    public abstract void visitExceptionObject(ExceptionObject i);
+    public abstract void visitArithmetic(ArithmeticNode i);
+    public abstract void visitArrayLength(ArrayLengthNode i);
+    public abstract void visitMerge(MergeNode i);
+    public abstract void visitCheckCast(CheckCastNode i);
+    public abstract void visitNormalizeCompare(NormalizeCompareNode i);
+    public abstract void visitConstant(ConstantNode i);
+    public abstract void visitConvert(ConvertNode i);
+    public abstract void visitConditional(ConditionalNode i);
+    public abstract void visitExceptionObject(ExceptionObjectNode i);
     public abstract void visitEndNode(EndNode i);
     public abstract void visitFrameState(FrameState i);
-    public abstract void visitAnchor(Anchor i);
-    public abstract void visitIf(If i);
-    public abstract void visitInvoke(Invoke i);
-    public abstract void visitLoadField(LoadField i);
-    public abstract void visitLoadIndexed(LoadIndexed i);
-    public abstract void visitLocal(Local i);
-    public abstract void visitLogic(Logic i);
-    public abstract void visitLookupSwitch(LookupSwitch i);
+    public abstract void visitAnchor(AnchorNode i);
+    public abstract void visitIf(IfNode i);
+    public abstract void visitInvoke(InvokeNode i);
+    public abstract void visitLoadField(LoadFieldNode i);
+    public abstract void visitLoadIndexed(LoadIndexedNode i);
+    public abstract void visitLocal(LocalNode i);
+    public abstract void visitLogic(LogicNode i);
+    public abstract void visitLookupSwitch(LookupSwitchNode i);
     public abstract void visitMemoryRead(ReadNode i);
     public abstract void visitMemoryWrite(WriteNode i);
-    public abstract void visitMonitorAddress(MonitorAddress monitorAddress);
-    public abstract void visitMonitorEnter(MonitorEnter i);
-    public abstract void visitMonitorExit(MonitorExit i);
-    public abstract void visitNegate(Negate i);
-    public abstract void visitNewInstance(NewInstance i);
-    public abstract void visitNewMultiArray(NewMultiArray i);
-    public abstract void visitNewObjectArray(NewObjectArray i);
-    public abstract void visitNewTypeArray(NewTypeArray i);
-    public abstract void visitFixedGuard(FixedGuard fixedGuard);
-    public abstract void visitPhi(Phi i);
-    public abstract void visitRegisterFinalizer(RegisterFinalizer i);
-    public abstract void visitReturn(Return i);
+    public abstract void visitMonitorAddress(MonitorAddressNode monitorAddress);
+    public abstract void visitMonitorEnter(MonitorEnterNode i);
+    public abstract void visitMonitorExit(MonitorExitNode i);
+    public abstract void visitNegate(NegateNode i);
+    public abstract void visitNewInstance(NewInstanceNode i);
+    public abstract void visitNewMultiArray(NewMultiArrayNode i);
+    public abstract void visitNewObjectArray(NewObjectArrayNode i);
+    public abstract void visitNewTypeArray(NewTypeArrayNode i);
+    public abstract void visitFixedGuard(FixedGuardNode fixedGuard);
+    public abstract void visitPhi(PhiNode i);
+    public abstract void visitRegisterFinalizer(RegisterFinalizerNode i);
+    public abstract void visitReturn(ReturnNode i);
     public abstract void visitShift(ShiftNode i);
     public abstract void visitStoreField(StoreFieldNode i);
     public abstract void visitStoreIndexed(StoreIndexedNode i);
     public abstract void visitTableSwitch(TableSwitchNode i);
-    public abstract void visitDeoptimize(Deoptimize deoptimize);
+    public abstract void visitDeoptimize(DeoptimizeNode deoptimize);
     public abstract void visitUnwind(UnwindNode unwind);
-    public abstract void visitLoopBegin(LoopBegin loopBegin);
-    public abstract void visitLoopEnd(LoopEnd loopEnd);
+    public abstract void visitLoopBegin(LoopBeginNode loopBegin);
+    public abstract void visitLoopEnd(LoopEndNode loopEnd);
     public abstract void visitValueAnchor(ValueAnchorNode valueAnchor);
     public abstract void visitGuardNode(GuardNode guardNode);
-    public abstract void visitMathIntrinsic(MathIntrinsic node);
+    public abstract void visitMathIntrinsic(MathIntrinsicNode node);
 }

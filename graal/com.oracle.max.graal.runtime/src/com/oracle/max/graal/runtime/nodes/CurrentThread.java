@@ -23,7 +23,7 @@
 package com.oracle.max.graal.runtime.nodes;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;

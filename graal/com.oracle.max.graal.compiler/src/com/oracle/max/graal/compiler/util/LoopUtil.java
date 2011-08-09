@@ -26,9 +26,10 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.loop.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.GraphUtil.ColorSplitingLambda;
@@ -42,20 +43,20 @@ import com.sun.cri.ci.*;
 public class LoopUtil {
 
     public static class Loop {
-        private final LoopBegin loopBegin;
+        private final LoopBeginNode loopBegin;
         private NodeBitMap cfgNodes;
         private Loop parent;
         private NodeBitMap exits;
         private NodeBitMap inOrBefore;
         private NodeBitMap inOrAfter;
         private NodeBitMap nodes;
-        public Loop(LoopBegin loopBegin, NodeBitMap nodes, NodeBitMap exits) {
+        public Loop(LoopBeginNode loopBegin, NodeBitMap nodes, NodeBitMap exits) {
             this.loopBegin = loopBegin;
             this.cfgNodes = nodes;
             this.exits = exits;
         }
 
-        public LoopBegin loopBegin() {
+        public LoopBeginNode loopBegin() {
             return loopBegin;
         }
 
@@ -119,12 +120,12 @@ public class LoopUtil {
         public final FixedNode end;
         public final NodeMap<StateSplit> exits;
         public final NodeBitMap unaffectedExits;
-        public final NodeMap<Placeholder> phis;
+        public final NodeMap<PlaceholderNode> phis;
         public final NodeMap<Node> phiInits;
         public final NodeMap<Node> dataOut;
         public final NodeBitMap exitFrameStates;
         public final NodeBitMap peeledNodes;
-        public PeelingResult(FixedNode begin, FixedNode end, NodeMap<StateSplit> exits, NodeMap<Placeholder> phis, NodeMap<Node> phiInits, NodeMap<Node> dataOut, NodeBitMap unaffectedExits, NodeBitMap exitFrameStates, NodeBitMap peeledNodes) {
+        public PeelingResult(FixedNode begin, FixedNode end, NodeMap<StateSplit> exits, NodeMap<PlaceholderNode> phis, NodeMap<Node> phiInits, NodeMap<Node> dataOut, NodeBitMap unaffectedExits, NodeBitMap exitFrameStates, NodeBitMap peeledNodes) {
             this.begin = begin;
             this.end = end;
             this.exits = exits;
@@ -139,7 +140,7 @@ public class LoopUtil {
 
     public static List<Loop> computeLoops(Graph graph) {
         List<Loop> loops = new LinkedList<LoopUtil.Loop>();
-        for (LoopBegin loopBegin : graph.getNodes(LoopBegin.class)) {
+        for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.class)) {
             NodeBitMap cfgNodes = markUpCFG(loopBegin, loopBegin.loopEnd()); // computeLoopNodes(loopBegin);
             cfgNodes.mark(loopBegin);
             NodeBitMap exits = computeLoopExits(loopBegin, cfgNodes);
@@ -157,7 +158,7 @@ public class LoopUtil {
         return loops;
     }
 
-    public static NodeBitMap computeLoopExits(LoopBegin loopBegin, NodeBitMap cfgNodes) {
+    public static NodeBitMap computeLoopExits(LoopBeginNode loopBegin, NodeBitMap cfgNodes) {
         Graph graph = loopBegin.graph();
         NodeBitMap exits = graph.createNodeBitMap();
         for (Node n : cfgNodes) {
@@ -174,7 +175,7 @@ public class LoopUtil {
 
     private static boolean recurse = false;
     public static NodeBitMap computeLoopNodesFrom(Loop loop, FixedNode from) {
-        LoopBegin loopBegin = loop.loopBegin();
+        LoopBeginNode loopBegin = loop.loopBegin();
         NodeBitMap loopNodes = markUpCFG(loopBegin, from);
         loopNodes.mark(loopBegin);
         NodeBitMap inOrAfter = inOrAfter(loop, loopNodes, false);
@@ -199,11 +200,11 @@ public class LoopUtil {
         return loopNodes;
     }
 
-    public static NodeBitMap markUpCFG(LoopBegin loopBegin) {
+    public static NodeBitMap markUpCFG(LoopBeginNode loopBegin) {
         return markUpCFG(loopBegin, loopBegin.loopEnd());
     }
 
-    public static NodeBitMap markUpCFG(LoopBegin loopBegin, FixedNode from) {
+    public static NodeBitMap markUpCFG(LoopBeginNode loopBegin, FixedNode from) {
         NodeFlood workCFG = loopBegin.graph().createNodeFlood();
         workCFG.add(from);
         NodeBitMap loopNodes = loopBegin.graph().createNodeBitMap();
@@ -212,8 +213,8 @@ public class LoopUtil {
                 continue;
             }
             loopNodes.mark(n);
-            if (n instanceof LoopBegin) {
-                workCFG.add(((LoopBegin) n).loopEnd());
+            if (n instanceof LoopBeginNode) {
+                workCFG.add(((LoopBeginNode) n).loopEnd());
             }
             for (Node pred : n.cfgPredecessors()) {
                 workCFG.add(pred);
@@ -222,7 +223,7 @@ public class LoopUtil {
         return loopNodes;
     }
 
-    public static void inverseLoop(Loop loop, If split) {
+    public static void inverseLoop(Loop loop, IfNode split) {
         assert loop.cfgNodes().isMarked(split);
         FixedNode noExit = split.trueSuccessor();
         FixedNode exit = split.falseSuccessor();
@@ -238,8 +239,8 @@ public class LoopUtil {
         rewireInversion(peeling, loop, split);
 
         // move peeled part to the end
-        LoopBegin loopBegin = loop.loopBegin();
-        LoopEnd loopEnd = loopBegin.loopEnd();
+        LoopBeginNode loopBegin = loop.loopBegin();
+        LoopEndNode loopEnd = loopBegin.loopEnd();
         FixedNode lastNode = (FixedNode) loopEnd.predecessor();
         if (loopBegin.next() != lastNode) {
             lastNode.successors().replace(loopEnd, loopBegin.next());
@@ -249,7 +250,7 @@ public class LoopUtil {
 
         //rewire phi usage in peeled part
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
-        for (Phi phi : loopBegin.phis()) {
+        for (PhiNode phi : loopBegin.phis()) {
             ValueNode backValue = phi.valueAt(backIndex);
             if (loop.nodes().isMarked(backValue) && peeling.peeledNodes.isNotNewNotMarked(backValue)) {
                 for (Node usage : phi.usages().snapshot()) {
@@ -275,7 +276,7 @@ public class LoopUtil {
     }
 
     public static void peelLoop(Loop loop) {
-        LoopEnd loopEnd = loop.loopBegin().loopEnd();
+        LoopEndNode loopEnd = loop.loopBegin().loopEnd();
         PeelingResult peeling = preparePeeling(loop, loopEnd);
         GraalCompilation compilation = GraalCompilation.compilation();
 
@@ -306,7 +307,7 @@ public class LoopUtil {
     }
 
     private static void rewirePeeling(PeelingResult peeling, Loop loop, FixedNode from, boolean inversion) {
-        LoopBegin loopBegin = loop.loopBegin();
+        LoopBeginNode loopBegin = loop.loopBegin();
         Graph graph = loopBegin.graph();
         Node loopPred = loopBegin.predecessor();
         loopPred.successors().replace(loopBegin.forwardEdge(), peeling.begin);
@@ -330,9 +331,9 @@ public class LoopUtil {
         }
         assert found;
         int phiInitIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
-        for (Entry<Node, Placeholder> entry : peeling.phis.entries()) {
-            Phi phi = (Phi) entry.getKey();
-            Placeholder p = entry.getValue();
+        for (Entry<Node, PlaceholderNode> entry : peeling.phis.entries()) {
+            PhiNode phi = (PhiNode) entry.getKey();
+            PlaceholderNode p = entry.getValue();
             ValueNode init = phi.valueAt(phiInitIndex);
             p.replaceAndDelete(init);
             for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
@@ -342,13 +343,13 @@ public class LoopUtil {
             }
         }
         for (Entry<Node, Node> entry : peeling.phiInits.entries()) {
-            Phi phi = (Phi) entry.getKey();
+            PhiNode phi = (PhiNode) entry.getKey();
             Node newInit = entry.getValue();
             phi.setValueAt(phiInitIndex, (ValueNode) newInit);
         }
 
         if (from == loopBegin.loopEnd()) {
-            for (InductionVariable iv : loopBegin.inductionVariables()) {
+            for (InductionVariableNode iv : loopBegin.inductionVariables()) {
                 iv.peelOneIteration();
             }
         }
@@ -363,7 +364,7 @@ public class LoopUtil {
             StateSplit newExit = entry.getValue();
             EndNode oEnd = new EndNode(graph);
             EndNode nEnd = new EndNode(graph);
-            Merge merge = new Merge(graph);
+            MergeNode merge = new MergeNode(graph);
             FrameState originalState = original.stateAfter();
             merge.addEnd(nEnd);
             merge.addEnd(oEnd);
@@ -379,7 +380,7 @@ public class LoopUtil {
         for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
             StateSplit original = (StateSplit) entry.getKey();
             EndNode oEnd = (EndNode) original.next();
-            Merge merge = oEnd.merge();
+            MergeNode merge = oEnd.merge();
             EndNode nEnd = merge.endAt(1 - merge.phiPredecessorIndex(oEnd));
             Node newExit = nEnd.predecessor();
             for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
@@ -391,8 +392,8 @@ public class LoopUtil {
                     newExitValues.set(originalValue, phiMap);
                 }
                 ValueNode backValue = null;
-                if (inversion && originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
-                    backValue = ((Phi) originalValue).valueAt(phiBackIndex);
+                if (inversion && originalValue instanceof PhiNode && ((PhiNode) originalValue).merge() == loopBegin) {
+                    backValue = ((PhiNode) originalValue).valueAt(phiBackIndex);
                     if (peeling.peeledNodes.isNotNewMarked(backValue)) {
                         backValue = null;
                     }
@@ -411,24 +412,24 @@ public class LoopUtil {
             NodeBitMap exitMergesPhis = graph.createNodeBitMap();
             for (Entry<Node, StateSplit> entry : peeling.exits.entries()) {
                 StateSplit newExit = entry.getValue();
-                Merge merge = ((EndNode) newExit.next()).merge();
+                MergeNode merge = ((EndNode) newExit.next()).merge();
                 exitMergesPhis.markAll(merge.phis());
             }
             for (Entry<Node, Node> entry : peeling.dataOut.entries()) {
                 ValueNode originalValue = (ValueNode) entry.getKey();
-                if (originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
+                if (originalValue instanceof PhiNode && ((PhiNode) originalValue).merge() == loopBegin) {
                     continue;
                 }
                 ValueNode newValue = (ValueNode) entry.getValue();
-                Phi phi = null;
+                PhiNode phi = null;
                 for (Node usage : originalValue.usages().snapshot()) {
                     if (exitMergesPhis.isMarked(usage) || (
                                     loop.nodes().isNotNewMarked(usage)
                                     && peeling.peeledNodes.isNotNewNotMarked(usage)
-                                    && !(usage instanceof Phi && ((Phi) usage).merge() == loopBegin))
+                                    && !(usage instanceof PhiNode && ((PhiNode) usage).merge() == loopBegin))
                                     && !(usage instanceof FrameState && ((FrameState) usage).block() == loopBegin)) {
                         if (phi == null) {
-                            phi = new Phi(originalValue.kind, loopBegin, PhiType.Value, graph);
+                            phi = new PhiNode(originalValue.kind, loopBegin, PhiType.Value, graph);
                             phi.addInput(newValue);
                             phi.addInput(originalValue);
                             NodeMap<ValueNode> exitMap = newExitValues.get(originalValue);
@@ -468,7 +469,7 @@ public class LoopUtil {
         // color
         GraphUtil.colorCFGDown(colors, new ColoringLambda<Node>() {
             @Override
-            public Node color(Iterable<Node> incomming, Merge merge) {
+            public Node color(Iterable<Node> incomming, MergeNode merge) {
                 Node color = null;
                 for (Node c : incomming) {
                     if (c == null) {
@@ -483,7 +484,7 @@ public class LoopUtil {
                 return color;
             }
             @Override
-            public Node danglingColor(Iterable<Node> incomming, Merge merge) {
+            public Node danglingColor(Iterable<Node> incomming, MergeNode merge) {
                 Node color = null;
                 for (Node c : incomming) {
                     if (color == null) {
@@ -523,7 +524,7 @@ public class LoopUtil {
                 if (value != null) {
                     return value;
                 }
-                Merge merge = (Merge) point;
+                MergeNode merge = (MergeNode) point;
                 ArrayList<ValueNode> values = new ArrayList<ValueNode>(merge.phiPredecessorCount());
                 ValueNode v = null;
                 boolean createPhi = false;
@@ -537,7 +538,7 @@ public class LoopUtil {
                     values.add(valueAt);
                 }
                 if (createPhi) {
-                    Phi phi = new Phi(kind, merge, PhiType.Value, merge.graph());
+                    PhiNode phi = new PhiNode(kind, merge, PhiType.Value, merge.graph());
                     valueMap.set(point, phi);
                     for (EndNode end : merge.cfgPredecessors()) {
                         phi.addInput(getValueAt(colors.get(end), valueMap, kind));
@@ -558,7 +559,7 @@ public class LoopUtil {
                     return false;
                 }
                 final FrameState frameState = (FrameState) n;
-                Merge block = frameState.block();
+                MergeNode block = frameState.block();
                 if (block != null) {
                     return colors.get(block.next()) == null;
                 }
@@ -609,10 +610,10 @@ public class LoopUtil {
             }
             @Override
             public List<Node> parentColors(Node color) {
-                if (!(color instanceof Merge)) {
+                if (!(color instanceof MergeNode)) {
                     return Collections.emptyList();
                 }
-                Merge merge = (Merge) color;
+                MergeNode merge = (MergeNode) color;
                 List<Node> parentColors = new ArrayList<Node>(merge.phiPredecessorCount());
                 for (EndNode pred : merge.cfgPredecessors()) {
                     parentColors.add(colors.get(pred));
@@ -620,14 +621,14 @@ public class LoopUtil {
                 return parentColors;
             }
             @Override
-            public Merge merge(Node color) {
-                return (Merge) color;
+            public MergeNode merge(Node color) {
+                return (MergeNode) color;
             }
         });
     }
 
     private static PeelingResult preparePeeling(Loop loop, FixedNode from) {
-        LoopBegin loopBegin = loop.loopBegin();
+        LoopBeginNode loopBegin = loop.loopBegin();
         Graph graph = loopBegin.graph();
         NodeBitMap marked = computeLoopNodesFrom(loop, from);
         if (from == loopBegin.loopEnd()) {
@@ -635,7 +636,7 @@ public class LoopUtil {
         }
         clearWithState(loopBegin, marked);
         Map<Node, Node> replacements = new HashMap<Node, Node>();
-        NodeMap<Placeholder> phis = graph.createNodeMap();
+        NodeMap<PlaceholderNode> phis = graph.createNodeMap();
         NodeMap<StateSplit> exits = graph.createNodeMap();
         NodeBitMap unaffectedExits = graph.createNodeBitMap();
         NodeBitMap clonedExits = graph.createNodeBitMap();
@@ -659,7 +660,7 @@ public class LoopUtil {
         for (Node n : marked) {
             if (!(n instanceof FrameState)) {
                 for (Node usage : n.dataUsages()) {
-                    if ((!marked.isMarked(usage) && !((usage instanceof Phi) && ((Phi) usage).merge() != loopBegin))
+                    if ((!marked.isMarked(usage) && !((usage instanceof PhiNode) && ((PhiNode) usage).merge() != loopBegin))
                                     || (marked.isMarked(usage) && exitFrameStates.isMarked(usage))) {
                         dataOut.mark(n);
                         break;
@@ -669,14 +670,14 @@ public class LoopUtil {
         }
 
         for (Node n : marked) {
-            if (n instanceof Phi && ((Phi) n).merge() == loopBegin) {
-                Placeholder p = new Placeholder(graph);
+            if (n instanceof PhiNode && ((PhiNode) n).merge() == loopBegin) {
+                PlaceholderNode p = new PlaceholderNode(graph);
                 replacements.put(n, p);
                 phis.set(n, p);
                 marked.clear(n);
             }
             for (Node input : n.dataInputs()) {
-                if (!marked.isMarked(input) && (!(input instanceof Phi) || ((Phi) input).merge() != loopBegin) && replacements.get(input) == null) {
+                if (!marked.isMarked(input) && (!(input instanceof PhiNode) || ((PhiNode) input).merge() != loopBegin) && replacements.get(input) == null) {
                     replacements.put(input, input);
                 }
             }
@@ -701,13 +702,13 @@ public class LoopUtil {
         NodeMap<Node> phiInits = graph.createNodeMap();
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
         int fowardIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
-        for (Phi phi : loopBegin.phis()) {
+        for (PhiNode phi : loopBegin.phis()) {
             ValueNode backValue = phi.valueAt(backIndex);
             if (marked.isMarked(backValue)) {
                 phiInits.set(phi, duplicates.get(backValue));
             } else if (from == loopBegin.loopEnd()) {
-                if (backValue instanceof Phi && ((Phi) backValue).merge() == loopBegin) {
-                    Phi backPhi = (Phi) backValue;
+                if (backValue instanceof PhiNode && ((PhiNode) backValue).merge() == loopBegin) {
+                    PhiNode backPhi = (PhiNode) backValue;
                     phiInits.set(phi, backPhi.valueAt(fowardIndex));
                 } else {
                     phiInits.set(phi, backValue);
@@ -760,11 +761,11 @@ public class LoopUtil {
                 }
             }
             for (Node usage : n.usages()) {
-                if (usage instanceof Phi) { // filter out data graph cycles
-                    Phi phi = (Phi) usage;
-                    Merge merge = phi.merge();
-                    if (merge instanceof LoopBegin) {
-                        LoopBegin phiLoop = (LoopBegin) merge;
+                if (usage instanceof PhiNode) { // filter out data graph cycles
+                    PhiNode phi = (PhiNode) usage;
+                    MergeNode merge = phi.merge();
+                    if (merge instanceof LoopBeginNode) {
+                        LoopBeginNode phiLoop = (LoopBeginNode) merge;
                         int backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
                         if (phi.valueAt(backIndex) == n) {
                             continue;
@@ -801,13 +802,13 @@ public class LoopUtil {
                     work.add(n.predecessor());
                 }
             }
-            if (n instanceof Phi) { // filter out data graph cycles
-                Phi phi = (Phi) n;
+            if (n instanceof PhiNode) { // filter out data graph cycles
+                PhiNode phi = (PhiNode) n;
                 if (phi.type() == PhiType.Value) {
                     int backIndex = -1;
-                    Merge merge = phi.merge();
-                    if (merge instanceof LoopBegin && cfgNodes.isNotNewNotMarked(((LoopBegin) merge).loopEnd())) {
-                        LoopBegin phiLoop = (LoopBegin) merge;
+                    MergeNode merge = phi.merge();
+                    if (merge instanceof LoopBeginNode && cfgNodes.isNotNewNotMarked(((LoopBeginNode) merge).loopEnd())) {
+                        LoopBeginNode phiLoop = (LoopBeginNode) merge;
                         backIndex = phiLoop.phiPredecessorIndex(phiLoop.loopEnd());
                     }
                     for (int i = 0; i < phi.valueCount(); i++) {
@@ -828,7 +829,7 @@ public class LoopUtil {
                             work.add(sux);
                         }
                     }
-                    if (n instanceof LoopBegin && n != loop.loopBegin()) {
+                    if (n instanceof LoopBeginNode && n != loop.loopBegin()) {
                         Loop p = loop.parent;
                         boolean isParent = false;
                         while (p != null) {
@@ -839,7 +840,7 @@ public class LoopUtil {
                             p = p.parent;
                         }
                         if (!isParent) {
-                            work.add(((LoopBegin) n).loopEnd());
+                            work.add(((LoopBeginNode) n).loopEnd());
                         }
                     }
                 }
@@ -858,9 +859,9 @@ public class LoopUtil {
                         }
                     }
                 }
-                if (n instanceof Merge) { //add phis & counters
+                if (n instanceof MergeNode) { //add phis & counters
                     for (Node usage : n.dataUsages()) {
-                        if (!(usage instanceof LoopEnd)) {
+                        if (!(usage instanceof LoopEndNode)) {
                             work.add(usage);
                         }
                     }

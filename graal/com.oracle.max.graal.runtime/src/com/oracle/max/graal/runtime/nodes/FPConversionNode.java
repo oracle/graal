@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -70,16 +70,16 @@ public final class FPConversionNode extends FloatingNode implements Canonicaliza
 
     @Override
     public Node canonical(NotifyReProcess reProcess) {
-        if (value instanceof Constant) {
+        if (value instanceof ConstantNode) {
             CiKind fromKind = value.kind;
             if (kind == CiKind.Int && fromKind == CiKind.Float) {
-                return Constant.forInt(Float.floatToRawIntBits(((Constant) value).asConstant().asFloat()), graph());
+                return ConstantNode.forInt(Float.floatToRawIntBits(((ConstantNode) value).asConstant().asFloat()), graph());
             } else if (kind == CiKind.Long && fromKind == CiKind.Double) {
-                return Constant.forLong(Double.doubleToRawLongBits(((Constant) value).asConstant().asDouble()), graph());
+                return ConstantNode.forLong(Double.doubleToRawLongBits(((ConstantNode) value).asConstant().asDouble()), graph());
             } else if (kind == CiKind.Float && fromKind == CiKind.Int) {
-                return Constant.forFloat(Float.intBitsToFloat(((Constant) value).asConstant().asInt()), graph());
+                return ConstantNode.forFloat(Float.intBitsToFloat(((ConstantNode) value).asConstant().asInt()), graph());
             } else if (kind == CiKind.Double && fromKind == CiKind.Long) {
-                return Constant.forDouble(Double.longBitsToDouble(((Constant) value).asConstant().asLong()), graph());
+                return ConstantNode.forDouble(Double.longBitsToDouble(((ConstantNode) value).asConstant().asLong()), graph());
             }
         }
         return this;

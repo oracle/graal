@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;

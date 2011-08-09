@@ -29,7 +29,6 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFormatter;
 import com.oracle.max.graal.compiler.nodes.base.*;
@@ -409,8 +408,8 @@ public class CFGPrinter {
         out.println("HIR");
         out.disableIndentation();
         for (Node i : block.getInstructions()) {
-            if (i instanceof FixedNodeWithNext) {
-                printInstructionHIR((FixedNodeWithNext) i);
+            if (i instanceof FixedWithNextNode) {
+                printInstructionHIR((FixedWithNextNode) i);
             }
         }
         out.enableIndentation();
@@ -515,7 +514,7 @@ public class CFGPrinter {
      *
      * @param i the instruction for which HIR will be printed
      */
-    private void printInstructionHIR(FixedNodeWithNext i) {
+    private void printInstructionHIR(FixedWithNextNode i) {
         out.print("bci ").print(-1).println(COLUMN_END);
         if (i.operand().isLegal()) {
             out.print("result ").print(new CFGOperandFormatter(false).format(i.operand())).println(COLUMN_END);

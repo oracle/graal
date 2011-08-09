@@ -24,7 +24,8 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.graph.*;
 
 
@@ -37,7 +38,7 @@ public class Block {
     private List<Node> instructions = new ArrayList<Node>();
     private Block dominator;
     private Block javaBlock;
-    private Anchor anchor;
+    private AnchorNode anchor;
     private EndNode end;
     private int loopDepth = 0;
     private int loopIndex = -1;
@@ -102,35 +103,35 @@ public class Block {
         }
     }
 
-    public Anchor createAnchor() {
+    public AnchorNode createAnchor() {
         if (anchor == null) {
-            if (firstNode instanceof Anchor) {
-                this.anchor = (Anchor) firstNode;
+            if (firstNode instanceof AnchorNode) {
+                this.anchor = (AnchorNode) firstNode;
             } else if (firstNode == firstNode.graph().start()) {
                 StartNode start = (StartNode) firstNode;
-                if (start.next() instanceof Anchor) {
-                    this.anchor = (Anchor) start.next();
+                if (start.next() instanceof AnchorNode) {
+                    this.anchor = (AnchorNode) start.next();
                 } else {
-                    Anchor a = new Anchor(firstNode.graph());
+                    AnchorNode a = new AnchorNode(firstNode.graph());
                     FixedNode oldStart = (FixedNode) firstNode.graph().start().next();
                     firstNode.graph().start().setNext(a);
                     a.setNext(oldStart);
                     this.anchor = a;
                 }
-            } else if (firstNode instanceof Merge || firstNode instanceof ExceptionObject) {
-                FixedNodeWithNext fixedNode = (FixedNodeWithNext) firstNode;
-                if (fixedNode.next() instanceof Anchor) {
-                    this.anchor = (Anchor) fixedNode.next();
+            } else if (firstNode instanceof MergeNode || firstNode instanceof ExceptionObjectNode) {
+                FixedWithNextNode fixedNode = (FixedWithNextNode) firstNode;
+                if (fixedNode.next() instanceof AnchorNode) {
+                    this.anchor = (AnchorNode) fixedNode.next();
                 } else {
-                    Anchor a = new Anchor(firstNode.graph());
+                    AnchorNode a = new AnchorNode(firstNode.graph());
                     FixedNode next = fixedNode.next();
                     fixedNode.setNext(a);
                     a.setNext(next);
                     this.anchor = a;
                 }
             } else {
-                assert !(firstNode instanceof Anchor);
-                Anchor a = new Anchor(firstNode.graph());
+                assert !(firstNode instanceof AnchorNode);
+                AnchorNode a = new AnchorNode(firstNode.graph());
                 assert firstNode.predecessor() != null : firstNode;
                 Node pred = firstNode.predecessor();
                 pred.replaceFirstSuccessor(firstNode, a);
@@ -212,11 +213,11 @@ public class Block {
     }
 
     public boolean isLoopHeader() {
-        return firstNode instanceof LoopBegin;
+        return firstNode instanceof LoopBeginNode;
     }
 
     public boolean isLoopEnd() {
-        return lastNode instanceof LoopEnd;
+        return lastNode instanceof LoopEndNode;
     }
 
     public Block dominator() {
@@ -254,7 +255,7 @@ public class Block {
                 if (!visited.get(succ.blockID())) {
                     boolean delay = false;
                     for (Block pred : succ.getPredecessors()) {
-                        if (!visited.get(pred.blockID()) && !(pred.lastNode instanceof LoopEnd)) {
+                        if (!visited.get(pred.blockID()) && !(pred.lastNode instanceof LoopEndNode)) {
                             delay = true;
                             break;
                         }

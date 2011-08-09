@@ -24,8 +24,9 @@ package com.oracle.max.graal.compiler.nodes.spi;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.graph.*;
 
 
@@ -34,20 +35,20 @@ public abstract class EscapeOp implements Op {
     public abstract boolean canAnalyze(Node node);
 
     public boolean escape(Node node, Node usage) {
-        if (usage instanceof IsNonNull) {
-            IsNonNull x = (IsNonNull) usage;
+        if (usage instanceof IsNonNullNode) {
+            IsNonNullNode x = (IsNonNullNode) usage;
             assert x.object() == node;
             return false;
-        } else if (usage instanceof IsType) {
-            IsType x = (IsType) usage;
+        } else if (usage instanceof IsTypeNode) {
+            IsTypeNode x = (IsTypeNode) usage;
             assert x.object() == node;
             return false;
         } else if (usage instanceof FrameState) {
             FrameState x = (FrameState) usage;
             assert x.inputContains(node);
             return true;
-        } else if (usage instanceof AccessMonitor) {
-            AccessMonitor x = (AccessMonitor) usage;
+        } else if (usage instanceof AccessMonitorNode) {
+            AccessMonitorNode x = (AccessMonitorNode) usage;
             assert x.object() == node;
             return false;
         } else {
@@ -58,17 +59,17 @@ public abstract class EscapeOp implements Op {
     public abstract EscapeField[] fields(Node node);
 
     public void beforeUpdate(Node node, Node usage) {
-        if (usage instanceof IsNonNull) {
-            IsNonNull x = (IsNonNull) usage;
+        if (usage instanceof IsNonNullNode) {
+            IsNonNullNode x = (IsNonNullNode) usage;
             // TODO (ls) not sure about this...
-            x.replaceAndDelete(Constant.forBoolean(true, node.graph()));
-        } else if (usage instanceof IsType) {
-            IsType x = (IsType) usage;
+            x.replaceAndDelete(ConstantNode.forBoolean(true, node.graph()));
+        } else if (usage instanceof IsTypeNode) {
+            IsTypeNode x = (IsTypeNode) usage;
             assert x.type() == ((ValueNode) node).exactType();
             // TODO (ls) not sure about this...
-            x.replaceAndDelete(Constant.forBoolean(true, node.graph()));
-        } else if (usage instanceof AccessMonitor) {
-            AccessMonitor x = (AccessMonitor) usage;
+            x.replaceAndDelete(ConstantNode.forBoolean(true, node.graph()));
+        } else if (usage instanceof AccessMonitorNode) {
+            AccessMonitorNode x = (AccessMonitorNode) usage;
             x.replaceAndDelete(x.next());
         }
     }

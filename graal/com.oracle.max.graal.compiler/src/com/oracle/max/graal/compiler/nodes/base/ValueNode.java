@@ -24,9 +24,8 @@ package com.oracle.max.graal.compiler.nodes.base;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -59,11 +58,11 @@ public abstract class ValueNode extends Node {
     }
 
     /**
-     * Checks whether this value is a constant (i.e. it is of type {@link Constant}.
+     * Checks whether this value is a constant (i.e. it is of type {@link ConstantNode}.
      * @return {@code true} if this value is a constant
      */
     public final boolean isConstant() {
-        return this instanceof Constant;
+        return this instanceof ConstantNode;
     }
 
     /**
@@ -71,7 +70,7 @@ public abstract class ValueNode extends Node {
      * @return {@code true} if this value represents the null constant
      */
     public final boolean isNullConstant() {
-        return this instanceof Constant && ((Constant) this).value.isNull();
+        return this instanceof ConstantNode && ((ConstantNode) this).value.isNull();
     }
 
     /**
@@ -80,8 +79,8 @@ public abstract class ValueNode extends Node {
      * otherwise
      */
     public final CiConstant asConstant() {
-        if (this instanceof Constant) {
-            return ((Constant) this).value;
+        if (this instanceof ConstantNode) {
+            return ((ConstantNode) this).value;
         }
         return null;
     }

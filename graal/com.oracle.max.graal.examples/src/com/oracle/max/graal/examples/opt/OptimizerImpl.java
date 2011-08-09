@@ -23,8 +23,8 @@
 package com.oracle.max.graal.examples.opt;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.examples.intrinsics.*;
 import com.oracle.max.graal.extensions.*;
@@ -42,7 +42,7 @@ public class OptimizerImpl implements Optimizer {
         for (SafeAddNode safeAdd : graph.getNodes(SafeAddNode.class)) {
             if (!canOverflow(safeAdd)) {
                 // if an overflow is impossible: replace with normal add
-                IntegerAdd add = new IntegerAdd(CiKind.Int, safeAdd.x(), safeAdd.y(), graph);
+                IntegerAddNode add = new IntegerAddNode(CiKind.Int, safeAdd.x(), safeAdd.y(), graph);
                 safeAdd.replaceAndDelete(add);
             }
         }
@@ -52,11 +52,11 @@ public class OptimizerImpl implements Optimizer {
         // if this SafeAddNode always adds 1 ...
         if (safeAdd.y().isConstant() && safeAdd.y().asConstant().asLong() == 1) {
             // ... to a phi ...
-            if (safeAdd.x() instanceof Phi) {
-                Phi phi = (Phi) safeAdd.x();
+            if (safeAdd.x() instanceof PhiNode) {
+                PhiNode phi = (PhiNode) safeAdd.x();
                 // ... that belongs to a loop and merges into itself ...
-                if (phi.merge() instanceof LoopBegin && phi.valueAt(1) == safeAdd) {
-                    LoopBegin loopBegin = (LoopBegin) phi.merge();
+                if (phi.merge() instanceof LoopBeginNode && phi.valueAt(1) == safeAdd) {
+                    LoopBeginNode loopBegin = (LoopBeginNode) phi.merge();
                     // ... then do the heavy analysis.
                     return canOverflow(phi, loopBegin);
                 }
@@ -65,7 +65,7 @@ public class OptimizerImpl implements Optimizer {
         return true;
     }
 
-    private boolean canOverflow(Phi phi, LoopBegin loopBegin) {
+    private boolean canOverflow(PhiNode phi, LoopBeginNode loopBegin) {
         NodeBitMap nodes = LoopUtil.markUpCFG(loopBegin);
         NodeBitMap exits = LoopUtil.computeLoopExits(loopBegin, nodes);
         // look at all loop exits:
@@ -73,11 +73,11 @@ public class OptimizerImpl implements Optimizer {
             TTY.println("exit: " + exit);
             Node pred = exit.predecessor();
             // if this exit is an If node ...
-            if (pred instanceof If) {
-                If ifNode = (If) pred;
+            if (pred instanceof IfNode) {
+                IfNode ifNode = (IfNode) pred;
                 // ... which compares ...
-                if (ifNode.compare() instanceof Compare) {
-                    Compare compare = (Compare) ifNode.compare();
+                if (ifNode.compare() instanceof CompareNode) {
+                    CompareNode compare = (CompareNode) ifNode.compare();
                     Condition cond = compare.condition();
                     ValueNode x = compare.x();
                     ValueNode y = compare.y();

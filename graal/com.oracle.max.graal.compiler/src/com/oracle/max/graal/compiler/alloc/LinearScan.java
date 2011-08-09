@@ -35,12 +35,12 @@ import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.nodes.base.FrameState.ValueProcedure;
-import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
+import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.extensions.*;
@@ -838,8 +838,8 @@ public final class LinearScan {
                 ValueNode instr = operand.isVariable() ? gen.operands.instructionForResult(((CiVariable) operand)) : null;
                 TTY.println(" var %d (HIR instruction %s)", operandNum, instr == null ? " " : instr.toString());
 
-                if (instr instanceof Phi) {
-                    Phi phi = (Phi) instr;
+                if (instr instanceof PhiNode) {
+                    PhiNode phi = (PhiNode) instr;
                     TTY.println("phi block begin: " + phi.merge());
                     TTY.println("pred count on blockbegin: " + phi.merge().phiPredecessorCount());
                     TTY.println("phi values: " + phi.valueCount());
@@ -1887,9 +1887,9 @@ public final class LinearScan {
                 return ciObj;
             } else if (value != null && value.operand() != CiValue.IllegalValue) {
                 CiValue operand = value.operand();
-                Constant con = null;
-                if (value instanceof Constant) {
-                    con = (Constant) value;
+                ConstantNode con = null;
+                if (value instanceof ConstantNode) {
+                    con = (ConstantNode) value;
                 }
 
                 assert con == null || operand.isVariable() || operand.isConstant() || operand.isIllegal() : "Constant instructions have only constant operands (or illegal if constant is optimized away)";
@@ -1923,7 +1923,7 @@ public final class LinearScan {
                     assert false : "must not reach here";
                     return operand;
                 } else {
-                    assert value instanceof Constant;
+                    assert value instanceof ConstantNode;
                     assert operand.isConstant() : "operand must be constant";
                     return operand;
                 }
@@ -2008,8 +2008,8 @@ public final class LinearScan {
                                         }
                                         currentField = ((VirtualObjectFieldNode) currentField).lastState();
                                     } else {
-                                        assert currentField instanceof Phi : currentField;
-                                        currentField = (FloatingNode) ((Phi) currentField).valueAt(0);
+                                        assert currentField instanceof PhiNode : currentField;
+                                        currentField = (FloatingNode) ((PhiNode) currentField).valueAt(0);
                                     }
                                 } while (currentField != null);
                             }

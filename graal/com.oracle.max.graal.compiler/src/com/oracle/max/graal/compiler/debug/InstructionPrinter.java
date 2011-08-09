@@ -24,13 +24,12 @@ package com.oracle.max.graal.compiler.debug;
 
 import static com.oracle.max.graal.compiler.debug.InstructionPrinter.InstructionLineColumn.*;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 
 /**
  * A {@link ValueVisitor} for {@linkplain #printInstruction(ValueNode) printing}
- * an {@link FixedNodeWithNext} as an expression or statement.
+ * an {@link FixedWithNextNode} as an expression or statement.
  *
  * @author Doug Simon
  */

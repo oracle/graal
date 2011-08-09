@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
@@ -40,17 +39,17 @@ public final class PhiSimplifier {
         cannotSimplify = graph.createNodeBitMap();
 
         for (Node n : graph.getNodes()) {
-            if (n instanceof Phi) {
-                simplify((Phi) n);
+            if (n instanceof PhiNode) {
+                simplify((PhiNode) n);
             }
         }
     }
 
     private ValueNode simplify(ValueNode x) {
-        if (x == null || !(x instanceof Phi)) {
+        if (x == null || !(x instanceof PhiNode)) {
             return x;
         }
-        Phi phi = (Phi) x;
+        PhiNode phi = (PhiNode) x;
 
         if (phi.valueCount() == 1 && !cannotSimplify.isMarked(phi)) {
             ValueNode result = phi.valueAt(0);

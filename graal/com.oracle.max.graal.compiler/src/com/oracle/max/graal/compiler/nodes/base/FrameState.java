@@ -26,10 +26,10 @@ import static com.oracle.max.graal.compiler.value.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
-import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -124,7 +124,7 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
     }
 
     public void addVirtualObjectMapping(Node virtualObject) {
-        assert virtualObject instanceof VirtualObjectFieldNode || virtualObject instanceof Phi : virtualObject;
+        assert virtualObject instanceof VirtualObjectFieldNode || virtualObject instanceof PhiNode : virtualObject;
         virtualObjectMappings.add(virtualObject);
     }
 
@@ -330,16 +330,16 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
      * @param block the block begin for which we are creating the phi
      * @param i the index into the stack for which to create a phi
      */
-    public Phi setupPhiForStack(Merge block, int i) {
+    public PhiNode setupPhiForStack(MergeNode block, int i) {
         ValueNode p = stackAt(i);
         if (p != null) {
-            if (p instanceof Phi) {
-                Phi phi = (Phi) p;
+            if (p instanceof PhiNode) {
+                PhiNode phi = (PhiNode) p;
                 if (phi.merge() == block) {
                     return phi;
                 }
             }
-            Phi phi = new Phi(p.kind, block, PhiType.Value, graph());
+            PhiNode phi = new PhiNode(p.kind, block, PhiType.Value, graph());
             setValueAt(localsSize + i, phi);
             return phi;
         }
@@ -351,15 +351,15 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
      * @param block the block begin for which we are creating the phi
      * @param i the index of the local variable for which to create the phi
      */
-    public Phi setupPhiForLocal(Merge block, int i) {
+    public PhiNode setupPhiForLocal(MergeNode block, int i) {
         ValueNode p = localAt(i);
-        if (p instanceof Phi) {
-            Phi phi = (Phi) p;
+        if (p instanceof PhiNode) {
+            PhiNode phi = (PhiNode) p;
             if (phi.merge() == block) {
                 return phi;
             }
         }
-        Phi phi = new Phi(p.kind, block, PhiType.Value, graph());
+        PhiNode phi = new PhiNode(p.kind, block, PhiType.Value, graph());
         storeLocal(i, phi);
         return phi;
     }
@@ -399,22 +399,22 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
         }
     }
 
-    public void merge(Merge block, FrameStateAccess other) {
+    public void merge(MergeNode block, FrameStateAccess other) {
         checkSize(other);
         for (int i = 0; i < valuesSize(); i++) {
             ValueNode x = valueAt(i);
             if (x != null) {
                 ValueNode y = other.valueAt(i);
-                if (x != y || ((x instanceof Phi) && ((Phi) x).merge() == block)) {
+                if (x != y || ((x instanceof PhiNode) && ((PhiNode) x).merge() == block)) {
                     if (typeMismatch(x, y)) {
-                        if ((x instanceof Phi) && ((Phi) x).merge() == block) {
+                        if ((x instanceof PhiNode) && ((PhiNode) x).merge() == block) {
                             x.replaceAtUsages(null);
                             x.delete();
                         }
                         setValueAt(i, null);
                         continue;
                     }
-                    Phi phi = null;
+                    PhiNode phi = null;
                     if (i < localsSize) {
                         // this a local
                         phi = setupPhiForLocal(block, i);
@@ -433,16 +433,16 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
                         phi.addInput((x == y) ? phi : y);
                     }
 
-                    assert phi.valueCount() == block.phiPredecessorCount() + (block instanceof LoopBegin ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPredecessorCount();
+                    assert phi.valueCount() == block.phiPredecessorCount() + (block instanceof LoopBeginNode ? 0 : 1) : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPredecessorCount();
                }
             }
         }
     }
 
-    public Merge block() {
+    public MergeNode block() {
         for (Node n : usages()) {
-            if (n instanceof Merge) {
-                return (Merge) n;
+            if (n instanceof MergeNode) {
+                return (MergeNode) n;
             }
         }
         return null;
@@ -494,20 +494,20 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
     }
 
     /**
-     * The interface implemented by a client of {@link FrameState#forEachPhi(Merge, PhiProcedure)} and
-     * {@link FrameState#forEachLivePhi(Merge, PhiProcedure)}.
+     * The interface implemented by a client of {@link FrameState#forEachPhi(MergeNode, PhiProcedure)} and
+     * {@link FrameState#forEachLivePhi(MergeNode, PhiProcedure)}.
      */
     public static interface PhiProcedure {
-        boolean doPhi(Phi phi);
+        boolean doPhi(PhiNode phi);
     }
 
     /**
-     * Checks whether this frame state has any {@linkplain Phi phi} statements.
+     * Checks whether this frame state has any {@linkplain PhiNode phi} statements.
      */
     public boolean hasPhis() {
         for (int i = 0; i < valuesSize(); i++) {
             ValueNode value = valueAt(i);
-            if (value instanceof Phi) {
+            if (value instanceof PhiNode) {
                 return true;
             }
         }
@@ -580,8 +580,8 @@ public final class FrameState extends ValueNode implements FrameStateAccess {
                                 }
                                 currentField = ((VirtualObjectFieldNode) currentField).lastState();
                             } else {
-                                assert currentField instanceof Phi : currentField;
-                                currentField = (FloatingNode) ((Phi) currentField).valueAt(0);
+                                assert currentField instanceof PhiNode : currentField;
+                                currentField = (FloatingNode) ((PhiNode) currentField).valueAt(0);
                             }
                         } while (currentField != null);
                     }

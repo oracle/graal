@@ -25,8 +25,9 @@ package com.oracle.max.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
+import com.oracle.max.graal.compiler.nodes.loop.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
@@ -55,14 +56,14 @@ public class LoopPhase extends Phase {
                     continue;
                 }
                 boolean canInvert = false;
-                if (GraalOptions.LoopInversion  && loop.loopBegin().next() instanceof If) {
-                    If ifNode = (If) loop.loopBegin().next();
+                if (GraalOptions.LoopInversion  && loop.loopBegin().next() instanceof IfNode) {
+                    IfNode ifNode = (IfNode) loop.loopBegin().next();
                     if (loop.exits().isMarked(ifNode.trueSuccessor()) || loop.exits().isMarked(ifNode.falseSuccessor())) {
                         canInvert = true;
                     }
                 }
                 if (canInvert) {
-                    LoopUtil.inverseLoop(loop, (If) loop.loopBegin().next());
+                    LoopUtil.inverseLoop(loop, (IfNode) loop.loopBegin().next());
                 } else if (GraalOptions.LoopPeeling) {
                     GraalCompilation compilation = GraalCompilation.compilation();
                     if (compilation.compiler.isObserved()) {
@@ -84,21 +85,21 @@ public class LoopPhase extends Phase {
     }
 
     private void findInductionVariables(Loop loop) {
-        LoopBegin loopBegin = loop.loopBegin();
+        LoopBeginNode loopBegin = loop.loopBegin();
         NodeBitMap loopNodes = loop.nodes();
-        List<Phi> phis = new ArrayList<Phi>(loopBegin.phis());
+        List<PhiNode> phis = new ArrayList<PhiNode>(loopBegin.phis());
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
         int initIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
-        for (Phi phi : phis) {
+        for (PhiNode phi : phis) {
             ValueNode init = phi.valueAt(initIndex);
             ValueNode backEdge = phi.valueAt(backIndex);
             if (loopNodes.isNew(init) || loopNodes.isNew(backEdge)) {
                 continue;
             }
             if (loopNodes.isMarked(backEdge)) {
-                Binary binary;
-                if (backEdge instanceof IntegerAdd || backEdge instanceof IntegerSub) {
-                    binary = (Binary) backEdge;
+                BinaryNode binary;
+                if (backEdge instanceof IntegerAddNode || backEdge instanceof IntegerSubNode) {
+                    binary = (BinaryNode) backEdge;
                 } else {
                     continue;
                 }
@@ -112,22 +113,22 @@ public class LoopPhase extends Phase {
                 }
                 if (loopNodes.isNotNewNotMarked(stride)) {
                     Graph graph = loopBegin.graph();
-                    if (backEdge instanceof IntegerSub) {
-                        stride = new Negate(stride, graph);
+                    if (backEdge instanceof IntegerSubNode) {
+                        stride = new NegateNode(stride, graph);
                     }
                     CiKind kind = phi.kind;
-                    LoopCounter counter = loopBegin.loopCounter(kind);
-                    BasicInductionVariable biv1 = null;
-                    BasicInductionVariable biv2 = null;
+                    LoopCounterNode counter = loopBegin.loopCounter(kind);
+                    BasicInductionVariableNode biv1 = null;
+                    BasicInductionVariableNode biv2 = null;
                     if (phi.usages().size() > 1) {
-                        biv1 = new BasicInductionVariable(kind, init, stride, counter, graph);
+                        biv1 = new BasicInductionVariableNode(kind, init, stride, counter, graph);
                         phi.replaceAndDelete(biv1);
                     } else {
                         phi.replaceFirstInput(binary, null);
                         phi.delete();
                     }
                     if (backEdge.usages().size() > 0) {
-                        biv2 = new BasicInductionVariable(kind, IntegerArithmeticNode.add(init, stride), stride, counter, graph);
+                        biv2 = new BasicInductionVariableNode(kind, IntegerArithmeticNode.add(init, stride), stride, counter, graph);
                         backEdge.replaceAndDelete(biv2);
                     } else {
                         backEdge.delete();
@@ -142,14 +143,14 @@ public class LoopPhase extends Phase {
             }
         }
     }
-    private void findDerivedInductionVariable(BasicInductionVariable biv, CiKind kind, NodeBitMap loopNodes) {
+    private void findDerivedInductionVariable(BasicInductionVariableNode biv, CiKind kind, NodeBitMap loopNodes) {
         for (Node usage : biv.usages().snapshot()) {
             ValueNode scale = scale(usage, biv, loopNodes);
             ValueNode offset = null;
             Node node = null;
             if (scale == null) {
-                if (usage instanceof IntegerAdd) {
-                    IntegerAdd add = (IntegerAdd) usage;
+                if (usage instanceof IntegerAddNode) {
+                    IntegerAddNode add = (IntegerAddNode) usage;
                     if (add.x() == biv || (scale = scale(add.x(), biv, loopNodes)) != null) {
                         offset = add.y();
                     } else if (add.y() == biv || (scale = scale(add.y(), biv, loopNodes)) != null) {
@@ -168,19 +169,19 @@ public class LoopPhase extends Phase {
             }
             if (scale != null || offset != null) {
                 if (scale == null) {
-                    scale = Constant.forInt(1, biv.graph());
+                    scale = ConstantNode.forInt(1, biv.graph());
                 } else if (offset == null) {
-                    offset = Constant.forInt(0, biv.graph());
+                    offset = ConstantNode.forInt(0, biv.graph());
                 }
-                DerivedInductionVariable div = new DerivedInductionVariable(kind, offset, scale, biv, biv.graph());
+                DerivedInductionVariableNode div = new DerivedInductionVariableNode(kind, offset, scale, biv, biv.graph());
                 node.replaceAndDelete(div);
             }
         }
     }
 
-    private ValueNode scale(Node n, BasicInductionVariable biv, NodeBitMap loopNodes) {
-        if (n instanceof IntegerMul) {
-            IntegerMul mul = (IntegerMul) n;
+    private ValueNode scale(Node n, BasicInductionVariableNode biv, NodeBitMap loopNodes) {
+        if (n instanceof IntegerMulNode) {
+            IntegerMulNode mul = (IntegerMulNode) n;
             ValueNode scale = null;
             if (mul.x() == biv) {
                 scale = mul.y();

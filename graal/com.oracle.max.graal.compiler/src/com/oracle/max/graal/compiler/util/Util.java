@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -403,7 +402,7 @@ public class Util {
      * @param compareConstants {@code true} if equivalent constants should be considered equivalent
      * @return {@code true} if the instructions are equivalent; {@code false} otherwise
      */
-    public static boolean equivalent(FixedNodeWithNext x, FixedNodeWithNext y, boolean compareConstants) {
+    public static boolean equivalent(FixedWithNextNode x, FixedWithNextNode y, boolean compareConstants) {
         if (x == y) {
             return true;
         }

@@ -28,8 +28,8 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.loop.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
@@ -272,7 +272,7 @@ public class IdealGraphPrinter {
             Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
             if (block != null) {
                 stream.printf("    <p name='block'>%d</p>%n", block.blockID());
-                if (!(node instanceof Phi || node instanceof FrameState || node instanceof Local || node instanceof LoopCounter) && !block.getInstructions().contains(node)) {
+                if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof LocalNode || node instanceof LoopCounterNode) && !block.getInstructions().contains(node)) {
                     stream.println("    <p name='notInOwnBlock'>true</p>");
                 }
             } else {
@@ -386,7 +386,7 @@ public class IdealGraphPrinter {
             // if this is the first block: add all locals to this block
             if (block.getInstructions().size() > 0  && block.getInstructions().get(0) == graph.start()) {
                 for (Node node : graph.getNodes()) {
-                    if (node instanceof Local) {
+                    if (node instanceof LocalNode) {
                         nodes.add(node);
                     }
                 }
@@ -397,9 +397,9 @@ public class IdealGraphPrinter {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
                     nodes.add(((StateSplit) node).stateAfter());
                 }
-                if (node instanceof Merge) {
+                if (node instanceof MergeNode) {
                     for (Node usage : node.usages()) {
-                        if (usage instanceof Phi || usage instanceof LoopCounter) {
+                        if (usage instanceof PhiNode || usage instanceof LoopCounterNode) {
                             nodes.add(usage);
                         }
                     }

@@ -37,14 +37,14 @@ import com.oracle.max.graal.compiler.alloc.OperandPool.VariableFlag;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.base.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.compiler.nodes.base.FrameState.ValueProcedure;
-import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -321,18 +321,18 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitMerge(Merge x) {
-        if (x.next() instanceof LoopBegin) {
-            moveToPhi((LoopBegin) x.next(), x);
+    public void visitMerge(MergeNode x) {
+        if (x.next() instanceof LoopBeginNode) {
+            moveToPhi((LoopBeginNode) x.next(), x);
         }
     }
 
     @Override
-    public void visitArrayLength(ArrayLength x) {
+    public void visitArrayLength(ArrayLengthNode x) {
         emitArrayLength(x);
     }
 
-    public CiValue emitArrayLength(ArrayLength x) {
+    public CiValue emitArrayLength(ArrayLengthNode x) {
         XirArgument array = toXirArgument(x.array());
         XirSnippet snippet = xir.genArrayLength(site(x), array);
         emitXir(snippet, x, stateFor(x), null, true);
@@ -343,7 +343,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiCallingConvention args = compilation.frameMap().incomingArguments();
         int bci = 0;
         if (Modifier.isSynchronized(compilation.method.accessFlags())) {
-            bci = FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI;
+            bci = FixedWithNextNode.SYNCHRONIZATION_ENTRY_BCI;
         }
 
         boolean withReceiver = !Modifier.isStatic(compilation.method.accessFlags());
@@ -357,8 +357,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         FrameState fs = new FrameState(compilation.method, bci, compilation.method.maxLocals(), 0, 0, false, compilation.graph);
         for (Node node : compilation.graph.start().usages()) {
-            if (node instanceof Local) {
-                Local local = (Local) node;
+            if (node instanceof LocalNode) {
+                LocalNode local = (LocalNode) node;
                 int i = local.index();
                 fs.storeLocal(argumentSlots[i], local);
 
@@ -388,14 +388,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitCheckCast(CheckCast x) {
+    public void visitCheckCast(CheckCastNode x) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genCheckCast(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
-    public void visitMonitorEnter(MonitorEnter x) {
+    public void visitMonitorEnter(MonitorEnterNode x) {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = toXirArgument(x.lockAddress());
         XirSnippet snippet = xir.genMonitorEnter(site(x), obj, lockAddress);
@@ -403,7 +403,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitMonitorExit(MonitorExit x) {
+    public void visitMonitorExit(MonitorExitNode x) {
         XirArgument obj = toXirArgument(x.object());
         XirArgument lockAddress = toXirArgument(x.lockAddress());
         XirSnippet snippet = xir.genMonitorExit(site(x), obj, lockAddress);
@@ -421,27 +421,27 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitNewInstance(NewInstance x) {
+    public void visitNewInstance(NewInstanceNode x) {
         XirSnippet snippet = xir.genNewInstance(site(x), x.instanceClass());
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
-    public void visitNewTypeArray(NewTypeArray x) {
+    public void visitNewTypeArray(NewTypeArrayNode x) {
         XirArgument length = toXirArgument(x.length());
         XirSnippet snippet = xir.genNewArray(site(x), length, x.elementKind(), null, null);
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
-    public void visitNewObjectArray(NewObjectArray x) {
+    public void visitNewObjectArray(NewObjectArrayNode x) {
         XirArgument length = toXirArgument(x.length());
         XirSnippet snippet = xir.genNewArray(site(x), length, CiKind.Object, x.elementType(), x.exactType());
         emitXir(snippet, x, stateFor(x), null, true);
     }
 
     @Override
-    public void visitNewMultiArray(NewMultiArray x) {
+    public void visitNewMultiArray(NewMultiArrayNode x) {
         XirArgument[] dims = new XirArgument[x.dimensionCount()];
 
         for (int i = 0; i < dims.length; i++) {
@@ -460,7 +460,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     @Override
-    public void visitConstant(Constant x) {
+    public void visitConstant(ConstantNode x) {
         if (!canInlineAsConstant(x)) {
             CiValue res = x.operand();
             if (!(res.isLegal())) {
@@ -476,7 +476,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitExceptionObject(ExceptionObject x) {
+    public void visitExceptionObject(ExceptionObjectNode x) {
         XirSnippet snippet = xir.genExceptionObject(site(x));
         emitXir(snippet, x, null, null, true);
 //        lastState = lastState.duplicateWithException(lastState.bci, x);
@@ -489,19 +489,19 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitAnchor(Anchor x) {
+    public void visitAnchor(AnchorNode x) {
         setNoResult(x);
     }
 
     @Override
-    public void visitIf(If x) {
+    public void visitIf(IfNode x) {
         assert x.defaultSuccessor() == x.falseSuccessor() : "wrong destination";
         emitBooleanBranch(x.compare(), getLIRBlock(x.trueSuccessor()),  getLIRBlock(x.falseSuccessor()), null);
     }
 
     public void emitBranch(BooleanNode n, Condition cond, LIRBlock trueSuccessor, LIRBlock falseSucc) {
-        if (n instanceof Compare) {
-            Compare compare = (Compare) n;
+        if (n instanceof CompareNode) {
+            CompareNode compare = (CompareNode) n;
             if (compare.x().kind.isFloat() || compare.x().kind.isDouble()) {
                 LIRBlock unorderedSuccBlock = falseSucc;
                 if (compare.unorderedIsTrue()) {
@@ -517,20 +517,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void emitBooleanBranch(BooleanNode node, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
         if (node instanceof NegateBooleanNode) {
             emitBooleanBranch(((NegateBooleanNode) node).value(), falseSuccessor, trueSuccessor, info);
-        } else if (node instanceof IsNonNull) {
-            emitIsNonNullBranch((IsNonNull) node, trueSuccessor, falseSuccessor);
-        } else if (node instanceof Compare) {
-            emitCompare((Compare) node, trueSuccessor, falseSuccessor);
-        } else if (node instanceof InstanceOf) {
+        } else if (node instanceof IsNonNullNode) {
+            emitIsNonNullBranch((IsNonNullNode) node, trueSuccessor, falseSuccessor);
+        } else if (node instanceof CompareNode) {
+            emitCompare((CompareNode) node, trueSuccessor, falseSuccessor);
+        } else if (node instanceof InstanceOfNode) {
             emitInstanceOf((TypeCheckNode) node, trueSuccessor, falseSuccessor, info);
-        } else if (node instanceof Constant) {
-            emitConstantBranch(((Constant) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
+        } else if (node instanceof ConstantNode) {
+            emitConstantBranch(((ConstantNode) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
         } else {
             throw Util.unimplemented(node.toString());
         }
     }
 
-    private void emitIsNonNullBranch(IsNonNull node, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
+    private void emitIsNonNullBranch(IsNonNullNode node, LIRBlock trueSuccessor, LIRBlock falseSuccessor) {
         Condition cond = Condition.NE;
         if (trueSuccessor == null) {
             cond = cond.negate();
@@ -580,7 +580,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    public void emitCompare(Compare compare, LIRBlock trueSuccessorBlock, LIRBlock falseSuccessorBlock) {
+    public void emitCompare(CompareNode compare, LIRBlock trueSuccessorBlock, LIRBlock falseSuccessorBlock) {
         CiKind kind = compare.x().kind;
 
         Condition cond = compare.condition();
@@ -623,16 +623,16 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected FrameState stateBeforeInvokeReturn(Invoke invoke) {
+    protected FrameState stateBeforeInvokeReturn(InvokeNode invoke) {
         return invoke.stateAfter().duplicateModified(invoke.bci, invoke.stateAfter().rethrowException(), invoke.kind);
     }
 
-    protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
+    protected FrameState stateBeforeInvokeWithArguments(InvokeNode invoke) {
         return invoke.stateAfter().duplicateModified(invoke.bci, invoke.stateAfter().rethrowException(), invoke.kind, invoke.arguments().toArray(new ValueNode[0]));
     }
 
     @Override
-    public void visitInvoke(Invoke x) {
+    public void visitInvoke(InvokeNode x) {
         RiMethod target = x.target();
         LIRDebugInfo info = stateFor(x, stateBeforeInvokeWithArguments(x));
         LIRDebugInfo info2 = stateFor(x, stateBeforeInvokeReturn(x));
@@ -695,13 +695,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private CiKind[] getSignature(Invoke x) {
+    private CiKind[] getSignature(InvokeNode x) {
         CiKind receiver = x.isStatic() ? null : x.target.holder().kind();
         return Util.signatureToKinds(x.target.signature(), receiver);
     }
 
     @Override
-    public void visitMonitorAddress(MonitorAddress x) {
+    public void visitMonitorAddress(MonitorAddressNode x) {
         CiValue result = createResultVariable(x);
         lir.monitorAddress(x.monitorIndex(), result);
     }
@@ -710,7 +710,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * For note on volatile fields, see {@link #visitStoreField(StoreField)}.
      */
     @Override
-    public void visitLoadField(LoadField x) {
+    public void visitLoadField(LoadFieldNode x) {
         RiField field = x.field();
         LIRDebugInfo info = stateFor(x);
         XirArgument receiver = toXirArgument(x.object());
@@ -723,7 +723,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitLoadIndexed(LoadIndexed x) {
+    public void visitLoadIndexed(LoadIndexedNode x) {
         XirArgument array = toXirArgument(x.array());
         XirArgument index = toXirArgument(x.index());
         XirArgument length = toXirArgument(x.length());
@@ -750,14 +750,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitLocal(Local x) {
+    public void visitLocal(LocalNode x) {
         if (x.operand().isIllegal()) {
             createResultVariable(x);
         }
     }
 
     @Override
-    public void visitLookupSwitch(LookupSwitch x) {
+    public void visitLookupSwitch(LookupSwitchNode x) {
         CiValue tag = load(x.value());
         setNoResult(x);
 
@@ -785,7 +785,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitFixedGuard(FixedGuard fixedGuard) {
+    public void visitFixedGuard(FixedGuardNode fixedGuard) {
         for (Node n : fixedGuard.inputs()) {
             if (n != null) {
                 emitGuardComp((BooleanNode) n);
@@ -794,20 +794,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     public void emitGuardComp(BooleanNode comp) {
-        if (comp instanceof IsNonNull) {
-            IsNonNull x = (IsNonNull) comp;
+        if (comp instanceof IsNonNullNode) {
+            IsNonNullNode x = (IsNonNullNode) comp;
             CiValue value = load(x.object());
             LIRDebugInfo info = stateFor(x);
             lir.nullCheck(value, info);
-        } else if (comp instanceof IsType) {
-            IsType x = (IsType) comp;
+        } else if (comp instanceof IsTypeNode) {
+            IsTypeNode x = (IsTypeNode) comp;
             load(x.object());
             LIRDebugInfo info = stateFor(x);
             XirArgument clazz = toXirArgument(x.type().getEncoding(Representation.ObjectHub));
             XirSnippet typeCheck = xir.genTypeCheck(site(x), toXirArgument(x.object()), clazz, x.type());
             emitXir(typeCheck, x, info, compilation.method, false);
         } else {
-            if (comp instanceof Constant && comp.asConstant().asBoolean()) {
+            if (comp instanceof ConstantNode && comp.asConstant().asBoolean()) {
                 // Nothing to emit.
             } else {
                 DeoptimizationStub stub = createDeoptStub();
@@ -836,12 +836,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     @Override
-    public void visitPhi(Phi i) {
+    public void visitPhi(PhiNode i) {
         Util.shouldNotReachHere();
     }
 
     @Override
-    public void visitReturn(Return x) {
+    public void visitReturn(ReturnNode x) {
         if (x.kind.isVoid()) {
             XirSnippet epilogue = xir.genEpilogue(site(x), compilation.method);
             if (epilogue != null) {
@@ -1093,9 +1093,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitDeoptimize(Deoptimize deoptimize) {
+    public void visitDeoptimize(DeoptimizeNode deoptimize) {
         assert lastState != null : "deoptimize always needs a state";
-        assert lastState.bci != FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
+        assert lastState.bci != FixedWithNextNode.SYNCHRONIZATION_ENTRY_BCI : "bci must not be -1 for deopt framestate";
         DeoptimizationStub stub = new DeoptimizationStub(deoptimize.action(), lastState);
         addDeoptimizationStub(stub);
         lir.branch(Condition.TRUE, stub.label, stub.info);
@@ -1150,7 +1150,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return operand;
     }
 
-    private CiVariable loadConstant(Constant x) {
+    private CiVariable loadConstant(ConstantNode x) {
         return loadConstant(x.asConstant(), x.kind);
     }
 
@@ -1185,7 +1185,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitRegisterFinalizer(RegisterFinalizer x) {
+    public void visitRegisterFinalizer(RegisterFinalizerNode x) {
         CiValue receiver = load(x.object());
         LIRDebugInfo info = stateFor(x);
         callRuntime(CiRuntimeCall.RegisterFinalizer, info, receiver);
@@ -1375,7 +1375,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return result;
     }
 
-    SwitchRange[] createLookupRanges(LookupSwitch x) {
+    SwitchRange[] createLookupRanges(LookupSwitchNode x) {
         // we expect the keys to be sorted by increasing value
         List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
         int len = x.numberOfCases();
@@ -1536,7 +1536,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     @Override
-    public void visitLoopEnd(LoopEnd x) {
+    public void visitLoopEnd(LoopEndNode x) {
         setNoResult(x);
         moveToPhi(x.loopBegin(), x);
         if (GraalOptions.GenSafepoints) {
@@ -1545,22 +1545,22 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         lir.jump(getLIRBlock(x.loopBegin()));
     }
 
-    private void moveToPhi(Merge merge, Node pred) {
+    private void moveToPhi(MergeNode merge, Node pred) {
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
         int nextSuccIndex = merge.phiPredecessorIndex(pred);
         PhiResolver resolver = new PhiResolver(this);
-        for (Phi phi : merge.phis()) {
+        for (PhiNode phi : merge.phis()) {
             if (phi.type() == PhiType.Value) {
                 ValueNode curVal = phi.valueAt(nextSuccIndex);
                 if (curVal != null && curVal != phi) {
-                    if (curVal instanceof Phi) {
-                        operandForPhi((Phi) curVal);
+                    if (curVal instanceof PhiNode) {
+                        operandForPhi((PhiNode) curVal);
                     }
                     CiValue operand = curVal.operand();
                     if (operand.isIllegal()) {
-                        assert curVal instanceof Constant || curVal instanceof Local : "these can be produced lazily" + curVal + "/" + phi;
+                        assert curVal instanceof ConstantNode || curVal instanceof LocalNode : "these can be produced lazily" + curVal + "/" + phi;
                         operand = operandForInstruction(curVal);
                     }
                     resolver.move(operand, operandForPhi(phi));
@@ -1584,10 +1584,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     CiValue operandForInstruction(ValueNode x) {
         CiValue operand = x.operand();
         if (operand.isIllegal()) {
-            if (x instanceof Constant) {
+            if (x instanceof ConstantNode) {
                 x.setOperand(x.asConstant());
             } else {
-                assert x instanceof Phi || x instanceof Local : "only for Phi and Local : " + x;
+                assert x instanceof PhiNode || x instanceof LocalNode : "only for Phi and Local : " + x;
                 // allocate a variable for this local or phi
                 createResultVariable(x);
             }
@@ -1595,7 +1595,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return x.operand();
     }
 
-    private CiValue operandForPhi(Phi phi) {
+    private CiValue operandForPhi(PhiNode phi) {
         assert phi.type() == PhiType.Value : "wrong phi type: " + phi.id();
         if (phi.operand().isIllegal()) {
             // allocate a variable for this phi
@@ -1661,9 +1661,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             public void doValue(ValueNode value) {
                 if (value == x) {
                     // nothing to do, will be visited shortly
-                } else if (value instanceof Phi && ((Phi) value).type() == PhiType.Value) {
+                } else if (value instanceof PhiNode && ((PhiNode) value).type() == PhiType.Value) {
                     // phi's are special
-                    operandForPhi((Phi) value);
+                    operandForPhi((PhiNode) value);
                 } else if (value.operand().isIllegal()) {
                     // instruction doesn't have an operand yet
                     CiValue operand = makeOperand(value);
@@ -1685,7 +1685,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return new LIRDebugInfo(state);
     }
 
-    List<CiValue> visitInvokeArguments(CiCallingConvention cc, Invoke x, List<CiValue> pointerSlots) {
+    List<CiValue> visitInvokeArguments(CiCallingConvention cc, InvokeNode x, List<CiValue> pointerSlots) {
         // for each argument, load it into the correct location
         List<CiValue> argList = new ArrayList<CiValue>();
         int j = 0;
@@ -1730,10 +1730,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         CiValue operand = instruction.operand();
         if (operand.isIllegal()) {
-            if (instruction instanceof Phi) {
+            if (instruction instanceof PhiNode) {
                 // a phi may not have an operand yet if it is for an exception block
-                operand = operandForPhi((Phi) instruction);
-            } else if (instruction instanceof Constant) {
+                operand = operandForPhi((PhiNode) instruction);
+            } else if (instruction instanceof ConstantNode) {
                 operand = operandForInstruction(instruction);
             }
         }
@@ -1858,7 +1858,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public abstract Condition floatingPointCondition(Condition cond);
 
     @Override
-    public void visitConditional(Conditional conditional) {
+    public void visitConditional(ConditionalNode conditional) {
 
         BooleanNode condition = conditional.condition();
         LIRGenerator generator = this;
@@ -1874,8 +1874,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             negate = !negate;
             condition = ((NegateBooleanNode) condition).value();
         }
-        if (condition instanceof Compare) {
-            Compare compare = (Compare) condition;
+        if (condition instanceof CompareNode) {
+            CompareNode compare = (CompareNode) condition;
             ValueNode x = compare.x();
             ValueNode y = compare.y();
             cond = compare.condition();
@@ -1890,14 +1890,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             } else {
                 right = generator.makeOperand(y);
             }
-        } else if (condition instanceof IsNonNull) {
-            IsNonNull isNonNull = (IsNonNull) condition;
+        } else if (condition instanceof IsNonNullNode) {
+            IsNonNullNode isNonNull = (IsNonNullNode) condition;
             left = generator.load(isNonNull.object());
             right = CiConstant.NULL_OBJECT;
             cond = Condition.NE;
-        } else if (condition instanceof Constant) {
+        } else if (condition instanceof ConstantNode) {
             generator.lir().move(condition.asConstant(), generator.createResultVariable(conditional));
-        } else if (condition instanceof InstanceOf) {
+        } else if (condition instanceof InstanceOfNode) {
             if (conditional instanceof MaterializeNode && !negate) {
                 generator.emitMaterializeInstanceOf((MaterializeNode) conditional, conditional, null);
             } else {

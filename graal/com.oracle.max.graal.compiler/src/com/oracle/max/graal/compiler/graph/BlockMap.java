@@ -28,7 +28,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -121,7 +121,7 @@ public final class BlockMap {
         public boolean isLoopHeader;
         public int blockID;
 
-        public FixedNodeWithNext firstInstruction;
+        public FixedWithNextNode firstInstruction;
 
         final HashSet<Block> successors = new LinkedHashSet<Block>();
         private boolean visited;

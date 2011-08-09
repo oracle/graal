@@ -27,10 +27,8 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
 import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
@@ -52,7 +50,7 @@ public class MemoryPhase extends Phase {
 
         public MemoryMap(Block b, MemoryMap memoryMap) {
             this(b);
-            if (b.firstNode() instanceof LoopBegin) {
+            if (b.firstNode() instanceof LoopBeginNode) {
                 loopCheckPoint = new WriteMemoryCheckpointNode(b.firstNode().graph());
                 mergeForWrite = loopCheckPoint;
                 mergeForRead = loopCheckPoint;
@@ -117,7 +115,7 @@ public class MemoryPhase extends Phase {
                         TTY.println("Only right map " + e.getKey());
                     }
                     Node leftNode = mergeLeft;
-                    if (leftNode instanceof Phi && ((Phi) leftNode).merge() == block.firstNode()) {
+                    if (leftNode instanceof PhiNode && ((PhiNode) leftNode).merge() == block.firstNode()) {
                         leftNode = leftNode.copyWithEdges();
                     }
                     locationLeft.put(e.getKey(), leftNode);
@@ -151,9 +149,9 @@ public class MemoryPhase extends Phase {
                 }
                 return original;
             }
-            Merge m = (Merge) block.firstNode();
-            if (original instanceof Phi && ((Phi) original).merge() == m) {
-                Phi phi = (Phi) original;
+            MergeNode m = (MergeNode) block.firstNode();
+            if (original instanceof PhiNode && ((PhiNode) original).merge() == m) {
+                PhiNode phi = (PhiNode) original;
                 phi.addInput((ValueNode) newValue);
                 if (GraalOptions.TraceMemoryMaps) {
                     TTY.println("Add new input to phi " + original.id());
@@ -161,7 +159,7 @@ public class MemoryPhase extends Phase {
                 assert phi.valueCount() <= phi.merge().endCount();
                 return original;
             } else {
-                Phi phi = new Phi(CiKind.Illegal, m, PhiType.Memory, m.graph());
+                PhiNode phi = new PhiNode(CiKind.Illegal, m, PhiType.Memory, m.graph());
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
                     phi.addInput((ValueNode) original);
                 }
@@ -169,7 +167,7 @@ public class MemoryPhase extends Phase {
                 if (GraalOptions.TraceMemoryMaps) {
                     TTY.println("Creating new phi " + phi.id());
                 }
-                assert phi.valueCount() <= phi.merge().endCount() + ((phi.merge() instanceof LoopBegin) ? 1 : 0) : phi.merge() + "/" + phi.valueCount() + "/" + phi.merge().endCount() + "/" + mergeOperationCount;
+                assert phi.valueCount() <= phi.merge().endCount() + ((phi.merge() instanceof LoopBeginNode) ? 1 : 0) : phi.merge() + "/" + phi.valueCount() + "/" + phi.merge().endCount() + "/" + mergeOperationCount;
                 return phi;
             }
         }
@@ -285,7 +283,7 @@ public class MemoryPhase extends Phase {
         } else {
             map = new MemoryMap(b, memoryMaps[b.getPredecessors().get(0).blockID()]);
             for (int i = 1; i < b.getPredecessors().size(); ++i) {
-                assert b.firstNode() instanceof Merge : b.firstNode();
+                assert b.firstNode() instanceof MergeNode : b.firstNode();
                 Block block = b.getPredecessors().get(i);
                 map.mergeWith(memoryMaps[block.blockID()], b);
             }
@@ -316,9 +314,9 @@ public class MemoryPhase extends Phase {
         }
 
         memoryMaps[b.blockID()] = map;
-        if (b.lastNode() instanceof LoopEnd) {
-            LoopEnd end = (LoopEnd) b.lastNode();
-            LoopBegin begin = end.loopBegin();
+        if (b.lastNode() instanceof LoopEndNode) {
+            LoopEndNode end = (LoopEndNode) b.lastNode();
+            LoopBeginNode begin = end.loopBegin();
             Block beginBlock = nodeMap.get(begin);
             MemoryMap memoryMap = memoryMaps[beginBlock.blockID()];
             assert memoryMap != null : beginBlock.name();

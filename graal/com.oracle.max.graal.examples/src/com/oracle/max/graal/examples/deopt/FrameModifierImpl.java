@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.extensions.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiVirtualObject.*;
+import com.sun.cri.ci.CiVirtualObject.CiVirtualObjectFactory;
 import com.sun.cri.ri.*;
 
 

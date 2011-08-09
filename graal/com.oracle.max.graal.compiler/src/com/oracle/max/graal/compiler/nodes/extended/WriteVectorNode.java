@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
@@ -57,7 +56,7 @@ public final class WriteVectorNode extends AccessVectorNode {
     }
 
     @Override
-    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
+    public void addToLoop(LoopBeginNode loop, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
         LocationNode newLocation = LocationNode.create(LocationNode.getArrayLocation(location().getValueKind()), location().getValueKind(), location().displacement(), graph());
         ValueNode index = nodes.get(vector());
         ValueNode value = nodes.get(values());

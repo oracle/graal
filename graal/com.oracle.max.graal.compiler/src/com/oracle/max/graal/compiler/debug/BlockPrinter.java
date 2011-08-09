@@ -23,14 +23,13 @@
 package com.oracle.max.graal.compiler.debug;
 
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 
 /**
- * Prints a listing for a {@linkplain Merge block}.
+ * Prints a listing for a {@linkplain MergeNode block}.
  */
 public class BlockPrinter implements BlockClosure {
 
@@ -45,7 +44,7 @@ public class BlockPrinter implements BlockClosure {
     public void apply(Block block) {
         if (cfgOnly) {
             if (block.getInstructions().size() > 0) {
-                ip.printInstruction((FixedNodeWithNext) block.getInstructions().get(0));
+                ip.printInstruction((FixedWithNextNode) block.getInstructions().get(0));
             } else {
                 ip.out().println("Empty block");
             }
@@ -62,8 +61,8 @@ public class BlockPrinter implements BlockClosure {
         ip.printInstructionListingHeader();
 
         for (Node i : block.getInstructions()) {
-            if (i instanceof FixedNodeWithNext) {
-                ip.printInstructionListing((FixedNodeWithNext) i);
+            if (i instanceof FixedWithNextNode) {
+                ip.printInstructionListing((FixedWithNextNode) i);
             }
         }
         out.println();
@@ -87,8 +86,8 @@ public class BlockPrinter implements BlockClosure {
                 i++;
             } else {
                 i += value.kind.sizeInSlots();
-                if (value instanceof Phi) {
-                    Phi phi = (Phi) value;
+                if (value instanceof PhiNode) {
+                    PhiNode phi = (PhiNode) value;
                     if (phi.operand() != null) {
                         out.print(" ");
                         out.print(phi.operand().toString());

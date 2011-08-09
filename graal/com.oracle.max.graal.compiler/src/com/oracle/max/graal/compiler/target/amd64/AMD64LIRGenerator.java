@@ -28,10 +28,11 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.globalstub.*;
-import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -69,7 +70,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             // there is no immediate move of word values in asemblerI486.?pp
             return false;
         }
-        return v instanceof Constant;
+        return v instanceof ConstantNode;
     }
 
     @Override
@@ -123,7 +124,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitNegate(Negate x) {
+    public void visitNegate(NegateNode x) {
         LIRItem value = new LIRItem(x.x(), this);
         value.setDestroysRegister();
         value.loadItem();
@@ -137,7 +138,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         return false;
     }
 
-    public void visitArithmeticOpFloat(Arithmetic x) {
+    public void visitArithmeticOpFloat(ArithmeticNode x) {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         assert !left.isStack() || !right.isStack() : "can't both be memory operands";
@@ -178,7 +179,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         setResult(x, reg);
     }
 
-    public void visitArithmeticOpLong(Arithmetic x) {
+    public void visitArithmeticOpLong(ArithmeticNode x) {
         int opcode = x.opcode;
         if (opcode == Bytecodes.LDIV || opcode == Bytecodes.LREM) {
             // emit inline 64-bit code
@@ -221,7 +222,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public void visitArithmeticOpInt(Arithmetic x) {
+    public void visitArithmeticOpInt(ArithmeticNode x) {
         int opcode = x.opcode;
         if (opcode == Bytecodes.IDIV || opcode == Bytecodes.IREM) {
             // emit code for integer division or modulus
@@ -299,7 +300,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public void visitArithmeticOpWord(Arithmetic x) {
+    public void visitArithmeticOpWord(ArithmeticNode x) {
         int opcode = x.opcode;
         if (opcode == Bytecodes.WDIV || opcode == Bytecodes.WREM || opcode == Bytecodes.WDIVI || opcode == Bytecodes.WREMI) {
             // emit code for long division or modulus
@@ -352,7 +353,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitArithmetic(Arithmetic x) {
+    public void visitArithmetic(ArithmeticNode x) {
         trySwap(x);
 
         if (x.kind.isWord() || x.opcode == Bytecodes.WREMI) {
@@ -393,7 +394,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitLogic(Logic x) {
+    public void visitLogic(LogicNode x) {
         trySwap(x);
 
         LIRItem right = new LIRItem(x.y(), this);
@@ -405,12 +406,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
         logicOp(x.opcode, reg, left, right.result());
     }
 
-    private void trySwap(Binary x) {
+    private void trySwap(BinaryNode x) {
         // (tw) TODO: Check what this is for?
     }
 
     @Override
-    public void visitNormalizeCompare(NormalizeCompare x) {
+    public void visitNormalizeCompare(NormalizeCompareNode x) {
         LIRItem left = new LIRItem(x.x(), this);
         LIRItem right = new LIRItem(x.y(), this);
         if (!x.kind.isVoid() && x.x().kind.isLong()) {
@@ -433,7 +434,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitConvert(Convert x) {
+    public void visitConvert(ConvertNode x) {
         CiValue input = load(x.value());
         CiVariable result = newVariable(x.kind);
         // arguments of lirConvert
@@ -458,7 +459,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitLoopBegin(LoopBegin x) {
+    public void visitLoopBegin(LoopBeginNode x) {
     }
 
     @Override
@@ -467,7 +468,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitMathIntrinsic(MathIntrinsic node) {
+    public void visitMathIntrinsic(MathIntrinsicNode node) {
         assert node.kind == CiKind.Double;
         LIRItem opd = new LIRItem(node.x(), this);
         opd.setDestroysRegister();
