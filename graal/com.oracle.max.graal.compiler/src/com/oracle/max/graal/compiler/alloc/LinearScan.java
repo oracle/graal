@@ -38,10 +38,11 @@ import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.base.FrameState.ValueProcedure;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.value.*;
-import com.oracle.max.graal.compiler.value.FrameState.ValueProcedure;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -639,7 +640,7 @@ public final class LinearScan {
                 if (info != null) {
                     assert info.state != null;
                     info.state.forEachLiveStateValue(new ValueProcedure() {
-                        public void doValue(Value value) {
+                        public void doValue(ValueNode value) {
                             CiValue operand = value.operand();
                             if (operand.isVariable()) {
                                 int operandNum = operandNumber(operand);
@@ -834,7 +835,7 @@ public final class LinearScan {
         for (int operandNum = 0; operandNum < ir.startBlock.liveIn.size(); operandNum++) {
             if (ir.startBlock.liveIn.get(operandNum)) {
                 CiValue operand = operands.operandFor(operandNum);
-                Value instr = operand.isVariable() ? gen.operands.instructionForResult(((CiVariable) operand)) : null;
+                ValueNode instr = operand.isVariable() ? gen.operands.instructionForResult(((CiVariable) operand)) : null;
                 TTY.println(" var %d (HIR instruction %s)", operandNum, instr == null ? " " : instr.toString());
 
                 if (instr instanceof Phi) {
@@ -1273,7 +1274,7 @@ public final class LinearScan {
                 LIRDebugInfo info = op.info;
                 if (info != null) {
                     info.state.forEachLiveStateValue(new ValueProcedure() {
-                        public void doValue(Value value) {
+                        public void doValue(ValueNode value) {
                             CiValue operand = value.operand();
                             if (operand.isVariableOrRegister()) {
                                 addUse(operand, blockFrom, (opId + 1), RegisterPriority.None, null);
@@ -1864,7 +1865,7 @@ public final class LinearScan {
         private final int opId;
         private final BitMap frameRefMap;
 
-        private HashMap<VirtualObject, CiVirtualObject> virtualObjects;
+        private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects;
 
         public DebugFrameBuilder(FrameState topState, int opId, BitMap frameRefMap) {
             this.topState = topState;
@@ -1872,12 +1873,12 @@ public final class LinearScan {
             this.frameRefMap = frameRefMap;
         }
 
-        private CiValue toCiValue(Value value) {
-            if (value instanceof VirtualObject) {
+        private CiValue toCiValue(ValueNode value) {
+            if (value instanceof VirtualObjectNode) {
                 if (virtualObjects == null) {
-                    virtualObjects = new HashMap<VirtualObject, CiVirtualObject>();
+                    virtualObjects = new HashMap<VirtualObjectNode, CiVirtualObject>();
                 }
-                VirtualObject obj = (VirtualObject) value;
+                VirtualObjectNode obj = (VirtualObjectNode) value;
                 CiVirtualObject ciObj = virtualObjects.get(value);
                 if (ciObj == null) {
                     ciObj = CiVirtualObject.get(obj.type(), null, value.id());
@@ -1947,7 +1948,7 @@ public final class LinearScan {
                     CiStackSlot objectAddress = frameMap.toMonitorObjectStackAddress(i);
                     frameRefMap.set(objectAddress.index());
                 } else {
-                    Value lock = state.lockAt(i);
+                    ValueNode lock = state.lockAt(i);
                     if (lock.isConstant() && compilation.runtime.asJavaClass(lock.asConstant()) != null) {
                         // lock on class for synchronized static method
                         values[valueIndex++] = lock.asConstant();
@@ -1972,11 +1973,11 @@ public final class LinearScan {
 
             if (virtualObjects != null) {
                 // collect all VirtualObjectField instances:
-                HashMap<VirtualObject, VirtualObjectField> objectStates = new HashMap<VirtualObject, VirtualObjectField>();
+                HashMap<VirtualObjectNode, VirtualObjectFieldNode> objectStates = new HashMap<VirtualObjectNode, VirtualObjectFieldNode>();
                 FrameState current = topState;
                 do {
                     for (Node n : current.virtualObjectMappings()) {
-                        VirtualObjectField field = (VirtualObjectField) n;
+                        VirtualObjectFieldNode field = (VirtualObjectFieldNode) n;
                         // null states occur for objects with 0 fields
                         if (field != null && !objectStates.containsKey(field.object())) {
                             objectStates.put(field.object(), field);
@@ -1989,10 +1990,10 @@ public final class LinearScan {
                 boolean changed;
                 do {
                     changed = false;
-                    HashMap<VirtualObject, CiVirtualObject> virtualObjectsCopy = new HashMap<VirtualObject, CiVirtualObject>(virtualObjects);
-                    for (Entry<VirtualObject, CiVirtualObject> entry : virtualObjectsCopy.entrySet()) {
+                    HashMap<VirtualObjectNode, CiVirtualObject> virtualObjectsCopy = new HashMap<VirtualObjectNode, CiVirtualObject>(virtualObjects);
+                    for (Entry<VirtualObjectNode, CiVirtualObject> entry : virtualObjectsCopy.entrySet()) {
                         if (entry.getValue().values() == null) {
-                            VirtualObject vobj = entry.getKey();
+                            VirtualObjectNode vobj = entry.getKey();
                             CiValue[] values = new CiValue[vobj.fields().length];
                             entry.getValue().setValues(values);
                             if (vobj.fields().length > 0) {
@@ -2000,12 +2001,12 @@ public final class LinearScan {
                                 FloatingNode currentField = objectStates.get(vobj);
                                 assert currentField != null;
                                 do {
-                                    if (currentField instanceof VirtualObjectField) {
-                                        int index = ((VirtualObjectField) currentField).index();
+                                    if (currentField instanceof VirtualObjectFieldNode) {
+                                        int index = ((VirtualObjectFieldNode) currentField).index();
                                         if (values[index] == null) {
-                                            values[index] = toCiValue(((VirtualObjectField) currentField).input());
+                                            values[index] = toCiValue(((VirtualObjectFieldNode) currentField).input());
                                         }
-                                        currentField = ((VirtualObjectField) currentField).lastState();
+                                        currentField = ((VirtualObjectFieldNode) currentField).lastState();
                                     } else {
                                         assert currentField instanceof Phi : currentField;
                                         currentField = (FloatingNode) ((Phi) currentField).valueAt(0);
@@ -2406,7 +2407,7 @@ public final class LinearScan {
                 }
                 CiValue operand = operands.operandFor(operandNum);
                 assert operand.isVariable() : "value must have variable operand";
-                Value value = gen.operands.instructionForResult(((CiVariable) operand));
+                ValueNode value = gen.operands.instructionForResult(((CiVariable) operand));
                 assert value != null : "all intervals live across block boundaries must have Value";
                 // TKR assert value.asConstant() == null || value.isPinned() :
                 // "only pinned constants can be alive accross block boundaries";

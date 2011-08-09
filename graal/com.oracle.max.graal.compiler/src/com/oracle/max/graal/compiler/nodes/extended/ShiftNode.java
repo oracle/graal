@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,12 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
+
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 /**
- * The {@code ValueClosure} interface represents a first-class
- * function that can be applied to a value.
+ * The {@code ShiftOp} class represents shift operations.
  */
-public interface ValueClosure {
-    Value apply(Value i);
+public abstract class ShiftNode extends Binary {
+
+    /**
+     * Creates a new shift operation.
+     * @param opcode the opcode of the shift
+     * @param x the first input value
+     * @param s the second input value
+     */
+    public ShiftNode(CiKind kind, int opcode, ValueNode x, ValueNode s, Graph graph) {
+        super(kind, opcode, x, s, graph);
+        assert x == null || x.kind == kind;
+    }
+
+    @Override
+    public void accept(ValueVisitor v) {
+        v.visitShift(this);
+    }
 }

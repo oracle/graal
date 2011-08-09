@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.gen;
 
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
 
@@ -45,14 +46,14 @@ public final class PhiSimplifier {
         }
     }
 
-    private Value simplify(Value x) {
+    private ValueNode simplify(ValueNode x) {
         if (x == null || !(x instanceof Phi)) {
             return x;
         }
         Phi phi = (Phi) x;
 
         if (phi.valueCount() == 1 && !cannotSimplify.isMarked(phi)) {
-            Value result = phi.valueAt(0);
+            ValueNode result = phi.valueAt(0);
             phi.replaceAndDelete(result);
             return result;
         }
@@ -66,11 +67,11 @@ public final class PhiSimplifier {
         } else {
             // attempt to simplify the phi by recursively simplifying its operands
             visited.mark(phi);
-            Value phiSubst = null;
+            ValueNode phiSubst = null;
             int max = phi.valueCount();
             boolean cannotSimplify = false;
             for (int i = 0; i < max; i++) {
-                Value oldInstr = phi.valueAt(i);
+                ValueNode oldInstr = phi.valueAt(i);
 
                 if (oldInstr == null) {
                     // if one operand is illegal, make the entire phi illegal
@@ -79,7 +80,7 @@ public final class PhiSimplifier {
                     return null;
                 }
 
-                Value newInstr = simplify(oldInstr);
+                ValueNode newInstr = simplify(oldInstr);
 
                 if (newInstr == null) {
                     // if the subst instruction is illegal, make the entire phi illegal

@@ -27,12 +27,15 @@ import static com.sun.cri.ci.CiUtil.*;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.Interval.*;
+import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
+import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
+import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
+import com.oracle.max.graal.compiler.alloc.Interval.State;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiRegister.*;
+import com.sun.cri.ci.CiRegister.RegisterFlag;
 
 /**
  *

@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 @NodeInfo(shortName = "+")
 public final class IntegerAdd extends IntegerArithmeticNode implements Canonicalizable {
 
-    public IntegerAdd(CiKind kind, Value x, Value y, Graph graph) {
+    public IntegerAdd(CiKind kind, ValueNode x, ValueNode y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IADD : Bytecodes.LADD, x, y, graph);
     }
 

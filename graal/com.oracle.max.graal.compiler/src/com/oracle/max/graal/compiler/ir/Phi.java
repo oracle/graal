@@ -26,9 +26,9 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.ir.StateSplit.FilteringIterator;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.StateSplit.FilteringIterator;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -40,7 +40,7 @@ public final class Phi extends FloatingNode implements Canonicalizable {
 
     @Input private Merge merge;
 
-    @Input private final NodeInputList<Value> values = new NodeInputList<Value>(this);
+    @Input private final NodeInputList<ValueNode> values = new NodeInputList<ValueNode>(this);
 
     public Merge merge() {
         return merge;
@@ -87,11 +87,11 @@ public final class Phi extends FloatingNode implements Canonicalizable {
      * @param i the index of the predecessor
      * @return the instruction that produced the value in the i'th predecessor
      */
-    public Value valueAt(int i) {
+    public ValueNode valueAt(int i) {
         return values.get(i);
     }
 
-    public void setValueAt(int i, Value x) {
+    public void setValueAt(int i, ValueNode x) {
         values.set(i, x);
     }
 
@@ -110,18 +110,6 @@ public final class Phi extends FloatingNode implements Canonicalizable {
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print("phi function (");
-        for (int i = 0; i < valueCount(); ++i) {
-            if (i != 0) {
-                out.print(' ');
-            }
-            out.print(valueAt(i));
-        }
-        out.print(')');
-    }
-
-    @Override
     public String shortName() {
         StringBuilder str = new StringBuilder();
         for (int i = 0; i < valueCount(); ++i) {
@@ -137,7 +125,7 @@ public final class Phi extends FloatingNode implements Canonicalizable {
         }
     }
 
-    public void addInput(Value x) {
+    public void addInput(ValueNode x) {
         values.add(x);
     }
 
@@ -174,8 +162,8 @@ public final class Phi extends FloatingNode implements Canonicalizable {
         }
         If ifNode = (If) endPred0;
         boolean inverted = ifNode.trueSuccessor() == end1;
-        Value trueValue = valueAt(inverted ? 1 : 0);
-        Value falseValue = valueAt(inverted ? 0 : 1);
+        ValueNode trueValue = valueAt(inverted ? 1 : 0);
+        ValueNode falseValue = valueAt(inverted ? 0 : 1);
         if ((trueValue.kind != CiKind.Int && trueValue.kind != CiKind.Long) || (falseValue.kind != CiKind.Int && falseValue.kind != CiKind.Long)) {
             return this;
         }

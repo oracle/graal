@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import static com.oracle.max.graal.compiler.GraalCompilation.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -171,11 +171,6 @@ public final class Constant extends BooleanNode {
     @Override
     public RiType exactType() {
         return declaredType();
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(value.valueString());
     }
 
     @Override

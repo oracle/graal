@@ -22,9 +22,8 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -33,40 +32,38 @@ import com.sun.cri.ci.*;
  */
 public class UnsafeStore extends StateSplit {
 
-    @Input    private Value object;
+    @Input private ValueNode object;
+    @Input private ValueNode offset;
+    @Input private ValueNode value;
 
-    @Input    private Value offset;
-
-    @Input    private Value value;
-
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
 
-    public Value offset() {
+    public ValueNode offset() {
         return offset;
     }
 
-    public void setOffset(Value x) {
+    public void setOffset(ValueNode x) {
         updateUsages(offset, x);
         offset = x;
     }
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
 
-    public UnsafeStore(Value object, Value offset, Value value, CiKind kind, Graph graph) {
+    public UnsafeStore(ValueNode object, ValueNode offset, ValueNode value, CiKind kind, Graph graph) {
         super(kind, graph);
         setObject(object);
         setOffset(offset);
@@ -77,7 +74,7 @@ public class UnsafeStore extends StateSplit {
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
         if (clazz == LoweringOp.class) {
-            return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
+            return (T) DELEGATE_TO_RUNTIME;
         }
         return super.lookup(clazz);
     }

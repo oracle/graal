@@ -24,7 +24,8 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -41,22 +42,13 @@ public final class NormalizeCompare extends Binary {
      * @param x the first input
      * @param y the second input
      */
-    public NormalizeCompare(int opcode, CiKind kind, Value x, Value y, Graph graph) {
+    public NormalizeCompare(int opcode, CiKind kind, ValueNode x, ValueNode y, Graph graph) {
         super(kind, opcode, x, y, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
         v.visitNormalizeCompare(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).
-            print(' ').
-            print(Bytecodes.operator(opcode)).
-            print(' ').
-            print(y());
     }
 
     @Override

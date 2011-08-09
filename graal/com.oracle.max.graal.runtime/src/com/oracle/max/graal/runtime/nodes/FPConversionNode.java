@@ -22,30 +22,27 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.gen.LIRGenerator.LIRGeneratorOp;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class FPConversionNode extends FloatingNode implements Canonicalizable {
 
-    @Input private Value value;
+    @Input private ValueNode value;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
 
-    public FPConversionNode(CiKind kind, Value value, Graph graph) {
+    public FPConversionNode(CiKind kind, ValueNode value, Graph graph) {
         super(kind, graph);
         this.setValue(value);
     }
@@ -59,20 +56,15 @@ public final class FPConversionNode extends FloatingNode implements Canonicaliza
         return super.lookup(clazz);
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print("fp conversion node ").print(value());
-    }
-
     private static final LIRGeneratorOp LIRGEN = new LIRGeneratorOp() {
 
         @Override
-        public void generate(Node n, LIRGenerator generator) {
+        public void generate(Node n, LIRGeneratorTool generator) {
             FPConversionNode conv = (FPConversionNode) n;
             CiValue reg = generator.createResultVariable(conv);
             CiValue value = generator.load(conv.value());
             CiValue tmp = generator.forceToSpill(value, conv.kind, false);
-            generator.lir().move(tmp, reg);
+            generator.emitMove(tmp, reg);
         }
     };
 

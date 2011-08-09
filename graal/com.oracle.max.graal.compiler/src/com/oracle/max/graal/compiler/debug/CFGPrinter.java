@@ -32,9 +32,9 @@ import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFormatter;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiAddress.Scale;
@@ -258,7 +258,7 @@ public class CFGPrinter {
                 if (i == 0) {
                     buf.append(' ');
                 }
-                Value value = state.stackAt(i);
+                ValueNode value = state.stackAt(i);
                 buf.append(stateValueToString(value, operandFmt)).append(' ');
                 i++;
             }
@@ -271,7 +271,7 @@ public class CFGPrinter {
                 if (i == 0) {
                     buf.append(' ');
                 }
-                Value value = state.lockAt(i);
+                ValueNode value = state.lockAt(i);
                 buf.append(stateValueToString(value, operandFmt)).append(' ');
             }
             buf.append("\n");
@@ -283,7 +283,7 @@ public class CFGPrinter {
             if (i == 0) {
                 buf.append(' ');
             }
-            Value value = state.localAt(i);
+            ValueNode value = state.localAt(i);
             buf.append(stateValueToString(value, operandFmt)).append(' ');
             i++;
         }
@@ -291,7 +291,7 @@ public class CFGPrinter {
         return buf.toString();
     }
 
-    private String stateValueToString(Value value, OperandFormatter operandFmt) {
+    private String stateValueToString(ValueNode value, OperandFormatter operandFmt) {
         if (operandFmt == null) {
             return Util.valueString(value);
         }
@@ -504,7 +504,7 @@ public class CFGPrinter {
         }
     }
 
-    private void printOperand(Value i) {
+    private void printOperand(ValueNode i) {
         if (i != null && i.operand().isLegal()) {
             out.print(new CFGOperandFormatter(true).format(i.operand()));
         }
@@ -531,7 +531,7 @@ public class CFGPrinter {
         }
 
         out.print("instruction ");
-        i.print(out);
+        out.print(i.toString());
         out.print(COLUMN_END).print(' ').println(COLUMN_END);
     }
 

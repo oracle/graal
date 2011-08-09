@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -83,11 +83,6 @@ public final class Local extends FloatingNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitLocal(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("local[index ").print(index()).print(']');
     }
 
     @Override

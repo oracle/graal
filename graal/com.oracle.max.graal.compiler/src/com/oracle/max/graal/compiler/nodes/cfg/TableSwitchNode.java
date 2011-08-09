@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
-
-import static com.oracle.max.graal.compiler.debug.InstructionPrinter.InstructionLineColumn.*;
+package com.oracle.max.graal.compiler.nodes.cfg;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 
 /**
  * The {@code TableSwitch} instruction represents a table switch.
  */
-public final class TableSwitch extends Switch {
+public final class TableSwitchNode extends SwitchNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -47,7 +47,7 @@ public final class TableSwitch extends Switch {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public TableSwitch(Value value, List<? extends FixedNode> successors, int lowKey, double[] probability, Graph graph) {
+    public TableSwitchNode(ValueNode value, List<? extends FixedNode> successors, int lowKey, double[] probability, Graph graph) {
         super(value, successors, probability, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.lowKey = lowKey;
     }
@@ -71,18 +71,5 @@ public final class TableSwitch extends Switch {
     @Override
     public void accept(ValueVisitor v) {
         v.visitTableSwitch(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("tableswitch ");
-        out.println(value());
-        int l = numberOfCases();
-        for (int i = 0; i < l; i++) {
-            INSTRUCTION.advance(out);
-            out.printf("case %5d: B%d%n", lowKey() + i, blockSuccessor(i));
-        }
-        INSTRUCTION.advance(out);
-        out.print("default   : ").print(defaultSuccessor());
     }
 }

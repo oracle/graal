@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler;
 
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.Map.*;
+import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.debug.*;
 

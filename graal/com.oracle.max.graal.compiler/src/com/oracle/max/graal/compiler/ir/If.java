@@ -22,10 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -101,23 +98,12 @@ public final class If extends ControlSplit implements Canonicalizable {
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print("if ").print(compare()).print(" then ").print(trueSuccessor()).print(" else ").print(falseSuccessor());
-    }
-
-    @Override
     public Node canonical(NotifyReProcess reProcess) {
         if (compare() instanceof Constant) {
             Constant c = (Constant) compare();
             if (c.asConstant().asBoolean()) {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("Replacing if " + this + " with true branch");
-                }
                 return trueSuccessor();
             } else {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("Replacing if " + this + " with false branch");
-                }
                 return falseSuccessor();
             }
         }

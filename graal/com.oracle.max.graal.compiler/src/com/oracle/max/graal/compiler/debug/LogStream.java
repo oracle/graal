@@ -25,7 +25,7 @@ package com.oracle.max.graal.compiler.debug;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
 
 /**
@@ -451,12 +451,12 @@ public class LogStream {
     }
 
     /**
-     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.ir.Value) value} to this stream.
+     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.nodes.base.ValueNode) value} to this stream.
      *
      * @param value the instruction to print
      * @return this {@code LogStream} instance
      */
-    public LogStream print(Value value) {
+    public LogStream print(ValueNode value) {
         if (ps != null) {
             indent();
             lineBuffer.append(Util.valueString(value));
@@ -465,13 +465,13 @@ public class LogStream {
     }
 
     /**
-     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.ir.Value) value} to this stream
+     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.nodes.base.ValueNode) value} to this stream
      * followed by a {@linkplain #LINE_SEPARATOR line separator}.
      *
      * @param value the instruction to print
      * @return this {@code LogStream} instance
      */
-    public LogStream println(Value value) {
+    public LogStream println(ValueNode value) {
         if (ps != null) {
             print(value);
             flushLine(true);

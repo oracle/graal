@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -370,7 +371,7 @@ public class Util {
      * Determines if the kinds of two given IR nodes are equal at the {@linkplain #archKind(CiKind) architecture}
      * level in the context of the {@linkplain GraalCompilation#compilation()} compilation.
      */
-    public static boolean archKindsEqual(Value i, Value other) {
+    public static boolean archKindsEqual(ValueNode i, ValueNode other) {
         return archKindsEqual(i.kind, other.kind);
     }
 
@@ -417,12 +418,12 @@ public class Util {
     /**
      * Converts a given instruction to a value string. The representation of an instruction as
      * a value is formed by concatenating the {@linkplain com.sun.cri.ci.CiKind#typeChar character} denoting its
-     * {@linkplain Value#kind kind} and its {@linkplain Value#id()}. For example, {@code "i13"}.
+     * {@linkplain ValueNode#kind kind} and its {@linkplain ValueNode#id()}. For example, {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-" is returned.
      * @return the instruction representation as a string
      */
-    public static String valueString(Value value) {
+    public static String valueString(ValueNode value) {
         return (value == null) ? "-" : ("" + value.kind.typeChar + value.id());
     }
 

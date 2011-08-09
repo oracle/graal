@@ -41,9 +41,12 @@ import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.base.FrameState.ValueProcedure;
+import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.value.*;
-import com.oracle.max.graal.compiler.value.FrameState.ValueProcedure;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.bytecode.Bytecodes.MemoryBarriers;
@@ -61,7 +64,7 @@ import com.sun.cri.xir.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator extends ValueVisitor {
+public abstract class LIRGenerator extends LIRGeneratorTool {
 
     /**
      * Helper class for inserting memory barriers as necessary to implement the Java Memory Model
@@ -116,11 +119,11 @@ public abstract class LIRGenerator extends ValueVisitor {
      * Forces the result of a given instruction to be available in a given register,
      * inserting move instructions if necessary.
      *
-     * @param instruction an instruction that produces a {@linkplain Value#operand() result}
+     * @param instruction an instruction that produces a {@linkplain ValueNode#operand() result}
      * @param register the {@linkplain CiRegister} in which the result of {@code instruction} must be available
      * @return {@code register} as an operand
      */
-    protected CiValue force(Value instruction, CiRegister register) {
+    protected CiValue force(ValueNode instruction, CiRegister register) {
         return force(instruction, register.asValue(instruction.kind));
     }
 
@@ -128,11 +131,11 @@ public abstract class LIRGenerator extends ValueVisitor {
      * Forces the result of a given instruction to be available in a given operand,
      * inserting move instructions if necessary.
      *
-     * @param instruction an instruction that produces a {@linkplain Value#operand() result}
+     * @param instruction an instruction that produces a {@linkplain ValueNode#operand() result}
      * @param operand the operand in which the result of {@code instruction} must be available
      * @return {@code operand}
      */
-    protected CiValue force(Value instruction, CiValue operand) {
+    protected CiValue force(ValueNode instruction, CiValue operand) {
         CiValue result = makeOperand(instruction);
         if (result != operand) {
             assert result.kind != CiKind.Illegal;
@@ -147,7 +150,8 @@ public abstract class LIRGenerator extends ValueVisitor {
         return operand;
     }
 
-    public CiValue load(Value val) {
+    @Override
+    public CiValue load(ValueNode val) {
         CiValue result = makeOperand(val);
         if (!result.isVariableOrRegister()) {
             CiVariable operand = newVariable(val.kind);
@@ -180,8 +184,8 @@ public abstract class LIRGenerator extends ValueVisitor {
 
     public final OperandPool operands;
 
-    private Value currentInstruction;
-    private Value lastInstructionPrinted; // Debugging only
+    private ValueNode currentInstruction;
+    private ValueNode lastInstructionPrinted; // Debugging only
 
     private List<CiConstant> constants;
     private List<CiVariable> variablesForConstants;
@@ -204,6 +208,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         this.operands = new OperandPool(compilation.target);
     }
 
+    @Override
     public CiTarget target() {
         return compilation.target;
     }
@@ -288,7 +293,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
             if (instr != instr.graph().start()) {
                 walkState(instr, stateAfter);
-                doRoot((Value) instr);
+                doRoot((ValueNode) instr);
             }
             if (stateAfter != null) {
                 lastState = stateAfter;
@@ -406,7 +411,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitStoreIndexed(StoreIndexed x) {
+    public void visitStoreIndexed(StoreIndexedNode x) {
         XirArgument array = toXirArgument(x.array());
         XirArgument length = x.length() == null ? null : toXirArgument(x.length());
         XirArgument index = toXirArgument(x.index());
@@ -517,7 +522,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         } else if (node instanceof Compare) {
             emitCompare((Compare) node, trueSuccessor, falseSuccessor);
         } else if (node instanceof InstanceOf) {
-            emitInstanceOf((TypeCheck) node, trueSuccessor, falseSuccessor, info);
+            emitInstanceOf((TypeCheckNode) node, trueSuccessor, falseSuccessor, info);
         } else if (node instanceof Constant) {
             emitConstantBranch(((Constant) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
         } else {
@@ -544,7 +549,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    private void emitInstanceOf(TypeCheck x, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
+    private void emitInstanceOf(TypeCheckNode x, LIRBlock trueSuccessor, LIRBlock falseSuccessor, LIRDebugInfo info) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
         emitXir(snippet, x, info, null, false);
@@ -553,8 +558,8 @@ public abstract class LIRGenerator extends ValueVisitor {
         instr.setFalseSuccessor(falseSuccessor);
     }
 
-    public void emitMaterializeInstanceOf(MaterializeNode materialize, Value resultValue, LIRDebugInfo info) {
-        TypeCheck x = (TypeCheck) materialize.condition();
+    public void emitMaterializeInstanceOf(MaterializeNode materialize, ValueNode resultValue, LIRDebugInfo info) {
+        TypeCheckNode x = (TypeCheckNode) materialize.condition();
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
         emitXir(snippet, resultValue, info, null, true);
@@ -623,7 +628,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     protected FrameState stateBeforeInvokeWithArguments(Invoke invoke) {
-        return invoke.stateAfter().duplicateModified(invoke.bci, invoke.stateAfter().rethrowException(), invoke.kind, invoke.arguments().toArray(new Value[0]));
+        return invoke.stateAfter().duplicateModified(invoke.bci, invoke.stateAfter().rethrowException(), invoke.kind, invoke.arguments().toArray(new ValueNode[0]));
     }
 
     @Override
@@ -665,7 +670,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         CiValue resultOperand = resultOperandFor(x.kind);
-        CiCallingConvention cc = compilation.frameMap().getCallingConvention(x.signature(), JavaCall);
+        CiCallingConvention cc = compilation.frameMap().getCallingConvention(getSignature(x), JavaCall);
         List<CiValue> pointerSlots = new ArrayList<CiValue>(2);
         List<CiValue> argList = visitInvokeArguments(cc, x, pointerSlots);
 
@@ -688,6 +693,11 @@ public abstract class LIRGenerator extends ValueVisitor {
             CiValue result = createResultVariable(x);
             lir.move(resultOperand, result);
         }
+    }
+
+    private CiKind[] getSignature(Invoke x) {
+        CiKind receiver = x.isStatic() ? null : x.target.holder().kind();
+        return Util.signatureToKinds(x.target.signature(), receiver);
     }
 
     @Override
@@ -818,6 +828,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return stub;
     }
 
+    @Override
     public void deoptimizeOn(Condition cond) {
         DeoptimizationStub stub = createDeoptStub();
         lir.branch(cond, stub.label, stub.info);
@@ -857,7 +868,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return XirArgument.forInternalObject(v);
     }
 
-    protected XirArgument toXirArgument(Value i) {
+    protected XirArgument toXirArgument(ValueNode i) {
         if (i == null) {
             return null;
         }
@@ -904,11 +915,11 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    protected CiValue emitXir(XirSnippet snippet, Value x, LIRDebugInfo info, RiMethod method, boolean setInstructionResult) {
+    protected CiValue emitXir(XirSnippet snippet, ValueNode x, LIRDebugInfo info, RiMethod method, boolean setInstructionResult) {
         return emitXir(snippet, x, info, null, method, setInstructionResult, null);
     }
 
-    protected CiValue emitXir(XirSnippet snippet, Value instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, RiMethod method, boolean setInstructionResult, List<CiValue> pointerSlots) {
+    protected CiValue emitXir(XirSnippet snippet, ValueNode instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, RiMethod method, boolean setInstructionResult, List<CiValue> pointerSlots) {
         if (GraalOptions.PrintXirTemplates) {
             TTY.println("Emit XIR template " + snippet.template.name);
         }
@@ -1028,7 +1039,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitStoreField(StoreField x) {
+    public void visitStoreField(StoreFieldNode x) {
         RiField field = x.field();
         LIRDebugInfo info = stateFor(x);
 
@@ -1047,7 +1058,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitTableSwitch(TableSwitch x) {
+    public void visitTableSwitch(TableSwitchNode x) {
 
         LIRItem value = new LIRItem(x.value(), this);
         // Making a copy of the switch value is necessary when generating a jump table
@@ -1121,6 +1132,7 @@ public abstract class LIRGenerator extends ValueVisitor {
      * @return the operand that is guaranteed to be a stack location when it is
      *         initially defined a by move from {@code value}
      */
+    @Override
     public CiValue forceToSpill(CiValue value, CiKind kind, boolean mustStayOnStack) {
         assert value.isLegal() : "value should not be illegal";
         assert kind.jvmSlots == value.kind.jvmSlots : "size mismatch";
@@ -1165,7 +1177,8 @@ public abstract class LIRGenerator extends ValueVisitor {
      * @param x an instruction that produces a result
      * @return the variable assigned to hold the result produced by {@code x}
      */
-    public CiVariable createResultVariable(Value x) {
+    @Override
+    public CiVariable createResultVariable(ValueNode x) {
         CiVariable operand = newVariable(x.kind);
         setResult(x, operand);
         return operand;
@@ -1236,8 +1249,19 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    public void integerAdd(Value result, Value left, Value right) {
+    @Override
+    public void integerAdd(ValueNode result, ValueNode left, ValueNode right) {
         arithmeticOpInt(Bytecodes.IADD, createResultVariable(result), load(left), load(right), CiValue.IllegalValue);
+    }
+
+    @Override
+    public void emitUnsignedShiftRight(CiValue value, CiValue count, CiValue dst, CiValue tmp) {
+        lir().unsignedShiftRight(value, count, dst, tmp);
+    }
+
+    @Override
+    public void emitAdd(CiValue a, CiValue b, CiValue dest) {
+        lir().add(a, b, dest);
     }
 
     public void arithmeticOpInt(int code, CiValue result, CiValue left, CiValue right, CiValue tmp) {
@@ -1383,7 +1407,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return res.toArray(new SwitchRange[res.size()]);
     }
 
-    SwitchRange[] createLookupRanges(TableSwitch x) {
+    SwitchRange[] createLookupRanges(TableSwitchNode x) {
         // XXX: try to merge this with the code for LookupSwitch
         List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
         int len = x.numberOfCases();
@@ -1413,7 +1437,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return res.toArray(new SwitchRange[res.size()]);
     }
 
-    void doRoot(Value instr) {
+    void doRoot(ValueNode instr) {
         if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
@@ -1529,7 +1553,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         PhiResolver resolver = new PhiResolver(this);
         for (Phi phi : merge.phis()) {
             if (phi.type() == PhiType.Value) {
-                Value curVal = phi.valueAt(nextSuccIndex);
+                ValueNode curVal = phi.valueAt(nextSuccIndex);
                 if (curVal != null && curVal != phi) {
                     if (curVal instanceof Phi) {
                         operandForPhi((Phi) curVal);
@@ -1552,11 +1576,12 @@ public abstract class LIRGenerator extends ValueVisitor {
      * @param kind the kind of the variable
      * @return a new variable
      */
+    @Override
     public CiVariable newVariable(CiKind kind) {
         return operands.newVariable(kind);
     }
 
-    CiValue operandForInstruction(Value x) {
+    CiValue operandForInstruction(ValueNode x) {
         CiValue operand = x.operand();
         if (operand.isIllegal()) {
             if (x instanceof Constant) {
@@ -1589,11 +1614,11 @@ public abstract class LIRGenerator extends ValueVisitor {
     protected void preGCWriteBarrier(CiValue addrOpr, boolean patch, LIRDebugInfo info) {
     }
 
-    protected void setNoResult(Value x) {
+    protected void setNoResult(ValueNode x) {
         x.clearOperand();
     }
 
-    public CiValue setResult(Value x, CiVariable operand) {
+    public CiValue setResult(ValueNode x, CiVariable operand) {
         x.setOperand(operand);
         if (GraalOptions.DetailedAsserts) {
             operands.recordResult(operand, x);
@@ -1633,7 +1658,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
 
         state.forEachLiveStateValue(new ValueProcedure() {
-            public void doValue(Value value) {
+            public void doValue(ValueNode value) {
                 if (value == x) {
                     // nothing to do, will be visited shortly
                 } else if (value instanceof Phi && ((Phi) value).type() == PhiType.Value) {
@@ -1648,12 +1673,12 @@ public abstract class LIRGenerator extends ValueVisitor {
         });
     }
 
-    protected LIRDebugInfo stateFor(Value x) {
+    protected LIRDebugInfo stateFor(ValueNode x) {
         assert lastState != null : "must have state before instruction for " + x;
         return stateFor(x, lastState);
     }
 
-    protected LIRDebugInfo stateFor(Value x, FrameState state) {
+    protected LIRDebugInfo stateFor(ValueNode x, FrameState state) {
         if (compilation.placeholderState != null) {
             state = compilation.placeholderState;
         }
@@ -1664,7 +1689,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         // for each argument, load it into the correct location
         List<CiValue> argList = new ArrayList<CiValue>();
         int j = 0;
-        for (Value arg : x.arguments()) {
+        for (ValueNode arg : x.arguments()) {
             if (arg != null) {
                 CiValue operand = cc.locations[j++];
                 if (operand.isRegister()) {
@@ -1693,12 +1718,13 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     /**
-     * Ensures that an operand has been {@linkplain Value#setOperand(CiValue) initialized}
+     * Ensures that an operand has been {@linkplain ValueNode#setOperand(CiValue) initialized}
      * for storing the result of an instruction.
      *
      * @param instruction an instruction that produces a result value
      */
-    public CiValue makeOperand(Value instruction) {
+    @Override
+    public CiValue makeOperand(ValueNode instruction) {
         if (instruction == null) {
             return CiValue.IllegalValue;
         }
@@ -1730,7 +1756,7 @@ public abstract class LIRGenerator extends ValueVisitor {
         return returnRegister.asValue(kind);
     }
 
-    protected XirSupport site(Value x) {
+    protected XirSupport site(ValueNode x) {
         return xirSupport.site(x);
     }
 
@@ -1742,9 +1768,9 @@ public abstract class LIRGenerator extends ValueVisitor {
         }
     }
 
-    public abstract boolean canInlineAsConstant(Value i);
+    public abstract boolean canInlineAsConstant(ValueNode i);
 
-    protected abstract boolean canStoreAsConstant(Value i, CiKind kind);
+    protected abstract boolean canStoreAsConstant(ValueNode i, CiKind kind);
 
     protected abstract boolean strengthReduceMultiply(CiValue left, int constant, CiValue result, CiValue tmp);
 
@@ -1758,7 +1784,7 @@ public abstract class LIRGenerator extends ValueVisitor {
      * Implements site-specific information for the XIR interface.
      */
     static class XirSupport implements XirSite {
-        Value current;
+        ValueNode current;
 
         XirSupport() {
         }
@@ -1800,7 +1826,7 @@ public abstract class LIRGenerator extends ValueVisitor {
             return current == null ? null : current.exactType();
         }
 
-        XirSupport site(Value v) {
+        XirSupport site(ValueNode v) {
             current = v;
             return this;
         }
@@ -1819,7 +1845,7 @@ public abstract class LIRGenerator extends ValueVisitor {
     }
 
     @Override
-    public void visitUnwind(Unwind x) {
+    public void visitUnwind(UnwindNode x) {
         // move exception oop into fixed register
         CiCallingConvention callingConvention = compilation.frameMap().getCallingConvention(new CiKind[]{CiKind.Object}, RuntimeCall);
         CiValue argumentOperand = callingConvention.locations[0];
@@ -1829,16 +1855,75 @@ public abstract class LIRGenerator extends ValueVisitor {
         setNoResult(x);
     }
 
-    public interface LIRGeneratorOp extends Op {
-        void generate(Node n, LIRGenerator generator);
-    }
-
-    public static final LIRGeneratorOp DELEGATE_TO_VALUE_VISITOR = new LIRGeneratorOp() {
-        @Override
-        public void generate(Node n, LIRGenerator generator) {
-            ((Value) n).accept(generator);
-        }
-    };
-
     public abstract Condition floatingPointCondition(Condition cond);
+
+    @Override
+    public void visitConditional(Conditional conditional) {
+
+        BooleanNode condition = conditional.condition();
+        LIRGenerator generator = this;
+
+        // try to use cmp + cmov first
+        Condition cond = null;
+        CiValue left = null;
+        CiValue right = null;
+        boolean floating = false;
+        boolean unOrderedIsSecond = false;
+        boolean negate = false;
+        while (condition instanceof NegateBooleanNode) {
+            negate = !negate;
+            condition = ((NegateBooleanNode) condition).value();
+        }
+        if (condition instanceof Compare) {
+            Compare compare = (Compare) condition;
+            ValueNode x = compare.x();
+            ValueNode y = compare.y();
+            cond = compare.condition();
+            if (x.kind.isFloatOrDouble()) {
+                floating = true;
+                unOrderedIsSecond = !compare.unorderedIsTrue();
+                cond = generator.floatingPointCondition(cond);
+            }
+            left = generator.load(x);
+            if (!generator.canInlineAsConstant(y)) {
+                right = generator.load(y);
+            } else {
+                right = generator.makeOperand(y);
+            }
+        } else if (condition instanceof IsNonNull) {
+            IsNonNull isNonNull = (IsNonNull) condition;
+            left = generator.load(isNonNull.object());
+            right = CiConstant.NULL_OBJECT;
+            cond = Condition.NE;
+        } else if (condition instanceof Constant) {
+            generator.lir().move(condition.asConstant(), generator.createResultVariable(conditional));
+        } else if (condition instanceof InstanceOf) {
+            if (conditional instanceof MaterializeNode && !negate) {
+                generator.emitMaterializeInstanceOf((MaterializeNode) conditional, conditional, null);
+            } else {
+                generator.emitMaterializeInstanceOf((MaterializeNode) conditional, condition, null);
+                left = condition.operand();
+                right = CiConstant.INT_1;
+                cond = Condition.EQ;
+            }
+        } else {
+            throw Util.shouldNotReachHere("Currently not implemented because we can not create blocks during LIRGen : " + condition);
+        }
+
+        if (cond != null) {
+            CiVariable result = generator.createResultVariable(conditional);
+            CiValue tVal = generator.makeOperand(conditional.trueValue());
+            CiValue fVal = generator.makeOperand(conditional.falseValue());
+            if (negate) {
+                cond = cond.negate();
+            }
+            assert left != null && right != null;
+            generator.lir().cmp(cond, left, right);
+            if (floating) {
+                generator.lir().fcmove(cond, tVal, fVal, result, unOrderedIsSecond);
+            } else {
+                generator.lir().cmove(cond, tVal, fVal, result);
+            }
+        }
+    }
 }

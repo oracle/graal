@@ -23,7 +23,9 @@
 package com.oracle.max.graal.compiler.alloc;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.Interval.*;
+import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
+import com.oracle.max.graal.compiler.alloc.Interval.RegisterBindingLists;
+import com.oracle.max.graal.compiler.alloc.Interval.State;
 import com.oracle.max.graal.compiler.debug.*;
 
 /**

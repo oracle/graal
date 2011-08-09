@@ -30,7 +30,8 @@ import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
-import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
@@ -407,7 +408,7 @@ public class InliningPhase extends Phase {
 
     public static ThreadLocal<ServiceLoader<Intrinsifier>> intrinsicLoader = new ThreadLocal<ServiceLoader<Intrinsifier>>();
 
-    private Graph intrinsicGraph(RiMethod parent, int bci, RiMethod target, List<Value> arguments) {
+    private Graph intrinsicGraph(RiMethod parent, int bci, RiMethod target, List<ValueNode> arguments) {
         ServiceLoader<Intrinsifier> serviceLoader = intrinsicLoader.get();
         if (serviceLoader == null) {
             serviceLoader = ServiceLoader.load(Intrinsifier.class);
@@ -434,7 +435,7 @@ public class InliningPhase extends Phase {
         boolean withReceiver = !invoke.isStatic();
 
         int argumentCount = method.signature().argumentCount(false);
-        Value[] parameters = new Value[argumentCount + (withReceiver ? 1 : 0)];
+        ValueNode[] parameters = new ValueNode[argumentCount + (withReceiver ? 1 : 0)];
         int slot = withReceiver ? 1 : 0;
         int param = withReceiver ? 1 : 0;
         for (int i = 0; i < argumentCount; i++) {
@@ -484,7 +485,7 @@ public class InliningPhase extends Phase {
         ArrayList<Node> nodes = new ArrayList<Node>();
         ArrayList<Node> frameStates = new ArrayList<Node>();
         Return returnNode = null;
-        Unwind unwindNode = null;
+        UnwindNode unwindNode = null;
         StartNode startNode = graph.start();
         for (Node node : graph.getNodes()) {
             if (node instanceof StartNode) {
@@ -495,8 +496,8 @@ public class InliningPhase extends Phase {
                 nodes.add(node);
                 if (node instanceof Return) {
                     returnNode = (Return) node;
-                } else if (node instanceof Unwind) {
-                    unwindNode = (Unwind) node;
+                } else if (node instanceof UnwindNode) {
+                    unwindNode = (UnwindNode) node;
                 } else if (node instanceof FrameState) {
                     frameStates.add(node);
                 }
@@ -581,7 +582,7 @@ public class InliningPhase extends Phase {
                 assert exceptionEdge.successors().explicitCount() == 1;
                 ExceptionObject obj = (ExceptionObject) exceptionEdge;
 
-                Unwind unwindDuplicate = (Unwind) duplicates.get(unwindNode);
+                UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
                 for (Node usage : obj.usages().snapshot()) {
                     usage.replaceFirstInput(obj, unwindDuplicate.exception());
                 }
@@ -592,7 +593,7 @@ public class InliningPhase extends Phase {
             }
         } else {
             if (unwindNode != null) {
-                Unwind unwindDuplicate = (Unwind) duplicates.get(unwindNode);
+                UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
                 unwindDuplicate.replaceAndDelete(new Deoptimize(DeoptAction.InvalidateRecompile, compilation.graph));
             }
         }

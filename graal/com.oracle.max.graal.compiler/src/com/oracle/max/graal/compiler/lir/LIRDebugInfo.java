@@ -23,8 +23,7 @@
 package com.oracle.max.graal.compiler.lir;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -34,7 +33,7 @@ import com.sun.cri.ci.*;
 public class LIRDebugInfo {
 
     public abstract static class ValueLocator {
-        public abstract CiValue getLocation(Value value);
+        public abstract CiValue getLocation(ValueNode value);
     }
 
     public final FrameState state;

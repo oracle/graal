@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -34,7 +35,7 @@ import com.sun.cri.ci.*;
 public class DerivedInductionVariable extends LinearInductionVariable {
     @Input private InductionVariable base;
 
-    public DerivedInductionVariable(CiKind kind, Value offset, Value scale, InductionVariable base, Graph graph) {
+    public DerivedInductionVariable(CiKind kind, ValueNode offset, ValueNode scale, InductionVariable base, Graph graph) {
         super(kind, offset, scale, graph);
         setBase(base);
     }
@@ -48,19 +49,19 @@ public class DerivedInductionVariable extends LinearInductionVariable {
         this.base = base;
     }
 
-    public Value offset() {
+    public ValueNode offset() {
         return a();
     }
 
-    public void setOffset(Value offset) {
+    public void setOffset(ValueNode offset) {
         setA(offset);
     }
 
-    public Value scale() {
+    public ValueNode scale() {
         return b();
     }
 
-    public void setScale(Value scale) {
+    public void setScale(ValueNode scale) {
         setB(scale);
     }
 
@@ -83,8 +84,8 @@ public class DerivedInductionVariable extends LinearInductionVariable {
         if (base instanceof DerivedInductionVariable) {
             base = ((DerivedInductionVariable) base).toBasicInductionVariable();
         }
-        Value init;
-        Value stride;
+        ValueNode init;
+        ValueNode stride;
         LoopCounter counter;
         if (base instanceof BasicInductionVariable) {
             BasicInductionVariable basic = (BasicInductionVariable) base;

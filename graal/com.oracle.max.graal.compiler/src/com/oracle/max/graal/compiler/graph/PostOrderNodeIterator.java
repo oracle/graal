@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.graph;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
 
@@ -86,8 +87,8 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
             } else if (current instanceof Return) {
                 returnNode((Return) current);
                 current = nextQueuedNode();
-            } else if (current instanceof Unwind) {
-                unwind((Unwind) current);
+            } else if (current instanceof UnwindNode) {
+                unwind((UnwindNode) current);
                 current = nextQueuedNode();
             } else if (current instanceof ControlSplit) {
                 controlSplit((ControlSplit) current);
@@ -189,7 +190,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         node(invoke);
     }
 
-    protected void unwind(Unwind unwind) {
+    protected void unwind(UnwindNode unwind) {
         node(unwind);
     }
 }

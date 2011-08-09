@@ -22,13 +22,13 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
-import com.oracle.max.graal.compiler.alloc.OperandPool.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.alloc.OperandPool.VariableFlag;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
 
 /**
- * A helper utility for loading the {@linkplain Value#operand() result}
+ * A helper utility for loading the {@linkplain ValueNode#operand() result}
  * of an instruction for use by another instruction. This helper takes
  * into account the specifics of the consuming instruction such as whether
  * it requires the input operand to be in memory or a register, any
@@ -46,10 +46,10 @@ public class LIRItem {
 
     /**
      * The instruction whose usage by another instruction is being modeled by this object.
-     * An instruction {@code x} uses instruction {@code y} if the {@linkplain Value#operand() result}
+     * An instruction {@code x} uses instruction {@code y} if the {@linkplain ValueNode#operand() result}
      * of {@code y} is an input operand of {@code x}.
      */
-    public Value instruction;
+    public ValueNode instruction;
 
     /**
      * The LIR context of this helper object.
@@ -75,7 +75,7 @@ public class LIRItem {
      */
     private CiValue intermediateOperand;
 
-    public LIRItem(Value instruction, LIRGenerator gen) {
+    public LIRItem(ValueNode instruction, LIRGenerator gen) {
         this.gen = gen;
         this.instruction = instruction;
         resultOperand = gen.makeOperand(instruction);

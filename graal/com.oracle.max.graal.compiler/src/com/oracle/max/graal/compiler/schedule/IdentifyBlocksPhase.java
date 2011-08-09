@@ -27,10 +27,12 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.NodeClass.*;
+import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.graph.collections.*;
 
 
@@ -129,7 +131,7 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     public static boolean isBlockEnd(Node n) {
-        return trueSuccessorCount(n) > 1 || n instanceof Return || n instanceof Unwind || n instanceof Deoptimize;
+        return trueSuccessorCount(n) > 1 || n instanceof Return || n instanceof UnwindNode || n instanceof Deoptimize;
     }
 
     private void print() {
@@ -152,7 +154,7 @@ public class IdentifyBlocksPhase extends Phase {
 
         // Identify blocks.
         for (Node n : graph.getNodes()) {
-            if (n instanceof EndNode || n instanceof Return || n instanceof Unwind || n instanceof LoopEnd || n instanceof Deoptimize) {
+            if (n instanceof EndNode || n instanceof Return || n instanceof UnwindNode || n instanceof LoopEnd || n instanceof Deoptimize) {
                 Block block = null;
                 Node currentNode = n;
                 while (nodeToBlock.get(currentNode) == null) {
@@ -335,7 +337,7 @@ public class IdentifyBlocksPhase extends Phase {
             Block block;
             if (latestBlock == null) {
                 block = earliestBlock(n);
-            } else if (GraalOptions.ScheduleOutOfLoops && !(n instanceof VirtualObjectField) && !(n instanceof VirtualObject)) {
+            } else if (GraalOptions.ScheduleOutOfLoops && !(n instanceof VirtualObjectFieldNode) && !(n instanceof VirtualObjectNode)) {
                 block = scheduleOutOfLoops(n, latestBlock, earliestBlock(n));
             } else {
                 block = latestBlock;
@@ -565,7 +567,7 @@ public class IdentifyBlocksPhase extends Phase {
                 pred = usage.block.end();
             }
             int index = phi.merge().phiPredecessorIndex(pred);
-            phi.setValueAt(index, (Value) patch);
+            phi.setValueAt(index, (ValueNode) patch);
         } else {
             usage.node.replaceFirstInput(original, patch);
         }
@@ -627,8 +629,8 @@ public class IdentifyBlocksPhase extends Phase {
     }
 
     private boolean noRematerialization(Node n) {
-        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState || n instanceof VirtualObject ||
-                        n instanceof VirtualObjectField;
+        return n instanceof Local || n instanceof LocationNode || n instanceof Constant || n instanceof StateSplit || n instanceof FrameState || n instanceof VirtualObjectNode ||
+                        n instanceof VirtualObjectFieldNode;
     }
 
     private double liveRange(Block from, Set<Usage> usages) {

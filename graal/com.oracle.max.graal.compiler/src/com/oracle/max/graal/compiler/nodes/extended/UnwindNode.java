@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,35 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code ShiftOp} class represents shift operations.
+ * Unwind takes an exception object, destroys the current stack frame and passes the exception object to the system's exception dispatch code.
  */
-public abstract class Shift extends Binary {
+public final class UnwindNode extends FixedNode {
 
-    /**
-     * Creates a new shift operation.
-     * @param opcode the opcode of the shift
-     * @param x the first input value
-     * @param s the second input value
-     */
-    public Shift(CiKind kind, int opcode, Value x, Value s, Graph graph) {
-        super(kind, opcode, x, s, graph);
-        assert x == null || x.kind == kind;
+    @Input private ValueNode exception;
+
+    public ValueNode exception() {
+        return exception;
+    }
+
+    public void setException(ValueNode x) {
+        assert x == null || x.kind == CiKind.Object;
+        updateUsages(this.exception, x);
+        this.exception = x;
+    }
+
+    public UnwindNode(ValueNode exception, Graph graph) {
+        super(CiKind.Object, graph);
+        setException(exception);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitShift(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
+        v.visitUnwind(this);
     }
 }

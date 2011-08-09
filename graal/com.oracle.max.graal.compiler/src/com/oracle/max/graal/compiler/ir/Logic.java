@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -37,17 +38,12 @@ public abstract class Logic extends Binary {
      * @param x the first input into this instruction
      * @param y the second input into this instruction
      */
-    public Logic(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+    public Logic(CiKind kind, int opcode, ValueNode x, ValueNode y, Graph graph) {
         super(kind, opcode, x, y, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
         v.visitLogic(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
     }
 }

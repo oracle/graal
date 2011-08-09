@@ -22,24 +22,20 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class ReadNode extends AccessNode implements Node.ValueNumberable {
 
-    public ReadNode(CiKind kind, Value object, LocationNode location, Graph graph) {
+    public ReadNode(CiKind kind, ValueNode object, LocationNode location, Graph graph) {
         super(kind, object, location, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
         v.visitMemoryRead(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("mem read from ").print(object());
     }
 }

@@ -24,9 +24,9 @@ package com.oracle.max.graal.compiler.debug;
 
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 
 /**
@@ -81,7 +81,7 @@ public class BlockPrinter implements BlockClosure {
             if (i > 0) {
                 out.print(", ");
             }
-            Value value = newFrameState.stackAt(i);
+            ValueNode value = newFrameState.stackAt(i);
             out.print(i + ":" + Util.valueString(value));
             if (value == null) {
                 i++;
@@ -105,7 +105,7 @@ public class BlockPrinter implements BlockClosure {
             out.fillTo(startPosition, ' ');
             out.print("locks [");
             for (int i = 0; i < newFrameState.locksSize(); i++) {
-                Value value = newFrameState.lockAt(i);
+                ValueNode value = newFrameState.lockAt(i);
                 if (i > 0) {
                     out.print(", ");
                 }

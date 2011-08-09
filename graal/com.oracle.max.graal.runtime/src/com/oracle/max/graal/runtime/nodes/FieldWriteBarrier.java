@@ -22,26 +22,25 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class FieldWriteBarrier extends WriteBarrier {
-    @Input private Value object;
+    @Input private ValueNode object;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
 
-    public FieldWriteBarrier(Value object, Graph graph) {
+    public FieldWriteBarrier(ValueNode object, Graph graph) {
         super(graph);
         this.setObject(object);
     }
@@ -50,22 +49,17 @@ public final class FieldWriteBarrier extends WriteBarrier {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) new LIRGenerator.LIRGeneratorOp() {
+        if (clazz == LIRGeneratorOp.class) {
+            return (T) new LIRGeneratorOp() {
                 @Override
-                public void generate(Node n, LIRGenerator generator) {
+                public void generate(Node n, LIRGeneratorTool generator) {
                     assert n == FieldWriteBarrier.this;
                     CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().move(generator.makeOperand(object()), temp);
+                    generator.emitMove(generator.makeOperand(object()), temp);
                     FieldWriteBarrier.this.generateBarrier(temp, generator);
                 }
             };
         }
         return super.lookup(clazz);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("field write barrier ").print(object());
     }
 }

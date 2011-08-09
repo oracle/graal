@@ -20,29 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
  * The ValueAnchor instruction keeps non-CFG nodes above a certain point in the graph.
  */
-public final class ValueAnchor extends FixedNodeWithNext {
+public final class ValueAnchorNode extends FixedNodeWithNext {
+    @Input private ValueNode object;
 
-    @Input    private Value object;
-
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
 
-    public ValueAnchor(Value object, Graph graph) {
+    public ValueAnchorNode(ValueNode object, Graph graph) {
         super(CiKind.Illegal, graph);
         setObject(object);
     }
@@ -50,10 +51,5 @@ public final class ValueAnchor extends FixedNodeWithNext {
     @Override
     public void accept(ValueVisitor v) {
         v.visitValueAnchor(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("value_anchor ").print(object());
     }
 }

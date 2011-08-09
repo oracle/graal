@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.base;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -34,7 +35,7 @@ import com.sun.cri.ri.*;
  * This class represents a value within the HIR graph, including local variables, phis, and
  * all other instructions.
  */
-public abstract class Value extends Node {
+public abstract class ValueNode extends Node {
 
     /**
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.
@@ -51,7 +52,7 @@ public abstract class Value extends Node {
      * @param successorCount
      * @param graph
      */
-    public Value(CiKind kind, Graph graph) {
+    public ValueNode(CiKind kind, Graph graph) {
         super(graph);
         assert kind != null && kind == kind.stackKind() : kind + " != " + kind.stackKind();
         this.kind = kind;
@@ -101,7 +102,7 @@ public abstract class Value extends Node {
         assert this.operand.isIllegal() : "operand cannot be set twice";
         assert operand != null && operand.isLegal() : "operand must be legal";
         assert operand.kind.stackKind() == this.kind;
-        assert !(this instanceof VirtualObject);
+        assert !(this instanceof VirtualObjectNode);
         this.operand = operand;
     }
 
@@ -157,19 +158,28 @@ public abstract class Value extends Node {
         throw new IllegalStateException("No visit method for this node (" + this.getClass().getSimpleName() + ")");
     }
 
-    public void print(LogStream out) {
-        out.print(this.getClass().toString());
-    }
+    public static final LoweringOp DELEGATE_TO_RUNTIME = new LoweringOp() {
+        @Override
+        public void lower(Node n, CiLoweringTool tool) {
+            tool.getRuntime().lower(n, tool);
+        }
+    };
+
+    public static final LIRGeneratorOp DELEGATE_TO_VALUE_VISITOR = new LIRGeneratorOp() {
+        @Override
+        public void generate(Node n, LIRGeneratorTool generator) {
+            ((ValueNode) n).accept(generator);
+        }
+    };
 
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) LIRGenerator.DELEGATE_TO_VALUE_VISITOR;
+        if (clazz == LIRGeneratorOp.class) {
+            return (T) DELEGATE_TO_VALUE_VISITOR;
         }
         return super.lookup(clazz);
     }
-
 
     @Override
     public Map<Object, Object> getDebugProperties() {
@@ -178,15 +188,4 @@ public abstract class Value extends Node {
         properties.put("operand", operand == null ? "null" : operand.toString());
         return properties;
     }
-
-    /*@Override
-    public Iterable<? extends Node> dataUsages() {
-        final Iterator<? extends Node> dataUsages = super.dataUsages().iterator();
-        return new Iterable<Node>() {
-            @Override
-            public Iterator<Node> iterator() {
-                return new StateSplit.FilteringIterator(dataUsages, FrameState.class);
-            }
-        };
-    }*/
 }

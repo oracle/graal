@@ -20,55 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.cfg;
 
-import java.util.*;
-
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 
-public class VirtualObject extends FloatingNode {
+public final class WriteMemoryCheckpointNode extends AbstractMemoryCheckpointNode {
 
-    private EscapeField[] fields;
-    private RiType type;
-
-    public VirtualObject(RiType type, EscapeField[] fields, Graph graph) {
-        super(CiKind.Int, graph);
-        this.type = type;
-        this.fields = fields;
+    public WriteMemoryCheckpointNode(Graph graph) {
+        this(CiKind.Illegal, graph);
     }
 
-    public RiType type() {
-        return type;
-    }
-
-    public EscapeField[] fields() {
-        return fields;
+    public WriteMemoryCheckpointNode(CiKind result, Graph graph) {
+        super(result, graph);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        // nothing to do...
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("type", type);
-        return properties;
-    }
-
-    @Override
-    public String shortName() {
-        return "VirtualObject " + type.name();
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("virtualobject ").print(type.name());
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LIRGeneratorOp.class) {
+            return null;
+        }
+        return super.lookup(clazz);
     }
 }

@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -38,11 +38,6 @@ public final class EndNode extends FixedNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitEndNode(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("end");
     }
 
     public Merge merge() {

@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -38,9 +39,9 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     private final Graph graph;
 
-    private final Value[] locals;
-    private final Value[] stack;
-    private final ArrayList<Value> locks;
+    private final ValueNode[] locals;
+    private final ValueNode[] stack;
+    private final ArrayList<ValueNode> locks;
 
     private int stackIndex;
     private boolean rethrowException;
@@ -50,10 +51,10 @@ public class FrameStateBuilder implements FrameStateAccess {
     public FrameStateBuilder(FrameState fs) {
         this.method = fs.method;
         this.graph = fs.graph();
-        this.locals = new Value[method.maxLocals()];
+        this.locals = new ValueNode[method.maxLocals()];
         int stackSize = Math.max(1, method.maxStackSize());
-        this.stack = new Value[stackSize];
-        this.locks = new ArrayList<Value>();
+        this.stack = new ValueNode[stackSize];
+        this.locks = new ArrayList<ValueNode>();
         this.initializeFrom(fs);
     }
 
@@ -61,10 +62,10 @@ public class FrameStateBuilder implements FrameStateAccess {
         assert graph != null;
         this.method = method;
         this.graph = graph;
-        this.locals = new Value[method.maxLocals()];
+        this.locals = new ValueNode[method.maxLocals()];
         // we always need at least one stack slot (for exceptions)
         int stackSize = Math.max(1, method.maxStackSize());
-        this.stack = new Value[stackSize];
+        this.stack = new ValueNode[stackSize];
 
         int javaIndex = 0;
         int index = 0;
@@ -90,7 +91,7 @@ public class FrameStateBuilder implements FrameStateAccess {
             javaIndex += kind.sizeInSlots();
             index++;
         }
-        this.locks = new ArrayList<Value>();
+        this.locks = new ArrayList<ValueNode>();
     }
 
     @Override
@@ -120,8 +121,8 @@ public class FrameStateBuilder implements FrameStateAccess {
         return new FrameState(method, bci, locals, stack, stackIndex, locks, rethrowException, graph);
     }
 
-    public FrameState duplicateWithException(int bci, Value exceptionObject) {
-        FrameState frameState = new FrameState(method, bci, locals, new Value[]{exceptionObject}, 1, locks, true, graph);
+    public FrameState duplicateWithException(int bci, ValueNode exceptionObject) {
+        FrameState frameState = new FrameState(method, bci, locals, new ValueNode[]{exceptionObject}, 1, locks, true, graph);
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }
@@ -131,7 +132,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param kind the type expected for this instruction
      * @param x the instruction to push onto the stack
      */
-    public void push(CiKind kind, Value x) {
+    public void push(CiKind kind, ValueNode x) {
         assert kind != CiKind.Void;
         xpush(assertKind(kind, x));
         if (kind.sizeInSlots() == 2) {
@@ -143,7 +144,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack without checking the type.
      * @param x the instruction to push onto the stack
      */
-    public void xpush(Value x) {
+    public void xpush(ValueNode x) {
         assert x == null || !x.isDeleted();
         stack[stackIndex++] = x;
     }
@@ -152,7 +153,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack and checks that it is an int.
      * @param x the instruction to push onto the stack
      */
-    public void ipush(Value x) {
+    public void ipush(ValueNode x) {
         xpush(assertInt(x));
     }
 
@@ -160,7 +161,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack and checks that it is a float.
      * @param x the instruction to push onto the stack
      */
-    public void fpush(Value x) {
+    public void fpush(ValueNode x) {
         xpush(assertFloat(x));
     }
 
@@ -168,7 +169,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack and checks that it is an object.
      * @param x the instruction to push onto the stack
      */
-    public void apush(Value x) {
+    public void apush(ValueNode x) {
         xpush(assertObject(x));
     }
 
@@ -176,7 +177,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack and checks that it is a word.
      * @param x the instruction to push onto the stack
      */
-    public void wpush(Value x) {
+    public void wpush(ValueNode x) {
         xpush(assertWord(x));
     }
 
@@ -184,7 +185,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack and checks that it is a JSR return address.
      * @param x the instruction to push onto the stack
      */
-    public void jpush(Value x) {
+    public void jpush(ValueNode x) {
         xpush(assertJsr(x));
     }
 
@@ -193,7 +194,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      *
      * @param x the instruction to push onto the stack
      */
-    public void lpush(Value x) {
+    public void lpush(ValueNode x) {
         xpush(assertLong(x));
         xpush(null);
     }
@@ -202,12 +203,12 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pushes a value onto the stack and checks that it is a double.
      * @param x the instruction to push onto the stack
      */
-    public void dpush(Value x) {
+    public void dpush(ValueNode x) {
         xpush(assertDouble(x));
         xpush(null);
     }
 
-    public void pushReturn(CiKind kind, Value x) {
+    public void pushReturn(CiKind kind, ValueNode x) {
         if (kind != CiKind.Void) {
             push(kind.stackKind(), x);
         }
@@ -218,7 +219,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param kind the expected type
      * @return the instruction on the top of the stack
      */
-    public Value pop(CiKind kind) {
+    public ValueNode pop(CiKind kind) {
         assert kind != CiKind.Void;
         if (kind.sizeInSlots() == 2) {
             xpop();
@@ -230,8 +231,8 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack without checking the type.
      * @return x the instruction popped off the stack
      */
-    public Value xpop() {
-        Value result = stack[--stackIndex];
+    public ValueNode xpop() {
+        ValueNode result = stack[--stackIndex];
         assert result == null || !result.isDeleted();
         return result;
     }
@@ -240,7 +241,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is an int.
      * @return x the instruction popped off the stack
      */
-    public Value ipop() {
+    public ValueNode ipop() {
         return assertInt(xpop());
     }
 
@@ -248,7 +249,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is a float.
      * @return x the instruction popped off the stack
      */
-    public Value fpop() {
+    public ValueNode fpop() {
         return assertFloat(xpop());
     }
 
@@ -256,7 +257,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is an object.
      * @return x the instruction popped off the stack
      */
-    public Value apop() {
+    public ValueNode apop() {
         return assertObject(xpop());
     }
 
@@ -264,7 +265,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is a word.
      * @return x the instruction popped off the stack
      */
-    public Value wpop() {
+    public ValueNode wpop() {
         return assertWord(xpop());
     }
 
@@ -272,7 +273,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is a JSR return address.
      * @return x the instruction popped off the stack
      */
-    public Value jpop() {
+    public ValueNode jpop() {
         return assertJsr(xpop());
     }
 
@@ -280,7 +281,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is a long.
      * @return x the instruction popped off the stack
      */
-    public Value lpop() {
+    public ValueNode lpop() {
         assertHigh(xpop());
         return assertLong(xpop());
     }
@@ -289,7 +290,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * Pops a value off of the stack and checks that it is a double.
      * @return x the instruction popped off the stack
      */
-    public Value dpop() {
+    public ValueNode dpop() {
         assertHigh(xpop());
         return assertDouble(xpop());
     }
@@ -299,9 +300,9 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param size the number of arguments off of the stack
      * @return an array containing the arguments off of the stack
      */
-    public Value[] popArguments(int size) {
+    public ValueNode[] popArguments(int size) {
         int base = stackIndex - size;
-        Value[] r = new Value[size];
+        ValueNode[] r = new ValueNode[size];
         for (int i = 0; i < size; ++i) {
             assert stack[base + i] != null || stack[base + i - 1].kind.jvmSlots == 2;
             r[i] = stack[base + i];
@@ -311,7 +312,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     public CiKind peekKind() {
-        Value top = stackAt(stackSize() - 1);
+        ValueNode top = stackAt(stackSize() - 1);
         if (top == null) {
             top = stackAt(stackSize() - 2);
             assert top != null;
@@ -342,8 +343,8 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param i the index of the local variable to load
      * @return the instruction that produced the specified local
      */
-    public Value loadLocal(int i) {
-        Value x = locals[i];
+    public ValueNode loadLocal(int i) {
+        ValueNode x = locals[i];
         if (x != null) {
             if (x instanceof Phi) {
                 assert ((Phi) x).type() == PhiType.Value;
@@ -363,7 +364,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param i the index at which to store
      * @param x the instruction which produces the value for the local
      */
-    public void storeLocal(int i, Value x) {
+    public void storeLocal(int i, ValueNode x) {
         locals[i] = x;
         if (isDoubleWord(x)) {
             // (tw) if this was a double word then kill i+1
@@ -371,7 +372,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
         if (i > 0) {
             // if there was a double word at i - 1, then kill it
-            Value p = locals[i - 1];
+            ValueNode p = locals[i - 1];
             if (isDoubleWord(p)) {
                 locals[i - 1] = null;
             }
@@ -383,7 +384,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param scope the IRScope in which this locking operation occurs
      * @param obj the object being locked
      */
-    public void lock(Value obj) {
+    public void lock(ValueNode obj) {
         locks.add(obj);
     }
 
@@ -400,7 +401,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
-    public final Value stackAt(int i) {
+    public final ValueNode stackAt(int i) {
         return stack[i];
     }
 
@@ -410,7 +411,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
-    public final Value localAt(int i) {
+    public final ValueNode localAt(int i) {
         return locals[i];
     }
 
@@ -419,7 +420,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param i the index into the lock stack
      * @return the instruction which produced the object at the specified location in the lock stack
      */
-    public final Value lockAt(int i) {
+    public final ValueNode lockAt(int i) {
         return locks.get(i);
     }
 
@@ -446,31 +447,31 @@ public class FrameStateBuilder implements FrameStateAccess {
         return stackIndex;
     }
 
-    public Iterator<Value> locals() {
+    public Iterator<ValueNode> locals() {
         return new ValueArrayIterator(locals);
     }
 
-    public Iterator<Value> stack() {
+    public Iterator<ValueNode> stack() {
         return new ValueArrayIterator(locals);
     }
 
-    public List<Value> locks() {
+    public List<ValueNode> locks() {
         return Collections.unmodifiableList(locks);
     }
 
 
-    private static class ValueArrayIterator implements Iterator<Value> {
-        private final Value[] array;
+    private static class ValueArrayIterator implements Iterator<ValueNode> {
+        private final ValueNode[] array;
         private int index;
         private int length;
 
-        public ValueArrayIterator(Value[] array, int length) {
+        public ValueArrayIterator(ValueNode[] array, int length) {
             assert length <= array.length;
             this.array = array;
             this.index = 0;
         }
 
-        public ValueArrayIterator(Value[] array) {
+        public ValueArrayIterator(ValueNode[] array) {
             this(array, array.length);
         }
 
@@ -480,7 +481,7 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
 
         @Override
-        public Value next() {
+        public ValueNode next() {
             return array[index++];
         }
 
@@ -498,7 +499,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     @Override
-    public Value valueAt(int i) {
+    public ValueNode valueAt(int i) {
         if (i < locals.length) {
             return locals[i];
         } else if (i < locals.length + stackIndex) {
@@ -509,7 +510,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     @Override
-    public void setValueAt(int i, Value v) {
+    public void setValueAt(int i, ValueNode v) {
         if (i < locals.length) {
             locals[i] = v;
         } else if (i < locals.length + stackIndex) {
@@ -525,7 +526,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     public FrameState duplicateWithoutStack(int bci) {
-        FrameState frameState = new FrameState(method, bci, locals, new Value[0], 0, locks, false, graph);
+        FrameState frameState = new FrameState(method, bci, locals, new ValueNode[0], 0, locks, false, graph);
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }

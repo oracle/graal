@@ -31,7 +31,7 @@ import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiCallingConvention.*;
+import com.sun.cri.ci.CiCallingConvention.Type;
 import com.sun.cri.ri.*;
 
 /**

@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 
 /**
@@ -38,17 +39,12 @@ public final class MonitorEnter extends AccessMonitor {
      * @param lockNumber the number of the lock
      * @param graph
      */
-    public MonitorEnter(Value object, Value lockAddress, int lockNumber, Graph graph) {
+    public MonitorEnter(ValueNode object, ValueNode lockAddress, int lockNumber, Graph graph) {
         super(object, lockAddress, lockNumber, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
         v.visitMonitorEnter(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("enter monitor[").print(lockNumber).print("](").print(object()).print(')');
     }
 }

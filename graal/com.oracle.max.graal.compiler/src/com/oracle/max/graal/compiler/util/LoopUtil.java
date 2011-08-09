@@ -27,14 +27,15 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.GraphUtil.ColorSplitingLambda;
 import com.oracle.max.graal.compiler.util.GraphUtil.ColoringLambda;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.NodeClass.*;
+import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.graph.collections.*;
 import com.sun.cri.ci.*;
 
@@ -249,7 +250,7 @@ public class LoopUtil {
         //rewire phi usage in peeled part
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
         for (Phi phi : loopBegin.phis()) {
-            Value backValue = phi.valueAt(backIndex);
+            ValueNode backValue = phi.valueAt(backIndex);
             if (loop.nodes().isMarked(backValue) && peeling.peeledNodes.isNotNewNotMarked(backValue)) {
                 for (Node usage : phi.usages().snapshot()) {
                     if (peeling.peeledNodes.isNotNewMarked(usage)) {
@@ -332,7 +333,7 @@ public class LoopUtil {
         for (Entry<Node, Placeholder> entry : peeling.phis.entries()) {
             Phi phi = (Phi) entry.getKey();
             Placeholder p = entry.getValue();
-            Value init = phi.valueAt(phiInitIndex);
+            ValueNode init = phi.valueAt(phiInitIndex);
             p.replaceAndDelete(init);
             for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
                 if (dataEntry.getValue() == p) {
@@ -343,7 +344,7 @@ public class LoopUtil {
         for (Entry<Node, Node> entry : peeling.phiInits.entries()) {
             Phi phi = (Phi) entry.getKey();
             Node newInit = entry.getValue();
-            phi.setValueAt(phiInitIndex, (Value) newInit);
+            phi.setValueAt(phiInitIndex, (ValueNode) newInit);
         }
 
         if (from == loopBegin.loopEnd()) {
@@ -351,7 +352,7 @@ public class LoopUtil {
                 iv.peelOneIteration();
             }
         }
-        NodeMap<NodeMap<Value>> newExitValues = graph.createNodeMap();
+        NodeMap<NodeMap<ValueNode>> newExitValues = graph.createNodeMap();
         List<Node> exitPoints = new LinkedList<Node>();
         for (Node exit : peeling.unaffectedExits) {
             exitPoints.add(exit);
@@ -384,12 +385,12 @@ public class LoopUtil {
             for (Entry<Node, Node> dataEntry : peeling.dataOut.entries()) {
                 Node originalValue = dataEntry.getKey();
                 Node newValue = dataEntry.getValue();
-                NodeMap<Value> phiMap = newExitValues.get(originalValue);
+                NodeMap<ValueNode> phiMap = newExitValues.get(originalValue);
                 if (phiMap == null) {
                     phiMap = graph.createNodeMap();
                     newExitValues.set(originalValue, phiMap);
                 }
-                Value backValue = null;
+                ValueNode backValue = null;
                 if (inversion && originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
                     backValue = ((Phi) originalValue).valueAt(phiBackIndex);
                     if (peeling.peeledNodes.isNotNewMarked(backValue)) {
@@ -399,9 +400,9 @@ public class LoopUtil {
                 if (backValue != null) {
                     phiMap.set(original, backValue);
                 } else {
-                    phiMap.set(original, (Value) originalValue);
+                    phiMap.set(original, (ValueNode) originalValue);
                 }
-                phiMap.set(newExit, (Value) newValue);
+                phiMap.set(newExit, (ValueNode) newValue);
             }
         }
 
@@ -414,11 +415,11 @@ public class LoopUtil {
                 exitMergesPhis.markAll(merge.phis());
             }
             for (Entry<Node, Node> entry : peeling.dataOut.entries()) {
-                Value originalValue = (Value) entry.getKey();
+                ValueNode originalValue = (ValueNode) entry.getKey();
                 if (originalValue instanceof Phi && ((Phi) originalValue).merge() == loopBegin) {
                     continue;
                 }
-                Value newValue = (Value) entry.getValue();
+                ValueNode newValue = (ValueNode) entry.getValue();
                 Phi phi = null;
                 for (Node usage : originalValue.usages().snapshot()) {
                     if (exitMergesPhis.isMarked(usage) || (
@@ -430,7 +431,7 @@ public class LoopUtil {
                             phi = new Phi(originalValue.kind, loopBegin, PhiType.Value, graph);
                             phi.addInput(newValue);
                             phi.addInput(originalValue);
-                            NodeMap<Value> exitMap = newExitValues.get(originalValue);
+                            NodeMap<ValueNode> exitMap = newExitValues.get(originalValue);
                             for (Node exit : peeling.unaffectedExits) {
                                 exitMap.set(exit, phi);
                             }
@@ -441,9 +442,9 @@ public class LoopUtil {
             }
         }
 
-        for (Entry<Node, NodeMap<Value>> entry : newExitValues.entries()) {
-            Value original = (Value) entry.getKey();
-            NodeMap<Value> pointToValue = entry.getValue();
+        for (Entry<Node, NodeMap<ValueNode>> entry : newExitValues.entries()) {
+            ValueNode original = (ValueNode) entry.getKey();
+            NodeMap<ValueNode> pointToValue = entry.getValue();
             for (Node exit : exitPoints) {
                 Node valueAtExit = pointToValue.get(exit);
                 if (valueAtExit == null) {
@@ -455,7 +456,7 @@ public class LoopUtil {
         replaceValuesAtLoopExits(newExitValues, loop, exitPoints, peeling.exitFrameStates);
     }
 
-    private static void replaceValuesAtLoopExits(final NodeMap<NodeMap<Value>> newExitValues, Loop loop, List<Node> exitPoints, final NodeBitMap exitFrameStates) {
+    private static void replaceValuesAtLoopExits(final NodeMap<NodeMap<ValueNode>> newExitValues, Loop loop, List<Node> exitPoints, final NodeBitMap exitFrameStates) {
         Graph graph = loop.loopBegin().graph();
         final NodeMap<Node> colors = graph.createNodeMap();
 
@@ -517,17 +518,17 @@ public class LoopUtil {
                 assert color != null;
                 this.fixNode(newNode, color);
             }
-            private Value getValueAt(Node point, NodeMap<Value> valueMap, CiKind kind) {
-                Value value = valueMap.get(point);
+            private ValueNode getValueAt(Node point, NodeMap<ValueNode> valueMap, CiKind kind) {
+                ValueNode value = valueMap.get(point);
                 if (value != null) {
                     return value;
                 }
                 Merge merge = (Merge) point;
-                ArrayList<Value> values = new ArrayList<Value>(merge.phiPredecessorCount());
-                Value v = null;
+                ArrayList<ValueNode> values = new ArrayList<ValueNode>(merge.phiPredecessorCount());
+                ValueNode v = null;
                 boolean createPhi = false;
                 for (EndNode end : merge.cfgPredecessors()) {
-                    Value valueAt = getValueAt(colors.get(end), valueMap, kind);
+                    ValueNode valueAt = getValueAt(colors.get(end), valueMap, kind);
                     if (v == null) {
                         v = valueAt;
                     } else if (v != valueAt) {
@@ -587,20 +588,20 @@ public class LoopUtil {
                         if (input == null || newExitValues.isNew(input)) {
                             continue;
                         }
-                        NodeMap<Value> valueMap = newExitValues.get(input);
+                        NodeMap<ValueNode> valueMap = newExitValues.get(input);
                         if (valueMap != null) {
-                            Value replacement = getValueAt(color, valueMap, ((Value) input).kind);
+                            ValueNode replacement = getValueAt(color, valueMap, ((ValueNode) input).kind);
                             node.getNodeClass().set(node, pos, replacement);
                         }
                     }
                 }
             }
             @Override
-            public Value fixPhiInput(Value input, Node color) {
+            public ValueNode fixPhiInput(ValueNode input, Node color) {
                 if (newExitValues.isNew(input)) {
                     return input;
                 }
-                NodeMap<Value> valueMap = newExitValues.get(input);
+                NodeMap<ValueNode> valueMap = newExitValues.get(input);
                 if (valueMap != null) {
                     return getValueAt(color, valueMap, input.kind);
                 }
@@ -701,7 +702,7 @@ public class LoopUtil {
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
         int fowardIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
         for (Phi phi : loopBegin.phis()) {
-            Value backValue = phi.valueAt(backIndex);
+            ValueNode backValue = phi.valueAt(backIndex);
             if (marked.isMarked(backValue)) {
                 phiInits.set(phi, duplicates.get(backValue));
             } else if (from == loopBegin.loopEnd()) {

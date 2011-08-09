@@ -24,8 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -63,11 +62,6 @@ public final class GuardNode extends FloatingNode implements Canonicalizable {
     @Override
     public void accept(ValueVisitor v) {
         v.visitGuardNode(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("guard node ").print(node());
     }
 
     @Override

@@ -22,26 +22,26 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiAddress.*;
+import com.sun.cri.ci.CiAddress.Scale;
 
 
 public final class LocationNode extends FloatingNode {
-    @Input private Value index;
+    @Input private ValueNode index;
 
     @Data private int displacement;
     @Data private boolean indexScalingEnabled = true;
     @Data private CiKind valueKind;
     @Data private Object locationIdentity;
 
-    public Value index() {
+    public ValueNode index() {
         return index;
     }
 
-    public void setIndex(Value x) {
+    public void setIndex(ValueNode x) {
         updateUsages(index, x);
         index = x;
     }
@@ -85,22 +85,17 @@ public final class LocationNode extends FloatingNode {
 
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+        if (clazz == LIRGeneratorOp.class) {
             return null;
         }
         return super.lookup(clazz);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("mem location disp is ").print(displacement);
     }
 
     public CiKind getValueKind() {
         return valueKind;
     }
 
-    public CiValue createAddress(LIRGenerator lirGenerator, Value object) {
+    public CiAddress createAddress(LIRGeneratorTool lirGenerator, ValueNode object) {
         CiValue indexValue = CiValue.IllegalValue;
         Scale indexScale = Scale.Times1;
         if (this.index() != null) {

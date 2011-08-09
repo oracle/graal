@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -33,7 +33,7 @@ import com.sun.cri.ri.*;
 /**
  * The {@code CheckCast} instruction represents a {@link Bytecodes#CHECKCAST}.
  */
-public final class CheckCast extends TypeCheck implements Canonicalizable {
+public final class CheckCast extends TypeCheckNode implements Canonicalizable {
 
     /**
      * Creates a new CheckCast instruction.
@@ -42,7 +42,7 @@ public final class CheckCast extends TypeCheck implements Canonicalizable {
      * @param object the instruction producing the object
      * @param graph
      */
-    public CheckCast(Value targetClassInstruction, Value object, Graph graph) {
+    public CheckCast(ValueNode targetClassInstruction, ValueNode object, Graph graph) {
         super(targetClassInstruction, object, CiKind.Object, graph);
     }
 
@@ -69,11 +69,6 @@ public final class CheckCast extends TypeCheck implements Canonicalizable {
     @Override
     public void accept(ValueVisitor v) {
         v.visitCheckCast(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("checkcast(").print(object()).print(",").print(targetClassInstruction()).print(") ").print(CiUtil.toJavaName(targetClass()));
     }
 
     @Override

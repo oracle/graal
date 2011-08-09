@@ -24,11 +24,9 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -42,26 +40,26 @@ import com.sun.cri.ci.*;
  */
 public final class Compare extends BooleanNode implements Canonicalizable {
 
-    @Input private Value x;
-    @Input private Value y;
+    @Input private ValueNode x;
+    @Input private ValueNode y;
 
     @Data private Condition condition;
     @Data private boolean unorderedIsTrue;
 
-    public Value x() {
+    public ValueNode x() {
         return x;
     }
 
-    public void setX(Value x) {
+    public void setX(ValueNode x) {
         updateUsages(this.x, x);
         this.x = x;
     }
 
-    public Value y() {
+    public ValueNode y() {
         return y;
     }
 
-    public void setY(Value x) {
+    public void setY(ValueNode x) {
         updateUsages(y, x);
         this.y = x;
     }
@@ -74,7 +72,7 @@ public final class Compare extends BooleanNode implements Canonicalizable {
      * @param y the instruction that produces the second input to this instruction
      * @param graph
      */
-    public Compare(Value x, Condition condition, Value y, Graph graph) {
+    public Compare(ValueNode x, Condition condition, ValueNode y, Graph graph) {
         super(CiKind.Illegal, graph);
         assert (x == null && y == null) || Util.archKindsEqual(x, y);
         this.condition = condition;
@@ -111,7 +109,7 @@ public final class Compare extends BooleanNode implements Canonicalizable {
      */
     public void swapOperands() {
         condition = condition.mirror();
-        Value t = x();
+        ValueNode t = x();
         setX(y());
         setY(t);
     }
@@ -123,11 +121,6 @@ public final class Compare extends BooleanNode implements Canonicalizable {
 
     @Override
     public void accept(ValueVisitor v) {
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("comp ").print(x()).print(' ').print(condition().operator).print(' ').print(y());
     }
 
     @Override
@@ -153,9 +146,6 @@ public final class Compare extends BooleanNode implements Canonicalizable {
                 if (isFalseCheck) {
                     result = new NegateBooleanNode(result, graph());
                 }
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("Removed materialize replacing with " + result);
-                }
                 return result;
             }
         }
@@ -171,9 +161,6 @@ public final class Compare extends BooleanNode implements Canonicalizable {
             Compare result = new Compare(normalizeNode.x(), condition, normalizeNode.y(), graph());
             boolean isLess = condition == Condition.LE || condition == Condition.LT || condition == Condition.BE || condition == Condition.BT;
             result.unorderedIsTrue = condition != Condition.EQ && (condition == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess()));
-            if (GraalOptions.TraceCanonicalizer) {
-                TTY.println("Replaced Compare+NormalizeCompare with " + result);
-            }
             return result;
         }
         return this;
@@ -188,14 +175,7 @@ public final class Compare extends BooleanNode implements Canonicalizable {
             CiConstant constY = y().asConstant();
             Boolean result = condition().foldCondition(constX, constY, ((CompilerGraph) graph()).runtime(), unorderedIsTrue());
             if (result != null) {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("folded condition " + constX + " " + condition() + " " + constY);
-                }
                 return Constant.forBoolean(result, graph());
-            } else {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("if not removed %s %s %s (%s %s)", constX, condition(), constY, constX.kind, constY.kind);
-                }
             }
         }
 
@@ -211,7 +191,7 @@ public final class Compare extends BooleanNode implements Canonicalizable {
             return Constant.forBoolean(condition().check(1, 1), graph());
         }
         if ((condition == Condition.NE || condition == Condition.EQ) && x().kind == CiKind.Object) {
-            Value object = null;
+            ValueNode object = null;
             if (x().isNullConstant()) {
                 object = y();
             } else if (y().isNullConstant()) {

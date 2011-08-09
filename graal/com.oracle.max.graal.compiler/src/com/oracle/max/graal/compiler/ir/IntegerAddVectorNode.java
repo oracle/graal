@@ -24,38 +24,39 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class IntegerAddVectorNode extends AbstractVectorNode {
-    @Input private Value value;
+    @Input private ValueNode value;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
 
-    public IntegerAddVectorNode(AbstractVectorNode vector, Value value, Graph graph) {
+    public IntegerAddVectorNode(AbstractVectorNode vector, ValueNode value, Graph graph) {
         super(CiKind.Illegal, vector, graph);
         setValue(value);
     }
 
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+        if (clazz == LIRGeneratorOp.class) {
             return null;
         }
         return super.lookup(clazz);
     }
 
     @Override
-    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
+    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
         nodes.put(this, new IntegerAdd(CiKind.Int, nodes.get(vector()), value(), graph()));
     }
 }

@@ -22,10 +22,9 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -35,13 +34,13 @@ import com.sun.cri.ri.*;
  */
 public final class ArrayLength extends FloatingNode implements Canonicalizable {
 
-    @Input private Value array;
+    @Input private ValueNode array;
 
-    public Value array() {
+    public ValueNode array() {
         return array;
     }
 
-    public void setArray(Value x) {
+    public void setArray(ValueNode x) {
         updateUsages(array, x);
         array = x;
     }
@@ -52,7 +51,7 @@ public final class ArrayLength extends FloatingNode implements Canonicalizable {
      * @param array the instruction producing the array
      * @param newFrameState the state after executing this instruction
      */
-    public ArrayLength(Value array, Graph graph) {
+    public ArrayLength(ValueNode array, Graph graph) {
         super(CiKind.Int, graph);
         setArray(array);
     }
@@ -63,14 +62,9 @@ public final class ArrayLength extends FloatingNode implements Canonicalizable {
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print(array()).print(".length");
-    }
-
-    @Override
     public Node canonical(NotifyReProcess reProcess) {
         if (array() instanceof NewArray) {
-            Value length = ((NewArray) array()).dimension(0);
+            ValueNode length = ((NewArray) array()).dimension(0);
             assert length != null;
             return length;
         }

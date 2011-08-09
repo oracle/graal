@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -36,10 +37,5 @@ public class Placeholder extends StateSplit {
     @Override
     public void accept(ValueVisitor v) {
         //assert false;
-    }
-
-    @Override
-    public void print(LogStream out) {
-        assert false;
     }
 }

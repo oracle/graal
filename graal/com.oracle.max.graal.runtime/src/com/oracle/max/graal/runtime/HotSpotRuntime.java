@@ -30,7 +30,8 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Conditional.ConditionalStructure;
-import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.nodes.*;
 import com.sun.cri.bytecode.*;
@@ -270,8 +271,8 @@ public class HotSpotRuntime implements RiRuntime {
             field.setNext(null);
             memoryRead.setNext(next);
             field.replaceAndDelete(memoryRead);
-        } else if (n instanceof StoreField) {
-            StoreField field = (StoreField) n;
+        } else if (n instanceof StoreFieldNode) {
+            StoreFieldNode field = (StoreFieldNode) n;
             if (field.isVolatile()) {
                 return;
             }
@@ -304,8 +305,8 @@ public class HotSpotRuntime implements RiRuntime {
             loadIndexed.setNext(null);
             memoryRead.setNext(next);
             loadIndexed.replaceAndDelete(memoryRead);
-        } else if (n instanceof StoreIndexed) {
-            StoreIndexed storeIndexed = (StoreIndexed) n;
+        } else if (n instanceof StoreIndexedNode) {
+            StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
             Graph graph = storeIndexed.graph();
             Anchor anchor = new Anchor(graph);
             GuardNode boundsCheck = createBoundsCheck(storeIndexed, tool);
@@ -315,8 +316,8 @@ public class HotSpotRuntime implements RiRuntime {
             CiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind);
             arrayLocation.setIndex(storeIndexed.index());
-            Value value = storeIndexed.value();
-            Value array = storeIndexed.array();
+            ValueNode value = storeIndexed.value();
+            ValueNode array = storeIndexed.array();
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 // Store check!
                 if (array.exactType() != null) {
@@ -379,7 +380,7 @@ public class HotSpotRuntime implements RiRuntime {
         }
     }
 
-    private ReadNode readArrayElementKlass(Graph graph, Value array) {
+    private ReadNode readArrayElementKlass(Graph graph, ValueNode array) {
         ReadNode arrayKlass = readHub(graph, array);
         ReadNode arrayElementKlass = new ReadNode(CiKind.Object, arrayKlass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), graph);
         return arrayElementKlass;
@@ -416,9 +417,9 @@ public class HotSpotRuntime implements RiRuntime {
                     Local srcPos = new Local(CiKind.Int, 1, graph);
                     Local dest = new Local(CiKind.Object, 2, graph);
                     Local destPos = new Local(CiKind.Int, 3, graph);
-                    Value length = new Local(CiKind.Int, 4, graph);
-                    src.setDeclaredType(((Value) parameters.get(0)).declaredType());
-                    dest.setDeclaredType(((Value) parameters.get(2)).declaredType());
+                    ValueNode length = new Local(CiKind.Int, 4, graph);
+                    src.setDeclaredType(((ValueNode) parameters.get(0)).declaredType());
+                    dest.setDeclaredType(((ValueNode) parameters.get(2)).declaredType());
 
                     if (src.declaredType() == null || dest.declaredType() == null) {
                         return null;
@@ -483,11 +484,11 @@ public class HotSpotRuntime implements RiRuntime {
 
                     Invoke newInvoke = null;
                     if (componentType == CiKind.Object) {
-                        Value srcClass = readHub(graph, src);
-                        Value destClass = readHub(graph, dest);
+                        ValueNode srcClass = readHub(graph, src);
+                        ValueNode destClass = readHub(graph, dest);
                         If elementClassIf = new If(new Compare(srcClass, Condition.EQ, destClass, graph), 0.5, graph);
                         ifNode.setFalseSuccessor(elementClassIf);
-                        newInvoke = new Invoke(bci, Bytecodes.INVOKESTATIC, CiKind.Void, new Value[]{src, srcPos, dest, destPos, length}, method, method.signature().returnType(method.holder()), graph);
+                        newInvoke = new Invoke(bci, Bytecodes.INVOKESTATIC, CiKind.Void, new ValueNode[]{src, srcPos, dest, destPos, length}, method, method.signature().returnType(method.holder()), graph);
                         newInvoke.setCanInline(false);
                         newInvoke.setStateAfter(stateAfter);
                         elementClassIf.setFalseSuccessor(newInvoke);
@@ -627,7 +628,7 @@ public class HotSpotRuntime implements RiRuntime {
         return intrinsicGraphs.get(method);
     }
 
-    private ReadNode readHub(Graph graph, Value value) {
+    private ReadNode readHub(Graph graph, ValueNode value) {
         return new ReadNode(CiKind.Object, value, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), graph);
     }
 

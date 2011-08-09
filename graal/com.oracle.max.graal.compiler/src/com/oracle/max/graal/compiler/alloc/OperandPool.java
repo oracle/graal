@@ -25,7 +25,7 @@ package com.oracle.max.graal.compiler.alloc;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -62,7 +62,7 @@ public final class OperandPool {
      * Map from a {@linkplain CiVariable#index variable index} to the instruction whose result is stored in the denoted variable.
      * This map is only populated and used if {@link GraalOptions#DetailedAsserts} is {@code true}.
      */
-    private final ArrayList<Value> variableDefs;
+    private final ArrayList<ValueNode> variableDefs;
 
     /**
      * The {@linkplain #operandNumber(CiValue) number} of the first variable operand
@@ -138,7 +138,7 @@ public final class OperandPool {
         this.firstVariableNumber = registers.length;
         this.registers = registers;
         variables = new ArrayList<CiVariable>(INITIAL_VARIABLE_CAPACITY);
-        variableDefs = GraalOptions.DetailedAsserts ? new ArrayList<Value>(INITIAL_VARIABLE_CAPACITY) : null;
+        variableDefs = GraalOptions.DetailedAsserts ? new ArrayList<ValueNode>(INITIAL_VARIABLE_CAPACITY) : null;
     }
 
     /**
@@ -215,7 +215,7 @@ public final class OperandPool {
      * @param result the variable storing the result of {@code instruction}
      * @param instruction an instruction that produces a result (i.e. pushes a value to the stack)
      */
-    public void recordResult(CiVariable result, Value instruction) {
+    public void recordResult(CiVariable result, ValueNode instruction) {
         while (variableDefs.size() <= result.index) {
             variableDefs.add(null);
         }
@@ -228,7 +228,7 @@ public final class OperandPool {
      * @param result the variable storing the result of an instruction
      * @return the instruction that stores its result in {@code result}
      */
-    public Value instructionForResult(CiVariable result) {
+    public ValueNode instructionForResult(CiVariable result) {
         if (variableDefs.size() > result.index) {
             return variableDefs.get(result.index);
         }

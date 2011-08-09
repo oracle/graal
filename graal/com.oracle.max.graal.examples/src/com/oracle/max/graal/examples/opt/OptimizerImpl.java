@@ -24,6 +24,7 @@ package com.oracle.max.graal.examples.opt;
 
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.examples.intrinsics.*;
 import com.oracle.max.graal.extensions.*;
@@ -78,8 +79,8 @@ public class OptimizerImpl implements Optimizer {
                 if (ifNode.compare() instanceof Compare) {
                     Compare compare = (Compare) ifNode.compare();
                     Condition cond = compare.condition();
-                    Value x = compare.x();
-                    Value y = compare.y();
+                    ValueNode x = compare.x();
+                    ValueNode y = compare.y();
                     if (ifNode.trueSuccessor() == pred) {
                         cond = cond.negate();
                     }

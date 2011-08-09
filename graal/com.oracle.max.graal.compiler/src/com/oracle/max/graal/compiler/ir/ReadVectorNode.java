@@ -24,29 +24,30 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class ReadVectorNode extends AccessVectorNode {
 
-    public ReadVectorNode(AbstractVectorNode vector, Value object, LocationNode location, Graph graph) {
+    public ReadVectorNode(AbstractVectorNode vector, ValueNode object, LocationNode location, Graph graph) {
         super(CiKind.Illegal, vector, object, location, graph);
     }
 
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+        if (clazz == LIRGeneratorOp.class) {
             return null;
         }
         return super.lookup(clazz);
     }
 
     @Override
-    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
+    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
         LocationNode newLocation = LocationNode.create(LocationNode.getArrayLocation(location().getValueKind()), location().getValueKind(), location().displacement(), graph());
-        Value index = nodes.get(vector());
+        ValueNode index = nodes.get(vector());
         assert index != null;
         newLocation.setIndex(index);
         ReadNode readNode = new ReadNode(location().getValueKind().stackKind(), object(), newLocation, graph());

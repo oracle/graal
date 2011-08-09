@@ -22,12 +22,13 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 public abstract class FloatArithmetic extends Arithmetic {
 
-    public FloatArithmetic(CiKind kind, int opcode, Value x, Value y, boolean isStrictFP, Graph graph) {
+    public FloatArithmetic(CiKind kind, int opcode, ValueNode x, ValueNode y, boolean isStrictFP, Graph graph) {
         super(kind, opcode, x, y, isStrictFP, graph);
     }
 

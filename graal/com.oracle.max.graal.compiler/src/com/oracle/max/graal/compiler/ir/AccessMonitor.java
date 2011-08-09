@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -30,24 +31,24 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessMonitor extends AbstractMemoryCheckpointNode {
 
-    @Input    private Value object;
+    @Input    private ValueNode object;
 
-    @Input    private Value lockAddress;
+    @Input    private ValueNode lockAddress;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
 
-    public Value lockAddress() {
+    public ValueNode lockAddress() {
         return lockAddress;
     }
 
-    public void setLockAddress(Value x) {
+    public void setLockAddress(ValueNode x) {
         updateUsages(lockAddress, x);
         lockAddress = x;
     }
@@ -65,7 +66,7 @@ public abstract class AccessMonitor extends AbstractMemoryCheckpointNode {
      * @param lockNumber the number of the lock being acquired
      * @param graph
      */
-    public AccessMonitor(Value object, Value lockAddress, int lockNumber, Graph graph) {
+    public AccessMonitor(ValueNode object, ValueNode lockAddress, int lockNumber, Graph graph) {
         super(CiKind.Illegal, graph);
         this.lockNumber = lockNumber;
         setObject(object);

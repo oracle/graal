@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -42,7 +43,7 @@ public abstract class Arithmetic extends Binary {
      * @param y the second input instruction
      * @param isStrictFP indicates this operation has strict rounding semantics
      */
-    public Arithmetic(CiKind kind, int opcode, Value x, Value y, boolean isStrictFP, Graph graph) {
+    public Arithmetic(CiKind kind, int opcode, ValueNode x, ValueNode y, boolean isStrictFP, Graph graph) {
         super(kind, opcode, x, y, graph);
         this.isStrictFP = isStrictFP;
     }
@@ -62,10 +63,5 @@ public abstract class Arithmetic extends Binary {
 
     public boolean isCommutative() {
         return Bytecodes.isCommutative(opcode);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(this.shortName()).print(' ').print(y());
     }
 }

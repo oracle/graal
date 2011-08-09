@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -76,7 +77,7 @@ public abstract class AbstractVectorNode extends StateSplit {
         }
     }
 
-    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
+    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
         throw new IllegalStateException("unimplemented");
     }
 }

@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -29,12 +30,12 @@ import com.sun.cri.ci.*;
 
 public abstract class IntegerArithmeticNode extends Arithmetic {
 
-    public IntegerArithmeticNode(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+    public IntegerArithmeticNode(CiKind kind, int opcode, ValueNode x, ValueNode y, Graph graph) {
         super(kind, opcode, x, y, false, graph);
         assert kind == CiKind.Int || kind == CiKind.Long;
     }
 
-    public static IntegerArithmeticNode add(Value v1, Value v2) {
+    public static IntegerArithmeticNode add(ValueNode v1, ValueNode v2) {
         assert v1.kind == v2.kind && v1.graph() == v2.graph();
         Graph graph = v1.graph();
         //TODO (gd) handle conversions here instead of strong assert ?
@@ -48,7 +49,7 @@ public abstract class IntegerArithmeticNode extends Arithmetic {
         }
     }
 
-    public static IntegerArithmeticNode mul(Value v1, Value v2) {
+    public static IntegerArithmeticNode mul(ValueNode v1, ValueNode v2) {
         assert v1.kind == v2.kind && v1.graph() == v2.graph();
         Graph graph = v1.graph();
         //TODO (gd) handle conversions here instead of strong assert ?

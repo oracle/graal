@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
-import com.sun.cri.bytecode.Bytecodes.*;
+import com.sun.cri.bytecode.Bytecodes.MemoryBarriers;
 import com.sun.cri.ci.*;
 
 /**

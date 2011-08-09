@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -34,7 +35,7 @@ public final class NewTypeArray extends NewArray {
 
     final RiType elementType;
 
-    public NewTypeArray(Value length, RiType elementType, Graph graph) {
+    public NewTypeArray(ValueNode length, RiType elementType, Graph graph) {
         super(length, graph);
         this.elementType = elementType;
     }
@@ -57,10 +58,5 @@ public final class NewTypeArray extends NewArray {
     @Override
     public void accept(ValueVisitor v) {
         v.visitNewTypeArray(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("new ").print(elementKind().name()).print(" array [").print(length()).print(']');
     }
 }

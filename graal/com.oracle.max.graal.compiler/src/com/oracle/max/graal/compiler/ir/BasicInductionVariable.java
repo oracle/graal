@@ -23,9 +23,8 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
-import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -38,7 +37,7 @@ public class BasicInductionVariable extends LinearInductionVariable implements C
     public static final BIVLoweringOp LOWERING = new BIVLoweringOp();
     @Input private LoopCounter loopCounter;
 
-    public BasicInductionVariable(CiKind kind, Value init, Value stride, LoopCounter counter, Graph graph) {
+    public BasicInductionVariable(CiKind kind, ValueNode init, ValueNode stride, LoopCounter counter, Graph graph) {
         super(kind, init, stride, graph);
         setLoopCounter(counter);
     }
@@ -52,19 +51,19 @@ public class BasicInductionVariable extends LinearInductionVariable implements C
         this.loopCounter = loopCounter;
     }
 
-    public Value init() {
+    public ValueNode init() {
         return a();
     }
 
-    public void setInit(Value init) {
+    public void setInit(ValueNode init) {
         setA(init);
     }
 
-    public Value stride() {
+    public ValueNode stride() {
         return b();
     }
 
-    public void setStride(Value stride) {
+    public void setStride(ValueNode stride) {
         setB(stride);
     }
 
@@ -114,7 +113,7 @@ public class BasicInductionVariable extends LinearInductionVariable implements C
             biv.replaceAtNonIVUsages(phi);
         }
 
-        public Phi ivToPhi(LoopBegin loopBegin, Value init, Value stride, CiKind kind) {
+        public Phi ivToPhi(LoopBegin loopBegin, ValueNode init, ValueNode stride, CiKind kind) {
             Phi phi = new Phi(kind, loopBegin, PhiType.Value, loopBegin.graph());
             IntegerArithmeticNode after = IntegerArithmeticNode.add(phi, stride);
             phi.addInput(init);

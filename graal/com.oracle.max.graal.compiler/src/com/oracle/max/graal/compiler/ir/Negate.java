@@ -22,9 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -34,13 +33,13 @@ import com.sun.cri.ci.*;
 public final class Negate extends FloatingNode implements Canonicalizable {
 
     @Input
-    private Value x;
+    private ValueNode x;
 
-    public Value x() {
+    public ValueNode x() {
         return x;
     }
 
-    public void setX(Value x) {
+    public void setX(ValueNode x) {
         updateUsages(this.x, x);
         this.x = x;
     }
@@ -50,7 +49,7 @@ public final class Negate extends FloatingNode implements Canonicalizable {
      *
      * @param x the instruction producing the value that is input to this instruction
      */
-    public Negate(Value x, Graph graph) {
+    public Negate(ValueNode x, Graph graph) {
         super(x.kind, graph);
         setX(x);
     }
@@ -63,11 +62,6 @@ public final class Negate extends FloatingNode implements Canonicalizable {
     @Override
     public void accept(ValueVisitor v) {
         v.visitNegate(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("- ").print(x());
     }
 
     @Override

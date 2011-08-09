@@ -22,9 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -48,11 +46,6 @@ public final class NegateBooleanNode extends BooleanNode implements Canonicaliza
 
     @Override
     public void accept(ValueVisitor v) {
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(value()).print("!");
     }
 
     @Override

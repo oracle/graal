@@ -22,10 +22,11 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-public abstract class FloatingNode extends Value implements Node.ValueNumberable {
+public abstract class FloatingNode extends ValueNode implements Node.ValueNumberable {
     public FloatingNode(CiKind kind, Graph graph) {
         super(kind, graph);
     }

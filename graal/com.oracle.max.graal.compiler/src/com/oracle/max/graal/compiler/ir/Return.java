@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -31,13 +32,13 @@ import com.sun.cri.ci.*;
  */
 public final class Return extends FixedNode {
 
-    @Input    private Value result;
+    @Input private ValueNode result;
 
-    public Value result() {
+    public ValueNode result() {
         return result;
     }
 
-    public void setResult(Value x) {
+    public void setResult(ValueNode x) {
         updateUsages(this.result, x);
         this.result = x;
     }
@@ -48,7 +49,7 @@ public final class Return extends FixedNode {
      * is a void return
      * @param graph
      */
-    public Return(Value result, Graph graph) {
+    public Return(ValueNode result, Graph graph) {
         super(result == null ? CiKind.Void : result.kind, graph);
         setResult(result);
     }
@@ -61,14 +62,5 @@ public final class Return extends FixedNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitReturn(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        if (result() == null) {
-            out.print("return");
-        } else {
-            out.print(kind.typeChar).print("return ").print(result());
-        }
     }
 }

@@ -22,22 +22,24 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 
 public class MathIntrinsic extends FloatingNode {
 
-    @Input private Value x;
+    @Input private ValueNode x;
     @Data private final Operation operation;
 
     public enum Operation {
         ABS, SQRT,
     }
 
-    public Value x() {
+    public ValueNode x() {
         return x;
     }
 
-    private void setX(Value x) {
+    private void setX(ValueNode x) {
         updateUsages(this.x, x);
         this.x = x;
     }
@@ -46,7 +48,7 @@ public class MathIntrinsic extends FloatingNode {
         return operation;
     }
 
-    public MathIntrinsic(Value x, Operation op, Graph graph) {
+    public MathIntrinsic(ValueNode x, Operation op, Graph graph) {
         super(x.kind, graph);
         setX(x);
         this.operation = op;

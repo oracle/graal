@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
 
@@ -69,13 +70,5 @@ public class CanonicalizerPhase extends Phase {
                 }
             }
         }
-    }
-
-    public interface NotifyReProcess {
-        void reProccess(Node n);
-    }
-
-    public interface Canonicalizable {
-        Node canonical(NotifyReProcess reProcess);
     }
 }

@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -31,24 +32,24 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessIndexed extends AccessArray {
 
-    @Input    private Value index;
+    @Input    private ValueNode index;
 
-    @Input    private Value length;
+    @Input    private ValueNode length;
 
-    public Value index() {
+    public ValueNode index() {
         return index;
     }
 
-    public void setIndex(Value x) {
+    public void setIndex(ValueNode x) {
         updateUsages(index, x);
         index = x;
     }
 
-    public Value length() {
+    public ValueNode length() {
         return length;
     }
 
-    public void setLength(Value x) {
+    public void setLength(ValueNode x) {
         updateUsages(length, x);
         length = x;
     }
@@ -64,7 +65,7 @@ public abstract class AccessIndexed extends AccessArray {
      * @param elementKind the type of the elements of the array
      * @param graph
      */
-    AccessIndexed(CiKind kind, Value array, Value index, Value length, CiKind elementKind, Graph graph) {
+    protected AccessIndexed(CiKind kind, ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, Graph graph) {
         super(kind, array, graph);
         setIndex(index);
         setLength(length);

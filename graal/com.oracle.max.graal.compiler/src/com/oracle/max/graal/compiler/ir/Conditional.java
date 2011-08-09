@@ -22,14 +22,9 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.gen.LIRGenerator.LIRGeneratorOp;
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -60,7 +55,7 @@ public class Conditional extends Binary implements Canonicalizable {
      * @param trueValue the value produced if the condition is true
      * @param falseValue the value produced if the condition is false
      */
-    public Conditional(BooleanNode condition, Value trueValue, Value falseValue, Graph graph) {
+    public Conditional(BooleanNode condition, ValueNode trueValue, ValueNode falseValue, Graph graph) {
         // TODO: return the appropriate bytecode IF_ICMPEQ, etc
         super(trueValue.kind.meet(falseValue.kind), Bytecodes.ILLEGAL, trueValue, falseValue, graph);
         setCondition(condition);
@@ -71,25 +66,20 @@ public class Conditional extends Binary implements Canonicalizable {
         super(kind, Bytecodes.ILLEGAL, null, null, graph);
     }
 
-    public Value trueValue() {
+    public ValueNode trueValue() {
         return x();
     }
 
-    public Value falseValue() {
+    public ValueNode falseValue() {
         return y();
     }
 
-    public void setTrueValue(Value value) {
+    public void setTrueValue(ValueNode value) {
         setX(value);
     }
 
-    public void setFalseValue(Value value) {
+    public void setFalseValue(ValueNode value) {
         setY(value);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(x()).print(' ').print(condition()).print(' ').print(y()).print(" ? ").print(trueValue()).print(" : ").print(falseValue());
     }
 
     @SuppressWarnings("unchecked")
@@ -114,11 +104,11 @@ public class Conditional extends Binary implements Canonicalizable {
         }
     }
 
-    public static ConditionalStructure createConditionalStructure(BooleanNode condition, Value trueValue, Value falseValue) {
+    public static ConditionalStructure createConditionalStructure(BooleanNode condition, ValueNode trueValue, ValueNode falseValue) {
         return createConditionalStructure(condition, trueValue, falseValue, 0.5);
     }
 
-    public static ConditionalStructure createConditionalStructure(BooleanNode condition, Value trueValue, Value falseValue, double trueProbability) {
+    public static ConditionalStructure createConditionalStructure(BooleanNode condition, ValueNode trueValue, ValueNode falseValue, double trueProbability) {
         Graph graph = condition.graph();
         CiKind kind = trueValue.kind.meet(falseValue.kind);
         If ifNode = new If(condition, trueProbability, graph);
@@ -138,72 +128,8 @@ public class Conditional extends Binary implements Canonicalizable {
     private static final LIRGeneratorOp LIRGEN = new LIRGeneratorOp() {
 
         @Override
-        public void generate(Node n, LIRGenerator generator) {
-            Conditional conditional = (Conditional) n;
-            BooleanNode condition = conditional.condition();
-
-            // try to use cmp + cmov first
-            Condition cond = null;
-            CiValue left = null;
-            CiValue right = null;
-            boolean floating = false;
-            boolean unOrderedIsSecond = false;
-            boolean negate = false;
-            while (condition instanceof NegateBooleanNode) {
-                negate = !negate;
-                condition = ((NegateBooleanNode) condition).value();
-            }
-            if (condition instanceof Compare) {
-                Compare compare = (Compare) condition;
-                Value x = compare.x();
-                Value y = compare.y();
-                cond = compare.condition();
-                if (x.kind.isFloatOrDouble()) {
-                    floating = true;
-                    unOrderedIsSecond = !compare.unorderedIsTrue();
-                    cond = generator.floatingPointCondition(cond);
-                }
-                left = generator.load(x);
-                if (!generator.canInlineAsConstant(y)) {
-                    right = generator.load(y);
-                } else {
-                    right = generator.makeOperand(y);
-                }
-            } else if (condition instanceof IsNonNull) {
-                IsNonNull isNonNull = (IsNonNull) condition;
-                left = generator.load(isNonNull.object());
-                right = CiConstant.NULL_OBJECT;
-                cond = Condition.NE;
-            } else if (condition instanceof Constant) {
-                generator.lir().move(condition.asConstant(), generator.createResultVariable(conditional));
-            } else if (condition instanceof InstanceOf) {
-                if (conditional instanceof MaterializeNode && !negate) {
-                    generator.emitMaterializeInstanceOf((MaterializeNode) conditional, conditional, null);
-                } else {
-                    generator.emitMaterializeInstanceOf((MaterializeNode) conditional, condition, null);
-                    left = condition.operand();
-                    right = CiConstant.INT_1;
-                    cond = Condition.EQ;
-                }
-            } else {
-                throw Util.shouldNotReachHere("Currently not implemented because we can not create blocks during LIRGen : " + condition);
-            }
-
-            if (cond != null) {
-                CiVariable result = generator.createResultVariable(conditional);
-                CiValue tVal = generator.makeOperand(conditional.trueValue());
-                CiValue fVal = generator.makeOperand(conditional.falseValue());
-                if (negate) {
-                    cond = cond.negate();
-                }
-                assert left != null && right != null;
-                generator.lir().cmp(cond, left, right);
-                if (floating) {
-                    generator.lir().fcmove(cond, tVal, fVal, result, unOrderedIsSecond);
-                } else {
-                    generator.lir().cmove(cond, tVal, fVal, result);
-                }
-            }
+        public void generate(Node n, LIRGeneratorTool generator) {
+            generator.visitConditional((Conditional) n);
         }
     };
 
@@ -224,19 +150,13 @@ public class Conditional extends Binary implements Canonicalizable {
             int trueInt = trueValue().asConstant().asInt();
             int falseInt = falseValue().asConstant().asInt();
             if (trueInt == 0 && falseInt == 1) {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("> Conditional canon'ed to ~Materialize");
-                }
                 reProcess.reProccess(condition); // because we negate it
                 return new MaterializeNode(new NegateBooleanNode(condition, graph()), graph());
             } else if (trueInt == 1 && falseInt == 0) {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("> Conditional canon'ed to Materialize");
-                }
                 return new MaterializeNode(condition, graph());
             }
         } else if (falseValue() instanceof Constant && !(trueValue() instanceof Constant)) {
-            Value temp = trueValue();
+            ValueNode temp = trueValue();
             setTrueValue(falseValue());
             setFalseValue(temp);
             condition = new NegateBooleanNode(condition, graph());

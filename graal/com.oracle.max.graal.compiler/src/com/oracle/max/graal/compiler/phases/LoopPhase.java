@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
@@ -89,8 +90,8 @@ public class LoopPhase extends Phase {
         int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
         int initIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
         for (Phi phi : phis) {
-            Value init = phi.valueAt(initIndex);
-            Value backEdge = phi.valueAt(backIndex);
+            ValueNode init = phi.valueAt(initIndex);
+            ValueNode backEdge = phi.valueAt(backIndex);
             if (loopNodes.isNew(init) || loopNodes.isNew(backEdge)) {
                 continue;
             }
@@ -101,7 +102,7 @@ public class LoopPhase extends Phase {
                 } else {
                     continue;
                 }
-                Value stride;
+                ValueNode stride;
                 if (binary.x() == phi) {
                     stride = binary.y();
                 } else if (binary.y() == phi) {
@@ -143,8 +144,8 @@ public class LoopPhase extends Phase {
     }
     private void findDerivedInductionVariable(BasicInductionVariable biv, CiKind kind, NodeBitMap loopNodes) {
         for (Node usage : biv.usages().snapshot()) {
-            Value scale = scale(usage, biv, loopNodes);
-            Value offset = null;
+            ValueNode scale = scale(usage, biv, loopNodes);
+            ValueNode offset = null;
             Node node = null;
             if (scale == null) {
                 if (usage instanceof IntegerAdd) {
@@ -177,10 +178,10 @@ public class LoopPhase extends Phase {
         }
     }
 
-    private Value scale(Node n, BasicInductionVariable biv, NodeBitMap loopNodes) {
+    private ValueNode scale(Node n, BasicInductionVariable biv, NodeBitMap loopNodes) {
         if (n instanceof IntegerMul) {
             IntegerMul mul = (IntegerMul) n;
-            Value scale = null;
+            ValueNode scale = null;
             if (mul.x() == biv) {
                 scale = mul.y();
             } else if (mul.y() == biv) {

@@ -22,18 +22,18 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import static com.oracle.max.graal.compiler.debug.InstructionPrinter.InstructionLineColumn.*;
-
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 
 /**
  * The {@code LookupSwitch} instruction represents a lookup switch bytecode, which has a sorted
  * array of key values.
  */
-public final class LookupSwitch extends Switch {
+public final class LookupSwitch extends SwitchNode {
 
     private static final int INPUT_COUNT = 0;
     private static final int SUCCESSOR_COUNT = 0;
@@ -48,7 +48,7 @@ public final class LookupSwitch extends Switch {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public LookupSwitch(Value value, List<? extends FixedNode> successors, int[] keys, double[] probability, Graph graph) {
+    public LookupSwitch(ValueNode value, List<? extends FixedNode> successors, int[] keys, double[] probability, Graph graph) {
         super(value, successors, probability, INPUT_COUNT, SUCCESSOR_COUNT, graph);
         this.keys = keys;
     }
@@ -69,18 +69,5 @@ public final class LookupSwitch extends Switch {
     @Override
     public void accept(ValueVisitor v) {
         v.visitLookupSwitch(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("lookupswitch ");
-        out.println(value());
-        int l = numberOfCases();
-        for (int i = 0; i < l; i++) {
-            INSTRUCTION.advance(out);
-            out.printf("case %5d: B%d%n", keyAt(i), blockSuccessor(i));
-        }
-        INSTRUCTION.advance(out);
-        out.print("default   : ").print(defaultSuccessor());
     }
 }

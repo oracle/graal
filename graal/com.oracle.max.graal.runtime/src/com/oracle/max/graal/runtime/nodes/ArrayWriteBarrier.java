@@ -22,23 +22,23 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class ArrayWriteBarrier extends WriteBarrier {
 
-    @Input private Value object;
+    @Input private ValueNode object;
     @Input private LocationNode location;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(this.object, x);
         this.object = x;
     }
@@ -52,7 +52,7 @@ public final class ArrayWriteBarrier extends WriteBarrier {
         location = x;
     }
 
-    public ArrayWriteBarrier(Value object, LocationNode index, Graph graph) {
+    public ArrayWriteBarrier(ValueNode object, LocationNode index, Graph graph) {
         super(graph);
         this.setObject(object);
         this.setLocation(index);
@@ -62,22 +62,17 @@ public final class ArrayWriteBarrier extends WriteBarrier {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) new LIRGenerator.LIRGeneratorOp() {
+        if (clazz == LIRGeneratorOp.class) {
+            return (T) new LIRGeneratorOp() {
                 @Override
-                public void generate(Node n, LIRGenerator generator) {
+                public void generate(Node n, LIRGeneratorTool generator) {
                     assert n == ArrayWriteBarrier.this;
                     CiVariable temp = generator.newVariable(CiKind.Word);
-                    generator.lir().lea(location().createAddress(generator, object()), temp);
+                    generator.emitLea(location().createAddress(generator, object()), temp);
                     ArrayWriteBarrier.this.generateBarrier(temp, generator);
                 }
             };
         }
         return super.lookup(clazz);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("field write barrier ").print(object());
     }
 }

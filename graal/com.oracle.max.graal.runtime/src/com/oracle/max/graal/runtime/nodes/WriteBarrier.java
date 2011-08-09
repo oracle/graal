@@ -22,9 +22,8 @@
  */
 package com.oracle.max.graal.runtime.nodes;
 
-import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.runtime.*;
 import com.sun.cri.ci.*;
@@ -37,17 +36,17 @@ public abstract class WriteBarrier extends FixedNodeWithNext {
     }
 
 
-    protected void generateBarrier(CiValue temp, LIRGenerator generator) {
+    protected void generateBarrier(CiValue temp, LIRGeneratorTool generator) {
         HotSpotVMConfig config = CompilerImpl.getInstance().getConfig();
-        generator.lir().unsignedShiftRight(temp, CiConstant.forInt(config.cardtableShift), temp, CiValue.IllegalValue);
+        generator.emitUnsignedShiftRight(temp, CiConstant.forInt(config.cardtableShift), temp, CiValue.IllegalValue);
 
         long startAddress = config.cardtableStartAddress;
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
             displacement = (int) startAddress;
         } else {
-            generator.lir().add(temp, CiConstant.forLong(config.cardtableStartAddress), temp);
+            generator.emitAdd(temp, CiConstant.forLong(config.cardtableStartAddress), temp);
         }
-        generator.lir().move(CiConstant.FALSE, new CiAddress(CiKind.Boolean, temp, displacement), (LIRDebugInfo) null);
+        generator.emitMove(CiConstant.FALSE, new CiAddress(CiKind.Boolean, temp, displacement));
     }
 }

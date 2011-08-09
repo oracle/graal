@@ -20,25 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code Switch} class is the base of both lookup and table switches.
  */
-public abstract class Switch extends ControlSplit {
+public abstract class SwitchNode extends ControlSplit {
 
-    @Input    private Value value;
+    @Input    private ValueNode value;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
@@ -50,7 +52,7 @@ public abstract class Switch extends ControlSplit {
      * @param stateAfter the state after the switch
      * @param graph
      */
-    public Switch(Value value, List<? extends FixedNode> successors, double[] probability, int inputCount, int successorCount, Graph graph) {
+    public SwitchNode(ValueNode value, List<? extends FixedNode> successors, double[] probability, int inputCount, int successorCount, Graph graph) {
         super(CiKind.Illegal, successors, probability, graph);
         setValue(value);
     }

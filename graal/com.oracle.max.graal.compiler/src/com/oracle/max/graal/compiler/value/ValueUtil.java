@@ -22,62 +22,62 @@
  */
 package com.oracle.max.graal.compiler.value;
 
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
 
 
 public class ValueUtil {
 
-    public static Value assertKind(CiKind kind, Value x) {
+    public static ValueNode assertKind(CiKind kind, ValueNode x) {
         assert x != null && (x.kind == kind) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.kind);
         return x;
     }
 
-    public static Value assertLong(Value x) {
+    public static ValueNode assertLong(ValueNode x) {
         assert x != null && (x.kind == CiKind.Long);
         return x;
     }
 
-    public static Value assertJsr(Value x) {
+    public static ValueNode assertJsr(ValueNode x) {
         assert x != null && (x.kind == CiKind.Jsr);
         return x;
     }
 
-    public static Value assertInt(Value x) {
+    public static ValueNode assertInt(ValueNode x) {
         assert x != null && (x.kind == CiKind.Int);
         return x;
     }
 
-    public static Value assertFloat(Value x) {
+    public static ValueNode assertFloat(ValueNode x) {
         assert x != null && (x.kind == CiKind.Float);
         return x;
     }
 
-    public static Value assertObject(Value x) {
+    public static ValueNode assertObject(ValueNode x) {
         assert x != null && (x.kind == CiKind.Object);
         return x;
     }
 
-    public static Value assertWord(Value x) {
+    public static ValueNode assertWord(ValueNode x) {
         assert x != null && (x.kind == CiKind.Word);
         return x;
     }
 
-    public static Value assertDouble(Value x) {
+    public static ValueNode assertDouble(ValueNode x) {
         assert x != null && (x.kind == CiKind.Double);
         return x;
     }
 
-    public static void assertHigh(Value x) {
+    public static void assertHigh(ValueNode x) {
         assert x == null;
     }
 
-    public static boolean typeMismatch(Value x, Value y) {
+    public static boolean typeMismatch(ValueNode x, ValueNode y) {
         return y == null || !Util.archKindsEqual(x, y);
     }
 
-    public static boolean isDoubleWord(Value x) {
+    public static boolean isDoubleWord(ValueNode x) {
         return x != null && x.kind.isDoubleWord();
     }
 

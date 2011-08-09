@@ -22,18 +22,10 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.graph.*;
 
 public final class MaterializeNode extends Conditional {
-
-
     public MaterializeNode(BooleanNode value, Graph graph) {
         super(value, Constant.forInt(1, graph), Constant.forInt(0, graph), graph);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("materialize(").print(condition().toString()).print(')');
     }
 }

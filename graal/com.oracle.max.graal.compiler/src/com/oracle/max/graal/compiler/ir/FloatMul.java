@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -31,7 +31,7 @@ import com.sun.cri.ci.*;
 @NodeInfo(shortName = "*")
 public final class FloatMul extends FloatArithmetic implements Canonicalizable {
 
-    public FloatMul(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
+    public FloatMul(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DMUL : Bytecodes.FMUL, x, y, isStrictFP, graph);
     }
 

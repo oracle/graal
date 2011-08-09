@@ -24,9 +24,9 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -77,11 +77,6 @@ public final class NewInstance extends FixedNodeWithNext {
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print("new instance ").print(CiUtil.toJavaName(instanceClass()));
-    }
-
-    @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("instanceClass", instanceClass);
@@ -111,14 +106,14 @@ public final class NewInstance extends FixedNodeWithNext {
                 LoadField x = (LoadField) usage;
                 assert x.object() == node;
                 return x.field().isResolved() == false;
-            } else if (usage instanceof StoreField) {
-                StoreField x = (StoreField) usage;
+            } else if (usage instanceof StoreFieldNode) {
+                StoreFieldNode x = (StoreFieldNode) usage;
                 return x.value() == node && x.object() != node;
-            } else if (usage instanceof StoreIndexed) {
-                StoreIndexed x = (StoreIndexed) usage;
+            } else if (usage instanceof StoreIndexedNode) {
+                StoreIndexedNode x = (StoreIndexedNode) usage;
                 assert x.value() == node;
                 return true;
-            } else if (usage instanceof VirtualObjectField) {
+            } else if (usage instanceof VirtualObjectFieldNode) {
                 return false;
             } else if (usage instanceof RegisterFinalizer) {
                 RegisterFinalizer x = (RegisterFinalizer) usage;
@@ -152,7 +147,7 @@ public final class NewInstance extends FixedNodeWithNext {
         }
 
         @Override
-        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, Value[] fieldState) {
+        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
             if (current instanceof AccessField) {
                 AccessField x = (AccessField) current;
                 if (x.object() == node) {
@@ -162,8 +157,8 @@ public final class NewInstance extends FixedNodeWithNext {
                         x.replaceAtUsages(fieldState[field]);
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
-                    } else if (current instanceof StoreField) {
-                        fieldState[field] = ((StoreField) x).value();
+                    } else if (current instanceof StoreFieldNode) {
+                        fieldState[field] = ((StoreFieldNode) x).value();
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
                         return field;

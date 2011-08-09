@@ -25,8 +25,8 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -36,18 +36,18 @@ import com.sun.cri.ri.*;
  */
 public final class RegisterFinalizer extends StateSplit implements Canonicalizable {
 
-    @Input private Value object;
+    @Input private ValueNode object;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
 
-    public RegisterFinalizer(Value object, Graph graph) {
+    public RegisterFinalizer(ValueNode object, Graph graph) {
         super(CiKind.Void, graph);
         setObject(object);
     }
@@ -55,11 +55,6 @@ public final class RegisterFinalizer extends StateSplit implements Canonicalizab
     @Override
     public void accept(ValueVisitor v) {
         v.visitRegisterFinalizer(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("register finalizer ").print(object());
     }
 
     @Override

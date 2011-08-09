@@ -28,7 +28,10 @@ import java.util.Map.Entry;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
@@ -151,7 +154,7 @@ public class MemoryPhase extends Phase {
             Merge m = (Merge) block.firstNode();
             if (original instanceof Phi && ((Phi) original).merge() == m) {
                 Phi phi = (Phi) original;
-                phi.addInput((Value) newValue);
+                phi.addInput((ValueNode) newValue);
                 if (GraalOptions.TraceMemoryMaps) {
                     TTY.println("Add new input to phi " + original.id());
                 }
@@ -160,9 +163,9 @@ public class MemoryPhase extends Phase {
             } else {
                 Phi phi = new Phi(CiKind.Illegal, m, PhiType.Memory, m.graph());
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
-                    phi.addInput((Value) original);
+                    phi.addInput((ValueNode) original);
                 }
-                phi.addInput((Value) newValue);
+                phi.addInput((ValueNode) newValue);
                 if (GraalOptions.TraceMemoryMaps) {
                     TTY.println("Creating new phi " + phi.id());
                 }

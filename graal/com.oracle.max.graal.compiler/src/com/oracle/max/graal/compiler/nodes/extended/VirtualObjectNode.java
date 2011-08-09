@@ -20,41 +20,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.debug.*;
+import java.util.*;
+
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
+import com.sun.cri.ri.*;
 
-/**
- * Unwind takes an exception object, destroys the current stack frame and passes the exception object to the system's exception dispatch code.
- */
-public final class Unwind extends FixedNode {
 
-    @Input    private Value exception;
+public class VirtualObjectNode extends FloatingNode {
 
-    public Value exception() {
-        return exception;
+
+
+    private EscapeField[] fields;
+    private RiType type;
+
+    public VirtualObjectNode(RiType type, EscapeField[] fields, Graph graph) {
+        super(CiKind.Int, graph);
+        this.type = type;
+        this.fields = fields;
     }
 
-    public void setException(Value x) {
-        assert x == null || x.kind == CiKind.Object;
-        updateUsages(this.exception, x);
-        this.exception = x;
+    public RiType type() {
+        return type;
     }
 
-    public Unwind(Value exception, Graph graph) {
-        super(CiKind.Object, graph);
-        setException(exception);
+    public EscapeField[] fields() {
+        return fields;
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitUnwind(this);
+        // nothing to do...
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print(kind.typeChar).print("unwind ").print(exception());
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        properties.put("type", type);
+        return properties;
+    }
+
+    @Override
+    public String shortName() {
+        return "VirtualObject " + type.name();
     }
 }

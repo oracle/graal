@@ -24,14 +24,15 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
  * Instruction that is used to refer to the address of an on-stack monitor.
  */
-public final class MonitorAddress extends Value {
+public final class MonitorAddress extends ValueNode {
 
     private int monitorIndex;
 
@@ -52,13 +53,6 @@ public final class MonitorAddress extends Value {
     public void setMonitorIndex(int monitorIndex) {
         this.monitorIndex = monitorIndex;
     }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("monitor_address (").print(monitorIndex()).print(")");
-    }
-
-
 
     @Override
     public Map<Object, Object> getDebugProperties() {

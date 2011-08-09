@@ -22,30 +22,31 @@
  */
 package com.oracle.max.graal.examples.intrinsics;
 
-import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "[+]")
 public final class SafeAddNode extends IntegerArithmeticNode {
-    public SafeAddNode(Value x, Value y, Graph graph) {
+    public SafeAddNode(ValueNode x, ValueNode y, Graph graph) {
         super(CiKind.Int, Bytecodes.LADD, x, y, graph);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+        if (clazz == LIRGeneratorOp.class) {
             return (T) GENERATOR_OP;
         }
         return super.lookup(clazz);
     }
 
-    private static final LIRGenerator.LIRGeneratorOp GENERATOR_OP = new LIRGenerator.LIRGeneratorOp() {
+    private static final LIRGeneratorOp GENERATOR_OP = new LIRGeneratorOp() {
         @Override
-        public void generate(Node n, LIRGenerator generator) {
+        public void generate(Node n, LIRGeneratorTool generator) {
             SafeAddNode add = (SafeAddNode) n;
             generator.integerAdd(add, add.x(), add.y());
             generator.deoptimizeOn(Condition.OF);

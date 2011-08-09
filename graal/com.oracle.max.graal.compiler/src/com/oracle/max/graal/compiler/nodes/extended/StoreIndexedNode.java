@@ -20,66 +20,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.LoweringPhase.LoweringOp;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
- * The {@code StoreField} instruction represents a write to a static or instance field.
+ * The {@code StoreIndexed} instruction represents a write to an array element.
  */
-public final class StoreField extends AccessField {
+public final class StoreIndexedNode extends AccessIndexed {
 
-    @Input    private Value value;
+    @Input private ValueNode value;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
 
     /**
-     * Creates a new LoadField instance.
-     * @param object the receiver object
-     * @param field the compiler interface field
-     * @param value the instruction representing the value to store to the field
-     * @param stateAfter the state after the field access
+     * Creates a new StoreIndexed instruction.
+     * @param array the instruction producing the array
+     * @param index the instruction producing the index
+     * @param length the instruction producing the length
+     * @param elementKind the element type
+     * @param value the value to store into the array
+     * @param stateAfter the state after executing this instruction
      * @param graph
      */
-    public StoreField(Value object, RiField field, Value value, Graph graph) {
-        super(CiKind.Void, object, field, graph);
+    public StoreIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, ValueNode value, Graph graph) {
+        super(CiKind.Void, array, index, length, elementKind, graph);
         setValue(value);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-        v.visitStoreField(this);
+        v.visitStoreIndexed(this);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(java.lang.Class<T> clazz) {
+    public <T extends Op> T lookup(Class<T> clazz) {
         if (clazz == LoweringOp.class) {
-            return (T) LoweringPhase.DELEGATE_TO_RUNTIME;
+            return (T) DELEGATE_TO_RUNTIME;
         }
         return super.lookup(clazz);
-    };
-
-    @Override
-    public void print(LogStream out) {
-        out.print(object()).
-        print(".").
-        print(field().name()).
-        print(" := ").
-        print(value()).
-        print(" [type: ").print(CiUtil.format("%h.%n:%t", field(), false)).
-        print(']');
     }
 }

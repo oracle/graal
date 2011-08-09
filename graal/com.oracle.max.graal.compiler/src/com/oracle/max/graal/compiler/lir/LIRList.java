@@ -32,10 +32,10 @@ import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.*;
+import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;
+import com.sun.cri.xir.CiXirAssembler.XirMark;
 import com.sun.cri.xir.*;
-import com.sun.cri.xir.CiXirAssembler.*;
 
 /**
  * This class represents a list of LIR instructions and contains factory methods for creating and appending LIR

@@ -28,10 +28,11 @@ import java.util.Map.Entry;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.NodeClass.*;
+import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.graph.collections.*;
 import com.oracle.max.graal.graph.collections.NodeWorkList.InfiniteWorkException;
 
@@ -128,7 +129,7 @@ public class GraphUtil {
     public static interface ColorSplitingLambda<T> {
         void fixSplit(Node oldNode, Node newNode, T color);
         void fixNode(Node node, T color);
-        Value fixPhiInput(Value input, T color);
+        ValueNode fixPhiInput(ValueNode input, T color);
         boolean explore(Node n);
         List<T> parentColors(T color);
         Merge merge(T color);
@@ -151,11 +152,11 @@ public class GraphUtil {
                     Phi phi = (Phi) node;
                     Merge merge = phi.merge();
                     for (int i = 0; i < phi.valueCount(); i++) {
-                        Value v = phi.valueAt(i);
+                        ValueNode v = phi.valueAt(i);
                         if (v != null) {
                             T color = internalColoring.get(merge.phiPredecessorAt(i));
                             if (color != null) {
-                                Value replace = lambda.fixPhiInput(v, color);
+                                ValueNode replace = lambda.fixPhiInput(v, color);
                                 if (replace != v) {
                                     phi.setValueAt(i, replace);
                                 } else {
@@ -179,7 +180,7 @@ public class GraphUtil {
                                 Phi phi = (Phi) usage;
                                 Merge merge = phi.merge();
                                 for (int i = 0; i < phi.valueCount(); i++) {
-                                    Value v = phi.valueAt(i);
+                                    ValueNode v = phi.valueAt(i);
                                     if (v == node) {
                                         T color = internalColoring.get(merge.phiPredecessorAt(i));
                                         if (color != null) {
@@ -229,10 +230,10 @@ public class GraphUtil {
                                     colorQueue.offer(color);
                                     continue;
                                 }
-                                Phi phi = new Phi(((Value) node).kind, lambda.merge(color), PhiType.Value, node.graph());
+                                Phi phi = new Phi(((ValueNode) node).kind, lambda.merge(color), PhiType.Value, node.graph());
                                 for (T parentColor : parentColors) {
                                     Node input = newNodes.get(parentColor);
-                                    phi.addInput((Value) input);
+                                    phi.addInput((ValueNode) input);
                                 }
                                 newNode = phi;
                             } else {
@@ -258,11 +259,11 @@ public class GraphUtil {
                                     Phi phi = (Phi) usage;
                                     Merge merge = phi.merge();
                                     for (int i = 0; i < phi.valueCount(); i++) {
-                                        Value v = phi.valueAt(i);
+                                        ValueNode v = phi.valueAt(i);
                                         if (v == node) {
                                             T uColor = internalColoring.get(merge.endAt(i));
                                             if (uColor == color) {
-                                                phi.setValueAt(i, (Value) newNode);
+                                                phi.setValueAt(i, (ValueNode) newNode);
                                             }
                                         }
                                     }

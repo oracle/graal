@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -30,13 +31,13 @@ import com.sun.cri.ci.*;
  */
 public abstract class AccessArray extends StateSplit {
 
-    @Input    private Value array;
+    @Input    private ValueNode array;
 
-    public Value array() {
+    public ValueNode array() {
         return array;
     }
 
-    public void setArray(Value x) {
+    public void setArray(ValueNode x) {
         updateUsages(array, x);
         array = x;
     }
@@ -47,7 +48,7 @@ public abstract class AccessArray extends StateSplit {
      * @param array the instruction that produces the array object value
      * @param graph
      */
-    public AccessArray(CiKind kind, Value array, Graph graph) {
+    public AccessArray(CiKind kind, ValueNode array, Graph graph) {
         super(kind, graph);
         setArray(array);
     }

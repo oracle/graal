@@ -25,8 +25,9 @@ package com.oracle.max.graal.compiler.ir;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeField;
-import com.oracle.max.graal.compiler.phases.EscapeAnalysisPhase.EscapeOp;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -35,13 +36,13 @@ import com.sun.cri.ci.*;
  */
 public abstract class NewArray extends FixedNodeWithNext {
 
-    @Input    private Value length;
+    @Input    private ValueNode length;
 
-    public Value length() {
+    public ValueNode length() {
         return length;
     }
 
-    public void setLength(Value x) {
+    public void setLength(ValueNode x) {
         updateUsages(this.length, x);
         this.length = x;
     }
@@ -51,7 +52,7 @@ public abstract class NewArray extends FixedNodeWithNext {
      * @param length the instruction that produces the length for this allocation
      * @param graph
      */
-    NewArray(Value length, Graph graph) {
+    NewArray(ValueNode length, Graph graph) {
         super(CiKind.Object, graph);
         setLength(length);
     }
@@ -59,7 +60,7 @@ public abstract class NewArray extends FixedNodeWithNext {
     /**
      * The list of instructions which produce input for this instruction.
      */
-    public Value dimension(int index) {
+    public ValueNode dimension(int index) {
         assert index == 0;
         return length();
     }
@@ -109,12 +110,12 @@ public abstract class NewArray extends FixedNodeWithNext {
                     return true;
                 }
                 return false;
-            } else if (usage instanceof StoreField) {
-                StoreField x = (StoreField) usage;
+            } else if (usage instanceof StoreFieldNode) {
+                StoreFieldNode x = (StoreFieldNode) usage;
                 assert x.value() == node;
                 return true;
-            } else if (usage instanceof StoreIndexed) {
-                StoreIndexed x = (StoreIndexed) usage;
+            } else if (usage instanceof StoreIndexedNode) {
+                StoreIndexedNode x = (StoreIndexedNode) usage;
                 CiConstant index = x.index().asConstant();
                 CiConstant length = ((NewArray) node).dimension(0).asConstant();
                 if (index == null || length == null || index.asInt() < 0 || index.asInt() >= length.asInt()) {
@@ -125,7 +126,7 @@ public abstract class NewArray extends FixedNodeWithNext {
                 ArrayLength x = (ArrayLength) usage;
                 assert x.array() == node;
                 return false;
-            } else if (usage instanceof VirtualObjectField) {
+            } else if (usage instanceof VirtualObjectFieldNode) {
                 return false;
             } else {
                 return super.escape(node, usage);
@@ -155,7 +156,7 @@ public abstract class NewArray extends FixedNodeWithNext {
         }
 
         @Override
-        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, Value[] fieldState) {
+        public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
             if (current instanceof AccessIndexed) {
                 AccessIndexed x = (AccessIndexed) current;
                 if (x.array() == node) {
@@ -164,8 +165,8 @@ public abstract class NewArray extends FixedNodeWithNext {
                         x.replaceAtUsages(fieldState[index]);
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
-                    } else if (current instanceof StoreIndexed) {
-                        fieldState[index] = ((StoreIndexed) x).value();
+                    } else if (current instanceof StoreIndexedNode) {
+                        fieldState[index] = ((StoreIndexedNode) x).value();
                         assert x.usages().size() == 0;
                         x.replaceAndDelete(x.next());
                         return index;

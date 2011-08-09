@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.value;
 
-import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 
 public interface FrameStateAccess {
 
@@ -36,20 +36,20 @@ public interface FrameStateAccess {
 
     boolean rethrowException();
 
-    Value valueAt(int i);
+    ValueNode valueAt(int i);
 
-    Value localAt(int i);
+    ValueNode localAt(int i);
 
-    Value lockAt(int i);
+    ValueNode lockAt(int i);
 
-    Value stackAt(int i);
+    ValueNode stackAt(int i);
 
-    void setValueAt(int j, Value v);
+    void setValueAt(int j, ValueNode v);
 
     void setRethrowException(boolean b);
 
-    Value outerFrameState();
+    ValueNode outerFrameState();
 
-    FrameState duplicateWithException(int bci, Value exceptionObject);
+    FrameState duplicateWithException(int bci, ValueNode exceptionObject);
 
 }

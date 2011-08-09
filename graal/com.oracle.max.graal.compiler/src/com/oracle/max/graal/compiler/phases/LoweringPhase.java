@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
@@ -33,12 +34,7 @@ import com.sun.cri.ri.*;
 
 public class LoweringPhase extends Phase {
 
-    public static final LoweringOp DELEGATE_TO_RUNTIME = new LoweringOp() {
-        @Override
-        public void lower(Node n, CiLoweringTool tool) {
-            tool.getRuntime().lower(n, tool);
-        }
-    };
+
 
     private final RiRuntime runtime;
 
@@ -113,9 +109,5 @@ public class LoweringPhase extends Phase {
                 op.lower(n, loweringTool);
             }
         }
-    }
-
-    public interface LoweringOp extends Op {
-        void lower(Node n, CiLoweringTool tool);
     }
 }

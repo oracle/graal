@@ -22,16 +22,16 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code InstanceOf} instruction represents an instanceof test.
  */
-public final class InstanceOf extends TypeCheck implements Canonicalizable {
+public final class InstanceOf extends TypeCheckNode implements Canonicalizable {
 
     /**
      * Constructs a new InstanceOf instruction.
@@ -40,17 +40,12 @@ public final class InstanceOf extends TypeCheck implements Canonicalizable {
      * @param object the instruction producing the object input to this instruction
      * @param graph
      */
-    public InstanceOf(Constant targetClassInstruction, Value object, boolean nullIsTrue, Graph graph) {
+    public InstanceOf(Constant targetClassInstruction, ValueNode object, boolean nullIsTrue, Graph graph) {
         super(targetClassInstruction, object, CiKind.Illegal, graph);
     }
 
     @Override
     public void accept(ValueVisitor v) {
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("instanceof(").print(object()).print(") ").print(CiUtil.toJavaName(targetClass()));
     }
 
     @Override

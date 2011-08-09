@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -40,7 +41,7 @@ public final class NewObjectArray extends NewArray {
      * @param length the instruction producing the length of the array
      * @param graph
      */
-    public NewObjectArray(RiType elementClass, Value length, Graph graph) {
+    public NewObjectArray(RiType elementClass, ValueNode length, Graph graph) {
         super(length, graph);
         this.elementClass = elementClass;
     }
@@ -71,10 +72,5 @@ public final class NewObjectArray extends NewArray {
     @Override
     public void accept(ValueVisitor v) {
         v.visitNewObjectArray(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("new object array [").print(length()).print("] ").print(CiUtil.toJavaName(elementType()));
     }
 }

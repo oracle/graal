@@ -37,6 +37,9 @@ import com.oracle.max.graal.compiler.graph.BlockMap.DeoptBlock;
 import com.oracle.max.graal.compiler.graph.BlockMap.ExceptionBlock;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
@@ -87,7 +90,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private int nextBlockNumber;
 
-    private Value methodSynchronizedObject;
+    private ValueNode methodSynchronizedObject;
     private CiExceptionHandler unwindHandler;
 
     private ExceptionBlock unwindBlock;
@@ -340,14 +343,14 @@ public final class GraphBuilderPhase extends Phase {
         int stackSize = newState.stackSize();
         for (int i = 0; i < stackSize; i++) {
             // always insert phis for the stack
-            Value x = newState.stackAt(i);
+            ValueNode x = newState.stackAt(i);
             if (x != null) {
                 newState.setupPhiForStack(loopBegin, i).addInput(x);
             }
         }
         int localsSize = newState.localsSize();
         for (int i = 0; i < localsSize; i++) {
-            Value x = newState.localAt(i);
+            ValueNode x = newState.localAt(i);
             if (x != null) {
                 newState.setupPhiForLocal(loopBegin, i).addInput(x);
             }
@@ -378,7 +381,7 @@ public final class GraphBuilderPhase extends Phase {
         return handler.catchTypeCPI() == 0;
     }
 
-    private FixedNode handleException(Value exceptionObject, int bci) {
+    private FixedNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == FixedNodeWithNext.SYNCHRONIZATION_ENTRY_BCI || bci == bci() : "invalid bci";
 
         if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
@@ -429,7 +432,7 @@ public final class GraphBuilderPhase extends Phase {
             Placeholder p = new Placeholder(graph);
             p.setStateAfter(frameState.duplicateWithoutStack(bci));
 
-            Value currentExceptionObject;
+            ValueNode currentExceptionObject;
             ExceptionObject newObj = null;
             if (exceptionObject == null) {
                 newObj = new ExceptionObject(graph);
@@ -476,19 +479,19 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genLoadIndexed(CiKind kind) {
-        Value index = frameState.ipop();
-        Value array = frameState.apop();
-        Value length = append(new ArrayLength(array, graph));
-        Value v = append(new LoadIndexed(array, index, length, kind, graph));
+        ValueNode index = frameState.ipop();
+        ValueNode array = frameState.apop();
+        ValueNode length = append(new ArrayLength(array, graph));
+        ValueNode v = append(new LoadIndexed(array, index, length, kind, graph));
         frameState.push(kind.stackKind(), v);
     }
 
     private void genStoreIndexed(CiKind kind) {
-        Value value = frameState.pop(kind.stackKind());
-        Value index = frameState.ipop();
-        Value array = frameState.apop();
-        Value length = append(new ArrayLength(array, graph));
-        StoreIndexed result = new StoreIndexed(array, index, length, kind, value, graph);
+        ValueNode value = frameState.pop(kind.stackKind());
+        ValueNode index = frameState.ipop();
+        ValueNode array = frameState.apop();
+        ValueNode length = append(new ArrayLength(array, graph));
+        StoreIndexedNode result = new StoreIndexedNode(array, index, length, kind, value, graph);
         append(result);
     }
 
@@ -504,23 +507,23 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             case DUP: {
-                Value w = frameState.xpop();
+                ValueNode w = frameState.xpop();
                 frameState.xpush(w);
                 frameState.xpush(w);
                 break;
             }
             case DUP_X1: {
-                Value w1 = frameState.xpop();
-                Value w2 = frameState.xpop();
+                ValueNode w1 = frameState.xpop();
+                ValueNode w2 = frameState.xpop();
                 frameState.xpush(w1);
                 frameState.xpush(w2);
                 frameState.xpush(w1);
                 break;
             }
             case DUP_X2: {
-                Value w1 = frameState.xpop();
-                Value w2 = frameState.xpop();
-                Value w3 = frameState.xpop();
+                ValueNode w1 = frameState.xpop();
+                ValueNode w2 = frameState.xpop();
+                ValueNode w3 = frameState.xpop();
                 frameState.xpush(w1);
                 frameState.xpush(w3);
                 frameState.xpush(w2);
@@ -528,8 +531,8 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             case DUP2: {
-                Value w1 = frameState.xpop();
-                Value w2 = frameState.xpop();
+                ValueNode w1 = frameState.xpop();
+                ValueNode w2 = frameState.xpop();
                 frameState.xpush(w2);
                 frameState.xpush(w1);
                 frameState.xpush(w2);
@@ -537,9 +540,9 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             case DUP2_X1: {
-                Value w1 = frameState.xpop();
-                Value w2 = frameState.xpop();
-                Value w3 = frameState.xpop();
+                ValueNode w1 = frameState.xpop();
+                ValueNode w2 = frameState.xpop();
+                ValueNode w3 = frameState.xpop();
                 frameState.xpush(w2);
                 frameState.xpush(w1);
                 frameState.xpush(w3);
@@ -548,10 +551,10 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             case DUP2_X2: {
-                Value w1 = frameState.xpop();
-                Value w2 = frameState.xpop();
-                Value w3 = frameState.xpop();
-                Value w4 = frameState.xpop();
+                ValueNode w1 = frameState.xpop();
+                ValueNode w2 = frameState.xpop();
+                ValueNode w3 = frameState.xpop();
+                ValueNode w4 = frameState.xpop();
                 frameState.xpush(w2);
                 frameState.xpush(w1);
                 frameState.xpush(w4);
@@ -561,8 +564,8 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             case SWAP: {
-                Value w1 = frameState.xpop();
-                Value w2 = frameState.xpop();
+                ValueNode w1 = frameState.xpop();
+                ValueNode w2 = frameState.xpop();
                 frameState.xpush(w1);
                 frameState.xpush(w2);
                 break;
@@ -578,8 +581,8 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genArithmeticOp(CiKind result, int opcode, boolean canTrap) {
-        Value y = frameState.pop(result);
-        Value x = frameState.pop(result);
+        ValueNode y = frameState.pop(result);
+        ValueNode x = frameState.pop(result);
         boolean isStrictFP = isStrict(method.accessFlags());
         Arithmetic v;
         switch(opcode){
@@ -606,9 +609,9 @@ public final class GraphBuilderPhase extends Phase {
             default:
                 throw new CiBailout("should not reach");
         }
-        Value result1 = append(v);
+        ValueNode result1 = append(v);
         if (canTrap) {
-            append(new ValueAnchor(result1, graph));
+            append(new ValueAnchorNode(result1, graph));
         }
         frameState.push(result, result1);
     }
@@ -618,16 +621,16 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genShiftOp(CiKind kind, int opcode) {
-        Value s = frameState.ipop();
-        Value x = frameState.pop(kind);
-        Shift v;
+        ValueNode s = frameState.ipop();
+        ValueNode x = frameState.pop(kind);
+        ShiftNode v;
         switch(opcode){
             case ISHL:
             case LSHL: v = new LeftShift(kind, x, s, graph); break;
             case ISHR:
             case LSHR: v = new RightShift(kind, x, s, graph); break;
             case IUSHR:
-            case LUSHR: v = new UnsignedRightShift(kind, x, s, graph); break;
+            case LUSHR: v = new UnsignedRightShiftNode(kind, x, s, graph); break;
             default:
                 throw new CiBailout("should not reach");
         }
@@ -635,8 +638,8 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genLogicOp(CiKind kind, int opcode) {
-        Value y = frameState.pop(kind);
-        Value x = frameState.pop(kind);
+        ValueNode y = frameState.pop(kind);
+        ValueNode x = frameState.pop(kind);
         Logic v;
         switch(opcode){
             case IAND:
@@ -644,7 +647,7 @@ public final class GraphBuilderPhase extends Phase {
             case IOR:
             case LOR: v = new Or(kind, x, y, graph); break;
             case IXOR:
-            case LXOR: v = new Xor(kind, x, y, graph); break;
+            case LXOR: v = new XorNode(kind, x, y, graph); break;
             default:
                 throw new CiBailout("should not reach");
         }
@@ -652,9 +655,9 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genCompareOp(CiKind kind, int opcode, CiKind resultKind) {
-        Value y = frameState.pop(kind);
-        Value x = frameState.pop(kind);
-        Value value = append(new NormalizeCompare(opcode, resultKind, x, y, graph));
+        ValueNode y = frameState.pop(kind);
+        ValueNode x = frameState.pop(kind);
+        ValueNode value = append(new NormalizeCompare(opcode, resultKind, x, y, graph));
         if (!resultKind.isVoid()) {
             frameState.ipush(value);
         }
@@ -668,8 +671,8 @@ public final class GraphBuilderPhase extends Phase {
     private void genIncrement() {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
-        Value x = frameState.localAt(index);
-        Value y = append(Constant.forInt(delta, graph));
+        ValueNode x = frameState.localAt(index);
+        ValueNode y = append(Constant.forInt(delta, graph));
         frameState.storeLocal(index, append(new IntegerAdd(CiKind.Int, x, y, graph)));
     }
 
@@ -677,7 +680,7 @@ public final class GraphBuilderPhase extends Phase {
         appendGoto(createTargetAt(toBCI, frameState));
     }
 
-    private void ifNode(Value x, Condition cond, Value y) {
+    private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
         double probability = method.branchProbability(bci());
         if (probability < 0) {
@@ -707,26 +710,26 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genIfZero(Condition cond) {
-        Value y = appendConstant(CiConstant.INT_0);
-        Value x = frameState.ipop();
+        ValueNode y = appendConstant(CiConstant.INT_0);
+        ValueNode x = frameState.ipop();
         ifNode(x, cond, y);
     }
 
     private void genIfNull(Condition cond) {
-        Value y = appendConstant(CiConstant.NULL_OBJECT);
-        Value x = frameState.apop();
+        ValueNode y = appendConstant(CiConstant.NULL_OBJECT);
+        ValueNode x = frameState.apop();
         ifNode(x, cond, y);
     }
 
     private void genIfSame(CiKind kind, Condition cond) {
-        Value y = frameState.pop(kind);
-        Value x = frameState.pop(kind);
+        ValueNode y = frameState.pop(kind);
+        ValueNode x = frameState.pop(kind);
         assert !x.isDeleted() && !y.isDeleted();
         ifNode(x, cond, y);
     }
 
     private void genThrow(int bci) {
-        Value exception = frameState.apop();
+        ValueNode exception = frameState.apop();
         FixedGuard node = new FixedGuard(new IsNonNull(exception, graph), graph);
         append(node);
 
@@ -742,7 +745,7 @@ public final class GraphBuilderPhase extends Phase {
         int cpi = stream().readCPI();
         RiType type = constantPool.lookupType(cpi, CHECKCAST);
         Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, type.isResolved());
-        Value object = frameState.apop();
+        ValueNode object = frameState.apop();
         if (typeInstruction != null) {
 //            InstanceOf instanceOf = new InstanceOf(typeInstruction, object, true, graph);
 //            FixedGuard fixedGuard = new FixedGuard(instanceOf, graph);
@@ -760,7 +763,7 @@ public final class GraphBuilderPhase extends Phase {
         int cpi = stream().readCPI();
         RiType type = constantPool.lookupType(cpi, INSTANCEOF);
         Constant typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, type.isResolved());
-        Value object = frameState.apop();
+        ValueNode object = frameState.apop();
         if (typeInstruction != null) {
             frameState.ipush(append(new MaterializeNode(new InstanceOf(typeInstruction, object, false, graph), graph)));
         } else {
@@ -789,7 +792,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genNewObjectArray(int cpi) {
         RiType type = constantPool.lookupType(cpi, ANEWARRAY);
-        Value length = frameState.ipop();
+        ValueNode length = frameState.ipop();
         if (type.isResolved()) {
             NewArray n = new NewObjectArray(type, length, graph);
             frameState.apush(append(n));
@@ -804,7 +807,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genNewMultiArray(int cpi) {
         RiType type = constantPool.lookupType(cpi, MULTIANEWARRAY);
         int rank = stream().readUByte(bci() + 3);
-        Value[] dims = new Value[rank];
+        ValueNode[] dims = new ValueNode[rank];
         for (int i = rank - 1; i >= 0; i--) {
             dims[i] = frameState.ipop();
         }
@@ -820,7 +823,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genGetField(int cpi, RiField field) {
         CiKind kind = field.kind();
-        Value receiver = frameState.apop();
+        ValueNode receiver = frameState.apop();
         if (field.isResolved() && field.holder().isInitialized()) {
             LoadField load = new LoadField(receiver, field, graph);
             appendOptimizedLoadField(kind, load);
@@ -832,10 +835,10 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genPutField(int cpi, RiField field) {
-        Value value = frameState.pop(field.kind().stackKind());
-        Value receiver = frameState.apop();
+        ValueNode value = frameState.pop(field.kind().stackKind());
+        ValueNode receiver = frameState.apop();
         if (field.isResolved() && field.holder().isInitialized()) {
-            StoreField store = new StoreField(receiver, field, value, graph);
+            StoreFieldNode store = new StoreFieldNode(receiver, field, value, graph);
             appendOptimizedStoreField(store);
         } else {
             storeResultGraph = false;
@@ -853,7 +856,7 @@ public final class GraphBuilderPhase extends Phase {
         if (constantValue != null) {
             frameState.push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
-            Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
+            ValueNode container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
             CiKind kind = field.kind();
             if (container != null) {
                 LoadField load = new LoadField(container, field, graph);
@@ -867,10 +870,10 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genPutStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && holder.isInitialized());
-        Value value = frameState.pop(field.kind().stackKind());
+        ValueNode container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && holder.isInitialized());
+        ValueNode value = frameState.pop(field.kind().stackKind());
         if (container != null) {
-            StoreField store = new StoreField(container, field, value, graph);
+            StoreFieldNode store = new StoreFieldNode(container, field, value, graph);
             appendOptimizedStoreField(store);
         } else {
             // deopt will be generated by genTypeOrDeopt, not needed here
@@ -887,13 +890,13 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void appendOptimizedStoreField(StoreField store) {
+    private void appendOptimizedStoreField(StoreFieldNode store) {
         append(store);
     }
 
     private void appendOptimizedLoadField(CiKind kind, LoadField load) {
         // append the load to the instruction
-        Value optimized = append(load);
+        ValueNode optimized = append(load);
         frameState.push(kind.stackKind(), optimized);
     }
 
@@ -906,18 +909,18 @@ public final class GraphBuilderPhase extends Phase {
             // of initialization is required), it can be commoned with static field accesses.
             genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
         }
-        Value[] args = frameState.popArguments(target.signature().argumentSlots(false));
+        ValueNode[] args = frameState.popArguments(target.signature().argumentSlots(false));
         appendInvoke(INVOKESTATIC, target, args, cpi, constantPool);
     }
 
     private void genInvokeInterface(RiMethod target, int cpi, RiConstantPool constantPool) {
-        Value[] args = frameState.popArguments(target.signature().argumentSlots(true));
+        ValueNode[] args = frameState.popArguments(target.signature().argumentSlots(true));
         genInvokeIndirect(INVOKEINTERFACE, target, args, cpi, constantPool);
 
     }
 
     private void genInvokeVirtual(RiMethod target, int cpi, RiConstantPool constantPool) {
-        Value[] args = frameState.popArguments(target.signature().argumentSlots(true));
+        ValueNode[] args = frameState.popArguments(target.signature().argumentSlots(true));
         genInvokeIndirect(INVOKEVIRTUAL, target, args, cpi, constantPool);
 
     }
@@ -925,13 +928,13 @@ public final class GraphBuilderPhase extends Phase {
     private void genInvokeSpecial(RiMethod target, RiType knownHolder, int cpi, RiConstantPool constantPool) {
         assert target != null;
         assert target.signature() != null;
-        Value[] args = frameState.popArguments(target.signature().argumentSlots(true));
+        ValueNode[] args = frameState.popArguments(target.signature().argumentSlots(true));
         invokeDirect(target, args, knownHolder, cpi, constantPool);
 
     }
 
-    private void genInvokeIndirect(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
-        Value receiver = args[0];
+    private void genInvokeIndirect(int opcode, RiMethod target, ValueNode[] args, int cpi, RiConstantPool constantPool) {
+        ValueNode receiver = args[0];
         // attempt to devirtualize the call
         if (target.isResolved()) {
             RiType klass = target.holder();
@@ -958,11 +961,11 @@ public final class GraphBuilderPhase extends Phase {
         return target.signature().returnKind();
     }
 
-    private void invokeDirect(RiMethod target, Value[] args, RiType knownHolder, int cpi, RiConstantPool constantPool) {
+    private void invokeDirect(RiMethod target, ValueNode[] args, RiType knownHolder, int cpi, RiConstantPool constantPool) {
         appendInvoke(INVOKESPECIAL, target, args, cpi, constantPool);
     }
 
-    private void appendInvoke(int opcode, RiMethod target, Value[] args, int cpi, RiConstantPool constantPool) {
+    private void appendInvoke(int opcode, RiMethod target, ValueNode[] args, int cpi, RiConstantPool constantPool) {
         CiKind resultType = returnKind(target);
         if (GraalOptions.DeoptALot) {
             storeResultGraph = false;
@@ -972,7 +975,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.pushReturn(resultType, Constant.defaultForKind(resultType, graph));
         } else {
             Invoke invoke = new Invoke(bci(), opcode, resultType.stackKind(), args, target, target.signature().returnType(method.holder()), graph);
-            Value result = appendWithBCI(invoke);
+            ValueNode result = appendWithBCI(invoke);
             invoke.setExceptionEdge(handleException(null, bci()));
 //            if (invoke.exceptionEdge() == null) {
 //                TTY.println("no exception edge" + unwindHandler);
@@ -981,7 +984,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private RiType getExactType(RiType staticType, Value receiver) {
+    private RiType getExactType(RiType staticType, ValueNode receiver) {
         RiType exact = staticType.exactType();
         if (exact == null) {
             exact = receiver.exactType();
@@ -1003,7 +1006,7 @@ public final class GraphBuilderPhase extends Phase {
         append(new RegisterFinalizer(frameState.loadLocal(0), graph));
     }
 
-    private void genReturn(Value x) {
+    private void genReturn(ValueNode x) {
         frameState.clearStack();
         if (x != null) {
             frameState.push(x.kind, x);
@@ -1011,7 +1014,7 @@ public final class GraphBuilderPhase extends Phase {
         appendGoto(createTarget(returnBlock(bci()), frameState));
     }
 
-    private void genMonitorEnter(Value x, int bci) {
+    private void genMonitorEnter(ValueNode x, int bci) {
         int lockNumber = frameState.locksSize();
         MonitorAddress lockAddress = null;
         if (runtime.sizeOfBasicObjectLock() != 0) {
@@ -1026,7 +1029,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void genMonitorExit(Value x) {
+    private void genMonitorExit(ValueNode x) {
         int lockNumber = frameState.locksSize() - 1;
         if (lockNumber < 0) {
             throw new CiBailout("monitor stack underflow");
@@ -1050,7 +1053,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genTableswitch() {
         int bci = bci();
-        Value value = frameState.ipop();
+        ValueNode value = frameState.ipop();
         BytecodeTableSwitch ts = new BytecodeTableSwitch(stream(), bci);
         int max = ts.numberOfCases();
         List<FixedNodeWithNext> list = new ArrayList<FixedNodeWithNext>(max + 1);
@@ -1064,7 +1067,7 @@ public final class GraphBuilderPhase extends Phase {
         int offset = ts.defaultOffset();
         list.add(null);
         offsetList.add(offset);
-        TableSwitch tableSwitch = new TableSwitch(value, list, ts.lowKey(), switchProbability(list.size(), bci), graph);
+        TableSwitchNode tableSwitch = new TableSwitchNode(value, list, ts.lowKey(), switchProbability(list.size(), bci), graph);
         for (int i = 0; i < offsetList.size(); ++i) {
             tableSwitch.setBlockSuccessor(i, createTargetAt(bci + offsetList.get(i), frameState));
         }
@@ -1089,7 +1092,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genLookupswitch() {
         int bci = bci();
-        Value value = frameState.ipop();
+        ValueNode value = frameState.ipop();
         BytecodeLookupSwitch ls = new BytecodeLookupSwitch(stream(), bci);
         int max = ls.numberOfCases();
         List<FixedNodeWithNext> list = new ArrayList<FixedNodeWithNext>(max + 1);
@@ -1116,7 +1119,7 @@ public final class GraphBuilderPhase extends Phase {
         return new Constant(constant, graph);
     }
 
-    private Value append(FixedNode fixed) {
+    private ValueNode append(FixedNode fixed) {
         if (fixed instanceof Deoptimize && lastInstr.predecessor() != null) {
             Node cur = lastInstr;
             Node prev = cur;
@@ -1156,15 +1159,15 @@ public final class GraphBuilderPhase extends Phase {
         return fixed;
     }
 
-    private Value append(FixedNodeWithNext x) {
+    private ValueNode append(FixedNodeWithNext x) {
         return appendWithBCI(x);
     }
 
-    private Value append(Value v) {
+    private ValueNode append(ValueNode v) {
         return v;
     }
 
-    private Value appendWithBCI(FixedNodeWithNext x) {
+    private ValueNode appendWithBCI(FixedNodeWithNext x) {
         assert x.predecessor() == null : "instruction should not have been appended yet";
         assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
         lastInstr.setNext(x);
@@ -1233,7 +1236,7 @@ public final class GraphBuilderPhase extends Phase {
         return result;
     }
 
-    private Value synchronizedObject(FrameStateAccess state, RiMethod target) {
+    private ValueNode synchronizedObject(FrameStateAccess state, RiMethod target) {
         if (isStatic(target.accessFlags())) {
             Constant classConstant = new Constant(target.holder().getEncoding(Representation.JavaClass), graph);
             return append(classConstant);
@@ -1330,7 +1333,7 @@ public final class GraphBuilderPhase extends Phase {
         if (Modifier.isSynchronized(method.accessFlags())) {
             genMonitorExit(methodSynchronizedObject);
         }
-        Unwind unwindNode = new Unwind(frameState.apop(), graph);
+        UnwindNode unwindNode = new UnwindNode(frameState.apop(), graph);
         graph.setUnwind(unwindNode);
         append(unwindNode);
     }
@@ -1340,7 +1343,7 @@ public final class GraphBuilderPhase extends Phase {
             callRegisterFinalizer();
         }
         CiKind returnKind = method.signature().returnKind().stackKind();
-        Value x = returnKind == CiKind.Void ? null : frameState.pop(returnKind);
+        ValueNode x = returnKind == CiKind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
         if (Modifier.isSynchronized(method.accessFlags())) {
@@ -1366,7 +1369,7 @@ public final class GraphBuilderPhase extends Phase {
             if (typeInstruction != null) {
                 FixedNode catchSuccessor = createTarget(blockFromBci[block.handler.handlerBCI()], frameState);
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                Value exception = frameState.stackAt(0);
+                ValueNode exception = frameState.stackAt(0);
                 If ifNode = new If(new InstanceOf(typeInstruction, exception, false, graph), 0.5, graph);
                 append(ifNode);
                 ifNode.setTrueSuccessor(catchSuccessor);
@@ -1422,15 +1425,15 @@ public final class GraphBuilderPhase extends Phase {
         if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
             log.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
             for (int i = 0; i < frameState.localsSize(); ++i) {
-                Value value = frameState.localAt(i);
+                ValueNode value = frameState.localAt(i);
                 log.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
             }
             for (int i = 0; i < frameState.stackSize(); ++i) {
-                Value value = frameState.stackAt(i);
+                ValueNode value = frameState.stackAt(i);
                 log.println(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
             }
             for (int i = 0; i < frameState.locksSize(); ++i) {
-                Value value = frameState.lockAt(i);
+                ValueNode value = frameState.lockAt(i);
                 log.println(String.format("|   lock[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind.javaName, value));
             }
         }

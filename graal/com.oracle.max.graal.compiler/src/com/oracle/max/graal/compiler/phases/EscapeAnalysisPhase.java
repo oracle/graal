@@ -30,9 +30,11 @@ import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -40,17 +42,17 @@ import com.sun.cri.ci.*;
 public class EscapeAnalysisPhase extends Phase {
 
     public static class BlockExitState implements MergeableState<BlockExitState> {
-        public final Value[] fieldState;
-        public final VirtualObject virtualObject;
+        public final ValueNode[] fieldState;
+        public final VirtualObjectNode virtualObject;
         public FloatingNode virtualObjectField;
 
-        public BlockExitState(EscapeField[] fields, VirtualObject virtualObject) {
-            this.fieldState = new Value[fields.length];
+        public BlockExitState(EscapeField[] fields, VirtualObjectNode virtualObject) {
+            this.fieldState = new ValueNode[fields.length];
             this.virtualObject = virtualObject;
             this.virtualObjectField = null;
             for (int i = 0; i < fields.length; i++) {
                 fieldState[i] = Constant.defaultForKind(fields[i].kind(), virtualObject.graph());
-                virtualObjectField = new VirtualObjectField(virtualObject, virtualObjectField, fieldState[i], i, virtualObject.graph());
+                virtualObjectField = new VirtualObjectFieldNode(virtualObject, virtualObjectField, fieldState[i], i, virtualObject.graph());
             }
         }
 
@@ -61,7 +63,7 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         public void updateField(int fieldIndex) {
-            virtualObjectField = new VirtualObjectField(virtualObject, virtualObjectField, fieldState[fieldIndex], fieldIndex, virtualObject.graph());
+            virtualObjectField = new VirtualObjectFieldNode(virtualObject, virtualObjectField, fieldState[fieldIndex], fieldIndex, virtualObject.graph());
         }
 
         @Override
@@ -100,7 +102,7 @@ public class EscapeAnalysisPhase extends Phase {
             assert vobjPhi == null || vobjPhi.valueCount() == withStates.size() + 1;
             for (int i2 = 0; i2 < fieldState.length; i2++) {
                 if (valuePhis[i2] != null) {
-                    virtualObjectField = new VirtualObjectField(virtualObject, virtualObjectField, valuePhis[i2], i2, virtualObject.graph());
+                    virtualObjectField = new VirtualObjectFieldNode(virtualObject, virtualObjectField, valuePhis[i2], i2, virtualObject.graph());
                     assert valuePhis[i2].valueCount() == withStates.size() + 1;
                 }
             }
@@ -124,7 +126,7 @@ public class EscapeAnalysisPhase extends Phase {
         @Override
         public void loopEnd(LoopEnd x, BlockExitState loopEndState) {
             while (!(virtualObjectField instanceof Phi)) {
-                virtualObjectField = ((VirtualObjectField) virtualObjectField).lastState();
+                virtualObjectField = ((VirtualObjectFieldNode) virtualObjectField).lastState();
             }
             ((Phi) virtualObjectField).addInput(loopEndState.virtualObjectField);
             assert ((Phi) virtualObjectField).valueCount() == 2;
@@ -170,7 +172,7 @@ public class EscapeAnalysisPhase extends Phase {
             for (int i = 0; i < escapeFields.length; i++) {
                 fields.put(escapeFields[i].representation(), i);
             }
-            final VirtualObject virtual = new VirtualObject(((Value) node).exactType(), escapeFields, graph);
+            final VirtualObjectNode virtual = new VirtualObjectNode(((ValueNode) node).exactType(), escapeFields, graph);
             if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
                 TTY.println("new virtual object: " + virtual);
             }
@@ -225,7 +227,7 @@ public class EscapeAnalysisPhase extends Phase {
                     double weight = analyze(op, node, exits, invokes);
                     if (exits.size() != 0) {
                         if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
-                            TTY.println("%n####### escaping object: %d %s (%s) in %s", node.id(), node.shortName(), ((Value) node).exactType(), compilation.method);
+                            TTY.println("%n####### escaping object: %d %s (%s) in %s", node.id(), node.shortName(), ((ValueNode) node).exactType(), compilation.method);
                             if (GraalOptions.TraceEscapeAnalysis) {
                                 TTY.print("%d: new value: %d %s, weight %d, escapes at ", iterations, node.id(), node.shortName(), weight);
                                 for (Node n : exits) {
@@ -245,7 +247,7 @@ public class EscapeAnalysisPhase extends Phase {
                             compilation.compiler.fireCompilationEvent(new CompilationEvent(compilation, "Before escape " + node.id(), graph, true, false));
                         }
                         if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
-                            TTY.println("%n!!!!!!!! non-escaping object: %d %s (%s) in %s", node.id(), node.shortName(), ((Value) node).exactType(), compilation.method);
+                            TTY.println("%n!!!!!!!! non-escaping object: %d %s (%s) in %s", node.id(), node.shortName(), ((ValueNode) node).exactType(), compilation.method);
                         }
                         new EscapementFixup(op, graph, node).apply();
                         if (compilation.compiler.isObserved()) {
@@ -270,7 +272,7 @@ public class EscapeAnalysisPhase extends Phase {
                     new DeadCodeEliminationPhase().apply(graph);
                     if (node.isDeleted()) {
                         if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
-                            TTY.println("%n!!!!!!!! object died while performing escape analysis: %d %s (%s) in %s", node.id(), node.shortName(), ((Value) node).exactType(), compilation.method);
+                            TTY.println("%n!!!!!!!! object died while performing escape analysis: %d %s (%s) in %s", node.id(), node.shortName(), ((ValueNode) node).exactType(), compilation.method);
                         }
                         break;
                     }
@@ -307,81 +309,4 @@ public class EscapeAnalysisPhase extends Phase {
         return weight;
     }
 
-    public static class EscapeField {
-
-        private String name;
-        private Object representation;
-        private CiKind kind;
-
-        public EscapeField(String name, Object representation, CiKind kind) {
-            this.name = name;
-            this.representation = representation;
-            this.kind = kind;
-        }
-
-        public String name() {
-            return name;
-        }
-
-        public Object representation() {
-            return representation;
-        }
-
-        public CiKind kind() {
-            return kind;
-        }
-
-        @Override
-        public String toString() {
-            return name();
-        }
-    }
-
-    public abstract static class EscapeOp implements Op {
-
-        public abstract boolean canAnalyze(Node node);
-
-        public boolean escape(Node node, Node usage) {
-            if (usage instanceof IsNonNull) {
-                IsNonNull x = (IsNonNull) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof IsType) {
-                IsType x = (IsType) usage;
-                assert x.object() == node;
-                return false;
-            } else if (usage instanceof FrameState) {
-                FrameState x = (FrameState) usage;
-                assert x.inputContains(node);
-                return true;
-            } else if (usage instanceof AccessMonitor) {
-                AccessMonitor x = (AccessMonitor) usage;
-                assert x.object() == node;
-                return false;
-            } else {
-                return true;
-            }
-        }
-
-        public abstract EscapeField[] fields(Node node);
-
-        public void beforeUpdate(Node node, Node usage) {
-            if (usage instanceof IsNonNull) {
-                IsNonNull x = (IsNonNull) usage;
-                // TODO (ls) not sure about this...
-                x.replaceAndDelete(Constant.forBoolean(true, node.graph()));
-            } else if (usage instanceof IsType) {
-                IsType x = (IsType) usage;
-                assert x.type() == ((Value) node).exactType();
-                // TODO (ls) not sure about this...
-                x.replaceAndDelete(Constant.forBoolean(true, node.graph()));
-            } else if (usage instanceof AccessMonitor) {
-                AccessMonitor x = (AccessMonitor) usage;
-                x.replaceAndDelete(x.next());
-            }
-        }
-
-        public abstract int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, Value[] fieldState);
-
-    }
 }

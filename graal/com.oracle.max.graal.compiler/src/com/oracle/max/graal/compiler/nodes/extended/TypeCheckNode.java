@@ -20,8 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -29,26 +31,24 @@ import com.sun.cri.ri.*;
 /**
  * The {@code TypeCheck} instruction is the base class of casts and instanceof tests.
  */
-public abstract class TypeCheck extends BooleanNode {
+public abstract class TypeCheckNode extends BooleanNode {
+    @Input private ValueNode object;
+    @Input private ValueNode targetClassInstruction;
 
-    @Input    private Value object;
-
-    @Input    private Value targetClassInstruction;
-
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
 
-    public Value targetClassInstruction() {
+    public ValueNode targetClassInstruction() {
         return targetClassInstruction;
     }
 
-    public void setTargetClassInstruction(Value x) {
+    public void setTargetClassInstruction(ValueNode x) {
         updateUsages(targetClassInstruction, x);
         targetClassInstruction = x;
     }
@@ -68,7 +68,7 @@ public abstract class TypeCheck extends BooleanNode {
      * @param kind the result type of this instruction
      * @param graph
      */
-    public TypeCheck(Value targetClassInstruction, Value object, CiKind kind, Graph graph) {
+    public TypeCheckNode(ValueNode targetClassInstruction, ValueNode object, CiKind kind, Graph graph) {
         super(kind, graph);
         setObject(object);
         setTargetClassInstruction(targetClassInstruction);

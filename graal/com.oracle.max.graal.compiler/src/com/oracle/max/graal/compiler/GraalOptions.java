@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler;
 
-import com.oracle.max.graal.compiler.debug.TTY.*;
+import com.oracle.max.graal.compiler.debug.TTY.Filter;
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.

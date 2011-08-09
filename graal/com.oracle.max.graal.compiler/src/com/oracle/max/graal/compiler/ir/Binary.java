@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -31,24 +32,24 @@ import com.sun.cri.ci.*;
  */
 public abstract class Binary extends FloatingNode {
 
-    @Input private Value x;
-    @Input private Value y;
+    @Input private ValueNode x;
+    @Input private ValueNode y;
     @Data public final int opcode;
 
-    public Value x() {
+    public ValueNode x() {
         return x;
     }
 
-    public void setX(Value x) {
+    public void setX(ValueNode x) {
         updateUsages(this.x, x);
         this.x = x;
     }
 
-    public Value y() {
+    public ValueNode y() {
         return y;
     }
 
-    public void setY(Value x) {
+    public void setY(ValueNode x) {
         updateUsages(y, x);
         this.y = x;
     }
@@ -60,7 +61,7 @@ public abstract class Binary extends FloatingNode {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public Binary(CiKind kind, int opcode, Value x, Value y, Graph graph) {
+    public Binary(CiKind kind, int opcode, ValueNode x, ValueNode y, Graph graph) {
         super(kind, graph);
         this.opcode = opcode;
         setX(x);
@@ -72,7 +73,7 @@ public abstract class Binary extends FloatingNode {
      */
     public void swapOperands() {
         assert Bytecodes.isCommutative(opcode);
-        Value t = x();
+        ValueNode t = x();
         setX(y());
         setY(t);
     }

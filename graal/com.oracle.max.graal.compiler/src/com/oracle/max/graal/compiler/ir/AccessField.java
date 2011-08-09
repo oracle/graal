@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -34,13 +35,13 @@ import com.sun.cri.ri.*;
  */
 public abstract class AccessField extends StateSplit {
 
-    @Input    private Value object;
+    @Input    private ValueNode object;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
@@ -54,7 +55,7 @@ public abstract class AccessField extends StateSplit {
      * @param field the compiler interface representation of the field
      * @param graph
      */
-    public AccessField(CiKind kind, Value object, RiField field, Graph graph) {
+    public AccessField(CiKind kind, ValueNode object, RiField field, Graph graph) {
         super(kind, graph);
         this.field = field;
         setObject(object);

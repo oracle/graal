@@ -24,9 +24,8 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -36,13 +35,13 @@ import com.sun.cri.ri.*;
  */
 public final class IsType extends BooleanNode implements Canonicalizable {
 
-    @Input private Value object;
+    @Input private ValueNode object;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
@@ -55,7 +54,7 @@ public final class IsType extends BooleanNode implements Canonicalizable {
      * @param object the instruction producing the object to check against the given type
      * @param graph
      */
-    public IsType(Value object, RiType type, Graph graph) {
+    public IsType(ValueNode object, RiType type, Graph graph) {
         super(CiKind.Object, graph);
         assert type.isResolved();
         assert object == null || object.kind == CiKind.Object;
@@ -81,11 +80,6 @@ public final class IsType extends BooleanNode implements Canonicalizable {
     @Override
     public RiType exactType() {
         return type;
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("null_check(").print(object()).print(')');
     }
 
     @Override

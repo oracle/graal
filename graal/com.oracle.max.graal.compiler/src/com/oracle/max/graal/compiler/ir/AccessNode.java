@@ -22,22 +22,22 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public abstract class AccessNode extends AbstractMemoryCheckpointNode {
-    @Input private Value object;
+    @Input private ValueNode object;
     @Input private GuardNode guard;
     @Input private LocationNode location;
     @Input private final NodeInputList<Node> dependencies = new NodeInputList<Node>(this);
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
@@ -60,7 +60,7 @@ public abstract class AccessNode extends AbstractMemoryCheckpointNode {
         location = x;
     }
 
-    public AccessNode(CiKind kind, Value object, LocationNode location, Graph graph) {
+    public AccessNode(CiKind kind, ValueNode object, LocationNode location, Graph graph) {
         super(kind, graph);
         setLocation(location);
         setObject(object);
@@ -72,10 +72,5 @@ public abstract class AccessNode extends AbstractMemoryCheckpointNode {
 
     public NodeInputList<Node> dependencies() {
         return dependencies;
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("mem read from ").print(object());
     }
 }

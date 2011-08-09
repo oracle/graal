@@ -23,9 +23,8 @@
 package com.oracle.max.graal.runtime.nodes;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -42,21 +41,16 @@ public final class CurrentThread extends FloatingNode {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) new LIRGenerator.LIRGeneratorOp() {
+        if (clazz == LIRGeneratorOp.class) {
+            return (T) new LIRGeneratorOp() {
                 @Override
-                public void generate(Node n, LIRGenerator generator) {
+                public void generate(Node n, LIRGeneratorTool generator) {
                     CurrentThread conv = (CurrentThread) n;
                     CiValue result = generator.createResultVariable(conv);
-                    generator.lir().move(new CiAddress(CiKind.Object, AMD64.r15.asValue(CiKind.Word), threadObjectOffset), result);
+                    generator.emitMove(new CiAddress(CiKind.Object, AMD64.r15.asValue(CiKind.Word), threadObjectOffset), result);
                 }
             };
         }
         return super.lookup(clazz);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("currentThread");
     }
 }

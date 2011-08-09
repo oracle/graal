@@ -22,24 +22,24 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
  * The {@code Convert} class represents a conversion between primitive types.
  */
 public final class Convert extends FloatingNode {
-    @Input private Value value;
+    @Input private ValueNode value;
 
     @Data public final int opcode;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
@@ -51,7 +51,7 @@ public final class Convert extends FloatingNode {
      * @param kind the result type of this instruction
      * @param graph
      */
-    public Convert(int opcode, Value value, CiKind kind, Graph graph) {
+    public Convert(int opcode, ValueNode value, CiKind kind, Graph graph) {
         super(kind, graph);
         this.opcode = opcode;
         setValue(value);
@@ -60,10 +60,5 @@ public final class Convert extends FloatingNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitConvert(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(Bytecodes.nameOf(opcode)).print('(').print(value()).print(')');
     }
 }

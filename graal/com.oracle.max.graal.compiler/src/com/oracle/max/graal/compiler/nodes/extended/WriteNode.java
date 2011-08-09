@@ -20,26 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class WriteNode extends AccessNode {
-    @Input private Value value;
+    @Input private ValueNode value;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
 
-    public WriteNode(CiKind kind, Value object, Value value, LocationNode location, Graph graph) {
+    public WriteNode(CiKind kind, ValueNode object, ValueNode value, LocationNode location, Graph graph) {
         super(kind, object, location, graph);
         setValue(value);
     }
@@ -47,10 +49,5 @@ public final class WriteNode extends AccessNode {
     @Override
     public void accept(ValueVisitor v) {
         v.visitMemoryWrite(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("mem write to ").print(object()).print(" with value").print(value());
     }
 }

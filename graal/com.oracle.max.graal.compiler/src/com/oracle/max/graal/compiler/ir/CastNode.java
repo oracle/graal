@@ -22,25 +22,25 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class CastNode extends FloatingNode {
-    @Input private Value value;
+    @Input private ValueNode value;
 
-    public Value value() {
+    public ValueNode value() {
         return value;
     }
 
-    public void setValue(Value x) {
+    public void setValue(ValueNode x) {
         updateUsages(value, x);
         value = x;
     }
 
-    public CastNode(CiKind kind, Value n, Graph graph) {
+    public CastNode(CiKind kind, ValueNode n, Graph graph) {
         super(kind, graph);
         setValue(n);
     }
@@ -53,20 +53,15 @@ public final class CastNode extends FloatingNode {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
-            return (T) new LIRGenerator.LIRGeneratorOp() {
+        if (clazz == LIRGeneratorOp.class) {
+            return (T) new LIRGeneratorOp() {
                 @Override
-                public void generate(Node n, LIRGenerator generator) {
+                public void generate(Node n, LIRGeneratorTool generator) {
                     CastNode conv = (CastNode) n;
                     conv.setOperand(generator.load(conv.value()));
                 }
             };
         }
         return super.lookup(clazz);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("cast node ").print(value().toString());
     }
 }

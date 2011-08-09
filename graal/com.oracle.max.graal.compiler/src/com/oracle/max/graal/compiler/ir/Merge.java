@@ -25,8 +25,9 @@ package com.oracle.max.graal.compiler.ir;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -126,8 +127,8 @@ public class Merge extends StateSplit {
         //if (end != null && end.blockSuccessors().size() > 0) {
             out.print(" .");
             for (Node successor : this.successors()) {
-                if (successor instanceof Value) {
-                    out.print((Value) successor);
+                if (successor instanceof ValueNode) {
+                    out.print((ValueNode) successor);
                 } else {
                     out.print(successor.toString());
                 }
@@ -143,78 +144,6 @@ public class Merge extends StateSplit {
 //        }
     }
 
-    @Override
-    public void print(LogStream out) {
-
-        printWithoutPhis(out);
-
-        // print phi functions
-        boolean hasPhisInLocals = false;
-        boolean hasPhisOnStack = false;
-
-        //if (end() != null && end().stateAfter() != null) {
-            FrameState state = stateAfter();
-
-            int i = 0;
-            while (!hasPhisOnStack && i < state.stackSize()) {
-                Value value = state.stackAt(i);
-                hasPhisOnStack = isPhiAtBlock(value);
-                if (value != null) {
-                    i += value.kind.sizeInSlots();
-                } else {
-                    i++;
-                }
-            }
-
-            for (i = 0; !hasPhisInLocals && i < state.localsSize();) {
-                Value value = state.localAt(i);
-                hasPhisInLocals = isPhiAtBlock(value);
-                // also ignore illegal HiWords
-                if (value != null) {
-                    i += value.kind.sizeInSlots();
-                } else {
-                    i++;
-                }
-            }
-        //}
-
-        // print values in locals
-        if (hasPhisInLocals) {
-            out.println();
-            out.println("Locals:");
-
-            int j = 0;
-            while (j < state.localsSize()) {
-                Value value = state.localAt(j);
-                if (value != null) {
-                    out.println(stateString(j, value));
-                    // also ignore illegal HiWords
-                    j += value.kind.sizeInSlots();
-                } else {
-                    j++;
-                }
-            }
-            out.println();
-        }
-
-        // print values on stack
-        if (hasPhisOnStack) {
-            out.println();
-            out.println("Stack:");
-            int j = 0;
-            while (j < stateAfter().stackSize()) {
-                Value value = stateAfter().stackAt(j);
-                if (value != null) {
-                    out.println(stateString(j, value));
-                    j += value.kind.sizeInSlots();
-                } else {
-                    j++;
-                }
-            }
-        }
-
-    }
-
     /**
      * Determines if a given instruction is a phi whose {@linkplain Phi#merge() join block} is a given block.
      *
@@ -222,7 +151,7 @@ public class Merge extends StateSplit {
      * @param block the block that may be the join block of {@code value} if {@code value} is a phi
      * @return {@code true} if {@code value} is a phi and its join block is {@code block}
      */
-    private boolean isPhiAtBlock(Value value) {
+    private boolean isPhiAtBlock(ValueNode value) {
         return value instanceof Phi && ((Phi) value).merge() == this;
     }
 
@@ -237,7 +166,7 @@ public class Merge extends StateSplit {
      *            {@linkplain Phi#merge() join point}
      * @return the instruction representation as a string
      */
-    public String stateString(int index, Value value) {
+    public String stateString(int index, ValueNode value) {
         StringBuilder sb = new StringBuilder(30);
         sb.append(String.format("%2d  %s", index, Util.valueString(value)));
         if (value instanceof Phi) {
@@ -247,7 +176,7 @@ public class Merge extends StateSplit {
                 sb.append(" [");
                 for (int j = 0; j < phi.valueCount(); j++) {
                     sb.append(' ');
-                    Value operand = phi.valueAt(j);
+                    ValueNode operand = phi.valueAt(j);
                     if (operand != null) {
                         sb.append(Util.valueString(operand));
                     } else {

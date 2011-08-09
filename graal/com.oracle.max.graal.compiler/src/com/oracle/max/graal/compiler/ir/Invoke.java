@@ -24,8 +24,8 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -36,9 +36,9 @@ import com.sun.cri.ri.*;
  */
 public final class Invoke extends AbstractMemoryCheckpointNode implements ExceptionEdgeInstruction {
 
-    @Successor    private FixedNode exceptionEdge;
+    @Successor private FixedNode exceptionEdge;
 
-    @Input    private final NodeInputList<Value> arguments;
+    @Input private final NodeInputList<ValueNode> arguments;
 
     @Override
     public FixedNode exceptionEdge() {
@@ -62,7 +62,7 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
         canInline = b;
     }
 
-    public NodeInputList<Value> arguments() {
+    public NodeInputList<ValueNode> arguments() {
         return arguments;
     }
 
@@ -80,9 +80,9 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
      * @param isStatic {@code true} if this call is static (no receiver object)
      * @param target the target method being called
      */
-    public Invoke(int bci, int opcode, CiKind result, Value[] args, RiMethod target, RiType returnType, Graph graph) {
+    public Invoke(int bci, int opcode, CiKind result, ValueNode[] args, RiMethod target, RiType returnType, Graph graph) {
         super(result, graph);
-        arguments = new NodeInputList<Value>(this, args.length);
+        arguments = new NodeInputList<ValueNode>(this, args.length);
         this.opcode = opcode;
         this.target = target;
         this.returnType = returnType;
@@ -120,7 +120,7 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
      * @return the instruction that produces the receiver object for this invocation if any, {@code null} if this
      *         invocation does not take a receiver object
      */
-    public Value receiver() {
+    public ValueNode receiver() {
         assert !isStatic();
         return arguments().get(0);
     }
@@ -145,30 +145,6 @@ public final class Invoke extends AbstractMemoryCheckpointNode implements Except
     @Override
     public void accept(ValueVisitor v) {
         v.visitInvoke(this);
-    }
-
-    public CiKind[] signature() {
-        CiKind receiver = isStatic() ? null : target.holder().kind();
-        return Util.signatureToKinds(target.signature(), receiver);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        int argStart = 0;
-        if (hasReceiver()) {
-            out.print(receiver()).print('.');
-            argStart = 1;
-        }
-
-        RiMethod target = target();
-        out.print(target.name()).print('(');
-        for (int i = argStart; i < argumentCount; i++) {
-            if (i > argStart) {
-                out.print(", ");
-            }
-            out.print(arguments().get(i));
-        }
-        out.print(CiUtil.format(") [method: %H.%n(%p):%r]", target, false));
     }
 
     @Override

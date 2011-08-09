@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -33,14 +34,14 @@ import com.sun.cri.ri.*;
  */
 public final class NewMultiArray extends NewArray {
 
-    @Input private final NodeInputList<Value> dimensions;
+    @Input private final NodeInputList<ValueNode> dimensions;
 
     @Override
-    public Value dimension(int index) {
+    public ValueNode dimension(int index) {
         return dimensions.get(index);
     }
 
-    public void setDimension(int index, Value x) {
+    public void setDimension(int index, ValueNode x) {
         dimensions.set(index, x);
     }
 
@@ -64,13 +65,13 @@ public final class NewMultiArray extends NewArray {
      * @param riConstantPool the constant pool for resolution
      * @param graph
      */
-    public NewMultiArray(RiType elementType, Value[] dimensions, int cpi, RiConstantPool riConstantPool, Graph graph) {
+    public NewMultiArray(RiType elementType, ValueNode[] dimensions, int cpi, RiConstantPool riConstantPool, Graph graph) {
         super(null, graph);
         this.constantPool = riConstantPool;
         this.elementType = elementType;
         this.cpi = cpi;
 
-        this.dimensions = new NodeInputList<Value>(this, dimensions.length);
+        this.dimensions = new NodeInputList<ValueNode>(this, dimensions.length);
         for (int i = 0; i < dimensions.length; i++) {
             setDimension(i, dimensions[i]);
         }
@@ -102,17 +103,5 @@ public final class NewMultiArray extends NewArray {
     @Override
     public RiType declaredType() {
         return exactType();
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("new multi array [");
-        for (int i = 0; i < dimensionCount(); i++) {
-          if (i > 0) {
-              out.print(", ");
-          }
-          out.print(dimension(i));
-        }
-        out.print("] ").print(CiUtil.toJavaName(elementType));
     }
 }

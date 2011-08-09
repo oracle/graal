@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -29,30 +30,30 @@ import com.sun.cri.ci.*;
  * InductionVariable of the form a+b*x.
  */
 public abstract class LinearInductionVariable extends InductionVariable {
-    @Input private Value a;
-    @Input private Value b;
+    @Input private ValueNode a;
+    @Input private ValueNode b;
 
-    public LinearInductionVariable(CiKind kind, Value a, Value b, Graph graph) {
+    public LinearInductionVariable(CiKind kind, ValueNode a, ValueNode b, Graph graph) {
         super(kind, graph);
         setA(a);
         setB(b);
     }
 
-    protected Value a() {
+    protected ValueNode a() {
         return a;
     }
 
-    protected Value b() {
+    protected ValueNode b() {
         return b;
     }
 
-    protected void setA(Value a) {
+    protected void setA(ValueNode a) {
         updateUsages(this.a, a);
         this.a = a;
     }
 
 
-    protected void setB(Value b) {
+    protected void setB(ValueNode b) {
         updateUsages(this.b, b);
         this.b = b;
     }

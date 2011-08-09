@@ -22,20 +22,21 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public abstract class AccessVectorNode extends AbstractVectorNode {
-    @Input private Value object;
+    @Input private ValueNode object;
     @Input private LocationNode location;
     @Input private final NodeInputList<Node> dependencies = new NodeInputList<Node>(this);
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
@@ -49,7 +50,7 @@ public abstract class AccessVectorNode extends AbstractVectorNode {
         location = x;
     }
 
-    public AccessVectorNode(CiKind kind, AbstractVectorNode vector, Value object, LocationNode location, Graph graph) {
+    public AccessVectorNode(CiKind kind, AbstractVectorNode vector, ValueNode object, LocationNode location, Graph graph) {
         super(kind, vector, graph);
         setObject(object);
         setLocation(location);

@@ -20,16 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.value;
+package com.oracle.max.graal.compiler.nodes.base;
 
 import static com.oracle.max.graal.compiler.value.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.*;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -38,7 +39,7 @@ import com.sun.cri.ri.*;
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
  */
-public final class FrameState extends Value implements FrameStateAccess {
+public final class FrameState extends ValueNode implements FrameStateAccess {
 
     protected final int localsSize;
 
@@ -53,7 +54,7 @@ public final class FrameState extends Value implements FrameStateAccess {
 
     @Input    private FrameState outerFrameState;
 
-    @Input    private final NodeInputList<Value> values;
+    @Input    private final NodeInputList<ValueNode> values;
 
     @Input    private final NodeInputList<Node> virtualObjectMappings;
 
@@ -67,7 +68,7 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     @Override
-    public void setValueAt(int i, Value x) {
+    public void setValueAt(int i, ValueNode x) {
         values.set(i, x);
     }
 
@@ -94,14 +95,14 @@ public final class FrameState extends Value implements FrameStateAccess {
         this.localsSize = localsSize;
         this.stackSize = stackSize;
         this.locksSize = locksSize;
-        this.values = new NodeInputList<Value>(this, localsSize + stackSize + locksSize);
+        this.values = new NodeInputList<ValueNode>(this, localsSize + stackSize + locksSize);
         this.virtualObjectMappings = new NodeInputList<Node>(this);
         this.rethrowException = rethrowException;
-        GraalMetrics.FrameStatesCreated++;
-        GraalMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
+        //GraalMetrics.FrameStatesCreated++;
+        //GraalMetrics.FrameStateValuesCreated += localsSize + stackSize + locksSize;
     }
 
-    FrameState(RiMethod method, int bci, Value[] locals, Value[] stack, int stackSize, ArrayList<Value> locks, boolean rethrowException, Graph graph) {
+    public FrameState(RiMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, ArrayList<ValueNode> locks, boolean rethrowException, Graph graph) {
         this(method, bci, locals.length, stackSize, locks.size(), rethrowException, graph);
         for (int i = 0; i < locals.length; i++) {
             setValueAt(i, locals[i]);
@@ -123,7 +124,7 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     public void addVirtualObjectMapping(Node virtualObject) {
-        assert virtualObject instanceof VirtualObjectField || virtualObject instanceof Phi : virtualObject;
+        assert virtualObject instanceof VirtualObjectFieldNode || virtualObject instanceof Phi : virtualObject;
         virtualObjectMappings.add(virtualObject);
     }
 
@@ -159,7 +160,7 @@ public final class FrameState extends Value implements FrameStateAccess {
     }
 
     @Override
-    public FrameState duplicateWithException(int bci, Value exceptionObject) {
+    public FrameState duplicateWithException(int bci, ValueNode exceptionObject) {
         return duplicateModified(bci, true, CiKind.Void, exceptionObject);
     }
 
@@ -168,7 +169,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * values in pushedValues pushed on the stack. The pushedValues are expected to be in slot encoding: a long
      * or double is followed by a null slot.
      */
-    public FrameState duplicateModified(int bci, boolean rethrowException, CiKind popKind, Value... pushedValues) {
+    public FrameState duplicateModified(int bci, boolean rethrowException, CiKind popKind, ValueNode... pushedValues) {
         int popSlots = popKind.sizeInSlots();
         int pushSlots = pushedValues.length;
         FrameState other = new FrameState(method, bci, localsSize, stackSize - popSlots + pushSlots, locksSize(), rethrowException, graph());
@@ -195,8 +196,8 @@ public final class FrameState extends Value implements FrameStateAccess {
             return false;
         }
         for (int i = 0; i < stackSize(); i++) {
-            Value x = stackAt(i);
-            Value y = other.stackAt(i);
+            ValueNode x = stackAt(i);
+            ValueNode y = other.stackAt(i);
             if (x != y && typeMismatch(x, y)) {
                 return false;
             }
@@ -217,8 +218,8 @@ public final class FrameState extends Value implements FrameStateAccess {
             return false;
         }
         for (int i = 0; i < stackSize(); i++) {
-            Value x = stackAt(i);
-            Value y = other.stackAt(i);
+            ValueNode x = stackAt(i);
+            ValueNode y = other.stackAt(i);
             if (x != y) {
                 return false;
             }
@@ -275,7 +276,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index at which to store
      * @param x the instruction which produces the value for the local
      */
-    public void storeLocal(int i, Value x) {
+    public void storeLocal(int i, ValueNode x) {
         assert i < localsSize : "local variable index out of range: " + i;
         invalidateLocal(i);
         setValueAt(i, x);
@@ -285,7 +286,7 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
         if (i > 0) {
             // if there was a double word at i - 1, then kill it
-            Value p = localAt(i - 1);
+            ValueNode p = localAt(i - 1);
             if (isDoubleWord(p)) {
                 setValueAt(i - 1, null);
             }
@@ -298,7 +299,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
-    public Value localAt(int i) {
+    public ValueNode localAt(int i) {
         assert i < localsSize : "local variable index out of range: " + i;
         return valueAt(i);
     }
@@ -309,7 +310,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
      * @return the instruction at the specified position in the stack
      */
-    public Value stackAt(int i) {
+    public ValueNode stackAt(int i) {
         assert i >= 0 && i < (localsSize + stackSize);
         return valueAt(localsSize + i);
     }
@@ -319,7 +320,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the lock stack
      * @return the instruction which produced the object at the specified location in the lock stack
      */
-    public Value lockAt(int i) {
+    public ValueNode lockAt(int i) {
         assert i >= 0;
         return valueAt(localsSize + stackSize + i);
     }
@@ -330,7 +331,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index into the stack for which to create a phi
      */
     public Phi setupPhiForStack(Merge block, int i) {
-        Value p = stackAt(i);
+        ValueNode p = stackAt(i);
         if (p != null) {
             if (p instanceof Phi) {
                 Phi phi = (Phi) p;
@@ -351,7 +352,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i the index of the local variable for which to create the phi
      */
     public Phi setupPhiForLocal(Merge block, int i) {
-        Value p = localAt(i);
+        ValueNode p = localAt(i);
         if (p instanceof Phi) {
             Phi phi = (Phi) p;
             if (phi.merge() == block) {
@@ -373,7 +374,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      * @param i a value in the range {@code [0 .. valuesSize()]}
      * @return the value at index {@code i} which may be {@code null}
      */
-    public Value valueAt(int i) {
+    public ValueNode valueAt(int i) {
         assert i < (localsSize + stackSize + locksSize);
         return values.isEmpty() ? null : values.get(i);
     }
@@ -401,9 +402,9 @@ public final class FrameState extends Value implements FrameStateAccess {
     public void merge(Merge block, FrameStateAccess other) {
         checkSize(other);
         for (int i = 0; i < valuesSize(); i++) {
-            Value x = valueAt(i);
+            ValueNode x = valueAt(i);
             if (x != null) {
-                Value y = other.valueAt(i);
+                ValueNode y = other.valueAt(i);
                 if (x != y || ((x instanceof Phi) && ((Phi) x).merge() == block)) {
                     if (typeMismatch(x, y)) {
                         if ((x instanceof Phi) && ((Phi) x).merge() == block) {
@@ -505,7 +506,7 @@ public final class FrameState extends Value implements FrameStateAccess {
      */
     public boolean hasPhis() {
         for (int i = 0; i < valuesSize(); i++) {
-            Value value = valueAt(i);
+            ValueNode value = valueAt(i);
             if (value instanceof Phi) {
                 return true;
             }
@@ -517,25 +518,25 @@ public final class FrameState extends Value implements FrameStateAccess {
      * The interface implemented by a client of {@link FrameState#forEachLiveStateValue(ValueProcedure)}.
      */
     public static interface ValueProcedure {
-        void doValue(Value value);
+        void doValue(ValueNode value);
     }
 
     /**
-     * Traverses all {@linkplain Value#isLive() live values} of this frame state.
+     * Traverses all {@linkplain ValueNode#isLive() live values} of this frame state.
      *
      * @param proc the call back called to process each live value traversed
      */
     public void forEachLiveStateValue(ValueProcedure proc) {
-        HashSet<VirtualObject> vobjs = null;
+        HashSet<VirtualObjectNode> vobjs = null;
         FrameState current = this;
         do {
             for (int i = 0; i < current.valuesSize(); i++) {
-                Value value = current.valueAt(i);
-                if (value instanceof VirtualObject) {
+                ValueNode value = current.valueAt(i);
+                if (value instanceof VirtualObjectNode) {
                     if (vobjs == null) {
-                        vobjs = new HashSet<VirtualObject>();
+                        vobjs = new HashSet<VirtualObjectNode>();
                     }
-                    vobjs.add((VirtualObject) value);
+                    vobjs.add((VirtualObjectNode) value);
                 } else if (value != null) {
                     proc.doValue(value);
                 }
@@ -545,11 +546,11 @@ public final class FrameState extends Value implements FrameStateAccess {
 
         if (vobjs != null) {
             // collect all VirtualObjectField instances:
-            HashMap<VirtualObject, VirtualObjectField> objectStates = new HashMap<VirtualObject, VirtualObjectField>();
+            HashMap<VirtualObjectNode, VirtualObjectFieldNode> objectStates = new HashMap<VirtualObjectNode, VirtualObjectFieldNode>();
             current = this;
             do {
                 for (int i = 0; i < current.virtualObjectMappingCount(); i++) {
-                    VirtualObjectField field = (VirtualObjectField) current.virtualObjectMappingAt(i);
+                    VirtualObjectFieldNode field = (VirtualObjectFieldNode) current.virtualObjectMappingAt(i);
                     // null states occur for objects with 0 fields
                     if (field != null && !objectStates.containsKey(field.object())) {
                         objectStates.put(field.object(), field);
@@ -559,25 +560,25 @@ public final class FrameState extends Value implements FrameStateAccess {
             } while (current != null);
 
             do {
-                HashSet<VirtualObject> vobjsCopy = new HashSet<VirtualObject>(vobjs);
-                for (VirtualObject vobj : vobjsCopy) {
+                HashSet<VirtualObjectNode> vobjsCopy = new HashSet<VirtualObjectNode>(vobjs);
+                for (VirtualObjectNode vobj : vobjsCopy) {
                     if (vobj.fields().length > 0) {
                         boolean[] fieldState = new boolean[vobj.fields().length];
                         FloatingNode currentField = objectStates.get(vobj);
                         assert currentField != null : this;
                         do {
-                            if (currentField instanceof VirtualObjectField) {
-                                int index = ((VirtualObjectField) currentField).index();
-                                Value value = ((VirtualObjectField) currentField).input();
+                            if (currentField instanceof VirtualObjectFieldNode) {
+                                int index = ((VirtualObjectFieldNode) currentField).index();
+                                ValueNode value = ((VirtualObjectFieldNode) currentField).input();
                                 if (!fieldState[index]) {
                                     fieldState[index] = true;
-                                    if (value instanceof VirtualObject) {
-                                        vobjs.add((VirtualObject) value);
+                                    if (value instanceof VirtualObjectNode) {
+                                        vobjs.add((VirtualObjectNode) value);
                                     } else {
                                         proc.doValue(value);
                                     }
                                 }
-                                currentField = ((VirtualObjectField) currentField).lastState();
+                                currentField = ((VirtualObjectFieldNode) currentField).lastState();
                             } else {
                                 assert currentField instanceof Phi : currentField;
                                 currentField = (FloatingNode) ((Phi) currentField).valueAt(0);
@@ -587,21 +588,6 @@ public final class FrameState extends Value implements FrameStateAccess {
                     vobjs.remove(vobj);
                 }
             } while (!vobjs.isEmpty());
-            if (!vobjs.isEmpty()) {
-                for (VirtualObject obj : vobjs) {
-                    TTY.println("+" + obj);
-                }
-                for (Node vobj : virtualObjectMappings()) {
-                    if (vobj instanceof VirtualObjectField) {
-                        TTY.println("-" + ((VirtualObjectField) vobj).object());
-                    } else {
-                        TTY.println("-" + vobj);
-                    }
-                }
-                for (Node n : this.usages()) {
-                    TTY.println("usage: " + n);
-                }
-            }
             assert vobjs.isEmpty() : "at FrameState " + this;
         }
     }
@@ -620,15 +606,15 @@ public final class FrameState extends Value implements FrameStateAccess {
         }
         sb.append(nl);
         for (int i = 0; i < localsSize(); ++i) {
-            Value value = localAt(i);
+            ValueNode value = localAt(i);
             sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
         for (int i = 0; i < stackSize(); ++i) {
-            Value value = stackAt(i);
+            ValueNode value = stackAt(i);
             sb.append(String.format("  stack[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
         for (int i = 0; i < locksSize(); ++i) {
-            Value value = lockAt(i);
+            ValueNode value = lockAt(i);
             sb.append(String.format("  lock[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind.javaName, value));
         }
         return sb.toString();
@@ -637,11 +623,6 @@ public final class FrameState extends Value implements FrameStateAccess {
     @Override
     public void accept(ValueVisitor v) {
         v.visitFrameState(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("FrameState");
     }
 
     @Override

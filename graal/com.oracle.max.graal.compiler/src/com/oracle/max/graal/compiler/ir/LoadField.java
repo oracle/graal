@@ -22,9 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -44,7 +43,7 @@ public final class LoadField extends AccessField implements Canonicalizable {
      * @param graph
      * @param isLoaded indicates if the class is loaded
      */
-    public LoadField(Value object, RiField field, Graph graph) {
+    public LoadField(ValueNode object, RiField field, Graph graph) {
         super(field.kind().stackKind(), object, field, graph);
     }
 
@@ -73,11 +72,6 @@ public final class LoadField extends AccessField implements Canonicalizable {
     @Override
     public void accept(ValueVisitor v) {
         v.visitLoadField(this);
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(object()).print(".").print(field.name()).print(" [field: ").print(CiUtil.format("%h.%n:%t", field, false)).print("]");
     }
 
     @Override

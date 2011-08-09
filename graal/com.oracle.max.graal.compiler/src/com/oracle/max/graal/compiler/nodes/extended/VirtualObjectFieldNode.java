@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
-public class VirtualObjectField extends FloatingNode {
+public class VirtualObjectFieldNode extends FloatingNode {
 
-    @Input    private VirtualObject object;
+    @Input private VirtualObjectNode object;
+    @Input private FloatingNode lastState;
+    @Input private ValueNode input;
 
-    @Input    private FloatingNode lastState;
-
-    @Input    private Value input;
-
-    public VirtualObject object() {
+    public VirtualObjectNode object() {
         return object;
     }
 
-    public void setObject(VirtualObject x) {
+    public void setObject(VirtualObjectNode x) {
         updateUsages(object, x);
         object = x;
     }
@@ -55,11 +55,11 @@ public class VirtualObjectField extends FloatingNode {
         lastState = x;
     }
 
-    public Value input() {
+    public ValueNode input() {
         return input;
     }
 
-    public void setInput(Value x) {
+    public void setInput(ValueNode x) {
         updateUsages(input, x);
         input = x;
     }
@@ -71,7 +71,7 @@ public class VirtualObjectField extends FloatingNode {
      * @param array the instruction producing the array
      * @param newFrameState the state after executing this instruction
      */
-    public VirtualObjectField(VirtualObject object, FloatingNode lastState, Value input, int index, Graph graph) {
+    public VirtualObjectFieldNode(VirtualObjectNode object, FloatingNode lastState, ValueNode input, int index, Graph graph) {
         super(CiKind.Int, graph);
         this.index = index;
         setObject(object);
@@ -98,10 +98,5 @@ public class VirtualObjectField extends FloatingNode {
     @Override
     public String shortName() {
         return "VirtualObjectField " + object().fields()[index].name();
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print(object()).print(".").print(object().fields()[index].name()).print("=").print(input());
     }
 }

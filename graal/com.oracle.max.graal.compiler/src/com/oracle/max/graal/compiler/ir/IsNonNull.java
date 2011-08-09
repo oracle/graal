@@ -22,9 +22,8 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -34,13 +33,13 @@ import com.sun.cri.ri.*;
  */
 public final class IsNonNull extends BooleanNode implements Canonicalizable {
 
-    @Input private Value object;
+    @Input private ValueNode object;
 
-    public Value object() {
+    public ValueNode object() {
         return object;
     }
 
-    public void setObject(Value x) {
+    public void setObject(ValueNode x) {
         updateUsages(object, x);
         object = x;
     }
@@ -51,7 +50,7 @@ public final class IsNonNull extends BooleanNode implements Canonicalizable {
      * @param object the instruction producing the object to check against null
      * @param graph
      */
-    public IsNonNull(Value object, Graph graph) {
+    public IsNonNull(ValueNode object, Graph graph) {
         super(CiKind.Object, graph);
         assert object == null || object.kind == CiKind.Object : object;
         setObject(object);
@@ -72,11 +71,6 @@ public final class IsNonNull extends BooleanNode implements Canonicalizable {
     public RiType exactType() {
         // null check does not alter the type of the object
         return object().exactType();
-    }
-
-    @Override
-    public void print(LogStream out) {
-        out.print("null_check(").print(object()).print(')');
     }
 
     @Override

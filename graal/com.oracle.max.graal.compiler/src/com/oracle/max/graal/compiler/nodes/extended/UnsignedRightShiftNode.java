@@ -20,18 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = ">>>")
-public final class UnsignedRightShift extends Shift implements Canonicalizable {
+public final class UnsignedRightShiftNode extends ShiftNode implements Canonicalizable {
 
-    public UnsignedRightShift(CiKind kind, Value x, Value y, Graph graph) {
+    public UnsignedRightShiftNode(CiKind kind, ValueNode x, ValueNode y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IUSHR : Bytecodes.LUSHR, x, y, graph);
     }
 
@@ -59,16 +60,16 @@ public final class UnsignedRightShift extends Shift implements Canonicalizable {
             if (amount == 0) {
                 return x();
             }
-            if (x() instanceof Shift) {
-                Shift other = (Shift) x();
+            if (x() instanceof ShiftNode) {
+                ShiftNode other = (ShiftNode) x();
                 if (other.y().isConstant()) {
                     int otherAmount = other.y().asConstant().asInt() & mask;
-                    if (other instanceof UnsignedRightShift) {
+                    if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
                             return Constant.forInt(0, graph());
                         }
-                        return new UnsignedRightShift(kind, other.x(), Constant.forInt(total, graph()), graph());
+                        return new UnsignedRightShiftNode(kind, other.x(), Constant.forInt(total, graph()), graph());
                     } else if (other instanceof LeftShift && otherAmount == amount) {
                         if (kind == CiKind.Long) {
                             return new And(kind, other.x(), Constant.forLong(-1L >>> amount, graph()), graph());
@@ -80,7 +81,7 @@ public final class UnsignedRightShift extends Shift implements Canonicalizable {
                 }
             }
             if (originalAmout != amount) {
-                return new UnsignedRightShift(kind, x(), Constant.forInt(amount, graph()), graph());
+                return new UnsignedRightShiftNode(kind, x(), Constant.forInt(amount, graph()), graph());
             }
         }
         return this;

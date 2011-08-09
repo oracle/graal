@@ -22,16 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "<<")
-public final class LeftShift extends Shift implements Canonicalizable {
+public final class LeftShift extends ShiftNode implements Canonicalizable {
 
-    public LeftShift(CiKind kind, Value x, Value y, Graph graph) {
+    public LeftShift(CiKind kind, ValueNode x, ValueNode y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.ISHL : Bytecodes.LSHL, x, y, graph);
     }
 
@@ -59,8 +60,8 @@ public final class LeftShift extends Shift implements Canonicalizable {
             if (amount == 0) {
                 return x();
             }
-            if (x() instanceof Shift) {
-                Shift other = (Shift) x();
+            if (x() instanceof ShiftNode) {
+                ShiftNode other = (ShiftNode) x();
                 if (other.y().isConstant()) {
                     int otherAmount = other.y().asConstant().asInt() & mask;
                     if (other instanceof LeftShift) {
@@ -69,7 +70,7 @@ public final class LeftShift extends Shift implements Canonicalizable {
                             return Constant.forInt(0, graph());
                         }
                         return new LeftShift(kind, other.x(), Constant.forInt(total, graph()), graph());
-                    } else if ((other instanceof RightShift || other instanceof UnsignedRightShift) && otherAmount == amount) {
+                    } else if ((other instanceof RightShift || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
                         if (kind == CiKind.Long) {
                             return new And(kind, other.x(), Constant.forLong(-1L << amount, graph()), graph());
                         } else {

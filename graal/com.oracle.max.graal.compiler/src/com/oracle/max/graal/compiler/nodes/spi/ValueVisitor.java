@@ -20,13 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.spi;
 
-import com.oracle.max.graal.compiler.value.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.cfg.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 
 /**
  * The {@link ValueVisitor} implements one half of the visitor
- * pattern for {@linkplain Value IR values}, allowing clients to implement functionality
+ * pattern for {@linkplain ValueNode IR values}, allowing clients to implement functionality
  * depending on the type of an value without doing type tests.
  */
 public abstract class ValueVisitor {
@@ -38,6 +41,7 @@ public abstract class ValueVisitor {
     public abstract void visitNormalizeCompare(NormalizeCompare i);
     public abstract void visitConstant(Constant i);
     public abstract void visitConvert(Convert i);
+    public abstract void visitConditional(Conditional i);
     public abstract void visitExceptionObject(ExceptionObject i);
     public abstract void visitEndNode(EndNode i);
     public abstract void visitFrameState(FrameState i);
@@ -63,15 +67,15 @@ public abstract class ValueVisitor {
     public abstract void visitPhi(Phi i);
     public abstract void visitRegisterFinalizer(RegisterFinalizer i);
     public abstract void visitReturn(Return i);
-    public abstract void visitShift(Shift i);
-    public abstract void visitStoreField(StoreField i);
-    public abstract void visitStoreIndexed(StoreIndexed i);
-    public abstract void visitTableSwitch(TableSwitch i);
+    public abstract void visitShift(ShiftNode i);
+    public abstract void visitStoreField(StoreFieldNode i);
+    public abstract void visitStoreIndexed(StoreIndexedNode i);
+    public abstract void visitTableSwitch(TableSwitchNode i);
     public abstract void visitDeoptimize(Deoptimize deoptimize);
-    public abstract void visitUnwind(Unwind unwind);
+    public abstract void visitUnwind(UnwindNode unwind);
     public abstract void visitLoopBegin(LoopBegin loopBegin);
     public abstract void visitLoopEnd(LoopEnd loopEnd);
-    public abstract void visitValueAnchor(ValueAnchor valueAnchor);
+    public abstract void visitValueAnchor(ValueAnchorNode valueAnchor);
     public abstract void visitGuardNode(GuardNode guardNode);
     public abstract void visitMathIntrinsic(MathIntrinsic node);
 }

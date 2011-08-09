@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.phases;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.graph.*;
 
 public class ReadEliminationPhase extends Phase {

@@ -24,22 +24,21 @@ package com.oracle.max.graal.compiler.ir;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
-import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 
 public final class CreateVectorNode extends AbstractVectorNode {
-    @Input private Value length;
+    @Input private ValueNode length;
 
-    public Value length() {
+    public ValueNode length() {
         return length;
     }
 
-    public void setLength(Value x) {
+    public void setLength(ValueNode x) {
         updateUsages(length, x);
         length = x;
     }
@@ -54,7 +53,7 @@ public final class CreateVectorNode extends AbstractVectorNode {
         reversed = r;
     }
 
-    public CreateVectorNode(boolean reversed, Value length, Graph graph) {
+    public CreateVectorNode(boolean reversed, ValueNode length, Graph graph) {
         super(CiKind.Illegal, null, graph);
         setLength(length);
         setReversed(reversed);
@@ -70,7 +69,7 @@ public final class CreateVectorNode extends AbstractVectorNode {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+        if (clazz == LIRGeneratorOp.class) {
             return null;
         } else if (clazz == LoweringOp.class) {
             return (T) LOWERING_OP;
@@ -78,12 +77,7 @@ public final class CreateVectorNode extends AbstractVectorNode {
         return super.lookup(clazz);
     }
 
-    @Override
-    public void print(LogStream out) {
-        out.print("vector with length ").print(length().toString());
-    }
-
-    private LoopBegin createLoop(Map<AbstractVectorNode, Value> map) {
+    private LoopBegin createLoop(Map<AbstractVectorNode, ValueNode> map) {
         EndNode end = new EndNode(graph());
         LoopBegin loopBegin = new LoopBegin(graph());
         loopBegin.addEnd(end);
@@ -126,14 +120,14 @@ public final class CreateVectorNode extends AbstractVectorNode {
         public void lower(Node n, CiLoweringTool tool) {
             CreateVectorNode vectorNode = (CreateVectorNode) n;
 
-            IdentityHashMap<AbstractVectorNode, Value> nodes = new IdentityHashMap<AbstractVectorNode, Value>();
+            IdentityHashMap<AbstractVectorNode, ValueNode> nodes = new IdentityHashMap<AbstractVectorNode, ValueNode>();
             LoopBegin begin = vectorNode.createLoop(nodes);
             for (Node use : vectorNode.usages()) {
                 processUse(begin, use, nodes);
             }
         }
 
-        private void processUse(LoopBegin loop, Node use, IdentityHashMap<AbstractVectorNode, Value> nodes) {
+        private void processUse(LoopBegin loop, Node use, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
             AbstractVectorNode vectorNode = (AbstractVectorNode) use;
             if (nodes.containsKey(vectorNode)) {
                 return;

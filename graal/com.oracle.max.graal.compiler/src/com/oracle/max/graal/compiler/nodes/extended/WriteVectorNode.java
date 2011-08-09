@@ -20,12 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.ir;
+package com.oracle.max.graal.compiler.nodes.extended;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
@@ -42,29 +43,24 @@ public final class WriteVectorNode extends AccessVectorNode {
         values = x;
     }
 
-    public WriteVectorNode(AbstractVectorNode vector, Value object, LocationNode location, AbstractVectorNode values, Graph graph) {
+    public WriteVectorNode(AbstractVectorNode vector, ValueNode object, LocationNode location, AbstractVectorNode values, Graph graph) {
         super(CiKind.Illegal, vector, object, location, graph);
         setValues(values);
     }
 
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == LIRGenerator.LIRGeneratorOp.class) {
+        if (clazz == LIRGeneratorOp.class) {
             return null;
         }
         return super.lookup(clazz);
     }
 
     @Override
-    public void print(LogStream out) {
-        out.print("write vector node " + values());
-    }
-
-    @Override
-    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, Value> nodes) {
+    public void addToLoop(LoopBegin loop, IdentityHashMap<AbstractVectorNode, ValueNode> nodes) {
         LocationNode newLocation = LocationNode.create(LocationNode.getArrayLocation(location().getValueKind()), location().getValueKind(), location().displacement(), graph());
-        Value index = nodes.get(vector());
-        Value value = nodes.get(values());
+        ValueNode index = nodes.get(vector());
+        ValueNode value = nodes.get(values());
         assert index != null;
         assert value != null;
         newLocation.setIndex(index);

@@ -30,6 +30,8 @@ import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
@@ -62,7 +64,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected boolean canStoreAsConstant(Value v, CiKind kind) {
+    protected boolean canStoreAsConstant(ValueNode v, CiKind kind) {
         if (kind == CiKind.Short || kind == CiKind.Char) {
             // there is no immediate move of word values in asemblerI486.?pp
             return false;
@@ -71,7 +73,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canInlineAsConstant(Value v) {
+    public boolean canInlineAsConstant(ValueNode v) {
         if (!v.isConstant()) {
             return false;
         }
@@ -130,7 +132,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         setResult(x, reg);
     }
 
-    public boolean livesLonger(Value x, Value y) {
+    public boolean livesLonger(ValueNode x, ValueNode y) {
         // TODO(tw): Estimate which value will live longer.
         return false;
     }
@@ -375,7 +377,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitShift(Shift x) {
+    public void visitShift(ShiftNode x) {
         // count must always be in rcx
         CiValue count = makeOperand(x.y());
         boolean mustLoadCount = !count.isConstant() || x.kind == CiKind.Long;
@@ -460,7 +462,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitValueAnchor(ValueAnchor valueAnchor) {
+    public void visitValueAnchor(ValueAnchorNode valueAnchor) {
         // nothing to do for ValueAnchors
     }
 
@@ -498,5 +500,15 @@ public class AMD64LIRGenerator extends LIRGenerator {
             default :
                 return cond;
         }
+    }
+
+    @Override
+    public void emitMove(CiValue src, CiValue dst) {
+        lir().move(src, dst);
+    }
+
+    @Override
+    public void emitLea(CiAddress address, CiVariable dest) {
+        lir().lea(address, dest);
     }
 }

@@ -27,8 +27,9 @@ import java.util.regex.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
+import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.observer.*;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graphviz.*;
 
@@ -101,7 +102,7 @@ public class GraphvizPrinterObserver implements CompilationObserver {
         printer.addClassColor(StartNode.class, "snow3");
         printer.addClassColor(LoopBegin.class, "skyblue");
         printer.addClassColor(LoopEnd.class, "skyblue3");
-        printer.addClassColor(Unwind.class, "red");
+        printer.addClassColor(UnwindNode.class, "red");
         printer.addClassColor(Return.class, "indianred1");
         printer.begin(name);
         printer.print(graph, true);
