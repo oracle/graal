@@ -227,19 +227,6 @@ public final class Compare extends BooleanNode implements Canonicalizable {
                 }
             }
         }
-        boolean allUsagesNegate = true;
-        for (Node usage : usages()) {
-            if (!(usage instanceof NegateBooleanNode)) {
-                allUsagesNegate = false;
-                break;
-            }
-        }
-        if (allUsagesNegate) {
-            negate();
-            for (Node usage : usages().snapshot()) {
-                usage.replaceAtUsages(this);
-            }
-        }
         return this;
     }
 }

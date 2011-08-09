@@ -61,10 +61,10 @@ public class CanonicalizerPhase extends Phase {
                 Node canonical = ((Canonicalizable) node).canonical(reProcess);
                 if (canonical != node) {
                     node.replaceAndDelete(canonical);
-                    nodeWorkList.replaced(canonical, node, false, EdgeType.USAGES);
                     for (Node newNode : graph.getNewNodes()) {
                         nodeWorkList.add(newNode);
                     }
+                    nodeWorkList.replaced(canonical, node, false, EdgeType.USAGES);
                     GraalMetrics.NodesCanonicalized++;
                 }
             }

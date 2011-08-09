@@ -175,7 +175,7 @@ public class Conditional extends Binary implements Canonicalizable {
                 right = CiConstant.NULL_OBJECT;
                 cond = Condition.NE;
             } else if (condition instanceof Constant) {
-                generator.lir().move(generator.createResultVariable(conditional), condition.asConstant());
+                generator.lir().move(condition.asConstant(), generator.createResultVariable(conditional));
             } else if (condition instanceof InstanceOf) {
                 if (conditional instanceof MaterializeNode && !negate) {
                     generator.emitMaterializeInstanceOf((MaterializeNode) conditional, conditional, null);

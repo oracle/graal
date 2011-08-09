@@ -125,22 +125,10 @@ public final class If extends ControlSplit implements Canonicalizable {
             EndNode trueEnd = (EndNode) trueSuccessor();
             EndNode falseEnd = (EndNode) falseSuccessor();
             Merge merge = trueEnd.merge();
-            if (merge == falseEnd.merge() && merge.phis().size() == 0) {
+            if (merge == falseEnd.merge() && merge.phis().size() == 0 && merge.endCount() == 2) {
                 FixedNode next = merge.next();
                 merge.setNext(null); // disconnect to avoid next from having 2 preds
-                if (compare().usages().size() == 1 && /* ifNode.compare().hasSideEffets() */true) { // TODO (gd) ifNode.compare().hasSideEffets() ?
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("> Useless if with side effects Canon'ed to guard");
-                    }
-                    ValueAnchor anchor = new ValueAnchor(compare(), graph());
-                    anchor.setNext(next);
-                    return anchor;
-                } else {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("> Useless if Canon'ed away");
-                    }
-                    return next;
-                }
+                return next;
             }
         }
         return this;
