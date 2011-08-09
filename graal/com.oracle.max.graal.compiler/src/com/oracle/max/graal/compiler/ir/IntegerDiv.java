@@ -22,54 +22,38 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "/")
-public final class IntegerDiv extends IntegerArithmeticNode {
-    private static final IntegerDivCanonicalizerOp CANONICALIZER = new IntegerDivCanonicalizerOp();
+public final class IntegerDiv extends IntegerArithmeticNode implements Canonicalizable {
 
     public IntegerDiv(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IDIV : Bytecodes.LDIV, x, y, graph);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
-        return super.lookup(clazz);
-    }
-
-    private static class IntegerDivCanonicalizerOp implements CanonicalizerOp {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            IntegerDiv div = (IntegerDiv) node;
-            Value x = div.x();
-            Value y = div.y();
-            CiKind kind = div.kind;
-            Graph graph = div.graph();
-            if (x.isConstant() && y.isConstant()) {
-                long yConst = y.asConstant().asLong();
-                if (yConst == 0) {
-                    return div; // this will trap, can not canonicalize
-                }
-                if (kind == CiKind.Int) {
-                    return Constant.forInt(x.asConstant().asInt() / (int) yConst, graph);
-                } else {
-                    assert kind == CiKind.Long;
-                    return Constant.forLong(x.asConstant().asLong() / yConst, graph);
-                }
-            } else if (y.isConstant()) {
-                long c = y.asConstant().asLong();
-                if (c == 1) {
-                    return x;
-                }
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x().isConstant() && y().isConstant()) {
+            long yConst = y().asConstant().asLong();
+            if (yConst == 0) {
+                return this; // this will trap, can not canonicalize
             }
-            return div;
+            if (kind == CiKind.Int) {
+                return Constant.forInt(x().asConstant().asInt() / (int) yConst, graph());
+            } else {
+                assert kind == CiKind.Long;
+                return Constant.forLong(x().asConstant().asLong() / yConst, graph());
+            }
+        } else if (y().isConstant()) {
+            long c = y().asConstant().asLong();
+            if (c == 1) {
+                return x();
+            }
         }
+        return this;
     }
 }

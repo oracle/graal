@@ -26,8 +26,8 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.gen.LIRGenerator.LIRGeneratorOp;
-import com.oracle.max.graal.compiler.ir.Phi.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -35,11 +35,11 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code Conditional} class represents a comparison that yields one of two values.
- * Note that these nodes are not built directly from the bytecode but are introduced
- * by conditional expression elimination.
+ * The {@code Conditional} class represents a comparison that yields one of two values. Note that these nodes are not
+ * built directly from the bytecode but are introduced by conditional expression elimination.
  */
-public class Conditional extends Binary {
+public class Conditional extends Binary implements Canonicalizable {
+
     @Input private BooleanNode condition;
 
     public BooleanNode condition() {
@@ -53,6 +53,7 @@ public class Conditional extends Binary {
 
     /**
      * Constructs a new IfOp.
+     *
      * @param x the instruction producing the first value to be compared
      * @param condition the condition of the comparison
      * @param y the instruction producing the second value to be compared
@@ -88,23 +89,12 @@ public class Conditional extends Binary {
 
     @Override
     public void print(LogStream out) {
-        out.print(x()).
-        print(' ').
-        print(condition()).
-        print(' ').
-        print(y()).
-        print(" ? ").
-        print(trueValue()).
-        print(" : ").
-        print(falseValue());
+        out.print(x()).print(' ').print(condition()).print(' ').print(y()).print(" ? ").print(trueValue()).print(" : ").print(falseValue());
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
         if (clazz == LIRGeneratorOp.class) {
             return (T) LIRGEN;
         }
@@ -112,9 +102,11 @@ public class Conditional extends Binary {
     }
 
     public static class ConditionalStructure {
+
         public final If ifNode;
         public final Phi phi;
         public final Merge merge;
+
         public ConditionalStructure(If ifNode, Phi phi, Merge merge) {
             this.ifNode = ifNode;
             this.phi = phi;
@@ -142,50 +134,6 @@ public class Conditional extends Binary {
         phi.addInput(falseValue);
         return new ConditionalStructure(ifNode, phi, merge);
     }
-
-    private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            Conditional conditional = (Conditional) node;
-            BooleanNode condition = conditional.condition();
-            Value trueValue = conditional.trueValue();
-            Value falseValue = conditional.falseValue();
-            if (condition instanceof Constant) {
-                Constant c = (Constant) condition;
-                if (c.asConstant().asBoolean()) {
-                    return trueValue;
-                } else {
-                    return falseValue;
-                }
-            }
-            if (trueValue == falseValue) {
-                return trueValue;
-            }
-            if (!(conditional instanceof MaterializeNode) && trueValue instanceof Constant && falseValue instanceof Constant
-                            && trueValue.kind == CiKind.Int && falseValue.kind == CiKind.Int) {
-                int trueInt = trueValue.asConstant().asInt();
-                int falseInt = falseValue.asConstant().asInt();
-                if (trueInt == 0 && falseInt == 1) {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("> Conditional canon'ed to ~Materialize");
-                    }
-                    reProcess.reProccess(condition); // because we negate it
-                    return new MaterializeNode(new NegateBooleanNode(condition, node.graph()), node.graph());
-                } else if (trueInt == 1 && falseInt == 0) {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("> Conditional canon'ed to Materialize");
-                    }
-                    return new MaterializeNode(condition, node.graph());
-                }
-            } else if (falseValue instanceof Constant && !(trueValue instanceof Constant)) {
-                conditional.setTrueValue(falseValue);
-                conditional.setFalseValue(trueValue);
-                condition = new NegateBooleanNode(condition, node.graph());
-                conditional.setCondition(condition);
-            }
-            return conditional;
-        }
-    };
 
     private static final LIRGeneratorOp LIRGEN = new LIRGeneratorOp() {
 
@@ -258,4 +206,42 @@ public class Conditional extends Binary {
             }
         }
     };
+
+    @Override
+    public Node canonical(NotifyReProcess reProcess) {
+        if (condition instanceof Constant) {
+            Constant c = (Constant) condition;
+            if (c.asConstant().asBoolean()) {
+                return trueValue();
+            } else {
+                return falseValue();
+            }
+        }
+        if (trueValue() == falseValue()) {
+            return trueValue();
+        }
+        if (!(this instanceof MaterializeNode) && trueValue() instanceof Constant && falseValue() instanceof Constant && trueValue().kind == CiKind.Int && falseValue().kind == CiKind.Int) {
+            int trueInt = trueValue().asConstant().asInt();
+            int falseInt = falseValue().asConstant().asInt();
+            if (trueInt == 0 && falseInt == 1) {
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("> Conditional canon'ed to ~Materialize");
+                }
+                reProcess.reProccess(condition); // because we negate it
+                return new MaterializeNode(new NegateBooleanNode(condition, graph()), graph());
+            } else if (trueInt == 1 && falseInt == 0) {
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("> Conditional canon'ed to Materialize");
+                }
+                return new MaterializeNode(condition, graph());
+            }
+        } else if (falseValue() instanceof Constant && !(trueValue() instanceof Constant)) {
+            Value temp = trueValue();
+            setTrueValue(falseValue());
+            setFalseValue(temp);
+            condition = new NegateBooleanNode(condition, graph());
+            setCondition(condition);
+        }
+        return this;
+    }
 }

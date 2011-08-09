@@ -22,62 +22,43 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "*")
-public final class IntegerMul extends IntegerArithmeticNode {
-    private static final IntegerMulCanonicalizerOp CANONICALIZER = new IntegerMulCanonicalizerOp();
+public final class IntegerMul extends IntegerArithmeticNode implements Canonicalizable {
 
     public IntegerMul(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IMUL : Bytecodes.LMUL, x, y, graph);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x().isConstant() && !y().isConstant()) {
+            swapOperands();
         }
-        return super.lookup(clazz);
-    }
-
-    private static class IntegerMulCanonicalizerOp implements CanonicalizerOp {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            IntegerMul mul = (IntegerMul) node;
-            Value x = mul.x();
-            Value y = mul.y();
-            CiKind kind = mul.kind;
-            Graph graph = mul.graph();
-            if (x.isConstant() && !y.isConstant()) {
-                mul.swapOperands();
-                Value t = y;
-                y = x;
-                x = t;
+        if (x().isConstant()) {
+            if (kind == CiKind.Int) {
+                return Constant.forInt(x().asConstant().asInt() * y().asConstant().asInt(), graph());
+            } else {
+                assert kind == CiKind.Long;
+                return Constant.forLong(x().asConstant().asLong() * y().asConstant().asLong(), graph());
             }
-            if (x.isConstant()) {
-                if (kind == CiKind.Int) {
-                    return Constant.forInt(x.asConstant().asInt() * y.asConstant().asInt(), graph);
-                } else {
-                    assert kind == CiKind.Long;
-                    return Constant.forLong(x.asConstant().asLong() * y.asConstant().asLong(), graph);
-                }
-            } else if (y.isConstant()) {
-                long c = y.asConstant().asLong();
-                if (c == 1) {
-                    return x;
-                }
-                if (c == 0) {
-                    return Constant.forInt(0, graph);
-                }
-                if (c > 0 && CiUtil.isPowerOf2(c)) {
-                    return new LeftShift(kind, x, Constant.forInt(CiUtil.log2(c), graph), graph);
-                }
+        } else if (y().isConstant()) {
+            long c = y().asConstant().asLong();
+            if (c == 1) {
+                return x();
             }
-            return mul;
+            if (c == 0) {
+                return Constant.forInt(0, graph());
+            }
+            if (c > 0 && CiUtil.isPowerOf2(c)) {
+                return new LeftShift(kind, x(), Constant.forInt(CiUtil.log2(c), graph()), graph());
+            }
         }
+        return this;
     }
 }

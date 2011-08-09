@@ -23,19 +23,19 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code InstanceOf} instruction represents an instanceof test.
  */
-public final class InstanceOf extends TypeCheck {
+public final class InstanceOf extends TypeCheck implements Canonicalizable {
 
     /**
      * Constructs a new InstanceOf instruction.
+     *
      * @param targetClass the target class of the instanceof check
      * @param object the instruction producing the object input to this instruction
      * @param graph
@@ -53,35 +53,21 @@ public final class InstanceOf extends TypeCheck {
         out.print("instanceof(").print(object()).print(") ").print(CiUtil.toJavaName(targetClass()));
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (object().exactType() != null) {
+            return Constant.forBoolean(object().exactType().isSubtypeOf(targetClass()), graph());
         }
-        return super.lookup(clazz);
+        CiConstant constant = object().asConstant();
+        if (constant != null) {
+            assert constant.kind == CiKind.Object;
+            if (constant.isNull()) {
+                return Constant.forBoolean(false, graph());
+            } else {
+                // this should never happen - non-null constants are always expected to provide an exactType
+                assert false;
+            }
+        }
+        return this;
     }
-
-    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            InstanceOf isInstance = (InstanceOf) node;
-            Value object = isInstance.object();
-            RiType exactType = object.exactType();
-            if (exactType != null) {
-                return Constant.forBoolean(exactType.isSubtypeOf(isInstance.targetClass()), node.graph());
-            }
-            CiConstant constant = object.asConstant();
-            if (constant != null) {
-                assert constant.kind == CiKind.Object;
-                if (constant.isNull()) {
-                    return Constant.forBoolean(false, node.graph());
-                } else {
-                    // this should never happen - non-null constants are always expected to provide an exactType
-                    assert false;
-                }
-            }
-            return isInstance;
-        }
-    };
 }

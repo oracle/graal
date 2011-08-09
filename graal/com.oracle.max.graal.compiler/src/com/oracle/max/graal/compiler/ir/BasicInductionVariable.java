@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.ir.Phi.PhiType;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
 import com.oracle.max.graal.graph.*;
@@ -33,7 +34,7 @@ import com.sun.cri.ci.*;
  * LinearInductionVariable that is computed in the loops thanks to Phi(init, this + stride).
  * This will keep at least one register busy in the whole loop body
  */
-public class BasicInductionVariable extends LinearInductionVariable {
+public class BasicInductionVariable extends LinearInductionVariable implements Canonicalizable{
     public static final BIVLoweringOp LOWERING = new BIVLoweringOp();
     @Input private LoopCounter loopCounter;
 
@@ -87,14 +88,20 @@ public class BasicInductionVariable extends LinearInductionVariable {
         return newDIV;
     }
 
+    @Override
+    public Node canonical(NotifyReProcess reProcess) {
+        if (this.init().isConstant() && this.init().asConstant().asLong() == 0
+                        && this.stride().isConstant() && this.stride().asConstant().asLong() == 1) {
+            return this.loopCounter();
+        }
+        return this;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Op> T lookup(Class<T> clazz) {
         if (clazz == LoweringOp.class) {
             return (T) LOWERING;
-        }
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANON;
         }
         return super.lookup(clazz);
     }
@@ -115,16 +122,4 @@ public class BasicInductionVariable extends LinearInductionVariable {
             return phi;
         }
     }
-
-    private static CanonicalizerOp CANON = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            BasicInductionVariable biv = (BasicInductionVariable) node;
-            if (biv.init().isConstant() && biv.init().asConstant().asLong() == 0
-                            && biv.stride().isConstant() && biv.stride().asConstant().asLong() == 1) {
-                return biv.loopCounter();
-            }
-            return biv;
-        }
-    };
 }

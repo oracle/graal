@@ -27,20 +27,20 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.StateSplit.FilteringIterator;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
 /**
- * The {@code Phi} instruction represents the merging of dataflow
- * in the instruction graph. It refers to a join block and a variable.
+ * The {@code Phi} instruction represents the merging of dataflow in the instruction graph. It refers to a join block
+ * and a variable.
  */
-public final class Phi extends FloatingNode {
+public final class Phi extends FloatingNode implements Canonicalizable {
 
-    @Input    private Merge merge;
+    @Input private Merge merge;
 
-    @Input    private final NodeInputList<Value> values = new NodeInputList<Value>(this);
+    @Input private final NodeInputList<Value> values = new NodeInputList<Value>(this);
 
     public Merge merge() {
         return merge;
@@ -52,9 +52,9 @@ public final class Phi extends FloatingNode {
     }
 
     public static enum PhiType {
-        Value,          // normal value phis
-        Memory,         // memory phis
-        Virtual         // phis used for VirtualObjectField merges
+        Value, // normal value phis
+        Memory, // memory phis
+        Virtual // phis used for VirtualObjectField merges
     }
 
     private final PhiType type;
@@ -82,8 +82,8 @@ public final class Phi extends FloatingNode {
     }
 
     /**
-     * Get the instruction that produces the value associated with the i'th predecessor
-     * of the join block.
+     * Get the instruction that produces the value associated with the i'th predecessor of the join block.
+     *
      * @param i the index of the predecessor
      * @return the instruction that produced the value in the i'th predecessor
      */
@@ -97,6 +97,7 @@ public final class Phi extends FloatingNode {
 
     /**
      * Get the number of inputs to this phi (i.e. the number of predecessors to the join block).
+     *
      * @return the number of inputs in this phi
      */
     public int valueCount() {
@@ -145,9 +146,10 @@ public final class Phi extends FloatingNode {
     }
 
     @Override
-    public Iterable<? extends Node> dataInputs() {
+    public Iterable< ? extends Node> dataInputs() {
         final Iterator< ? extends Node> input = super.dataInputs().iterator();
         return new Iterable<Node>() {
+
             @Override
             public Iterator<Node> iterator() {
                 return new FilteringIterator(input, Merge.class);
@@ -155,58 +157,42 @@ public final class Phi extends FloatingNode {
         };
     }
 
-
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (valueCount() != 2 || merge().endCount() != 2) {
+            return this;
         }
-        return super.lookup(clazz);
+        if (merge().phis().size() > 1) { // XXX (gd) disable canonicalization of multiple conditional while we are not able to fuse them and the potentially leftover If in the backend
+            return this;
+        }
+        Node end0 = merge().endAt(0);
+        Node end1 = merge().endAt(1);
+        Node endPred0 = end0.predecessor();
+        Node endPred1 = end1.predecessor();
+        if (endPred0 != endPred1 || !(endPred0 instanceof If)) {
+            return this;
+        }
+        If ifNode = (If) endPred0;
+        boolean inverted = ifNode.trueSuccessor() == end1;
+        Value trueValue = valueAt(inverted ? 1 : 0);
+        Value falseValue = valueAt(inverted ? 0 : 1);
+        if ((trueValue.kind != CiKind.Int && trueValue.kind != CiKind.Long) || (falseValue.kind != CiKind.Int && falseValue.kind != CiKind.Long)) {
+            return this;
+        }
+        if ((!(trueValue instanceof Constant) && trueValue.usages().size() == 1) || (!(falseValue instanceof Constant) && falseValue.usages().size() == 1)) {
+            return this;
+        }
+        BooleanNode compare = ifNode.compare();
+        while (compare instanceof NegateBooleanNode) {
+            compare = ((NegateBooleanNode) compare).value();
+        }
+        if (!(compare instanceof Compare || compare instanceof IsNonNull || compare instanceof NegateBooleanNode || compare instanceof Constant)) {
+            return this;
+        }
+        if (GraalOptions.TraceCanonicalizer) {
+            TTY.println("> Phi canon'ed to Conditional");
+        }
+        reProcess.reProccess(ifNode);
+        return new Conditional(ifNode.compare(), trueValue, falseValue, graph());
     }
-
-    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            Phi phiNode = (Phi) node;
-            if (phiNode.valueCount() != 2 || phiNode.merge().endCount() != 2) {
-                return phiNode;
-            }
-            Merge merge = phiNode.merge();
-            if (merge.phis().size() > 1) { // XXX (gd) disable canonicalization of multiple conditional while we are not able to fuse them and the potentially leftover If in the backend
-                return phiNode;
-            }
-            Node end0 = merge.endAt(0);
-            Node end1 = merge.endAt(1);
-            Node endPred0 = end0.predecessor();
-            Node endPred1 = end1.predecessor();
-            if (endPred0 != endPred1 || !(endPred0 instanceof If)) {
-                return phiNode;
-            }
-            If ifNode = (If) endPred0;
-            boolean inverted = ifNode.trueSuccessor() == end1;
-            Value trueValue = phiNode.valueAt(inverted ? 1 : 0);
-            Value falseValue = phiNode.valueAt(inverted ? 0 : 1);
-            if ((trueValue.kind != CiKind.Int && trueValue.kind != CiKind.Long) || (falseValue.kind != CiKind.Int && falseValue.kind != CiKind.Long)) {
-                return phiNode;
-            }
-            if ((!(trueValue instanceof Constant) && trueValue.usages().size() == 1) || (!(falseValue instanceof Constant) && falseValue.usages().size() == 1)) {
-                return phiNode;
-            }
-            BooleanNode compare = ifNode.compare();
-            while (compare instanceof NegateBooleanNode) {
-                compare = ((NegateBooleanNode) compare).value();
-            }
-            if (!(compare instanceof Compare || compare instanceof IsNonNull || compare instanceof NegateBooleanNode || compare instanceof Constant)) {
-                return phiNode;
-            }
-            if (GraalOptions.TraceCanonicalizer) {
-                TTY.println("> Phi canon'ed to Conditional");
-            }
-            reProcess.reProccess(ifNode);
-            Conditional conditional = new Conditional(ifNode.compare(), trueValue, falseValue, node.graph());
-            return conditional;
-        }
-    };
 }

@@ -845,7 +845,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genGetStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        boolean isInitialized = field.isResolved() && field.holder().isInitialized();
+        boolean isInitialized = field.isResolved() && holder.isInitialized();
         CiConstant constantValue = null;
         if (isInitialized) {
             constantValue = field.constantValue(null);
@@ -867,7 +867,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genPutStatic(int cpi, RiField field) {
         RiType holder = field.holder();
-        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && field.holder().isInitialized());
+        Value container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field.isResolved() && holder.isInitialized());
         Value value = frameState.pop(field.kind().stackKind());
         if (container != null) {
             StoreField store = new StoreField(container, field, value, graph);
