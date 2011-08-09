@@ -535,10 +535,10 @@ public class IdentifyBlocksPhase extends Phase {
                 block = getCommonDominator(block, nodeToBlock.get(pred));
             }
             closure.apply(block);
-        } else if (usage instanceof LoopCounter) {
-            LoopCounter counter = (LoopCounter) usage;
-            if (node == counter.init() || node == counter.stride()) {
-                LoopBegin loopBegin = counter.loopBegin();
+        } else if (usage instanceof LinearInductionVariable) {
+            LinearInductionVariable liv = (LinearInductionVariable) usage;
+            if (liv.isLinearInductionVariableInput(node)) {
+                LoopBegin loopBegin = liv.loopBegin();
                 Block mergeBlock = nodeToBlock.get(loopBegin);
                 closure.apply(mergeBlock.dominator());
             }

@@ -1544,25 +1544,6 @@ public abstract class LIRGenerator extends ValueVisitor {
             }
         }
         resolver.dispose();
-        //TODO (gd) remove that later ?
-        if (merge instanceof LoopBegin) {
-            LoopBegin loopBegin = (LoopBegin) merge;
-            for (LoopCounter counter : loopBegin.counters()) {
-                if (counter.operand().isIllegal()) {
-                    createResultVariable(counter);
-                }
-                if (nextSuccIndex == 0) {
-                    lir.move(operandForInstruction(counter.init()), counter.operand());
-                } else {
-                    if (counter.kind == CiKind.Int) {
-                        this.arithmeticOpInt(IADD, counter.operand(), counter.operand(), operandForInstruction(counter.stride()), CiValue.IllegalValue);
-                    } else {
-                        assert counter.kind == CiKind.Long;
-                        this.arithmeticOpLong(LADD, counter.operand(), counter.operand(), operandForInstruction(counter.stride()));
-                    }
-                }
-            }
-        }
     }
 
     /**

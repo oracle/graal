@@ -347,8 +347,8 @@ public class LoopUtil {
         }
 
         if (from == loopBegin.loopEnd()) {
-            for (LoopCounter counter : loopBegin.counters()) {
-                counter.setInit(new IntegerAdd(counter.kind, counter.init(), counter.stride(), graph));
+            for (InductionVariable iv : loopBegin.inductionVariables()) {
+                iv.peelOneIteration();
             }
         }
         NodeMap<NodeMap<Value>> newExitValues = graph.createNodeMap();

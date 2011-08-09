@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.ir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.collections.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -50,13 +51,36 @@ public class LoweringPhase extends Phase {
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
         s.apply(graph);
 
+        NodeBitMap processed = graph.createNodeBitMap();
         List<Block> blocks = s.getBlocks();
         for (final Block b : blocks) {
-            process(b);
+            process(b, processed);
+        }
+
+        processed.negate();
+        final CiLoweringTool loweringTool = new CiLoweringTool() {
+            @Override
+            public Node getGuardAnchor() {
+                throw new UnsupportedOperationException();
+            }
+            @Override
+            public RiRuntime getRuntime() {
+                return runtime;
+            }
+            @Override
+            public Node createGuard(Node condition) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        for (Node node : processed) {
+            LoweringOp op = node.lookup(LoweringOp.class);
+            if (op != null) {
+                op.lower(node, loweringTool);
+            }
         }
     }
 
-    private void process(final Block b) {
+    private void process(final Block b, NodeBitMap processed) {
 
         final Node anchor = b.javaBlock().createAnchor();
         final CiLoweringTool loweringTool = new CiLoweringTool() {
@@ -83,11 +107,10 @@ public class LoweringPhase extends Phase {
 
         // Lower the instructions of this block.
         for (final Node n : b.getInstructions()) {
-            if (n instanceof FixedNode) {
-                LoweringOp op = n.lookup(LoweringOp.class);
-                if (op != null) {
-                    op.lower(n, loweringTool);
-                }
+            processed.mark(n);
+            LoweringOp op = n.lookup(LoweringOp.class);
+            if (op != null) {
+                op.lower(n, loweringTool);
             }
         }
     }
