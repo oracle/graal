@@ -29,58 +29,38 @@ import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "+")
-public final class FloatAdd extends FloatArithmetic {
-    private static final FloatAddCanonicalizerOp CANONICALIZER = new FloatAddCanonicalizerOp();
+public final class FloatAdd extends FloatArithmetic implements Canonicalizable {
 
     public FloatAdd(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DADD : Bytecodes.FADD, x, y, isStrictFP, graph);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x().isConstant() && !y().isConstant()) {
+            swapOperands();
         }
-        return super.lookup(clazz);
-    }
-
-    private static class FloatAddCanonicalizerOp implements CanonicalizerOp {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            FloatAdd add = (FloatAdd) node;
-            Value x = add.x();
-            Value y = add.y();
-            CiKind kind = add.kind;
-            Graph graph = add.graph();
-            if (x.isConstant() && !y.isConstant()) {
-                add.swapOperands();
-                Value t = y;
-                y = x;
-                x = t;
+        if (x().isConstant()) {
+            if (kind == CiKind.Float) {
+                return Constant.forFloat(x().asConstant().asFloat() + y().asConstant().asFloat(), graph());
+            } else {
+                assert kind == CiKind.Double;
+                return Constant.forDouble(x().asConstant().asDouble() + y().asConstant().asDouble(), graph());
             }
-            if (x.isConstant()) {
-                if (kind == CiKind.Float) {
-                    return Constant.forFloat(x.asConstant().asFloat() + y.asConstant().asFloat(), graph);
-                } else {
-                    assert kind == CiKind.Double;
-                    return Constant.forDouble(x.asConstant().asDouble() + y.asConstant().asDouble(), graph);
+        } else if (y().isConstant()) {
+            if (kind == CiKind.Float) {
+                float c = y().asConstant().asFloat();
+                if (c == 0.0f) {
+                    return x();
                 }
-            } else if (y.isConstant()) {
-                if (kind == CiKind.Float) {
-                    float c = y.asConstant().asFloat();
-                    if (c == 0.0f) {
-                        return x;
-                    }
-                } else {
-                    assert kind == CiKind.Double;
-                    double c = y.asConstant().asDouble();
-                    if (c == 0.0) {
-                        return x;
-                    }
+            } else {
+                assert kind == CiKind.Double;
+                double c = y().asConstant().asDouble();
+                if (c == 0.0) {
+                    return x();
                 }
             }
-            return add;
         }
+        return this;
     }
 }

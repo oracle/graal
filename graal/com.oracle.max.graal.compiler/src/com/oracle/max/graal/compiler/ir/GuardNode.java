@@ -29,8 +29,8 @@ import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
+public final class GuardNode extends FloatingNode implements Canonicalizable {
 
-public final class GuardNode extends FloatingNode {
     @Input private FixedNode anchor;
     @Input private BooleanNode node;
 
@@ -70,29 +70,17 @@ public final class GuardNode extends FloatingNode {
         out.print("guard node ").print(node());
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
-        return super.lookup(clazz);
-    }
-
-    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            GuardNode guard = (GuardNode) node;
-            if (guard.node() instanceof Constant) {
-                Constant c = (Constant) guard.node();
-                if (c.asConstant().asBoolean()) {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("Removing redundant floating guard " + guard);
-                    }
-                    return Node.Null;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (node() instanceof Constant) {
+            Constant c = (Constant) node();
+            if (c.asConstant().asBoolean()) {
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("Removing redundant floating guard " + this);
                 }
+                return Node.Null;
             }
-            return guard;
         }
-    };
+        return this;
+    }
 }

@@ -25,13 +25,13 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.ir.Deoptimize.DeoptAction;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
+public final class FixedGuard extends FixedNodeWithNext implements Canonicalizable {
 
-public final class FixedGuard extends FixedNodeWithNext {
     @Input private final NodeInputList<BooleanNode> conditions = new NodeInputList<BooleanNode>(this);
 
     public FixedGuard(BooleanNode node, Graph graph) {
@@ -57,40 +57,28 @@ public final class FixedGuard extends FixedNodeWithNext {
         conditions.add(x);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
-        return super.lookup(clazz);
-    }
-
-    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            FixedGuard fixedGuard = (FixedGuard) node;
-            for (BooleanNode n : fixedGuard.conditions.snapshot()) {
-                if (n instanceof Constant) {
-                    Constant c = (Constant) n;
-                    if (c.asConstant().asBoolean()) {
-                        if (GraalOptions.TraceCanonicalizer) {
-                            TTY.println("Removing redundant fixed guard " + fixedGuard);
-                        }
-                        fixedGuard.conditions.remove(n);
-                    } else {
-                        if (GraalOptions.TraceCanonicalizer) {
-                            TTY.println("Replacing fixed guard " + fixedGuard + " with deoptimization node");
-                        }
-                        return new Deoptimize(DeoptAction.InvalidateRecompile, fixedGuard.graph());
+    public Node canonical(NotifyReProcess reProcess) {
+        for (BooleanNode n : conditions.snapshot()) {
+            if (n instanceof Constant) {
+                Constant c = (Constant) n;
+                if (c.asConstant().asBoolean()) {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Removing redundant fixed guard " + this);
                     }
+                    conditions.remove(n);
+                } else {
+                    if (GraalOptions.TraceCanonicalizer) {
+                        TTY.println("Replacing fixed guard " + this + " with deoptimization node");
+                    }
+                    return new Deoptimize(DeoptAction.InvalidateRecompile, graph());
                 }
             }
-
-            if (fixedGuard.conditions.isEmpty()) {
-                return fixedGuard.next();
-            }
-            return fixedGuard;
         }
-    };
+
+        if (conditions.isEmpty()) {
+            return next();
+        }
+        return this;
+    }
 }

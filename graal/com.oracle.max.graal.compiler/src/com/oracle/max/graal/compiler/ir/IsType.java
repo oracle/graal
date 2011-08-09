@@ -25,7 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -34,9 +34,9 @@ import com.sun.cri.ri.*;
 /**
  * The {@code TypeCheck} class represents an explicit type check instruction.
  */
-public final class IsType extends BooleanNode {
+public final class IsType extends BooleanNode implements Canonicalizable {
 
-    @Input    private Value object;
+    @Input private Value object;
 
     public Value object() {
         return object;
@@ -51,6 +51,7 @@ public final class IsType extends BooleanNode {
 
     /**
      * Constructs a new IsType instruction.
+     *
      * @param object the instruction producing the object to check against the given type
      * @param graph
      */
@@ -94,26 +95,12 @@ public final class IsType extends BooleanNode {
         return properties;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (object().exactType() != null) {
+            return Constant.forBoolean(object().exactType() == type(), graph());
         }
-        return super.lookup(clazz);
+        // constants return the correct exactType, so they are handled by the code above
+        return this;
     }
-
-    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            IsType isType = (IsType) node;
-            Value object = isType.object();
-            RiType exactType = object.exactType();
-            if (exactType != null) {
-                return Constant.forBoolean(exactType == isType.type, node.graph());
-            }
-            // constants return the correct exactType, so they are handled by the code above
-            return isType;
-        }
-    };
 }

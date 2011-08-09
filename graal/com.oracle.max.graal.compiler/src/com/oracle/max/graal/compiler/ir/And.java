@@ -22,74 +22,54 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "&")
-public final class And extends Logic {
-    private static final AndCanonicalizerOp CANONICALIZER = new AndCanonicalizerOp();
+public final class And extends Logic implements Canonicalizable {
 
     public And(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IAND : Bytecodes.LAND, x, y, graph);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x() == y()) {
+            return x();
         }
-        return super.lookup(clazz);
-    }
-
-    private static class AndCanonicalizerOp implements CanonicalizerOp {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            assert node instanceof And;
-            And and = (And) node;
-            CiKind kind = and.kind;
-            Graph graph = and.graph();
-            Value x = and.x();
-            Value y = and.y();
-            if (x == y) {
-                return x;
+        if (x().isConstant() && !y().isConstant()) {
+            swapOperands();
+        }
+        if (x().isConstant()) {
+            if (kind == CiKind.Int) {
+                return Constant.forInt(x().asConstant().asInt() & y().asConstant().asInt(), graph());
+            } else {
+                assert kind == CiKind.Long;
+                return Constant.forLong(x().asConstant().asLong() & y().asConstant().asLong(), graph());
             }
-            if (x.isConstant() && !y.isConstant()) {
-                and.swapOperands();
-                Value t = y;
-                y = x;
-                x = t;
-            }
-            if (x.isConstant()) {
-                if (kind == CiKind.Int) {
-                    return Constant.forInt(x.asConstant().asInt() & y.asConstant().asInt(), graph);
-                } else {
-                    assert kind == CiKind.Long;
-                    return Constant.forLong(x.asConstant().asLong() & y.asConstant().asLong(), graph);
+        } else if (y().isConstant()) {
+            if (kind == CiKind.Int) {
+                int c = y().asConstant().asInt();
+                if (c == -1) {
+                    return x();
                 }
-            } else if (y.isConstant()) {
-                if (kind == CiKind.Int) {
-                    int c = y.asConstant().asInt();
-                    if (c == -1) {
-                        return x;
-                    }
-                    if (c == 0) {
-                        return Constant.forInt(0, graph);
-                    }
-                } else {
-                    assert kind == CiKind.Long;
-                    long c = y.asConstant().asLong();
-                    if (c == -1) {
-                        return x;
-                    }
-                    if (c == 0) {
-                        return Constant.forLong(0, graph);
-                    }
+                if (c == 0) {
+                    return Constant.forInt(0, graph());
+                }
+            } else {
+                assert kind == CiKind.Long;
+                long c = y().asConstant().asLong();
+                if (c == -1) {
+                    return x();
+                }
+                if (c == 0) {
+                    return Constant.forLong(0, graph());
                 }
             }
-            return and;
         }
+        return this;
     }
 }

@@ -22,64 +22,45 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "*")
-public final class FloatMul extends FloatArithmetic {
-    private static final FloatMulCanonicalizerOp CANONICALIZER = new FloatMulCanonicalizerOp();
+public final class FloatMul extends FloatArithmetic implements Canonicalizable {
 
     public FloatMul(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DMUL : Bytecodes.FMUL, x, y, isStrictFP, graph);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x().isConstant() && !y().isConstant()) {
+            swapOperands();
         }
-        return super.lookup(clazz);
-    }
-
-    private static class FloatMulCanonicalizerOp implements CanonicalizerOp {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            FloatMul mul = (FloatMul) node;
-            Value x = mul.x();
-            Value y = mul.y();
-            CiKind kind = mul.kind;
-            Graph graph = mul.graph();
-            if (x.isConstant() && !y.isConstant()) {
-                mul.swapOperands();
-                Value t = y;
-                y = x;
-                x = t;
+        if (x().isConstant()) {
+            if (kind == CiKind.Float) {
+                return Constant.forFloat(x().asConstant().asFloat() * y().asConstant().asFloat(), graph());
+            } else {
+                assert kind == CiKind.Double;
+                return Constant.forDouble(x().asConstant().asDouble() * y().asConstant().asDouble(), graph());
             }
-            if (x.isConstant()) {
-                if (kind == CiKind.Float) {
-                    return Constant.forFloat(x.asConstant().asFloat() * y.asConstant().asFloat(), graph);
-                } else {
-                    assert kind == CiKind.Double;
-                    return Constant.forDouble(x.asConstant().asDouble() * y.asConstant().asDouble(), graph);
+        } else if (y().isConstant()) {
+            if (kind == CiKind.Float) {
+                float c = y().asConstant().asFloat();
+                if (c == 0.0f) {
+                    return Constant.forFloat(0.0f, graph());
                 }
-            } else if (y.isConstant()) {
-                if (kind == CiKind.Float) {
-                    float c = y.asConstant().asFloat();
-                    if (c == 0.0f) {
-                        return Constant.forFloat(0.0f, graph);
-                    }
-                } else {
-                    assert kind == CiKind.Double;
-                    double c = y.asConstant().asDouble();
-                    if (c == 0.0) {
-                        return Constant.forDouble(0.0, graph);
-                    }
+            } else {
+                assert kind == CiKind.Double;
+                double c = y().asConstant().asDouble();
+                if (c == 0.0) {
+                    return Constant.forDouble(0.0, graph());
                 }
             }
-            return mul;
         }
+        return this;
     }
 }

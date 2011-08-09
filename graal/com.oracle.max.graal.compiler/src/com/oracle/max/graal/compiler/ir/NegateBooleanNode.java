@@ -23,14 +23,14 @@
 package com.oracle.max.graal.compiler.ir;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-public final class NegateBooleanNode extends BooleanNode {
+public final class NegateBooleanNode extends BooleanNode implements Canonicalizable {
 
-    @Input    private BooleanNode value;
+    @Input private BooleanNode value;
 
     public BooleanNode value() {
         return value;
@@ -55,26 +55,13 @@ public final class NegateBooleanNode extends BooleanNode {
         out.print(value()).print("!");
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
+    public Node canonical(NotifyReProcess reProcess) {
+        if (value() instanceof NegateBooleanNode) {
+            return ((NegateBooleanNode) value()).value();
+        } else if (value() instanceof Constant) {
+            return Constant.forBoolean(!value().asConstant().asBoolean(), graph());
         }
-        return super.lookup(clazz);
+        return this;
     }
-
-    private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            NegateBooleanNode negateNode = (NegateBooleanNode) node;
-            Value value = negateNode.value();
-            if (value instanceof NegateBooleanNode) {
-                return ((NegateBooleanNode) value).value();
-            } else if (value instanceof Constant) {
-                return Constant.forBoolean(!value.asConstant().asBoolean(), node.graph());
-            }
-            return negateNode;
-        }
-    };
 }

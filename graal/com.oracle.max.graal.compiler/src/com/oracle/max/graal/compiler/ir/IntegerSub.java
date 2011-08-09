@@ -22,69 +22,53 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = "-")
-public final class IntegerSub extends IntegerArithmeticNode {
-    private static final IntegerSubCanonicalizerOp CANONICALIZER = new IntegerSubCanonicalizerOp();
+public final class IntegerSub extends IntegerArithmeticNode implements Canonicalizable {
 
     public IntegerSub(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.ISUB : Bytecodes.LSUB, x, y, graph);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
-        return super.lookup(clazz);
-    }
-
-    private static class IntegerSubCanonicalizerOp implements CanonicalizerOp {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            IntegerSub sub = (IntegerSub) node;
-            Value x = sub.x();
-            Value y = sub.y();
-            CiKind kind = sub.kind;
-            Graph graph = sub.graph();
-            if (x == y) {
-                if (kind == CiKind.Int) {
-                    return Constant.forInt(0, graph);
-                } else {
-                    assert kind == CiKind.Long;
-                    return Constant.forLong(0, graph);
-                }
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x() == y()) {
+            if (kind == CiKind.Int) {
+                return Constant.forInt(0, graph());
+            } else {
+                assert kind == CiKind.Long;
+                return Constant.forLong(0, graph());
             }
-            if (x.isConstant() && y.isConstant()) {
-                if (kind == CiKind.Int) {
-                    return Constant.forInt(x.asConstant().asInt() - y.asConstant().asInt(), graph);
-                } else {
-                    assert kind == CiKind.Long;
-                    return Constant.forLong(x.asConstant().asLong() - y.asConstant().asLong(), graph);
-                }
-            } else if (y.isConstant()) {
-                long c = y.asConstant().asLong();
-                if (c == 0) {
-                    return x;
-                }
-                if (kind == CiKind.Int) {
-                    return new IntegerAdd(kind, x, Constant.forInt((int) -c, graph), graph);
-                } else {
-                    assert kind ==  CiKind.Long;
-                    return new IntegerAdd(kind, x, Constant.forLong(-c, graph), graph);
-                }
-            } else if (x.isConstant()) {
-                long c = x.asConstant().asLong();
-                if (c == 0) {
-                    return new Negate(y, graph);
-                }
-            }
-            return sub;
         }
+        if (x().isConstant() && y().isConstant()) {
+            if (kind == CiKind.Int) {
+                return Constant.forInt(x().asConstant().asInt() - y().asConstant().asInt(), graph());
+            } else {
+                assert kind == CiKind.Long;
+                return Constant.forLong(x().asConstant().asLong() - y().asConstant().asLong(), graph());
+            }
+        } else if (y().isConstant()) {
+            long c = y().asConstant().asLong();
+            if (c == 0) {
+                return x();
+            }
+            if (kind == CiKind.Int) {
+                return new IntegerAdd(kind, x(), Constant.forInt((int) -c, graph()), graph());
+            } else {
+                assert kind == CiKind.Long;
+                return new IntegerAdd(kind, x(), Constant.forLong(-c, graph()), graph());
+            }
+        } else if (x().isConstant()) {
+            long c = x().asConstant().asLong();
+            if (c == 0) {
+                return new Negate(y(), graph());
+            }
+        }
+        return this;
     }
 }
