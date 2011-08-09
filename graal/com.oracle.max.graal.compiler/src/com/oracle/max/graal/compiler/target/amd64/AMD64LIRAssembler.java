@@ -1154,7 +1154,6 @@ public final class AMD64LIRAssembler extends LIRAssembler {
 
         Label continuation = new Label();
 
-        System.out.println("gen check" + code);
         if (GraalOptions.GenSpecialDivChecks && code == LIROpcode.Ldiv) {
             // check for special case of Long.MIN_VALUE / -1
             Label normalCase = new Label();

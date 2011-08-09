@@ -83,3 +83,15 @@ Ideas
 * Hints on register pressure
 
   Sometimes we can make better decisions if we know the register pressure, it would be nice to have a way to know about it. Maybe we have register allocation on SSA we can somehow interact with it and try to lower the pressure in some areas on request?
+
+* Remove <0 check on array allocation when possible
+
+  The XIR templates for array allocation check the length argument agaisnt 0, this can be avoided if the arguent is known to be >= 0
+
+* Fuse Div/Rem that act on the same inputs
+
+  Doing it in HIR require a node with 2 outputs which means projections, maybe a special Rem node that takes only the Div as input could do : that would be only one "Projection" node
+
+* Fuse multiple conditional that use the same BooleanNode condition when doing LIRGen
+
+  Would allow to transform conditional constructs more agressively. Fuse them together or if there is a If that uses the condition, emit them in the if branches
