@@ -57,11 +57,6 @@ public class LoopEnd extends FixedNode {
     }
 
     @Override
-    public String shortName() {
-        return "LoopEnd";
-    }
-
-    @Override
     public Iterable< ? extends Node> dataInputs() {
         return Collections.emptyList();
     }

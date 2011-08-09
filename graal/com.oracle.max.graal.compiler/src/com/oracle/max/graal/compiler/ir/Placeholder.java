@@ -42,9 +42,4 @@ public class Placeholder extends StateSplit {
     public void print(LogStream out) {
         assert false;
     }
-
-    @Override
-    public String shortName() {
-        return "Placeholder" + id();
-    }
 }

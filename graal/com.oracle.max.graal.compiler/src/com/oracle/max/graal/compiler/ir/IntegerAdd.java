@@ -28,17 +28,12 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
+@NodeInfo(shortName = "+")
 public final class IntegerAdd extends IntegerArithmeticNode {
     private static final IntegerAddCanonicalizerOp CANONICALIZER = new IntegerAddCanonicalizerOp();
 
     public IntegerAdd(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IADD : Bytecodes.LADD, x, y, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "+";
     }
 
     @SuppressWarnings("unchecked")

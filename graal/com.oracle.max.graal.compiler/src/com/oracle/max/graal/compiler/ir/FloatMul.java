@@ -22,34 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
-/**
- *
- */
+@NodeInfo(shortName = "*")
 public final class FloatMul extends FloatArithmetic {
     private static final FloatMulCanonicalizerOp CANONICALIZER = new FloatMulCanonicalizerOp();
 
-    /**
-     * @param opcode
-     * @param kind
-     * @param x
-     * @param y
-     * @param isStrictFP
-     * @param graph
-     */
     public FloatMul(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DMUL : Bytecodes.FMUL, x, y, isStrictFP, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "*";
     }
 
     @SuppressWarnings("unchecked")

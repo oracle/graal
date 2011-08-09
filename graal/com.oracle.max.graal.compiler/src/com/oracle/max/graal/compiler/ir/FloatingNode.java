@@ -25,7 +25,6 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-
 public abstract class FloatingNode extends Value {
 
     public FloatingNode(CiKind kind, Graph graph) {

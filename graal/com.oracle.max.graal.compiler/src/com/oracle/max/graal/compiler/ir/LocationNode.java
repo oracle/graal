@@ -73,7 +73,7 @@ public final class LocationNode extends FloatingNode {
 
     public static LocationNode create(Object identity, CiKind kind, int displacement, Graph graph) {
         LocationNode result = new LocationNode(identity, kind, displacement, graph);
-        return graph.ideal(result);
+        return graph.value(result);
     }
 
     private LocationNode(Object identity, CiKind kind, int displacement, Graph graph) {

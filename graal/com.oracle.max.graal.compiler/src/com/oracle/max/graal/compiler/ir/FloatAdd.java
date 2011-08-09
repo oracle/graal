@@ -28,17 +28,12 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
+@NodeInfo(shortName = "+")
 public final class FloatAdd extends FloatArithmetic {
     private static final FloatAddCanonicalizerOp CANONICALIZER = new FloatAddCanonicalizerOp();
 
     public FloatAdd(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DADD : Bytecodes.FADD, x, y, isStrictFP, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "+";
     }
 
     @SuppressWarnings("unchecked")

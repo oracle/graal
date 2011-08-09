@@ -22,28 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
+@NodeInfo(shortName = "&")
 public final class And extends Logic {
     private static final AndCanonicalizerOp CANONICALIZER = new AndCanonicalizerOp();
 
-    /**
-     * @param opcode
-     * @param x
-     * @param y
-     * @param graph
-     */
     public And(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IAND : Bytecodes.LAND, x, y, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "&";
     }
 
     @SuppressWarnings("unchecked")

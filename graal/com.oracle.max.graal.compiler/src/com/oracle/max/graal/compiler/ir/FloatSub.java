@@ -22,23 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
+@NodeInfo(shortName = "-")
 public final class FloatSub extends FloatArithmetic {
     private static final FloatSubCanonicalizerOp CANONICALIZER = new FloatSubCanonicalizerOp();
 
     public FloatSub(CiKind kind, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, kind == CiKind.Double ? Bytecodes.DSUB : Bytecodes.FSUB, x, y, isStrictFP, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "-";
     }
 
     @SuppressWarnings("unchecked")

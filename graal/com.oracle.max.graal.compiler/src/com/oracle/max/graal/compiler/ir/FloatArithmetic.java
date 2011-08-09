@@ -25,20 +25,8 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-
-/**
- *
- */
 public abstract class FloatArithmetic extends Arithmetic {
 
-    /**
-     * @param opcode
-     * @param kind
-     * @param x
-     * @param y
-     * @param isStrictFP
-     * @param graph
-     */
     public FloatArithmetic(CiKind kind, int opcode, Value x, Value y, boolean isStrictFP, Graph graph) {
         super(kind, opcode, x, y, isStrictFP, graph);
     }

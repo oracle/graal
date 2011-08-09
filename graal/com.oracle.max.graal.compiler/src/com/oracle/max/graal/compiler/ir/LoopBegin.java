@@ -68,11 +68,6 @@ public class LoopBegin extends Merge {
     }
 
     @Override
-    public String shortName() {
-        return "LoopBegin";
-    }
-
-    @Override
     public int phiPredecessorCount() {
         return 2;
     }

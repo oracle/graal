@@ -22,23 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
+@NodeInfo(shortName = "-")
 public final class IntegerSub extends IntegerArithmeticNode {
     private static final IntegerSubCanonicalizerOp CANONICALIZER = new IntegerSubCanonicalizerOp();
 
     public IntegerSub(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.ISUB : Bytecodes.LSUB, x, y, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "-";
     }
 
     @SuppressWarnings("unchecked")

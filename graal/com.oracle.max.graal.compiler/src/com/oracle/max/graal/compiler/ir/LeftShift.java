@@ -28,17 +28,12 @@ import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
-
+@NodeInfo(shortName = "<<")
 public final class LeftShift extends Shift {
     private static final LeftShiftCanonicalizerOp CANONICALIZER = new LeftShiftCanonicalizerOp();
 
     public LeftShift(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.ISHL : Bytecodes.LSHL, x, y, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "<<";
     }
 
     @SuppressWarnings("unchecked")

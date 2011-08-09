@@ -22,29 +22,17 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 
+@NodeInfo(shortName = "^")
 public final class Xor extends Logic {
     private static final XorCanonicalizerOp CANONICALIZER = new XorCanonicalizerOp();
 
-    /**
-     * @param opcode
-     * @param kind
-     * @param x
-     * @param y
-     * @param graph
-     */
     public Xor(CiKind kind, Value x, Value y, Graph graph) {
         super(kind, kind == CiKind.Int ? Bytecodes.IXOR : Bytecodes.LXOR, x, y, graph);
-    }
-
-    @Override
-    public String shortName() {
-        return "^";
     }
 
     @SuppressWarnings("unchecked")
