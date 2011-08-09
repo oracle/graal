@@ -35,7 +35,7 @@ import com.sun.cri.ci.*;
  * about the basic block, including the successor and
  * predecessor blocks, exception handlers, liveness information, etc.
  */
-public class Merge extends StateSplit{
+public class Merge extends StateSplit {
 
     @Input    private final NodeInputList<EndNode> ends = new NodeInputList<EndNode>(this);
 
