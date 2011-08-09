@@ -11,7 +11,10 @@ Problems
 
 
 * Deopt caused by profiling can interfer with later optimisations
-  Exmple : have a look to some of the visit methods in avrora.arch.legacy.LegacyInterpreter sometimes if constructs which are used to materialize some booleans have a Deopt branch which prevents us from detecting an opportunity for a MaterilizeNode canonicalization. As long as the MaterializeNode itself doesnt get canonicalized away and in the end translates to jumps in the final assembly this doesnt really matter but it may if we optimise the emitted assembly
+  Example : have a look to some of the visit methods in avrora.arch.legacy.LegacyInterpreter sometimes if constructs which are used to materialize some booleans have a Deopt branch which prevents us from detecting an opportunity for a MaterilizeNode canonicalization. As long as the MaterializeNode itself doesnt get canonicalized away and in the end translates to jumps in the final assembly this doesnt really matter but it may if we optimise the emitted assembly
+
+* Canonicalization & DeadCodeElimination should play better together
+  Somtimes the graph does not get completely canonical after a CanonicalizationPhase followed by a DeadCodeEliminationPhase because DCE can transform some Phi into one of their input value because of the removal of a branch, if this transformation gives a canonicalization opportunity, it will never be used. We could apply Canonicalization followed by BCE until we reach a fixed point but that's probably not very efficient. 
 
 Ideas
 =====

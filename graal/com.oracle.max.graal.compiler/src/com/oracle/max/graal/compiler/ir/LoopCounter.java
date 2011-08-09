@@ -22,34 +22,18 @@
  */
 package com.oracle.max.graal.compiler.ir;
 
-import com.oracle.max.graal.compiler.debug.*;
+import com.oracle.max.graal.compiler.phases.LoweringPhase.*;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 
-
-public final class LoopCounter extends FloatingNode {
-    @Input private Value init;
-    @Input private Value stride;
+/**
+ * Counts loop iterations from 0 to Niter.
+ * If used directly (and not just by BasicInductionVariables) computed with Phi(0, this + 1)
+ */
+public final class LoopCounter extends InductionVariable {
     @Input private LoopBegin loopBegin;
 
-    public Value init() {
-        return init;
-    }
-
-    public void setInit(Value x) {
-        updateUsages(init, x);
-        init = x;
-    }
-
-    public Value stride() {
-        return stride;
-    }
-
-    public void setStride(Value x) {
-        updateUsages(stride, x);
-        stride = x;
-    }
-
+    @Override
     public LoopBegin loopBegin() {
         return loopBegin;
     }
@@ -59,21 +43,46 @@ public final class LoopCounter extends FloatingNode {
         loopBegin = x;
     }
 
-    public LoopCounter(CiKind kind, Value init, Value stride, LoopBegin loop, Graph graph) {
+    public LoopCounter(CiKind kind, LoopBegin loop, Graph graph) {
         super(kind, graph);
-        setInit(init);
-        setStride(stride);
         setLoopBegin(loop);
     }
 
     @Override
-    public void accept(ValueVisitor v) {
-        // TODO Auto-generated method stub
-
+    public void peelOneIteration() {
+        BasicInductionVariable biv = null;
+        for (Node usage : usages()) {
+            if (!(usage instanceof InductionVariable && ((InductionVariable) usage).loopBegin() == this.loopBegin())) {
+                if (biv == null) {
+                    biv = createBasicInductionVariable();
+                    biv.peelOneIteration();
+                }
+                usage.inputs().replace(this, biv);
+            }
+        }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void print(LogStream out) {
-        out.print("loopcounter [").print(init()).print(",+").print(stride()).print("]");
+    public <T extends Op> T lookup(Class<T> clazz) {
+        if (clazz == LoweringOp.class) {
+            return (T) LOWERING;
+        }
+        return super.lookup(clazz);
     }
+
+    private BasicInductionVariable createBasicInductionVariable() {
+        Graph graph = graph();
+        return new BasicInductionVariable(kind, Constant.forInt(0, graph), Constant.forInt(1, graph), this, graph);
+    }
+
+    private static final LoweringOp LOWERING = new LoweringOp() {
+        @Override
+        public void lower(Node n, CiLoweringTool tool) {
+            LoopCounter loopCounter = (LoopCounter) n;
+            Graph graph = n.graph();
+            Phi phi = BasicInductionVariable.LOWERING.ivToPhi(loopCounter.loopBegin(), Constant.forInt(0, graph), Constant.forInt(1, graph), loopCounter.kind);
+            loopCounter.replaceAtNonIVUsages(phi);
+        }
+    };
 }

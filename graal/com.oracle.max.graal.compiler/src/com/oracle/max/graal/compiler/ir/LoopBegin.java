@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
+import com.sun.cri.ci.*;
 
 public class LoopBegin extends Merge {
 
@@ -92,8 +93,8 @@ public class LoopBegin extends Merge {
         throw Util.shouldNotReachHere();
     }
 
-    public Collection<LoopCounter> counters() {
-        return Util.filter(this.usages(), LoopCounter.class);
+    public Collection<InductionVariable> inductionVariables() {
+        return Util.filter(this.usages(), InductionVariable.class);
     }
 
     @Override
@@ -103,6 +104,19 @@ public class LoopBegin extends Merge {
 
     public EndNode forwardEdge() {
         return this.endAt(0);
+    }
+
+    public LoopCounter loopCounter() {
+        return loopCounter(CiKind.Long);
+    }
+
+    public LoopCounter loopCounter(CiKind kind) {
+        for (Node usage : usages()) {
+            if (usage instanceof LoopCounter && ((LoopCounter) usage).kind == kind) {
+                return (LoopCounter) usage;
+            }
+        }
+        return new LoopCounter(kind, this, graph());
     }
 
     @Override

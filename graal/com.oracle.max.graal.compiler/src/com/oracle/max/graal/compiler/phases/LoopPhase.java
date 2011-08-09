@@ -26,11 +26,9 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.ir.*;
-import com.oracle.max.graal.compiler.ir.Phi.PhiType;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
-import com.oracle.max.graal.compiler.value.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
 import com.sun.cri.ci.*;
@@ -79,120 +77,119 @@ public class LoopPhase extends Phase {
             }
         }
 
-        /*
         for (Loop loop : loops) {
-            doLoopCounters(loop);
-        }*/
+            findInductionVariables(loop);
+        }
     }
 
-    private void doLoopCounters(Loop loop) {
+    private void findInductionVariables(Loop loop) {
         LoopBegin loopBegin = loop.loopBegin();
-        List<LoopCounter> counters = findLoopCounters(loopBegin, loop.nodes());
-        mergeLoopCounters(counters, loopBegin);
-    }
-
-    private void mergeLoopCounters(List<LoopCounter> counters, LoopBegin loopBegin) {
-        Graph graph = loopBegin.graph();
-        FrameState stateAfter = loopBegin.stateAfter();
-        LoopCounter[] acounters = counters.toArray(new LoopCounter[counters.size()]);
-        for (int i = 0; i < acounters.length; i++) {
-            LoopCounter c1 = acounters[i];
-            if (c1 == null) {
+        NodeBitMap loopNodes = loop.nodes();
+        List<Phi> phis = new ArrayList<Phi>(loopBegin.phis());
+        int backIndex = loopBegin.phiPredecessorIndex(loopBegin.loopEnd());
+        int initIndex = loopBegin.phiPredecessorIndex(loopBegin.forwardEdge());
+        for (Phi phi : phis) {
+            Value init = phi.valueAt(initIndex);
+            Value backEdge = phi.valueAt(backIndex);
+            if (loopNodes.isNew(init) || loopNodes.isNew(backEdge)) {
                 continue;
             }
-            for (int j = i + 1; j < acounters.length; j++) {
-                LoopCounter c2 = acounters[j];
-                if (c2 != null && c1.stride().valueEqual(c2.stride())) {
-                    boolean c1InCompare = Util.filter(c1.usages(), Compare.class).size() > 0;
-                    boolean c2inCompare = Util.filter(c2.usages(), Compare.class).size() > 0;
-                    if (c2inCompare && !c1InCompare) {
-                        c1 = acounters[j];
-                        c2 = acounters[i];
-                        acounters[i] = c2;
-                        acounters[j] = c1;
+            if (loopNodes.isMarked(backEdge)) {
+                Binary binary;
+                if (backEdge instanceof IntegerAdd || backEdge instanceof IntegerSub) {
+                    binary = (Binary) backEdge;
+                } else {
+                    continue;
+                }
+                Value stride;
+                if (binary.x() == phi) {
+                    stride = binary.y();
+                } else if (binary.y() == phi) {
+                    stride = binary.x();
+                } else {
+                    continue;
+                }
+                if (loopNodes.isNotNewNotMarked(stride)) {
+                    Graph graph = loopBegin.graph();
+                    if (backEdge instanceof IntegerSub) {
+                        stride = new Negate(stride, graph);
                     }
-                    boolean c2InFramestate = stateAfter != null ? stateAfter.inputs().contains(c2) : false;
-                    acounters[j] = null;
-                    CiKind kind = c1.kind;
-                    if (c2InFramestate) {
-                        IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
-                        IntegerAdd addStride = new IntegerAdd(kind, sub, c1.stride(), graph);
-                        IntegerAdd add = new IntegerAdd(kind, c1, addStride, graph);
-                        Phi phi = new Phi(kind, loopBegin, PhiType.Value, graph); // (gd) assumes order on loopBegin preds - works in collab with graph builder
-                        phi.addInput(c2.init());
-                        phi.addInput(add);
-                        c2.replaceAndDelete(phi);
+                    CiKind kind = phi.kind;
+                    LoopCounter counter = loopBegin.loopCounter(kind);
+                    BasicInductionVariable biv1 = null;
+                    BasicInductionVariable biv2 = null;
+                    if (phi.usages().size() > 1) {
+                        biv1 = new BasicInductionVariable(kind, init, stride, counter, graph);
+                        phi.replaceAndDelete(biv1);
                     } else {
-                        IntegerSub sub = new IntegerSub(kind, c2.init(), c1.init(), graph);
-                        IntegerAdd add = new IntegerAdd(kind, c1, sub, graph);
-                        c2.replaceAndDelete(add);
+                        phi.replaceFirstInput(binary, null);
+                        phi.delete();
+                    }
+                    if (backEdge.usages().size() > 0) {
+                        biv2 = new BasicInductionVariable(kind, IntegerArithmeticNode.add(init, stride), stride, counter, graph);
+                        backEdge.replaceAndDelete(biv2);
+                    } else {
+                        backEdge.delete();
+                    }
+                    if (biv1 != null) {
+                        findDerivedInductionVariable(biv1, kind, loopNodes);
+                    }
+                    if (biv2 != null) {
+                        findDerivedInductionVariable(biv2, kind, loopNodes);
                     }
                 }
             }
         }
     }
-
-    private List<LoopCounter> findLoopCounters(LoopBegin loopBegin, NodeBitMap loopNodes) {
-        LoopEnd loopEnd = loopBegin.loopEnd();
-        FrameState loopEndState = null;
-        Node loopEndPred = loopEnd.predecessor();
-        if (loopEndPred instanceof Merge) {
-            loopEndState = ((Merge) loopEndPred).stateAfter();
-        }
-        List<LoopCounter> counters = new LinkedList<LoopCounter>();
-        for (Node usage : loopBegin.usages().snapshot()) {
-            if (usage instanceof Phi) {
-                Phi phi = (Phi) usage;
-                if (phi.valueCount() == 2) {
-                    Value backEdge = phi.valueAt(1);
-                    Value init = phi.valueAt(0);
-                    if (loopNodes.isNew(init) || loopNodes.isNew(backEdge)) {
-                        continue;
+    private void findDerivedInductionVariable(BasicInductionVariable biv, CiKind kind, NodeBitMap loopNodes) {
+        for (Node usage : biv.usages().snapshot()) {
+            Value scale = scale(usage, biv, loopNodes);
+            Value offset = null;
+            Node node = null;
+            if (scale == null) {
+                if (usage instanceof IntegerAdd) {
+                    IntegerAdd add = (IntegerAdd) usage;
+                    if (add.x() == biv || (scale = scale(add.x(), biv, loopNodes)) != null) {
+                        offset = add.y();
+                    } else if (add.y() == biv || (scale = scale(add.y(), biv, loopNodes)) != null) {
+                        offset = add.x();
                     }
-                    if (loopNodes.isMarked(init)) {
-                        // try to reverse init/backEdge order
-                        Value tmp = backEdge;
-                        backEdge = init;
-                        init = tmp;
-                    }
-                    Value stride = null;
-                    boolean useCounterAfterAdd = false;
-                    if (!loopNodes.isMarked(init) && backEdge instanceof IntegerAdd && loopNodes.isMarked(backEdge)) {
-                        IntegerAdd add = (IntegerAdd) backEdge;
-                        int addUsageCount = 0;
-                        for (Node u : add.usages()) {
-                            if (u != loopEndState && u != phi) {
-                                addUsageCount++;
-                            }
-                        }
-                        if (add.x() == phi) {
-                            stride = add.y();
-                        } else if (add.y() == phi) {
-                            stride = add.x();
-                        }
-                        if (addUsageCount > 0) {
-                            useCounterAfterAdd = true;
-                        }
-                    }
-                    if (stride != null && loopNodes.isNotNewNotMarked(stride)) {
-                        Graph graph = loopBegin.graph();
-                        LoopCounter counter = new LoopCounter(init.kind, init, stride, loopBegin, graph);
-                        counters.add(counter);
-                        phi.replaceAndDelete(counter);
-                        if (loopEndState != null) {
-                            loopEndState.inputs().replace(backEdge, counter);
-                        }
-                        if (useCounterAfterAdd) {
-                            /*IntegerAdd otherInit = new IntegerAdd(init.kind, init, stride, graph); // would be nice to canonicalize
-                            LoopCounter otherCounter = new LoopCounter(init.kind, otherInit, stride, loopBegin, graph);
-                            backEdge.replace(otherCounter);*/
+                    if (offset != null) {
+                        if (loopNodes.isNotNewNotMarked(offset)) {
+                            node = add;
                         } else {
-                            backEdge.delete();
+                            offset = null;
                         }
                     }
                 }
+            } else {
+                node = usage;
+            }
+            if (scale != null || offset != null) {
+                if (scale == null) {
+                    scale = Constant.forInt(1, biv.graph());
+                } else if (offset == null) {
+                    offset = Constant.forInt(0, biv.graph());
+                }
+                DerivedInductionVariable div = new DerivedInductionVariable(kind, offset, scale, biv, biv.graph());
+                node.replaceAndDelete(div);
             }
         }
-        return counters;
+    }
+
+    private Value scale(Node n, BasicInductionVariable biv, NodeBitMap loopNodes) {
+        if (n instanceof IntegerMul) {
+            IntegerMul mul = (IntegerMul) n;
+            Value scale = null;
+            if (mul.x() == biv) {
+                scale = mul.y();
+            } else if (mul.y() == biv) {
+                scale = mul.x();
+            }
+            if (scale != null && loopNodes.isNotNewNotMarked(scale)) {
+                return scale;
+            }
+        }
+        return null;
     }
 }
