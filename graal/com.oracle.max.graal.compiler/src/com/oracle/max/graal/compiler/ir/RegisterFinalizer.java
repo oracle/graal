@@ -25,7 +25,7 @@ package com.oracle.max.graal.compiler.ir;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.CanonicalizerOp;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.Canonicalizable;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
@@ -34,7 +34,8 @@ import com.sun.cri.ri.*;
 /**
  * This instruction is used to perform the finalizer registration at the end of the java.lang.Object constructor.
  */
-public final class RegisterFinalizer extends StateSplit {
+public final class RegisterFinalizer extends StateSplit implements Canonicalizable {
+
     @Input private Value object;
 
     public Value object() {
@@ -56,58 +57,43 @@ public final class RegisterFinalizer extends StateSplit {
         v.visitRegisterFinalizer(this);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
-        return super.lookup(clazz);
-    }
-
-    private static final CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            RegisterFinalizer finalizer = (RegisterFinalizer) node;
-            Value object = finalizer.object();
-
-            RiType declaredType = object.declaredType();
-            RiType exactType = object.exactType();
-            if (exactType == null && declaredType != null) {
-                exactType = declaredType.exactType();
-            }
-
-            boolean needsCheck = true;
-            if (exactType != null) {
-                // we have an exact type
-                needsCheck = exactType.hasFinalizer();
-            } else {
-                // if either the declared type of receiver or the holder can be assumed to have no finalizers
-                if (declaredType != null && !declaredType.hasFinalizableSubclass()) {
-                    if (((CompilerGraph) node.graph()).assumptions().recordNoFinalizableSubclassAssumption(declaredType)) {
-                        needsCheck = false;
-                    }
-                }
-            }
-
-            if (needsCheck) {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("Could not canonicalize finalizer " + object + " (declaredType=" + declaredType + ", exactType=" + exactType + ")");
-                }
-            } else {
-                if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("Canonicalized finalizer for object " + object);
-                }
-                return finalizer.next();
-            }
-
-            return finalizer;
-        }
-    };
-
     @Override
     public void print(LogStream out) {
         out.print("register finalizer ").print(object());
+    }
+
+    @Override
+    public Node canonical(NotifyReProcess reProcess) {
+        RiType declaredType = object.declaredType();
+        RiType exactType = object.exactType();
+        if (exactType == null && declaredType != null) {
+            exactType = declaredType.exactType();
+        }
+
+        boolean needsCheck = true;
+        if (exactType != null) {
+            // we have an exact type
+            needsCheck = exactType.hasFinalizer();
+        } else {
+            // if either the declared type of receiver or the holder can be assumed to have no finalizers
+            if (declaredType != null && !declaredType.hasFinalizableSubclass()) {
+                if (((CompilerGraph) graph()).assumptions().recordNoFinalizableSubclassAssumption(declaredType)) {
+                    needsCheck = false;
+                }
+            }
+        }
+
+        if (needsCheck) {
+            if (GraalOptions.TraceCanonicalizer) {
+                TTY.println("Could not canonicalize finalizer " + object + " (declaredType=" + declaredType + ", exactType=" + exactType + ")");
+            }
+        } else {
+            if (GraalOptions.TraceCanonicalizer) {
+                TTY.println("Canonicalized finalizer for object " + object);
+            }
+            return next();
+        }
+
+        return this;
     }
 }

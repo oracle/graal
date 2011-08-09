@@ -33,7 +33,7 @@ import com.sun.cri.ri.*;
  */
 public final class NewMultiArray extends NewArray {
 
-    @Input    private final NodeInputList<Value> dimensions;
+    @Input private final NodeInputList<Value> dimensions;
 
     @Override
     public Value dimension(int index) {

@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.NotifyReProcess;
 import com.oracle.max.graal.compiler.phases.CanonicalizerPhase.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -39,7 +40,8 @@ import com.sun.cri.ci.*;
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  *
  */
-public final class Compare extends BooleanNode {
+public final class Compare extends BooleanNode implements Canonicalizable {
+
     @Input private Value x;
     @Input private Value y;
 
@@ -66,6 +68,7 @@ public final class Compare extends BooleanNode {
 
     /**
      * Constructs a new Compare instruction.
+     *
      * @param x the instruction producing the first input to the instruction
      * @param condition the condition (comparison operation)
      * @param y the instruction that produces the second input to this instruction
@@ -81,6 +84,7 @@ public final class Compare extends BooleanNode {
 
     /**
      * Gets the condition (comparison operation) for this instruction.
+     *
      * @return the condition
      */
     public Condition condition() {
@@ -89,12 +93,12 @@ public final class Compare extends BooleanNode {
 
     /**
      * Checks whether unordered inputs mean true or false.
+     *
      * @return {@code true} if unordered inputs produce true
      */
     public boolean unorderedIsTrue() {
         return unorderedIsTrue;
     }
-
 
     public void setUnorderedIsTrue(boolean unorderedIsTrue) {
         this.unorderedIsTrue = unorderedIsTrue;
@@ -102,6 +106,7 @@ public final class Compare extends BooleanNode {
 
     /**
      * Swaps the operands to this if and mirrors the condition (e.g. > becomes <).
+     *
      * @see Condition#mirror()
      */
     public void swapOperands() {
@@ -122,26 +127,12 @@ public final class Compare extends BooleanNode {
 
     @Override
     public void print(LogStream out) {
-        out.print("comp ").
-        print(x()).
-        print(' ').
-        print(condition().operator).
-        print(' ').
-        print(y());
+        out.print("comp ").print(x()).print(' ').print(condition().operator).print(' ').print(y());
     }
 
     @Override
     public String shortName() {
         return "Comp " + condition.operator;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T extends Op> T lookup(Class<T> clazz) {
-        if (clazz == CanonicalizerOp.class) {
-            return (T) CANONICALIZER;
-        }
-        return super.lookup(clazz);
     }
 
     @Override
@@ -151,107 +142,104 @@ public final class Compare extends BooleanNode {
         return properties;
     }
 
-    private static CanonicalizerOp CANONICALIZER = new CanonicalizerOp() {
-        @Override
-        public Node canonical(Node node, NotifyReProcess reProcess) {
-            Compare compare = (Compare) node;
-            if (compare.x().isConstant() && !compare.y().isConstant()) { // move constants to the left (y)
-                compare.swapOperands();
-            } else if (compare.x().isConstant() && compare.y().isConstant()) {
-                CiConstant constX = compare.x().asConstant();
-                CiConstant constY = compare.y().asConstant();
-                Boolean result = compare.condition().foldCondition(constX, constY, ((CompilerGraph) node.graph()).runtime(), compare.unorderedIsTrue());
-                if (result != null) {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("folded condition " + constX + " " + compare.condition() + " " + constY);
-                    }
-                    return Constant.forBoolean(result, compare.graph());
-                } else {
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("if not removed %s %s %s (%s %s)", constX, compare.condition(), constY, constX.kind, constY.kind);
-                    }
+    private Node optimizeMaterialize(CiConstant constant, MaterializeNode materializeNode) {
+        if (constant.kind == CiKind.Int) {
+            boolean isFalseCheck = (constant.asInt() == 0);
+            if (condition == Condition.EQ || condition == Condition.NE) {
+                if (condition == Condition.NE) {
+                    isFalseCheck = !isFalseCheck;
                 }
-            }
-
-            if (compare.y().isConstant()) {
-                if (compare.x() instanceof MaterializeNode) {
-                    return optimizeMaterialize(compare, compare.y().asConstant(), (MaterializeNode) compare.x());
-                } else if (compare.x() instanceof NormalizeCompare) {
-                    return optimizeNormalizeCmp(compare, compare.y().asConstant(), (NormalizeCompare) compare.x());
+                BooleanNode result = materializeNode.condition();
+                if (isFalseCheck) {
+                    result = new NegateBooleanNode(result, graph());
                 }
-            }
-
-            if (compare.x() == compare.y() && compare.x().kind != CiKind.Float && compare.x().kind != CiKind.Double) {
-                return Constant.forBoolean(compare.condition().check(1, 1), compare.graph());
-            }
-            if ((compare.condition == Condition.NE || compare.condition == Condition.EQ) && compare.x().kind == CiKind.Object) {
-                Value object = null;
-                if (compare.x().isNullConstant()) {
-                    object = compare.y();
-                } else if (compare.y().isNullConstant()) {
-                    object = compare.x();
-                }
-                if (object != null) {
-                    IsNonNull nonNull =  new IsNonNull(object, compare.graph());
-                    if (compare.condition == Condition.NE) {
-                        return nonNull;
-                    } else {
-                        assert compare.condition == Condition.EQ;
-                        return new NegateBooleanNode(nonNull, compare.graph());
-                    }
-                }
-            }
-            boolean allUsagesNegate = true;
-            for (Node usage : compare.usages()) {
-                if (!(usage instanceof NegateBooleanNode)) {
-                    allUsagesNegate = false;
-                    break;
-                }
-            }
-            if (allUsagesNegate) {
-                compare.negate();
-                for (Node usage : compare.usages().snapshot()) {
-                    usage.replaceAtUsages(compare);
-                }
-            }
-            return compare;
-        }
-
-        private Node optimizeMaterialize(Compare compare, CiConstant constant, MaterializeNode materializeNode) {
-            if (constant.kind == CiKind.Int) {
-                boolean isFalseCheck = (constant.asInt() == 0);
-                if (compare.condition == Condition.EQ || compare.condition == Condition.NE) {
-                    if (compare.condition == Condition.NE) {
-                        isFalseCheck = !isFalseCheck;
-                    }
-                    BooleanNode result = materializeNode.condition();
-                    if (isFalseCheck) {
-                        result = new NegateBooleanNode(result, compare.graph());
-                    }
-                    if (GraalOptions.TraceCanonicalizer) {
-                        TTY.println("Removed materialize replacing with " + result);
-                    }
-                    return result;
-                }
-            }
-            return compare;
-        }
-
-        private Node optimizeNormalizeCmp(Compare compare, CiConstant constant, NormalizeCompare normalizeNode) {
-            if (constant.kind == CiKind.Int && constant.asInt() == 0) {
-                Condition condition = compare.condition();
-                if (normalizeNode == compare.y()) {
-                    condition = condition.mirror();
-                }
-                Compare result = new Compare(normalizeNode.x(), condition, normalizeNode.y(), compare.graph());
-                boolean isLess = condition == Condition.LE || condition == Condition.LT || condition == Condition.BE || condition == Condition.BT;
-                result.unorderedIsTrue = condition != Condition.EQ && (condition == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess()));
                 if (GraalOptions.TraceCanonicalizer) {
-                    TTY.println("Replaced Compare+NormalizeCompare with " + result);
+                    TTY.println("Removed materialize replacing with " + result);
                 }
                 return result;
             }
-            return compare;
         }
-    };
+        return this;
+    }
+
+    private Node optimizeNormalizeCmp(CiConstant constant, NormalizeCompare normalizeNode) {
+        if (constant.kind == CiKind.Int && constant.asInt() == 0) {
+            Condition condition = condition();
+            if (normalizeNode == y()) {
+                condition = condition.mirror();
+            }
+            Compare result = new Compare(normalizeNode.x(), condition, normalizeNode.y(), graph());
+            boolean isLess = condition == Condition.LE || condition == Condition.LT || condition == Condition.BE || condition == Condition.BT;
+            result.unorderedIsTrue = condition != Condition.EQ && (condition == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess()));
+            if (GraalOptions.TraceCanonicalizer) {
+                TTY.println("Replaced Compare+NormalizeCompare with " + result);
+            }
+            return result;
+        }
+        return this;
+    }
+
+    @Override
+    public Node canonical(NotifyReProcess reProcess) {
+        if (x().isConstant() && !y().isConstant()) { // move constants to the left (y)
+            swapOperands();
+        } else if (x().isConstant() && y().isConstant()) {
+            CiConstant constX = x().asConstant();
+            CiConstant constY = y().asConstant();
+            Boolean result = condition().foldCondition(constX, constY, ((CompilerGraph) graph()).runtime(), unorderedIsTrue());
+            if (result != null) {
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("folded condition " + constX + " " + condition() + " " + constY);
+                }
+                return Constant.forBoolean(result, graph());
+            } else {
+                if (GraalOptions.TraceCanonicalizer) {
+                    TTY.println("if not removed %s %s %s (%s %s)", constX, condition(), constY, constX.kind, constY.kind);
+                }
+            }
+        }
+
+        if (y().isConstant()) {
+            if (x() instanceof MaterializeNode) {
+                return optimizeMaterialize(y().asConstant(), (MaterializeNode) x());
+            } else if (x() instanceof NormalizeCompare) {
+                return optimizeNormalizeCmp(y().asConstant(), (NormalizeCompare) x());
+            }
+        }
+
+        if (x() == y() && x().kind != CiKind.Float && x().kind != CiKind.Double) {
+            return Constant.forBoolean(condition().check(1, 1), graph());
+        }
+        if ((condition == Condition.NE || condition == Condition.EQ) && x().kind == CiKind.Object) {
+            Value object = null;
+            if (x().isNullConstant()) {
+                object = y();
+            } else if (y().isNullConstant()) {
+                object = x();
+            }
+            if (object != null) {
+                IsNonNull nonNull = new IsNonNull(object, graph());
+                if (condition == Condition.NE) {
+                    return nonNull;
+                } else {
+                    assert condition == Condition.EQ;
+                    return new NegateBooleanNode(nonNull, graph());
+                }
+            }
+        }
+        boolean allUsagesNegate = true;
+        for (Node usage : usages()) {
+            if (!(usage instanceof NegateBooleanNode)) {
+                allUsagesNegate = false;
+                break;
+            }
+        }
+        if (allUsagesNegate) {
+            negate();
+            for (Node usage : usages().snapshot()) {
+                usage.replaceAtUsages(this);
+            }
+        }
+        return this;
+    }
 }
