@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.graph;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.nodes.base.*;
+import com.oracle.max.graal.nodes.base.*;
 
 public interface MergeableState <T> {
     T clone();

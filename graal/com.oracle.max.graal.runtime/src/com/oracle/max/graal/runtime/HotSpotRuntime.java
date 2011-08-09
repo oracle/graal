@@ -28,12 +28,12 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
-import com.oracle.max.graal.compiler.nodes.calc.ConditionalNode.ConditionalStructure;
-import com.oracle.max.graal.compiler.nodes.extended.*;
-import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.calc.ConditionalNode.*;
+import com.oracle.max.graal.nodes.extended.*;
+import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.runtime.nodes.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;

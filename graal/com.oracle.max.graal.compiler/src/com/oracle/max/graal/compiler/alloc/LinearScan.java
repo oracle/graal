@@ -37,14 +37,14 @@ import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.base.FrameState.ValueProcedure;
-import com.oracle.max.graal.compiler.nodes.calc.*;
-import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.base.FrameState.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.virtual.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

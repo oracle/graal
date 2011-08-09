@@ -26,10 +26,10 @@ import java.io.*;
 import java.util.regex.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graphviz.*;
+import com.oracle.max.graal.nodes.base.*;
 
 /**
  * Observes compilation events and uses {@link GraphvizPrinter} to produce a control flow graph in the DOT language

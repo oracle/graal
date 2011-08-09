@@ -27,9 +27,9 @@ import java.net.*;
 import java.util.regex.*;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
 import com.sun.cri.ri.*;
 
 /**

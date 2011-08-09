@@ -23,13 +23,13 @@
 package com.oracle.max.graal.examples.opt;
 
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.examples.intrinsics.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.calc.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

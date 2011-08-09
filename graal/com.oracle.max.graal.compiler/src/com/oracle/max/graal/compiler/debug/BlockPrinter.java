@@ -23,10 +23,10 @@
 package com.oracle.max.graal.compiler.debug;
 
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
 
 /**
  * Prints a listing for a {@linkplain MergeNode block}.

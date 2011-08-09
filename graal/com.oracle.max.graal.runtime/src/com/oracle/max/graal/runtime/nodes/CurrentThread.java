@@ -23,9 +23,9 @@
 package com.oracle.max.graal.runtime.nodes;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
-import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.spi.*;
 import com.sun.cri.ci.*;
 
 

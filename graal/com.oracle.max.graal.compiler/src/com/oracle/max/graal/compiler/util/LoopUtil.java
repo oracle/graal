@@ -26,10 +26,6 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
-import com.oracle.max.graal.compiler.nodes.extended.*;
-import com.oracle.max.graal.compiler.nodes.loop.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.GraphUtil.ColorSplitingLambda;
@@ -38,6 +34,10 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.extended.*;
+import com.oracle.max.graal.nodes.loop.*;
 import com.sun.cri.ci.*;
 
 public class LoopUtil {

@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
+import com.oracle.max.graal.nodes.calc.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.

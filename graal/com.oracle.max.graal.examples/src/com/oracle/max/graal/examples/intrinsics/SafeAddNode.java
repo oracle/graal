@@ -22,10 +22,10 @@
  */
 package com.oracle.max.graal.examples.intrinsics;
 
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
-import com.oracle.max.graal.compiler.nodes.spi.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.spi.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 

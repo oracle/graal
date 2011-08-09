@@ -27,9 +27,9 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.base.PhiNode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

@@ -26,15 +26,15 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
-import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.graph.collections.*;
 import com.oracle.max.graal.graph.collections.NodeWorkList.InfiniteWorkException;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.extended.*;
 
 public class GraphUtil {
 

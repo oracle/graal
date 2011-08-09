@@ -25,8 +25,8 @@ package com.oracle.max.graal.compiler.debug;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.nodes.base.*;
 
 /**
  * A utility for printing compiler debug and informational output to an output stream.
@@ -451,7 +451,7 @@ public class LogStream {
     }
 
     /**
-     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.nodes.base.ValueNode) value} to this stream.
+     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.nodes.base.ValueNode) value} to this stream.
      *
      * @param value the instruction to print
      * @return this {@code LogStream} instance
@@ -465,7 +465,7 @@ public class LogStream {
     }
 
     /**
-     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.nodes.base.ValueNode) value} to this stream
+     * Writes an instruction formatted as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.nodes.base.ValueNode) value} to this stream
      * followed by a {@linkplain #LINE_SEPARATOR line separator}.
      *
      * @param value the instruction to print

@@ -23,8 +23,8 @@
 package com.oracle.max.graal.compiler.gen;
 
 import com.oracle.max.graal.compiler.alloc.OperandPool.VariableFlag;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.nodes.base.*;
 import com.sun.cri.ci.*;
 
 /**

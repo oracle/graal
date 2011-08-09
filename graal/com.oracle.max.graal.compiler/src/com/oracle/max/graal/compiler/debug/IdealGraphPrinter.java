@@ -28,13 +28,13 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.loop.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.loop.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ri.*;
 

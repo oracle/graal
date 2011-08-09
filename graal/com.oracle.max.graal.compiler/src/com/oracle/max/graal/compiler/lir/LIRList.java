@@ -30,7 +30,7 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.globalstub.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
+import com.oracle.max.graal.nodes.calc.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;

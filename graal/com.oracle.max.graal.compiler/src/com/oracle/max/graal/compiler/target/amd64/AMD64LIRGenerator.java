@@ -29,11 +29,11 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.globalstub.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.calc.*;
-import com.oracle.max.graal.compiler.nodes.extended.*;
-import com.oracle.max.graal.compiler.nodes.java.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.extended.*;
+import com.oracle.max.graal.nodes.java.*;
 import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 

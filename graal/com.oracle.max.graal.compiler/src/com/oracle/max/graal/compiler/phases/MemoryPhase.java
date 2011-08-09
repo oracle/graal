@@ -27,12 +27,12 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
-import com.oracle.max.graal.compiler.nodes.extended.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.extended.*;
 import com.sun.cri.ci.*;
 
 public class MemoryPhase extends Phase {

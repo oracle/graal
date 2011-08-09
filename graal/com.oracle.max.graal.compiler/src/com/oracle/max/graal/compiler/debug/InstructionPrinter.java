@@ -24,8 +24,8 @@ package com.oracle.max.graal.compiler.debug;
 
 import static com.oracle.max.graal.compiler.debug.InstructionPrinter.InstructionLineColumn.*;
 
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.spi.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.spi.*;
 
 /**
  * A {@link ValueVisitor} for {@linkplain #printInstruction(ValueNode) printing}

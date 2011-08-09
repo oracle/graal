@@ -27,12 +27,12 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.extensions.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
 
 /**
  * This class implements the overall container for the HIR (high-level IR) graph

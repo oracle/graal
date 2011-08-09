@@ -23,8 +23,8 @@
 package com.oracle.max.graal.compiler.lir;
 
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
 import com.sun.cri.ci.*;
 
 /**

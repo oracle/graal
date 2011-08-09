@@ -28,14 +28,14 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
-import com.oracle.max.graal.compiler.nodes.base.PhiNode.PhiType;
-import com.oracle.max.graal.compiler.nodes.calc.*;
-import com.oracle.max.graal.compiler.nodes.spi.*;
-import com.oracle.max.graal.compiler.nodes.virtual.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
+import com.oracle.max.graal.nodes.base.PhiNode.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.virtual.*;
 import com.sun.cri.ci.*;
 
 

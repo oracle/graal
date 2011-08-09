@@ -27,9 +27,9 @@ import java.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.base.*;
 
 public class ComputeProbabilityPhase extends Phase {
     private static final double EPSILON = 1d / Integer.MAX_VALUE;

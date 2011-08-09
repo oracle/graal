@@ -33,8 +33,8 @@ import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.gen.LIRGenerator.DeoptimizationStub;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.compiler.observer.*;
+import com.oracle.max.graal.nodes.base.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

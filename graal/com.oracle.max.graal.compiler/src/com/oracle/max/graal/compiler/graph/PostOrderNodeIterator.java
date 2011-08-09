@@ -24,9 +24,9 @@ package com.oracle.max.graal.compiler.graph;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.nodes.base.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.collections.*;
+import com.oracle.max.graal.nodes.base.*;
 
 public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
