@@ -25,7 +25,6 @@ package com.oracle.max.graal.hotspot;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
@@ -58,8 +57,6 @@ public class HotSpotRuntime implements GraalRuntime {
     private final Compiler compiler;
     // TODO(ls) this is not a permanent solution - there should be a more sophisticated compiler oracle
     private HashSet<RiResolvedMethod> notInlineableMethods = new HashSet<RiResolvedMethod>();
-
-    private final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<Runnable>();
 
     public HotSpotRuntime(GraalContext context, HotSpotVMConfig config, Compiler compiler) {
         this.context = context;
@@ -463,24 +460,6 @@ public class HotSpotRuntime implements GraalRuntime {
 
     public void installMethod(RiMethod method, CiTargetMethod code) {
         HotSpotTargetMethod.installMethod(CompilerImpl.getInstance(), (HotSpotMethodResolved) method, code, true);
-    }
-
-    @Override
-    public void executeOnCompilerThread(Runnable r) {
-        tasks.add(r);
-        compiler.getVMEntries().notifyJavaQueue();
-    }
-
-    public void pollJavaQueue() {
-        Runnable r = tasks.poll();
-        while (r != null) {
-            try {
-                r.run();
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
-            r = tasks.poll();
-        }
     }
 
     @Override

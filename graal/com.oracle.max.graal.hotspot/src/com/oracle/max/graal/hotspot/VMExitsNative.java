@@ -275,9 +275,4 @@ public class VMExitsNative implements VMExits, Remote {
     public CiConstant createCiConstantObject(Object object) {
         return CiConstant.forObject(object);
     }
-
-    @Override
-    public void pollJavaQueue() {
-        ((HotSpotRuntime) compiler.getRuntime()).pollJavaQueue();
-    }
 }

@@ -232,9 +232,4 @@ public interface RiRuntime {
      * @return a reference to the compiled and ready-to-run code
      */
     RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code);
-
-    /**
-     * Executes the given runnable on a compiler thread, which means that it can access constant pools, etc.
-     */
-    void executeOnCompilerThread(Runnable r);
 }
