@@ -36,7 +36,7 @@ import com.sun.cri.ri.*;
  */
 public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable {
 
-    @Input private final AnchorNode anchor;
+    @Input protected final AnchorNode anchor;
 
     /**
      * Creates a new CheckCast instruction.
@@ -76,9 +76,9 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
 
     // TODO(tw): Find a better way to handle anchors.
     private void freeAnchor() {
-        ValueAnchorNode anchor = usages().filter(ValueAnchorNode.class).first();
-        if (anchor != null) {
-            anchor.replaceFirstInput(this, null);
+        ValueAnchorNode anchorUsage = usages().filter(ValueAnchorNode.class).first();
+        if (anchorUsage != null) {
+            anchorUsage.replaceFirstInput(this, null);
         }
     }
 

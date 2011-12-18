@@ -26,8 +26,6 @@ import static com.sun.max.asm.ppc.BranchPredictionBits.*;
 import static com.sun.max.asm.ppc.CRF.*;
 import static com.sun.max.asm.ppc.GPR.*;
 
-import java.io.*;
-
 import junit.framework.*;
 
 import com.sun.max.asm.*;
@@ -57,7 +55,7 @@ public class SpeedTest extends MaxTestCase {
         junit.textui.TestRunner.run(SpeedTest.class);
     }
 
-    public byte[] produce()  throws IOException, AssemblyException {
+    public byte[] produce()  throws AssemblyException {
         final int startAddress = 0x0000ecf0;
         final PPC32Assembler asm = new PPC32Assembler(startAddress);
         final Label label1 = new Label();
@@ -102,7 +100,7 @@ public class SpeedTest extends MaxTestCase {
         return asm.toByteArray();
     }
 
-    public void test_speed() throws IOException, AssemblyException {
+    public void test_speed() throws AssemblyException {
         System.out.println("start");
         for (int i = 0; i < 10000000; i++) {
             produce();

@@ -62,7 +62,7 @@ public class InternalTest extends MaxTestCase {
         junit.textui.TestRunner.run(InternalTest.class);
     }
 
-    private byte[] assemble(int startAddress) throws IOException, AssemblyException {
+    private static byte[] assemble(int startAddress) throws AssemblyException {
         final IA32GeneralRegister32 myGPR = EAX;
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Label startLabel = new Label();
@@ -150,7 +150,7 @@ public class InternalTest extends MaxTestCase {
         return asm.toByteArray();
     }
 
-    private void disassemble(int startAddress, byte[] bytes, InlineDataDecoder inlineDataDecoder) throws IOException, AssemblyException {
+    private static void disassemble(int startAddress, byte[] bytes, InlineDataDecoder inlineDataDecoder) throws IOException, AssemblyException {
         final IA32Disassembler disassembler = new IA32Disassembler(startAddress, inlineDataDecoder);
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
@@ -162,7 +162,7 @@ public class InternalTest extends MaxTestCase {
         disassemble(startAddress, bytes, null);
     }
 
-    private byte[] assembleSwitchTable(int startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleSwitchTable(int startAddress, InlineDataRecorder recorder) throws AssemblyException {
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Label skip = new Label();
         final Label table = new Label();

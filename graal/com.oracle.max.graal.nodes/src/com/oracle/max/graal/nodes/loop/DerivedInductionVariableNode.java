@@ -76,24 +76,24 @@ public class DerivedInductionVariableNode extends LinearInductionVariableNode  i
      * @return the new BasicInductionVariable
      */
     public BasicInductionVariableNode toBasicInductionVariable() {
-        InductionVariableNode base = base();
-        if (base instanceof DerivedInductionVariableNode) {
-            base = ((DerivedInductionVariableNode) base).toBasicInductionVariable();
+        InductionVariableNode b = base();
+        if (b instanceof DerivedInductionVariableNode) {
+            b = ((DerivedInductionVariableNode) b).toBasicInductionVariable();
         }
         ValueNode init;
         ValueNode stride;
         LoopCounterNode counter;
-        if (base instanceof BasicInductionVariableNode) {
-            BasicInductionVariableNode basic = (BasicInductionVariableNode) base;
+        if (b instanceof BasicInductionVariableNode) {
+            BasicInductionVariableNode basic = (BasicInductionVariableNode) b;
             // let the canonicalizer do its job with this
             init = IntegerArithmeticNode.add(offset(), IntegerArithmeticNode.mul(scale(), basic.init()));
             stride = IntegerArithmeticNode.mul(scale(), basic.stride());
             counter = basic.loopCounter();
         } else {
-            assert base instanceof LoopCounterNode;
+            assert b instanceof LoopCounterNode;
             init = offset();
             stride = scale();
-            counter = (LoopCounterNode) base;
+            counter = (LoopCounterNode) b;
         }
         BasicInductionVariableNode newBIV = graph().add(new BasicInductionVariableNode(kind(), init, stride, counter));
         this.replaceAndDelete(newBIV);

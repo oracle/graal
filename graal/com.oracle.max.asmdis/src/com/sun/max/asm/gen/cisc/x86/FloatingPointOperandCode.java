@@ -53,6 +53,6 @@ public enum FloatingPointOperandCode implements WrappableSpecification {
     }
 
     public TestArgumentExclusion excludeExternalTestArguments(Argument... arguments) {
-        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<Argument>(Arrays.asList(arguments)));
+        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<>(Arrays.asList(arguments)));
     }
 }

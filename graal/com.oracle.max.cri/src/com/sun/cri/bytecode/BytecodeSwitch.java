@@ -127,13 +127,13 @@ public abstract class BytecodeSwitch {
 
     /**
      * Reads the signed value at given bytecode index.
-     * @param bci the start index of the value to retrieve
+     * @param readBci the start index of the value to retrieve
      * @return the signed, 4-byte value in the bytecode array starting at {@code bci}
      */
-    protected int readWord(int bci) {
+    protected int readWord(int readBci) {
         if (code != null) {
-            return Bytes.beS4(code, bci);
+            return Bytes.beS4(code, readBci);
         }
-        return stream.readInt(bci);
+        return stream.readInt(readBci);
     }
 }

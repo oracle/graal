@@ -36,6 +36,11 @@ import com.sun.max.asm.dis.*;
  */
 public class TemplateNotNeededException extends Exception {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 3785941470671918973L;
+
     public TemplateNotNeededException() {
         super();
     }

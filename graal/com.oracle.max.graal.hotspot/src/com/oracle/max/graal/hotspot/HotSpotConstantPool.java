@@ -28,6 +28,10 @@ import com.sun.cri.ri.*;
  * Implementation of RiConstantPool for HotSpot.
  */
 public class HotSpotConstantPool extends CompilerObject implements RiConstantPool {
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -5443206401485234850L;
     private final HotSpotTypeResolvedImpl type;
 
     public HotSpotConstantPool(Compiler compiler, HotSpotTypeResolvedImpl type) {

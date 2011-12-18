@@ -33,7 +33,7 @@ public class NodeFlood implements Iterable<Node> {
 
     public NodeFlood(Graph graph) {
         visited = graph.createNodeBitMap();
-        worklist = new ArrayDeque<Node>();
+        worklist = new ArrayDeque<>();
     }
 
     public void add(Node node) {

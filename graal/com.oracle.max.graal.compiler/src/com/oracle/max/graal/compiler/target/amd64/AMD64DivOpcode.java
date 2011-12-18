@@ -42,9 +42,7 @@ public enum AMD64DivOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, info, inputs, alives, temps) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                CiValue left = input(0);
-                CiValue right = alive(0);
-                emit(tasm, masm, tasm.asRegister(result()), info, tasm.asRegister(left), tasm.asRegister(right));
+                emit(tasm, masm, tasm.asRegister(result()), info, tasm.asRegister(input(0)), tasm.asRegister(alive(0)));
             }
         };
     }

@@ -27,13 +27,12 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
 import com.sun.cri.ci.*;
 
 public class ReplacingStreams {
 
-    private IdentityHashMap<Object, Placeholder> objectMap = new IdentityHashMap<Object, Placeholder>();
-    private ArrayList<Object> objectList = new ArrayList<Object>();
+    private IdentityHashMap<Object, Placeholder> objectMap = new IdentityHashMap<>();
+    private ArrayList<Object> objectList = new ArrayList<>();
 
     private ReplacingOutputStream output;
     private ReplacingInputStream input;
@@ -75,6 +74,10 @@ public class ReplacingStreams {
 
     public static class Placeholder implements Serializable {
 
+        /**
+         *
+         */
+        private static final long serialVersionUID = 6071894297788156945L;
         public final int id;
 
         public Placeholder(int id) {
@@ -89,6 +92,10 @@ public class ReplacingStreams {
 
     public static class NewRemoteCallPlaceholder implements Serializable {
 
+        /**
+         *
+         */
+        private static final long serialVersionUID = 3084101671389500206L;
         public final Class<?>[] interfaces;
 
         public NewRemoteCallPlaceholder(Class<?>[] interfaces) {
@@ -97,6 +104,11 @@ public class ReplacingStreams {
     }
 
     public static class NewDummyPlaceholder implements Serializable {
+
+        /**
+         *
+         */
+        private static final long serialVersionUID = 2692666726573532288L;
     }
 
     /**
@@ -104,15 +116,9 @@ public class ReplacingStreams {
      */
     public class ReplacingInputStream extends ObjectInputStream {
 
-        private Compiler compiler;
-
         public ReplacingInputStream(InputStream in) throws IOException {
             super(in);
             enableResolveObject(true);
-        }
-
-        public void setCompiler(Compiler compiler) {
-            this.compiler = compiler;
         }
 
         @Override
@@ -121,24 +127,24 @@ public class ReplacingStreams {
 
             if (obj instanceof Placeholder) {
                 Placeholder placeholder = (Placeholder) obj;
-                obj = objectList.get(placeholder.id);
-                return obj;
+                Object resolvedObj = objectList.get(placeholder.id);
+                return resolvedObj;
             }
 
             if (obj instanceof NewRemoteCallPlaceholder) {
                 NewRemoteCallPlaceholder newPlaceholder = (NewRemoteCallPlaceholder) obj;
                 Placeholder placeholder = new Placeholder(objectList.size());
-                obj = Proxy.newProxyInstance(getClass().getClassLoader(), newPlaceholder.interfaces, invocation.new Handler(placeholder));
-                objectMap.put(obj, placeholder);
-                objectList.add(obj);
-                return obj;
+                Object resolvedObj = Proxy.newProxyInstance(getClass().getClassLoader(), newPlaceholder.interfaces, invocation.new Handler(placeholder));
+                objectMap.put(resolvedObj, placeholder);
+                objectList.add(resolvedObj);
+                return resolvedObj;
             }
 
             if (obj instanceof NewDummyPlaceholder) {
-                obj = new Placeholder(objectList.size());
-                objectMap.put(obj, (Placeholder) obj);
-                objectList.add(obj);
-                return obj;
+                Object resolvedObj = new Placeholder(objectList.size());
+                objectMap.put(resolvedObj, (Placeholder) resolvedObj);
+                objectList.add(resolvedObj);
+                return resolvedObj;
             }
 
             return obj;
@@ -196,7 +202,7 @@ public class ReplacingStreams {
     }
 
     public static Class<?>[] getAllInterfaces(Class<?> clazz) {
-        HashSet<Class< ? >> interfaces = new HashSet<Class<?>>();
+        HashSet<Class< ? >> interfaces = new HashSet<>();
         getAllInterfaces(clazz, interfaces);
         return interfaces.toArray(new Class<?>[interfaces.size()]);
     }

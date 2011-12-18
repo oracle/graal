@@ -100,7 +100,7 @@ public class AMD64Template extends X86Template {
                 // so for now we do not produce them:
                 TemplateNotNeededException.raise();
         }
-        addParameter(new X86EnumerableParameter<Scale>(designation, ParameterPlace.SIB_SCALE, Scale.ENUMERATOR));
+        addParameter(new X86EnumerableParameter<>(designation, ParameterPlace.SIB_SCALE, Scale.ENUMERATOR));
     }
 
     /**
@@ -223,11 +223,11 @@ public class AMD64Template extends X86Template {
         throws TemplateNotNeededException {
         switch (operandCode) {
             case Cq: {
-                addParameter(new X86EnumerableParameter<ControlRegister>(designation, ParameterPlace.MOD_REG, ControlRegister.ENUMERATOR));
+                addParameter(new X86EnumerableParameter<>(designation, ParameterPlace.MOD_REG, ControlRegister.ENUMERATOR));
                 break;
             }
             case Dq: {
-                addParameter(new X86EnumerableParameter<DebugRegister>(designation, ParameterPlace.MOD_REG, DebugRegister.ENUMERATOR));
+                addParameter(new X86EnumerableParameter<>(designation, ParameterPlace.MOD_REG, DebugRegister.ENUMERATOR));
                 break;
             }
             case Eb: {

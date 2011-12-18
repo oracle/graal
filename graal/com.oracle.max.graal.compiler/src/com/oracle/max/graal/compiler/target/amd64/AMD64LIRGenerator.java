@@ -58,7 +58,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     private static final CiRegisterValue RAX_I = AMD64.rax.asValue(CiKind.Int);
     private static final CiRegisterValue RAX_L = AMD64.rax.asValue(CiKind.Long);
-    private static final CiRegisterValue RAX_O = AMD64.rax.asValue(CiKind.Object);
     private static final CiRegisterValue RDX_I = AMD64.rdx.asValue(CiKind.Int);
     private static final CiRegisterValue RDX_L = AMD64.rdx.asValue(CiKind.Long);
     private static final CiRegisterValue RCX_I = AMD64.rcx.asValue(CiKind.Int);

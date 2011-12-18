@@ -53,8 +53,8 @@ public class FilterIteratorTest extends MaxTestCase {
         for (int i = 0; i < array.length; i++) {
             array[i] = new Integer(i);
         }
-        final LinkedList<Integer> list = new LinkedList<Integer>(java.util.Arrays.asList(array));
-        FilterIterator<Integer> iter = new FilterIterator<Integer>(list.iterator(), evenPred);
+        final LinkedList<Integer> list = new LinkedList<>(java.util.Arrays.asList(array));
+        FilterIterator<Integer> iter = new FilterIterator<>(list.iterator(), evenPred);
         int i = 0;
         Integer elem;
         while (iter.hasNext()) {
@@ -65,7 +65,7 @@ public class FilterIteratorTest extends MaxTestCase {
         assertEquals(i, 10);
         assertEquals(list.size(), 10);
         try {
-            iter = new FilterIterator<Integer>(list.iterator(), evenPred);
+            iter = new FilterIterator<>(list.iterator(), evenPred);
             while (iter.hasNext()) {
                 iter.remove();
             }

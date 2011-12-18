@@ -97,10 +97,10 @@ public class OptionSet {
      *            {@linkplain #loadOptions(OptionSet) loading options from another option set}.
      */
     public OptionSet(boolean allowUnrecognizedOptions) {
-        optionValues = new HashMap<String, String>();
+        optionValues = new HashMap<>();
         // Using a LinkedHashMap to preserve insertion order when iterating over values
-        optionMap = new LinkedHashMap<String, Option>();
-        optionSyntax = new HashMap<String, Syntax>();
+        optionMap = new LinkedHashMap<>();
+        optionSyntax = new HashMap<>();
         this.allowUnrecognizedOptions = allowUnrecognizedOptions;
     }
 
@@ -469,8 +469,8 @@ public class OptionSet {
      * @return an iterable collection of {@code Option} instances, sorted according to the name of each option
      */
     public Iterable<Option<?>> getSortedOptions() {
-        final List<Option<?>> list = new LinkedList<Option<?>>();
-        final TreeSet<String> tree = new TreeSet<String>();
+        final List<Option<?>> list = new LinkedList<>();
+        final TreeSet<String> tree = new TreeSet<>();
         for (String string : optionMap.keySet()) {
             tree.add(string);
         }
@@ -623,30 +623,30 @@ public class OptionSet {
             if (prefix.length() > 0) {
                 // setup a "-prefix+name" option
                 String plusName = prefix + ":+" + name;
-                FieldOption<Boolean> plusOption = new FieldOption<Boolean>(plusName, object, field, (Boolean) defaultValue, OptionTypes.BLANK_BOOLEAN_TYPE, help);
+                FieldOption<Boolean> plusOption = new FieldOption<>(plusName, object, field, (Boolean) defaultValue, OptionTypes.BLANK_BOOLEAN_TYPE, help);
                 plusOption.nullValue = true;
                 addOption(plusOption, Syntax.REQUIRES_BLANK);
 
                 // setup a "-prefix-name" option
                 String minusName = prefix + ":-" + name;
-                FieldOption<Boolean> minusOption = new FieldOption<Boolean>(minusName, object, field, (Boolean) defaultValue, OptionTypes.BLANK_BOOLEAN_TYPE, help);
+                FieldOption<Boolean> minusOption = new FieldOption<>(minusName, object, field, (Boolean) defaultValue, OptionTypes.BLANK_BOOLEAN_TYPE, help);
                 minusOption.nullValue = false;
                 return addOption(minusOption, Syntax.REQUIRES_BLANK);
             }
-            return addOption(new FieldOption<Boolean>(optionName, object, field, (Boolean) defaultValue, OptionTypes.BOOLEAN_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (Boolean) defaultValue, OptionTypes.BOOLEAN_TYPE, help));
 
         } else if (fieldType == int.class) {
-            return addOption(new FieldOption<Integer>(optionName, object, field, (Integer) defaultValue, OptionTypes.INT_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (Integer) defaultValue, OptionTypes.INT_TYPE, help));
         } else if (fieldType == float.class) {
-            return addOption(new FieldOption<Float>(optionName, object, field, (Float) defaultValue, OptionTypes.FLOAT_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (Float) defaultValue, OptionTypes.FLOAT_TYPE, help));
         } else if (fieldType == long.class) {
-            return addOption(new FieldOption<Long>(optionName, object, field, (Long) defaultValue, OptionTypes.LONG_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (Long) defaultValue, OptionTypes.LONG_TYPE, help));
         } else if (fieldType == double.class) {
-            return addOption(new FieldOption<Double>(optionName, object, field, (Double) defaultValue, OptionTypes.DOUBLE_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (Double) defaultValue, OptionTypes.DOUBLE_TYPE, help));
         } else if (fieldType == String.class) {
-            return addOption(new FieldOption<String>(optionName, object, field, (String) defaultValue, OptionTypes.STRING_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (String) defaultValue, OptionTypes.STRING_TYPE, help));
         } else if (fieldType == File.class) {
-            return addOption(new FieldOption<File>(optionName, object, field, (File) defaultValue, OptionTypes.FILE_TYPE, help));
+            return addOption(new FieldOption<>(optionName, object, field, (File) defaultValue, OptionTypes.FILE_TYPE, help));
         } else if (fieldType.isEnum()) {
             final Class<? extends Enum> enumClass = Utils.cast(fieldType);
             return addOption(makeEnumFieldOption(optionName, object, field, defaultValue, enumClass, help));
@@ -654,53 +654,53 @@ public class OptionSet {
         return null;
     }
 
-    private <T extends Enum<T>> FieldOption<T> makeEnumFieldOption(String name, Object object, Field field, Object defaultValue, Class<T> enumClass, String help) {
-        final OptionTypes.EnumType<T> optionType = new OptionTypes.EnumType<T>(enumClass);
+    private static <T extends Enum<T>> FieldOption<T> makeEnumFieldOption(String name, Object object, Field field, Object defaultValue, Class<T> enumClass, String help) {
+        final OptionTypes.EnumType<T> optionType = new OptionTypes.EnumType<>(enumClass);
         final T defaultV = Utils.<T>cast(defaultValue);
-        return new FieldOption<T>(name, object, field, defaultV, optionType, help);
+        return new FieldOption<>(name, object, field, defaultV, optionType, help);
     }
 
     public Option<String> newStringOption(String name, String defaultValue, String help) {
-        return addOption(new Option<String>(name, defaultValue, OptionTypes.STRING_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.STRING_TYPE, help));
     }
 
     public Option<Integer> newIntegerOption(String name, Integer defaultValue, String help) {
-        return addOption(new Option<Integer>(name, defaultValue, OptionTypes.INT_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.INT_TYPE, help));
     }
 
     public Option<Long> newLongOption(String name, Long defaultValue, String help) {
-        return addOption(new Option<Long>(name, defaultValue, OptionTypes.LONG_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.LONG_TYPE, help));
     }
 
     public Option<Float> newFloatOption(String name, Float defaultValue, String help) {
-        return addOption(new Option<Float>(name, defaultValue, OptionTypes.FLOAT_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.FLOAT_TYPE, help));
     }
 
     public Option<Double> newDoubleOption(String name, Double defaultValue, String help) {
-        return addOption(new Option<Double>(name, defaultValue, OptionTypes.DOUBLE_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.DOUBLE_TYPE, help));
     }
 
     public Option<List<String>> newStringListOption(String name, String defaultValue, String help) {
-        return addOption(new Option<List<String>>(name, defaultValue == null ? null : OptionTypes.COMMA_SEPARATED_STRING_LIST_TYPE.parseValue(defaultValue), OptionTypes.COMMA_SEPARATED_STRING_LIST_TYPE, help));
+        return addOption(new Option<>(name, defaultValue == null ? null : OptionTypes.COMMA_SEPARATED_STRING_LIST_TYPE.parseValue(defaultValue), OptionTypes.COMMA_SEPARATED_STRING_LIST_TYPE, help));
     }
 
     public Option<List<String>> newStringListOption(String name, String[] defaultValue, String help) {
         List<String> list = null;
         if (defaultValue != null) {
-            list = new ArrayList<String>(defaultValue.length);
+            list = new ArrayList<>(defaultValue.length);
             list.addAll(Arrays.asList(defaultValue));
         }
-        return addOption(new Option<List<String>>(name, list, OptionTypes.COMMA_SEPARATED_STRING_LIST_TYPE, help));
+        return addOption(new Option<>(name, list, OptionTypes.COMMA_SEPARATED_STRING_LIST_TYPE, help));
     }
 
     public Option<List<String>> newStringListOption(String name, String defaultValue, char separator, String help) {
         final OptionTypes.StringListType type = new OptionTypes.StringListType(separator);
-        return addOption(new Option<List<String>>(name, defaultValue == null ? null : type.parseValue(defaultValue), type, help));
+        return addOption(new Option<>(name, defaultValue == null ? null : type.parseValue(defaultValue), type, help));
     }
 
     public <T> Option<List<T>> newListOption(String name, String defaultValue, Option.Type<T> elementOptionType, char separator, String help) {
-        final OptionTypes.ListType<T> type = new OptionTypes.ListType<T>(separator, elementOptionType);
-        return addOption(new Option<List<T>>(name, defaultValue == null ? null : type.parseValue(defaultValue), type, help));
+        final OptionTypes.ListType<T> type = new OptionTypes.ListType<>(separator, elementOptionType);
+        return addOption(new Option<>(name, defaultValue == null ? null : type.parseValue(defaultValue), type, help));
     }
 
     public Option<File> newFileOption(String name, String defaultValue, String help) {
@@ -708,27 +708,27 @@ public class OptionSet {
     }
 
     public Option<File> newFileOption(String name, File defaultValue, String help) {
-        return addOption(new Option<File>(name, defaultValue, OptionTypes.FILE_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.FILE_TYPE, help));
     }
 
     public Option<URL> newURLOption(String name, URL defaultValue, String help) {
-        return addOption(new Option<URL>(name, defaultValue, OptionTypes.URL_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.URL_TYPE, help));
     }
 
     public <T> Option<T> newInstanceOption(String name, Class<T> klass, T defaultValue, String help) {
-        return addOption(new Option<T>(name, defaultValue, OptionTypes.createInstanceOptionType(klass), help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.createInstanceOptionType(klass), help));
     }
 
     public <T> Option<List<T>> newListInstanceOption(String name, String defaultValue, Class<T> klass, char separator, String help) {
         final OptionTypes.ListType<T> type = OptionTypes.createInstanceListOptionType(klass, separator);
-        return addOption(new Option<List<T>>(name, (defaultValue == null) ? null : type.parseValue(defaultValue), type, help));
+        return addOption(new Option<>(name, (defaultValue == null) ? null : type.parseValue(defaultValue), type, help));
     }
 
     public Option<Boolean> newBooleanOption(String name, Boolean defaultValue, String help) {
         if (defaultValue != null && !defaultValue) {
-            return addOption(new Option<Boolean>(name, defaultValue, OptionTypes.BOOLEAN_TYPE, help), Syntax.EQUALS_OR_BLANK);
+            return addOption(new Option<>(name, defaultValue, OptionTypes.BOOLEAN_TYPE, help), Syntax.EQUALS_OR_BLANK);
         }
-        return addOption(new Option<Boolean>(name, defaultValue, OptionTypes.BOOLEAN_TYPE, help));
+        return addOption(new Option<>(name, defaultValue, OptionTypes.BOOLEAN_TYPE, help));
     }
 
     public <T> Option<T> newOption(String name, String defaultValue, Option.Type<T> type, String help) {
@@ -736,11 +736,11 @@ public class OptionSet {
     }
 
     public <T> Option<T> newOption(String name, T defaultValue, Option.Type<T> type, Syntax syntax, String help) {
-        return addOption(new Option<T>(name, defaultValue, type, help), syntax);
+        return addOption(new Option<>(name, defaultValue, type, help), syntax);
     }
 
     public <E extends Enum<E>> Option<E> newEnumOption(String name, E defaultValue, Class<E> enumClass, String help) {
-        return addOption(new Option<E>(name, defaultValue, new OptionTypes.EnumType<E>(enumClass), help));
+        return addOption(new Option<>(name, defaultValue, new OptionTypes.EnumType<>(enumClass), help));
     }
 
     public <E extends Enum<E>> Option<List<E>> newEnumListOption(String name, Iterable<E> defaultValue, Class<E> enumClass, String help) {
@@ -751,18 +751,18 @@ public class OptionSet {
             list = Utils.cast(defaultValue);
         } else if (defaultValue instanceof Collection) {
             final Collection<E> collection = Utils.cast(defaultValue);
-            list = new ArrayList<E>(collection);
+            list = new ArrayList<>(collection);
         } else {
-            list = new ArrayList<E>();
+            list = new ArrayList<>();
             for (E value : defaultValue) {
                 list.add(value);
             }
         }
-        final Option<List<E>> option = new Option<List<E>>(name, list, new OptionTypes.EnumListType<E>(enumClass, ','), help);
+        final Option<List<E>> option = new Option<>(name, list, new OptionTypes.EnumListType<>(enumClass, ','), help);
         return addOption(option);
     }
 
     public Option<File> newConfigOption(String name, File defaultFile, String help) {
-        return addOption(new Option<File>(name, defaultFile, new OptionTypes.ConfigFile(this), help));
+        return addOption(new Option<>(name, defaultFile, new OptionTypes.ConfigFile(this), help));
     }
 }

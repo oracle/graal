@@ -27,7 +27,7 @@ import java.util.*;
 public class TreeIterators {
 
     public abstract static class PrefixTreeIterator<T> implements Iterator<T>{
-        private Deque<T> stack = new LinkedList<T>();
+        private Deque<T> stack = new LinkedList<>();
 
         public PrefixTreeIterator(T root) {
             stack.push(root);
@@ -47,7 +47,7 @@ public class TreeIterators {
         @Override
         public T next() {
             T top = stack.pop();
-            LinkedList<T> list = new LinkedList<T>();
+            LinkedList<T> list = new LinkedList<>();
             for (T child : children(top)) {
                 list.addFirst(child);
             }

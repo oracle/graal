@@ -49,7 +49,7 @@ public class CompilationServer implements Runnable {
     }
 
     private final boolean multiple;
-    private final ArrayList<ConnectionObserver> observers = new ArrayList<ConnectionObserver>();
+    private final ArrayList<ConnectionObserver> observers = new ArrayList<>();
 
     /**
      * Creates a new Compilation server. The server is activated by calling {@link #run()} directly or via a new

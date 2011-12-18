@@ -95,7 +95,7 @@ public final class GraalMetrics {
         }
     }
 
-    private LinkedHashMap<String, MetricsEntry> map = new LinkedHashMap<String, MetricsEntry>();
+    private LinkedHashMap<String, MetricsEntry> map = new LinkedHashMap<>();
 
     public MetricsEntry get(String name) {
         if (!map.containsKey(name)) {
@@ -140,7 +140,7 @@ public final class GraalMetrics {
     private static String printMap(Map<?, ?> m) {
         StringBuilder sb = new StringBuilder();
 
-        List<String> keys = new ArrayList<String>();
+        List<String> keys = new ArrayList<>();
         for (Object key : m.keySet()) {
             keys.add((String) key);
         }
@@ -157,10 +157,6 @@ public final class GraalMetrics {
     }
 
     private static void printField(String fieldName, long value) {
-        TTY.print("    " + fieldName + " = " + value + "\n");
-    }
-
-    private static void printField(String fieldName, double value) {
         TTY.print("    " + fieldName + " = " + value + "\n");
     }
 }

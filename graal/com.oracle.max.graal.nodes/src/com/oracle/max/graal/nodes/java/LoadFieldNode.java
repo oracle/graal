@@ -77,18 +77,4 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         }
         return this;
     }
-
-    /**
-     * Gets a constant value to which this load can be reduced.
-     *
-     * @return {@code null} if this load cannot be reduced to a constant
-     */
-    private CiConstant constantValue() {
-        if (isStatic()) {
-            return field.constantValue(null);
-        } else if (object().isConstant()) {
-            return field.constantValue(object().asConstant());
-        }
-        return null;
-    }
 }

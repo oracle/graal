@@ -81,7 +81,7 @@ public class Util {
      * Statically cast an object to an arbitrary Object type. Dynamically checked.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T uncheckedCast(Class<T> type, Object object) {
+    public static <T> T uncheckedCast(@SuppressWarnings("unused") Class<T> type, Object object) {
         return (T) object;
     }
 

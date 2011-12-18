@@ -26,6 +26,7 @@ package com.sun.max.asm.sparc.complete;
 import com.sun.max.asm.*;
 import com.sun.max.asm.sparc.*;
 
+@SuppressWarnings("unused")
 public abstract class SPARCLabelAssembler extends SPARCRawAssembler {
 
 // START GENERATED LABEL ASSEMBLER METHODS

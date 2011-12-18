@@ -56,7 +56,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     private static final Integer MARK_STATIC_CALL_STUB          = 0x1000;
 
-    private static final Integer MARK_INVOKE_INVALID            = 0x2000;
     private static final Integer MARK_INVOKEINTERFACE           = 0x2001;
     private static final Integer MARK_INVOKESTATIC              = 0x2002;
     private static final Integer MARK_INVOKESPECIAL             = 0x2003;
@@ -68,9 +67,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private static final Integer MARK_POLL_FAR                  = 0x3003;
     private static final Integer MARK_POLL_RETURN_FAR           = 0x3004;
 
-    private static final Integer MARK_KLASS_PATCHING            = 0x4000;
-    private static final Integer MARK_DUMMY_OOP_RELOCATION      = 0x4001;
-    private static final Integer MARK_ACCESS_FIELD_PATCHING     = 0x4002;
     // @formatter:on
 
     private final HotSpotVMConfig config;
@@ -519,12 +515,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
         @Override
         protected XirTemplate create(CiXirAssembler asm, long flags) {
-            emitNewTypeArray(asm, flags, CiKind.Object, config.useFastNewObjectArray, config.newObjectArrayStub);
+            emitNewTypeArray(asm, CiKind.Object, config.useFastNewObjectArray, config.newObjectArrayStub);
             return asm.finishTemplate("newObjectArray");
         }
     };
 
-    private void emitNewTypeArray(CiXirAssembler asm, long flags, CiKind kind, boolean useFast, long slowPathStub) {
+    private void emitNewTypeArray(CiXirAssembler asm, CiKind kind, boolean useFast, long slowPathStub) {
         XirOperand result = asm.restart(target.wordKind);
 
         XirParameter lengthParam = asm.createInputParameter("length", CiKind.Int, true);
@@ -609,7 +605,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private KindTemplates newTypeArrayTemplates = new KindTemplates() {
         @Override
         protected XirTemplate create(CiXirAssembler asm, long flags, CiKind kind) {
-            emitNewTypeArray(asm, flags, kind, config.useFastNewTypeArray, config.newTypeArrayStub);
+            emitNewTypeArray(asm, kind, config.useFastNewTypeArray, config.newTypeArrayStub);
             return asm.finishTemplate("newTypeArray<" + kind.toString() + ">");
         }
     };
@@ -1235,10 +1231,11 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         if (elementKind == CiKind.Object) {
             assert arrayType instanceof RiResolvedType;
             return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(arrayType));
+        } else {
+            assert arrayType == null;
+            RiType primitiveArrayType = compiler.getVMEntries().getPrimitiveArrayType(elementKind);
+            return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(primitiveArrayType));
         }
-        assert arrayType == null;
-        arrayType = compiler.getVMEntries().getPrimitiveArrayType(elementKind);
-        return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(arrayType));
     }
 
     @Override
@@ -1309,7 +1306,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     @Override
     public List<XirTemplate> makeTemplates(CiXirAssembler asm) {
         this.globalAsm = asm;
-        List<XirTemplate> templates = new ArrayList<XirTemplate>();
+        List<XirTemplate> templates = new ArrayList<>();
         return templates;
     }
 
@@ -1332,7 +1329,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         asm.pop(result);
     }
 
-    private void useRegisters(CiXirAssembler asm, CiRegister... registers) {
+    private static void useRegisters(CiXirAssembler asm, CiRegister... registers) {
         if (registers != null) {
             for (CiRegister register : registers) {
                 asm.createRegisterTemp("reg", CiKind.Illegal, register);
@@ -1355,7 +1352,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
      */
     private abstract class Templates {
 
-        private ConcurrentHashMap<Long, XirTemplate> templates = new ConcurrentHashMap<Long, XirTemplate>();
+        private ConcurrentHashMap<Long, XirTemplate> templates = new ConcurrentHashMap<>();
         private final long mask;
 
         /**
@@ -1385,11 +1382,11 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
 
         protected XirTemplate getInternal(long flags) {
-            flags = flags & mask;
-            XirTemplate template = templates.get(flags);
+            long maskedFlags = flags & mask;
+            XirTemplate template = templates.get(maskedFlags);
             if (template == null) {
-                template = create(HotSpotXirGenerator.this.globalAsm.copy(), flags);
-                templates.put(flags, template);
+                template = create(HotSpotXirGenerator.this.globalAsm.copy(), maskedFlags);
+                templates.put(maskedFlags, template);
             }
             return template;
         }

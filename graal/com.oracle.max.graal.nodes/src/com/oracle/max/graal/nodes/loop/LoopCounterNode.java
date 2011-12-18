@@ -52,7 +52,7 @@ public final class LoopCounterNode extends InductionVariableNode {
                     biv = createBasicInductionVariable();
                     biv.peelOneIteration();
                 }
-                usage.inputs().replace(this, biv);
+                usage.replaceFirstInput(this, biv);
             }
         }
     }

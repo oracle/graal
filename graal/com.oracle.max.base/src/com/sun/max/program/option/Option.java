@@ -62,6 +62,11 @@ public class Option<T> implements Cloneable {
 
     public static class Error extends java.lang.Error {
 
+        /**
+         * 
+         */
+        private static final long serialVersionUID = -7835290743599345373L;
+
         public Error(String message) {
             super(message);
         }

@@ -28,7 +28,6 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.graph.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -37,7 +36,13 @@ import com.sun.cri.ri.*;
  */
 public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements HotSpotMethodResolved {
 
+    /**
+     *
+     */
+    private static final long serialVersionUID = -5486975070147586588L;
+
     /** DO NOT USE IN JAVA CODE! */
+    @SuppressWarnings("unused")
     @Deprecated
     private Object javaMirror;
 
@@ -46,10 +51,8 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private final int accessFlags;
     private final int maxLocals;
     private final int maxStackSize;
-    private RiExceptionHandler[] exceptionHandlers;
     private RiSignature signature;
     private Boolean hasBalancedMonitors;
-    private Graph intrinsicGraph;
     private Map<Object, Object> compilerStorage;
     private RiResolvedType holder;
     private byte[] code;
@@ -169,7 +172,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public String toString() {
-        return "HotSpotMethod<" + CiUtil.format("%h.%n", this, false) + ">";
+        return "HotSpotMethod<" + CiUtil.format("%h.%n", this) + ">";
     }
 
     public boolean hasCompiledCode() {
@@ -209,7 +212,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     @Override
     public Map<Object, Object> compilerStorage() {
         if (compilerStorage == null) {
-            compilerStorage = new ConcurrentHashMap<Object, Object>();
+            compilerStorage = new ConcurrentHashMap<>();
         }
         return compilerStorage;
     }

@@ -43,7 +43,7 @@ public class InlineDataRecorder {
     public void add(InlineDataDescriptor inlineData) {
         if (inlineData.size() != 0) {
             if (descriptors == null) {
-                descriptors = new ArrayList<InlineDataDescriptor>();
+                descriptors = new ArrayList<>();
             }
             descriptors.add(inlineData);
             normalized = false;
@@ -92,8 +92,8 @@ public class InlineDataRecorder {
 
     private void normalize() {
         if (descriptors != null && !normalized) {
-            final SortedSet<InlineDataDescriptor> sortedEntries = new TreeSet<InlineDataDescriptor>(descriptors);
-            final List<InlineDataDescriptor> entries = new ArrayList<InlineDataDescriptor>(descriptors.size());
+            final SortedSet<InlineDataDescriptor> sortedEntries = new TreeSet<>(descriptors);
+            final List<InlineDataDescriptor> entries = new ArrayList<>(descriptors.size());
             int lastEnd = 0;
             for (InlineDataDescriptor inlineDataDescriptor : sortedEntries) {
                 if (inlineDataDescriptor.startPosition() >= lastEnd) {

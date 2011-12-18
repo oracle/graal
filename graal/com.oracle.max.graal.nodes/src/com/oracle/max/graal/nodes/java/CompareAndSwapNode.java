@@ -80,16 +80,19 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static boolean compareAndSwap(Object object, long offset, Object expected, Object newValue) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static boolean compareAndSwap(Object object, long offset, long expected, long newValue) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static boolean compareAndSwap(Object object, long offset, int expected, int newValue) {
         throw new UnsupportedOperationException();

@@ -65,7 +65,7 @@ public abstract class Assembly<Template_Type extends Template> {
 
     public final List<Template_Type> labelTemplates() {
         if (labelTemplates == null) {
-            labelTemplates = new LinkedList<Template_Type>();
+            labelTemplates = new LinkedList<>();
             for (Template_Type template : templates()) {
                 if (!template.isRedundant() && template.labelParameterIndex() >= 0) {
                     labelTemplates.add(template);
@@ -77,7 +77,7 @@ public abstract class Assembly<Template_Type extends Template> {
 
     public abstract BitRangeOrder bitRangeEndianness();
 
-    private Object getBoxedJavaValue(Argument argument) {
+    private static Object getBoxedJavaValue(Argument argument) {
         if (argument instanceof ImmediateArgument) {
             final ImmediateArgument immediateArgument = (ImmediateArgument) argument;
             return immediateArgument.boxedJavaValue();
@@ -85,7 +85,7 @@ public abstract class Assembly<Template_Type extends Template> {
         return argument;
     }
 
-    public final String createMethodCallString(Template template, List<Argument> argumentList) {
+    public static final String createMethodCallString(Template template, List<Argument> argumentList) {
         assert argumentList.size() == template.parameters().size();
         String call = template.assemblerMethodName() + "(";
         for (int i = 0; i < argumentList.size(); i++) {
@@ -94,7 +94,7 @@ public abstract class Assembly<Template_Type extends Template> {
         return call + ")";
     }
 
-    private Method getAssemblerMethod(Assembler assembler, Template template, Class[] parameterTypes) throws NoSuchAssemblerMethodError {
+    private static Method getAssemblerMethod(Assembler assembler, Template template, Class[] parameterTypes) throws NoSuchAssemblerMethodError {
         try {
             return assembler.getClass().getMethod(template.assemblerMethodName(), parameterTypes);
         } catch (NoSuchMethodException e) {
@@ -102,7 +102,7 @@ public abstract class Assembly<Template_Type extends Template> {
         }
     }
 
-    private Method getAssemblerMethod(Assembler assembler, Template template, List<Argument> arguments) throws NoSuchAssemblerMethodError {
+    private static Method getAssemblerMethod(Assembler assembler, Template template, List<Argument> arguments) throws NoSuchAssemblerMethodError {
         final Class[] parameterTypes = template.parameterTypes();
         final int index = template.labelParameterIndex();
         if (index >= 0 && arguments.get(index) instanceof Label) {

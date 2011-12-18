@@ -46,7 +46,7 @@ public class AMD64DeoptimizationStub implements LIR.SlowPath {
     }
 
 
-    private static ArrayList<Object> keepAlive = new ArrayList<Object>();
+    private static ArrayList<Object> keepAlive = new ArrayList<>();
 
     @Override
     public void emitCode(TargetMethodAssembler tasm) {

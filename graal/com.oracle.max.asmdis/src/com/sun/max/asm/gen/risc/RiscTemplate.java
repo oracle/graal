@@ -32,11 +32,11 @@ import com.sun.max.program.*;
  */
 public class RiscTemplate extends Template implements RiscInstructionDescriptionVisitor {
 
-    private final List<RiscField> allFields = new LinkedList<RiscField>();
-    private final List<OperandField> operandFields = new LinkedList<OperandField>();
-    private final List<OptionField> optionFields = new LinkedList<OptionField>();
-    private final List<OperandField> parameters = new ArrayList<OperandField>();
-    private final List<Option> options = new LinkedList<Option>();
+    private final List<RiscField> allFields = new LinkedList<>();
+    private final List<OperandField> operandFields = new LinkedList<>();
+    private final List<OptionField> optionFields = new LinkedList<>();
+    private final List<OperandField> parameters = new ArrayList<>();
+    private final List<Option> options = new LinkedList<>();
 
     private int opcode;
     private int opcodeMask;
@@ -141,7 +141,7 @@ public class RiscTemplate extends Template implements RiscInstructionDescription
         return Integer.bitCount(opcodeMask);
     }
 
-    public void organizeOption(Option option, RiscTemplate canonicalRepresentative) {
+    public void organizeOption(Option option, RiscTemplate newCanonicalRepresentative) {
         instructionDescription().setExternalName(externalName() + option.externalName());
         setInternalName(internalName() + option.name());
         try {
@@ -153,7 +153,7 @@ public class RiscTemplate extends Template implements RiscInstructionDescription
 
         options.add(option);
         if (option.isRedundant()) {
-            this.canonicalRepresentative = canonicalRepresentative;
+            this.canonicalRepresentative = newCanonicalRepresentative;
         }
     }
 

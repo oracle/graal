@@ -42,6 +42,7 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
         generator.setResult(this, generator.emitLoad(new CiAddress(generator.target().wordKind, AMD64.r15.asValue(generator.target().wordKind), threadObjectOffset), CiKind.Object, false));
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static Object get(int threadObjectOffset) {
         throw new UnsupportedOperationException();

@@ -115,7 +115,7 @@ public class CheckCopyright {
         static Matcher getCopyrightMatcher(String fileName, String fileContent) {
             if (copyrightMap == null) {
                 copyrightFilePattern = Pattern.compile(copyrightFiles);
-                copyrightMap = new HashMap<String, CopyrightKind>();
+                copyrightMap = new HashMap<>();
                 copyrightMap.put("java", CopyrightKind.STAR);
                 copyrightMap.put("c", CopyrightKind.STAR);
                 copyrightMap.put("h", CopyrightKind.STAR);
@@ -136,7 +136,7 @@ public class CheckCopyright {
         private static String getExtension(String fileName) {
             int index = fileName.lastIndexOf(File.separatorChar);
             if (index > 0) {
-                fileName = fileName.substring(index + 1);
+                return getExtension(fileName.substring(index + 1));
             }
             index = fileName.lastIndexOf('.');
             if (index > 0) {
@@ -149,7 +149,6 @@ public class CheckCopyright {
         }
     }
 
-    private static List<YearInfo> infoList = new ArrayList<YearInfo>();
     private static int currentYear = Calendar.getInstance().get(Calendar.YEAR);
     private static final OptionSet options = new OptionSet(true);
     private static final Option<Boolean> help = options.newBooleanOption("help", false, "Show help message and exit.");
@@ -197,11 +196,11 @@ public class CheckCopyright {
             CopyrightKind.HASH.readCopyright();
             List<String> filesToCheck = null;
             if (HG_ALL.getValue()) {
-                filesToCheck = getAllFiles(true);
+                filesToCheck = getAllFiles();
             } else if (HG_OUTGOING.getValue()) {
                 filesToCheck = getOutgoingFiles();
             } else if (HG_MODIFIED.getValue()) {
-                filesToCheck = getAllFiles(false);
+                filesToCheck = getAllFiles();
             } else if (HG_LOG.getValue() > 0) {
                 filesToCheck = getLastNFiles(HG_LOG.getValue());
             } else if (FILE_LIST.getValue() != null) {
@@ -228,7 +227,7 @@ public class CheckCopyright {
                 try {
                     final List<String> logInfo = hglog(fileName);
                     final Info info = getInfo(fileName, true, logInfo);
-                    checkFile(fileName, info);
+                    checkFile(info);
                 } catch (ProgramError e) {
                     System.err.println("COPYRIGHT CHECK WARNING: error while processing " + fileName);
                 }
@@ -251,7 +250,7 @@ public class CheckCopyright {
     }
 
     private static List<String> readFileList(String fileListName) throws IOException {
-        final List<String> result = new ArrayList<String>();
+        final List<String> result = new ArrayList<>();
         BufferedReader b = null;
         try {
             b = new BufferedReader(new FileReader(fileListName));
@@ -339,7 +338,7 @@ public class CheckCopyright {
         return Integer.parseInt(parts[parts.length - 2]);
     }
 
-    private static void checkFile(String c, Info info) throws IOException {
+    private static void checkFile(Info info) throws IOException {
         String fileName = info.fileName;
         File file = new File(fileName);
         if (!file.exists()) {
@@ -394,7 +393,7 @@ public class CheckCopyright {
         return getFilesFiles(exec(null, cmd, false));
     }
 
-    private static List<String> getAllFiles(boolean all) throws Exception {
+    private static List<String> getAllFiles() throws Exception {
         final String[] cmd;
         if (HG_MODIFIED.getValue()) {
             cmd = new String[] {hgPath,  "status"};
@@ -402,7 +401,7 @@ public class CheckCopyright {
             cmd = new String[] {hgPath,  "status",  "--all"};
         }
         List<String> output = exec(null, cmd, true);
-        final List<String> result = new ArrayList<String>(output.size());
+        final List<String> result = new ArrayList<>(output.size());
         for (String s : output) {
             final char ch = s.charAt(0);
             if (!(ch == 'R' || ch == 'I' || ch == '?' ||  ch == '!')) {
@@ -426,7 +425,7 @@ public class CheckCopyright {
 
     private static List<String> getFilesFiles(List<String> output) {
         // there may be multiple changesets so merge the "files:"
-        final Map<String, String> outSet = new TreeMap<String, String>();
+        final Map<String, String> outSet = new TreeMap<>();
         for (String s : output) {
             if (s.startsWith("files:")) {
                 int ix = s.indexOf(' ');
@@ -439,11 +438,11 @@ public class CheckCopyright {
                 }
             }
         }
-        return new ArrayList<String>(outSet.values());
+        return new ArrayList<>(outSet.values());
     }
 
     private static List<String> exec(File workingDir, String[] command, boolean failOnError) throws IOException, InterruptedException {
-        List<String> result = new ArrayList<String>();
+        List<String> result = new ArrayList<>();
         if (Trace.hasLevel(2)) {
             Trace.line(2, "Executing process in directory: " + workingDir);
             for (String c : command) {
@@ -482,7 +481,7 @@ public class CheckCopyright {
     }
 
     private static List<String> readOutput(InputStream is) throws IOException {
-        final List<String> result = new ArrayList<String>();
+        final List<String> result = new ArrayList<>();
         BufferedReader bs = null;
         try {
             bs = new BufferedReader(new InputStreamReader(is));

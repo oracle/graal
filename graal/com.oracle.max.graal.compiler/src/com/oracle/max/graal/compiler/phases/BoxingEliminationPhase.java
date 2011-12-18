@@ -34,30 +34,24 @@ import com.sun.cri.ri.*;
 
 public class BoxingEliminationPhase extends Phase {
 
-    private RiRuntime runtime;
-
-    public BoxingEliminationPhase(RiRuntime runtime) {
-        this.runtime = runtime;
-    }
-
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.getNodes(UnboxNode.class).iterator().hasNext()) {
 
-            Map<PhiNode, PhiNode> phiReplacements = new HashMap<PhiNode, PhiNode>();
+            Map<PhiNode, PhiNode> phiReplacements = new HashMap<>();
             for (UnboxNode unboxNode : graph.getNodes(UnboxNode.class)) {
-                tryEliminate(unboxNode, graph, phiReplacements);
+                tryEliminate(unboxNode, phiReplacements);
             }
 
             new DeadCodeEliminationPhase().apply(graph);
 
             for (BoxNode boxNode : graph.getNodes(BoxNode.class)) {
-                tryEliminate(boxNode, graph);
+                tryEliminate(boxNode);
             }
         }
     }
 
-    private void tryEliminate(UnboxNode unboxNode, StructuredGraph graph, Map<PhiNode, PhiNode> phiReplacements) {
+    private void tryEliminate(UnboxNode unboxNode, Map<PhiNode, PhiNode> phiReplacements) {
         ValueNode unboxedValue = unboxedValue(unboxNode.source(), unboxNode.destinationKind(), phiReplacements);
         if (unboxedValue != null) {
             assert unboxedValue.kind() == unboxNode.destinationKind();
@@ -107,7 +101,7 @@ public class BoxingEliminationPhase extends Phase {
         }
     }
 
-    private void tryEliminate(BoxNode boxNode, StructuredGraph graph) {
+    private static void tryEliminate(BoxNode boxNode) {
 
         virtualizeUsages(boxNode, boxNode.source(), boxNode.exactType());
 
@@ -127,7 +121,7 @@ public class BoxingEliminationPhase extends Phase {
         boxNode.safeDelete();
     }
 
-    private void virtualizeUsages(ValueNode boxNode, ValueNode replacement, RiResolvedType exactType) {
+    private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, RiResolvedType exactType) {
         ValueNode virtualValueNode = null;
         VirtualObjectNode virtualObjectNode = null;
         for (Node n : boxNode.usages().filter(FrameState.class).or(VirtualObjectFieldNode.class).snapshot()) {

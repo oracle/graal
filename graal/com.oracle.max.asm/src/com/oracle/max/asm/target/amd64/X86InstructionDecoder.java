@@ -499,9 +499,9 @@ public final class X86InstructionDecoder {
         assert code[pos + 2] == 0;
         assert code[pos + 3] == 0;
 
-        code[pos++] = (byte) (offset & 0xFF);
-        code[pos++] = (byte) ((offset >> 8) & 0xFF);
-        code[pos++] = (byte) ((offset >> 16) & 0xFF);
-        code[pos++] = (byte) ((offset >> 24) & 0xFF);
+        code[pos] = (byte) (offset & 0xFF);
+        code[pos + 1] = (byte) ((offset >> 8) & 0xFF);
+        code[pos + 2] = (byte) ((offset >> 16) & 0xFF);
+        code[pos + 3] = (byte) ((offset >> 24) & 0xFF);
     }
 }

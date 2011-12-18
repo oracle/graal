@@ -48,16 +48,16 @@ public class TestEngine {
     protected ProgressPrinter progress;
 
     public TestEngine(Registry<TestHarness> registry) {
-        allTests = new LinkedList<TestCase>();
-        failTests = new LinkedList<TestCase>();
-        passTests = new LinkedList<TestCase>();
-        skipFiles = new LinkedList<File>();
-        queue = new LinkedList<TestCase>();
+        allTests = new LinkedList<>();
+        failTests = new LinkedList<>();
+        passTests = new LinkedList<>();
+        skipFiles = new LinkedList<>();
+        queue = new LinkedList<>();
         this.registry = registry;
     }
 
     public static void main(String[] args) {
-        final TestEngine e = new TestEngine(new Registry<TestHarness>(TestHarness.class, true));
+        final TestEngine e = new TestEngine(new Registry<>(TestHarness.class, true));
         e.parseAndRunTests(args);
         e.report(System.out);
     }
@@ -113,10 +113,6 @@ public class TestEngine {
         return allTests;
     }
 
-    private synchronized TestCase dequeue() {
-        return queue.remove();
-    }
-
     private void runTest(TestCase testCase) {
         try {
             // run the test (records thrown exceptions internally)
@@ -164,7 +160,7 @@ public class TestEngine {
         }
     }
 
-    private File[] getFilesFromDirectory(File dir, boolean sort) {
+    private static File[] getFilesFromDirectory(File dir, boolean sort) {
         final File[] list = dir.listFiles();
         if (sort) {
             Arrays.sort(list);
@@ -175,8 +171,7 @@ public class TestEngine {
     private void parseFile(File file, Registry<TestHarness> reg, String filter) {
         if (filter != null) {
             if (filter.startsWith("~")) {
-                filter = filter.substring(1);
-                if (!Pattern.compile(filter).matcher(file.getName()).find()) {
+                if (!Pattern.compile(filter.substring(1)).matcher(file.getName()).find()) {
                     return;
                 }
             } else {
@@ -215,7 +210,7 @@ public class TestEngine {
         }
     }
 
-    private Properties parseTestProperties(File file) throws FileNotFoundException, IOException {
+    private static Properties parseTestProperties(File file) throws FileNotFoundException, IOException {
         final BufferedReader reader = new BufferedReader(new FileReader(file));
         final Properties vars = new Properties();
         boolean lineFound = false;

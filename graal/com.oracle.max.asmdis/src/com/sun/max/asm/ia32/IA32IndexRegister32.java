@@ -39,7 +39,7 @@ public enum IA32IndexRegister32 implements GeneralRegister<IA32IndexRegister32> 
     ESI_INDEX,
     EDI_INDEX;
 
-    public static final Enumerator<IA32IndexRegister32> ENUMERATOR = new Enumerator<IA32IndexRegister32>(IA32IndexRegister32.class);
+    public static final Enumerator<IA32IndexRegister32> ENUMERATOR = new Enumerator<>(IA32IndexRegister32.class);
     public static IA32IndexRegister32 from(GeneralRegister generalRegister) {
         int ordinal = generalRegister.id();
         if (ordinal >= IA32GeneralRegister32.ESP.id()) {

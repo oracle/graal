@@ -32,13 +32,12 @@ import com.oracle.max.graal.nodes.java.*;
 public class Block {
 
     private int blockID;
-    protected final List<Block> successors = new ArrayList<Block>();
-    protected final List<Block> predecessors = new ArrayList<Block>();
-    private final List<Block> dominated = new ArrayList<Block>();
-    private List<Node> instructions = new ArrayList<Node>();
+    protected final List<Block> successors = new ArrayList<>();
+    protected final List<Block> predecessors = new ArrayList<>();
+    private final List<Block> dominated = new ArrayList<>();
+    private List<Node> instructions = new ArrayList<>();
     private Block alwaysReachedBlock;
     private Block dominator;
-    private FixedNode anchor;
     private EndNode end;
     private int loopDepth = 0;
     private int loopIndex = -1;
@@ -53,7 +52,6 @@ public class Block {
 
     public void setFirstNode(Node node) {
         this.firstNode = node;
-        this.anchor = null;
     }
 
     public Block alwaysReachedBlock() {
@@ -171,7 +169,7 @@ public class Block {
         }
     }
 
-    private void iterateReverse(IdentityHashMap<Block, Block> mark, BlockClosure closure, List<Block> list) {
+    private static void iterateReverse(IdentityHashMap<Block, Block> mark, BlockClosure closure, List<Block> list) {
         for (int i = list.size() - 1; i >= 0; i--) {
             list.get(i).iterate(mark, closure);
         }
@@ -199,7 +197,7 @@ public class Block {
     }
 
     public static void iteratePostOrder(List<Block> blocks, BlockClosure closure) {
-        ArrayList<Block> startBlocks = new ArrayList<Block>();
+        ArrayList<Block> startBlocks = new ArrayList<>();
         for (Block block : blocks) {
             if (block.getPredecessors().size() == 0) {
                 startBlocks.add(block);
@@ -210,7 +208,7 @@ public class Block {
 
     public static void iteratePostOrder(List<Block> blocks, BlockClosure closure, Block... startBlocks) {
         BitMap visited = new BitMap(blocks.size());
-        LinkedList<Block> workList = new LinkedList<Block>();
+        LinkedList<Block> workList = new LinkedList<>();
         for (Block block : startBlocks) {
             workList.add(block);
             visited.set(block.blockID());

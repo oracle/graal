@@ -39,10 +39,12 @@ public final class SPARCAssembly extends RiscAssembly {
         super(ISA.SPARC, RiscTemplate.class);
     }
 
+    @SuppressWarnings("static-method")
     public boolean generatingDeprecatedInstructions() {
         return GENERATING_DEPRECATED_INSTRUCTIONS;
     }
 
+    @SuppressWarnings("static-method")
     public boolean generatingV9Instructions() {
         return GENERATING_V9_INSTRUCTIONS;
     }

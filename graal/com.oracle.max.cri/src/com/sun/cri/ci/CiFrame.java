@@ -33,6 +33,11 @@ import com.sun.cri.ri.*;
  */
 public class CiFrame extends CiCodePos implements Serializable {
     /**
+     * 
+     */
+    private static final long serialVersionUID = -345025397165977565L;
+
+    /**
      * An array of values representing how to reconstruct the state of the Java frame.
      * This is array is partitioned as follows:
      * <p>
@@ -188,9 +193,9 @@ public class CiFrame extends CiCodePos implements Serializable {
         if (numStack == 0) {
             return this;
         }
-        CiValue[] values = new CiValue[numLocals + numLocks];
-        System.arraycopy(this.values, 0, values, 0, numLocals);
-        System.arraycopy(this.values, numLocals + numStack, values, numLocals, numLocks);
-        return new CiFrame(caller(), method, bci, rethrowException, values, numLocals, 0, numLocks);
+        CiValue[] ciValues = new CiValue[numLocals + numLocks];
+        System.arraycopy(this.values, 0, ciValues, 0, numLocals);
+        System.arraycopy(this.values, numLocals + numStack, ciValues, numLocals, numLocks);
+        return new CiFrame(caller(), method, bci, rethrowException, ciValues, numLocals, 0, numLocks);
     }
 }

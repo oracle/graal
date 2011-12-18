@@ -121,7 +121,7 @@ public class AMD64ControlFlowOpcode {
             return new LIRBranch(this, cond, unorderedIsTrue, label, info) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm) {
-                    floatJcc(tasm, (AMD64MacroAssembler) tasm.asm, cond, unorderedIsTrue, destination.label());
+                    floatJcc((AMD64MacroAssembler) tasm.asm, cond, unorderedIsTrue, destination.label());
                 }
 
                 @Override
@@ -143,9 +143,7 @@ public class AMD64ControlFlowOpcode {
             return new AMD64LIRInstruction(this, CiValue.IllegalValue, null, LIRInstruction.NO_OPERANDS, alives, temps) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue index = alive(0);
-                    CiValue scratch = temp(0);
-                    tableswitch(tasm, masm, lowKey, defaultTarget, targets, tasm.asIntReg(index), tasm.asLongReg(scratch));
+                    tableswitch(tasm, masm, lowKey, defaultTarget, targets, tasm.asIntReg(alive(0)), tasm.asLongReg(temp(0)));
                 }
 
                 @Override
@@ -174,9 +172,7 @@ public class AMD64ControlFlowOpcode {
             return new AMD64LIRInstruction(this, result, null, inputs, alives, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue trueValue = alive(0);
-                    CiValue falseValue = input(0);
-                    cmove(tasm, masm, result(), false, condition, false, trueValue, falseValue);
+                    cmove(tasm, masm, result(), false, condition, false, alive(0), input(0));
                 }
 
                 @Override
@@ -202,9 +198,7 @@ public class AMD64ControlFlowOpcode {
             return new AMD64LIRInstruction(this, result, null, LIRInstruction.NO_OPERANDS, alives, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue trueValue = alive(0);
-                    CiValue falseValue = alive(1);
-                    cmove(tasm, masm, result(), true, condition, unorderedIsTrue, trueValue, falseValue);
+                    cmove(tasm, masm, result(), true, condition, unorderedIsTrue, alive(0), alive(1));
                 }
 
                 @Override
@@ -272,7 +266,7 @@ public class AMD64ControlFlowOpcode {
         tasm.targetMethod.addAnnotation(jt);
     }
 
-    private static void floatJcc(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Condition condition, boolean unorderedIsTrue, Label label) {
+    private static void floatJcc(AMD64MacroAssembler masm, Condition condition, boolean unorderedIsTrue, Label label) {
         ConditionFlag cond = floatCond(condition);
         Label endLabel = new Label();
         if (unorderedIsTrue && !trueOnUnordered(cond)) {

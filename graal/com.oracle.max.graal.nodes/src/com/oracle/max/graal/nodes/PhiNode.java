@@ -36,7 +36,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     @Input(notDataflow = true) private MergeNode merge;
 
-    @Input private final NodeInputList<ValueNode> values = new NodeInputList<ValueNode>(this);
+    @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
 
     public MergeNode merge() {
         return merge;
@@ -49,10 +49,6 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     private final PhiType type;
-
-    private PhiNode(CiKind kind, PhiType type) {
-        this(kind, null, type);
-    }
 
     public PhiNode(CiKind kind, MergeNode merge, PhiType type) {
         super(StampFactory.forKind(kind));
@@ -216,9 +212,8 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     private void removeIfNode(IfNode ifNode) {
         FixedNode next = merge().next();
-        MergeNode merge = this.merge;
-        EndNode end1 = merge.endAt(0);
-        EndNode end2 = merge.endAt(1);
+        EndNode end1 = this.merge.endAt(0);
+        EndNode end2 = this.merge.endAt(1);
         BeginNode trueSuccessor = ifNode.trueSuccessor();
         BeginNode falseSuccessor = ifNode.falseSuccessor();
         merge().setNext(null);
@@ -226,8 +221,8 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
         ifNode.setFalseSuccessor(null);
         ifNode.replaceAndDelete(next);
         updateUsages(this.merge, null);
+        this.merge.safeDelete();
         this.merge = null;
-        merge.safeDelete();
         trueSuccessor.safeDelete();
         falseSuccessor.safeDelete();
         end1.safeDelete();

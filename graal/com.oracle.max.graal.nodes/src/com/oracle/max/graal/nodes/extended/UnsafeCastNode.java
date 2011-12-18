@@ -61,6 +61,7 @@ public final class UnsafeCastNode extends FloatingNode implements Canonicalizabl
         replaceAndDelete(x);
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static <T> T cast(Object object, @ConstantNodeParameter Class<?> toType) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");

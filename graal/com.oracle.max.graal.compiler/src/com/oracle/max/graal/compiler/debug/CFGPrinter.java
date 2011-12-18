@@ -244,7 +244,7 @@ public class CFGPrinter extends CompilationPrinter {
             }
         }
 
-        Map<Object, Object> props = new TreeMap<Object, Object>(node.getDebugProperties());
+        Map<Object, Object> props = new TreeMap<>(node.getDebugProperties());
         out.print("d ").print(HOVER_START).print("d").print(HOVER_SEP);
         out.println("=== Debug Properties ===");
         for (Map.Entry<Object, Object> entry : props.entrySet()) {
@@ -302,33 +302,34 @@ public class CFGPrinter extends CompilationPrinter {
 
     private String stateToString(FrameState state, OperandFormatter operandFmt) {
         StringBuilder buf = new StringBuilder();
+        FrameState curState = state;
         do {
-            buf.append(CiUtil.toLocation(state.method(), state.bci)).append('\n');
+            buf.append(CiUtil.toLocation(curState.method(), curState.bci)).append('\n');
 
-            if (state.stackSize() > 0) {
+            if (curState.stackSize() > 0) {
                 buf.append("stack: ");
-                for (int i = 0; i < state.stackSize(); i++) {
-                    buf.append(stateValueToString(state.stackAt(i), operandFmt)).append(' ');
+                for (int i = 0; i < curState.stackSize(); i++) {
+                    buf.append(stateValueToString(curState.stackAt(i), operandFmt)).append(' ');
                 }
                 buf.append("\n");
             }
 
-            if (state.locksSize() > 0) {
+            if (curState.locksSize() > 0) {
                 buf.append("locks: ");
-                for (int i = 0; i < state.locksSize(); ++i) {
-                    buf.append(stateValueToString(state.lockAt(i), operandFmt)).append(' ');
+                for (int i = 0; i < curState.locksSize(); ++i) {
+                    buf.append(stateValueToString(curState.lockAt(i), operandFmt)).append(' ');
                 }
                 buf.append("\n");
             }
 
             buf.append("locals: ");
-            for (int i = 0; i < state.localsSize(); i++) {
-                buf.append(stateValueToString(state.localAt(i), operandFmt)).append(' ');
+            for (int i = 0; i < curState.localsSize(); i++) {
+                buf.append(stateValueToString(curState.localAt(i), operandFmt)).append(' ');
             }
             buf.append("\n");
 
-            state = state.outerFrameState();
-        } while (state != null);
+            curState = curState.outerFrameState();
+        } while (curState != null);
 
         return buf.toString();
     }
@@ -413,20 +414,20 @@ public class CFGPrinter extends CompilationPrinter {
     }
 
 
-    public void printIntervals(String label, LinearScan allocator, Interval[] intervals) {
+    public void printIntervals(String label, Interval[] intervals) {
         begin("intervals");
         out.println(String.format("name \"%s\"", label));
 
         for (Interval interval : intervals) {
             if (interval != null) {
-                printInterval(allocator, interval);
+                printInterval(interval);
             }
         }
 
         end("intervals");
     }
 
-    private void printInterval(LinearScan allocator, Interval interval) {
+    private void printInterval(Interval interval) {
         out.printf("%s %s ", interval.operand.name(), (interval.operand.isRegister() ? "fixed" : interval.kind().name()));
         if (interval.operand.isRegister()) {
             out.printf("\"[%s|%c]\"", interval.operand.name(), interval.operand.kind.typeChar);
@@ -436,7 +437,7 @@ public class CFGPrinter extends CompilationPrinter {
             }
         }
 
-        Interval hint = interval.locationHint(false, allocator);
+        Interval hint = interval.locationHint(false);
         out.printf("%s %s ", interval.splitParent().operand.name(), hint != null ? hint.operand.name() : -1);
 
         // print ranges

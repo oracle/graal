@@ -29,6 +29,10 @@ import java.io.*;
  */
 public class TruncatedInputException extends EOFException {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -6331468138426196525L;
     private final int nRead;
 
     /**

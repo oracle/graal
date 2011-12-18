@@ -30,7 +30,7 @@ import com.sun.max.lang.*;
 public class IA32TemplateCreator extends X86TemplateCreator<IA32Template> {
 
     public IA32TemplateCreator() {
-        super(IA32Assembly.ASSEMBLY, WordWidth.BITS_32);
+        super(WordWidth.BITS_32);
     }
 
     @Override

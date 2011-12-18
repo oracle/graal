@@ -48,7 +48,7 @@ public class GlobalValueNumberingPhase extends Phase {
                 if (newNode != null) {
                     n.replaceAndDelete(newNode);
                     if (GraalOptions.Meter) {
-                        context.metrics.GlobalValueNumberingHits++;
+                        currentContext.metrics.GlobalValueNumberingHits++;
                     }
                     if (GraalOptions.TraceGVN) {
                         TTY.println("GVN applied and new node is " + newNode);

@@ -46,8 +46,7 @@ public class AMD64MoveOpcode {
             return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue input = input(0);
-                    move(tasm, masm, result(), input);
+                    move(tasm, masm, result(), input(0));
                 }
 
                 @Override
@@ -68,9 +67,7 @@ public class AMD64MoveOpcode {
             return new AMD64LIRInstruction(this, result, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue addrBase = input(0);
-                    CiValue addrIndex = input(1);
-                    load(tasm, masm, result(), new CiAddress(CiKind.Illegal, addrBase, addrIndex, addrScale, addrDisplacement), kind, info);
+                    load(tasm, masm, result(), new CiAddress(CiKind.Illegal, input(0), input(1), addrScale, addrDisplacement), kind, info);
                 }
             };
         }
@@ -86,11 +83,7 @@ public class AMD64MoveOpcode {
             return new AMD64LIRInstruction(this, CiValue.IllegalValue, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue addrBase = input(0);
-                    CiValue addrIndex = input(1);
-                    CiValue input = input(2);
-
-                    store(tasm, masm, new CiAddress(CiKind.Illegal, addrBase, addrIndex, addrScale, addrDisplacement), input, kind, info);
+                    store(tasm, masm, new CiAddress(CiKind.Illegal, input(0), input(1), addrScale, addrDisplacement), input(2), kind, info);
                 }
             };
         }
@@ -106,9 +99,7 @@ public class AMD64MoveOpcode {
             return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue addrBase = input(0);
-                    CiValue addrIndex = input(1);
-                    masm.leaq(tasm.asLongReg(result()), new CiAddress(CiKind.Illegal, addrBase, addrIndex, addrScale, addrDisplacement));
+                    masm.leaq(tasm.asLongReg(result()), new CiAddress(CiKind.Illegal, input(0), input(1), addrScale, addrDisplacement));
                 }
             };
         }
@@ -157,9 +148,8 @@ public class AMD64MoveOpcode {
             return new AMD64LIRInstruction(this, CiValue.IllegalValue, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue input = input(0);
                     tasm.recordImplicitException(masm.codeBuffer.position(), info);
-                    masm.nullCheck(tasm.asRegister(input));
+                    masm.nullCheck(tasm.asRegister(input(0)));
                 }
             };
         }
@@ -175,12 +165,7 @@ public class AMD64MoveOpcode {
             return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    CiValue addrBase = input(0);
-                    CiValue addrIndex = input(1);
-                    CiValue cmpValue = input(2);
-                    CiValue newValue = input(3);
-
-                    compareAndSwap(tasm, masm, result(), new CiAddress(CiKind.Illegal, addrBase, addrIndex, addrScale, addrDisplacement), cmpValue, newValue);
+                    compareAndSwap(tasm, masm, result(), new CiAddress(CiKind.Illegal, input(0), input(1), addrScale, addrDisplacement), input(2), input(3));
                 }
             };
         }

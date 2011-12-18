@@ -41,7 +41,7 @@ public class ContextTree {
             this.id = id;
         }
 
-        public Node findChild(long searchId) {
+        public Node findChild() {
             Node pos = child;
             while (pos != null) {
                 if (pos.id == this.id) {
@@ -53,7 +53,7 @@ public class ContextTree {
         }
 
         public Node addChild(long searchId, Clock clock) {
-            Node foundChild = findChild(searchId);
+            Node foundChild = findChild();
             if (foundChild == null) {
                 foundChild = new Node(searchId);
                 foundChild.timer = new SingleUseTimer(clock);

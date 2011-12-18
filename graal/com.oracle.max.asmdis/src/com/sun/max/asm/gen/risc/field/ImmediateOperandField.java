@@ -121,7 +121,7 @@ public class ImmediateOperandField extends OperandField<ImmediateArgument> imple
     public Iterable<? extends Argument> getLegalTestArguments() {
         if (testArguments == null) {
             final List<Integer> integers = signDependentOperations().legalTestArgumentValues(minArgumentValue(), maxArgumentValue(), grain());
-            List<Argument> result = new ArrayList<Argument>(integers.size());
+            List<Argument> result = new ArrayList<>(integers.size());
             for (Integer i : integers) {
                 result.add(new Immediate32Argument(i));
             }
@@ -132,7 +132,7 @@ public class ImmediateOperandField extends OperandField<ImmediateArgument> imple
 
     public Iterable<? extends Argument> getIllegalTestArguments() {
         if (this.illegalTestArguments == null) {
-            final List<Immediate32Argument> illegalArguments = new LinkedList<Immediate32Argument>();
+            final List<Immediate32Argument> illegalArguments = new LinkedList<>();
             final int min = minArgumentValue();
             if (min != Integer.MIN_VALUE) {
                 illegalArguments.add(new Immediate32Argument(min - 1));
@@ -149,7 +149,7 @@ public class ImmediateOperandField extends OperandField<ImmediateArgument> imple
     }
 
     public TestArgumentExclusion excludeExternalTestArguments(Argument... arguments) {
-        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<Argument>(Arrays.asList(arguments)));
+        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<>(Arrays.asList(arguments)));
     }
 
     @Override

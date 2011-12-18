@@ -46,17 +46,17 @@ public abstract class FixedWithNextNode extends FixedNode {
     }
 
     public void replaceAndUnlink(Node other) {
-        FixedNode next = this.next();
+        FixedNode tmpNext = this.next();
         setNext(null);
-        replaceAtPredecessors(next);
+        replaceAtPredecessors(tmpNext);
         replaceAtUsages(other);
         safeDelete();
     }
 
     public void replaceWithFixedWithNext(FixedWithNextNode other) {
-        FixedNode next = this.next();
+        FixedNode tmpNext = this.next();
         setNext(null);
-        other.setNext(next);
+        other.setNext(tmpNext);
         replaceAndDelete(other);
     }
 }

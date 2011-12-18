@@ -91,7 +91,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         @Override
         public EscapeField[] fields(Node node) {
             NewInstanceNode x = (NewInstanceNode) node;
-            List<EscapeField> escapeFields = new ArrayList<EscapeField>();
+            List<EscapeField> escapeFields = new ArrayList<>();
             fillEscapeFields(x.instanceClass(), escapeFields);
             return escapeFields.toArray(new EscapeField[escapeFields.size()]);
         }

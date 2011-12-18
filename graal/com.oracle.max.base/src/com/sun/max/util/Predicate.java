@@ -40,7 +40,7 @@ public interface Predicate<T> {
             }
         };
 
-        public static <T> Predicate<T> alwaysTrue(Class<T> type) {
+        public static <T> Predicate<T> alwaysTrue() {
             final Class<Predicate<T>> predicateType = null;
             return Utils.cast(predicateType, alwaysTrue);
         }

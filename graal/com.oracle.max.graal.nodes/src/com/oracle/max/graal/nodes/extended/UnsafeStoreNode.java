@@ -79,46 +79,55 @@ public class UnsafeStoreNode extends AbstractStateSplit implements Lowerable {
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, Object value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, boolean value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, byte value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, char value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, double value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, float value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, int value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, long value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, short value, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException();

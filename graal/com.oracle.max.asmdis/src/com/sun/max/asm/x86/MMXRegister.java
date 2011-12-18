@@ -55,5 +55,5 @@ public enum MMXRegister implements EnumerableArgument<MMXRegister> {
         return MM0;
     }
 
-    public static final Enumerator<MMXRegister> ENUMERATOR = new Enumerator<MMXRegister>(MMXRegister.class);
+    public static final Enumerator<MMXRegister> ENUMERATOR = new Enumerator<>(MMXRegister.class);
 }

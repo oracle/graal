@@ -54,6 +54,9 @@ public abstract class TestResult {
         }
     }
 
+    /**
+     * @param tc
+     */
     public String failureMessage(TestCase tc) {
         return "";
     }

@@ -32,7 +32,7 @@ public abstract class AccessNode extends AbstractStateSplit {
     @Input private ValueNode object;
     @Input private GuardNode guard;
     @Input private LocationNode location;
-    @Input private final NodeInputList<Node> dependencies = new NodeInputList<Node>(this);
+    @Input private final NodeInputList<Node> dependencies = new NodeInputList<>(this);
     @Data private boolean nullCheck;
 
     public ValueNode object() {

@@ -51,7 +51,7 @@ public enum AMD64GeneralRegister8 implements GeneralRegister<AMD64GeneralRegiste
     DH(6, true),
     BH(7, true);
 
-    public static final Enumerator<AMD64GeneralRegister8> ENUMERATOR = new Enumerator<AMD64GeneralRegister8>(AMD64GeneralRegister8.class);
+    public static final Enumerator<AMD64GeneralRegister8> ENUMERATOR = new Enumerator<>(AMD64GeneralRegister8.class);
 
     private final int value;
     private final boolean isHighByte;

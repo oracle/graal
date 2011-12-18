@@ -46,7 +46,7 @@ public class ClassSearch extends ClasspathTraversal {
      */
     public ClassSearch(boolean omitDuplicates) {
         if (omitDuplicates) {
-            classes = new HashSet<String>();
+            classes = new HashSet<>();
         } else {
             classes = null;
         }

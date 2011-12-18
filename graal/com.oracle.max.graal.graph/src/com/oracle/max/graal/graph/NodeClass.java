@@ -65,7 +65,7 @@ public class NodeClass {
         }
     }
 
-    private static final Map<Class< ? >, NodeClass> nodeClasses = new ConcurrentHashMap<Class< ? >, NodeClass>();
+    private static final Map<Class< ? >, NodeClass> nodeClasses = new ConcurrentHashMap<>();
     private static int nextIterableId = 0;
 
     private final Class< ? > clazz;
@@ -118,17 +118,17 @@ public class NodeClass {
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
         startGVNNumber = clazz.hashCode();
 
-        String shortName = clazz.getSimpleName();
-        if (shortName.endsWith("Node") && !shortName.equals("StartNode") && !shortName.equals("EndNode")) {
-            shortName = shortName.substring(0, shortName.length() - 4);
+        String newShortName = clazz.getSimpleName();
+        if (newShortName.endsWith("Node") && !newShortName.equals("StartNode") && !newShortName.equals("EndNode")) {
+            newShortName = newShortName.substring(0, newShortName.length() - 4);
         }
         NodeInfo info = clazz.getAnnotation(NodeInfo.class);
         if (info != null) {
             if (!info.shortName().isEmpty()) {
-                shortName = info.shortName();
+                newShortName = info.shortName();
             }
         }
-        this.shortName = shortName;
+        this.shortName = newShortName;
         if (Node.IterableNodeType.class.isAssignableFrom(clazz)) {
             this.iterableId = nextIterableId++;
             // TODO(ls) add type hierarchy - based node iteration
@@ -225,17 +225,17 @@ public class NodeClass {
     }
 
     private static class FieldScanner {
-        public final ArrayList<Long> inputOffsets = new ArrayList<Long>();
-        public final ArrayList<Long> inputListOffsets = new ArrayList<Long>();
-        public final Map<Long, Class< ? >> inputTypesMap = new HashMap<Long, Class<?>>();
-        public final Map<Long, String> inputNamesMap = new HashMap<Long, String>();
-        public final ArrayList<Long> successorOffsets = new ArrayList<Long>();
-        public final ArrayList<Long> successorListOffsets = new ArrayList<Long>();
-        public final Map<Long, Class< ? >> successorTypesMap = new HashMap<Long, Class<?>>();
-        public final Map<Long, String> successorNamesMap = new HashMap<Long, String>();
-        public final ArrayList<Long> dataOffsets = new ArrayList<Long>();
-        public final ArrayList<Class< ? >> dataTypes = new ArrayList<Class<?>>();
-        public final ArrayList<String> dataNames = new ArrayList<String>();
+        public final ArrayList<Long> inputOffsets = new ArrayList<>();
+        public final ArrayList<Long> inputListOffsets = new ArrayList<>();
+        public final Map<Long, Class< ? >> inputTypesMap = new HashMap<>();
+        public final Map<Long, String> inputNamesMap = new HashMap<>();
+        public final ArrayList<Long> successorOffsets = new ArrayList<>();
+        public final ArrayList<Long> successorListOffsets = new ArrayList<>();
+        public final Map<Long, Class< ? >> successorTypesMap = new HashMap<>();
+        public final Map<Long, String> successorNamesMap = new HashMap<>();
+        public final ArrayList<Long> dataOffsets = new ArrayList<>();
+        public final ArrayList<Class< ? >> dataTypes = new ArrayList<>();
+        public final ArrayList<String> dataNames = new ArrayList<>();
         public final CalcOffset calc;
 
         public FieldScanner(CalcOffset calc) {
@@ -243,8 +243,9 @@ public class NodeClass {
         }
 
         public void scan(Class< ? > clazz) {
+            Class< ? > currentClazz = clazz;
             do {
-                for (Field field : clazz.getDeclaredFields()) {
+                for (Field field : currentClazz.getDeclaredFields()) {
                     if (!Modifier.isStatic(field.getModifiers())) {
                         Class< ? > type = field.getType();
                         long offset = calc.getOffset(field);
@@ -283,8 +284,8 @@ public class NodeClass {
                         }
                     }
                 }
-                clazz = clazz.getSuperclass();
-            } while (clazz != Node.class);
+                currentClazz = currentClazz.getSuperclass();
+            } while (currentClazz != Node.class);
         }
     }
 
@@ -730,7 +731,7 @@ public class NodeClass {
             long curOffset = inputOffsets[index++];
             int size = (getNodeList(node, curOffset)).initialSize;
             // replacing with a new list object is the expected behavior!
-            putNodeList(node, curOffset, new NodeInputList<Node>(node, size));
+            putNodeList(node, curOffset, new NodeInputList<>(node, size));
         }
     }
 
@@ -748,7 +749,7 @@ public class NodeClass {
             long curOffset = successorOffsets[index++];
             int size = getNodeList(node, curOffset).initialSize;
             // replacing with a new list object is the expected behavior!
-            putNodeList(node, curOffset, new NodeSuccessorList<Node>(node, size));
+            putNodeList(node, curOffset, new NodeSuccessorList<>(node, size));
         }
     }
 
@@ -876,10 +877,7 @@ public class NodeClass {
     }
 
     static Map<Node, Node> addGraphDuplicate(Graph graph, Iterable<Node> nodes, Map<Node, Node> replacements) {
-        if (replacements == null) {
-            replacements = Collections.emptyMap();
-        }
-        Map<Node, Node> newNodes = new IdentityHashMap<Node, Node>();
+        Map<Node, Node> newNodes = new IdentityHashMap<>();
         // create node duplicates
         for (Node node : nodes) {
             if (node != null && !replacements.containsKey(node)) {

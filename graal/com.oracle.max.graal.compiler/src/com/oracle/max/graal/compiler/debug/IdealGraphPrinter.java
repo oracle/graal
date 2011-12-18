@@ -47,8 +47,8 @@ import com.sun.cri.ri.*;
 public class IdealGraphPrinter {
 
     private final BasicIdealGraphPrinter printer;
-    private final HashSet<Class<?>> omittedClasses = new HashSet<Class<?>>();
-    private final Set<Node> noBlockNodes = new HashSet<Node>();
+    private final HashSet<Class<?>> omittedClasses = new HashSet<>();
+    private final Set<Node> noBlockNodes = new HashSet<>();
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
@@ -130,14 +130,14 @@ public class IdealGraphPrinter {
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
      */
-    @SuppressWarnings("unchecked")
-    public void print(Graph graph, String title, boolean shortNames, IdentifyBlocksPhase schedule) {
+    public void print(Graph graph, String title, boolean shortNames, IdentifyBlocksPhase predefinedSchedule) {
         printer.beginGraph(title);
         noBlockNodes.clear();
+        IdentifyBlocksPhase schedule = predefinedSchedule;
         if (schedule == null) {
             try {
                 schedule = new IdentifyBlocksPhase(true);
-                schedule.apply((StructuredGraph) graph, false, false);
+                schedule.apply((StructuredGraph) graph, false);
             } catch (Throwable t) {
                 // nothing to do here...
             }
@@ -180,7 +180,7 @@ public class IdealGraphPrinter {
     }
 
     private List<Edge> printNodes(Graph graph, boolean shortNames, NodeMap<Block> nodeToBlock, List<Loop> loops) {
-        ArrayList<Edge> edges = new ArrayList<Edge>();
+        ArrayList<Edge> edges = new ArrayList<>();
         NodeBitMap loopExits = graph.createNodeBitMap();
         if (loops != null) {
             for (Loop loop : loops) {
@@ -356,7 +356,7 @@ public class IdealGraphPrinter {
         printer.endSuccessors();
         printer.beginBlockNodes();
 
-        Set<Node> nodes = new HashSet<Node>(block.getInstructions());
+        Set<Node> nodes = new HashSet<>(block.getInstructions());
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {

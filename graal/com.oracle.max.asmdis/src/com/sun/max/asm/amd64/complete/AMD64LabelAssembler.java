@@ -27,6 +27,7 @@ import com.sun.max.asm.*;
 import com.sun.max.asm.amd64.*;
 import com.sun.max.asm.x86.*;
 
+@SuppressWarnings("unused")
 public class AMD64LabelAssembler extends AMD64RawAssembler {
 
     public AMD64LabelAssembler(long startAddress) {

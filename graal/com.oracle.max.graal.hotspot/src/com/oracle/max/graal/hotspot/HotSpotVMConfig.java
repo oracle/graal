@@ -29,6 +29,11 @@ import com.sun.cri.ci.*;
  */
 public final class HotSpotVMConfig extends CompilerObject {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -4744897993263044184L;
+
     private HotSpotVMConfig() {
         super(null);
     }
@@ -98,7 +103,7 @@ public final class HotSpotVMConfig extends CompilerObject {
         return arrayOffsets[getKindNumber(kind)];
     }
 
-    private int getKindNumber(CiKind kind) {
+    private static int getKindNumber(CiKind kind) {
         if (kind == CiKind.Boolean) {
             return 0;
         } else if (kind == CiKind.Byte) {

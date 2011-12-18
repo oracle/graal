@@ -31,31 +31,29 @@ import com.sun.max.lang.*;
  */
 public abstract class X86TemplateCreator<Template_Type extends X86Template> {
 
-    private final Assembly assembly;
     private final WordWidth addressWidth;
     private X86InstructionDescription instructionDescription;
     private InstructionAssessment instructionAssessment;
     private X86TemplateContext context;
     private int serial = 1;
 
-    protected X86TemplateCreator(Assembly assembly, WordWidth addressWidth) {
-        this.assembly = assembly;
+    protected X86TemplateCreator(WordWidth addressWidth) {
         this.addressWidth = addressWidth;
     }
 
-    private final List<Template_Type> templates = new ArrayList<Template_Type>();
+    private final List<Template_Type> templates = new ArrayList<>();
 
     public List<Template_Type> templates() {
         return templates;
     }
 
-    private final Map<String, List<Template_Type>> internalNameToTemplates = new HashMap<String, List<Template_Type>>();
+    private final Map<String, List<Template_Type>> internalNameToTemplates = new HashMap<>();
 
     private void addTemplate(Template_Type template) {
         templates.add(template);
         List<Template_Type> t = internalNameToTemplates.get(template.internalName());
         if (t == null) {
-            t = new LinkedList<Template_Type>();
+            t = new LinkedList<>();
             internalNameToTemplates.put(template.internalName(), t);
         }
         t.add(template);

@@ -214,7 +214,7 @@ public class PoolSet128<T extends PoolObject> extends PoolSet<T> {
 
     @Override
     public PoolSet<T> clone() {
-        final PoolSet128<T> poolSet = new PoolSet128<T>(pool);
+        final PoolSet128<T> poolSet = new PoolSet128<>(pool);
         poolSet.setLow = setLow;
         poolSet.setHigh = setHigh;
         return poolSet;
@@ -230,8 +230,6 @@ public class PoolSet128<T extends PoolObject> extends PoolSet<T> {
             private boolean inHighSet;
             private long current = setLow;
             private long currentBit = -1L;
-            private long nextSetBit = Long.lowestOneBit(setLow);
-
             public boolean hasNext() {
                 return count != 0;
             }

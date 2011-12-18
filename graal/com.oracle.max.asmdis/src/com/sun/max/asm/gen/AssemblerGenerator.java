@@ -118,17 +118,17 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
 
     }
 
-    private List<Template_Type> filterTemplates(List<Template_Type> templates) {
+    private List<Template_Type> filterTemplates(List<Template_Type> templateList) {
         if (!generateRedundantInstructionsOption.getValue()) {
-            final List<Template_Type> result = new LinkedList<Template_Type>();
-            for (Template_Type template : templates) {
+            final List<Template_Type> result = new LinkedList<>();
+            for (Template_Type template : templateList) {
                 if (!template.isRedundant()) {
                     result.add(template);
                 }
             }
             return result;
         }
-        return templates;
+        return templateList;
     }
 
     /**
@@ -143,8 +143,8 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
                 templates = filterTemplates(assembly().templates());
                 labelTemplates = filterTemplates(assembly().labelTemplates());
             } else {
-                final List<Template_Type> newTemplates = new ArrayList<Template_Type>();
-                final List<Template_Type> newLabelTemplates = new ArrayList<Template_Type>();
+                final List<Template_Type> newTemplates = new ArrayList<>();
+                final List<Template_Type> newLabelTemplates = new ArrayList<>();
 
                 Class assemberInterface = null;
                 try {
@@ -153,7 +153,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
                 } catch (ClassNotFoundException e) {
                     throw ProgramError.unexpected("The assembler interface class " + assemblerInterfaceName + " must be on the class path");
                 }
-                final Set<MethodKey> assemblerInterfaceMethods = new HashSet<MethodKey>();
+                final Set<MethodKey> assemblerInterfaceMethods = new HashSet<>();
                 for (Method assemblerInterfaceMethod : assemberInterface.getDeclaredMethods()) {
                     assemblerInterfaceMethods.add(new MethodKey(assemblerInterfaceMethod));
                 }
@@ -213,7 +213,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
         return new File(outputDirectoryOption.getValue(), className.replace('.', File.separatorChar) + ".java").getAbsoluteFile();
     }
 
-    protected final String formatParameterList(String separator, List<? extends Parameter> parameters, boolean typesOnly) {
+    protected static final String formatParameterList(String separator, List<? extends Parameter> parameters, boolean typesOnly) {
         String sep = separator;
         final StringBuilder sb = new StringBuilder();
         for (Parameter parameter : parameters) {
@@ -239,6 +239,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
 
     /**
      * Prints the source code for support methods that are used by the methods printed by {@link #printMethod(IndentWriter, Template)}.
+     * @param writer
      *
      * @return the number of subroutines printed
      */
@@ -255,7 +256,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
      */
     public Set<String> getImportPackages(String className, Iterable<Template_Type> templateList) {
         final String outputPackage = getPackageName(className);
-        final Set<String> packages = new TreeSet<String>();
+        final Set<String> packages = new TreeSet<>();
         packages.add(getPackageName(AssemblyException.class));
         packages.add(getPackageName(Label.class));
         for (Template_Type template : templateList) {
@@ -288,6 +289,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
      * and the logic for decoding the bit width of a {@link Label} value may be generated in a single assembler method.
      * <p>
      * The default implementation of this method returns {@code false}.
+     * @param labelTemplate
      */
     protected boolean omitLabelTemplate(Template_Type labelTemplate) {
         return false;
@@ -296,6 +298,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
     /**
      * Gets a reference to the architecture manual section describing the given template. The
      * returned string should conform to the format of the {@code @see} Javadoc tag.
+     * @param template
      */
     protected String getJavadocManualReference(Template_Type template) {
         return null;
@@ -308,6 +311,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
      * @param extraLinks
      *                a sequence to which extra javadoc links should be appended
      */
+    @SuppressWarnings("unused")
     protected void printExtraMethodJavadoc(IndentWriter writer, Template_Type template, List<String> extraLinks, boolean forLabelAssemblerMethod) {
     }
 
@@ -319,7 +323,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
      * @param template the template from which the assembler method is generated
      */
     protected void printMethodJavadoc(IndentWriter writer, Template_Type template, boolean forLabelAssemblerMethod) {
-        final List<String> extraLinks = new LinkedList<String>();
+        final List<String> extraLinks = new LinkedList<>();
         final List<? extends Parameter> parameters = getParameters(template, forLabelAssemblerMethod);
         writer.println("/**");
         writer.println(" * Pseudo-external assembler syntax: {@code " + template.externalName() + externalMnemonicSuffixes(parameters) + "  }" + externalParameters(parameters));
@@ -327,7 +331,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
         final boolean printExampleInstruction = true;
         if (printExampleInstruction) {
 
-            final List<Argument> arguments = new ArrayList<Argument>();
+            final List<Argument> arguments = new ArrayList<>();
             final AddressMapper addressMapper = new AddressMapper();
             for (Parameter p : template.parameters()) {
                 final Argument exampleArg = p.getExampleArgument();
@@ -360,7 +364,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
         }
 
         printExtraMethodJavadoc(writer, template, extraLinks, forLabelAssemblerMethod);
-        final List<InstructionConstraint> constraints = new ArrayList<InstructionConstraint>(template.instructionDescription().specifications().size());
+        final List<InstructionConstraint> constraints = new ArrayList<>(template.instructionDescription().specifications().size());
         for (Object s : template.instructionDescription().specifications()) {
             if (s instanceof InstructionConstraint) {
                 constraints.add((InstructionConstraint) s);
@@ -394,7 +398,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
 
     protected abstract DisassembledInstruction generateExampleInstruction(Template_Type template, List<Argument> arguments) throws AssemblyException;
 
-    private String externalParameters(List< ? extends Parameter> parameters) {
+    private static String externalParameters(List< ? extends Parameter> parameters) {
         final StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (Parameter parameter : parameters) {
@@ -409,7 +413,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
         return sb.toString();
     }
 
-    private String externalMnemonicSuffixes(List< ? extends Parameter> parameters) {
+    private static String externalMnemonicSuffixes(List< ? extends Parameter> parameters) {
         final StringBuilder sb = new StringBuilder();
         for (Parameter parameter : parameters) {
             if (ExternalMnemonicSuffixArgument.class.isAssignableFrom(parameter.type())) {
@@ -448,7 +452,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
         writer.indent();
 
         int codeLineCount = 0;
-        final Map<InstructionDescription, Integer> instructionDescriptions = new HashMap<InstructionDescription, Integer>();
+        final Map<InstructionDescription, Integer> instructionDescriptions = new HashMap<>();
         int maxTemplatesPerDescription = 0;
         int i = 0;
         for (Template_Type template : templateList) {
@@ -494,7 +498,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
             final Class<List<Parameter>> type = null;
             return Utils.cast(type, template.parameters());
         }
-        final List<Parameter> parameters = new ArrayList<Parameter>(template.parameters());
+        final List<Parameter> parameters = new ArrayList<>(template.parameters());
         parameters.set(template.labelParameterIndex(), LabelParameter.LABEL);
         return parameters;
     }
@@ -665,7 +669,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
         labelMethodHelperClasses.add(stringWriter.toString());
     }
 
-    private final List<String> labelMethodHelperClasses = new ArrayList<String>();
+    private final List<String> labelMethodHelperClasses = new ArrayList<>();
 
     private void printLabelMethodHelperClass(
                     IndentWriter writer,
@@ -765,7 +769,7 @@ public abstract class AssemblerGenerator<Template_Type extends Template> {
                 if (rawAssemblerMethodsUpdated || labelAssemblerMethodsUpdated) {
                     System.out.println("modified: " + getSourceFileFor(rawAssemblerClassName));
                     if (!ToolChain.compile(AssemblerGenerator.class, rawAssemblerClassName)) {
-                        List<Template_Type> allTemplates = new ArrayList<Template_Type>(templates());
+                        List<Template_Type> allTemplates = new ArrayList<>(templates());
                         allTemplates.addAll(labelTemplates());
                         throw ProgramError.unexpected("compilation failed for: " + rawAssemblerClassName +
                                         "[Maybe missing an import statement for one of the following packages: " +

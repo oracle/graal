@@ -58,12 +58,12 @@ public class InternalTest extends MaxTestCase {
         junit.textui.TestRunner.run(InternalTest.class);
     }
 
-    private byte[] assemble(ARMAssembler asm) throws IOException, AssemblyException {
+    private static byte[] assemble(ARMAssembler asm) throws AssemblyException {
         asm.adc(EQ, S, R0, R0, 1);
         return asm.toByteArray();
     }
 
-    private void disassemble(ARMDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
+    private static void disassemble(ARMDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
     }

@@ -57,8 +57,8 @@ public class MappingTest extends MaxTestCase {
         }
     }
 
-    private List<Mapping<Integer, Object>> mappings() {
-        final List<Mapping<Integer, Object>> mappings = new ArrayList<Mapping<Integer, Object>>();
+    private static List<Mapping<Integer, Object>> mappings() {
+        final List<Mapping<Integer, Object>> mappings = new ArrayList<>();
         mappings.add(new OpenAddressingHashMapping<Integer, Object>());
         mappings.add(new ChainedHashMapping<Integer, Object>());
         return mappings;

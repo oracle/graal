@@ -37,7 +37,7 @@ class GraalRuntimeAccess {
      * have aliases that can be used with the {@code "graal.runtime"} system property to
      * specify the VM environment to try first when getting a Graal runtime instance.
      */
-    private static Map<String, String> graalRuntimeFactoryClasses = new LinkedHashMap<String, String>();
+    private static Map<String, String> graalRuntimeFactoryClasses = new LinkedHashMap<>();
     static {
         graalRuntimeFactoryClasses.put("HotSpot", "com.oracle.max.graal.hotspot.CompilerImpl");
         graalRuntimeFactoryClasses.put("Maxine", "com.oracle.max.vm.ext.maxri.MaxRuntime");

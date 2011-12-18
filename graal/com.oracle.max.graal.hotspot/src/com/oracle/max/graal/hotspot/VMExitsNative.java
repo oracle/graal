@@ -24,7 +24,6 @@
 package com.oracle.max.graal.hotspot;
 
 import java.lang.reflect.*;
-import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.criutils.*;
@@ -38,8 +37,6 @@ import com.sun.cri.ri.*;
  * Exits from the HotSpot VM into Java code.
  */
 public class VMExitsNative implements VMExits, Remote {
-
-    private boolean installedIntrinsics;
 
     private final Compiler compiler;
 
@@ -82,8 +79,6 @@ public class VMExitsNative implements VMExits, Remote {
         typeLong = new HotSpotTypePrimitive(compiler, CiKind.Long);
         typeVoid = new HotSpotTypePrimitive(compiler, CiKind.Void);
     }
-
-    private static Set<String> compiledMethods = new HashSet<String>();
 
     public void startCompiler() throws Throwable {
         // Make sure TTY is initialized here such that the correct System.out is used for TTY.

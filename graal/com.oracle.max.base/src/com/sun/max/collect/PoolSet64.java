@@ -169,7 +169,7 @@ public class PoolSet64<T extends PoolObject> extends PoolSet<T> {
 
     @Override
     public PoolSet<T> clone() {
-        final PoolSet64<T> clone = new PoolSet64<T>(pool);
+        final PoolSet64<T> clone = new PoolSet64<>(pool);
         clone.set = set;
         return clone;
     }
@@ -182,8 +182,6 @@ public class PoolSet64<T extends PoolObject> extends PoolSet<T> {
 
             private long current = set;
             private long currentBit = -1L;
-            private long nextSetBit = Long.lowestOneBit(set);
-
             public boolean hasNext() {
                 return current != 0;
             }

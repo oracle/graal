@@ -37,6 +37,7 @@ public class DegeneratedLoopsTest extends GraphTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
+    @SuppressWarnings("all")
     public static int referenceSnippet(int a) {
         return 1;
     }
@@ -47,6 +48,11 @@ public class DegeneratedLoopsTest extends GraphTest {
     }
 
     private static class UnresolvedException extends RuntimeException {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 5215434338750728440L;
+
         static {
             if (true) {
                 throw new UnsupportedOperationException("this class may never be initialized");
@@ -54,6 +60,7 @@ public class DegeneratedLoopsTest extends GraphTest {
         }
     }
 
+    @SuppressWarnings("all")
     public static int test1Snippet(int a) {
         for (;;) {
             try {

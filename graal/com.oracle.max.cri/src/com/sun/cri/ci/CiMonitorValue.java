@@ -23,6 +23,10 @@
 package com.sun.cri.ci;
 
 public final class CiMonitorValue extends CiValue {
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 8241681800464483691L;
     public final CiValue owner;
     public final CiValue lockData;
     public final boolean eliminated;

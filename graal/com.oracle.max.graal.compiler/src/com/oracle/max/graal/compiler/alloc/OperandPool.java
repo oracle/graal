@@ -108,15 +108,16 @@ public final class OperandPool {
     }
 
     private static BitMap set(BitMap map, CiVariable variable) {
-        if (map == null) {
+        BitMap result = map;
+        if (result == null) {
             int length = BitMap.roundUpLength(variable.index + 1);
-            map = new BitMap(length);
-        } else if (map.size() <= variable.index) {
+            result = new BitMap(length);
+        } else if (result.size() <= variable.index) {
             int length = BitMap.roundUpLength(variable.index + 1);
-            map.grow(length);
+            result.grow(length);
         }
-        map.set(variable.index);
-        return map;
+        result.set(variable.index);
+        return result;
     }
 
     private static boolean get(BitMap map, CiVariable variable) {
@@ -132,10 +133,9 @@ public final class OperandPool {
      * @param target description of the target architecture for a compilation
      */
     public OperandPool(CiTarget target) {
-        CiRegister[] registers = target.arch.registers;
+        this.registers = target.arch.registers;
         this.firstVariableNumber = registers.length;
-        this.registers = registers;
-        variables = new ArrayList<CiVariable>(INITIAL_VARIABLE_CAPACITY);
+        variables = new ArrayList<>(INITIAL_VARIABLE_CAPACITY);
         variableDefs = GraalOptions.DetailedAsserts ? new ArrayList<ValueNode>(INITIAL_VARIABLE_CAPACITY) : null;
     }
 

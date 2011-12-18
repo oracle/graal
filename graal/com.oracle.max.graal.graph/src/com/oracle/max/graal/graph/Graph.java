@@ -48,8 +48,8 @@ public class Graph {
     private int mark;
     private GraphEventLog eventLog;
 
-    ArrayList<Node> usagesDropped = new ArrayList<Node>();
-    private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<CacheEntry, Node>();
+    ArrayList<Node> usagesDropped = new ArrayList<>();
+    private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
 
     private static final class CacheEntry {
 
@@ -93,9 +93,9 @@ public class Graph {
      * @param name the name of the graph, used for debugging purposes
      */
     public Graph(String name) {
-        nodes = new ArrayList<Node>(32);
-        nodeCacheFirst = new ArrayList<Node>(NodeClass.cacheSize());
-        nodeCacheLast = new ArrayList<Node>(NodeClass.cacheSize());
+        nodes = new ArrayList<>(32);
+        nodeCacheFirst = new ArrayList<>(NodeClass.cacheSize());
+        nodeCacheLast = new ArrayList<>(NodeClass.cacheSize());
         this.name = name;
     }
 
@@ -111,9 +111,10 @@ public class Graph {
      *
      * @param name the name of the copy, used for debugging purposes (can be null)
      */
-    public Graph copy(String name) {
-        Graph copy = new Graph(name);
-        copy.addDuplicates(getNodes(), null);
+    public Graph copy(String newName) {
+        Graph copy = new Graph(newName);
+        Map<Node, Node> emptyMap = Collections.emptyMap();
+        copy.addDuplicates(getNodes(), emptyMap);
         return copy;
     }
 
@@ -154,7 +155,7 @@ public class Graph {
 
     public List<Node> getAndCleanUsagesDroppedNodes() {
         ArrayList<Node> result = usagesDropped;
-        usagesDropped = new ArrayList<Node>();
+        usagesDropped = new ArrayList<>();
         return result;
     }
 
@@ -200,7 +201,7 @@ public class Graph {
         return null;
     }
 
-    private boolean checkValueNumberable(Node node) {
+    private static boolean checkValueNumberable(Node node) {
         if (!node.getNodeClass().valueNumberable()) {
             throw new VerificationError("node is not valueNumberable").addContext(node);
         }
@@ -350,7 +351,7 @@ public class Graph {
         return new NodeIterable<T>() {
             @Override
             public Iterator<T> iterator() {
-                return new TypedNodeIterator<T>(start);
+                return new TypedNodeIterator<>(start);
             }
         };
     }
@@ -376,7 +377,7 @@ public class Graph {
     }
 
     public <T> NodeMap<T> createNodeMap() {
-        return new NodeMap<T>(this);
+        return new NodeMap<>(this);
     }
 
     public NodeFlood createNodeFlood() {
@@ -483,11 +484,11 @@ public class Graph {
      * Edges between duplicate and replacement nodes will also be recreated so care should be taken
      * regarding the matching of node types in the replacement map.
      *
-     * @param nodes the nodes to be duplicated
+     * @param newNodes the nodes to be duplicated
      * @param replacements the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public Map<Node, Node> addDuplicates(Iterable<Node> nodes, Map<Node, Node> replacements) {
-        return NodeClass.addGraphDuplicate(this, nodes, replacements);
+    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, Map<Node, Node> replacements) {
+        return NodeClass.addGraphDuplicate(this, newNodes, replacements);
     }
 }

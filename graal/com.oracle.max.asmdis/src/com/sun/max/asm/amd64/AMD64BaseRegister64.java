@@ -48,7 +48,7 @@ public enum AMD64BaseRegister64 implements GeneralRegister<AMD64BaseRegister64> 
     R14_BASE,
     R15_BASE;
 
-    public static final Enumerator<AMD64BaseRegister64> ENUMERATOR = new Enumerator<AMD64BaseRegister64>(AMD64BaseRegister64.class);
+    public static final Enumerator<AMD64BaseRegister64> ENUMERATOR = new Enumerator<>(AMD64BaseRegister64.class);
 
     public static AMD64BaseRegister64 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

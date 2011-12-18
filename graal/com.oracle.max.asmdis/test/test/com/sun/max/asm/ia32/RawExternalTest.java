@@ -22,7 +22,6 @@
  */
 package test.com.sun.max.asm.ia32;
 
-import java.io.*;
 import java.util.*;
 
 import junit.framework.*;
@@ -54,7 +53,7 @@ public class RawExternalTest extends ExternalAssemblerTestCase {
         junit.textui.TestRunner.run(RawExternalTest.class);
     }
 
-    public void test_assemble() throws FileNotFoundException, IOException {
+    public void test_assemble() {
         run(new IA32AssemblyTester(EnumSet.of(AssemblyTestComponent.EXTERNAL_ASSEMBLER)));
     }
 

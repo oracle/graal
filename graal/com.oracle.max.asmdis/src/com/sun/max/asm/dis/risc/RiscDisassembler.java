@@ -24,7 +24,6 @@ package com.sun.max.asm.dis.risc;
 
 import java.io.*;
 import java.util.*;
-import java.util.Arrays;
 
 import com.sun.max.*;
 import com.sun.max.asm.*;
@@ -63,8 +62,8 @@ public abstract class RiscDisassembler extends Disassembler {
      * @return the decoded arguments for each operand or null if at least one operand has
      *         an invalid value in the encoded instruction
      */
-    private List<Argument> disassemble(int instruction, RiscTemplate template) {
-        final List<Argument> arguments = new ArrayList<Argument>();
+    private static List<Argument> disassemble(int instruction, RiscTemplate template) {
+        final List<Argument> arguments = new ArrayList<>();
         for (OperandField operandField : template.parameters()) {
             final Argument argument = operandField.disassemble(instruction);
             if (argument == null) {
@@ -75,7 +74,7 @@ public abstract class RiscDisassembler extends Disassembler {
         return arguments;
     }
 
-    private boolean isLegalArgumentList(RiscTemplate template, List<Argument> arguments) {
+    private static boolean isLegalArgumentList(RiscTemplate template, List<Argument> arguments) {
         final List<InstructionConstraint> constraints = template.instructionDescription().constraints();
         for (InstructionConstraint constraint : constraints) {
             if (!(constraint.check(template, arguments))) {
@@ -100,7 +99,7 @@ public abstract class RiscDisassembler extends Disassembler {
     @Override
     public List<DisassembledObject> scanOne0(BufferedInputStream stream) throws IOException, AssemblyException {
         final int instruction = endianness().readInt(stream);
-        final List<DisassembledObject> result = new LinkedList<DisassembledObject>();
+        final List<DisassembledObject> result = new LinkedList<>();
         final byte[] instructionBytes = endianness().toBytes(instruction);
         for (SpecificityGroup specificityGroup : assembly().specificityGroups()) {
             for (OpcodeMaskGroup opcodeMaskGroup : specificityGroup.opcodeMaskGroups()) {
@@ -145,7 +144,7 @@ public abstract class RiscDisassembler extends Disassembler {
 
     @Override
     public List<DisassembledObject> scan0(BufferedInputStream stream) throws IOException, AssemblyException {
-        final List<DisassembledObject> result = new ArrayList<DisassembledObject>();
+        final List<DisassembledObject> result = new ArrayList<>();
         try {
             while (true) {
 
@@ -178,6 +177,7 @@ public abstract class RiscDisassembler extends Disassembler {
         return new RiscTemplate(instructionDescription);
     }
 
+    @SuppressWarnings("unused")
     private final ImmediateOperandField[] byteFields;
 
     private ImmediateOperandField createByteField(int index) {

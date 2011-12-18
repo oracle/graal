@@ -35,7 +35,6 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.nodes.calc.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Mark;
 import com.sun.cri.ri.*;
@@ -307,7 +306,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     for (int i = 0; i < args.length; i++) {
                         args[i] = operands[inst.arguments[i].index];
                     }
-                    AMD64CallOpcode.callStub(tasm, masm, tasm.compilation.compiler.lookupStub(stubId), stubId.resultOperand.kind, info, result, args);
+                    AMD64CallOpcode.callStub(tasm, masm, tasm.compilation.compiler.lookupStub(stubId), info, result, args);
                     break;
                 }
                 case CallRuntime: {
@@ -359,42 +358,42 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                 }
                 case Jeq: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.EQ, ConditionFlag.equal, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.equal, operands, label);
                     break;
                 }
                 case Jneq: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.NE, ConditionFlag.notEqual, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.notEqual, operands, label);
                     break;
                 }
 
                 case Jgt: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.GT, ConditionFlag.greater, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.greater, operands, label);
                     break;
                 }
 
                 case Jgteq: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.GE, ConditionFlag.greaterEqual, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.greaterEqual, operands, label);
                     break;
                 }
 
                 case Jugteq: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.AE, ConditionFlag.aboveEqual, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.aboveEqual, operands, label);
                     break;
                 }
 
                 case Jlt: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.LT, ConditionFlag.less, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.less, operands, label);
                     break;
                 }
 
                 case Jlteq: {
                     Label label = labels[((XirLabel) inst.extra).index];
-                    emitXirCompare(tasm, masm, inst, Condition.LE, ConditionFlag.lessEqual, operands, label);
+                    emitXirCompare(tasm, masm, inst, ConditionFlag.lessEqual, operands, label);
                     break;
                 }
 
@@ -545,7 +544,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
         }
     }
 
-    private static void emitXirCompare(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction inst, Condition condition, ConditionFlag cflag, CiValue[] ops, Label label) {
+    private static void emitXirCompare(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction inst, ConditionFlag cflag, CiValue[] ops, Label label) {
         CiValue x = ops[inst.x().index];
         CiValue y = ops[inst.y().index];
         AMD64CompareOpcode code;

@@ -34,7 +34,7 @@ public enum AMD64GeneralRegister16 implements GeneralRegister<AMD64GeneralRegist
 
     AX, CX, DX, BX, SP, BP, SI, DI, R8W, R9W, R10W, R11W, R12W, R13W, R14W, R15W;
 
-    public static final Enumerator<AMD64GeneralRegister16> ENUMERATOR = new Enumerator<AMD64GeneralRegister16>(AMD64GeneralRegister16.class);
+    public static final Enumerator<AMD64GeneralRegister16> ENUMERATOR = new Enumerator<>(AMD64GeneralRegister16.class);
 
     public static AMD64GeneralRegister16 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

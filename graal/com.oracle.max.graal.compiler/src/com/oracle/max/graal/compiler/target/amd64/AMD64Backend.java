@@ -72,7 +72,7 @@ public class AMD64Backend extends Backend {
     public CompilerStub emit(GraalContext context, Id stub) {
         final GraalCompilation comp = new GraalCompilation(context, compiler, null, -1, null, DebugInfoLevel.FULL);
         try {
-            return new AMD64CompilerStubEmitter(context, comp, stub.arguments, stub.resultKind).emit(stub);
+            return new AMD64CompilerStubEmitter(comp, stub.arguments, stub.resultKind).emit(stub);
         } finally {
             comp.close();
         }
@@ -82,7 +82,7 @@ public class AMD64Backend extends Backend {
     public CompilerStub emit(GraalContext context, CiRuntimeCall rtCall) {
         final GraalCompilation comp = new GraalCompilation(context, compiler, null, -1, null, DebugInfoLevel.FULL);
         try {
-            return new AMD64CompilerStubEmitter(context, comp, rtCall.arguments, rtCall.resultKind).emit(rtCall);
+            return new AMD64CompilerStubEmitter(comp, rtCall.arguments, rtCall.resultKind).emit(rtCall);
         } finally {
             comp.close();
         }
@@ -102,7 +102,7 @@ public class AMD64Backend extends Backend {
     public CompilerStub emit(GraalContext context, XirTemplate t) {
         final GraalCompilation comp = new GraalCompilation(context, compiler, null, -1, null, DebugInfoLevel.FULL);
         try {
-            return new AMD64CompilerStubEmitter(context, comp, getArgumentKinds(t), t.resultOperand.kind).emit(t);
+            return new AMD64CompilerStubEmitter(comp, getArgumentKinds(t), t.resultOperand.kind).emit(t);
         } finally {
             comp.close();
         }

@@ -34,6 +34,11 @@ import com.sun.cri.ri.*;
  */
 public class CiCodePos implements Serializable {
     /**
+     * 
+     */
+    private static final long serialVersionUID = 8633885274526033515L;
+
+    /**
      * The position where this position has been called, {@code null} if none.
      */
     public final CiCodePos caller;

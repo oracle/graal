@@ -187,20 +187,20 @@ public final class FrameMap {
 
     /**
      * Computes the frame size for this frame, given the number of spill slots.
-     * @param spillSlotCount the number of spill slots
+     * @param finalSpillSlotCount the number of spill slots
      */
-    public void finalizeFrame(int spillSlotCount) {
+    public void finalizeFrame(int finalSpillSlotCount) {
         assert this.spillSlotCount == -1 : "can only be set once";
         assert this.frameSize == -1 : "should only be calculated once";
-        assert spillSlotCount >= 0 : "must be positive";
+        assert finalSpillSlotCount >= 0 : "must be positive";
 
-        this.spillSlotCount = spillSlotCount;
-        int frameSize = offsetToStackBlocksEnd();
+        this.spillSlotCount = finalSpillSlotCount;
+        int newFrameSize = offsetToStackBlocksEnd();
         CiCalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
         if (csl != null) {
-            frameSize += csl.size;
+            newFrameSize += csl.size;
         }
-        this.frameSize = target.alignFrameSize(frameSize);
+        this.frameSize = target.alignFrameSize(newFrameSize);
     }
 
     /**
@@ -276,6 +276,11 @@ public final class FrameMap {
      */
     public static final class StackBlock extends CiValue {
         /**
+         * 
+         */
+        private static final long serialVersionUID = -5260976274149772987L;
+
+        /**
          * The size of this stack block.
          */
         private final int size;
@@ -348,7 +353,7 @@ public final class FrameMap {
         return runtime.getCustomStackAreaSize();
     }
 
-    public int offsetToCustomArea() {
+    public static int offsetToCustomArea() {
         return 0;
     }
 
@@ -390,8 +395,7 @@ public final class FrameMap {
      * Initializes a ref map that covers all the slots in the frame.
      */
     public CiBitMap initFrameRefMap() {
-        int frameSize = frameSize();
-        int frameWords = frameSize / target.spillSlotSize;
+        int frameWords = frameSize() / target.spillSlotSize;
         CiBitMap frameRefMap = new CiBitMap(frameWords);
         for (StackBlock sb = stackBlocks; sb != null; sb = sb.next) {
             if (sb.kind == CiKind.Object) {

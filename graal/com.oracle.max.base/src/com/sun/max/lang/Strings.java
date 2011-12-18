@@ -176,7 +176,7 @@ public final class Strings {
      * quotes are removed).
      */
     public static String[] splitCommand(String command) {
-        final List<String> parts = new ArrayList<String>();
+        final List<String> parts = new ArrayList<>();
 
         boolean escapedChar = false;
         boolean insideQuotes = false;

@@ -36,6 +36,10 @@ import com.sun.cri.ri.RiType.Representation;
  */
 public class HotSpotField extends CompilerObject implements RiResolvedField {
 
+    /**
+     *
+     */
+    private static final long serialVersionUID = 7692985878836955683L;
     private final RiResolvedType holder;
     private final String name;
     private final RiType type;
@@ -80,7 +84,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
         return null;
     }
 
-    private boolean assumeStaticFieldsFinal(Class< ? > clazz) {
+    private static boolean assumeStaticFieldsFinal(Class< ? > clazz) {
         return clazz == GraalOptions.class;
     }
 
@@ -110,7 +114,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
 
     @Override
     public String toString() {
-        return "HotSpotField<" + CiUtil.format("%h.%n", this, false) + ":" + offset + ">";
+        return "HotSpotField<" + CiUtil.format("%h.%n", this) + ":" + offset + ">";
     }
 
     @Override

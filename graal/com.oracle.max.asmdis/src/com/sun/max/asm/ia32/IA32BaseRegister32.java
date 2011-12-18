@@ -77,5 +77,5 @@ public enum IA32BaseRegister32 implements GeneralRegister<IA32BaseRegister32> {
         return EBX_BASE;
     }
 
-    public static final Enumerator<IA32BaseRegister32> ENUMERATOR = new Enumerator<IA32BaseRegister32>(IA32BaseRegister32.class);
+    public static final Enumerator<IA32BaseRegister32> ENUMERATOR = new Enumerator<>(IA32BaseRegister32.class);
 }

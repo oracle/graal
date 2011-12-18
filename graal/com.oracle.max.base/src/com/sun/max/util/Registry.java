@@ -45,9 +45,9 @@ public class Registry<C> {
     public Registry(Class<C> classType, boolean loadClass) {
         this.loadClass = loadClass;
         this.classClass = classType;
-        this.classMap = new HashMap<String, Class<? extends C>>();
-        this.objectMap = new HashMap<String, C>();
-        this.stringMap = new HashMap<String, String>();
+        this.classMap = new HashMap<>();
+        this.objectMap = new HashMap<>();
+        this.stringMap = new HashMap<>();
     }
 
     public void registerObject(String alias, C object) {
@@ -98,7 +98,7 @@ public class Registry<C> {
     }
 
     public Iterable<String> getAliases() {
-        final LinkedList<String> lista = new LinkedList<String>();
+        final LinkedList<String> lista = new LinkedList<>();
         lista.addAll(objectMap.keySet());
         lista.addAll(classMap.keySet());
         lista.addAll(stringMap.keySet());
@@ -117,6 +117,6 @@ public class Registry<C> {
     }
 
     public static <T> Registry<T> newRegistry(Class<T> cl) {
-        return new Registry<T>(cl, true);
+        return new Registry<>(cl, true);
     }
 }

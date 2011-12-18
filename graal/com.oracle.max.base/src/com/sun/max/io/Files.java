@@ -123,7 +123,7 @@ public final class Files {
     /**
      * Creates/overwrites a file from a reader.
      */
-    public static void fill(File file, Reader reader, boolean append) throws IOException {
+    public static void fill(File file, Reader reader) throws IOException {
         final BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
         try {
             int ch;
@@ -145,7 +145,7 @@ public final class Files {
     }
 
     public static List<String> readLines(File file) throws IOException {
-        final List<String> lines = new ArrayList<String>();
+        final List<String> lines = new ArrayList<>();
         readLines(file, lines);
         return lines;
     }

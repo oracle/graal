@@ -29,6 +29,10 @@ package com.sun.cri.ci;
  */
 public final class CiConstant extends CiValue {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -6355452536852663986L;
     private static final CiConstant[] INT_CONSTANT_CACHE = new CiConstant[100];
     static {
         for (int i = 0; i < INT_CONSTANT_CACHE.length; ++i) {
@@ -157,16 +161,6 @@ public final class CiConstant extends CiValue {
      * @return the value of this constant
      */
     public Object boxedValue() {
-        return boxedValue(kind);
-    }
-
-    /**
-     * Returns the value of this constant as a boxed Java value.
-     *
-     * @param kind the kind of the boxed value to be returned
-     * @return the value of this constant
-     */
-    public Object boxedValue(CiKind kind) {
         // Checkstyle: stop
         switch (kind) {
             case Byte: return (byte) asInt();

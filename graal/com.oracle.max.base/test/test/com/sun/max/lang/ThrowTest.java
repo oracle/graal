@@ -39,11 +39,11 @@ public class ThrowTest extends MaxTestCase {
         junit.textui.TestRunner.run(ThrowTest.class);
     }
 
-    private void throwArithmeticException() throws ArithmeticException {
+    private static void throwArithmeticException() throws ArithmeticException {
         throw new ArithmeticException();
     }
 
-    private void throwIOExcepion() throws IOException {
+    private static void throwIOExcepion() throws IOException {
         throw new IOException();
     }
 

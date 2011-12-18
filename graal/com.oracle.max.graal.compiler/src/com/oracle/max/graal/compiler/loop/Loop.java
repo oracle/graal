@@ -38,7 +38,7 @@ public class Loop {
 
     public Loop(LoopBeginNode loopBegin) {
         this.loopBegin = loopBegin;
-        this.children = new ArrayList<Loop>(1);
+        this.children = new ArrayList<>(1);
         this.exits = loopBegin.graph().createNodeBitMap();
         this.directCFGNodes = loopBegin.graph().createNodeBitMap();
     }

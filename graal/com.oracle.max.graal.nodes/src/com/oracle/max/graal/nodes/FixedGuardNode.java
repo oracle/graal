@@ -34,7 +34,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Canonical
 
     public FixedGuardNode(BooleanNode condition) {
         super(StampFactory.illegal());
-        this.conditions = new NodeInputList<BooleanNode>(this, new BooleanNode[] {condition});
+        this.conditions = new NodeInputList<>(this, new BooleanNode[] {condition});
     }
 
     @Override

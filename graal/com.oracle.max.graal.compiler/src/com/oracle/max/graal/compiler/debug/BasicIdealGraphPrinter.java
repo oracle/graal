@@ -253,7 +253,7 @@ public class BasicIdealGraphPrinter {
         flush();
     }
 
-    private String escape(String s) {
+    private static String escape(String s) {
         StringBuilder str = null;
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);

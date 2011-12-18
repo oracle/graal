@@ -82,7 +82,7 @@ public class HashEntryChainedHashMapping<K, V> extends ChainedHashMapping<K, V> 
 
     @Override
     protected Entry<K, V> createEntry(int hashOfKey, K key, V value, Entry<K, V> next) {
-        return new HashEntryChainedHashMapping.HashEntry<K, V>(hashOfKey, key, value, next);
+        return new HashEntryChainedHashMapping.HashEntry<>(hashOfKey, key, value, next);
     }
 
     @Override

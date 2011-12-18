@@ -36,7 +36,6 @@ import com.sun.cri.ri.*;
 public final class ConstantNode extends BooleanNode implements LIRLowerable {
 
     @Data public final CiConstant value;
-    private RiRuntime runtime;
 
     private ConstantNode(CiConstant value) {
         this(value, null);
@@ -49,7 +48,6 @@ public final class ConstantNode extends BooleanNode implements LIRLowerable {
     private ConstantNode(CiConstant value, RiRuntime runtime) {
         super(StampFactory.forConstant(value, runtime));
         this.value = value;
-        this.runtime = runtime;
     }
 
     @Override

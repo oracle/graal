@@ -121,6 +121,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
         gen.setResult(this, gen.emitConvert(opcode, gen.operand(value())));
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static <S, T> S convert(@ConstantNodeParameter Op op, T value) {
         throw new UnsupportedOperationException();

@@ -39,7 +39,7 @@ import com.sun.max.program.*;
  */
 public abstract class Disassembler {
 
-    private static final Map<String, Constructor> disassemblerConstructors = new HashMap<String, Constructor>();
+    private static final Map<String, Constructor> disassemblerConstructors = new HashMap<>();
 
     /**
      * Gets a constructor for instantiating a disassembler for a given {@linkplain ISA ISA}
@@ -136,11 +136,6 @@ public abstract class Disassembler {
         }
     }
 
-    /**
-     * Turn on the following flag in order to get debugging output.
-     */
-    public static final boolean TRACE = false;
-
     private final ImmediateArgument startAddress;
     private final Endianness endianness;
 
@@ -221,7 +216,7 @@ public abstract class Disassembler {
             }
             case JUMP_TABLE32: {
                 final JumpTable32 jumpTable32 = (JumpTable32) descriptor;
-                final List<DisassembledData> result = new ArrayList<DisassembledData>(jumpTable32.numberOfEntries());
+                final List<DisassembledData> result = new ArrayList<>(jumpTable32.numberOfEntries());
 
                 int caseValue = jumpTable32.low();
                 final InputStream stream = new ByteArrayInputStream(inlineData.data());
@@ -267,7 +262,7 @@ public abstract class Disassembler {
             }
             case LOOKUP_TABLE32: {
                 final LookupTable32 lookupTable32 = (LookupTable32) descriptor;
-                final List<DisassembledData> result = new ArrayList<DisassembledData>(lookupTable32.numberOfEntries());
+                final List<DisassembledData> result = new ArrayList<>(lookupTable32.numberOfEntries());
 
                 final InputStream stream = new ByteArrayInputStream(inlineData.data());
                 final int lookupTable = startPosition;
@@ -422,6 +417,6 @@ public abstract class Disassembler {
 
     public abstract ImmediateArgument addressForRelativeAddressing(DisassembledInstruction di);
     public abstract String mnemonic(DisassembledInstruction di);
-    public abstract String operandsToString(DisassembledInstruction di, AddressMapper addressMapper);
-    public abstract String toString(DisassembledInstruction di, AddressMapper addressMapper);
+    public abstract String operandsToString(DisassembledInstruction di, AddressMapper printAddressMapper);
+    public abstract String toString(DisassembledInstruction di, AddressMapper printAddressMapper);
 }

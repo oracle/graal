@@ -109,7 +109,7 @@ public abstract class HashMapping<K, V> implements Mapping<K, V> {
     }
 
     public static <K, V> Mapping<K, V> createMapping(HashEquivalence<K> equivalence) {
-        return new OpenAddressingHashMapping<K, V>(equivalence);
+        return new OpenAddressingHashMapping<>(equivalence);
     }
 
     public static <K, V> Mapping<K, V> createIdentityMapping() {
@@ -123,7 +123,7 @@ public abstract class HashMapping<K, V> implements Mapping<K, V> {
     }
 
     public static <K, V> Mapping<K, V> createVariableMapping(HashEquivalence<K> equivalence) {
-        return new ChainedHashMapping<K, V>(equivalence);
+        return new ChainedHashMapping<>(equivalence);
     }
 
     public static <K, V> Mapping<K, V> createVariableIdentityMapping() {

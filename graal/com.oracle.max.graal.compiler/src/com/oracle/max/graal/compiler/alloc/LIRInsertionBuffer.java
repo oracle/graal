@@ -52,14 +52,14 @@ public final class LIRInsertionBuffer {
 
     public LIRInsertionBuffer() {
         indexAndCount = new IntList(8);
-        ops = new ArrayList<LIRInstruction>(8);
+        ops = new ArrayList<>(8);
     }
 
     // must be called before using the insertion buffer
-    public void init(List<LIRInstruction> lir) {
+    public void init(List<LIRInstruction> newLir) {
         assert !initialized() : "already initialized";
         assert indexAndCount.size() == 0 && ops.size() == 0;
-        this.lir = lir;
+        this.lir = newLir;
     }
 
     public boolean initialized() {

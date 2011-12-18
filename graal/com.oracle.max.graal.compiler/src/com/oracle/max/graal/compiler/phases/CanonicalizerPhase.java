@@ -69,7 +69,6 @@ public class CanonicalizerPhase extends Phase {
                     TTY.println("Canonicalizer: work on " + node);
                 }
                 graph.mark();
-                tool.setNode(node);
                 Node canonical = ((Canonicalizable) node).canonical(tool);
                 if (canonical == null) {
                     node.safeDelete();
@@ -144,7 +143,6 @@ public class CanonicalizerPhase extends Phase {
 
     private static final class Tool implements CanonicalizerTool {
 
-        private Node node;
         private final NodeWorkList nodeWorkList;
         private final RiRuntime runtime;
         private final CiTarget target;
@@ -159,7 +157,7 @@ public class CanonicalizerPhase extends Phase {
 
         @Override
         public void deleteBranch(FixedNode branch) {
-            node.replaceFirstSuccessor(branch, null);
+            branch.predecessor().replaceFirstSuccessor(branch, null);
             killCFG(branch);
         }
 
@@ -241,10 +239,6 @@ public class CanonicalizerPhase extends Phase {
                 node.replaceAtUsages(null);
                 node.safeDelete();
             }
-        }
-
-        public void setNode(Node node) {
-            this.node = node;
         }
 
         /**

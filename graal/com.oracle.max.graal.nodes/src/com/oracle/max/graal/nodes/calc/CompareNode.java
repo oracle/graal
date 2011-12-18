@@ -146,21 +146,21 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
 
     private Node optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode) {
         if (constant.kind == CiKind.Int && constant.asInt() == 0) {
-            Condition condition = condition();
+            Condition cond = condition();
             if (normalizeNode.x().kind().isFloatOrDouble()) {
-                switch (condition) {
-                    case LT: condition = Condition.BT; break;
-                    case LE: condition = Condition.BE; break;
-                    case GE: condition = Condition.AE; break;
-                    case GT: condition = Condition.AT; break;
+                switch (cond) {
+                    case LT: cond = Condition.BT; break;
+                    case LE: cond = Condition.BE; break;
+                    case GE: cond = Condition.AE; break;
+                    case GT: cond = Condition.AT; break;
                 }
             }
             if (normalizeNode == y()) {
-                condition = condition.mirror();
+                cond = cond.mirror();
             }
-            boolean isLess = condition == Condition.LE || condition == Condition.LT || condition == Condition.BE || condition == Condition.BT;
-            boolean canonUnorderedIsTrue = condition != Condition.EQ && (condition == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess));
-            CompareNode result = graph().unique(new CompareNode(normalizeNode.x(), condition, canonUnorderedIsTrue, normalizeNode.y()));
+            boolean isLess = cond == Condition.LE || cond == Condition.LT || cond == Condition.BE || cond == Condition.BT;
+            boolean canonUnorderedIsTrue = cond != Condition.EQ && (cond == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess));
+            CompareNode result = graph().unique(new CompareNode(normalizeNode.x(), cond, canonUnorderedIsTrue, normalizeNode.y()));
             return result;
         }
         return this;

@@ -31,7 +31,7 @@ import com.oracle.max.graal.nodes.type.*;
  */
 public final class AnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
 
-    @Input(notDataflow = true) private final NodeInputList<GuardNode> guards = new NodeInputList<GuardNode>(this);
+    @Input(notDataflow = true) private final NodeInputList<GuardNode> guards = new NodeInputList<>(this);
 
     public AnchorNode() {
         super(StampFactory.illegal());

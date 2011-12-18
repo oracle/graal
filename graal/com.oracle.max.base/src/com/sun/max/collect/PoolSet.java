@@ -149,12 +149,12 @@ public abstract class PoolSet<T extends PoolObject> implements Cloneable, Iterab
      */
     public static <T extends PoolObject> PoolSet<T> noneOf(Pool<T> pool) {
         if (pool.length() <= PoolSet64.MAX_POOL_SIZE) {
-            return new PoolSet64<T>(pool);
+            return new PoolSet64<>(pool);
         }
         if (pool.length() <= PoolSet128.MAX_POOL_SIZE) {
-            return new PoolSet128<T>(pool);
+            return new PoolSet128<>(pool);
         }
-        return new PoolBitSet<T>(pool);
+        return new PoolBitSet<>(pool);
     }
 
     /**
@@ -178,6 +178,7 @@ public abstract class PoolSet<T extends PoolObject> implements Cloneable, Iterab
      * @param rest zero or more objects that will be in the returned set
      * @return a pool set containing {@code first} and all the objects in {@code rest}
      */
+    @SafeVarargs
     public static <T extends PoolObject, S extends T> PoolSet<T> of(Pool<T> pool, S first, S... rest) {
         final PoolSet<T> poolSet = noneOf(pool);
         poolSet.add(first);

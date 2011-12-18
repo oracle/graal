@@ -35,9 +35,18 @@ import com.sun.cri.ri.*;
 public class CiTargetMethod implements Serializable {
 
     /**
+     *
+     */
+    private static final long serialVersionUID = -1319947729753702434L;
+
+    /**
      * Represents a code position with associated additional information.
      */
     public abstract static class Site implements Serializable {
+        /**
+         *
+         */
+        private static final long serialVersionUID = -8214214947651979102L;
         /**
          * The position (or offset) of this site with respect to the start of the target method.
          */
@@ -52,6 +61,10 @@ public class CiTargetMethod implements Serializable {
      * Represents a safepoint with associated debug info.
      */
     public static class Safepoint extends Site implements Comparable<Safepoint> {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 2479806696381720162L;
         public final CiDebugInfo debugInfo;
 
         Safepoint(int pcOffset, CiDebugInfo debugInfo) {
@@ -83,6 +96,11 @@ public class CiTargetMethod implements Serializable {
      * Represents a call in the code.
      */
     public static final class Call extends Safepoint {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 1440741241631046954L;
+
         /**
          * The target of the call.
          */
@@ -127,6 +145,10 @@ public class CiTargetMethod implements Serializable {
      * Represents a reference to data from the code. The associated data can be any constant.
      */
     public static final class DataPatch extends Site {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 5771730331604867476L;
         public final CiConstant constant;
         public final int alignment;
 
@@ -147,6 +169,10 @@ public class CiTargetMethod implements Serializable {
      * This is optional information that can be used to enhance a disassembly of the code.
      */
     public abstract static class CodeAnnotation implements Serializable {
+        /**
+         *
+         */
+        private static final long serialVersionUID = -7903959680749520748L;
         public final int position;
 
         public CodeAnnotation(int position) {
@@ -158,6 +184,10 @@ public class CiTargetMethod implements Serializable {
      * A string comment about one or more instructions at a specific position in the code.
      */
     public static final class CodeComment extends CodeAnnotation {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 6802287188701961401L;
         public final String value;
         public CodeComment(int position, String comment) {
             super(position);
@@ -174,6 +204,10 @@ public class CiTargetMethod implements Serializable {
      * Labels some inline data in the code.
      */
     public static final class InlineData extends CodeAnnotation {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 305997507263827108L;
         public final int size;
         public InlineData(int position, int size) {
             super(position);
@@ -194,6 +228,11 @@ public class CiTargetMethod implements Serializable {
      * The table is indexed by the contiguous range of integers from {@link #low} to {@link #high} inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 2222194398353801831L;
+
         /**
          * The low value in the key range (inclusive).
          */
@@ -229,6 +268,11 @@ public class CiTargetMethod implements Serializable {
      */
     public static final class LookupTable extends CodeAnnotation {
         /**
+         *
+         */
+        private static final long serialVersionUID = 8367952567559116160L;
+
+        /**
          * The number of entries in the table.
          */
         public final int npairs;
@@ -261,6 +305,10 @@ public class CiTargetMethod implements Serializable {
      * well as the caught exception type.
      */
     public static final class ExceptionHandler extends Site {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 4897339464722665281L;
         public final int bci;
         public final int scopeLevel;
         public final int handlerPos;
@@ -283,6 +331,10 @@ public class CiTargetMethod implements Serializable {
     }
 
     public static final class Mark extends Site {
+        /**
+         *
+         */
+        private static final long serialVersionUID = 3612943150662354844L;
         public final Object id;
         public final Mark[] references;
 
@@ -307,28 +359,26 @@ public class CiTargetMethod implements Serializable {
     /**
      * List of safepoints, sorted by {@link Site#pcOffset}.
      */
-    public final List<Safepoint> safepoints = new ArrayList<Safepoint>();
+    public final List<Safepoint> safepoints = new ArrayList<>();
 
     /**
      * List of data references.
      */
-    public final List<DataPatch> dataReferences = new ArrayList<DataPatch>();
+    public final List<DataPatch> dataReferences = new ArrayList<>();
 
     /**
      * List of exception handlers.
      */
-    public final List<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>();
+    public final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
 
     /**
      * List of marks.
      */
-    public final List<Mark> marks = new ArrayList<Mark>();
+    public final List<Mark> marks = new ArrayList<>();
 
     private int frameSize = -1;
     private int customStackAreaOffset = -1;
     private int registerRestoreEpilogueOffset = -1;
-    private int deoptReturnAddressOffset;
-
     /**
      * The buffer containing the emitted machine code.
      */
@@ -516,7 +566,7 @@ public class CiTargetMethod implements Serializable {
     public void addAnnotation(CodeAnnotation annotation) {
         assert annotation != null;
         if (annotations == null) {
-            annotations = new ArrayList<CiTargetMethod.CodeAnnotation>();
+            annotations = new ArrayList<>();
         }
         annotations.add(annotation);
     }
@@ -540,7 +590,7 @@ public class CiTargetMethod implements Serializable {
 
     private static void appendRefMap(StringBuilder sb, String name, CiBitMap map) {
         if (map != null) {
-            sb.append(' ').append(name).append('[').append(map.toBinaryString(-1)).append(']');
+            sb.append(' ').append(name).append('[').append(map.toBinaryString()).append(']');
         }
     }
 }

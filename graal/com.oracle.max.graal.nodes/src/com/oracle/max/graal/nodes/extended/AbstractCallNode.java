@@ -33,7 +33,7 @@ public abstract class AbstractCallNode extends AbstractStateSplit implements Mem
 
     public AbstractCallNode(Stamp stamp, ValueNode[] arguments) {
         super(stamp);
-        this.arguments = new NodeInputList<ValueNode>(this, arguments);
+        this.arguments = new NodeInputList<>(this, arguments);
     }
 
     public NodeInputList<ValueNode> arguments() {

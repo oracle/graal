@@ -54,7 +54,7 @@ public class PoolTest extends MaxTestCase {
     }
 
     public void test_empty() {
-        Pool<TestElement> pool = new ArrayPool<TestElement>(new TestElement[0]);
+        Pool<TestElement> pool = new ArrayPool<>(new TestElement[0]);
         assertEquals(pool.length(), 0);
         try {
             final TestElement elem = pool.get(0);
@@ -80,7 +80,7 @@ public class PoolTest extends MaxTestCase {
     }
 
     public void test_pool() {
-        Pool<TestElement> pool = new ArrayPool<TestElement>(elems);
+        Pool<TestElement> pool = new ArrayPool<>(elems);
         check_pool(pool, nElems);
     }
 }

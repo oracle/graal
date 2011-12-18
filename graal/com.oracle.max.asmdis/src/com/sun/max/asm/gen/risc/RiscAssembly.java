@@ -41,12 +41,12 @@ public abstract class RiscAssembly extends Assembly<RiscTemplate> {
     private List<SpecificityGroup> specificityGroups;
 
     private void initialize() {
-        final IntHashMap<IntHashMap<OpcodeMaskGroup>> specificityTable = new IntHashMap<IntHashMap<OpcodeMaskGroup>>();
+        final IntHashMap<IntHashMap<OpcodeMaskGroup>> specificityTable = new IntHashMap<>();
         for (RiscTemplate template : templates()) {
             if (!template.isRedundant()) {
                 IntHashMap<OpcodeMaskGroup> opcodeMaskGroups = specificityTable.get(template.specificity());
                 if (opcodeMaskGroups == null) {
-                    opcodeMaskGroups = new IntHashMap<OpcodeMaskGroup>();
+                    opcodeMaskGroups = new IntHashMap<>();
                     specificityTable.put(template.specificity(), opcodeMaskGroups);
                 }
                 final int opcodeMask = template.opcodeMask();
@@ -58,7 +58,7 @@ public abstract class RiscAssembly extends Assembly<RiscTemplate> {
                 opcodeMaskGroup.add(template);
             }
         }
-        specificityGroups = new LinkedList<SpecificityGroup>();
+        specificityGroups = new LinkedList<>();
         for (int specificity = 33; specificity >= 0; specificity--) {
             final IntHashMap<OpcodeMaskGroup> opcodeGroupTable = specificityTable.get(specificity);
             if (opcodeGroupTable != null) {

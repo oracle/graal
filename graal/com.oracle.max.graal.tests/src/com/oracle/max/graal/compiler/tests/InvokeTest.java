@@ -39,6 +39,7 @@ public class InvokeTest extends GraphTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
+    @SuppressWarnings("all")
     public static int referenceSnippet(int a) {
         return 1;
     }
@@ -52,6 +53,7 @@ public class InvokeTest extends GraphTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test1Snippet(int a) {
         return const1();
     }
@@ -61,6 +63,7 @@ public class InvokeTest extends GraphTest {
         test("test2Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test2Snippet(int a) {
         return const1() + const1() + const1() + const1() + const1() + const1() + const1();
     }
@@ -76,7 +79,7 @@ public class InvokeTest extends GraphTest {
                 n.replaceFirstInput(local, constant);
             }
         }
-        Collection<Invoke> hints = new ArrayList<Invoke>();
+        Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }

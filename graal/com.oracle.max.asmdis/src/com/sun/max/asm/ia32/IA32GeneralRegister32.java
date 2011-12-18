@@ -34,7 +34,7 @@ public enum IA32GeneralRegister32 implements GeneralRegister<IA32GeneralRegister
 
     EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI;
 
-    public static final Enumerator<IA32GeneralRegister32> ENUMERATOR = new Enumerator<IA32GeneralRegister32>(IA32GeneralRegister32.class);
+    public static final Enumerator<IA32GeneralRegister32> ENUMERATOR = new Enumerator<>(IA32GeneralRegister32.class);
 
     public static IA32GeneralRegister32 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

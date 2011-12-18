@@ -27,6 +27,8 @@ package com.sun.max.asm;
  */
 public class AssemblyException extends Exception {
 
+    private static final long serialVersionUID = -633368746009467839L;
+
     public AssemblyException(String message) {
         super(message);
     }

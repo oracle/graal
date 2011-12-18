@@ -30,6 +30,10 @@ import com.sun.cri.ri.*;
  */
 public class HotSpotTypeUnresolved extends HotSpotType {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -2320936267633521314L;
     public final String simpleName;
     public final int dimensions;
 
@@ -40,23 +44,23 @@ public class HotSpotTypeUnresolved extends HotSpotType {
         super(compiler);
         assert name.length() > 0 : "name cannot be empty";
 
-        int dimensions = 0;
+        int dims = 0;
         // Decode name if necessary.
         if (name.charAt(name.length() - 1) == ';') {
             int startIndex = 0;
             while (name.charAt(startIndex) == '[') {
                 startIndex++;
-                dimensions++;
+                dims++;
             }
             assert name.charAt(startIndex) == 'L';
             this.simpleName = name.substring(startIndex + 1, name.length() - 1);
             this.name = name;
         } else {
             this.simpleName = name;
-            this.name = getFullName(name, dimensions);
+            this.name = getFullName(name, dims);
         }
 
-        this.dimensions = dimensions;
+        this.dimensions = dims;
     }
 
     public HotSpotTypeUnresolved(Compiler compiler, String name, int dimensions) {
@@ -67,7 +71,7 @@ public class HotSpotTypeUnresolved extends HotSpotType {
         this.name = getFullName(name, dimensions);
     }
 
-    private String getFullName(String name, int dimensions) {
+    private static String getFullName(String name, int dimensions) {
         StringBuilder str = new StringBuilder(name.length() + dimensions + 2);
         for (int i = 0; i < dimensions; i++) {
             str.append('[');

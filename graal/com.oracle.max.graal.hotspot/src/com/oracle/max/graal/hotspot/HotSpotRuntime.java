@@ -47,16 +47,13 @@ import com.sun.max.lang.*;
  * CRI runtime implementation for the HotSpot VM.
  */
 public class HotSpotRuntime implements GraalRuntime {
-    private static final long DOUBLENAN_RAW_LONG_BITS = Double.doubleToRawLongBits(Double.NaN);
-    private static final int FLOATNAN_RAW_INT_BITS = Float.floatToRawIntBits(Float.NaN);
-
     final GraalContext context;
     final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
     // TODO(ls) this is not a permanent solution - there should be a more sophisticated compiler oracle
-    private HashSet<RiResolvedMethod> notInlineableMethods = new HashSet<RiResolvedMethod>();
+    private HashSet<RiResolvedMethod> notInlineableMethods = new HashSet<>();
 
     public HotSpotRuntime(GraalContext context, HotSpotVMConfig config, Compiler compiler) {
         this.context = context;
@@ -81,7 +78,7 @@ public class HotSpotRuntime implements GraalRuntime {
         return disassemble(code, new DisassemblyPrinter(false), address);
     }
 
-    private String disassemble(byte[] code, DisassemblyPrinter disassemblyPrinter, long address) {
+    private static String disassemble(byte[] code, DisassemblyPrinter disassemblyPrinter, long address) {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         final ISA instructionSet = ISA.AMD64;
         Disassembler.disassemble(byteArrayOutputStream, code, instructionSet, WordWidth.BITS_64, address, null, disassemblyPrinter);
@@ -125,10 +122,6 @@ public class HotSpotRuntime implements GraalRuntime {
     @Override
     public String disassemble(RiResolvedMethod method) {
         return "No disassembler available";
-    }
-
-    public Class<?> getJavaClass(CiConstant c) {
-        return null;
     }
 
     @Override
@@ -375,7 +368,7 @@ public class HotSpotRuntime implements GraalRuntime {
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph);
     }
 
-    private GuardNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
+    private static GuardNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         return (GuardNode) tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())));
     }
 
@@ -426,10 +419,6 @@ public class HotSpotRuntime implements GraalRuntime {
         return null;
     }
 
-    private boolean containsGraph(RiResolvedMethod method) {
-        return method.compilerStorage().containsKey(Graph.class);
-    }
-
     private SafeReadNode safeReadHub(Graph graph, ValueNode value) {
         return safeRead(graph, CiKind.Object, value, config.hubOffset);
     }
@@ -438,7 +427,7 @@ public class HotSpotRuntime implements GraalRuntime {
         return safeRead(graph, CiKind.Int, value, config.arrayLengthOffset);
     }
 
-    private SafeReadNode safeRead(Graph graph, CiKind kind, ValueNode value, int offset) {
+    private static SafeReadNode safeRead(Graph graph, CiKind kind, ValueNode value, int offset) {
         return graph.add(new SafeReadNode(kind, value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph)));
     }
 

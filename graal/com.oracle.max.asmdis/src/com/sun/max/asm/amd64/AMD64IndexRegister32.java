@@ -48,7 +48,7 @@ public enum AMD64IndexRegister32 implements GeneralRegister<AMD64IndexRegister32
     R14D_INDEX,
     R15D_INDEX;
 
-    public static final Enumerator<AMD64IndexRegister32> ENUMERATOR = new Enumerator<AMD64IndexRegister32>(AMD64IndexRegister32.class);
+    public static final Enumerator<AMD64IndexRegister32> ENUMERATOR = new Enumerator<>(AMD64IndexRegister32.class);
 
     public static AMD64IndexRegister32 from(GeneralRegister generalRegister) {
         int ordinal = generalRegister.id();

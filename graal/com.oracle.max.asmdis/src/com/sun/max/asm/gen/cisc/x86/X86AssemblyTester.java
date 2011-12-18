@@ -47,7 +47,7 @@ public abstract class X86AssemblyTester<Template_Type extends X86Template>
         return Utils.cast(type, super.assembly());
     }
 
-    private String getSibIndexAndScale(Queue<X86Operand> operands, Queue<Argument> arguments) {
+    private static String getSibIndexAndScale(Queue<X86Operand> operands, Queue<Argument> arguments) {
         X86Parameter parameter = (X86Parameter) operands.remove();
         assert parameter.place() == ParameterPlace.SIB_INDEX || parameter.place() == ParameterPlace.SIB_INDEX_REXX;
         final String result = arguments.remove().externalValue() + ",";
@@ -56,7 +56,7 @@ public abstract class X86AssemblyTester<Template_Type extends X86Template>
         return result + arguments.remove().externalValue() + ")";
     }
 
-    private String getOperand(X86Template template, Queue<X86Operand> operands, Queue<Argument> arguments, String label) {
+    private static String getOperand(X86Template template, Queue<X86Operand> operands, Queue<Argument> arguments, String label) {
         final X86Operand operand = operands.remove();
         if (operand instanceof ImplicitOperand) {
             final ImplicitOperand implicitOperand = (ImplicitOperand) operand;
@@ -129,8 +129,8 @@ public abstract class X86AssemblyTester<Template_Type extends X86Template>
         } else {
             stream.println(".code" + addressWidth().numberOfBits);
         }
-        final LinkedList<X86Operand> operandQueue = new LinkedList<X86Operand>(template.operands());
-        final LinkedList<Argument> argumentQueue = new LinkedList<Argument>(argumentList);
+        final LinkedList<X86Operand> operandQueue = new LinkedList<>(template.operands());
+        final LinkedList<Argument> argumentQueue = new LinkedList<>(argumentList);
         String first = "";
         if (!operandQueue.isEmpty()) {
             first = getOperand(template, operandQueue, argumentQueue, label);

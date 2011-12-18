@@ -54,11 +54,13 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     }
 
     // specialized on return type (instead of public static <T> T performCall) until boxing/unboxing is sorted out in intrinsification
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static <S> double performCall(@ConstantNodeParameter CiRuntimeCall call, S arg1) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static long performCall(@ConstantNodeParameter CiRuntimeCall call) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");

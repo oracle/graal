@@ -44,7 +44,7 @@ public class FloatingReadPhase extends Phase {
 
         public MemoryMap(Block block) {
             this.block = block;
-            map = new IdentityHashMap<Object, Node>();
+            map = new IdentityHashMap<>();
         }
 
         public MemoryMap(Block block, MemoryMap other) {
@@ -107,7 +107,7 @@ public class FloatingReadPhase extends Phase {
             mergeOperationCount++;
         }
 
-        private void mergeNodes(Object location, Node original, Node newValue, Block block) {
+        private void mergeNodes(Object location, Node original, Node newValue, Block mergeBlock) {
             if (original == newValue) {
                 // Nothing to merge.
                 if (GraalOptions.TraceMemoryMaps) {
@@ -115,7 +115,7 @@ public class FloatingReadPhase extends Phase {
                 }
                 return;
             }
-            MergeNode m = (MergeNode) block.firstNode();
+            MergeNode m = (MergeNode) mergeBlock.firstNode();
             if (m.isPhiAtMerge(original)) {
                 PhiNode phi = (PhiNode) original;
                 phi.addInput((ValueNode) newValue);
@@ -178,7 +178,7 @@ public class FloatingReadPhase extends Phase {
 
         public void createLoopEntryMemoryMap(Set<Object> modifiedLocations, Loop loop) {
 
-            loopEntryMap = new IdentityHashMap<Object, Node>();
+            loopEntryMap = new IdentityHashMap<>();
 
             for (Object modifiedLocation : modifiedLocations) {
                 Node other;
@@ -187,19 +187,19 @@ public class FloatingReadPhase extends Phase {
                 } else {
                     other = map.get(LocationNode.ANY_LOCATION);
                 }
-                createLoopEntryPhi(modifiedLocation, other, loop, loopEntryMap);
+                createLoopEntryPhi(modifiedLocation, other, loop);
             }
 
             if (modifiedLocations.contains(LocationNode.ANY_LOCATION)) {
                 for (Map.Entry<Object, Node> entry : map.entrySet()) {
                     if (!modifiedLocations.contains(entry.getKey())) {
-                        createLoopEntryPhi(entry.getKey(), entry.getValue(), loop, loopEntryMap);
+                        createLoopEntryPhi(entry.getKey(), entry.getValue(), loop);
                     }
                 }
             }
         }
 
-        private void createLoopEntryPhi(Object modifiedLocation, Node other, Loop loop, IdentityHashMap<Object, Node> loopEntryMap) {
+        private void createLoopEntryPhi(Object modifiedLocation, Node other, Loop loop) {
             PhiNode phi = other.graph().unique(new PhiNode(CiKind.Illegal, loop.loopBegin(), PhiType.Memory));
             phi.addInput((ValueNode) other);
             map.put(modifiedLocation, phi);
@@ -220,10 +220,10 @@ public class FloatingReadPhase extends Phase {
 
         LoopInfo loopInfo = LoopUtil.computeLoopInfo(graph);
 
-        HashMap<Loop, Set<Object>> modifiedValues = new HashMap<Loop, Set<Object>>();
+        HashMap<Loop, Set<Object>> modifiedValues = new HashMap<>();
         // Initialize modified values to empty hash set.
         for (Loop loop : loopInfo.loops()) {
-            modifiedValues.put(loop, new HashSet<Object>());
+            modifiedValues.put(loop, new HashSet<>());
         }
 
         // Get modified values in loops.
@@ -245,12 +245,12 @@ public class FloatingReadPhase extends Phase {
         }
 
         if (GraalOptions.TraceMemoryMaps) {
-            print(graph, loopInfo, modifiedValues);
+            print(loopInfo, modifiedValues);
         }
 
         // Identify blocks.
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
-        s.apply(graph, context);
+        s.apply(graph, currentContext);
         List<Block> blocks = s.getBlocks();
 
         // Process blocks (predecessors first).
@@ -260,7 +260,7 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    private void addStartCheckpoint(StructuredGraph graph) {
+    private static void addStartCheckpoint(StructuredGraph graph) {
         BeginNode entryPoint = graph.start();
         FixedNode next = entryPoint.next();
         if (!(next instanceof MemoryCheckpoint)) {
@@ -329,7 +329,7 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    private void traceMemoryCheckpoint(Loop loop, HashMap<Loop, Set<Object>> modifiedValues) {
+    private static void traceMemoryCheckpoint(Loop loop, HashMap<Loop, Set<Object>> modifiedValues) {
         modifiedValues.get(loop).add(LocationNode.ANY_LOCATION);
     }
 
@@ -340,11 +340,11 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    private void traceWrite(Loop loop, Object locationIdentity, HashMap<Loop, Set<Object>> modifiedValues) {
+    private static void traceWrite(Loop loop, Object locationIdentity, HashMap<Loop, Set<Object>> modifiedValues) {
         modifiedValues.get(loop).add(locationIdentity);
     }
 
-    private void print(StructuredGraph graph, LoopInfo loopInfo, HashMap<Loop, Set<Object>> modifiedValues) {
+    private static void print(LoopInfo loopInfo, HashMap<Loop, Set<Object>> modifiedValues) {
         TTY.println();
         TTY.println("Loops:");
         for (Loop loop : loopInfo.loops()) {

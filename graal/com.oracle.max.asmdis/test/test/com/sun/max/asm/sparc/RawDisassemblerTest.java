@@ -22,7 +22,6 @@
  */
 package test.com.sun.max.asm.sparc;
 
-import java.io.*;
 import java.util.*;
 
 import junit.framework.*;
@@ -54,7 +53,7 @@ public class RawDisassemblerTest extends AssemblerTestCase {
         junit.textui.TestRunner.run(RawDisassemblerTest.class);
     }
 
-    public void test_assemble() throws FileNotFoundException, IOException {
+    public void test_assemble() {
         run(new SPARC32AssemblyTester(EnumSet.of(AssemblyTestComponent.DISASSEMBLER)));
     }
 }

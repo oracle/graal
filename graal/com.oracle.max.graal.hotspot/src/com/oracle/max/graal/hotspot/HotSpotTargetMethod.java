@@ -35,6 +35,10 @@ import com.sun.cri.ci.CiTargetMethod.Site;
  */
 public final class HotSpotTargetMethod extends CompilerObject {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 7807321392203253218L;
     public final CiTargetMethod targetMethod;
     public final HotSpotMethodResolved method; // used only for methods
     public final String name; // used only for stubs
@@ -67,7 +71,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
         exceptionHandlers = null;
     }
 
-    private Site[] getSortedSites(CiTargetMethod target) {
+    private static Site[] getSortedSites(CiTargetMethod target) {
         List<?>[] lists = new List<?>[] {target.safepoints, target.dataReferences, target.marks};
         int count = 0;
         for (List<?> list : lists) {

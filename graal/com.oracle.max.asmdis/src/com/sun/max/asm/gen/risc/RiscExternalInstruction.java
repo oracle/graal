@@ -56,14 +56,14 @@ public class RiscExternalInstruction implements RiscInstructionDescriptionVisito
 
     public RiscExternalInstruction(RiscTemplate template, List<Argument> arguments) {
         this.template = template;
-        this.arguments = new LinkedList<Argument>(arguments);
+        this.arguments = new LinkedList<>(arguments);
         this.address = null;
         this.addressMapper = null;
     }
 
     public RiscExternalInstruction(RiscTemplate template, List<Argument> arguments, ImmediateArgument address, AddressMapper addressMapper) {
         this.template = template;
-        this.arguments = new LinkedList<Argument>(arguments);
+        this.arguments = new LinkedList<>(arguments);
         this.address = address;
         this.addressMapper = addressMapper;
     }

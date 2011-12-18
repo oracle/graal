@@ -31,6 +31,11 @@ import java.util.*;
 public final class CiRegister implements Comparable<CiRegister>, Serializable {
 
     /**
+     * 
+     */
+    private static final long serialVersionUID = -7213269157816016300L;
+
+    /**
      * Invalid register.
      */
     public static final CiRegister None = new CiRegister(-1, -1, 0, "noreg");
@@ -121,7 +126,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
         }
     }
 
-    private int createMask(RegisterFlag... flags) {
+    private static int createMask(RegisterFlag... flags) {
         int result = 0;
         for (RegisterFlag f : flags) {
             result |= f.mask;
@@ -188,9 +193,9 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      *         {@linkplain #isSet(RegisterFlag) set}
      */
     public static EnumMap<RegisterFlag, CiRegister[]> categorize(CiRegister[] registers) {
-        EnumMap<RegisterFlag, CiRegister[]> result = new EnumMap<RegisterFlag, CiRegister[]>(RegisterFlag.class);
+        EnumMap<RegisterFlag, CiRegister[]> result = new EnumMap<>(RegisterFlag.class);
         for (RegisterFlag flag : RegisterFlag.values()) {
-            ArrayList<CiRegister> list = new ArrayList<CiRegister>();
+            ArrayList<CiRegister> list = new ArrayList<>();
             for (CiRegister r : registers) {
                 if (r.isSet(flag)) {
                     list.add(r);

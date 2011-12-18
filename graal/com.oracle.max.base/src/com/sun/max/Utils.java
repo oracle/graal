@@ -164,7 +164,7 @@ public final class Utils {
      *
      */
     @SuppressWarnings("unchecked")
-    public static <T> T cast(Class<T> type, Object object) {
+    public static <T> T cast(@SuppressWarnings("unused") Class<T> type, Object object) {
         return (T) object;
     }
 
@@ -184,6 +184,7 @@ public final class Utils {
      * @param tail the elements to be concatenated to {@code head}
      * @return the result of concatenating {@code tail} to the end of {@code head}
      */
+    @SafeVarargs
     public static <T> T[] concat(T[] head, T... tail) {
         T[] result = Arrays.copyOf(head, head.length + tail.length);
         System.arraycopy(tail, 0, result, head.length, tail.length);
@@ -198,6 +199,7 @@ public final class Utils {
      * @param head the prefix of the result array
      * @return the result of concatenating {@code tail} to the end of {@code head}
      */
+    @SafeVarargs
     public static <T> T[] prepend(T[] tail, T... head) {
         return concat(head, tail);
     }

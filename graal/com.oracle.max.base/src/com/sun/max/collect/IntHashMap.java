@@ -169,7 +169,7 @@ public class IntHashMap<T> {
         if (values == null) {
             return Collections.emptyList();
         }
-        final List<T> list = new ArrayList<T>(numberOfValues);
+        final List<T> list = new ArrayList<>(numberOfValues);
         for (int i = 0; i < values.length; i++) {
             final T value = values[i];
             if (value != null) {

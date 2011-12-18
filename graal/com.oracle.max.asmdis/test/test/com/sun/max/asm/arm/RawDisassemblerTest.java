@@ -22,7 +22,6 @@
  */
 package test.com.sun.max.asm.arm;
 
-import java.io.*;
 import java.util.*;
 
 import junit.framework.*;
@@ -55,7 +54,7 @@ public class RawDisassemblerTest extends AssemblerTestCase {
         junit.textui.TestRunner.run(RawDisassemblerTest.class);
     }
 
-    public void test_disassembler() throws FileNotFoundException, IOException {
+    public void test_disassembler() {
         run(new ARMAssemblyTester(ARMAssembly.ASSEMBLY, WordWidth.BITS_32, EnumSet.of(AssemblyTestComponent.DISASSEMBLER)));
     }
 }

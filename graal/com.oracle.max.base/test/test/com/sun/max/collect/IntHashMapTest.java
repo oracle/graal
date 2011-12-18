@@ -59,7 +59,7 @@ public class IntHashMapTest extends MaxTestCase {
 
     public void test_serialPut() {
         initialize();
-        final IntHashMap<Object> table = new IntHashMap<Object>();
+        final IntHashMap<Object> table = new IntHashMap<>();
         for (int i = 0; i < N; i++) {
             assertEquals(table.get(i), null);
             table.put(i, integers[i] + "");
@@ -70,7 +70,7 @@ public class IntHashMapTest extends MaxTestCase {
 
     public void test_randomPut() {
         initialize();
-        final IntHashMap<Object> table = new IntHashMap<Object>();
+        final IntHashMap<Object> table = new IntHashMap<>();
         final Random random = new Random();
         final int[] keys = new int[N];
         for (int i = 0; i < N; i++) {

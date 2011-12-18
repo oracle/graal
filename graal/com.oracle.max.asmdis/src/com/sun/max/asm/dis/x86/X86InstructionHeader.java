@@ -92,12 +92,12 @@ public class X86InstructionHeader {
     }
 
     public static Map<X86InstructionHeader, List<X86Template>> createMapping(Assembly<? extends X86Template> assembly, WordWidth addressWidth) {
-        final Map<X86InstructionHeader, List<X86Template>> result = new HashMap<X86InstructionHeader, List<X86Template>>();
+        final Map<X86InstructionHeader, List<X86Template>> result = new HashMap<>();
         for (X86Template template : assembly.templates()) {
             X86InstructionHeader header = new X86InstructionHeader(addressWidth, template);
             List<X86Template> matchingTemplates = result.get(header);
             if (matchingTemplates == null) {
-                matchingTemplates = new LinkedList<X86Template>();
+                matchingTemplates = new LinkedList<>();
                 result.put(header, matchingTemplates);
             }
             matchingTemplates.add(template);

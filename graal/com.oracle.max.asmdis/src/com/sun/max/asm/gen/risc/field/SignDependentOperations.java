@@ -136,7 +136,7 @@ public enum SignDependentOperations {
     public static List<Integer> smallContiguousRange(int min, int max, int grain) {
         final long range = (((long) max - (long) min) + 1) / grain;
         if (range > 0 && range <= 32) {
-            final List<Integer> result = new ArrayList<Integer>((int) range);
+            final List<Integer> result = new ArrayList<>((int) range);
             for (int i = min; i <= max; i += grain * 2) {
                 result.add(i);
             }

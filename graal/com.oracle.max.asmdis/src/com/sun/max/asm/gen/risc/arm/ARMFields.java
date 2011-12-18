@@ -74,7 +74,7 @@ public final class ARMFields {
     public static final ImmediateOperandField bits_31_0 = new ImmediateOperandField(new DescendingBitRange(31, 0)) {
         @Override
         public Iterable< ? extends Argument> getIllegalTestArguments() {
-            final List<Immediate32Argument> illegalTestArguments = new ArrayList<Immediate32Argument>();
+            final List<Immediate32Argument> illegalTestArguments = new ArrayList<>();
             illegalTestArguments.add(new Immediate32Argument(0x101));
             illegalTestArguments.add(new Immediate32Argument(0x102));
             illegalTestArguments.add(new Immediate32Argument(0xff1));
@@ -85,7 +85,7 @@ public final class ARMFields {
         }
         @Override
         public Iterable< ? extends Argument> getLegalTestArguments() {
-            final List<Immediate32Argument> legalTestArguments = new ArrayList<Immediate32Argument>();
+            final List<Immediate32Argument> legalTestArguments = new ArrayList<>();
             int argument;
             for (int imm : new int[]{0, 1, 31, 32, 33, 63, 64, 65, 127, 128, 129, 254, 255}) {
                 for (int j = 0; j < 32; j += 2) {

@@ -34,6 +34,10 @@ import com.sun.cri.ri.*;
  */
 public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpotTypeResolved {
 
+    /**
+     *
+     */
+    private static final long serialVersionUID = 3481514353553840471L;
     private Class javaMirror;
     private String simpleName;
     private int accessFlags;
@@ -45,7 +49,6 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private boolean isInterface;
     private int instanceSize;
     private HashMap<Long, RiResolvedField> fieldCache;
-    private RiConstantPool pool;
     private RiResolvedType superType;
     private boolean superTypeSet;
     private RiResolvedField[] fields;
@@ -201,23 +204,23 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public synchronized RiResolvedField createRiField(String name, RiType type, int offset, int flags) {
+    public synchronized RiResolvedField createRiField(String fieldName, RiType type, int offset, int flags) {
         RiResolvedField result = null;
 
         long id = offset + ((long) flags << 32);
 
         // (tw) Must cache the fields, because the local load elimination only works if the objects from two field lookups are equal.
         if (fieldCache == null) {
-            fieldCache = new HashMap<Long, RiResolvedField>(8);
+            fieldCache = new HashMap<>(8);
         } else {
             result = fieldCache.get(id);
         }
 
         if (result == null) {
-            result = new HotSpotField(compiler, this, name, type, offset, flags);
+            result = new HotSpotField(compiler, this, fieldName, type, offset, flags);
             fieldCache.put(id, result);
         } else {
-            assert result.name().equals(name);
+            assert result.name().equals(fieldName);
             assert result.accessFlags() == flags;
         }
 

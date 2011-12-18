@@ -33,6 +33,7 @@ import com.sun.max.program.*;
  * The base class for the 32-bit and 64-bit SPARC assemblers. This class also defines
  * the more complex synthetic SPARC instructions.
  */
+@SuppressWarnings("unused")
 public abstract class SPARCAssembler extends SPARCLabelAssembler {
 
     public static SPARCAssembler createAssembler(WordWidth wordWidth) {

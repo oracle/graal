@@ -41,7 +41,7 @@ public class DebugInfoBuilder {
     public DebugInfoBuilder(GraalCompilation compilation) {
         this.compilation = compilation;
         if (needLockData()) {
-            lockDataMap = new NodeMap<StackBlock>(compilation.graph);
+            lockDataMap = new NodeMap<>(compilation.graph);
         } else {
             lockDataMap = null;
         }
@@ -65,7 +65,7 @@ public class DebugInfoBuilder {
     }
 
 
-    private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<VirtualObjectNode, CiVirtualObject>();
+    private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<>();
 
     public LIRDebugInfo build(FrameState topState, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
         if (compilation.placeholderState != null) {
@@ -78,7 +78,7 @@ public class DebugInfoBuilder {
         CiVirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
             // collect all VirtualObjectField instances:
-            IdentityHashMap<VirtualObjectNode, VirtualObjectFieldNode> objectStates = new IdentityHashMap<VirtualObjectNode, VirtualObjectFieldNode>();
+            IdentityHashMap<VirtualObjectNode, VirtualObjectFieldNode> objectStates = new IdentityHashMap<>();
             FrameState current = topState;
             do {
                 for (Node n : current.virtualObjectMappings()) {
@@ -95,7 +95,7 @@ public class DebugInfoBuilder {
             boolean changed;
             do {
                 changed = false;
-                IdentityHashMap<VirtualObjectNode, CiVirtualObject> virtualObjectsCopy = new IdentityHashMap<VirtualObjectNode, CiVirtualObject>(virtualObjects);
+                IdentityHashMap<VirtualObjectNode, CiVirtualObject> virtualObjectsCopy = new IdentityHashMap<>(virtualObjects);
                 for (Entry<VirtualObjectNode, CiVirtualObject> entry : virtualObjectsCopy.entrySet()) {
                     if (entry.getValue().values() == null) {
                         VirtualObjectNode vobj = entry.getKey();

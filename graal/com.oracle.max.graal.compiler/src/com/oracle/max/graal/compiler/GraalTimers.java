@@ -51,8 +51,8 @@ public final class GraalTimers {
         public long subTime;
         public long startTime;
 
-        public final ArrayList<String> subNames = new ArrayList<String>();
-        public final ArrayList<TimingScope> subScopes = new ArrayList<TimingScope>();
+        public final ArrayList<String> subNames = new ArrayList<>();
+        public final ArrayList<TimingScope> subScopes = new ArrayList<>();
 
         public TimingScope(TimingScope parent) {
             this.parent = parent;
@@ -66,23 +66,23 @@ public final class GraalTimers {
             TTY.print(PREFIX.substring(PREFIX.length() - i * 8));
         }
 
-        private void printScope(int level) {
+        private void printScope(int indent) {
             TTY.println("%3.0f%% %6.2fs %5d", time * 100.0 / parent.time, time / 1000000000.0, count);
             if (!subNames.isEmpty() && (time - subTime) > 0) {
-                treeIndent(level + 1);
+                treeIndent(indent + 1);
                 TTY.print("%-40s", "self:");
                 TTY.println("%3.0f%% %6.2fs %5d", (time - subTime) * 100.0 / time, (time - subTime) / 1000000000.0, count);
             }
-            printSub(level + 1);
+            printSub(indent + 1);
         }
 
-        public void printSub(int level) {
+        public void printSub(int indent) {
             for (int i = 0; i < subNames.size(); i++) {
                 String name = subNames.get(i);
                 TimingScope scope = subScopes.get(i);
-                treeIndent(level);
+                treeIndent(indent);
                 TTY.print("%-40s", name + ":");
-                scope.printScope(level);
+                scope.printScope(indent);
             }
         }
 
@@ -184,8 +184,8 @@ public final class GraalTimers {
 
             rootScope.printSub(0);
 
-            TreeMap<String, Long> times = new TreeMap<String, Long>();
-            TreeMap<String, Long> counts = new TreeMap<String, Long>();
+            TreeMap<String, Long> times = new TreeMap<>();
+            TreeMap<String, Long> counts = new TreeMap<>();
             long total = rootScope.accumulateSub(times, counts);
 
             TTY.println();

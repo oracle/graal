@@ -76,7 +76,7 @@ public class IfBoxingEliminationTest extends GraphTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, identifyBoxingPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PhiStampPhase());
         identifyBoxingPhase.apply(graph);
-        Collection<Invoke> hints = new ArrayList<Invoke>();
+        Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }
@@ -85,7 +85,7 @@ public class IfBoxingEliminationTest extends GraphTest {
         new PhiStampPhase().apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         print(graph);
-        new BoxingEliminationPhase(runtime()).apply(graph);
+        new BoxingEliminationPhase().apply(graph);
         print(graph);
         new ExpandBoxingNodesPhase(pool).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);

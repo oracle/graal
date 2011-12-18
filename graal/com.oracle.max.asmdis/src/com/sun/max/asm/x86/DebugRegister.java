@@ -61,6 +61,6 @@ public enum DebugRegister implements EnumerableArgument<DebugRegister> {
         return DR0;
     }
 
-    public static final Enumerator<DebugRegister> ENUMERATOR = new Enumerator<DebugRegister>(DebugRegister.class);
+    public static final Enumerator<DebugRegister> ENUMERATOR = new Enumerator<>(DebugRegister.class);
 
 }

@@ -201,10 +201,10 @@ public abstract class Node implements Cloneable {
         }
     }
 
-    void initialize(Graph graph) {
+    void initialize(Graph newGraph) {
         assert assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
-        this.graph = graph;
-        graph.register(this);
+        this.graph = newGraph;
+        newGraph.register(this);
         usages = new NodeUsagesList();
         for (Node input : inputs()) {
             updateUsages(null, input);
@@ -424,7 +424,7 @@ public abstract class Node implements Cloneable {
      * visualizer). Subclasses overriding this method should add to the map returned by their superclass.
      */
     public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> map = new HashMap<Object, Object>();
+        Map<Object, Object> map = new HashMap<>();
         map.put("usageCount", usages.size());
         map.put("predecessorCount", predecessor == null ? 0 : 1);
         getNodeClass().getDebugProperties(this, map);

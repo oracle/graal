@@ -71,7 +71,7 @@ public class LoggingProxy<T> implements InvocationHandler {
      */
     public static <T> T getProxy(Class<T> interf, T delegate) {
         Class<?>[] interfaces = ReplacingStreams.getAllInterfaces(delegate.getClass());
-        Object obj = Proxy.newProxyInstance(interf.getClassLoader(), interfaces, new LoggingProxy<T>(delegate));
+        Object obj = Proxy.newProxyInstance(interf.getClassLoader(), interfaces, new LoggingProxy<>(delegate));
         return interf.cast(obj);
     }
 }

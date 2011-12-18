@@ -328,8 +328,8 @@ public class ChainedHashMapping<K, V> extends HashMapping<K, V> implements Mappi
         setThreshold();
     }
 
-    protected Entry<K, V> createEntry(int hashOfKey, K key, V value, Entry<K, V> next) {
-        return new DefaultEntry<K, V>(key, value, next);
+    protected Entry<K, V> createEntry(@SuppressWarnings("unused") int hashOfKey, K key, V value, Entry<K, V> next) {
+        return new DefaultEntry<>(key, value, next);
     }
 
     protected abstract class HashIterator<Type> implements Iterator<Type> {

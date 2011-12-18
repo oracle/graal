@@ -142,7 +142,7 @@ public class PoolBitSet<T extends PoolObject> extends PoolSet<T> {
 
     @Override
     public PoolSet<T> clone() {
-        return new PoolBitSet<T>(this);
+        return new PoolBitSet<>(this);
     }
 
     /**

@@ -38,6 +38,10 @@ import com.sun.max.program.*;
  */
 public class TestCaseClassSet extends LinkedHashSet<Class<? extends TestCase>> {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -2202526415279951882L;
     private final String defaultTestSuiteName;
 
     /**

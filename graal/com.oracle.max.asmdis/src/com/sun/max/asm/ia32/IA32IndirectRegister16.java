@@ -39,7 +39,7 @@ public enum IA32IndirectRegister16 implements GeneralRegister<IA32IndirectRegist
             BP_INDIRECT(IA32GeneralRegister16.BP.id(), "%bp", "bp"),
             BX_INDIRECT(IA32GeneralRegister16.BX.id(), "%bx", "bx");
 
-    public static final Enumerator<IA32IndirectRegister16> ENUMERATOR = new Enumerator<IA32IndirectRegister16>(IA32IndirectRegister16.class);
+    public static final Enumerator<IA32IndirectRegister16> ENUMERATOR = new Enumerator<>(IA32IndirectRegister16.class);
 
     private final int id;
     private final String externalValue;

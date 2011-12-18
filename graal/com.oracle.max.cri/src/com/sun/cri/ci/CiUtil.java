@@ -236,15 +236,6 @@ public class CiUtil {
         }
     }
 
-    // Stub so that there are fewer merging-related changes
-    // TODO remove
-    public static String format(String format, RiMethod method, boolean arg) throws IllegalFormatException {
-        return format(format, method);
-    }
-    public static String format(String format, RiField field, boolean arg) throws IllegalFormatException {
-        return format(format, field);
-    }
-
     /**
      * Gets a string for a given method formatted according to a given format specification. A format specification is
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
@@ -417,7 +408,8 @@ public class CiUtil {
     /**
      * Gets a stack trace element for a given method and bytecode index.
      */
-    public static StackTraceElement toStackTraceElement(RiMethod method, int bci) {
+    public static StackTraceElement toStackTraceElement(RiMethod method, @SuppressWarnings("unused") int bci) {
+        // TODO(tw): Look if we can use bci to get the line number.
         return new StackTraceElement(CiUtil.toJavaName(method.holder()), method.name(), null, -1);
     }
 
@@ -430,8 +422,6 @@ public class CiUtil {
     public static String toInternalName(String className) {
         return "L" + className.replace('.', '/') + ";";
     }
-
-    private static final Object[] NO_ARGUMENTS = {};
 
     /**
      * Creates a set that uses reference-equality instead of {@link Object#equals(Object)}
@@ -468,7 +458,7 @@ public class CiUtil {
     public static String tabulateValues(CiFrame frame) {
         int cols = Math.max(frame.numLocals, Math.max(frame.numStack, frame.numLocks));
         assert cols > 0;
-        ArrayList<Object> cells = new ArrayList<Object>();
+        ArrayList<Object> cells = new ArrayList<>();
         cells.add("");
         for (int i = 0; i < cols; i++) {
             cells.add(i);

@@ -37,7 +37,7 @@ public class PackageOptionType extends Option.Type<String> {
         this.superPackage = superPackage;
     }
 
-    private Class packageClass(String pkgName) {
+    private static Class packageClass(String pkgName) {
         try {
             return Class.forName(pkgName + ".Package");
         } catch (ClassNotFoundException e) {

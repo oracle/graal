@@ -27,23 +27,6 @@ import com.oracle.max.graal.graph.iterators.*;
 
 public abstract class NodeInputsIterable extends NodeIterable<Node> {
 
-    @SuppressWarnings("unused")
-    public int explicitCount() {
-        int count = 0;
-        for (Node node : this) {
-            count++;
-        }
-        return count;
-    }
-
-    public void replaceFirst(Node node, Node newNode) {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
-    public void replace(Node node, Node newNode) {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
     public abstract boolean contains(Node node);
 
     @Override

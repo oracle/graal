@@ -81,7 +81,7 @@ public class PhiResolver {
 
         PhiResolverNode(CiValue operand) {
             this.operand = operand;
-            destinations = new ArrayList<PhiResolverNode>(4);
+            destinations = new ArrayList<>(4);
         }
 
         @Override
@@ -106,13 +106,13 @@ public class PhiResolver {
 
     private CiValue temp;
 
-    private final ArrayList<PhiResolverNode> variableOperands = new ArrayList<PhiResolverNode>(3);
-    private final ArrayList<PhiResolverNode> otherOperands = new ArrayList<PhiResolverNode>(3);
+    private final ArrayList<PhiResolverNode> variableOperands = new ArrayList<>(3);
+    private final ArrayList<PhiResolverNode> otherOperands = new ArrayList<>(3);
 
     /**
      * Maps operands to nodes.
      */
-    private final HashMap<CiValue, PhiResolverNode> operandToNodeMap = new HashMap<CiValue, PhiResolverNode>();
+    private final HashMap<CiValue, PhiResolverNode> operandToNodeMap = new HashMap<>();
 
     public PhiResolver(LIRGenerator gen) {
         this.gen = gen;

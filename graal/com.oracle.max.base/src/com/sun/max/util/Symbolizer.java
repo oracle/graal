@@ -76,56 +76,59 @@ public interface Symbolizer<S extends Symbol> extends Iterable<S> {
          * @return a map from symbol name to symbol
          */
         public static <S extends Symbol> Map<String, S> toSymbolMap(Symbolizer<S> symbolizer) {
-            final Map<String, S> map = new HashMap<String, S>(symbolizer.numberOfValues());
+            final Map<String, S> map = new HashMap<>(symbolizer.numberOfValues());
             for (S symbol : symbolizer) {
                 map.put(symbol.name(), symbol);
             }
             return map;
         }
 
+        @SafeVarargs
         public static <S extends Symbol> Symbolizer<S> from(Class<S> symbolType, S... symbols) {
-            return new ListSymbolizer<S>(symbolType, Arrays.asList(symbols));
+            return new ListSymbolizer<>(symbolType, Arrays.asList(symbols));
         }
 
+        @SafeVarargs
         public static <S extends Symbol> Symbolizer<S> fromList(Class<S> symbolType, Iterable< ? extends S> symbols,
                         final S... additionalSymbols) {
-            final List<S> list = new ArrayList<S>(Arrays.asList(additionalSymbols));
+            final List<S> list = new ArrayList<>(Arrays.asList(additionalSymbols));
             for (S symbol : symbols) {
                 list.add(symbol);
             }
-            return new ListSymbolizer<S>(symbolType, list);
+            return new ListSymbolizer<>(symbolType, list);
         }
 
+        @SafeVarargs
         public static <S extends Symbol> Symbolizer<S> append(Symbolizer<S> symbolizer, S... symbols) {
             return fromList(symbolizer.type(), symbolizer, symbols);
         }
 
+        @SafeVarargs
         public static <S extends Symbol> Symbolizer<S> append(Class<S> symbolType, Symbolizer< ? extends S> symbolizer,
                         final S... symbols) {
             return fromList(symbolType, symbolizer, symbols);
         }
 
         public static <S extends Symbol> Symbolizer<S> initialize(Class staticNameFieldClass, Class<S> symbolType) {
-            final List<S> list = new ArrayList<S>();
+            final List<S> list = new ArrayList<>();
             final List<StaticFieldName> staticFieldNames = StaticFieldName.Static.initialize(staticNameFieldClass);
             for (StaticFieldName staticFieldName : staticFieldNames) {
                 if (symbolType.isInstance(staticFieldName)) {
                     list.add(symbolType.cast(staticFieldName));
                 }
             }
-            return new ListSymbolizer<S>(symbolType, list);
+            return new ListSymbolizer<>(symbolType, list);
         }
 
         public static <S extends Symbol> Symbolizer<S> initialize(Class<S> symbolType) {
             return initialize(symbolType, symbolType);
         }
 
-        @SuppressWarnings("unchecked")
         public static <S extends Symbol> Symbolizer<S> fromSymbolizer(Symbolizer<S> symbolizer, Predicate<S> predicate) {
             if (predicate == null) {
                 return symbolizer;
             }
-            final List<S> result = new LinkedList<S>();
+            final List<S> result = new LinkedList<>();
             for (S element : symbolizer) {
                 if (predicate.evaluate(element)) {
                     result.add(element);

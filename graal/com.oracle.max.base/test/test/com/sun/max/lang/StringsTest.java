@@ -111,13 +111,13 @@ public class StringsTest extends MaxTestCase {
         assertTrue(Strings.indexOfNonEscapedChar('"', " \" \" ", 10) == -1);
     }
 
-    private void assertSplitCommandEquals(String command, String... parts) {
+    private static void assertSplitCommandEquals(String command, String... parts) {
         final String[] parsedParts = Strings.splitCommand(command);
         final boolean result = Arrays.equals(parsedParts, parts);
         assertTrue(Utils.toString(parsedParts, " "), result);
     }
 
-    private void assertSplitCommandThrowsException(String command) {
+    private static void assertSplitCommandThrowsException(String command) {
         try {
             Strings.splitCommand(command);
             fail("command parsing should have thrown IllegalArgumentException: " + command);

@@ -81,7 +81,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
     }
 
 
-    public void callAlignment(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public static void callAlignment(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         if (GraalOptions.AlignCallsForPatching) {
             // make sure that the displacement word of the call ends up word aligned
             int offset = masm.codeBuffer.position();
@@ -92,7 +92,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
         }
     }
 
-    public static void callStub(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CompilerStub stub, CiKind resultKind, LIRDebugInfo info, CiValue result, CiValue... args) {
+    public static void callStub(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CompilerStub stub, LIRDebugInfo info, CiValue result, CiValue... args) {
         assert args.length == stub.inArgs.length;
         for (int i = 0; i < args.length; i++) {
             assert stub.inArgs[i].inCallerFrame();

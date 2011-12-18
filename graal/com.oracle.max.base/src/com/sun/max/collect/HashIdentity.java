@@ -45,7 +45,7 @@ public final class HashIdentity<T> implements HashEquivalence<T> {
         return System.identityHashCode(object);
     }
 
-    private static final HashIdentity identity = new HashIdentity<Object>();
+    private static final HashIdentity identity = new HashIdentity<>();
 
     public static <T> HashIdentity<T> instance(Class<HashIdentity<T>> type) {
         return Utils.cast(type, identity);

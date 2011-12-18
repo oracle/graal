@@ -33,7 +33,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     public CallTargetNode(ValueNode[] arguments) {
         super(StampFactory.illegal());
-        this.arguments = new NodeInputList<ValueNode>(this, arguments);
+        this.arguments = new NodeInputList<>(this, arguments);
     }
 
     public NodeInputList<ValueNode> arguments() {

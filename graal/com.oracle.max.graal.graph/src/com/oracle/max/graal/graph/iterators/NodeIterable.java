@@ -37,10 +37,10 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
         return this;
     }
     public <F extends T> FilteredNodeIterable<F> filter(Class<F> clazz) {
-        return new FilteredNodeIterable<T>(this).and(clazz);
+        return new FilteredNodeIterable<>(this).and(clazz);
     }
     public List<T> snapshot() {
-        ArrayList<T> list = new ArrayList<T>();
+        ArrayList<T> list = new ArrayList<>();
         for (T n : this) {
             list.add(n);
         }

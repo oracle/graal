@@ -123,7 +123,7 @@ public final class BlockMap {
 
         public FixedWithNextNode firstInstruction;
 
-        public ArrayList<Block> successors = new ArrayList<Block>(2);
+        public ArrayList<Block> successors = new ArrayList<>(2);
         public int normalSuccessors;
 
         private boolean visited;
@@ -140,7 +140,7 @@ public final class BlockMap {
         public Block copy() {
             try {
                 Block block = (Block) super.clone();
-                block.successors = new ArrayList<Block>(successors);
+                block.successors = new ArrayList<>(successors);
                 return block;
             } catch (CloneNotSupportedException e) {
                 throw new RuntimeException(e);
@@ -187,7 +187,7 @@ public final class BlockMap {
         exceptionHandlers = method.exceptionHandlers();
         this.blockMap = new Block[method.codeSize()];
         this.canTrap = new BitSet(blockMap.length);
-        this.blocks = new ArrayList<Block>();
+        this.blocks = new ArrayList<>();
         this.useBranchPrediction = useBranchPrediction;
     }
 
@@ -449,7 +449,7 @@ public final class BlockMap {
         predecessor.normalSuccessors = successors.length;
     }
 
-    private final HashSet<Block> jsrVisited = new HashSet<Block>();
+    private final HashSet<Block> jsrVisited = new HashSet<>();
 
     private void createJsrAlternatives(Block block) {
         jsrVisited.add(block);
@@ -480,7 +480,7 @@ public final class BlockMap {
                         clone = successor.jsrAlternatives.get(nextScope);
                     } else {
                         if (successor.jsrAlternatives == null) {
-                            successor.jsrAlternatives = new HashMap<JsrScope, Block>();
+                            successor.jsrAlternatives = new HashMap<>();
                         }
                         clone = successor.copy();
                         clone.jsrScope = nextScope;
@@ -503,7 +503,7 @@ public final class BlockMap {
         }
     }
 
-    private HashMap<RiExceptionHandler, ExceptionBlock> exceptionDispatch = new HashMap<RiExceptionHandler, ExceptionBlock>();
+    private HashMap<RiExceptionHandler, ExceptionBlock> exceptionDispatch = new HashMap<>();
 
     private Block makeExceptionDispatch(List<RiExceptionHandler> handlers, int index, int bci) {
         RiExceptionHandler handler = handlers.get(index);
@@ -534,7 +534,7 @@ public final class BlockMap {
             for (RiExceptionHandler h : this.exceptionHandlers) {
                 if (h.startBCI() <= bci && bci < h.endBCI()) {
                     if (handlers == null) {
-                        handlers = new ArrayList<RiExceptionHandler>();
+                        handlers = new ArrayList<>();
                     }
                     handlers.add(h);
                     if (h.isCatchAll()) {

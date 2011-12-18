@@ -145,7 +145,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
             }
             if (n != 0) {
                 sb.append(' ').append(mode.name().toLowerCase()).append("=(");
-                HashSet<String> operands = new HashSet<String>();
+                HashSet<String> operands = new HashSet<>();
                 for (int i = 0; i < n; i++) {
                     String operand = operandFmt.format(operandAt(mode, i));
                     if (!operands.contains(operand)) {
@@ -160,7 +160,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
             }
         }
 
-        appendDebugInfo(sb, operandFmt, info);
+        appendDebugInfo(sb, operandFmt);
 
         return sb.toString();
     }

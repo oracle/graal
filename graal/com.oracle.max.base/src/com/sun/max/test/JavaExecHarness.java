@@ -77,6 +77,10 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
                 throw new RuntimeException(e);
             }
         }
+        @Override
+        public int hashCode() {
+            return resolve().hashCode();
+        }
     }
 
     public class MethodCall extends CodeLiteral {
@@ -154,8 +158,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         }
         @Override
         public String failureMessage(TestCase testCase) {
-            final JavaTestCase javaTestCase = (JavaTestCase) testCase;
-            return inputToString(javaTestCase.clazz, run, false) + " failed with " + result + " (expected " + expect + ")";
+            return inputToString(run, false) + " failed with " + result + " (expected " + expect + ")";
         }
 
     }
@@ -189,9 +192,9 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
     public void parseTests(TestEngine engine, File file, Properties props) {
         try {
             // 1. find the class
-            final Class testClass = findClass(file, props);
+            final Class testClass = findClass(file);
             // 2. parse the runs
-            final List<Run> runs = parseRuns(testClass, file, props);
+            final List<Run> runs = parseRuns(props);
             if (runs != null) {
                 // 3. add a test case to the engine
                 engine.addTest(new JavaTestCase("exec", executor, file, testClass, runs, engine.loadingPackages()));
@@ -203,7 +206,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         }
     }
 
-    private Class findClass(File file, Properties props) throws Exception {
+    private static Class findClass(File file) throws Exception {
         final BufferedReader r = new BufferedReader(new FileReader(file));
 
         // search for the package statement in the file.
@@ -242,12 +245,12 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         throw ProgramError.unexpected("could not find package statement in " + file);
     }
 
-    private List<Run> parseRuns(Class testClass, File file, Properties props) {
+    private List<Run> parseRuns(Properties props) {
         final String rstr = props.getProperty("Runs");
         if (rstr == null) {
             return null;
         }
-        final List<Run> runs = new LinkedList<Run>();
+        final List<Run> runs = new LinkedList<>();
         final CharacterIterator i = new StringCharacterIterator(rstr);
         while (i.getIndex() < i.getEndIndex()) {
             runs.add(parseRun(i));
@@ -265,7 +268,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         // value=result
         Object[] vals = new Object[1];
         if (skipPeekAndEat(iterator, '(')) {
-            final List<Object> inputValues = new LinkedList<Object>();
+            final List<Object> inputValues = new LinkedList<>();
             if (!skipPeekAndEat(iterator, ')')) {
                 while (true) {
                     inputValues.add(parseValue(iterator));
@@ -316,7 +319,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         throw ProgramError.unexpected("invalid value at " + iterator.getIndex());
     }
 
-    private ProgramError raiseParseErrorAt(String message, CharacterIterator iterator) {
+    private static ProgramError raiseParseErrorAt(String message, CharacterIterator iterator) {
         final int errorIndex = iterator.getIndex();
         final StringBuilder sb = new StringBuilder(message).append(String.format(":%n"));
         iterator.setIndex(iterator.getBeginIndex());
@@ -331,7 +334,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         throw ProgramError.unexpected(sb.toString());
     }
 
-    private Object parseNumber(CharacterIterator iterator) {
+    private static Object parseNumber(CharacterIterator iterator) {
         // an integer.
         final StringBuilder buf = new StringBuilder();
 
@@ -392,14 +395,14 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         return Integer.valueOf(buf.toString(), radix);
     }
 
-    private void appendDigits(final StringBuilder buf, CharacterIterator iterator, int radix) {
+    private static void appendDigits(final StringBuilder buf, CharacterIterator iterator, int radix) {
         while (Character.digit(iterator.current(), radix) != -1) {
             buf.append(iterator.current());
             iterator.next();
         }
     }
 
-    private Class<? extends Throwable> parseException(CharacterIterator iterator) {
+    private static Class<? extends Throwable> parseException(CharacterIterator iterator) {
         final String exceptionName = parseCodeLiteral(iterator);
         try {
             return Class.forName(exceptionName).asSubclass(Throwable.class);
@@ -408,7 +411,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         }
     }
 
-    private String parseCodeLiteral(CharacterIterator iterator) {
+    private static String parseCodeLiteral(CharacterIterator iterator) {
         final StringBuilder buf = new StringBuilder();
         while (true) {
             final char ch = iterator.current();
@@ -422,12 +425,12 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         return buf.toString();
     }
 
-    private boolean skipPeekAndEat(CharacterIterator iterator, char c) {
+    private static boolean skipPeekAndEat(CharacterIterator iterator, char c) {
         skipWhitespace(iterator);
         return peekAndEat(iterator, c);
     }
 
-    private boolean peekAndEat(CharacterIterator iterator, char c) {
+    private static boolean peekAndEat(CharacterIterator iterator, char c) {
         if (iterator.current() == c) {
             iterator.next();
             return true;
@@ -435,7 +438,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         return false;
     }
 
-    private boolean peekAndEat(CharacterIterator iterator, String string) {
+    private static boolean peekAndEat(CharacterIterator iterator, String string) {
         final int indx = iterator.getIndex();
         for (int j = 0; j < string.length(); j++) {
             if (iterator.current() != string.charAt(j)) {
@@ -447,7 +450,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         return true;
     }
 
-    private void skipWhitespace(CharacterIterator iterator) {
+    private static void skipWhitespace(CharacterIterator iterator) {
         while (true) {
             if (!Character.isWhitespace(iterator.current())) {
                 break;
@@ -456,7 +459,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         }
     }
 
-    private void expectChar(CharacterIterator i, char c) {
+    private static void expectChar(CharacterIterator i, char c) {
         final char r = i.current();
         i.next();
         if (r != c) {
@@ -464,24 +467,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         }
     }
 
-    private char parseCharLiteral(CharacterIterator i) throws Exception {
-
-        expectChar(i, SQUOTE);
-
-        char ch;
-        if (peekAndEat(i, BACKSLASH)) {
-            ch = parseEscapeChar(i);
-        } else {
-            ch = i.current();
-            i.next();
-        }
-
-        expectChar(i, SQUOTE);
-
-        return ch;
-    }
-
-    private char parseEscapeChar(CharacterIterator i) {
+    private static char parseEscapeChar(CharacterIterator i) {
         final char c = i.current();
         switch (c) {
             case 'f':
@@ -524,7 +510,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         return c;
     }
 
-    private String parseStringLiteral(CharacterIterator i) {
+    private static String parseStringLiteral(CharacterIterator i) {
         final StringBuilder buffer = new StringBuilder(i.getEndIndex() - i.getBeginIndex() + 1);
 
         expectChar(i, QUOTE);
@@ -582,7 +568,7 @@ public class JavaExecHarness implements TestHarness<JavaExecHarness.JavaTestCase
         return accumul;
     }
 
-    public static String inputToString(Class testClass, Run run, boolean asJavaString) {
+    public static String inputToString(Run run, boolean asJavaString) {
         final StringBuilder buffer = new StringBuilder();
         if (asJavaString) {
             buffer.append(QUOTE);

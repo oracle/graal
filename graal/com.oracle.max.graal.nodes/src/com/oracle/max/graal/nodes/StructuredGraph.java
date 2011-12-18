@@ -60,9 +60,9 @@ public class StructuredGraph extends Graph {
     }
 
     @Override
-    public StructuredGraph copy(String name) {
-        StructuredGraph copy = new StructuredGraph(name);
-        HashMap<Node, Node> replacements = new HashMap<Node, Node>();
+    public StructuredGraph copy(String newName) {
+        StructuredGraph copy = new StructuredGraph(newName);
+        HashMap<Node, Node> replacements = new HashMap<>();
         replacements.put(start, copy.start);
         copy.addDuplicates(getNodes(), replacements);
         return copy;

@@ -46,7 +46,7 @@ public abstract class RiscInstructionDescriptionCreator extends InstructionDescr
         return new RiscInstructionDescription(specifications);
     }
 
-    private int firstStringIndex(List<Object> specifications) {
+    private static int firstStringIndex(List<Object> specifications) {
         for (int i = 0; i < specifications.size(); i++) {
             if (specifications.get(i) instanceof String) {
                 return i;
@@ -55,11 +55,11 @@ public abstract class RiscInstructionDescriptionCreator extends InstructionDescr
         throw ProgramError.unexpected("template instruction description without name");
     }
 
-    private void setFirstString(List<Object> specifications, String value) {
+    private static void setFirstString(List<Object> specifications, String value) {
         specifications.set(firstStringIndex(specifications), value);
     }
 
-    private void eliminateConstraintFor(Parameter parameter, List<Object> specifications) {
+    private static void eliminateConstraintFor(Parameter parameter, List<Object> specifications) {
         for (final Iterator iterator = specifications.iterator(); iterator.hasNext();) {
             final Object s = iterator.next();
             if (s instanceof InstructionConstraint) {
@@ -71,7 +71,7 @@ public abstract class RiscInstructionDescriptionCreator extends InstructionDescr
         }
     }
 
-    private boolean updateSpecifications(List<Object> specifications, Object pattern) {
+    private static boolean updateSpecifications(List<Object> specifications, Object pattern) {
         for (int i = 0; i < specifications.size(); i++) {
             final Object specification = specifications.get(i);
             if (specification.equals(pattern)) {
@@ -102,7 +102,7 @@ public abstract class RiscInstructionDescriptionCreator extends InstructionDescr
     }
 
     private RiscInstructionDescription createSyntheticInstructionDescription(String name, RiscTemplate template, Object[] patterns) {
-        final List<Object> specifications = new ArrayList<Object>(template.instructionDescription().specifications());
+        final List<Object> specifications = new ArrayList<>(template.instructionDescription().specifications());
         for (Object pattern : patterns) {
             if (!updateSpecifications(specifications, pattern)) {
                 // InstructionDescription with the same name, but different specifications, skip it:
@@ -125,11 +125,11 @@ public abstract class RiscInstructionDescriptionCreator extends InstructionDescr
      * @return the newly created instruction descriptions resulting from the substitution wrapped in a RiscInstructionDescriptionModifier
      */
     protected RiscInstructionDescriptionModifier synthesize(String name, String templateName, Object... patterns) {
-        final List<RiscInstructionDescription> instructionDescriptions = new ArrayList<RiscInstructionDescription>();
+        final List<RiscInstructionDescription> instructionDescriptions = new ArrayList<>();
         // Creating a new VariableSequence here prevents iterator comodification below:
         final List<? extends RiscTemplate> nameTemplates = templateCreator.nameToTemplates(templateName);
         if (!nameTemplates.isEmpty()) {
-            final List<RiscTemplate> templates = new ArrayList<RiscTemplate>(nameTemplates);
+            final List<RiscTemplate> templates = new ArrayList<>(nameTemplates);
             assert !templates.isEmpty();
             for (RiscTemplate template : templates) {
                 final RiscInstructionDescription instructionDescription = createSyntheticInstructionDescription(name, template, patterns);

@@ -30,6 +30,11 @@ package com.sun.cri.ci;
 public final class CiAddress extends CiValue {
 
     /**
+     *
+     */
+    private static final long serialVersionUID = -1003772042519945089L;
+
+    /**
      * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
      */
     public static final CiAddress Placeholder = new CiAddress(CiKind.Illegal, CiRegister.None.asValue());
@@ -93,23 +98,24 @@ public final class CiAddress extends CiValue {
     public CiAddress(CiKind kind, CiValue base, CiValue index, Scale scale, int displacement) {
         super(kind);
 
+        this.base = base;
         if (index.isConstant()) {
             long longIndex = ((CiConstant) index).asLong();
             long longDisp = displacement + longIndex * scale.value;
             if ((int) longIndex != longIndex || (int) longDisp != longDisp) {
                 throw new Error("integer overflow when computing constant displacement");
             }
-            displacement = (int) longDisp;
-            index = IllegalValue;
-            scale = Scale.Times1;
-        }
-        assert base.isIllegal() || base.isVariableOrRegister();
-        assert index.isIllegal() || index.isVariableOrRegister();
+            this.displacement = (int) longDisp;
+            this.index = IllegalValue;
+            this.scale = Scale.Times1;
+        } else {
+            assert base.isIllegal() || base.isVariableOrRegister();
+            assert index.isIllegal() || index.isVariableOrRegister();
 
-        this.base = base;
-        this.index = index;
-        this.scale = scale;
-        this.displacement = displacement;
+            this.index = index;
+            this.scale = scale;
+            this.displacement = displacement;
+        }
     }
 
     /**

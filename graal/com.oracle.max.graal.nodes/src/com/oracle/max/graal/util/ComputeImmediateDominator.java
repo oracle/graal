@@ -39,8 +39,8 @@ public final class ComputeImmediateDominator {
 
     public ComputeImmediateDominator(MergeNode dominated) {
         this.dominated = dominated;
-        this.toExplore = new LinkedList<FixedNode>();
-        this.speculativeExplore = new LinkedList<FixedNode>();
+        this.toExplore = new LinkedList<>();
+        this.speculativeExplore = new LinkedList<>();
         this.infoMap = dominated.graph().createNodeMap();
         fullInfo = new DominatorInfo(dominated, true);
 
@@ -165,8 +165,8 @@ public final class ComputeImmediateDominator {
             this.node = node;
             this.bits = new BitSet();
             this.ownBits = new BitSet();
-            this.children = new ArrayList<DominatorInfo>(2);
-            this.parents = new ArrayList<DominatorInfo>(2);
+            this.children = new ArrayList<>(2);
+            this.parents = new ArrayList<>(2);
             if (full) {
                 addOwnBits(0);
             }
@@ -180,8 +180,8 @@ public final class ComputeImmediateDominator {
             explored = true;
         }
 
-        public DominatorInfo createChild(FixedNode node) {
-            DominatorInfo di = new DominatorInfo(node, false);
+        public DominatorInfo createChild(FixedNode childNode) {
+            DominatorInfo di = new DominatorInfo(childNode, false);
             di.bits.or(bits);
             di.ownBits.or(ownBits);
             if (!children.isEmpty() || di.ownBits.isEmpty()) {
@@ -251,6 +251,11 @@ public final class ComputeImmediateDominator {
         @Override
         public String toString() {
             return bits + " (o" + ownBits + ") " + node;
+        }
+
+        @Override
+        public int hashCode() {
+            return bits.hashCode();
         }
     }
 }

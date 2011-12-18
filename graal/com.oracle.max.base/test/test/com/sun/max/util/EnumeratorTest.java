@@ -54,7 +54,7 @@ public class EnumeratorTest extends MaxTestCase {
             return value;
         }
         public Enumerator<NonSuccessiveEnum> enumerator() {
-            return new NonSuccessiveEnumerator<NonSuccessiveEnum>(NonSuccessiveEnum.class);
+            return new NonSuccessiveEnumerator<>(NonSuccessiveEnum.class);
         }
     }
 

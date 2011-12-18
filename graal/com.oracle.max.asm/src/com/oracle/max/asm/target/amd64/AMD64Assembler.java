@@ -688,10 +688,10 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(rax, dst);
     }
 
-    public final void jcc(ConditionFlag cc, int target, boolean forceDisp32) {
+    public final void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         int shortSize = 2;
         int longSize = 6;
-        long disp = target - codeBuffer.position();
+        long disp = jumpTarget - codeBuffer.position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
             // 0111 tttn #8-bit disp
             emitByte(0x70 | cc.value);
@@ -745,10 +745,10 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(rsp, adr);
     }
 
-    public final void jmp(int target, boolean forceDisp32) {
+    public final void jmp(int jumpTarget, boolean forceDisp32) {
         int shortSize = 2;
         int longSize = 5;
-        long disp = target - codeBuffer.position();
+        long disp = jumpTarget - codeBuffer.position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
             emitByte(0xEB);
             emitByte((int) ((disp - shortSize) & 0xFF));
@@ -1278,7 +1278,8 @@ public class AMD64Assembler extends AbstractAssembler {
         nop(1);
     }
 
-    public void nop(int i) {
+    public void nop(int count) {
+        int i = count;
         if (AsmOptions.UseNormalNop) {
             assert i > 0 : " ";
             // The fancy nops aren't currently recognized by debuggers making it a
@@ -2123,7 +2124,7 @@ public class AMD64Assembler extends AbstractAssembler {
     int prefixAndEncode(int regEnc, boolean byteinst) {
         if (regEnc >= 8) {
             emitByte(Prefix.REXB);
-            regEnc -= 8;
+            return regEnc - 8;
         } else if (byteinst && regEnc >= 4) {
             emitByte(Prefix.REX);
         }
@@ -2133,18 +2134,20 @@ public class AMD64Assembler extends AbstractAssembler {
     int prefixqAndEncode(int regEnc) {
         if (regEnc < 8) {
             emitByte(Prefix.REXW);
+            return regEnc;
         } else {
             emitByte(Prefix.REXWB);
-            regEnc -= 8;
+            return regEnc - 8;
         }
-        return regEnc;
     }
 
     int prefixAndEncode(int dstEnc, int srcEnc) {
         return prefixAndEncode(dstEnc, srcEnc, false);
     }
 
-    int prefixAndEncode(int dstEnc, int srcEnc, boolean byteinst) {
+    int prefixAndEncode(int dstEncoding, int srcEncoding, boolean byteinst) {
+        int srcEnc = srcEncoding;
+        int dstEnc = dstEncoding;
         if (dstEnc < 8) {
             if (srcEnc >= 8) {
                 emitByte(Prefix.REXB);
@@ -2172,7 +2175,9 @@ public class AMD64Assembler extends AbstractAssembler {
      * @param rmEnc the encoding of the r/m part of the ModRM-Byte
      * @return the lower 6 bits of the ModRM-Byte that should be emitted
      */
-    private int prefixqAndEncode(int regEnc, int rmEnc) {
+    private int prefixqAndEncode(int regEncoding, int rmEncoding) {
+        int rmEnc = rmEncoding;
+        int regEnc = regEncoding;
         if (regEnc < 8) {
             if (rmEnc < 8) {
                 emitByte(Prefix.REXW);
@@ -2929,8 +2934,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xC8);
         // appended:
         emitByte(imm16 & 0xff);
-        imm16 >>= 8;
-        emitByte(imm16 & 0xff);
+        emitByte((imm16 >> 8) & 0xff);
         emitByte(imm8);
     }
 

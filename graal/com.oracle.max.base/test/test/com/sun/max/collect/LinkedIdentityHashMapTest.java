@@ -62,7 +62,7 @@ public class LinkedIdentityHashMapTest extends MaxTestCase {
 
     public void test_serial() {
         initialize();
-        final LinkedIdentityHashMap<String, Integer> table = new LinkedIdentityHashMap<String, Integer>();
+        final LinkedIdentityHashMap<String, Integer> table = new LinkedIdentityHashMap<>();
         for (int i = 0; i < nKeys; i++) {
             assertEquals(table.get(keys[i]), null);
             table.put(keys[i], vals[i]);
@@ -72,7 +72,7 @@ public class LinkedIdentityHashMapTest extends MaxTestCase {
 
     public void test_random() {
         initialize();
-        final LinkedIdentityHashMap<String, Integer> table = new LinkedIdentityHashMap<String, Integer>();
+        final LinkedIdentityHashMap<String, Integer> table = new LinkedIdentityHashMap<>();
         final Random random = new Random();
         final int[] keyOrder = new int[nKeys];
         for (int i = 0; i < nKeys; i++) {
@@ -94,8 +94,8 @@ public class LinkedIdentityHashMapTest extends MaxTestCase {
 
     public void test_equals() {
         initialize();
-        final LinkedIdentityHashMap<String, Integer> table1 = new LinkedIdentityHashMap<String, Integer>();
-        final LinkedIdentityHashMap<String, Integer> table2 = new LinkedIdentityHashMap<String, Integer>();
+        final LinkedIdentityHashMap<String, Integer> table1 = new LinkedIdentityHashMap<>();
+        final LinkedIdentityHashMap<String, Integer> table2 = new LinkedIdentityHashMap<>();
         assertTrue(table1.equals(table2));
         assertTrue(table2.equals(table1));
         for (int i = 0; i < nKeys; i++) {

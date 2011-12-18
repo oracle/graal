@@ -41,9 +41,9 @@ public class AMD64XirAssembler extends CiXirAssembler {
 
     @Override
     protected XirTemplate buildTemplate(String name, boolean isStub) {
-        List<XirInstruction> fastPath = new ArrayList<XirInstruction>(instructions.size());
-        List<XirInstruction> slowPath = new ArrayList<XirInstruction>();
-        List<XirTemplate> calleeTemplates = new ArrayList<XirTemplate>();
+        List<XirInstruction> fastPath = new ArrayList<>(instructions.size());
+        List<XirInstruction> slowPath = new ArrayList<>();
+        List<XirTemplate> calleeTemplates = new ArrayList<>();
 
         int flags = 0;
 
@@ -58,7 +58,7 @@ public class AMD64XirAssembler extends CiXirAssembler {
         XirOperand fixedRCX = null;
         XirOperand fixedRSI = null;
         XirOperand fixedRDI = null;
-        HashSet<XirLabel> boundLabels = new HashSet<XirLabel>();
+        HashSet<XirLabel> boundLabels = new HashSet<>();
 
         for (XirInstruction i : instructions) {
             boolean appended = false;

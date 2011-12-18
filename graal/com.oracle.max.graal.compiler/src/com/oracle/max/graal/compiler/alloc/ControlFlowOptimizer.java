@@ -44,8 +44,8 @@ final class ControlFlowOptimizer {
         List<LIRBlock> code = ir.codeEmittingOrder();
         //optimizer.reorderShortLoops(code);
         optimizer.deleteEmptyBlocks(code);
-        optimizer.deleteUnnecessaryJumps(code);
-        optimizer.deleteJumpsToReturn(code);
+        ControlFlowOptimizer.deleteUnnecessaryJumps(code);
+        ControlFlowOptimizer.deleteJumpsToReturn(code);
     }
 
     private final LIR ir;
@@ -141,7 +141,7 @@ final class ControlFlowOptimizer {
         assert verify(code);
     }
 
-    private void deleteUnnecessaryJumps(List<LIRBlock> code) {
+    private static void deleteUnnecessaryJumps(List<LIRBlock> code) {
         // skip the last block because there a branch is always necessary
         for (int i = code.size() - 2; i >= 0; i--) {
             LIRBlock block = code.get(i);
@@ -175,7 +175,7 @@ final class ControlFlowOptimizer {
         assert verify(code);
     }
 
-    private void deleteJumpsToReturn(List<LIRBlock> code) {
+    private static void deleteJumpsToReturn(List<LIRBlock> code) {
         for (int i = code.size() - 1; i >= 0; i--) {
             LIRBlock block = code.get(i);
             List<LIRInstruction> curInstructions = block.lir();
@@ -213,7 +213,7 @@ final class ControlFlowOptimizer {
         }
     }
 
-    private boolean verify(List<LIRBlock> code) {
+    private static boolean verify(List<LIRBlock> code) {
         for (LIRBlock block : code) {
             for (Block sux : block.getSuccessors()) {
                 assert code.contains(sux) : "missing successor from: " + block + "to: " + sux;

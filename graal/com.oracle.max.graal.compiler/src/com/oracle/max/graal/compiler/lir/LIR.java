@@ -78,8 +78,8 @@ public class LIR {
         this.startBlock = startBlock;
         this.valueToBlock = valueToBlock;
 
-        slowPaths = new ArrayList<SlowPath>();
-        deoptimizationStubs = new ArrayList<SlowPath>();
+        slowPaths = new ArrayList<>();
+        deoptimizationStubs = new ArrayList<>();
     }
 
     /**
@@ -155,7 +155,7 @@ public class LIR {
         }
     }
 
-    private void emitOp(TargetMethodAssembler tasm, LIRInstruction op) {
+    private static void emitOp(TargetMethodAssembler tasm, LIRInstruction op) {
         try {
             try {
                 op.emitCode(tasm);

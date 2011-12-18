@@ -65,6 +65,9 @@ public abstract class OperandField<Argument_Type extends Argument> extends RiscF
         return signDependentOperations.minArgumentValue(bitRange());
     }
 
+    /**
+     * @throws AssemblyException
+     */
     public int assemble(int value) throws AssemblyException {
         return signDependentOperations.assemble(value, bitRange());
     }
@@ -148,7 +151,7 @@ public abstract class OperandField<Argument_Type extends Argument> extends RiscF
     }
 
     public OperandField<Argument_Type> withExcludedDisassemblerTestArguments(Argument... arguments) {
-        return withExcludedDisassemblerTestArguments(new HashSet<Argument>(Arrays.asList(arguments)));
+        return withExcludedDisassemblerTestArguments(new HashSet<>(Arrays.asList(arguments)));
     }
 
     public Set<Argument> excludedDisassemblerTestArguments() {
@@ -164,7 +167,7 @@ public abstract class OperandField<Argument_Type extends Argument> extends RiscF
     }
 
     public OperandField<Argument_Type> withExcludedExternalTestArguments(Argument... arguments) {
-        return withExcludedExternalTestArguments(new HashSet<Argument>(Arrays.asList(arguments)));
+        return withExcludedExternalTestArguments(new HashSet<>(Arrays.asList(arguments)));
     }
 
     public Set<Argument> excludedExternalTestArguments() {

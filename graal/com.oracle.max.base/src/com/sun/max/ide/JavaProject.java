@@ -66,7 +66,7 @@ public final class JavaProject {
      */
     public static Classpath getClassPath(Class projClass, boolean includeDependencies) {
         String classfile = projClass.getName().replace('.', '/') + ".class";
-        ArrayList<Entry> classPathEntries = new ArrayList<Entry>();
+        ArrayList<Entry> classPathEntries = new ArrayList<>();
         Entry projEntry = null;
         for (Entry entry : Classpath.fromSystem().entries()) {
             if (entry.contains(classfile)) {
@@ -162,7 +162,7 @@ public final class JavaProject {
      */
     public static Classpath getSourcePath(Class projClass, boolean includeDependencies) {
         final Classpath classPath = getClassPath(projClass, includeDependencies);
-        final List<String> sourcePath = new LinkedList<String>();
+        final List<String> sourcePath = new LinkedList<>();
         for (Entry entry : classPath.entries()) {
             WorkspaceFinder finder = new WorkspaceFinder();
             finder.deriveWorkspace(entry.file());

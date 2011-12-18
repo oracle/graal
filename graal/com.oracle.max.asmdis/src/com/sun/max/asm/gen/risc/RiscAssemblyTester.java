@@ -49,7 +49,7 @@ public abstract class RiscAssemblyTester<Template_Type extends RiscTemplate>
 
     @Override
     protected String disassembleFields(Template_Type template, byte[] assembledInstruction) {
-        return new RiscFieldDisassembler<Template_Type>(template, assembledInstruction).toString();
+        return new RiscFieldDisassembler<>(template, assembledInstruction).toString();
     }
 
     @Override

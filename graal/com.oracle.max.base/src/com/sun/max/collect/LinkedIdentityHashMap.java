@@ -30,7 +30,11 @@ import com.sun.max.*;
  */
 public class LinkedIdentityHashMap<K, V> extends IdentityHashMap<K, V> implements Iterable<K> {
 
-    private final LinkedList<K> order = new LinkedList<K>();
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -8084814503481369783L;
+    private final LinkedList<K> order = new LinkedList<>();
 
     public LinkedIdentityHashMap() {
     }

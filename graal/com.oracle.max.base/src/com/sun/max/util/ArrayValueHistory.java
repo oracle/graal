@@ -37,7 +37,7 @@ public final class ArrayValueHistory<E> {
     private int age = -1;
 
     public ArrayValueHistory(int limit) {
-        this.generations = new ArrayDeque<E>();
+        this.generations = new ArrayDeque<>();
         this.limit = limit;
     }
 

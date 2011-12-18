@@ -33,6 +33,10 @@ import com.sun.cri.ri.*;
  */
 public final class HotSpotTypePrimitive extends HotSpotType implements RiResolvedType {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -6208552348908071473L;
     private CiKind kind;
 
 

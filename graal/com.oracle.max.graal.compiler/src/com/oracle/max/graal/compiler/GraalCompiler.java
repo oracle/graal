@@ -36,7 +36,7 @@ import com.sun.cri.xir.*;
 
 public class GraalCompiler {
 
-    public final Map<Object, CompilerStub> stubs = new HashMap<Object, CompilerStub>();
+    public final Map<Object, CompilerStub> stubs = new HashMap<>();
 
     public final GraalContext context;
 

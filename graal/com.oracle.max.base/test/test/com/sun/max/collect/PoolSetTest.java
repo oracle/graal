@@ -59,7 +59,7 @@ public class PoolSetTest extends MaxTestCase {
     }
 
     public void test_emptyPoolSet() {
-        final Pool<TestElement> emptyPool = new ArrayPool<TestElement>();
+        final Pool<TestElement> emptyPool = new ArrayPool<>();
         final PoolSet<TestElement> poolSet = PoolSet.noneOf(emptyPool);
         assertSame(poolSet.pool(), emptyPool);
         assertEquals(poolSet.size(), 0);
@@ -84,7 +84,7 @@ public class PoolSetTest extends MaxTestCase {
             for (int i = 0; i < numElems; i++) {
                 elems[i] = new TestElement(i);
             }
-            pool = new ArrayPool<TestElement>(elems);
+            pool = new ArrayPool<>(elems);
             runnable.run();
         }
     }

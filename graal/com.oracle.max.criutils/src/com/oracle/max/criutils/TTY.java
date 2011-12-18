@@ -102,16 +102,16 @@ public class TTY {
             // In case initialize() was not called.
             cachedOut = System.out;
         }
-        PrintStream out = cachedOut;
+        PrintStream newOut = cachedOut;
         String value = System.getProperty(MAX_TTY_LOG_FILE_PROPERTY);
         if (value != null) {
             try {
-                out = new PrintStream(new FileOutputStream(value));
+                newOut = new PrintStream(new FileOutputStream(value));
             } catch (FileNotFoundException e) {
                 System.err.println("Could not open log file " + value + ": " + e);
             }
         }
-        return new LogStream(out);
+        return new LogStream(newOut);
     }
 
     private static final ThreadLocal<LogStream> out = new ThreadLocal<LogStream>() {
@@ -287,7 +287,7 @@ public class TTY {
     private static String printMap(Map<?, ?> m) {
         StringBuilder sb = new StringBuilder();
 
-        List<String> keys = new ArrayList<String>();
+        List<String> keys = new ArrayList<>();
         for (Object key : m.keySet()) {
             keys.add((String) key);
         }
@@ -301,14 +301,6 @@ public class TTY {
         }
 
         return sb.toString();
-    }
-
-    private static void printField(String fieldName, long value) {
-        TTY.print("    " + fieldName + " = " + value + "\n");
-    }
-
-    private static void printField(String fieldName, double value) {
-        TTY.print("    " + fieldName + " = " + value + "\n");
     }
 
     public static void flush() {

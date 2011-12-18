@@ -94,7 +94,6 @@ public class CiCalleeSaveLayout {
             assert offset <= size;
             this.size = size;
         }
-        size = this.size;
 
         this.regNumToIndex = new int[maxRegNum + 1];
         this.indexToReg = offset == 0 ? new CiRegister[0] : new CiRegister[offset / slotSize];

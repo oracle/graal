@@ -64,8 +64,8 @@ public abstract class X86Parameter extends X86Operand implements Parameter {
         this.argumentRange = argumentRange;
     }
 
-    private Set<Argument> excludedDisassemblerTestArguments = new HashSet<Argument>();
-    private Set<Argument> excludedExternalTestArguments = new HashSet<Argument>();
+    private Set<Argument> excludedDisassemblerTestArguments = new HashSet<>();
+    private Set<Argument> excludedExternalTestArguments = new HashSet<>();
 
     public void excludeTestArguments(TestArgumentExclusion testArgumentExclusion) {
         switch (testArgumentExclusion.component()) {

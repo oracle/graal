@@ -40,12 +40,14 @@ public enum AMD64MathIntrinsicOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                CiValue input = input(0);
-                emit(tasm, masm, tasm.asDoubleReg(result()), tasm.asDoubleReg(input));
+                emit(tasm, masm, tasm.asDoubleReg(result()), tasm.asDoubleReg(input(0)));
             }
         };
     }
 
+    /**
+     * @param tasm
+     */
     private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiRegister result, CiRegister input) {
         switch (this) {
             case SQRT:  masm.sqrtsd(result, input); break;

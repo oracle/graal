@@ -37,6 +37,11 @@ import javax.swing.border.*;
 public final class ThrowableDialog extends JDialog {
 
     /**
+     * 
+     */
+    private static final long serialVersionUID = 4566345464169636472L;
+
+    /**
      * Creates a dialog to display the details of an exception and makes it visible.
      *
      * @param throwable the exception whose details are being displayed
@@ -151,6 +156,7 @@ public final class ThrowableDialog extends JDialog {
 
     // Test code
 
+    @SuppressWarnings("unused")
     public static void main(String[] args) {
         try {
             recurse(0);

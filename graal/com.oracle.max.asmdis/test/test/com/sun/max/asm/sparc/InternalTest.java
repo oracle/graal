@@ -61,7 +61,7 @@ public class InternalTest extends MaxTestCase {
         junit.textui.TestRunner.run(InternalTest.class);
     }
 
-    private byte[] assemble(SPARCAssembler asm) throws IOException, AssemblyException {
+    private static byte[] assemble(SPARCAssembler asm) throws AssemblyException {
         asm.rd(StateRegister.PC, G1);
 
         asm.add(G0, I1, O2);
@@ -101,7 +101,7 @@ public class InternalTest extends MaxTestCase {
         return asm.toByteArray();
     }
 
-    private void disassemble(SPARCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
+    private static void disassemble(SPARCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
     }

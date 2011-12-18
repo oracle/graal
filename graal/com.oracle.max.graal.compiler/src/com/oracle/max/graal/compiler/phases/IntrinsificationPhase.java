@@ -51,7 +51,6 @@ public class IntrinsificationPhase extends Phase {
         tryIntrinsify(invoke, target, runtime);
     }
 
-    @SuppressWarnings("unchecked")
     public static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
         StructuredGraph intrinsicGraph = (StructuredGraph) target.compilerStorage().get(Graph.class);
         if (intrinsicGraph == null) {

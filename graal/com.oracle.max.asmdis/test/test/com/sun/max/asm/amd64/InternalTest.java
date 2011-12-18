@@ -61,7 +61,7 @@ public class InternalTest extends MaxTestCase {
         junit.textui.TestRunner.run(InternalTest.class);
     }
 
-    private void disassemble(long startAddress, byte[] bytes) throws IOException, AssemblyException {
+    private static void disassemble(long startAddress, byte[] bytes) throws IOException, AssemblyException {
         final AMD64Disassembler disassembler = new AMD64Disassembler(startAddress, null);
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
@@ -91,7 +91,7 @@ public class InternalTest extends MaxTestCase {
 
     }
 
-    private byte[] assemble1(long startAddress) throws IOException, AssemblyException {
+    private static byte[] assemble1(long startAddress) throws AssemblyException {
         final AMD64GeneralRegister64 myGPR = RAX;
         final AMD64Assembler asm = new AMD64Assembler(startAddress);
         final Label startLabel = new Label();
@@ -143,7 +143,7 @@ public class InternalTest extends MaxTestCase {
         disassemble(startAddress, bytes);
     }
 
-    private byte[] assemble2(long startAddress) throws IOException, AssemblyException {
+    private static byte[] assemble2(long startAddress) throws AssemblyException {
         final AMD64Assembler asm = new AMD64Assembler(startAddress);
 
         final Label loop = new Label();

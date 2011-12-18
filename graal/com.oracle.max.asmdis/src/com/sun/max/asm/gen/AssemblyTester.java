@@ -228,7 +228,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
                     if (argumentRange == null || !argumentRange.appliesInternally()) {
                         testArgumentIterators[i] = argumentsIterable.iterator();
                     } else {
-                        testArgumentIterators[i] = new FilterIterator<Argument>(argumentsIterable.iterator(), new Predicate<Argument>() {
+                        testArgumentIterators[i] = new FilterIterator<>(argumentsIterable.iterator(), new Predicate<Argument>() {
                             public boolean evaluate(Argument argument) {
                                 return argumentRange.includes(argument);
                             }
@@ -283,7 +283,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
     private static final String SOURCE_EXTENSION = ".s";
     private static final String BINARY_EXTENSION = ".o";
 
-    private boolean findExcludedDisassemblerTestArgument(List<? extends Parameter> parameters, List<Argument> arguments) {
+    private static boolean findExcludedDisassemblerTestArgument(List<? extends Parameter> parameters, List<Argument> arguments) {
         for (int i = 0; i < parameters.size(); i++) {
             if (parameters.get(i).excludedDisassemblerTestArguments().contains(arguments.get(i))) {
                 return true;
@@ -292,7 +292,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
         return false;
     }
 
-    private boolean findExcludedExternalTestArgument(List<? extends Parameter> parameters, List<Argument> arguments) {
+    private static boolean findExcludedExternalTestArgument(List<? extends Parameter> parameters, List<Argument> arguments) {
         for (int i = 0; i < parameters.size(); i++) {
             final Parameter parameter = parameters.get(i);
             if (parameter.excludedExternalTestArguments().contains(arguments.get(i))) {
@@ -403,7 +403,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
      *
      * @param command  the command line to execute
      */
-    private void exec(String command) throws IOException, InterruptedException {
+    private static void exec(String command) throws IOException, InterruptedException {
         exec(command, System.out, System.err, System.in);
     }
 
@@ -416,7 +416,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
      * @param err   the stream to which standard error output will be directed
      * @param in    the stream from which standard input will be read
      */
-    private void exec(String command, OutputStream out, OutputStream err, InputStream in) throws IOException, InterruptedException {
+    private static void exec(String command, OutputStream out, OutputStream err, InputStream in) throws IOException, InterruptedException {
         final Process process = Runtime.getRuntime().exec(command);
         try {
             final Redirector stderr = Streams.redirect(process, process.getErrorStream(), err, command + " [stderr]", 50);
@@ -499,7 +499,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
      * It would have been much more clean to override 'equals()' of those argument classes,
      * but they are enums and Java predeclares methods inherited via Enum final :-(
      */
-    private boolean equals(List<Argument> arguments1, List<Argument> arguments2) {
+    private static boolean equals(List<Argument> arguments1, List<Argument> arguments2) {
         if (arguments1.size() != arguments2.size()) {
             return false;
         }
@@ -580,7 +580,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
         disassemblyStream.close();
     }
 
-    private void testTemplate(final Template_Type template, List<File> temporaryFiles) throws IOException, InterruptedException, AssemblyException {
+    private void testTemplate(final Template_Type template, List<File> temporaryFiles) throws IOException, AssemblyException {
         final boolean testingExternally = components.contains(AssemblyTestComponent.EXTERNAL_ASSEMBLER) && template.isExternallyTestable();
 
         // Process legal test cases
@@ -610,7 +610,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
             assembly().assemble(assembler, template, argumentList);
             final byte[] internalResult = assembler.toByteArray();
             if (Trace.hasLevel(3)) {
-                Trace.line(3, "assembleInternally[" + testCaseNumber + "]: " + assembly().createMethodCallString(template, argumentList) + " = " + DisassembledInstruction.toHexString(internalResult));
+                Trace.line(3, "assembleInternally[" + testCaseNumber + "]: " + Assembly.createMethodCallString(template, argumentList) + " = " + DisassembledInstruction.toHexString(internalResult));
             }
             if (components.contains(AssemblyTestComponent.DISASSEMBLER) && template.isDisassemblable() &&
                     !findExcludedDisassemblerTestArgument(template.parameters(), argumentList)) {
@@ -640,12 +640,12 @@ public abstract class AssemblyTester<Template_Type extends Template> {
 
         // Process illegal test cases
         int illegalTestCaseNumber = 0;
-        final Set<String> uniqueExceptionMessages = new HashSet<String>();
+        final Set<String> uniqueExceptionMessages = new HashSet<>();
         for (TestCaseLegality testCaseLegality : new TestCaseLegality[]{TestCaseLegality.ILLEGAL_BY_CONSTRAINT, TestCaseLegality.ILLEGAL_BY_ARGUMENT}) {
             for (final ArgumentListIterator iterator = new ArgumentListIterator(template, testCaseLegality); iterator.hasNext();) {
                 final List<Argument> argumentList = iterator.next();
                 final Assembler assembler = createTestAssembler();
-                Trace.line(3, "assembleInternally-negative[" + illegalTestCaseNumber + "]: " + assembly().createMethodCallString(template, argumentList));
+                Trace.line(3, "assembleInternally-negative[" + illegalTestCaseNumber + "]: " + Assembly.createMethodCallString(template, argumentList));
                 try {
                     assembly().assemble(assembler, template, argumentList);
                 } catch (IllegalArgumentException e) {
@@ -716,9 +716,9 @@ public abstract class AssemblyTester<Template_Type extends Template> {
         }
         final ThreadPoolExecutor compilerService = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberOfWorkerThreads);
 
-        final CompletionService<Template_Type> compilationCompletionService = new ExecutorCompletionService<Template_Type>(compilerService);
+        final CompletionService<Template_Type> compilationCompletionService = new ExecutorCompletionService<>(compilerService);
         long submittedTests = 0;
-        final List<Template_Type> errors = new LinkedList<Template_Type>();
+        final List<Template_Type> errors = new LinkedList<>();
         for (final Template_Type template : assembly().templates()) {
             if (template.serial() > endTemplateSerial) {
                 break;
@@ -729,7 +729,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
                     ++submittedTests;
                     compilationCompletionService.submit(new Callable<Template_Type>() {
                         public Template_Type call() {
-                            final List<File> temporaryFiles = new ArrayList<File>();
+                            final List<File> temporaryFiles = new ArrayList<>();
                             try {
                                 testTemplate(template, temporaryFiles);
                             } catch (Throwable throwable) {
@@ -791,7 +791,7 @@ public abstract class AssemblyTester<Template_Type extends Template> {
      *            where to print the generate source. The caller takes responsibility for closing the stream.
      */
     public void createExternalSource(int startTemplateSerial, int endTemplateSerial, IndentWriter stream) {
-        final List<Template_Type> errors = new LinkedList<Template_Type>();
+        final List<Template_Type> errors = new LinkedList<>();
 
         for (Template_Type template : assembly().templates()) {
             if (template.serial() > endTemplateSerial) {

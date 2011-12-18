@@ -43,9 +43,7 @@ public enum AMD64CompareOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, CiValue.IllegalValue, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                CiValue left = input(0);
-                CiValue right = input(1);
-                emit(tasm, masm, left, right);
+                emit(tasm, masm, input(0), input(1));
             }
 
             @Override

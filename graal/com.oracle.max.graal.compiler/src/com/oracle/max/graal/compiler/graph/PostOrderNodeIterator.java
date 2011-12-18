@@ -38,8 +38,8 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
     public PostOrderNodeIterator(FixedNode start, T initialState) {
         visitedEnds = start.graph().createNodeBitMap();
-        nodeQueue = new ArrayDeque<FixedNode>();
-        nodeStates = new IdentityHashMap<FixedNode, T>();
+        nodeQueue = new ArrayDeque<>();
+        nodeStates = new IdentityHashMap<>();
         this.start = start;
         this.state = initialState;
     }
@@ -123,7 +123,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
             if (node instanceof MergeNode) {
                 MergeNode merge = (MergeNode) node;
                 state = nodeStates.get(merge.endAt(0)).clone();
-                ArrayList<T> states = new ArrayList<T>(merge.endCount() - 1);
+                ArrayList<T> states = new ArrayList<>(merge.endCount() - 1);
                 for (int i = 1; i < merge.endCount(); i++) {
                     T other = nodeStates.get(merge.endAt(i));
                     assert other != null;

@@ -129,7 +129,7 @@ public class TargetMethodAssembler {
         if (info != null) {
             if (info.exceptionEdge != null) {
                 if (exceptionInfoList == null) {
-                    exceptionInfoList = new ArrayList<ExceptionInfo>(4);
+                    exceptionInfoList = new ArrayList<>(4);
                 }
                 exceptionInfoList.add(new ExceptionInfo(pcOffset, info.exceptionEdge, info.topFrame.bci));
             }
@@ -146,18 +146,18 @@ public class TargetMethodAssembler {
         }
     }
 
-    public void recordDirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
+    public void recordDirectCall(int posBefore, int posAfter, Object callTarget, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, posAfter - posBefore, target, debugInfo, true);
+        targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
     }
 
-    public void recordIndirectCall(int posBefore, int posAfter, Object target, LIRDebugInfo info) {
+    public void recordIndirectCall(int posBefore, int posAfter, Object callTarget, LIRDebugInfo info) {
         CiDebugInfo debugInfo = info != null ? info.debugInfo() : null;
         assert lastSafepointPos < posAfter;
         lastSafepointPos = posAfter;
-        targetMethod.recordCall(posBefore, posAfter - posBefore, target, debugInfo, false);
+        targetMethod.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
     }
 
     public void recordSafepoint(int pos, LIRDebugInfo info) {

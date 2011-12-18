@@ -69,8 +69,8 @@ final class RegisterVerifier {
 
     RegisterVerifier(LinearScan allocator) {
         this.allocator = allocator;
-        workList = new ArrayList<LIRBlock>(16);
-        this.savedStates = new ArrayMap<Interval[]>();
+        workList = new ArrayList<>(16);
+        this.savedStates = new ArrayMap<>();
 
     }
 
@@ -182,11 +182,11 @@ final class RegisterVerifier {
         }
     }
 
-    Interval[] copy(Interval[] inputState) {
+    static Interval[] copy(Interval[] inputState) {
         return inputState.clone();
     }
 
-    void statePut(Interval[] inputState, CiValue location, Interval interval) {
+    static void statePut(Interval[] inputState, CiValue location, Interval interval) {
         if (location != null && location.isRegister()) {
             CiRegister reg = location.asRegister();
             int regNum = reg.number;
@@ -204,7 +204,7 @@ final class RegisterVerifier {
         }
     }
 
-    boolean checkState(Interval[] inputState, CiValue reg, Interval interval) {
+    static boolean checkState(Interval[] inputState, CiValue reg, Interval interval) {
         if (reg != null && reg.isRegister()) {
             if (inputState[reg.asRegister().number] != interval) {
                 throw new CiBailout("!! Error in register allocation: register " + reg + " does not contain interval " + interval.operand + " but interval " + inputState[reg.asRegister().number]);

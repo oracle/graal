@@ -110,18 +110,18 @@ public class HexCodeFile {
     /**
      * Map from a machine code position to a list of comments for the position.
      */
-    public final Map<Integer, List<String>> comments = new TreeMap<Integer, List<String>>();
+    public final Map<Integer, List<String>> comments = new TreeMap<>();
 
     /**
      * Map from a machine code position to a comment for the operands of the instruction at the position.
      */
-    public final Map<Integer, String> operandComments = new TreeMap<Integer, String>();
+    public final Map<Integer, String> operandComments = new TreeMap<>();
 
     public final byte[] code;
 
-    public final ArrayList<JumpTable> jumpTables = new ArrayList<JumpTable>();
+    public final ArrayList<JumpTable> jumpTables = new ArrayList<>();
 
-    public final ArrayList<LookupTable> lookupTables = new ArrayList<LookupTable>();
+    public final ArrayList<LookupTable> lookupTables = new ArrayList<>();
 
     public final String isa;
 
@@ -205,7 +205,7 @@ public class HexCodeFile {
     public void addComment(int pos, String comment) {
         List<String> list = comments.get(pos);
         if (list == null) {
-            list = new ArrayList<String>();
+            list = new ArrayList<>();
             comments.put(pos, list);
         }
         list.add(encodeString(comment));
@@ -246,10 +246,11 @@ public class HexCodeFile {
      */
     public static String encodeString(String s) {
         int index;
-        while ((index = s.indexOf(SECTION_DELIM)) != -1) {
-            s = s.substring(0, index) + " < |@" + s.substring(index + SECTION_DELIM.length());
+        String result = s;
+        while ((index = result.indexOf(SECTION_DELIM)) != -1) {
+            result = result.substring(0, index) + " < |@" + result.substring(index + SECTION_DELIM.length());
         }
-        return s;
+        return result;
     }
 
     /**

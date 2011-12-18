@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.max.graal.graph.*;
@@ -102,36 +101,13 @@ public class SnippetIntrinsificationPhase extends Phase {
         return nodeConstructorArguments;
     }
 
-    private Method findMethod(RiResolvedMethod target, Class< ? >[] parameterTypes) {
-        Class< ? > c = target.holder().toJava();
-        if (c != null) {
-            try {
-                return c.getDeclaredMethod(target.name(), parameterTypes);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return null;
-    }
-
-    private Class< ? > getNodeClass(RiResolvedMethod target, NodeIntrinsic intrinsic) {
+    private static Class< ? > getNodeClass(RiResolvedMethod target, NodeIntrinsic intrinsic) {
         Class< ? > result = intrinsic.value();
         if (result == NodeIntrinsic.class) {
             result = target.holder().toJava();
         }
         assert Node.class.isAssignableFrom(result);
         return result;
-    }
-
-    private ConstantNodeParameter findConstantParameterAnnotation(int parameterIndex, Annotation[][] parameterAnnotations) {
-        if (parameterIndex >= 0) {
-            for (Annotation a : parameterAnnotations[parameterIndex]) {
-                if (a instanceof ConstantNodeParameter) {
-                    return (ConstantNodeParameter) a;
-                }
-            }
-        }
-        return null;
     }
 
     private ValueNode tryBoxingElimination(int parameterIndex, RiResolvedMethod target, ValueNode node) {
@@ -169,7 +145,7 @@ public class SnippetIntrinsificationPhase extends Phase {
         return node;
     }
 
-    private Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
+    private static Node createNodeInstance(Class< ? > nodeClass, Class< ? >[] parameterTypes, Object[] nodeConstructorArguments) {
 
         Constructor< ? > constructor;
         try {

@@ -123,7 +123,7 @@ public class OptionTypes {
         protected final char separator;
         public final Option.Type<T> elementOptionType;
 
-        private static <T> Class<List<T>> listClass(Class<T> valueClass) {
+        private static <T> Class<List<T>> listClass(@SuppressWarnings("unused") Class<T> valueClass) {
             final Class<Class<List<T>>> type = null;
             return Utils.cast(type, List.class);
         }
@@ -150,7 +150,7 @@ public class OptionTypes {
 
         @Override
         public List<T> parseValue(String val) {
-            final List<T> list = new LinkedList<T>();
+            final List<T> list = new LinkedList<>();
             if (val.isEmpty()) {
                 return list;
             }
@@ -256,7 +256,7 @@ public class OptionTypes {
      * of these classes and returns them as a list.
      */
     public static final <T> ListType<T> createInstanceListOptionType(final Class<T> klass, char separator) {
-        return new ListType<T>(separator, createInstanceOptionType(klass));
+        return new ListType<>(separator, createInstanceOptionType(klass));
     }
 
     public static final Option.Type<Double> DOUBLE_TYPE = new Option.Type<Double>(Double.class, "double") {
@@ -387,7 +387,7 @@ public class OptionTypes {
 
     public static class EnumListType<T extends Enum<T>> extends ListType<T> {
         public EnumListType(Class<T> enumClass, char separator) {
-            super(separator, new EnumType<T>(enumClass));
+            super(separator, new EnumType<>(enumClass));
         }
     }
 

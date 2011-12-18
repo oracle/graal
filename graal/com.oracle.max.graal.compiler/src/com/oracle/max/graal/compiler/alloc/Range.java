@@ -63,8 +63,9 @@ public final class Range {
         this.next = next;
     }
 
-    int intersectsAt(Range r2) {
+    int intersectsAt(Range other) {
         Range r1 = this;
+        Range r2 = other;
 
         assert r2 != null : "null ranges not allowed";
         assert r1 != EndMarker && r2 != EndMarker : "empty ranges not allowed";

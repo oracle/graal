@@ -97,7 +97,7 @@ public class AlignedImmediateOperandField extends ImmediateOperandField {
     }
 
     @Override
-    public int assemble(int value) throws IndexOutOfBoundsException, AssemblyException {
+    public int assemble(int value) throws AssemblyException {
         return super.assemble(argumentToOperand(value));
     }
 

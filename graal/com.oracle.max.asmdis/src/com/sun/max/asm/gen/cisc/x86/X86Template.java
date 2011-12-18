@@ -44,9 +44,9 @@ public abstract class X86Template extends Template implements X86InstructionDesc
     private HexByte opcode2;
     private ModRMGroup modRMGroup;
     private ModRMGroup.Opcode modRMGroupOpcode;
-    private List<X86Operand> operands = new LinkedList<X86Operand>();
-    private List<X86ImplicitOperand> implicitOperands = new LinkedList<X86ImplicitOperand>();
-    private List<X86Parameter> parameters = new ArrayList<X86Parameter>();
+    private List<X86Operand> operands = new LinkedList<>();
+    private List<X86ImplicitOperand> implicitOperands = new LinkedList<>();
+    private List<X86Parameter> parameters = new ArrayList<>();
     protected boolean isLabelMethodWritten;
 
     protected X86Template(X86InstructionDescription instructionDescription, int serial, InstructionAssessment instructionFamily, X86TemplateContext context) {
@@ -147,7 +147,7 @@ public abstract class X86Template extends Template implements X86InstructionDesc
         return result;
     }
 
-    private String format(HexByte parameter) {
+    private static String format(HexByte parameter) {
         return parameter == null ? "" : parameter.toString() + ", ";
     }
 
@@ -239,7 +239,7 @@ public abstract class X86Template extends Template implements X86InstructionDesc
 
     protected <EnumerableArgument_Type extends Enum<EnumerableArgument_Type> & EnumerableArgument<EnumerableArgument_Type>> X86Parameter addEnumerableParameter(X86Operand.Designation designation, ParameterPlace parameterPlace,
                                             final Enumerator<EnumerableArgument_Type> enumerator) {
-        return addParameter(new X86EnumerableParameter<EnumerableArgument_Type>(designation, parameterPlace, enumerator));
+        return addParameter(new X86EnumerableParameter<>(designation, parameterPlace, enumerator));
     }
 
     protected void addImplicitOperand(X86ImplicitOperand implicitOperand) {
@@ -299,7 +299,7 @@ public abstract class X86Template extends Template implements X86InstructionDesc
         return operandTypeCode.name();
     }
 
-    private void checkSuffix(String newSuffix, String oldSuffix) {
+    private static void checkSuffix(String newSuffix, String oldSuffix) {
         if (oldSuffix != null) {
             ProgramError.check(newSuffix.equals(oldSuffix), "conflicting operand type codes specified: " + newSuffix + " vs. " + oldSuffix);
         }

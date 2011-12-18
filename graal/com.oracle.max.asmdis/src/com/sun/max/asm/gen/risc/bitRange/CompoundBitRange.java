@@ -34,7 +34,7 @@ public class CompoundBitRange extends BitRange {
         super();
     }
 
-    private List<ContiguousBitRange> contiguousBitRanges = new ArrayList<ContiguousBitRange>();
+    private List<ContiguousBitRange> contiguousBitRanges = new ArrayList<>();
 
     public List<ContiguousBitRange> contiguousBitRanges() {
         return contiguousBitRanges;

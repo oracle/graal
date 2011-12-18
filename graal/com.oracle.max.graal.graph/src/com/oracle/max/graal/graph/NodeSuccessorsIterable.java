@@ -27,21 +27,12 @@ import com.oracle.max.graal.graph.iterators.*;
 
 public abstract class NodeSuccessorsIterable extends NodeIterable<Node> {
 
-    @SuppressWarnings("unused")
     public int explicitCount() {
         int count = 0;
-        for (Node node : this) {
+        for (@SuppressWarnings("unused") Node node : this) {
             count++;
         }
         return count;
-    }
-
-    public void replaceFirst(Node node, Node newNode) {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
-    public void replace(Node node, Node other) {
-        throw new UnsupportedOperationException("not implemented");
     }
 
     public abstract boolean contains(Node node);

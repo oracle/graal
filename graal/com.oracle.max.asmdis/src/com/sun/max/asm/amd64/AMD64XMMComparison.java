@@ -61,5 +61,5 @@ public enum AMD64XMMComparison implements EnumerableArgument<AMD64XMMComparison>
         return LESS_THAN_OR_EQUAL;
     }
 
-    public static final Enumerator<AMD64XMMComparison> ENUMERATOR = new Enumerator<AMD64XMMComparison>(AMD64XMMComparison.class);
+    public static final Enumerator<AMD64XMMComparison> ENUMERATOR = new Enumerator<>(AMD64XMMComparison.class);
 }

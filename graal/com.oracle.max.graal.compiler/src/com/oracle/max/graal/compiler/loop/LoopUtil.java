@@ -37,7 +37,7 @@ public class LoopUtil {
             mark(begin, nodeToLoop);
         }
 
-        List<Loop> rootLoops = new ArrayList<Loop>(1);
+        List<Loop> rootLoops = new ArrayList<>(1);
         LoopInfo info = new LoopInfo(nodeToLoop, rootLoops);
 
         // Get parent-child relationships between loops.

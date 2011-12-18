@@ -172,6 +172,9 @@ public final class Metrics {
             return total;
         }
 
+        /**
+         * @param value
+         */
         public int getCount(T value) {
             return -1;
         }

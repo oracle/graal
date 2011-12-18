@@ -35,7 +35,7 @@ public final class Label {
      * These instructions need to be patched when the label is bound
      * using the {@link #patchInstructions(AbstractAssembler)} method.
      */
-    private ArrayList<Integer> patchPositions = new ArrayList<Integer>(4);
+    private ArrayList<Integer> patchPositions = new ArrayList<>(4);
 
     /**
      * Returns the position of this label in the code buffer.

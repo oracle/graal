@@ -28,6 +28,10 @@ import com.sun.cri.ri.*;
  * Common interface for all HotSpot RiType-implementations.
  */
 public abstract class HotSpotType extends CompilerObject implements RiType {
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -4252886265301910771L;
     protected String name;
 
     protected HotSpotType(Compiler compiler) {

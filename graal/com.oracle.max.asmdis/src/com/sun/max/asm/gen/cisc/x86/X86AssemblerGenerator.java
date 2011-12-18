@@ -102,7 +102,8 @@ public abstract class X86AssemblerGenerator<Template_Type extends X86Template> e
         return argument.getClass().getSimpleName() + "." + argument.name();
     }
 
-    protected <Argument_Type extends Enum<Argument_Type> & EnumerableArgument<Argument_Type>> void printModVariant(IndentWriter writer, final Template_Type template, Argument_Type... arguments) {
+    @SafeVarargs
+    protected final <Argument_Type extends Enum<Argument_Type> & EnumerableArgument<Argument_Type>> void printModVariant(IndentWriter writer, final Template_Type template, Argument_Type... arguments) {
         final Class argumentType = arguments[0].getClass();
         final X86Parameter parameter = getParameter(template, argumentType);
         writer.print("if (");
@@ -229,7 +230,8 @@ public abstract class X86AssemblerGenerator<Template_Type extends X86Template> e
         writer.println();
     }
 
-    protected <Argument_Type extends Enum<Argument_Type> & EnumerableArgument<Argument_Type>> void printSibVariant(IndentWriter writer, Template_Type template, Argument_Type... arguments) {
+    @SafeVarargs
+    protected final <Argument_Type extends Enum<Argument_Type> & EnumerableArgument<Argument_Type>> void printSibVariant(IndentWriter writer, Template_Type template, Argument_Type... arguments) {
         final Class argumentType = arguments[0].getClass();
         final X86Parameter parameter = getParameter(template, argumentType);
         writer.print("if (");
@@ -294,7 +296,7 @@ public abstract class X86AssemblerGenerator<Template_Type extends X86Template> e
         return "assemble" + number;
     }
 
-    private Map<String, String> subroutineToName = new HashMap<String, String>();
+    private Map<String, String> subroutineToName = new HashMap<>();
 
     private static final String OPCODE1_VARIABLE_NAME = "opcode1";
     private static final String OPCODE2_VARIABLE_NAME = "opcode2";
@@ -416,6 +418,7 @@ public abstract class X86AssemblerGenerator<Template_Type extends X86Template> e
         }
     }
 
+    @SuppressWarnings("static-method")
     private String getValidSizesMaskExpression(List<LabelWidthCase> labelWidthCases) {
         final Iterator<LabelWidthCase> iterator = labelWidthCases.iterator();
         String mask = String.valueOf(iterator.next().width.numberOfBytes);
@@ -437,7 +440,7 @@ public abstract class X86AssemblerGenerator<Template_Type extends X86Template> e
         }
 
         // Report the found cases in the order of ascending width:
-        final List<LabelWidthCase> result = new LinkedList<LabelWidthCase>();
+        final List<LabelWidthCase> result = new LinkedList<>();
         for (int i = 0; i < array.size(); i++) {
             final LabelWidthCase labelWidthCase = array.get(i);
             if (labelWidthCase != null) {

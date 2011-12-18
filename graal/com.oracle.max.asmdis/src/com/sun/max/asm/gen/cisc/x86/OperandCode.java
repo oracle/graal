@@ -127,15 +127,15 @@ public enum OperandCode implements WrappableSpecification {
     }
 
     public TestArgumentExclusion excludeDisassemblerTestArguments(Argument... arguments) {
-        return new TestArgumentExclusion(AssemblyTestComponent.DISASSEMBLER, this, new HashSet<Argument>(Arrays.asList(arguments)));
+        return new TestArgumentExclusion(AssemblyTestComponent.DISASSEMBLER, this, new HashSet<>(Arrays.asList(arguments)));
     }
 
     public TestArgumentExclusion excludeExternalTestArguments(Argument... arguments) {
-        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<Argument>(Arrays.asList(arguments)));
+        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<>(Arrays.asList(arguments)));
     }
 
     public TestArgumentExclusion excludeExternalTestArguments(Enumerator... argumentEnumerators) {
-        final Set<Argument> arguments = new HashSet<Argument>();
+        final Set<Argument> arguments = new HashSet<>();
         for (Enumerator argumentEnumerator : argumentEnumerators) {
             for (Object e : argumentEnumerator) {
                 arguments.add((Argument) e);

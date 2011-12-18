@@ -478,7 +478,7 @@ public final class LinearScan {
         assert interval == Interval.EndMarker : "missed an interval";
     }
 
-    private void checkIntervals(Interval interval) {
+    private static void checkIntervals(Interval interval) {
         Interval prev = null;
         Interval temp = interval;
         while (temp != Interval.EndMarker) {
@@ -825,8 +825,8 @@ public final class LinearScan {
                             LIRDebugInfo info = ins.info;
                             if (info != null) {
                                 info.forEachLiveStateValue(new ValueProcedure() {
-                                    public CiValue doValue(CiValue operand) {
-                                        TTY.println("   operand=" + operand);
+                                    public CiValue doValue(CiValue liveStateOperand) {
+                                        TTY.println("   operand=" + liveStateOperand);
                                         return null;
                                     }
                                 });
@@ -857,7 +857,7 @@ public final class LinearScan {
         }
     }
 
-    private void traceLiveness(boolean changeOccurredInBlock, int iterationCount, LIRBlock block) {
+    private static void traceLiveness(boolean changeOccurredInBlock, int iterationCount, LIRBlock block) {
         char c = iterationCount == 0 || changeOccurredInBlock ? '*' : ' ';
         TTY.print("(%d) liveIn%c  B%d ", iterationCount, c, block.blockID());
         TTY.println(block.liveIn.toString());
@@ -873,9 +873,6 @@ public final class LinearScan {
             TTY.println(" use %s from %d to %d (%s)", operand, from, to, registerPriority.name());
         }
 
-        if (kind == null) {
-            kind = operand.kind.stackKind();
-        }
         Interval interval = intervalFor(operand);
         if (interval == null) {
             interval = createInterval(operand);
@@ -1002,7 +999,7 @@ public final class LinearScan {
     /**
      * Determines the priority which with an instruction's input operand will be allocated a register.
      */
-    RegisterPriority registerPriorityOfInputOperand(LIRInstruction op, int operandIndex, CiValue operand) {
+    RegisterPriority registerPriorityOfInputOperand(LIRInstruction op, int operandIndex) {
         if (op.code == StandardOpcode.MOVE) {
             CiValue res = op.result();
             boolean resultInMemory = res.isVariable() && operands.mustStartInMemory((CiVariable) res);
@@ -1135,9 +1132,6 @@ public final class LinearScan {
                     }
                 }
 
-                // Add any platform dependent temps
-                pdAddTemps(op);
-
                 // visit definitions (output and temp operands)
                 int k;
                 int n;
@@ -1164,7 +1158,7 @@ public final class LinearScan {
                 for (k = 0; k < n; k++) {
                     CiValue operand = op.operandAt(LIRInstruction.OperandMode.Alive, k);
                     if (operand.isVariableOrRegister()) {
-                        addUse(operand, blockFrom, opId + 1, RegisterPriority.MustHaveRegister, null);
+                        addUse(operand, blockFrom, opId + 1, RegisterPriority.MustHaveRegister, operand.kind.stackKind());
                     }
                 }
 
@@ -1173,8 +1167,8 @@ public final class LinearScan {
                 for (k = 0; k < n; k++) {
                     CiValue operand = op.operandAt(LIRInstruction.OperandMode.Input, k);
                     if (operand.isVariableOrRegister()) {
-                        RegisterPriority p = registerPriorityOfInputOperand(op, k, operand);
-                        addUse(operand, blockFrom, opId, p, null);
+                        RegisterPriority p = registerPriorityOfInputOperand(op, k);
+                        addUse(operand, blockFrom, opId, p, operand.kind.stackKind());
                     }
                 }
 
@@ -1186,7 +1180,7 @@ public final class LinearScan {
                 if (info != null) {
                     info.forEachLiveStateValue(new ValueProcedure() {
                         public CiValue doValue(CiValue operand) {
-                            addUse(operand, blockFrom, (opId + 1), RegisterPriority.None, null);
+                            addUse(operand, blockFrom, (opId + 1), RegisterPriority.None, operand.kind.stackKind());
                             return null;
                         }
                     });
@@ -1210,55 +1204,17 @@ public final class LinearScan {
 
     // * Phase 5: actual register allocation
 
-    private void pdAddTemps(LIRInstruction op) {
-        /* NOTE: The intrinsic graphs for the trigonometric functions already contain
-         *       runtime calls for the slow path, so the compiler already takes care of
-         *       saving registers where necessary and killing them here is not required.
-         *
-        assert compilation.target.arch.isX86();
-        switch (op.code) {
-            case Tan:
-            case Sin:
-            case Cos: {
-                // The slow path for these functions may need to save and
-                // restore all live registers but we don't want to save and
-                // restore everything all the time, so mark the xmms as being
-                // killed. If the slow path were explicit or we could propagate
-                // live register masks down to the assembly we could do better
-                // but we don't have any easy way to do that right now. We
-                // could also consider not killing all xmm registers if we
-                // assume that slow paths are uncommon but it's not clear that
-                // would be a good idea.
-                if (GraalOptions.TraceLinearScanLevel >= 2) {
-                    TTY.println("killing XMMs for trig");
-                }
-                int opId = op.id();
-
-                for (CiRegister r : compilation.registerConfig.getCallerSaveRegisters()) {
-                    if (r.isFpu()) {
-                        addTemp(r.asValue(), opId, RegisterPriority.None, CiKind.Illegal);
-                    }
-                }
-                break;
-            }
-        }
-        */
-    }
-
-    private boolean isSorted(Interval[] intervals) {
+    private static boolean isSorted(Interval[] intervals) {
         int from = -1;
         for (Interval interval : intervals) {
             assert interval != null;
             assert from <= interval.from();
             from = interval.from();
-
-            // TODO: very slow!
-            assert Arrays.asList(this.intervals).contains(interval);
         }
         return true;
     }
 
-    Interval addToList(Interval first, Interval prev, Interval interval) {
+    static Interval addToList(Interval first, Interval prev, Interval interval) {
         Interval newFirst = first;
         if (prev != null) {
             prev.next = interval;
@@ -1469,7 +1425,7 @@ public final class LinearScan {
         }
     }
 
-    void resolveFindInsertPos(LIRBlock fromBlock, LIRBlock toBlock, MoveResolver moveResolver) {
+    static void resolveFindInsertPos(LIRBlock fromBlock, LIRBlock toBlock, MoveResolver moveResolver) {
         if (fromBlock.numberOfSux() <= 1) {
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("inserting moves at end of fromBlock B%d", fromBlock.blockID());
@@ -1623,7 +1579,7 @@ public final class LinearScan {
         return true;
     }
 
-    CiStackSlot canonicalSpillOpr(Interval interval) {
+    static CiStackSlot canonicalSpillOpr(Interval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
     }

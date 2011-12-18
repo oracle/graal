@@ -48,7 +48,7 @@ public enum AMD64IndirectRegister64 implements GeneralRegister<AMD64IndirectRegi
     R14_INDIRECT,
     R15_INDIRECT;
 
-    public static final Enumerator<AMD64IndirectRegister64> ENUMERATOR = new Enumerator<AMD64IndirectRegister64>(AMD64IndirectRegister64.class);
+    public static final Enumerator<AMD64IndirectRegister64> ENUMERATOR = new Enumerator<>(AMD64IndirectRegister64.class);
 
     public static AMD64IndirectRegister64 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

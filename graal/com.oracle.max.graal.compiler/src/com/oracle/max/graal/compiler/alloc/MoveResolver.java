@@ -67,9 +67,9 @@ final class MoveResolver {
 
         this.allocator = allocator;
         this.multipleReadsAllowed = false;
-        this.mappingFrom = new ArrayList<Interval>(8);
-        this.mappingFromOpr = new ArrayList<CiValue>(8);
-        this.mappingTo = new ArrayList<Interval>(8);
+        this.mappingFrom = new ArrayList<>(8);
+        this.mappingFromOpr = new ArrayList<>(8);
+        this.mappingTo = new ArrayList<>(8);
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
         this.registerBlocked = new int[allocator.registers.length];
@@ -106,7 +106,7 @@ final class MoveResolver {
             }
         }
 
-        HashSet<CiValue> usedRegs = new HashSet<CiValue>();
+        HashSet<CiValue> usedRegs = new HashSet<>();
         if (!multipleReadsAllowed) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -312,21 +312,21 @@ final class MoveResolver {
         this.insertIdx = insertIdx;
     }
 
-    void moveInsertPosition(List<LIRInstruction> insertList, int insertIdx) {
-        if (this.insertList != null && (this.insertList != insertList || this.insertIdx != insertIdx)) {
+    void moveInsertPosition(List<LIRInstruction> newInsertList, int newInsertIdx) {
+        if (this.insertList != null && (this.insertList != newInsertList || this.insertIdx != newInsertIdx)) {
             // insert position changed . resolve current mappings
             resolveMappings();
         }
 
-        if (this.insertList != insertList) {
+        if (this.insertList != newInsertList) {
             // block changed . append insertionBuffer because it is
             // bound to a specific block and create a new insertionBuffer
             appendInsertionBuffer();
-            createInsertionBuffer(insertList);
+            createInsertionBuffer(newInsertList);
         }
 
-        this.insertList = insertList;
-        this.insertIdx = insertIdx;
+        this.insertList = newInsertList;
+        this.insertIdx = newInsertIdx;
     }
 
     void addMapping(Interval fromInterval, Interval toInterval) {

@@ -138,7 +138,7 @@ public final class GraalCompilation {
         AbstractAssembler masm = compiler.backend.newAssembler(registerConfig);
         TargetMethodAssembler tasm = new TargetMethodAssembler(this, masm);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
+        tasm.targetMethod.setCustomStackAreaOffset(FrameMap.offsetToCustomArea());
         return tasm;
     }
 
@@ -275,7 +275,7 @@ public final class GraalCompilation {
             }
 
             List<Block> blocks = schedule.getBlocks();
-            NodeMap<LIRBlock> valueToBlock = new NodeMap<LIRBlock>(graph);
+            NodeMap<LIRBlock> valueToBlock = new NodeMap<>(graph);
             for (Block b : blocks) {
                 for (Node i : b.getInstructions()) {
                     valueToBlock.set(i, (LIRBlock) b);
@@ -315,7 +315,7 @@ public final class GraalCompilation {
         }
     }
 
-    public void initFrameMap(int numberOfLocks) {
+    public void initFrameMap() {
         frameMap = this.compiler.backend.newFrameMap(this, method);
     }
 
@@ -327,7 +327,7 @@ public final class GraalCompilation {
                 nodeOperands = graph.createNodeMap();
                 LIRGenerator lirGenerator = null;
                 try {
-                    initFrameMap(maxLocks());
+                    initFrameMap();
 
                     lirGenerator = compiler.backend.newLIRGenerator(this, xir);
 
@@ -406,9 +406,9 @@ public final class GraalCompilation {
         return compiler.context;
     }
 
-    public void printGraph(String phase, Graph graph) {
+    public void printGraph(String phase, Graph printedGraph) {
         if (context().isObserved()) {
-            context().observable.fireCompilationEvent(phase, this, graph);
+            context().observable.fireCompilationEvent(phase, this, printedGraph);
         }
     }
 }

@@ -49,7 +49,7 @@ public class CFGPrinterObserver implements CompilationObserver {
     private ThreadLocal<LinkedList<CFGPrinter>> observations = new ThreadLocal<LinkedList<CFGPrinter>>() {
         @Override
         protected java.util.LinkedList<CFGPrinter> initialValue() {
-            return new LinkedList<CFGPrinter>();
+            return new LinkedList<>();
         }
     };
 
@@ -97,7 +97,7 @@ public class CFGPrinterObserver implements CompilationObserver {
             if (schedule == null) {
                 try {
                     schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
-                    schedule.apply((StructuredGraph) graph, false, false);
+                    schedule.apply((StructuredGraph) graph, false);
                     blocks = schedule.getBlocks();
 
                     ComputeLinearScanOrder clso = new ComputeLinearScanOrder(schedule.getBlocks().size(), schedule.loopCount(), (LIRBlock) schedule.getStartBlock());
@@ -111,7 +111,7 @@ public class CFGPrinterObserver implements CompilationObserver {
             }
         }
         if (allocator != null && intervals != null) {
-            cfgPrinter.printIntervals(event.label, allocator, intervals);
+            cfgPrinter.printIntervals(event.label, intervals);
         }
     }
 

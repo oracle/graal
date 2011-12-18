@@ -39,12 +39,12 @@ public abstract class CiXirAssembler {
     protected XirOperand resultOperand;
     protected boolean allocateResultOperand;
 
-    protected final List<XirInstruction> instructions = new ArrayList<XirInstruction>();
-    protected final List<XirLabel> labels = new ArrayList<XirLabel>(5);
-    protected final List<XirParameter> parameters = new ArrayList<XirParameter>(5);
-    protected final List<XirTemp> temps = new ArrayList<XirTemp>(5);
-    protected final List<XirConstant> constants = new ArrayList<XirConstant>(5);
-    protected final List<XirMark> marks = new ArrayList<XirMark>(5);
+    protected final List<XirInstruction> instructions = new ArrayList<>();
+    protected final List<XirLabel> labels = new ArrayList<>(5);
+    protected final List<XirParameter> parameters = new ArrayList<>(5);
+    protected final List<XirTemp> temps = new ArrayList<>(5);
+    protected final List<XirConstant> constants = new ArrayList<>(5);
+    protected final List<XirMark> marks = new ArrayList<>(5);
 
     protected int outgoingStackSize = 0;
 

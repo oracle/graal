@@ -29,8 +29,7 @@ import com.sun.cri.ri.*;
 
 public class BoxingMethodPool {
 
-    private static final String BOX_METHOD = "valueOf";
-    private final Set<RiMethod> specialMethods = new HashSet<RiMethod>();
+    private final Set<RiMethod> specialMethods = new HashSet<>();
     private final RiRuntime runtime;
     private final RiResolvedMethod[] boxingMethods = new RiResolvedMethod[CiKind.values().length];
     private final RiResolvedMethod[] unboxingMethods = new RiResolvedMethod[CiKind.values().length];

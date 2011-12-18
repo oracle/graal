@@ -22,7 +22,6 @@
  */
 package test.com.sun.max.asm.arm;
 
-import java.io.*;
 import java.util.*;
 
 import junit.framework.*;
@@ -57,7 +56,7 @@ public class RawDisassemblerAndExternalTest extends ExternalAssemblerTestCase {
         junit.textui.TestRunner.run(RawDisassemblerAndExternalTest.class);
     }
 
-    public void test_disassemblerAndExternalAssembler() throws FileNotFoundException, IOException {
+    public void test_disassemblerAndExternalAssembler() {
         run(new ARMAssemblyTester(ARMAssembly.ASSEMBLY, WordWidth.BITS_32, EnumSet.of(AssemblyTestComponent.DISASSEMBLER, AssemblyTestComponent.EXTERNAL_ASSEMBLER)));
     }
 

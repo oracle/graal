@@ -336,7 +336,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         ((LIRLowerable) node).generate(this);
     }
 
-    private boolean canBeNullCheck(LocationNode location) {
+    private static boolean canBeNullCheck(LocationNode location) {
         // TODO: Make this part of CiTarget
         return !(location instanceof IndexedLocationNode) && location.displacement() < 4096;
     }
@@ -503,6 +503,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
+    @SuppressWarnings("unused")
     protected void postGCWriteBarrier(CiValue addr, CiValue newVal) {
         XirSnippet writeBarrier = xir.genWriteBarrier(toXirArgument(addr));
         if (writeBarrier != null) {
@@ -510,7 +511,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
+    @SuppressWarnings("unused")
     protected void preGCWriteBarrier(CiValue addrOpr, boolean patch, LIRDebugInfo info) {
+        // TODO(tw): Implement this.
     }
 
 
@@ -744,7 +747,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind(true));
         CiCallingConvention cc = compilation.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         compilation.frameMap().adjustOutgoingStackSize(cc, JavaCall);
-        List<CiStackSlot> pointerSlots = new ArrayList<CiStackSlot>(2);
+        List<CiStackSlot> pointerSlots = new ArrayList<>(2);
         List<CiValue> argList = visitInvokeArguments(cc, callTarget.arguments(), pointerSlots);
 
         if (target().invokeSnippetAfterArguments) {
@@ -772,7 +775,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public List<CiValue> visitInvokeArguments(CiCallingConvention cc, Iterable<ValueNode> arguments, List<CiStackSlot> pointerSlots) {
         // for each argument, load it into the correct location
-        List<CiValue> argList = new ArrayList<CiValue>();
+        List<CiValue> argList = new ArrayList<>();
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
@@ -840,7 +843,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiValue resultOperand = resultOperandFor(x.kind());
         CiCallingConvention cc = compilation.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
         compilation.frameMap().adjustOutgoingStackSize(cc, RuntimeCall);
-        List<CiStackSlot> pointerSlots = new ArrayList<CiStackSlot>(2);
+        List<CiStackSlot> pointerSlots = new ArrayList<>(2);
         List<CiValue> argList = visitInvokeArguments(cc, x.arguments(), pointerSlots);
 
         LIRDebugInfo info = null;
@@ -931,7 +934,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         // Only one of the parameters is used, but code is shared because it is mostly the same.
         SwitchNode x = ls != null ? ls : ts;
         // we expect the keys to be sorted by increasing value
-        List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
+        List<SwitchRange> res = new ArrayList<>(x.numberOfCases());
         int len = x.numberOfCases();
         if (len > 0) {
             LabelRef defaultSux = getLIRBlock(x.defaultSuccessor());
@@ -1071,7 +1074,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             TTY.println("Emit XIR template " + snippet.template.name);
         }
 
-        final CiValue[] operands = new CiValue[snippet.template.variableCount];
+        final CiValue[] operandsArray = new CiValue[snippet.template.variableCount];
 
         compilation.frameMap().reserveOutgoing(snippet.template.outgoingStackSize);
 
@@ -1087,9 +1090,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 } else {
                     outputOperand = newVariable(resultOperand.kind);
                 }
-                assert operands[resultOperand.index] == null;
+                assert operandsArray[resultOperand.index] == null;
             }
-            operands[resultOperand.index] = outputOperand;
+            operandsArray[resultOperand.index] = outputOperand;
             if (GraalOptions.PrintXirTemplates) {
                 TTY.println("Output operand: " + outputOperand);
             }
@@ -1099,7 +1102,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if (t instanceof XirRegister) {
                 XirRegister reg = (XirRegister) t;
                 if (!t.reserve) {
-                    operands[t.index] = reg.register;
+                    operandsArray[t.index] = reg.register;
                 }
             }
         }
@@ -1110,8 +1113,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         for (XirConstant c : snippet.template.constants) {
-            assert operands[c.index] == null;
-            operands[c.index] = c.value;
+            assert operandsArray[c.index] == null;
+            operandsArray[c.index] = c.value;
         }
 
         XirOperand[] inputOperands = snippet.template.inputOperands;
@@ -1125,7 +1128,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (int i = 0; i < inputOperands.length; i++) {
             XirOperand x = inputOperands[i];
             CiValue op = allocateOperand(snippet, x);
-            operands[x.index] = op;
+            operandsArray[x.index] = op;
             inputOperandArray[i] = op;
             inputOperandIndicesArray[i] = x.index;
             if (GraalOptions.PrintXirTemplates) {
@@ -1133,24 +1136,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
         }
 
-        for (int i = 0; i < inputTempOperands.length; i++) {
-            XirOperand x = inputTempOperands[i];
-            CiValue op = allocateOperand(snippet, x);
-            CiValue newOp = emitMove(op);
-            operands[x.index] = newOp;
-            inputOperandArray[i + inputOperands.length] = newOp;
-            inputOperandIndicesArray[i + inputOperands.length] = x.index;
-            if (GraalOptions.PrintXirTemplates) {
-                TTY.println("InputTemp operand: " + x);
-            }
-
-            throw new InternalError("cwi: I think this code is never used.  If you see this exception being thrown, please tell me...");
-        }
+        assert inputTempOperands.length == 0 : "cwi: I think this code is never used.  If you see this exception being thrown, please tell me...";
 
         for (int i = 0; i < tempOperands.length; i++) {
             XirOperand x = tempOperands[i];
             CiValue op = allocateOperand(snippet, x);
-            operands[x.index] = op;
+            operandsArray[x.index] = op;
             tempOperandArray[i] = op;
             tempOperandIndicesArray[i] = x.index;
             if (GraalOptions.PrintXirTemplates) {
@@ -1158,11 +1149,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
         }
 
-        for (CiValue operand : operands) {
+        for (CiValue operand : operandsArray) {
             assert operand != null;
         }
 
-        CiValue allocatedResultOperand = operands[resultOperand.index];
+        CiValue allocatedResultOperand = operandsArray[resultOperand.index];
         if (!allocatedResultOperand.isVariableOrRegister()) {
             allocatedResultOperand = IllegalValue;
         }
@@ -1178,18 +1169,18 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
         XirInstruction[] slowPath = snippet.template.slowPath;
-        if (!operands[resultOperand.index].isConstant() || snippet.template.fastPath.length != 0 || (slowPath != null && slowPath.length > 0)) {
+        if (!operandsArray[resultOperand.index].isConstant() || snippet.template.fastPath.length != 0 || (slowPath != null && slowPath.length > 0)) {
             // XIR instruction is only needed when the operand is not a constant!
-            append(StandardOpcode.XIR.create(snippet, operands, allocatedResultOperand,
+            append(StandardOpcode.XIR.create(snippet, operandsArray, allocatedResultOperand,
                     inputOperandArray, tempOperandArray, inputOperandIndicesArray, tempOperandIndicesArray,
-                    (operands[resultOperand.index] == IllegalValue) ? -1 : resultOperand.index,
+                    (operandsArray[resultOperand.index] == IllegalValue) ? -1 : resultOperand.index,
                     info, infoAfter, method));
             if (GraalOptions.Meter) {
                 context.metrics.LIRXIRInstructions++;
             }
         }
 
-        return operands[resultOperand.index];
+        return operandsArray[resultOperand.index];
     }
 
     protected final CiValue callRuntime(CiRuntimeCall runtimeCall, LIRDebugInfo info, CiValue... args) {
@@ -1229,7 +1220,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     SwitchRange[] createLookupRanges(LookupSwitchNode x) {
         // we expect the keys to be sorted by increasing value
-        List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
+        List<SwitchRange> res = new ArrayList<>(x.numberOfCases());
         int len = x.numberOfCases();
         if (len > 0) {
             LabelRef defaultSux = getLIRBlock(x.defaultSuccessor());
@@ -1261,7 +1252,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     SwitchRange[] createLookupRanges(TableSwitchNode x) {
         // TODO: try to merge this with the code for LookupSwitch
-        List<SwitchRange> res = new ArrayList<SwitchRange>(x.numberOfCases());
+        List<SwitchRange> res = new ArrayList<>(x.numberOfCases());
         int len = x.numberOfCases();
         if (len > 0) {
             LabelRef sux = getLIRBlock(x.blockSuccessor(0));

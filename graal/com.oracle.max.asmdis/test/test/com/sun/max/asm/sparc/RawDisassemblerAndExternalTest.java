@@ -22,7 +22,6 @@
  */
 package test.com.sun.max.asm.sparc;
 
-import java.io.*;
 import java.util.*;
 
 import junit.framework.*;
@@ -56,7 +55,7 @@ public class RawDisassemblerAndExternalTest extends ExternalAssemblerTestCase {
         junit.textui.TestRunner.run(RawDisassemblerAndExternalTest.class);
     }
 
-    public void test_disassemblerAndExternalAssembler() throws FileNotFoundException, IOException {
+    public void test_disassemblerAndExternalAssembler() {
         run(new SPARC32AssemblyTester(EnumSet.of(AssemblyTestComponent.DISASSEMBLER, AssemblyTestComponent.EXTERNAL_ASSEMBLER)));
     }
 }

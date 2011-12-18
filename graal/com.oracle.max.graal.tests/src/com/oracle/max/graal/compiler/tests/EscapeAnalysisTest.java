@@ -42,6 +42,7 @@ public class EscapeAnalysisTest extends GraphTest {
         test("test1Snippet", CiConstant.forInt(101));
     }
 
+    @SuppressWarnings("all")
     public static int test1Snippet(int a) {
         Integer x = new Integer(101);
         return x.intValue();
@@ -52,6 +53,7 @@ public class EscapeAnalysisTest extends GraphTest {
         test("test2Snippet", CiConstant.forInt(0));
     }
 
+    @SuppressWarnings("all")
     public static int test2Snippet(int a) {
         Integer[] x = new Integer[0];
         return x.length;
@@ -62,6 +64,7 @@ public class EscapeAnalysisTest extends GraphTest {
         test("test3Snippet", CiConstant.forObject(null));
     }
 
+    @SuppressWarnings("all")
     public static Object test3Snippet(int a) {
         Integer[] x = new Integer[1];
         return x[0];
@@ -74,6 +77,7 @@ public class EscapeAnalysisTest extends GraphTest {
 
     private static native void notInlineable();
 
+    @SuppressWarnings("all")
     public static int testMonitorSnippet(int a) {
         Integer x = new Integer(0);
         Integer[] y = new Integer[0];
@@ -96,6 +100,7 @@ public class EscapeAnalysisTest extends GraphTest {
     /**
      * This test case differs from the last one in that it requires inlining within a synchronized region.
      */
+    @SuppressWarnings("all")
     public static int testMonitor2Snippet(int a) {
         Integer x = new Integer(0);
         Integer[] y = new Integer[0];
@@ -110,7 +115,6 @@ public class EscapeAnalysisTest extends GraphTest {
         }
     }
 
-    @SuppressWarnings("unused")
     private void test(String snippet, CiConstant expectedResult) {
         StructuredGraph graph = parse(snippet);
         for (Invoke n : graph.getInvokes()) {
@@ -130,10 +134,10 @@ public class EscapeAnalysisTest extends GraphTest {
         }
         Assert.assertEquals(1, retCount);
         int newInstanceCount = 0;
-        for (NewInstanceNode n : graph.getNodes(NewInstanceNode.class)) {
+        for (@SuppressWarnings("unused") NewInstanceNode n : graph.getNodes(NewInstanceNode.class)) {
             newInstanceCount++;
         }
-        for (NewObjectArrayNode n : graph.getNodes(NewObjectArrayNode.class)) {
+        for (@SuppressWarnings("unused") NewObjectArrayNode n : graph.getNodes(NewObjectArrayNode.class)) {
             newInstanceCount++;
         }
         Assert.assertEquals(0, newInstanceCount);

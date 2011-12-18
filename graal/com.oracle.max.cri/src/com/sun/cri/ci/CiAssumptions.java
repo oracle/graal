@@ -34,13 +34,28 @@ import com.sun.cri.ri.*;
  */
 public final class CiAssumptions implements Serializable, Iterable<CiAssumptions.Assumption> {
 
+    /**
+     *
+     */
+    private static final long serialVersionUID = 5152062717588239131L;
+
     public abstract static class Assumption implements Serializable {
+
+        /**
+         *
+         */
+        private static final long serialVersionUID = -1936652569665112915L;
     }
 
     /**
      * An assumption about a unique subtype of a given type.
      */
     public static final class ConcreteSubtype extends Assumption {
+        /**
+         *
+         */
+        private static final long serialVersionUID = -1457173265437676252L;
+
         /**
          * Type the assumption is made about.
          */
@@ -79,6 +94,11 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      * An assumption about a unique implementation of a virtual method.
      */
     public static final class ConcreteMethod extends Assumption {
+
+        /**
+         *
+         */
+        private static final long serialVersionUID = -7636746737947390059L;
 
         /**
          * A virtual (or interface) method whose unique implementation for the receiver type
@@ -162,7 +182,9 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      * @param receiverType the type that is assumed to have no finalizable subclasses
      * @return {@code true} if the assumption was recorded and can be assumed; {@code false} otherwise
      */
+    @SuppressWarnings("static-method")
     public boolean recordNoFinalizableSubclassAssumption(RiResolvedType receiverType) {
+        // TODO(tw): Record that assumption correctly.
         return false;
     }
 

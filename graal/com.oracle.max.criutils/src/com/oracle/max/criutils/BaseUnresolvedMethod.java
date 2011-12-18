@@ -62,10 +62,6 @@ public class BaseUnresolvedMethod implements RiMethod {
         return o == this;
     }
 
-    public StackTraceElement toStackTraceElement(int bci) {
-        return new StackTraceElement(CiUtil.toJavaName(holder), name, null, -1);
-    }
-
     @Override
     public String toString() {
         return CiUtil.format("%H.%n(%p) [unresolved]", this);

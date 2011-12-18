@@ -39,7 +39,7 @@ public class CountingProxy<T> implements InvocationHandler {
 
     private T delegate;
 
-    private ConcurrentHashMap<Method, AtomicLong> calls = new ConcurrentHashMap<Method, AtomicLong>();
+    private ConcurrentHashMap<Method, AtomicLong> calls = new ConcurrentHashMap<>();
 
     public CountingProxy(T delegate) {
         assert ENABLED;
@@ -74,11 +74,11 @@ public class CountingProxy<T> implements InvocationHandler {
 
     public static <T> T getProxy(Class<T> interf, T delegate) {
         Class<?>[] interfaces = ReplacingStreams.getAllInterfaces(delegate.getClass());
-        Object obj = Proxy.newProxyInstance(interf.getClassLoader(), interfaces, new CountingProxy<T>(delegate));
+        Object obj = Proxy.newProxyInstance(interf.getClassLoader(), interfaces, new CountingProxy<>(delegate));
         return interf.cast(obj);
     }
 
-    private static ArrayList<CountingProxy> proxies = new ArrayList<CountingProxy>();
+    private static ArrayList<CountingProxy> proxies = new ArrayList<>();
 
     static {
         if (ENABLED) {

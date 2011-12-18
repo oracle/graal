@@ -30,7 +30,7 @@ import com.sun.max.lang.*;
 public class AMD64TemplateCreator extends X86TemplateCreator<AMD64Template> {
 
     public AMD64TemplateCreator() {
-        super(AMD64Assembly.ASSEMBLY, WordWidth.BITS_64);
+        super(WordWidth.BITS_64);
     }
 
     @Override

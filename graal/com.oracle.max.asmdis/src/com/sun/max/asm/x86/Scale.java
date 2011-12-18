@@ -55,6 +55,6 @@ public enum Scale implements EnumerableArgument<Scale> {
         return SCALE_4;
     }
 
-    public static final Enumerator<Scale> ENUMERATOR = new Enumerator<Scale>(Scale.class);
+    public static final Enumerator<Scale> ENUMERATOR = new Enumerator<>(Scale.class);
 
 }

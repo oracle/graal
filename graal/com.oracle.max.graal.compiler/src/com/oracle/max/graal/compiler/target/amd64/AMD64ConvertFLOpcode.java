@@ -41,9 +41,7 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, temps) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                CiValue input = input(0);
-                CiValue scratch = temp(0);
-                emit(tasm, masm, result(), stub, input, scratch);
+                emit(tasm, masm, result(), stub, input(0), temp(0));
             }
         };
     }
@@ -61,7 +59,7 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
         masm.movq(tmp, java.lang.Long.MIN_VALUE);
         masm.cmpq(dst, tmp);
         masm.jcc(ConditionFlag.notEqual, endLabel);
-        AMD64CallOpcode.callStub(tasm, masm, stub, stub.resultKind, null, result, input);
+        AMD64CallOpcode.callStub(tasm, masm, stub, null, result, input);
         masm.bind(endLabel);
     }
 }

@@ -246,31 +246,6 @@ public class Bytecodes {
     public static final int JSR_W                = 201; // 0xC9
     public static final int BREAKPOINT           = 202; // 0xCA
 
-    // Start extended bytecodes
-
-    /**
-     * Native function call.
-     *
-     * The 'function_address' value on the top of the stack is the result of
-     * linking a native function.
-     *
-     * <pre>
-     * Format: { u1 opcode;  // JNICALL
-     *           u2 sig;     // Constant pool index of a CONSTANT_Utf8_info representing the signature of the call
-     *         }
-     *
-     * Operand Stack:
-     *     ..., [arg1, [arg2 ... ]] function_address => [return value, ]...,
-     * </pre>
-     *
-     * @see #JNIOP_LINK
-     * @see #JNIOP_J2N
-     * @see #JNIOP_N2J
-     */
-    public static final int JNICALL              = 203;
-
-    // End extended bytecodes
-
     public static final int ILLEGAL = 255;
     public static final int END = 256;
 
@@ -370,17 +345,17 @@ public class Bytecodes {
      * A array that maps from a bytecode value to a {@link String} for the corresponding instruction mnemonic.
      * This will include the root instruction for the three-byte extended instructions.
      */
-    private static final String[] names = new String[256];
+    private static final String[] nameArray = new String[256];
 
     /**
      * A array that maps from a bytecode value to the set of {@link Flags} for the corresponding instruction.
      */
-    private static final int[] flags = new int[256];
+    private static final int[] flagsArray = new int[256];
 
     /**
      * A array that maps from a bytecode value to the length in bytes for the corresponding instruction.
      */
-    private static final int[] length = new int[256];
+    private static final int[] lengthArray = new int[256];
 
     // Checkstyle: stop
     static {
@@ -587,8 +562,6 @@ public class Bytecodes {
         def(GOTO_W              , "goto_w"          , "boooo", STOP | BRANCH);
         def(JSR_W               , "jsr_w"           , "boooo", STOP | BRANCH);
         def(BREAKPOINT          , "breakpoint"      , "b"    , TRAP);
-
-        def(JNICALL             , "jnicall"         , "bii"  , EXTENSION | TRAP);
     }
     // Checkstyle: resume
 
@@ -598,7 +571,7 @@ public class Bytecodes {
      * @return {@code true} iff commutative
      */
     public static boolean isCommutative(int opcode) {
-        return (flags[opcode & 0xff] & COMMUTATIVE) != 0;
+        return (flagsArray[opcode & 0xff] & COMMUTATIVE) != 0;
     }
 
     /**
@@ -609,7 +582,7 @@ public class Bytecodes {
      *         variable length instruction (e.g. {@link #TABLESWITCH}), then 0 is returned.
      */
     public static int lengthOf(int opcode) {
-        return length[opcode & 0xff];
+        return lengthArray[opcode & 0xff];
     }
 
     /**
@@ -622,7 +595,7 @@ public class Bytecodes {
      */
     public static int lengthOf(byte[] code, int bci) {
         int opcode = Bytes.beU1(code, bci);
-        int length = Bytecodes.length[opcode & 0xff];
+        int length = Bytecodes.lengthArray[opcode & 0xff];
         if (length == 0) {
             switch (opcode) {
                 case TABLESWITCH: {
@@ -655,7 +628,7 @@ public class Bytecodes {
      * @return the mnemonic for {@code opcode} or {@code "<illegal opcode: " + opcode + ">"} if {@code opcode} is not a legal opcode
      */
     public static String nameOf(int opcode) throws IllegalArgumentException {
-        String name = names[opcode & 0xff];
+        String name = nameArray[opcode & 0xff];
         if (name == null) {
             return "<illegal opcode: " + opcode + ">";
         }
@@ -668,7 +641,7 @@ public class Bytecodes {
      * @return the mnemonic for {@code opcode} or {@code "<illegal opcode>"} if {@code opcode} is not a legal opcode.
      */
     public static String baseNameOf(int opcode) {
-        String name = names[opcode & 0xff];
+        String name = nameArray[opcode & 0xff];
         if (name == null) {
             return "<illegal opcode>";
         }
@@ -683,8 +656,8 @@ public class Bytecodes {
      * @throws IllegalArgumentException if {@code name} does not denote a valid opcode
      */
     public static int valueOf(String name) {
-        for (int opcode = 0; opcode < names.length; ++opcode) {
-            if (name.equalsIgnoreCase(names[opcode])) {
+        for (int opcode = 0; opcode < nameArray.length; ++opcode) {
+            if (name.equalsIgnoreCase(nameArray[opcode])) {
                 return opcode;
             }
         }
@@ -698,7 +671,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} can cause an implicit exception, {@code false} otherwise
      */
     public static boolean canTrap(int opcode) {
-        return (flags[opcode & 0xff] & TRAP) != 0;
+        return (flagsArray[opcode & 0xff] & TRAP) != 0;
     }
 
     /**
@@ -708,7 +681,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} loads a local variable to the operand stack, {@code false} otherwise
      */
     public static boolean isLoad(int opcode) {
-        return (flags[opcode & 0xff] & LOAD) != 0;
+        return (flagsArray[opcode & 0xff] & LOAD) != 0;
     }
 
     /**
@@ -719,7 +692,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} properly ends a basic block
      */
     public static boolean isStop(int opcode) {
-        return (flags[opcode & 0xff] & STOP) != 0;
+        return (flagsArray[opcode & 0xff] & STOP) != 0;
     }
 
     /**
@@ -730,7 +703,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} stores a value to a local variable, {@code false} otherwise
      */
     public static boolean isInvoke(int opcode) {
-        return (flags[opcode & 0xff] & INVOKE) != 0;
+        return (flagsArray[opcode & 0xff] & INVOKE) != 0;
     }
 
     /**
@@ -741,7 +714,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} stores a value to a local variable, {@code false} otherwise
      */
     public static boolean isStore(int opcode) {
-        return (flags[opcode & 0xff] & STORE) != 0;
+        return (flagsArray[opcode & 0xff] & STORE) != 0;
     }
 
     /**
@@ -751,7 +724,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} delimits a basic block
      */
     public static boolean isBlockEnd(int opcode) {
-        return (flags[opcode & 0xff] & (STOP | FALL_THROUGH)) != 0;
+        return (flagsArray[opcode & 0xff] & (STOP | FALL_THROUGH)) != 0;
     }
 
     /**
@@ -762,7 +735,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} is a branch instruction with a single operand
      */
     public static boolean isBranch(int opcode) {
-        return (flags[opcode & 0xff] & BRANCH) != 0;
+        return (flagsArray[opcode & 0xff] & BRANCH) != 0;
     }
 
     /**
@@ -771,7 +744,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} is a conditional branch
      */
     public static boolean isConditionalBranch(int opcode) {
-        return (flags[opcode & 0xff] & FALL_THROUGH) != 0;
+        return (flagsArray[opcode & 0xff] & FALL_THROUGH) != 0;
     }
 
     /**
@@ -782,7 +755,7 @@ public class Bytecodes {
      * @return {@code true} iff {@code opcode} is a standard bytecode
      */
     public static boolean isStandard(int opcode) {
-        return (flags[opcode & 0xff] & EXTENSION) == 0;
+        return (flagsArray[opcode & 0xff] & EXTENSION) == 0;
     }
 
     /**
@@ -792,7 +765,7 @@ public class Bytecodes {
      * @return {@code true} if {@code opcode} is an extended bytecode
      */
     public static boolean isExtended(int opcode) {
-        return (flags[opcode & 0xff] & EXTENSION) != 0;
+        return (flagsArray[opcode & 0xff] & EXTENSION) != 0;
     }
 
     /**
@@ -861,7 +834,7 @@ public class Bytecodes {
      *
      * @param name instruction name (should be lower case)
      * @param format encodes the length of the instruction
-     * @param flags the set of {@link Flags} associated with the instruction
+     * @param flagsArray the set of {@link Flags} associated with the instruction
      */
     private static void def(int opcode, String name, String format) {
         def(opcode, name, format, 0);
@@ -875,11 +848,11 @@ public class Bytecodes {
      * @param flags the set of {@link Flags} associated with the instruction
      */
     private static void def(int opcode, String name, String format, int flags) {
-        assert names[opcode] == null : "opcode " + opcode + " is already bound to name " + names[opcode];
-        names[opcode] = name;
+        assert nameArray[opcode] == null : "opcode " + opcode + " is already bound to name " + nameArray[opcode];
+        nameArray[opcode] = name;
         int instructionLength = format.length();
-        length[opcode] = instructionLength;
-        Bytecodes.flags[opcode] = flags;
+        lengthArray[opcode] = instructionLength;
+        Bytecodes.flagsArray[opcode] = flags;
 
         assert !isConditionalBranch(opcode) || isBranch(opcode) : "a conditional branch must also be a branch";
     }
@@ -919,8 +892,8 @@ public class Bytecodes {
                         String name = matcher.group(2);
                         String value = matcher.group(4);
                         int opcode = Integer.parseInt(value);
-                        if (names[opcode] == null || !names[opcode].equalsIgnoreCase(name)) {
-                            throw new RuntimeException("Missing definition of name and flags for " + opcode + ":" + name + " -- " + names[opcode]);
+                        if (nameArray[opcode] == null || !nameArray[opcode].equalsIgnoreCase(name)) {
+                            throw new RuntimeException("Missing definition of name and flags for " + opcode + ":" + name + " -- " + nameArray[opcode]);
                         }
                         if (opcode != lastExtendedOpcode + 1) {
                             System.err.println("Fixed declaration of opcode " + name + " to be " + (lastExtendedOpcode + 1) + " (was " + value + ")");

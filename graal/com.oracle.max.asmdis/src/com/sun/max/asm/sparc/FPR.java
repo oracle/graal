@@ -120,6 +120,7 @@ public class FPR extends AbstractSymbolicArgument {
     private static final FPR[] doubleValues = {F0, F2, F4, F6, F8, F10, F12, F14, F16, F18, F20, F22, F24, F26, F28, F30,
                                                F32, F34, F36, F38, F40, F42, F44, F46, F48, F50, F52, F54, F56, F58, F60, F62};
 
+    @SuppressWarnings("unused")
     private static final FPR[] quadrupleValues = {F0, F4, F8, F12, F16, F20, F24, F28, F32, F36, F40, F44, F48, F52, F56, F60};
 
     public static FPR fromValue(int value) {

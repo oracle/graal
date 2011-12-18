@@ -41,7 +41,7 @@ public class SortedPropertiesTest extends MaxTestCase {
     }
 
     public void test() {
-        final SortedMap<String, String> sortedMap = new TreeMap<String, String>();
+        final SortedMap<String, String> sortedMap = new TreeMap<>();
         final Properties sortedProperties = new SortedProperties();
         final Properties systemProperties = System.getProperties();
         for (final Enumeration<?> e = systemProperties.propertyNames(); e.hasMoreElements();) {

@@ -48,7 +48,7 @@ public abstract class InstructionDescriptionCreator<InstructionDescription_Type 
         return instructionDescription;
     }
 
-    private final List<InstructionDescription_Type> instructionDescriptions = new LinkedList<InstructionDescription_Type>();
+    private final List<InstructionDescription_Type> instructionDescriptions = new LinkedList<>();
 
     private static void deepCopy(Object[] src, List<Object> dst) {
         for (Object object : src) {
@@ -61,7 +61,7 @@ public abstract class InstructionDescriptionCreator<InstructionDescription_Type 
     }
 
     protected InstructionDescription_Type define(Object... specifications) {
-        List<Object> specList = new ArrayList<Object>(specifications.length * 2);
+        List<Object> specList = new ArrayList<>(specifications.length * 2);
         deepCopy(specifications, specList);
         return defineInstructionDescription(specList);
     }

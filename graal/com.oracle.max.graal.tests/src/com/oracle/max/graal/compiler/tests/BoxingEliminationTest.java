@@ -41,6 +41,7 @@ public class BoxingEliminationTest extends GraphTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
+    @SuppressWarnings("all")
     public static int referenceSnippet(int a) {
         return 1;
     }
@@ -58,6 +59,7 @@ public class BoxingEliminationTest extends GraphTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test1Snippet(int a) {
         return boxedInteger();
     }
@@ -67,6 +69,7 @@ public class BoxingEliminationTest extends GraphTest {
         test("test2Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test2Snippet(int a) {
         return (Integer) boxedObject();
     }
@@ -75,6 +78,7 @@ public class BoxingEliminationTest extends GraphTest {
         test("test3Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test3Snippet(int a) {
         int b = boxedInteger();
         if (b < 0) {
@@ -99,14 +103,14 @@ public class BoxingEliminationTest extends GraphTest {
                 n.replaceFirstInput(local, constant);
             }
         }
-        Collection<Invoke> hints = new ArrayList<Invoke>();
+        Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }
         new InliningPhase(null, runtime(), hints, null, phasePlan).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         print(graph);
-        new BoxingEliminationPhase(runtime()).apply(graph);
+        new BoxingEliminationPhase().apply(graph);
         print(graph);
         new ExpandBoxingNodesPhase(pool).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);

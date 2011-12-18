@@ -31,7 +31,7 @@ import com.oracle.max.graal.nodes.spi.*;
  */
 public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLowerable {
 
-    @Input(notDataflow = true) private final NodeInputList<EndNode> ends = new NodeInputList<EndNode>(this);
+    @Input(notDataflow = true) private final NodeInputList<EndNode> ends = new NodeInputList<>(this);
 
     @Override
     public boolean needsStateAfter() {

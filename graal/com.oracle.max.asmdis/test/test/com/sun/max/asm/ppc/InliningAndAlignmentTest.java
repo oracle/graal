@@ -56,12 +56,12 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         junit.textui.TestRunner.run(InliningAndAlignmentTest.class);
     }
 
-    private void disassemble(PPCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
+    private static void disassemble(PPCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
     }
 
-    private byte[] assembleInlineData(PPCAssembler asm, long startAddress, int pointerSize, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleInlineData(PPCAssembler asm, long startAddress, int pointerSize, InlineDataRecorder recorder) throws AssemblyException {
         final Directives dir = asm.directives();
         final Label label1 = new Label();
 
@@ -159,7 +159,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         System.out.println();
     }
 
-    private byte[] assembleAlignmentPadding(PPCAssembler asm, long startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleAlignmentPadding(PPCAssembler asm, long startAddress, InlineDataRecorder recorder) throws AssemblyException {
         // test memory alignment directives from 1 byte to 16 bytes
         final Directives dir = asm.directives();
 

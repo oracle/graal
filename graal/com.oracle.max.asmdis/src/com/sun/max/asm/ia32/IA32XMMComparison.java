@@ -63,6 +63,6 @@ public enum IA32XMMComparison implements EnumerableArgument<IA32XMMComparison> {
         return LESS_THAN_OR_EQUAL;
     }
 
-    public static final Enumerator<IA32XMMComparison> ENUMERATOR = new Enumerator<IA32XMMComparison>(IA32XMMComparison.class);
+    public static final Enumerator<IA32XMMComparison> ENUMERATOR = new Enumerator<>(IA32XMMComparison.class);
 
 }

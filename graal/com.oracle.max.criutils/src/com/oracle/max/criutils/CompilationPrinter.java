@@ -96,8 +96,8 @@ public class CompilationPrinter {
      */
     public void printCompilation(RiMethod method) {
         begin("compilation");
-        out.print("name \" ").print(CiUtil.format("%H::%n", method, true)).println('"');
-        out.print("method \"").print(CiUtil.format("%f %r %H.%n(%p)", method, true)).println('"');
+        out.print("name \" ").print(CiUtil.format("%H::%n", method)).println('"');
+        out.print("method \"").print(CiUtil.format("%f %r %H.%n(%p)", method)).println('"');
         out.print("date ").println(System.currentTimeMillis());
         end("compilation");
     }
@@ -125,11 +125,12 @@ public class CompilationPrinter {
         }
 
         if (codePos != null) {
+            CiCodePos curCodePos = codePos;
             do {
-                sb.append(CiUtil.toLocation(codePos.method, codePos.bci));
+                sb.append(CiUtil.toLocation(curCodePos.method, curCodePos.bci));
                 sb.append('\n');
-                if (codePos instanceof CiFrame) {
-                    CiFrame frame = (CiFrame) codePos;
+                if (curCodePos instanceof CiFrame) {
+                    CiFrame frame = (CiFrame) curCodePos;
                     if (frame.numStack > 0) {
                         sb.append("stack: ");
                         for (int i = 0; i < frame.numStack; i++) {
@@ -152,8 +153,8 @@ public class CompilationPrinter {
                     }
                     sb.append("\n");
                 }
-                codePos = codePos.caller;
-            } while (codePos != null);
+                curCodePos = curCodePos.caller;
+            } while (curCodePos != null);
         }
         return sb.toString();
     }

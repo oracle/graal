@@ -69,7 +69,7 @@ public class InlineDataDecoder {
     }
 
     public InlineDataDecoder(List<InlineDataDescriptor> descriptors) {
-        positionToDescriptorMap = new TreeMap<Integer, InlineDataDescriptor>();
+        positionToDescriptorMap = new TreeMap<>();
         for (InlineDataDescriptor descriptor : descriptors) {
             positionToDescriptorMap.put(descriptor.startPosition(), descriptor);
         }
@@ -86,7 +86,7 @@ public class InlineDataDecoder {
             final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(encodedDescriptors);
             final DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
             final int numberOfEntries = dataInputStream.readInt();
-            positionToDescriptorMap = new TreeMap<Integer, InlineDataDescriptor>();
+            positionToDescriptorMap = new TreeMap<>();
             for (int i = 0; i < numberOfEntries; ++i) {
                 final Tag tag = InlineDataDescriptor.Tag.VALUES.get(dataInputStream.readByte());
                 final InlineDataDescriptor inlineDataDescriptor = tag.decode(dataInputStream);

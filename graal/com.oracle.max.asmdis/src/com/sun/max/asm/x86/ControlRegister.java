@@ -61,6 +61,6 @@ public enum ControlRegister implements EnumerableArgument<ControlRegister> {
         return CR0;
     }
 
-    public static final Enumerator<ControlRegister> ENUMERATOR = new Enumerator<ControlRegister>(ControlRegister.class);
+    public static final Enumerator<ControlRegister> ENUMERATOR = new Enumerator<>(ControlRegister.class);
 
 }

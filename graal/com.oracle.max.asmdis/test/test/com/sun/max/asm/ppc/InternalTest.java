@@ -59,7 +59,7 @@ public class InternalTest extends MaxTestCase {
         junit.textui.TestRunner.run(InternalTest.class);
     }
 
-    private byte[] assemble(PPCAssembler asm) throws IOException, AssemblyException {
+    private static byte[] assemble(PPCAssembler asm) throws AssemblyException {
         final Label loop1 = new Label();
         final Label loop2 = new Label();
 
@@ -79,7 +79,7 @@ public class InternalTest extends MaxTestCase {
         return asm.toByteArray();
     }
 
-    private void disassemble(PPCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
+    private static void disassemble(PPCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
     }

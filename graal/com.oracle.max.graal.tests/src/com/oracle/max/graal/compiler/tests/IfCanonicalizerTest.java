@@ -37,6 +37,7 @@ public class IfCanonicalizerTest extends GraphTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
+    @SuppressWarnings("all")
     public static int referenceSnippet(int a) {
         return 1;
     }
@@ -46,6 +47,7 @@ public class IfCanonicalizerTest extends GraphTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test1Snippet(int a) {
         if (a == 0) {
             return 1;
@@ -59,6 +61,7 @@ public class IfCanonicalizerTest extends GraphTest {
         test("test2Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test2Snippet(int a) {
         if (a == 0) {
             if (a == 0) {
@@ -77,6 +80,7 @@ public class IfCanonicalizerTest extends GraphTest {
         test("test3Snippet");
     }
 
+    @SuppressWarnings("all")
     public static int test3Snippet(int a) {
         if (a == 0) {
             if (a != 1) {

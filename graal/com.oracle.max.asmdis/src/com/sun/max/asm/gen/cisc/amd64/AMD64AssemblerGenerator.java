@@ -55,12 +55,12 @@ public class AMD64AssemblerGenerator extends X86AssemblerGenerator<AMD64Template
         return Bytes.toHexLiteral(basicRexValue(template));
     }
 
-    private void printUnconditionalRexBit(IndentWriter writer, X86Parameter parameter, int bitIndex) {
+    private static void printUnconditionalRexBit(IndentWriter writer, X86Parameter parameter, int bitIndex) {
         writer.print(REX_BYTE_NAME + " |= (" + parameter.valueString() + " & 8) >> " + (3 - bitIndex) + ";");
         writer.println(" // " + parameter.place().comment());
     }
 
-    private void checkGeneralRegister8Values(IndentWriter writer, X86Template template) {
+    private static void checkGeneralRegister8Values(IndentWriter writer, X86Template template) {
         for (X86Parameter parameter : template.parameters()) {
             if (parameter.type() == AMD64GeneralRegister8.class) {
                 writer.println("if (" + parameter.variableName() + ".isHighByte()) {");
@@ -97,7 +97,7 @@ public class AMD64AssemblerGenerator extends X86AssemblerGenerator<AMD64Template
         writer.println();
     }
 
-    private void printConditionalRexBit(IndentWriter writer, X86Template template, X86Parameter parameter, int bitIndex) {
+    private static void printConditionalRexBit(IndentWriter writer, X86Template template, X86Parameter parameter, int bitIndex) {
         if (parameter.type() == AMD64GeneralRegister8.class) {
             writer.println("if (" + parameter.variableName() + ".requiresRexPrefix()) {");
             writer.indent();

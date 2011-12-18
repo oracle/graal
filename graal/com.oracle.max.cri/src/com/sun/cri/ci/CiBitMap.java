@@ -30,6 +30,7 @@ import java.util.*;
  */
 public final class CiBitMap implements Serializable {
 
+    private static final long serialVersionUID = 2471441272241401105L;
     private static final int ADDRESS_BITS_PER_WORD = 6;
     private static final int BITS_PER_WORD = 1 << ADDRESS_BITS_PER_WORD;
     private static final int BIT_INDEX_MASK = BITS_PER_WORD - 1;
@@ -160,11 +161,11 @@ public final class CiBitMap implements Serializable {
         }
     }
 
-    private int bitInWord(int i) {
+    private static int bitInWord(int i) {
         return i & BIT_INDEX_MASK;
     }
 
-    private int wordIndex(int i) {
+    private static int wordIndex(int i) {
         return (i >> ADDRESS_BITS_PER_WORD) - 1;
     }
 
@@ -424,7 +425,7 @@ public final class CiBitMap implements Serializable {
         return -1;
     }
 
-    private int bitIndex(int index) {
+    private static int bitIndex(int index) {
         return (index + 1) << ADDRESS_BITS_PER_WORD;
     }
 
@@ -563,10 +564,8 @@ public final class CiBitMap implements Serializable {
      * @param length the number of bits represented in the returned string. If {@code length < 0 || length > size()},
      *            then the value of {@link #length()} is used.
      */
-    public String toBinaryString(int length) {
-        if (length < 0 || length > size) {
-            length = length();
-        }
+    public String toBinaryString() {
+        int length = length();
         if (length == 0) {
             return "";
         }
@@ -589,9 +588,9 @@ public final class CiBitMap implements Serializable {
         if (size == 0) {
             return "";
         }
-        int size = CiUtil.align(this.size, 4);
-        StringBuilder sb = new StringBuilder(size / 4);
-        for (int i = 0; i < size; i += 4) {
+        int hexSize = CiUtil.align(this.size, 4);
+        StringBuilder sb = new StringBuilder(hexSize / 4);
+        for (int i = 0; i < hexSize; i += 4) {
             int nibble = get(i) ? 1 : 0;
             if (get(i + 1)) {
                 nibble |= 2;
@@ -629,9 +628,6 @@ public final class CiBitMap implements Serializable {
      * @return the number of bytes written to {@code arr}
      */
     public int copyTo(byte[] arr, int off, int numberOfBytes) {
-        if (numberOfBytes < 0) {
-            numberOfBytes = (size + 7) / 8;
-        }
         for (int i = 0; i < numberOfBytes; ++i) {
             long word = low;
             int byteInWord;

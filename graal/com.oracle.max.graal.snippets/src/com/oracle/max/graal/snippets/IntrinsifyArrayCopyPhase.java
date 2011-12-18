@@ -29,16 +29,11 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
 public class IntrinsifyArrayCopyPhase extends Phase {
     private final GraalRuntime runtime;
-    private final CiTarget target;
-    private final PhasePlan plan;
-    private BoxingMethodPool pool;
     private RiResolvedMethod arrayCopy;
     private RiResolvedMethod byteArrayCopy;
     private RiResolvedMethod shortArrayCopy;
@@ -46,11 +41,8 @@ public class IntrinsifyArrayCopyPhase extends Phase {
     private RiResolvedMethod intArrayCopy;
     private RiResolvedMethod longArrayCopy;
 
-    public IntrinsifyArrayCopyPhase(GraalRuntime runtime, CiTarget target, PhasePlan plan) {
+    public IntrinsifyArrayCopyPhase(GraalRuntime runtime) {
         this.runtime = runtime;
-        this.target = target;
-        this.plan = plan;
-        this.pool = new BoxingMethodPool(runtime);
         try {
             byteArrayCopy = getArrayCopySnippet(runtime, byte.class);
             charArrayCopy = getArrayCopySnippet(runtime, char.class);

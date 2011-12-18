@@ -32,7 +32,6 @@ import com.oracle.max.graal.graph.*;
 
 public final class ComputeLinearScanOrder {
 
-    private final int maxBlockId; // the highest blockId of a block
     private int numBlocks; // total number of blocks (smaller than maxBlockId)
 
     List<LIRBlock> linearScanOrder; // the resulting list of blocks in correct order
@@ -91,12 +90,11 @@ public final class ComputeLinearScanOrder {
     public ComputeLinearScanOrder(int maxBlockId, int loopCount, LIRBlock startBlock) {
         loopHeaders = new LIRBlock[loopCount];
 
-        this.maxBlockId = maxBlockId;
         visitedBlocks = new BitMap(maxBlockId);
         activeBlocks = new BitMap(maxBlockId);
         dominatorBlocks = new BitMap(maxBlockId);
         forwardBranches = new int[maxBlockId];
-        workList = new ArrayList<LIRBlock>(8);
+        workList = new ArrayList<>(8);
 
         countEdges(startBlock, null);
         computeOrder(startBlock);
@@ -147,7 +145,7 @@ public final class ComputeLinearScanOrder {
         }
     }
 
-    int computeWeight(LIRBlock cur) {
+    static int computeWeight(LIRBlock cur) {
 
         // limit loop-depth to 15 bit (only for security reason, it will never be so big)
         int weight = (cur.loopDepth() & 0x7FFF) << 16;
@@ -291,9 +289,9 @@ public final class ComputeLinearScanOrder {
         }
 
         // the start block is always the first block in the linear scan order
-        linearScanOrder = new ArrayList<LIRBlock>(numBlocks);
+        linearScanOrder = new ArrayList<>(numBlocks);
 
-        codeEmittingOrder = new ArrayList<LIRBlock>(numBlocks);
+        codeEmittingOrder = new ArrayList<>(numBlocks);
 
         // start processing with standard entry block
         assert workList.isEmpty() : "list must be empty before processing";

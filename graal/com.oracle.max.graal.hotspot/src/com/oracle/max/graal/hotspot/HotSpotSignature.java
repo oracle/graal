@@ -33,7 +33,11 @@ import com.sun.cri.ri.*;
  */
 public class HotSpotSignature extends CompilerObject implements RiSignature {
 
-    private final List<String> arguments = new ArrayList<String>();
+    /**
+     * 
+     */
+    private static final long serialVersionUID = -2890917956072366116L;
+    private final List<String> arguments = new ArrayList<>();
     private final String returnType;
     private final String originalString;
     private RiType[] argumentTypes;
@@ -61,7 +65,8 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
         }
     }
 
-    private int parseSignature(String signature, int cur) {
+    private static int parseSignature(String signature, int start) {
+        int cur = start;
         char first;
         do {
             first = signature.charAt(cur++);

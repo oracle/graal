@@ -97,6 +97,6 @@ public abstract class NodePredicate {
     }
 
     public static <T extends Node> EqualsPredicate<T> equals(T u) {
-        return new EqualsPredicate<T>(u);
+        return new EqualsPredicate<>(u);
     }
 }

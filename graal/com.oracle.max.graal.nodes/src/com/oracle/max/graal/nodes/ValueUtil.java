@@ -85,7 +85,7 @@ public class ValueUtil {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> Collection<T> filter(Iterable<Node> nodes, Class<T> clazz) {
-        ArrayList<T> phis = new ArrayList<T>();
+        ArrayList<T> phis = new ArrayList<>();
         for (Node node : nodes) {
             if (clazz.isInstance(node)) {
                 phis.add((T) node);

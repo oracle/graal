@@ -84,7 +84,7 @@ public class FrameStateBuilder implements FrameStateAccess {
             javaIndex += stackSlots(kind);
             index++;
         }
-        this.locks = new ArrayList<MonitorObject>();
+        this.locks = new ArrayList<>();
     }
 
     @Override

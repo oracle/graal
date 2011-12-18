@@ -106,7 +106,7 @@ public class LoopUtil {
     }
 
     public static List<Loop> computeLoops(StructuredGraph graph) {
-        List<Loop> loops = new LinkedList<LoopUtil.Loop>();
+        List<Loop> loops = new LinkedList<>();
         for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.class)) {
             NodeBitMap cfgNodes = markUpCFG(loopBegin, loopBegin.loopEnd()); // computeLoopNodes(loopBegin);
             cfgNodes.mark(loopBegin);
@@ -200,10 +200,6 @@ public class LoopUtil {
             }
         }
         return inOrAfter;
-    }
-
-    private static NodeBitMap inOrBefore(Loop loop) {
-        return inOrBefore(loop, inOrAfter(loop));
     }
 
     private static NodeBitMap inOrBefore(Loop loop, NodeBitMap inOrAfter) {
@@ -301,17 +297,6 @@ public class LoopUtil {
             FrameState stateAfter = ((StateSplit) n).stateAfter();
             while (stateAfter != null) {
                 map.mark(stateAfter);
-                stateAfter = stateAfter.outerFrameState();
-            }
-        }
-    }
-
-    private static void clearWithState(Node n, NodeBitMap map) {
-        map.clear(n);
-        if (n instanceof StateSplit) {
-            FrameState stateAfter = ((StateSplit) n).stateAfter();
-            while (stateAfter != null) {
-                map.clear(stateAfter);
                 stateAfter = stateAfter.outerFrameState();
             }
         }

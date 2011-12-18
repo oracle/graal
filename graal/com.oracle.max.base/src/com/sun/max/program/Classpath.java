@@ -360,10 +360,10 @@ public class Classpath {
      * @return the result of prepending {@code classpath} to this classpath
      */
     public Classpath prepend(Classpath classpath) {
-        ArrayList<Entry> entries = new ArrayList<Entry>(this.entries.size() + classpath.entries.size());
-        entries.addAll(classpath.entries);
-        entries.addAll(this.entries);
-        return new Classpath(entries);
+        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size() + classpath.entries.size());
+        newEntries.addAll(classpath.entries);
+        newEntries.addAll(this.entries);
+        return new Classpath(newEntries);
     }
 
     /**
@@ -373,10 +373,10 @@ public class Classpath {
      * @return the result of prepending {@code classpath} to this classpath
      */
     public Classpath prepend(String path) {
-        ArrayList<Entry> entries = new ArrayList<Entry>(this.entries.size());
-        entries.add(createEntry(path));
-        entries.addAll(this.entries);
-        return new Classpath(entries);
+        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
+        newEntries.add(createEntry(path));
+        newEntries.addAll(this.entries);
+        return new Classpath(newEntries);
     }
 
     /**

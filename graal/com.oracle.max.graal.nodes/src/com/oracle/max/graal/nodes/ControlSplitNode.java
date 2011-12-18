@@ -51,7 +51,7 @@ public abstract class ControlSplitNode extends FixedNode {
     public ControlSplitNode(Stamp stamp, BeginNode[] blockSuccessors, double[] branchProbability) {
         super(stamp);
         assert branchProbability.length == blockSuccessors.length;
-        this.blockSuccessors = new NodeSuccessorList<BeginNode>(this, blockSuccessors);
+        this.blockSuccessors = new NodeSuccessorList<>(this, blockSuccessors);
         this.branchProbability = branchProbability;
     }
 

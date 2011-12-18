@@ -40,14 +40,17 @@ public final class PPCAssembly extends RiscAssembly {
         super(ISA.PPC, RiscTemplate.class);
     }
 
+    @SuppressWarnings("static-method")
     public boolean generatingDeprecatedInstructions() {
         return GENERATING_DEPRECATED_INSTRUCTIONS;
     }
 
+    @SuppressWarnings("static-method")
     public boolean generating64BitInstructions() {
         return GENERATING_64BIT_INSTRUCTIONS;
     }
 
+    @SuppressWarnings("static-method")
     public boolean generatingPower5Instructions() {
         return GENERATING_POWER5_INSTRUCTIONS;
     }
@@ -59,6 +62,7 @@ public final class PPCAssembly extends RiscAssembly {
      * This will have to be a non-constant method should another non-broken external assembler
      * be used for testing.
      */
+    @SuppressWarnings("static-method")
     public boolean isExternalMTCRFEncodingBroken() {
         return true;
     }

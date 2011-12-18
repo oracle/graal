@@ -112,9 +112,10 @@ public abstract class Buffer {
 
     public int emitByte(int b, int pos) {
         assert NumUtil.isUByte(b);
-        ensureSize(pos + 1);
-        data[pos++] = (byte) (b & 0xFF);
-        return pos;
+        int newPos = pos + 1;
+        ensureSize(newPos);
+        data[pos] = (byte) (b & 0xFF);
+        return newPos;
     }
 
     public abstract int emitShort(int b, int pos);
@@ -135,34 +136,37 @@ public abstract class Buffer {
         @Override
         public int emitShort(int b, int pos) {
             assert NumUtil.isUShort(b);
+            int newPos = pos + 2;
             ensureSize(pos + 2);
-            data[pos++] = (byte) ((b >> 8) & 0xFF);
-            data[pos++] = (byte) (b & 0xFF);
-            return pos;
+            data[pos] = (byte) ((b >> 8) & 0xFF);
+            data[pos + 1] = (byte) (b & 0xFF);
+            return newPos;
         }
 
         @Override
         public int emitInt(int b, int pos) {
-            ensureSize(pos + 4);
-            data[pos++] = (byte) ((b >> 24) & 0xFF);
-            data[pos++] = (byte) ((b >> 16) & 0xFF);
-            data[pos++] = (byte) ((b >> 8) & 0xFF);
-            data[pos++] = (byte) (b & 0xFF);
-            return pos;
+            int newPos = pos + 4;
+            ensureSize(newPos);
+            data[pos] = (byte) ((b >> 24) & 0xFF);
+            data[pos + 1] = (byte) ((b >> 16) & 0xFF);
+            data[pos + 2] = (byte) ((b >> 8) & 0xFF);
+            data[pos + 3] = (byte) (b & 0xFF);
+            return newPos;
         }
 
         @Override
         public int emitLong(long b, int pos) {
-            ensureSize(pos + 8);
-            data[pos++] = (byte) ((b >> 56) & 0xFF);
-            data[pos++] = (byte) ((b >> 48) & 0xFF);
-            data[pos++] = (byte) ((b >> 40) & 0xFF);
-            data[pos++] = (byte) ((b >> 32) & 0xFF);
-            data[pos++] = (byte) ((b >> 24) & 0xFF);
-            data[pos++] = (byte) ((b >> 16) & 0xFF);
-            data[pos++] = (byte) ((b >> 8) & 0xFF);
-            data[pos++] = (byte) (b & 0xFF);
-            return pos;
+            int newPos = pos + 8;
+            ensureSize(newPos);
+            data[pos] = (byte) ((b >> 56) & 0xFF);
+            data[pos + 1] = (byte) ((b >> 48) & 0xFF);
+            data[pos + 2] = (byte) ((b >> 40) & 0xFF);
+            data[pos + 3] = (byte) ((b >> 32) & 0xFF);
+            data[pos + 4] = (byte) ((b >> 24) & 0xFF);
+            data[pos + 5] = (byte) ((b >> 16) & 0xFF);
+            data[pos + 6] = (byte) ((b >> 8) & 0xFF);
+            data[pos + 7] = (byte) (b & 0xFF);
+            return newPos;
         }
 
         @Override
@@ -186,34 +190,37 @@ public abstract class Buffer {
         @Override
         public int emitShort(int b, int pos) {
             assert NumUtil.isUShort(b);
-            ensureSize(pos + 2);
-            data[pos++] = (byte) (b & 0xFF);
-            data[pos++] = (byte) ((b >> 8) & 0xFF);
-            return pos;
+            int newPos = pos + 2;
+            ensureSize(newPos);
+            data[pos] = (byte) (b & 0xFF);
+            data[pos + 1] = (byte) ((b >> 8) & 0xFF);
+            return newPos;
         }
 
         @Override
         public int emitInt(int b, int pos) {
-            ensureSize(pos + 4);
-            data[pos++] = (byte) (b & 0xFF);
-            data[pos++] = (byte) ((b >> 8) & 0xFF);
-            data[pos++] = (byte) ((b >> 16) & 0xFF);
-            data[pos++] = (byte) ((b >> 24) & 0xFF);
-            return pos;
+            int newPos = pos + 4;
+            ensureSize(newPos);
+            data[pos] = (byte) (b & 0xFF);
+            data[pos + 1] = (byte) ((b >> 8) & 0xFF);
+            data[pos + 2] = (byte) ((b >> 16) & 0xFF);
+            data[pos + 3] = (byte) ((b >> 24) & 0xFF);
+            return newPos;
         }
 
         @Override
         public int emitLong(long b, int pos) {
-            ensureSize(pos + 8);
-            data[pos++] = (byte) (b & 0xFF);
-            data[pos++] = (byte) ((b >> 8) & 0xFF);
-            data[pos++] = (byte) ((b >> 16) & 0xFF);
-            data[pos++] = (byte) ((b >> 24) & 0xFF);
-            data[pos++] = (byte) ((b >> 32) & 0xFF);
-            data[pos++] = (byte) ((b >> 40) & 0xFF);
-            data[pos++] = (byte) ((b >> 48) & 0xFF);
-            data[pos++] = (byte) ((b >> 56) & 0xFF);
-            return pos;
+            int newPos = pos + 8;
+            ensureSize(newPos);
+            data[pos] = (byte) (b & 0xFF);
+            data[pos + 1] = (byte) ((b >> 8) & 0xFF);
+            data[pos + 2] = (byte) ((b >> 16) & 0xFF);
+            data[pos + 3] = (byte) ((b >> 24) & 0xFF);
+            data[pos + 4] = (byte) ((b >> 32) & 0xFF);
+            data[pos + 5] = (byte) ((b >> 40) & 0xFF);
+            data[pos + 6] = (byte) ((b >> 48) & 0xFF);
+            data[pos + 7] = (byte) ((b >> 56) & 0xFF);
+            return newPos;
         }
 
         @Override

@@ -34,7 +34,7 @@ public enum IA32GeneralRegister8 implements GeneralRegister<IA32GeneralRegister8
 
     AL, CL, DL, BL, AH, CH, DH, BH;
 
-    public static final Enumerator<IA32GeneralRegister8> ENUMERATOR = new Enumerator<IA32GeneralRegister8>(IA32GeneralRegister8.class);
+    public static final Enumerator<IA32GeneralRegister8> ENUMERATOR = new Enumerator<>(IA32GeneralRegister8.class);
 
     private static final IA32GeneralRegister8[] lowRegisters = {AL, CL, DL, BL};
 

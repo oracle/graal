@@ -134,13 +134,13 @@ public abstract class CiArchitecture {
         this.registerReferenceMapBitCount = registerReferenceMapBitCount;
         this.returnAddressSize = returnAddressSize;
 
-        registersByName = new HashMap<String, CiRegister>(registers.length);
+        registersByName = new HashMap<>(registers.length);
         for (CiRegister register : registers) {
             registersByName.put(register.name, register);
             assert registers[register.number] == register;
         }
 
-        registersByTypeAndEncoding = new EnumMap<CiRegister.RegisterFlag, CiRegister[]>(RegisterFlag.class);
+        registersByTypeAndEncoding = new EnumMap<>(RegisterFlag.class);
         EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = CiRegister.categorize(registers);
         for (RegisterFlag type : RegisterFlag.values()) {
             CiRegister[] regs = categorizedRegs.get(type);

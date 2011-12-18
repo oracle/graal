@@ -72,7 +72,7 @@ final class EdgeMoveOptimizer {
     private final List<List<LIRInstruction>> edgeInstructionSeqences;
 
     private EdgeMoveOptimizer() {
-        edgeInstructionSeqences = new ArrayList<List<LIRInstruction>>(4);
+        edgeInstructionSeqences = new ArrayList<>(4);
     }
 
     /**
@@ -84,7 +84,7 @@ final class EdgeMoveOptimizer {
      * @param op2 the second instruction to compare
      * @return {@code true} if {@code op1} and {@code op2} are the same by the above algorithm
      */
-    private boolean same(LIRInstruction op1, LIRInstruction op2) {
+    private static boolean same(LIRInstruction op1, LIRInstruction op2) {
         assert op1 != null;
         assert op2 != null;
 

@@ -23,7 +23,6 @@
 package com.sun.max.profile;
 
 import java.util.*;
-import java.util.Arrays;
 
 import com.sun.max.*;
 import com.sun.max.profile.Metrics.*;
@@ -112,7 +111,7 @@ public class ValueMetrics {
 
         @Override
         public Map<Integer, Integer> asMap() {
-            final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+            final Map<Integer, Integer> map = new HashMap<>();
             for (int i = 0; i != counts.length; ++i) {
                 map.put(lowValue + i, counts[i]);
             }
@@ -164,7 +163,7 @@ public class ValueMetrics {
 
         @Override
         public Map<Integer, Integer> asMap() {
-            final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+            final Map<Integer, Integer> map = new HashMap<>();
             for (int i = 0; i != count.length; ++i) {
                 map.put(set[i], count[i]);
             }
@@ -229,7 +228,7 @@ public class ValueMetrics {
         public Map<Integer, Integer> asMap() {
             reduce();
             // TODO: another map implementation might be better.
-            final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+            final Map<Integer, Integer> map = new HashMap<>();
             if (values != null) {
                 for (int i = 0; i < values.length; i++) {
                     map.put(values[i], counts[i]);
@@ -354,7 +353,7 @@ public class ValueMetrics {
 
         private Map<Integer, Distribution> map() {
             if (map == null) {
-                map = new HashMap<Integer, Distribution>();
+                map = new HashMap<>();
             }
             return map;
         }
@@ -381,7 +380,7 @@ public class ValueMetrics {
 
         @Override
         public Map<Integer, Integer> asMap() {
-            final Map<Integer, Integer> result = new HashMap<Integer, Integer>();
+            final Map<Integer, Integer> result = new HashMap<>();
             for (Map.Entry<Integer, Distribution> entry : map().entrySet()) {
                 result.put(entry.getKey(), entry.getValue().total);
             }
@@ -409,7 +408,7 @@ public class ValueMetrics {
         private Map<T, Distribution> map;
         private Map<T, Distribution> map() {
             if (map == null) {
-                map = new IdentityHashMap<T, Distribution>();
+                map = new IdentityHashMap<>();
             }
             return map;
         }
@@ -438,7 +437,7 @@ public class ValueMetrics {
 
         @Override
         public Map<T, Integer> asMap() {
-            final Map<T, Integer> result = new IdentityHashMap<T, Integer>();
+            final Map<T, Integer> result = new IdentityHashMap<>();
             for (Map.Entry<T, Distribution> entry : map().entrySet()) {
                 result.put(entry.getKey(), entry.getValue().total);
             }
@@ -486,7 +485,7 @@ public class ValueMetrics {
 
         @Override
         public Map<T, Integer> asMap() {
-            final Map<T, Integer> map = new IdentityHashMap<T, Integer>();
+            final Map<T, Integer> map = new IdentityHashMap<>();
             for (int i = 0; i != count.length; ++i) {
                 map.put(set[i], count[i]);
             }
@@ -610,13 +609,13 @@ public class ValueMetrics {
         if (approx instanceof FixedApproximation) {
             final FixedApproximation fixedApprox = (FixedApproximation) approx;
             final T[] values = Utils.cast(fixedApprox.values);
-            return new FixedSetObjectDistribution<T>(values);
+            return new FixedSetObjectDistribution<>(values);
         }
         if (approx == EXACT) {
-            return new HashedObjectDistribution<T>();
+            return new HashedObjectDistribution<>();
         }
         // default is to use the hashed object distribution
-        return new HashedObjectDistribution<T>();
+        return new HashedObjectDistribution<>();
     }
 
     /**
@@ -628,6 +627,7 @@ public class ValueMetrics {
      * @param set the set of objects for which to record exact profiling information
      * @return a new distribution capable of producing an exact profile of the occurence of the specified objects
      */
+    @SafeVarargs
     public static <T> ObjectDistribution<T> newObjectDistribution(String name, T... set) {
         return newObjectDistribution(name, new FixedApproximation(set));
     }
@@ -725,6 +725,6 @@ public class ValueMetrics {
      * @return a synchronized view of the distribution
      */
     public static <T> ObjectDistribution<T> threadSafe(ObjectDistribution<T> distribution) {
-        return new ThreadsafeObjectDistribution<T>(distribution);
+        return new ThreadsafeObjectDistribution<>(distribution);
     }
 }

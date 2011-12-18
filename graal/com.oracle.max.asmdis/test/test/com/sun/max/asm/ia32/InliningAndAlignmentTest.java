@@ -60,13 +60,13 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         junit.textui.TestRunner.run(InliningAndAlignmentTest.class);
     }
 
-    private void disassemble(int startAddress, byte[] bytes, InlineDataDecoder inlineDataDecoder) throws IOException, AssemblyException {
+    private static void disassemble(int startAddress, byte[] bytes, InlineDataDecoder inlineDataDecoder) throws IOException, AssemblyException {
         final IA32Disassembler disassembler = new IA32Disassembler(startAddress, inlineDataDecoder);
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
     }
 
-    private byte[] assembleInlinedData(int startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleInlinedData(int startAddress, InlineDataRecorder recorder) throws AssemblyException {
         // tests inlining of various data types
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Directives dir = asm.directives();
@@ -147,7 +147,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         disassemble(intStartAddress, bytes, InlineDataDecoder.createFrom(recorder));
     }
 
-    private byte[] assembleAlignmentPadding(int startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleAlignmentPadding(int startAddress, InlineDataRecorder recorder) throws AssemblyException {
         // test memory alignment directives from 1 byte to 16 bytes
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Directives dir = asm.directives();
@@ -251,7 +251,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         disassemble(intStartAddress, bytes, InlineDataDecoder.createFrom(recorder));
     }
 
-    private byte[] assembleJumpAndAlignmentPadding(int startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleJumpAndAlignmentPadding(int startAddress, InlineDataRecorder recorder) throws AssemblyException {
         // tests span dependent instruction processing for label and padding instructions
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Directives dir = asm.directives();
@@ -319,7 +319,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         disassemble(intStartAddress, bytes, InlineDataDecoder.createFrom(recorder));
     }
 
-    private byte[] assembleInvalidInstructionDisassembly(int startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleInvalidInstructionDisassembly(int startAddress, InlineDataRecorder recorder) throws AssemblyException {
         // tests span dependent instruction processing for label and padding instructions
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Directives dir = asm.directives();
@@ -365,7 +365,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
      *      case matchN: rcx = matchN; break;
      *  }
      */
-    private byte[] assembleSwitchTable(int startAddress, int[] matches, InlineDataRecorder inlineDataRecorder) throws IOException, AssemblyException {
+    private static byte[] assembleSwitchTable(int startAddress, int[] matches, InlineDataRecorder inlineDataRecorder) throws AssemblyException {
         final IA32Assembler asm = new IA32Assembler(startAddress);
         final Directives directives = asm.directives();
 

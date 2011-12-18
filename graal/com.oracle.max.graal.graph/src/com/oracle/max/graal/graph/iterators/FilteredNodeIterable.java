@@ -46,6 +46,6 @@ public class FilteredNodeIterable<T extends Node> extends NodeIterable<T> {
     @Override
     public Iterator<T> iterator() {
         final Iterator<T> iterator = nodeIterable.iterator();
-        return new PredicatedProxyNodeIterator<T>(until, iterator, predicate);
+        return new PredicatedProxyNodeIterator<>(until, iterator, predicate);
     }
 }

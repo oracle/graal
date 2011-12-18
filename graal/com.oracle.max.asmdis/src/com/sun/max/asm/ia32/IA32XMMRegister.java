@@ -31,7 +31,7 @@ public enum IA32XMMRegister implements EnumerableArgument<IA32XMMRegister> {
 
     XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7;
 
-    public static final Enumerator<IA32XMMRegister> ENUMERATOR = new Enumerator<IA32XMMRegister>(IA32XMMRegister.class);
+    public static final Enumerator<IA32XMMRegister> ENUMERATOR = new Enumerator<>(IA32XMMRegister.class);
     public int value() {
         return ordinal();
     }

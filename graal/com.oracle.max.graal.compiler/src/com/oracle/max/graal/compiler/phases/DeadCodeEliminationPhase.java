@@ -31,18 +31,16 @@ import com.oracle.max.graal.nodes.*;
 public class DeadCodeEliminationPhase extends Phase {
 
     private NodeFlood flood;
-    private StructuredGraph graph;
 
     @Override
     protected void run(StructuredGraph graph) {
-        this.graph = graph;
         this.flood = graph.createNodeFlood();
 
         flood.add(graph.start());
         iterateSuccessors();
-        disconnectCFGNodes();
-        iterateInputs();
-        deleteNodes();
+        disconnectCFGNodes(graph);
+        iterateInputs(graph);
+        deleteNodes(graph);
 
         // remove chained Merges
         for (MergeNode merge : graph.getNodes(MergeNode.class)) {
@@ -69,7 +67,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void disconnectCFGNodes() {
+    private void disconnectCFGNodes(StructuredGraph graph) {
         for (EndNode node : graph.getNodes(EndNode.class)) {
             if (!flood.isMarked(node)) {
                 MergeNode merge = node.merge();
@@ -101,13 +99,13 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void replacePhis(MergeNode merge) {
+    private static void replacePhis(MergeNode merge) {
         for (PhiNode phi : merge.phis().snapshot()) {
             phi.replaceAndDelete((phi).valueAt(0));
         }
     }
 
-    private void deleteNodes() {
+    private void deleteNodes(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
                 node.clearInputs();
@@ -121,7 +119,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void iterateInputs() {
+    private void iterateInputs(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (node instanceof LocalNode) {
                 flood.add(node);

@@ -67,7 +67,7 @@ public enum CRF implements EnumerableArgument<CRF> {
     /**
      * Given the index of a bit within this 4-bit field, returns the index of the same bit
      * in the 32-bit Condition Register.
-     * 
+     *
      * @throws IllegalArgumentException if n is not between 0 and 3 inclusive
      */
     public int bitFor(int n) {
@@ -137,6 +137,6 @@ public enum CRF implements EnumerableArgument<CRF> {
      */
     public static final int UN = 3;
 
-    public static final Enumerator<CRF> ENUMERATOR = new Enumerator<CRF>(CRF.class);
+    public static final Enumerator<CRF> ENUMERATOR = new Enumerator<>(CRF.class);
 
 }

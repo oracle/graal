@@ -51,7 +51,7 @@ public class ObservableContext {
         assert observer != null;
 
         if (observers == null) {
-            observers = new LinkedList<CompilationObserver>();
+            observers = new LinkedList<>();
         }
         observers.add(observer);
     }

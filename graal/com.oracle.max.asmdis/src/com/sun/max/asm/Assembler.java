@@ -31,6 +31,7 @@ import com.sun.max.program.*;
 /**
  * Assembler base class.
  */
+@SuppressWarnings("unused")
 public abstract class Assembler {
 
     private final Directives directives;
@@ -276,8 +277,8 @@ public abstract class Assembler {
         boundLabels.add(label);
     }
 
-    private final List<AssembledObject> assembledObjects = new LinkedList<AssembledObject>();
-    private final List<MutableAssembledObject> mutableAssembledObjects = new LinkedList<MutableAssembledObject>();
+    private final List<AssembledObject> assembledObjects = new LinkedList<>();
+    private final List<MutableAssembledObject> mutableAssembledObjects = new LinkedList<>();
 
     private int potentialExpansionSize;
 

@@ -59,11 +59,11 @@ public class PhasePlan {
     @SuppressWarnings("unchecked")
     private final ArrayList<Phase>[] phases = new ArrayList[PhasePosition.values().length];
 
-    private final Set<Class<? extends Phase>> disabledPhases = new HashSet<Class<? extends Phase>>();
+    private final Set<Class<? extends Phase>> disabledPhases = new HashSet<>();
 
     public void addPhase(PhasePosition pos, Phase phase) {
         if (phases[pos.ordinal()] == null) {
-            phases[pos.ordinal()] = new ArrayList<Phase>();
+            phases[pos.ordinal()] = new ArrayList<>();
         }
         phases[pos.ordinal()].add(phase);
     }

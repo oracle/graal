@@ -40,8 +40,8 @@ public class InvocationSocket {
     private static final boolean DEBUG = false;
     private static final boolean COUNT_CALLS = false;
 
-    private static final HashSet<String> cachedMethodNames = new HashSet<String>();
-    private static final HashSet<String> forbiddenMethodNames = new HashSet<String>();
+    private static final HashSet<String> cachedMethodNames = new HashSet<>();
+    private static final HashSet<String> forbiddenMethodNames = new HashSet<>();
 
     static {
         cachedMethodNames.add("name");
@@ -56,7 +56,7 @@ public class InvocationSocket {
     private final ObjectOutputStream output;
     private final ObjectInputStream input;
 
-    private final Map<String, Integer> counts = new HashMap<String, Integer>();
+    private final Map<String, Integer> counts = new HashMap<>();
 
     public InvocationSocket(ObjectOutputStream output, ObjectInputStream input) {
         this.output = output;
@@ -66,7 +66,7 @@ public class InvocationSocket {
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {
-                    SortedMap<Integer, String> sorted = new TreeMap<Integer, String>();
+                    SortedMap<Integer, String> sorted = new TreeMap<>();
                     for (Map.Entry<String, Integer> entry : counts.entrySet()) {
                         sorted.put(entry.getValue(), entry.getKey());
                     }
@@ -84,6 +84,10 @@ public class InvocationSocket {
      */
     private static class Invocation implements Serializable {
 
+        /**
+         * 
+         */
+        private static final long serialVersionUID = -799162779226626066L;
         public Object receiver;
         public String methodName;
         public Object[] args;
@@ -101,6 +105,10 @@ public class InvocationSocket {
      */
     private static class Result implements Serializable {
 
+        /**
+         * 
+         */
+        private static final long serialVersionUID = -7496058356272415814L;
         public Object result;
 
         public Result(Object result) {
@@ -110,11 +118,11 @@ public class InvocationSocket {
 
     private void incCount(String name, Object[] args) {
         if (COUNT_CALLS) {
-            name = name + (args == null ? 0 : args.length);
-            if (counts.get(name) != null) {
-                counts.put(name, counts.get(name) + 1);
+            String nameAndArgCount = name + (args == null ? 0 : args.length);
+            if (counts.get(nameAndArgCount) != null) {
+                counts.put(nameAndArgCount, counts.get(nameAndArgCount) + 1);
             } else {
-                counts.put(name, 1);
+                counts.put(nameAndArgCount, 1);
             }
         }
     }
@@ -127,7 +135,7 @@ public class InvocationSocket {
     public class Handler implements InvocationHandler {
 
         private final Object receiver;
-        private final HashMap<String, Object> cache = new HashMap<String, Object>();
+        private final HashMap<String, Object> cache = new HashMap<>();
 
         public Handler(Object receiver) {
             this.receiver = receiver;
@@ -180,6 +188,7 @@ public class InvocationSocket {
      * Waits for the result of a remote method invocation. Invocations that should be executed in this VM might arrive
      * while waiting for the result, and these invocations will be executed before again waiting fort he result.
      */
+    @SuppressWarnings("unused")
     public Object waitForResult(boolean eofExpected) throws IOException, ClassNotFoundException {
         while (true) {
             Object in;

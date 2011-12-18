@@ -39,7 +39,7 @@ public enum IA32IndirectRegister32 implements GeneralRegister<IA32IndirectRegist
     ESI_INDIRECT,
     EDI_INDIRECT;
 
-    public static final Enumerator<IA32IndirectRegister32> ENUMERATOR = new Enumerator<IA32IndirectRegister32>(IA32IndirectRegister32.class);
+    public static final Enumerator<IA32IndirectRegister32> ENUMERATOR = new Enumerator<>(IA32IndirectRegister32.class);
 
     public static IA32IndirectRegister32 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

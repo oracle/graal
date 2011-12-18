@@ -156,8 +156,6 @@ public final class Trace {
         return level >= requiredLevel && count >= threshold;
     }
 
-    private static final int MAX_INDENTATION = 10;
-
     @RESET
     private static int indentation;
 

@@ -43,7 +43,7 @@ public abstract class RiscAssemblerGenerator<Template_Type extends RiscTemplate>
         super(assembly, false);
     }
 
-    private String encode(OperandField operandField, String val) {
+    private static String encode(OperandField operandField, String val) {
         String value = val;
         // Convert the argument value to the operand value
         if (operandField.zeroes() != 0) {
@@ -129,7 +129,7 @@ public abstract class RiscAssemblerGenerator<Template_Type extends RiscTemplate>
      * @param rawOperand
      *                a parameter of {@code rawTemplate}
      */
-    private String getRawOperandReplacement(RiscTemplate syntheticTemplate, RiscTemplate rawTemplate, OperandField rawOperand, boolean forLabelAssemblerMethod) {
+    private static String getRawOperandReplacement(RiscTemplate syntheticTemplate, RiscTemplate rawTemplate, OperandField rawOperand, boolean forLabelAssemblerMethod) {
         if (Utils.indexOfIdentical(syntheticTemplate.operandFields(), rawOperand) != -1) {
             if (rawOperand instanceof OffsetParameter && forLabelAssemblerMethod) {
                 return LABEL.variableName();

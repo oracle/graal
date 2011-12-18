@@ -48,15 +48,15 @@ public class InliningUtil {
     }
 
     public static String methodName(RiResolvedMethod method) {
-        return CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.codeSize() + " bytes)";
+        return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
     }
 
     private static String methodName(RiResolvedMethod method, Invoke invoke) {
         if (invoke != null && invoke.stateAfter() != null) {
             RiMethod parent = invoke.stateAfter().method();
-            return parent.name() + "@" + invoke.bci() + ": " + CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.codeSize() + " bytes)";
+            return parent.name() + "@" + invoke.bci() + ": " + CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         } else {
-            return CiUtil.format("%H.%n(%p):%r", method, false) + " (" + method.codeSize() + " bytes)";
+            return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         }
     }
 
@@ -97,33 +97,6 @@ public class InliningUtil {
     }
 
     /**
-     * Represents an inlining opportunity where an intrinsification can take place. Weight and level are always zero.
-     */
-    private static class IntrinsicInlineInfo extends InlineInfo {
-        public final StructuredGraph intrinsicGraph;
-
-        public IntrinsicInlineInfo(Invoke invoke, StructuredGraph intrinsicGraph) {
-            super(invoke, 0, 0);
-            this.intrinsicGraph = intrinsicGraph;
-        }
-
-        @Override
-        public Node inline(StructuredGraph compilerGraph, GraalRuntime runtime, InliningCallback callback) {
-            return InliningUtil.inline(invoke, intrinsicGraph, true);
-        }
-
-        @Override
-        public String toString() {
-            return "intrinsic inlining " + CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod(), false);
-        }
-
-        @Override
-        public boolean canDeopt() {
-            return false;
-        }
-    }
-
-    /**
      * Represents an inlining opportunity where the compiler can statically determine a monomorphic target method and
      * therefore is able to determine the called method exactly.
      */
@@ -154,7 +127,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "exact inlining " + CiUtil.format("%H.%n(%p):%r", concrete, false);
+            return "exact inlining " + CiUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -194,7 +167,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "type-checked inlining " + CiUtil.format("%H.%n(%p):%r", concrete, false);
+            return "type-checked inlining " + CiUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -218,8 +191,8 @@ public class InliningUtil {
         @Override
         public Node inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             if (GraalOptions.TraceInlining) {
-                String targetName = CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod(), false);
-                String concreteName = CiUtil.format("%H.%n(%p):%r", concrete, false);
+                String targetName = CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
+                String concreteName = CiUtil.format("%H.%n(%p):%r", concrete);
                 TTY.println("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
@@ -228,7 +201,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "inlining with assumption " + CiUtil.format("%H.%n(%p):%r", concrete, false);
+            return "inlining with assumption " + CiUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -391,9 +364,9 @@ public class InliningUtil {
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter.isAlive();
 
-        IdentityHashMap<Node, Node> replacements = new IdentityHashMap<Node, Node>();
-        ArrayList<Node> nodes = new ArrayList<Node>();
-        ArrayList<Node> frameStates = new ArrayList<Node>();
+        IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
+        ArrayList<Node> nodes = new ArrayList<>();
+        ArrayList<Node> frameStates = new ArrayList<>();
         ReturnNode returnNode = null;
         UnwindNode unwindNode = null;
         BeginNode entryPointNode = inlineGraph.start();

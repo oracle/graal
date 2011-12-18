@@ -27,6 +27,7 @@ import com.sun.max.asm.*;
 import com.sun.max.asm.ia32.*;
 import com.sun.max.asm.x86.*;
 
+@SuppressWarnings("all")
 public abstract class IA32RawAssembler extends AbstractIA32Assembler {
 
     public IA32RawAssembler(int startAddress) {

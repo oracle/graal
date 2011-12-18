@@ -28,7 +28,6 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.compiler.graphbuilder.*;
-import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -43,7 +42,7 @@ import com.sun.cri.ci.*;
 public class EscapeAnalysisPhase extends Phase {
     public static class GraphOrder implements Iterable<Node> {
 
-        private final ArrayList<Node> nodes = new ArrayList<Node>();
+        private final ArrayList<Node> nodes = new ArrayList<>();
 
         public GraphOrder(Graph graph) {
             NodeBitMap visited = graph.createNodeBitMap();
@@ -211,10 +210,7 @@ public class EscapeAnalysisPhase extends Phase {
 
     public class EscapementFixup {
 
-        private List<Block> blocks;
-        private final Map<Object, Integer> fields = new HashMap<Object, Integer>();
-        private final Map<Block, BlockExitState> exitStates = new IdentityHashMap<Block, BlockExitState>();
-
+        private final Map<Object, Integer> fields = new HashMap<>();
         private final EscapeOp op;
         private final StructuredGraph graph;
         private final FixedWithNextNode node;
@@ -252,14 +248,14 @@ public class EscapeAnalysisPhase extends Phase {
                 final BlockExitState startState = new BlockExitState(escapeFields, virtual);
                 final PostOrderNodeIterator<?> iterator = new PostOrderNodeIterator<BlockExitState>(next, startState) {
                     @Override
-                    protected void node(FixedNode node) {
-                        int changedField = op.updateState(virtual, node, fields, state.fieldState);
+                    protected void node(FixedNode curNode) {
+                        int changedField = op.updateState(virtual, curNode, fields, state.fieldState);
                         if (changedField != -1) {
                             state.updateField(changedField);
                         }
-                        if (!node.isDeleted() && node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
+                        if (!curNode.isDeleted() && curNode instanceof StateSplit && ((StateSplit) curNode).stateAfter() != null) {
                             if (state.virtualObjectField != null) {
-                                ((StateSplit) node).stateAfter().addVirtualObjectMapping(state.virtualObjectField);
+                                ((StateSplit) curNode).stateAfter().addVirtualObjectMapping(state.virtualObjectField);
                             }
                         }
                     }
@@ -296,8 +292,8 @@ public class EscapeAnalysisPhase extends Phase {
     public static class EscapeRecord {
 
         public final Node node;
-        public final ArrayList<Node> escapesThrough = new ArrayList<Node>();
-        public final ArrayList<Invoke> invokes = new ArrayList<Invoke>();
+        public final ArrayList<Node> escapesThrough = new ArrayList<>();
+        public final ArrayList<Invoke> invokes = new ArrayList<>();
         public double localWeight;
 
         public EscapeRecord(Node node) {
@@ -369,8 +365,9 @@ public class EscapeAnalysisPhase extends Phase {
         }
     }
 
-    private void completeAnalysis(StructuredGraph graph) {
-        // TODO(ls) debugging code
+    @SuppressWarnings("unused")
+    private static void completeAnalysis(StructuredGraph graph) {
+        // TODO(ls): debugging code
 
         TTY.println("================================================================");
         for (Node node : graph.getNodes()) {
@@ -413,8 +410,8 @@ public class EscapeAnalysisPhase extends Phase {
         if (!shouldAnalyze(node)) {
             return;
         }
-        Set<Node> exits = new HashSet<Node>();
-        Set<Invoke> invokes = new HashSet<Invoke>();
+        Set<Node> exits = new HashSet<>();
+        Set<Invoke> invokes = new HashSet<>();
         int iterations = 0;
 
         int minimumWeight = getMinimumWeight(node);
@@ -438,20 +435,20 @@ public class EscapeAnalysisPhase extends Phase {
             }
             if (invokes.size() == 0) {
 
-                if (context.isObserved()) {
-                    context.observable.fireCompilationEvent("Before escape " + node, graph);
+                if (currentContext.isObserved()) {
+                    currentContext.observable.fireCompilationEvent("Before escape " + node, graph);
                 }
                 if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
                     TTY.println("%n!!!!!!!! non-escaping object: %s (%s)", node, node.exactType());
                 }
                 try {
-                    context.timers.startScope("Escape Analysis Fixup");
+                    currentContext.timers.startScope("Escape Analysis Fixup");
                     removeAllocation(node, op);
                 } finally {
-                    context.timers.endScope();
+                    currentContext.timers.endScope();
                 }
-                if (context.isObserved()) {
-                    context.observable.fireCompilationEvent("After escape", graph);
+                if (currentContext.isObserved()) {
+                    currentContext.observable.fireCompilationEvent("After escape", graph);
                 }
                 break;
             }
@@ -467,8 +464,8 @@ public class EscapeAnalysisPhase extends Phase {
             if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
                 TTY.println("Trying inlining to get a non-escaping object for %s", node);
             }
-            new InliningPhase(target, runtime, invokes, assumptions, plan, config).apply(graph, context);
-            new DeadCodeEliminationPhase().apply(graph, context);
+            new InliningPhase(target, runtime, invokes, assumptions, plan, config).apply(graph, currentContext);
+            new DeadCodeEliminationPhase().apply(graph, currentContext);
             if (node.isDeleted()) {
                 if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
                     TTY.println("%n!!!!!!!! object died while performing escape analysis: %s (%s)", node, node.exactType());
@@ -501,15 +498,15 @@ public class EscapeAnalysisPhase extends Phase {
         }
     }
 
-    protected boolean shouldAnalyze(FixedWithNextNode node) {
+    protected boolean shouldAnalyze(@SuppressWarnings("unused") FixedWithNextNode node) {
         return true;
     }
 
-    protected int getMinimumWeight(FixedWithNextNode node) {
+    protected int getMinimumWeight(@SuppressWarnings("unused") FixedWithNextNode node) {
         return GraalOptions.ForcedInlineEscapeWeight;
     }
 
-    private double analyze(EscapeOp op, Node node, Collection<Node> exits, Collection<Invoke> invokes) {
+    private static double analyze(EscapeOp op, Node node, Collection<Node> exits, Collection<Invoke> invokes) {
         double weight = 0;
         for (Node usage : node.usages().snapshot()) {
             boolean escapes = op.escape(node, usage);

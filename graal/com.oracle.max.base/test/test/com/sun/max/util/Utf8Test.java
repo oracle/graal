@@ -38,7 +38,7 @@ public class Utf8Test extends TestCase {
         junit.textui.TestRunner.run(Utf8Test.class);
     }
 
-    private void convertStringToUtf8AndBack(String string) throws Utf8Exception {
+    private static void convertStringToUtf8AndBack(String string) throws Utf8Exception {
         final byte[] utf8 = Utf8.stringToUtf8(string);
         final String result = Utf8.utf8ToString(false, utf8);
         assertEquals(result, string);

@@ -101,7 +101,7 @@ public final class NodeBitMap implements Iterable<Node>{
 
     @Override
     public String toString() {
-        return bitMap.toBinaryString(-1);
+        return bitMap.toBinaryString();
     }
 
     public <T extends Node> void markAll(Collection<T> nodes) {

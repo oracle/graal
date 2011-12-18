@@ -54,7 +54,7 @@ public class FindInductionVariablesPhase extends Phase {
         }
     }
 
-    private void findInductionVariables(Loop loop) {
+    private static void findInductionVariables(Loop loop) {
         LoopBeginNode loopBegin = loop.loopBegin();
         NodeBitMap loopNodes = loop.nodes();
         for (PhiNode phi : loopBegin.phis().snapshot()) {
@@ -110,7 +110,7 @@ public class FindInductionVariablesPhase extends Phase {
             }
         }
     }
-    private void findDerivedInductionVariable(BasicInductionVariableNode biv, CiKind kind, NodeBitMap loopNodes) {
+    private static void findDerivedInductionVariable(BasicInductionVariableNode biv, CiKind kind, NodeBitMap loopNodes) {
         for (Node usage : biv.usages().snapshot()) {
             ValueNode scale = scale(usage, biv, loopNodes);
             ValueNode offset = null;
@@ -146,7 +146,7 @@ public class FindInductionVariablesPhase extends Phase {
         }
     }
 
-    private ValueNode scale(Node n, BasicInductionVariableNode biv, NodeBitMap loopNodes) {
+    private static ValueNode scale(Node n, BasicInductionVariableNode biv, NodeBitMap loopNodes) {
         if (n instanceof IntegerMulNode) {
             IntegerMulNode mul = (IntegerMulNode) n;
             ValueNode scale = null;

@@ -27,6 +27,7 @@ package com.sun.cri.ci;
  */
 public abstract class CiGenericCallback {
 
+    @SuppressWarnings("unused")
     private Object callbackInternal(Object arg) {
         try {
             return callback(arg);

@@ -38,7 +38,7 @@ public class IdentitySetTest extends MaxTestCase {
         junit.textui.TestRunner.run(IdentitySetTest.class);
     }
 
-    private Integer[] makeIntegerArray(int nElements) {
+    private static Integer[] makeIntegerArray(int nElements) {
         final Integer[] array = new Integer[nElements];
         for (int i = 0; i < array.length; i++) {
             array[i] = i;
@@ -46,16 +46,8 @@ public class IdentitySetTest extends MaxTestCase {
         return array;
     }
 
-    private IdentitySet<Integer> makeIntegerIdentitySet(int nElements) {
-        final IdentitySet<Integer> result = new IdentitySet<Integer>();
-        for (int i = 0; i < nElements; i++) {
-            result.add(i);
-        }
-        return result;
-    }
-
     public void test_numberOfElements() {
-        final IdentitySet<Integer> set = new IdentitySet<Integer>();
+        final IdentitySet<Integer> set = new IdentitySet<>();
         assertEquals(set.numberOfElements(), 0);
         try {
             set.add(null);
@@ -68,7 +60,7 @@ public class IdentitySetTest extends MaxTestCase {
         }
     }
 
-    private void check_add(IdentitySet<Integer> set) {
+    private static void check_add(IdentitySet<Integer> set) {
         assertEquals(set.numberOfElements(), 0);
         try {
             set.add(null);
@@ -90,7 +82,7 @@ public class IdentitySetTest extends MaxTestCase {
     }
 
     public void test_contains() {
-        final IdentitySet<Integer> set = new IdentitySet<Integer>();
+        final IdentitySet<Integer> set = new IdentitySet<>();
         final Integer[] ints = makeIntegerArray(1000);
         for (int i = 0; i < 1000; i++) {
             set.add(ints[i]);
@@ -103,13 +95,13 @@ public class IdentitySetTest extends MaxTestCase {
     }
 
     public void test_iterator() {
-        final IdentitySet<Integer> set = new IdentitySet<Integer>();
+        final IdentitySet<Integer> set = new IdentitySet<>();
         final Integer[] ints = makeIntegerArray(1000);
         for (int i = 0; i < 1000; i++) {
             set.add(ints[i]);
         }
         assertEquals(set.numberOfElements(), 1000);
-        final IdentitySet<Integer> newSet = new IdentitySet<Integer>();
+        final IdentitySet<Integer> newSet = new IdentitySet<>();
         assertEquals(newSet.numberOfElements(), 0);
         for (Integer theInt : set) {
             assertNotNull(theInt);

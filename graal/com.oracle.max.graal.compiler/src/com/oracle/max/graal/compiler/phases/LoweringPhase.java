@@ -40,7 +40,7 @@ public class LoweringPhase extends Phase {
     @Override
     protected void run(final StructuredGraph graph) {
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
-        s.apply(graph, context);
+        s.apply(graph, currentContext);
         s.calculateAlwaysReachedBlock();
 
         NodeBitMap processed = graph.createNodeBitMap();
@@ -119,7 +119,7 @@ public class LoweringPhase extends Phase {
 
             @Override
             public Node createGuard(Node condition) {
-                FixedNode anchor = (FixedNode) getGuardAnchor();
+                FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {
                         if (activeGuards.isMarked(usage)) {
@@ -127,7 +127,7 @@ public class LoweringPhase extends Phase {
                         }
                     }
                 }
-                GuardNode newGuard = anchor.graph().unique(new GuardNode((BooleanNode) condition, anchor));
+                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor));
                 activeGuards.grow();
                 activeGuards.mark(newGuard);
                 return newGuard;

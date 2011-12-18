@@ -81,6 +81,11 @@ public class StampFactory {
         }
 
         @Override
+        public int hashCode() {
+            return kind.hashCode();
+        }
+
+        @Override
         public String toString() {
             return String.format("%c%s %s %s", kind().typeChar, nonNull ? "!" : "", declaredType == null ? "-" : declaredType.name(), exactType == null ? "-" : exactType.name());
         }

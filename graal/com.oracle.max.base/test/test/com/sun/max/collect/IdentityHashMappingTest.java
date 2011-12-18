@@ -46,10 +46,6 @@ public class IdentityHashMappingTest extends MaxTestCase {
             this.id = id;
         }
 
-        public int id() {
-            return id;
-        }
-
         @Override
         public int hashCode() {
             return id;
@@ -67,20 +63,17 @@ public class IdentityHashMappingTest extends MaxTestCase {
 
     private static final class Value {
 
+        @SuppressWarnings("unused")
         private final int id;
 
         private Value(int id) {
             this.id = id;
         }
-
-        public int id() {
-            return id;
-        }
     }
 
     public void test_basic() {
         final int num = 100000;
-        final IdentityHashMapping<Key, Value> map = new IdentityHashMapping<Key, Value>();
+        final IdentityHashMapping<Key, Value> map = new IdentityHashMapping<>();
         final Key[] keys = new Key[num];
         final Value[] values = new Value[num];
         final Value[] values2 = new Value[num];

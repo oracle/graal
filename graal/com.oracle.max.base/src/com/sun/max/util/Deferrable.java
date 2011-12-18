@@ -57,13 +57,13 @@ public abstract class Deferrable implements Runnable {
         }
 
         public synchronized void deferAll() {
-            deferrables = new LinkedList<Deferrable>();
+            deferrables = new LinkedList<>();
         }
 
         public synchronized void runAll() {
             while (deferrables != null) {
                 final List<Deferrable> oldDeferrables = this.deferrables;
-                this.deferrables = new LinkedList<Deferrable>();
+                this.deferrables = new LinkedList<>();
                 for (Deferrable deferrable : oldDeferrables) {
                     deferrable.run();
                 }

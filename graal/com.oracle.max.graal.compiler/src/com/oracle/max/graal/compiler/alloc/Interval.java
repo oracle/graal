@@ -483,19 +483,20 @@ public final class Interval {
      */
     private Interval locationHint;
 
-    void assignLocation(CiValue location) {
-        if (location.isRegister()) {
+    void assignLocation(CiValue newLocation) {
+        if (newLocation.isRegister()) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (location.kind == CiKind.Illegal && kind != CiKind.Illegal) {
-                location = location.asRegister().asValue(kind);
+            if (newLocation.kind == CiKind.Illegal && kind != CiKind.Illegal) {
+                this.location = newLocation.asRegister().asValue(kind);
+                return;
             }
         } else {
             assert this.location == null || this.location.isRegister() : "cannot re-assign location for " + this;
-            assert location.isStackSlot();
-            assert location.kind != CiKind.Illegal;
-            assert location.kind == this.kind;
+            assert newLocation.isStackSlot();
+            assert newLocation.kind != CiKind.Illegal;
+            assert newLocation.kind == this.kind;
         }
-        this.location = location;
+        this.location = newLocation;
     }
 
     /**
@@ -720,7 +721,7 @@ public final class Interval {
         return true;
     }
 
-    public Interval locationHint(boolean searchSplitChild, LinearScan allocator) {
+    public Interval locationHint(boolean searchSplitChild) {
         if (!searchSplitChild) {
             return locationHint;
         }
@@ -786,9 +787,9 @@ public final class Interval {
             // this is an error
             StringBuilder msg = new StringBuilder(this.toString()).append(" has no child at ").append(opId);
             if (!splitChildren.isEmpty()) {
-                Interval first = splitChildren.get(0);
-                Interval last = splitChildren.get(splitChildren.size() - 1);
-                msg.append(" (first = ").append(first).append(", last = ").append(last).append(")");
+                Interval firstChild = splitChildren.get(0);
+                Interval lastChild = splitChildren.get(splitChildren.size() - 1);
+                msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
             }
             throw new CiBailout("Linear Scan Error: " + msg);
         }
@@ -959,7 +960,7 @@ public final class Interval {
             assert isSplitParent() : "list must be initialized at first split";
 
             // Create new non-shared list
-            parent.splitChildren = new ArrayList<Interval>(4);
+            parent.splitChildren = new ArrayList<>(4);
             parent.splitChildren.add(this);
         }
         parent.splitChildren.add(result);
@@ -1112,8 +1113,8 @@ public final class Interval {
             from = String.valueOf(from());
             to = String.valueOf(to());
         }
-        String location = this.location == null ? "" : "@" + this.location.name();
-        return operandNumber + ":" + operand + (operand.isRegister() ? "" : location) + "[" + from + "," + to + "]";
+        String locationString = this.location == null ? "" : "@" + this.location.name();
+        return operandNumber + ":" + operand + (operand.isRegister() ? "" : locationString) + "[" + from + "," + to + "]";
     }
 
     /**
@@ -1138,7 +1139,7 @@ public final class Interval {
         }
 
         buf.append("hints{").append(splitParent.operandNumber);
-        Interval hint = locationHint(false, allocator);
+        Interval hint = locationHint(false);
         if (hint != null && hint.operandNumber != splitParent.operandNumber) {
             buf.append(", ").append(hint.operandNumber);
         }

@@ -45,13 +45,13 @@ public class SymbolicOperandField<Argument_Type extends SymbolicArgument> extend
 
     public static <Argument_Type extends SymbolicArgument> SymbolicOperandField<Argument_Type> createAscending(Symbolizer<Argument_Type> symbolizer, int... bits) {
         final BitRange bitRange = BitRange.create(bits, BitRangeOrder.ASCENDING);
-        return new SymbolicOperandField<Argument_Type>(bitRange, symbolizer);
+        return new SymbolicOperandField<>(bitRange, symbolizer);
     }
 
     public static <Argument_Type extends SymbolicArgument> SymbolicOperandField<Argument_Type> createDescending(String variableName,
                     final Symbolizer<Argument_Type> symbolizer, int... bits) {
         final BitRange bitRange = BitRange.create(bits, BitRangeOrder.DESCENDING);
-        final SymbolicOperandField<Argument_Type> field = new SymbolicOperandField<Argument_Type>(bitRange, symbolizer);
+        final SymbolicOperandField<Argument_Type> field = new SymbolicOperandField<>(bitRange, symbolizer);
         if (variableName != null) {
             field.setVariableName(variableName);
         }
@@ -78,7 +78,7 @@ public class SymbolicOperandField<Argument_Type extends SymbolicArgument> extend
         return variableName() + ".value()";
     }
 
-    public int assemble(Argument_Type argument) throws AssemblyException {
+    public int assemble(Argument_Type argument) {
         return bitRange().assembleUncheckedUnsignedInt(argument.value());
     }
 
@@ -112,7 +112,7 @@ public class SymbolicOperandField<Argument_Type extends SymbolicArgument> extend
     }
 
     public TestArgumentExclusion excludeExternalTestArguments(Argument... arguments) {
-        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<Argument>(Arrays.asList(arguments)));
+        return new TestArgumentExclusion(AssemblyTestComponent.EXTERNAL_ASSEMBLER, this, new HashSet<>(Arrays.asList(arguments)));
     }
 
     @Override

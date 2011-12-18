@@ -48,7 +48,7 @@ public class DisassemblyPrinter {
      * @param outputStream the stream to which the disassembly wil be printed
      * @param disassembledObjects the disassembled objects to be printed
      */
-    public void print(Disassembler disassembler, OutputStream outputStream, List<DisassembledObject> disassembledObjects) throws IOException {
+    public void print(Disassembler disassembler, OutputStream outputStream, List<DisassembledObject> disassembledObjects) {
         final PrintStream stream = outputStream instanceof PrintStream ? (PrintStream) outputStream : new PrintStream(outputStream);
         final int nOffsetChars = Integer.toString(Utils.last(disassembledObjects).startPosition()).length();
         final int nLabelChars = disassembler.addressMapper().maximumLabelNameLength();

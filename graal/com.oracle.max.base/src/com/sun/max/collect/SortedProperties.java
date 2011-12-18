@@ -34,12 +34,17 @@ import com.sun.max.*;
 public class SortedProperties extends Properties {
 
     /**
+     * 
+     */
+    private static final long serialVersionUID = 2666154105480821405L;
+
+    /**
      * Overridden so that the properties are {@linkplain #store(Writer, String) saved} sorted according their keys.
      */
     @Override
     public synchronized Enumeration<Object> keys() {
         final Enumeration<Object> keysEnum = super.keys();
-        final Vector<String> keyList = new Vector<String>(size());
+        final Vector<String> keyList = new Vector<>(size());
         while (keysEnum.hasMoreElements()) {
             keyList.add((String) keysEnum.nextElement());
         }

@@ -68,7 +68,7 @@ final class LinearScanWalker extends IntervalWalker {
         moveResolver = new MoveResolver(allocator);
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
         for (int i = 0; i < allocator.registers.length; i++) {
-            spillIntervals[i] = new ArrayList<Interval>(2);
+            spillIntervals[i] = new ArrayList<>(2);
         }
         usePos = new int[allocator.registers.length];
         blockPos = new int[allocator.registers.length];
@@ -220,11 +220,11 @@ final class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    void insertMove(int opId, Interval srcIt, Interval dstIt) {
+    void insertMove(int operandId, Interval srcIt, Interval dstIt) {
         // output all moves here. When source and target are equal, the move is
         // optimized away later in assignRegNums
 
-        opId = (opId + 1) & ~1;
+        int opId = (operandId + 1) & ~1;
         LIRBlock opBlock = allocator.blockForId(opId);
         assert opId > 0 && allocator.blockForId(opId - 2) == opBlock : "cannot insert move at block boundary";
 
@@ -432,7 +432,7 @@ final class LinearScanWalker extends IntervalWalker {
         allocator.copyRegisterFlags(interval, splitPart);
         splitPart.setInsertMoveWhenActivated(moveNecessary);
 
-        assert splitPart.from() >= current.currentFrom() : "cannot append new interval before current walk position";
+        assert splitPart.from() >= currentInterval.currentFrom() : "cannot append new interval before current walk position";
         unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Any, splitPart);
 
         if (GraalOptions.TraceLinearScanLevel >= 2) {
@@ -607,7 +607,7 @@ final class LinearScanWalker extends IntervalWalker {
         }
 
         CiRegister hint = null;
-        Interval locationHint = interval.locationHint(true, allocator);
+        Interval locationHint = interval.locationHint(true);
         if (locationHint != null && locationHint.location() != null && locationHint.location().isRegister()) {
             hint = locationHint.location().asRegister();
             if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -826,7 +826,7 @@ final class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    boolean isMove(LIRInstruction op, Interval from, Interval to) {
+    static boolean isMove(LIRInstruction op, Interval from, Interval to) {
         if (op.code != StandardOpcode.MOVE) {
             return false;
         }
@@ -844,7 +844,7 @@ final class LinearScanWalker extends IntervalWalker {
             return;
         }
 
-        Interval registerHint = interval.locationHint(false, allocator);
+        Interval registerHint = interval.locationHint(false);
         if (registerHint == null) {
             // cur is not the target of a move : otherwise registerHint would be set
             return;
@@ -897,7 +897,7 @@ final class LinearScanWalker extends IntervalWalker {
     // allocate a physical register or memory location to an interval
     @Override
     boolean activateCurrent() {
-        Interval interval = current;
+        Interval interval = currentInterval;
         boolean result = true;
 
         if (GraalOptions.TraceLinearScanLevel >= 2) {

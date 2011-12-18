@@ -68,22 +68,19 @@ public class AMD64CompilerStubEmitter {
     /**
      * The layout of the callee save area of the stub being emitted.
      */
-    private CiCalleeSaveLayout csl;
+    private CiCalleeSaveLayout calleeSaveLayout;
 
     /**
      * The compilation object for the stub being emitted.
      */
     private final GraalCompilation comp;
 
-    private final GraalContext context;
-
     private final TargetMethodAssembler tasm;
     private final AMD64MacroAssembler asm;
 
-    public AMD64CompilerStubEmitter(GraalContext context, GraalCompilation compilation, CiKind[] argTypes, CiKind resultKind) {
-        compilation.initFrameMap(0);
+    public AMD64CompilerStubEmitter(GraalCompilation compilation, CiKind[] argTypes, CiKind resultKind) {
+        compilation.initFrameMap();
         this.comp = compilation;
-        this.context = context;
         final RiRegisterConfig registerConfig = compilation.compiler.compilerStubRegisterConfig;
         this.asm = new AMD64MacroAssembler(compilation.compiler.target, registerConfig);
         this.tasm = new TargetMethodAssembler(compilation, asm);
@@ -134,7 +131,7 @@ public class AMD64CompilerStubEmitter {
         return new CompilerStub(stub, stub.resultKind, stubObject, inArgs, outResult);
     }
 
-    private CiValue allocateOperand(XirTemp temp, ArrayList<CiRegister> allocatableRegisters) {
+    private static CiValue allocateOperand(XirTemp temp, ArrayList<CiRegister> allocatableRegisters) {
         if (temp instanceof XirRegister) {
             XirRegister fixed = (XirRegister) temp;
             return fixed.register;
@@ -143,14 +140,14 @@ public class AMD64CompilerStubEmitter {
         return newRegister(temp.kind, allocatableRegisters);
     }
 
-    private CiValue newRegister(CiKind kind, ArrayList<CiRegister> allocatableRegisters) {
+    private static CiValue newRegister(CiKind kind, ArrayList<CiRegister> allocatableRegisters) {
         assert kind != CiKind.Float && kind != CiKind.Double;
         assert allocatableRegisters.size() > 0;
         return allocatableRegisters.remove(allocatableRegisters.size() - 1).asValue(kind);
     }
 
     public CompilerStub emit(XirTemplate template) {
-        ArrayList<CiRegister> allocatableRegisters = new ArrayList<CiRegister>(Arrays.asList(comp.registerConfig.getCategorizedAllocatableRegisters().get(RegisterFlag.CPU)));
+        ArrayList<CiRegister> allocatableRegisters = new ArrayList<>(Arrays.asList(comp.registerConfig.getCategorizedAllocatableRegisters().get(RegisterFlag.CPU)));
         for (XirTemp t : template.temps) {
             if (t instanceof XirRegister) {
                 final XirRegister fixed = (XirRegister) t;
@@ -223,15 +220,6 @@ public class AMD64CompilerStubEmitter {
         return new CompilerStub(null, template.resultOperand.kind, stubObject, inArgs, outResult);
     }
 
-    private CiKind[] getArgumentKinds(XirTemplate template) {
-        CiXirAssembler.XirParameter[] params = template.parameters;
-        CiKind[] result = new CiKind[params.length];
-        for (int i = 0; i < params.length; i++) {
-            result[i] = params[i].kind;
-        }
-        return result;
-    }
-
     private void convertPrologue() {
         prologue(new CiCalleeSaveLayout(0, -1, comp.compiler.target.wordSize, convertArgument, convertResult));
         asm.movq(convertArgument, comp.frameMap().toStackAddress(inArgs[0]));
@@ -258,7 +246,8 @@ public class AMD64CompilerStubEmitter {
         emitCOMISSD(false, true);
     }
 
-    private void emitCOMISSD(boolean isDouble, boolean isInt) {
+    private void emitCOMISSD(boolean isDouble, @SuppressWarnings("unused") boolean isInt) {
+        // TODO(tw): Check why isInt is never checked?
         convertPrologue();
         if (isDouble) {
             asm.ucomisd(convertArgument, tasm.asDoubleConstRef(CiConstant.DOUBLE_0));
@@ -298,9 +287,9 @@ public class AMD64CompilerStubEmitter {
     }
 
     private void prologue(CiCalleeSaveLayout csl) {
-        assert this.csl == null;
+        assert this.calleeSaveLayout == null;
         assert csl != null : "stub should define a callee save area";
-        this.csl = csl;
+        this.calleeSaveLayout = csl;
         int entryCodeOffset = comp.compiler.runtime.codeOffset();
         if (entryCodeOffset != 0) {
             // pad to normal code entry point
@@ -317,8 +306,8 @@ public class AMD64CompilerStubEmitter {
         tasm.targetMethod.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
 
         // Restore registers
-        int frameToCSA = csl.frameOffsetToCSA;
-        asm.restore(csl, frameToCSA);
+        int frameToCSA = calleeSaveLayout.frameOffsetToCSA;
+        asm.restore(calleeSaveLayout, frameToCSA);
 
         // Restore rsp
         asm.addq(AMD64.rsp, frameSize());
@@ -326,7 +315,7 @@ public class AMD64CompilerStubEmitter {
     }
 
     private int frameSize() {
-        return comp.compiler.target.alignFrameSize(csl.size);
+        return comp.compiler.target.alignFrameSize(calleeSaveLayout.size);
     }
 
     private void forwardRuntimeCall(CiRuntimeCall call) {

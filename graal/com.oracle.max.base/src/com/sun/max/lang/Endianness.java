@@ -348,12 +348,6 @@ public enum Endianness {
 
     public abstract byte[] toBytes(long value);
 
-    public void toBytes(byte value, byte[] result, int offset) {
-        if (result.length > 0) {
-            result[0] = value;
-        }
-    }
-
     public abstract void toBytes(short value, byte[] result, int offset);
 
     public abstract void toBytes(int value, byte[] result, int offset);

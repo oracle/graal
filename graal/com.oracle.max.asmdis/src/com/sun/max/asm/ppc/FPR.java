@@ -59,6 +59,6 @@ public enum FPR implements EnumerableArgument<FPR> {
         return F0;
     }
 
-    public static final Enumerator<FPR> ENUMERATOR = new Enumerator<FPR>(FPR.class);
+    public static final Enumerator<FPR> ENUMERATOR = new Enumerator<>(FPR.class);
 
 }

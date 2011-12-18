@@ -48,7 +48,7 @@ public final class HashEquality<T> implements HashEquivalence<T> {
         return object.hashCode();
     }
 
-    private static final HashEquality equality = new HashEquality<Object>();
+    private static final HashEquality equality = new HashEquality<>();
 
     public static <T> HashEquality<T> instance(Class<HashEquality<T>> type) {
         return Utils.cast(type, equality);

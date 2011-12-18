@@ -43,6 +43,7 @@ public class MembarNode extends AbstractStateSplit implements LIRLowerable, Memo
         generator.emitMembar(barriers);
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void get(@ConstantNodeParameter int barriers) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");

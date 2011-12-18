@@ -44,13 +44,13 @@ public class NodeWorkList implements Iterable<Node> {
         visited = graph.createNodeBitMap();
         inQueue = graph.createNodeBitMap();
         if (fill) {
-            ArrayDeque<Node> deque = new ArrayDeque<Node>(graph.getNodeCount());
+            ArrayDeque<Node> deque = new ArrayDeque<>(graph.getNodeCount());
             for (Node node : graph.getNodes()) {
                 deque.add(node);
             }
             worklist = deque;
         } else {
-            worklist = new ArrayDeque<Node>();
+            worklist = new ArrayDeque<>();
         }
         if (iterationLimitPerNode > 0) {
             iterationLimit = iterationLimitPerNode * graph.getNodeCount();

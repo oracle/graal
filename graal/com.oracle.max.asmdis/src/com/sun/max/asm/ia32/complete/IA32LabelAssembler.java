@@ -27,6 +27,7 @@ import com.sun.max.asm.*;
 import com.sun.max.asm.ia32.*;
 import com.sun.max.asm.x86.*;
 
+@SuppressWarnings("unused")
 public abstract class IA32LabelAssembler extends IA32RawAssembler {
 
     public IA32LabelAssembler(int startAddress) {

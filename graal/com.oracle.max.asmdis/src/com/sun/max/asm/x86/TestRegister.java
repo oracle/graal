@@ -61,6 +61,6 @@ public enum TestRegister implements EnumerableArgument<TestRegister> {
         return TR3;
     }
 
-    public static final Enumerator<TestRegister> ENUMERATOR = new Enumerator<TestRegister>(TestRegister.class);
+    public static final Enumerator<TestRegister> ENUMERATOR = new Enumerator<>(TestRegister.class);
 
 }

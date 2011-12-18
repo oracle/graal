@@ -28,6 +28,7 @@ import com.sun.max.util.*;
 /**
  * Tests for {@link Deferrable}.
  */
+@SuppressWarnings("unused")
 public class DeferrableTest extends MaxTestCase {
 
     public DeferrableTest(String name) {

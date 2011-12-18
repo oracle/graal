@@ -35,7 +35,7 @@ public class RiscTemplateCreator {
     public RiscTemplateCreator() {
     }
 
-    private List<RiscTemplate> templates = new LinkedList<RiscTemplate>();
+    private List<RiscTemplate> templates = new LinkedList<>();
 
     public List<RiscTemplate> templates() {
         return templates;
@@ -46,7 +46,7 @@ public class RiscTemplateCreator {
     }
 
     public List<RiscTemplate> createOptionTemplates(List<RiscTemplate> templateList, OptionField optionField) {
-        final List<RiscTemplate> newTemplates = new LinkedList<RiscTemplate>();
+        final List<RiscTemplate> newTemplates = new LinkedList<>();
         for (RiscTemplate template : templateList) {
             RiscTemplate canonicalRepresentative = null;
             if (optionField.defaultOption() != null) {
@@ -67,12 +67,13 @@ public class RiscTemplateCreator {
     }
 
     private int serial;
+    @SuppressWarnings("serial")
     private HashMap<String, List<RiscTemplate>> nameToTemplates = new HashMap<String, List<RiscTemplate>>() {
         @Override
         public List<RiscTemplate> get(Object key) {
             List<RiscTemplate> list = super.get(key);
             if (list == null) {
-                list = new ArrayList<RiscTemplate>();
+                list = new ArrayList<>();
                 put((String) key, list);
             }
             return list;
@@ -84,14 +85,14 @@ public class RiscTemplateCreator {
     }
 
     public void createTemplates(RiscInstructionDescriptionCreator instructionDescriptionCreator) {
-        final List<RiscTemplate> initialTemplates = new LinkedList<RiscTemplate>();
+        final List<RiscTemplate> initialTemplates = new LinkedList<>();
         for (InstructionDescription instructionDescription : instructionDescriptionCreator.instructionDescriptions()) {
             final RiscTemplate template = createTemplate(instructionDescription);
             initialTemplates.add(template);
             RiscInstructionDescriptionVisitor.Static.visitInstructionDescription(template, instructionDescription);
         }
         for (RiscTemplate initialTemplate : initialTemplates) {
-            List<RiscTemplate> newTemplates = new LinkedList<RiscTemplate>();
+            List<RiscTemplate> newTemplates = new LinkedList<>();
             newTemplates.add(initialTemplate);
             for (OptionField optionField : initialTemplate.optionFields()) {
                 newTemplates = createOptionTemplates(newTemplates, optionField);

@@ -43,7 +43,7 @@ public interface IntrinsicImpl {
      * fully qualified name and signature of a method.
      */
     public class Registry implements Iterable<Map.Entry<String, IntrinsicImpl>> {
-        private Map<String, IntrinsicImpl> implRegistry = new ConcurrentHashMap<String, IntrinsicImpl>(100, 0.75f, 1);
+        private Map<String, IntrinsicImpl> implRegistry = new ConcurrentHashMap<>(100, 0.75f, 1);
 
         /**
          * Add an implementation object for an explicitly defined intrinsic ID string.

@@ -50,12 +50,12 @@ public class ComputeProbabilityPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         new PropagateProbability(graph.start()).apply();
-        if (context.isObserved() && GraalOptions.TraceProbability) {
-            context.observable.fireCompilationEvent("After PropagateProbability", graph);
+        if (currentContext.isObserved() && GraalOptions.TraceProbability) {
+            currentContext.observable.fireCompilationEvent("After PropagateProbability", graph);
         }
         computeLoopFactors();
-        if (context.isObserved() && GraalOptions.TraceProbability) {
-            context.observable.fireCompilationEvent("After computeLoopFactors", graph);
+        if (currentContext.isObserved() && GraalOptions.TraceProbability) {
+            currentContext.observable.fireCompilationEvent("After computeLoopFactors", graph);
         }
         new PropagateLoopFrequency(graph.start()).apply();
     }
@@ -85,7 +85,7 @@ public class ComputeProbabilityPhase extends Phase {
     public static class LoopInfo {
         public final LoopBeginNode loopBegin;
 
-        public final Set<LoopInfo> requires = new HashSet<LoopInfo>(4);
+        public final Set<LoopInfo> requires = new HashSet<>(4);
 
         private double loopFrequency = -1;
         public boolean ended = false;
@@ -117,8 +117,8 @@ public class ComputeProbabilityPhase extends Phase {
         }
     }
 
-    public Set<LoopInfo> loopInfos = new HashSet<LoopInfo>();
-    public Map<MergeNode, Set<LoopInfo>> mergeLoops = new IdentityHashMap<MergeNode, Set<LoopInfo>>();
+    public Set<LoopInfo> loopInfos = new HashSet<>();
+    public Map<MergeNode, Set<LoopInfo>> mergeLoops = new IdentityHashMap<>();
 
     private class Probability implements MergeableState<Probability> {
         public double probability;
@@ -127,7 +127,7 @@ public class ComputeProbabilityPhase extends Phase {
 
         public Probability(double probability, HashSet<LoopInfo> loops) {
             this.probability = probability;
-            this.loops = new HashSet<LoopInfo>(4);
+            this.loops = new HashSet<>(4);
             if (loops != null) {
                 this.loops.addAll(loops);
             }
@@ -141,7 +141,7 @@ public class ComputeProbabilityPhase extends Phase {
         @Override
         public boolean merge(MergeNode merge, Collection<Probability> withStates) {
             if (merge.endCount() > 1) {
-                HashSet<LoopInfo> intersection = new HashSet<LoopInfo>(loops);
+                HashSet<LoopInfo> intersection = new HashSet<>(loops);
                 for (Probability other : withStates) {
                     intersection.retainAll(other.loops);
                 }
@@ -168,7 +168,7 @@ public class ComputeProbabilityPhase extends Phase {
                     probability += prob;
                 }
                 loops = intersection;
-                mergeLoops.put(merge, new HashSet<LoopInfo>(intersection));
+                mergeLoops.put(merge, new HashSet<>(intersection));
                 assert isRelativeProbability(probability) : probability;
             }
             return true;

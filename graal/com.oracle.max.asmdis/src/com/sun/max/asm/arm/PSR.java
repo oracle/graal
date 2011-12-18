@@ -34,7 +34,7 @@ public enum PSR implements EnumerableArgument<PSR>{
 
     CPSR, SPSR;
 
-    public static final Enumerator<PSR> ENUMERATOR = new Enumerator<PSR>(PSR.class);
+    public static final Enumerator<PSR> ENUMERATOR = new Enumerator<>(PSR.class);
 
     public int value() {
         return ordinal();

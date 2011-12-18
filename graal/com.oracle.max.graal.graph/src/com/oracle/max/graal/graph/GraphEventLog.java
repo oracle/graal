@@ -27,7 +27,7 @@ import java.util.*;
 
 public class GraphEventLog {
 
-    private List<GraphEvent> events = new ArrayList<GraphEvent>();
+    private List<GraphEvent> events = new ArrayList<>();
 
     public void add(GraphEvent e) {
         this.events.add(e);

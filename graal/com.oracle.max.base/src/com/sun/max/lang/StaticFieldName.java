@@ -47,7 +47,7 @@ public interface StaticFieldName {
         }
 
         public static List<StaticFieldName> initialize(Class staticNameFieldClass, StringFunction stringFunction, Procedure procedure) {
-            final List<StaticFieldName> sequence = new LinkedList<StaticFieldName>();
+            final List<StaticFieldName> sequence = new LinkedList<>();
             for (Field field : staticNameFieldClass.getDeclaredFields()) {
                 if ((field.getModifiers() & Modifier.STATIC) != 0 && StaticFieldName.class.isAssignableFrom(field.getType())) {
                     field.setAccessible(true);

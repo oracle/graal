@@ -60,12 +60,12 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         junit.textui.TestRunner.run(InliningAndAlignmentTest.class);
     }
 
-    private void disassemble(SPARCDisassembler disassembler, byte[] bytes, InlineDataDecoder inlineDataDecoder) throws IOException, AssemblyException {
+    private static void disassemble(SPARCDisassembler disassembler, byte[] bytes) throws IOException, AssemblyException {
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
     }
 
-    private byte[] assembleInlineData(SPARCAssembler asm, long startAddress, int pointerSize, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleInlineData(SPARCAssembler asm, long startAddress, int pointerSize, InlineDataRecorder recorder) throws AssemblyException {
         final Directives dir = asm.directives();
         final Label label1 = new Label();
 
@@ -148,7 +148,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         final InlineDataRecorder recorder = new InlineDataRecorder();
         final byte[] bytes = assembleInlineData(assembler, startAddress, 4, recorder);
         final SPARC32Disassembler disassembler = new SPARC32Disassembler(startAddress, InlineDataDecoder.createFrom(recorder));
-        disassemble(disassembler, bytes, InlineDataDecoder.createFrom(recorder));
+        disassemble(disassembler, bytes);
         System.out.println();
     }
 
@@ -159,11 +159,11 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         final InlineDataRecorder recorder = new InlineDataRecorder();
         final byte[] bytes = assembleInlineData(assembler, startAddress, 8, recorder);
         final SPARC64Disassembler disassembler = new SPARC64Disassembler(startAddress, InlineDataDecoder.createFrom(recorder));
-        disassemble(disassembler, bytes, InlineDataDecoder.createFrom(recorder));
+        disassemble(disassembler, bytes);
         System.out.println();
     }
 
-    private byte[] assembleAlignmentPadding(SPARCAssembler asm, long startAddress, InlineDataRecorder recorder) throws IOException, AssemblyException {
+    private static byte[] assembleAlignmentPadding(SPARCAssembler asm, long startAddress, InlineDataRecorder recorder) throws AssemblyException {
         // test memory alignment directives from 1 byte to 16 bytes
         final Directives dir = asm.directives();
 
@@ -282,7 +282,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         final InlineDataRecorder recorder = new InlineDataRecorder();
         final byte[] bytes = assembleAlignmentPadding(assembler, startAddress, recorder);
         final SPARC32Disassembler disassembler = new SPARC32Disassembler(startAddress, InlineDataDecoder.createFrom(recorder));
-        disassemble(disassembler, bytes, InlineDataDecoder.createFrom(recorder));
+        disassemble(disassembler, bytes);
         System.out.println();
     }
 
@@ -293,11 +293,11 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         final InlineDataRecorder recorder = new InlineDataRecorder();
         final byte[] bytes = assembleAlignmentPadding(assembler, startAddress, recorder);
         final SPARC64Disassembler disassembler = new SPARC64Disassembler(startAddress, InlineDataDecoder.createFrom(recorder));
-        disassemble(disassembler, bytes, InlineDataDecoder.createFrom(recorder));
+        disassemble(disassembler, bytes);
         System.out.println();
     }
 
-    private byte[] assembleSwitchTable(SPARCAssembler asm, int[] matches, InlineDataRecorder inlineDataRecorder) throws IOException, AssemblyException {
+    private static byte[] assembleSwitchTable(SPARCAssembler asm, int[] matches, InlineDataRecorder inlineDataRecorder) throws AssemblyException {
         final Directives directives = asm.directives();
 
         final Label[] matchTargets = new Label[matches.length];
@@ -372,7 +372,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
         return asm.toByteArray(inlineDataRecorder);
     }
 
-    private boolean isSimm13(final int imm) {
+    private static boolean isSimm13(final int imm) {
         return Ints.numberOfEffectiveSignedBits(imm) <= 13;
     }
 
@@ -391,7 +391,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
 
             final byte[] bytes = assembleSwitchTable(assembler, matches, recorder);
             final SPARC32Disassembler disassembler = new SPARC32Disassembler(startAddress, InlineDataDecoder.createFrom(recorder));
-            disassemble(disassembler, bytes, InlineDataDecoder.createFrom(recorder));
+            disassemble(disassembler, bytes);
             System.out.println();
         }
     }
@@ -405,7 +405,7 @@ public class InliningAndAlignmentTest extends MaxTestCase {
 
             final byte[] bytes = assembleSwitchTable(assembler, matches, recorder);
             final SPARCDisassembler disassembler = new SPARC64Disassembler(startAddress, InlineDataDecoder.createFrom(recorder));
-            disassemble(disassembler, bytes, InlineDataDecoder.createFrom(recorder));
+            disassemble(disassembler, bytes);
             System.out.println();
         }
     }

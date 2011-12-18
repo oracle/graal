@@ -54,6 +54,7 @@ public class NestedLoopTest extends GraphTest {
         test("test4Snippet");
     }
 
+    @SuppressWarnings("all")
     public static void test1Snippet(int a) {
         while (a()) {
             m1: while (b()) {
@@ -66,6 +67,7 @@ public class NestedLoopTest extends GraphTest {
         }
     }
 
+    @SuppressWarnings("all")
     public static void test2Snippet(int a) {
         while (a()) {
             try {
@@ -81,6 +83,7 @@ public class NestedLoopTest extends GraphTest {
         }
     }
 
+    @SuppressWarnings("all")
     public static void test3Snippet(int a) {
         while (a == 0) {
             try {
@@ -133,7 +136,7 @@ public class NestedLoopTest extends GraphTest {
         return false;
     }
 
-    private Invoke getInvoke(String name, StructuredGraph graph) {
+    private static Invoke getInvoke(String name, StructuredGraph graph) {
         for (Invoke invoke : graph.getInvokes()) {
             if (invoke.callTarget().targetMethod().name().equals(name)) {
                 return invoke;

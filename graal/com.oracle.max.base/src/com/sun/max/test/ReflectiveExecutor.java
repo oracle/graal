@@ -63,7 +63,7 @@ public class ReflectiveExecutor implements Executor {
     }
 
     public static void main(String[] args) {
-        final Registry<TestHarness> reg = new Registry<TestHarness>(TestHarness.class, true);
+        final Registry<TestHarness> reg = new Registry<>(TestHarness.class, true);
         final JavaExecHarness javaExecHarness = new JavaExecHarness(new ReflectiveExecutor());
         reg.registerObject("java", javaExecHarness);
         final TestEngine e = new TestEngine(reg);

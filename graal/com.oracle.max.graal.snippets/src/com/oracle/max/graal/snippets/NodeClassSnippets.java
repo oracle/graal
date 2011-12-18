@@ -29,6 +29,7 @@ import com.sun.cri.ci.*;
 /**
  * Snippets for {@link NodeClass} methods.
  */
+@SuppressWarnings("unused")
 @ClassSubstitution(NodeClass.class)
 public class NodeClassSnippets implements SnippetsInterface {
 

@@ -39,15 +39,15 @@ public class GlobalMetrics {
     }
 
     static class MetricSet<T extends Metric> {
-        private final Class<T> clazz;
-        private final Map<String, T> metrics = new HashMap<String, T>();
+        protected final Class<T> clazz;
+        private final Map<String, T> metrics = new HashMap<>();
 
         MetricSet(Class<T> mClass) {
             clazz = mClass;
         }
     }
 
-    protected static final Map<Class<? extends Metric>, MetricSet> metricSets = new HashMap<Class<? extends Metric>, MetricSet>();
+    protected static final Map<Class<? extends Metric>, MetricSet> metricSets = new HashMap<>();
 
     /**
      * This method allocates a new counter with the specified name and adds it to the global
@@ -115,7 +115,7 @@ public class GlobalMetrics {
     public static <T extends Metric> T setMetric(String name, Class<T> mClass, T metric) {
         MetricSet<T> metricSet = Utils.cast(metricSets.get(mClass));
         if (metricSet == null) {
-            metricSet = new MetricSet<T>(mClass);
+            metricSet = new MetricSet<>(mClass);
             metricSets.put(mClass, metricSet);
         }
         metricSet.metrics.put(name, metric);
@@ -139,7 +139,7 @@ public class GlobalMetrics {
      * @param stream the print stream to which to print the report
      */
     public static synchronized void report(PrintStream stream) {
-        final Map<String, Metric> allMetrics = new HashMap<String, Metric>();
+        final Map<String, Metric> allMetrics = new HashMap<>();
         for (MetricSet<? extends Metric> metricSet : metricSets.values()) {
             allMetrics.putAll(metricSet.metrics);
         }

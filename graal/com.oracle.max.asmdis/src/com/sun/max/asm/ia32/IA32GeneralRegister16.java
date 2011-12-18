@@ -34,7 +34,7 @@ public enum IA32GeneralRegister16 implements GeneralRegister<IA32GeneralRegister
 
     AX, CX, DX, BX, SP, BP, SI, DI;
 
-    public static final Enumerator<IA32GeneralRegister16> ENUMERATOR = new Enumerator<IA32GeneralRegister16>(IA32GeneralRegister16.class);
+    public static final Enumerator<IA32GeneralRegister16> ENUMERATOR = new Enumerator<>(IA32GeneralRegister16.class);
 
     public static IA32GeneralRegister16 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

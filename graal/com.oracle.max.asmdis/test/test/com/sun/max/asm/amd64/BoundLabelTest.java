@@ -61,7 +61,7 @@ public class BoundLabelTest extends MaxTestCase {
 
     private static final int LABEL_DELTA = 10;
 
-    private int insertInstructions(AMD64Assembler assembler, Label[] labels, int labelIndex) {
+    private static int insertInstructions(AMD64Assembler assembler, Label[] labels, int labelIndex) {
         int index = labelIndex;
         for (int i = 0; i < LABEL_DELTA; i++) {
             assembler.bindLabel(labels[index]);
@@ -71,7 +71,7 @@ public class BoundLabelTest extends MaxTestCase {
         return index;
     }
 
-    private byte[] assemble(long startAddress, int labelDelta) throws IOException, AssemblyException {
+    private static byte[] assemble(long startAddress, int labelDelta) throws AssemblyException {
         final AMD64Assembler assembler = new AMD64Assembler(startAddress);
         final List<AMD64Template> labelTemplates = AMD64Assembly.ASSEMBLY.labelTemplates();
         final Label[] labels = new Label[labelTemplates.size() + LABEL_DELTA];
@@ -87,7 +87,7 @@ public class BoundLabelTest extends MaxTestCase {
         }
         for (AMD64Template template : labelTemplates) {
             assembler.bindLabel(labels[bindIndex]);
-            final List<Argument> arguments = new ArrayList<Argument>(template.parameters().size());
+            final List<Argument> arguments = new ArrayList<>(template.parameters().size());
             for (int parameterIndex = 0; parameterIndex < template.parameters().size(); parameterIndex++) {
                 if (parameterIndex == template.labelParameterIndex()) {
                     arguments.set(parameterIndex, labels[labelIndex]);
@@ -118,7 +118,7 @@ public class BoundLabelTest extends MaxTestCase {
         return assembler.toByteArray();
     }
 
-    private void disassemble(long startAddress, byte[] bytes) throws IOException, AssemblyException {
+    private static void disassemble(long startAddress, byte[] bytes) throws IOException, AssemblyException {
         final AMD64Disassembler disassembler = new AMD64Disassembler(startAddress, null);
         final BufferedInputStream stream = new BufferedInputStream(new ByteArrayInputStream(bytes));
         disassembler.scanAndPrint(stream, System.out);
@@ -137,7 +137,7 @@ public class BoundLabelTest extends MaxTestCase {
         disassemble(startAddress, bytes);
     }
 
-    public void test_effectOfVariableInstructionLengthOnLabel() throws IOException, AssemblyException {
+    public void test_effectOfVariableInstructionLengthOnLabel() throws AssemblyException {
         // Repeat with different assembled sizes of the 'jnz' instruction below:
         for (int n = 4; n < 2000; n += 128) {
             final long startAddress = 0x0L;

@@ -33,6 +33,10 @@ import com.sun.max.asm.*;
  */
 public class NoSuchAssemblerMethodError extends NoSuchMethodError {
 
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 6071040691387949757L;
     public final Template template;
 
     public NoSuchAssemblerMethodError(String message, Template template) {

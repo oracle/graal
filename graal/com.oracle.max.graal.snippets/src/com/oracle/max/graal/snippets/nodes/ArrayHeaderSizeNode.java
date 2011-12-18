@@ -45,6 +45,7 @@ public class ArrayHeaderSizeNode extends FloatingNode implements Lowerable {
         return elementKind;
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static long sizeFor(@ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");

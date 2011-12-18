@@ -33,7 +33,7 @@ public class Logger {
 
     public static final boolean ENABLED = Boolean.valueOf(System.getProperty("graal.debug"));
     private static final int SPACING = 4;
-    private static Deque<Boolean> openStack = new LinkedList<Boolean>();
+    private static Deque<Boolean> openStack = new LinkedList<>();
     private static boolean open = false;
     private static int level = 0;
 

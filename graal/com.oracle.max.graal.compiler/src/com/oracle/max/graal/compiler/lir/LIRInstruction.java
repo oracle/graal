@@ -328,7 +328,7 @@ public abstract class LIRInstruction {
         return buf.toString();
     }
 
-    protected void appendDebugInfo(StringBuilder buf, Formatter operandFmt, LIRDebugInfo info) {
+    protected void appendDebugInfo(StringBuilder buf, Formatter operandFmt) {
         if (info != null) {
             buf.append(" [bci:").append(info.topFrame.bci);
             if (info.hasDebugInfo()) {
@@ -344,7 +344,7 @@ public abstract class LIRInstruction {
 
     public String toString(Formatter operandFmt) {
         StringBuilder buf = new StringBuilder(name()).append(' ').append(operationString(operandFmt));
-        appendDebugInfo(buf, operandFmt, info);
+        appendDebugInfo(buf, operandFmt);
         return buf.toString();
     }
 }

@@ -104,7 +104,7 @@ public final class ToolChain {
         final Classpath sourcePath = JavaProject.getSourcePath(projClass, true);
         final String outputDirectory = classPath.entries().get(0).toString();
 
-        final ArrayList<File> sourceFiles = new ArrayList<File>(classNames.length);
+        final ArrayList<File> sourceFiles = new ArrayList<>(classNames.length);
         for (String className : classNames) {
             final String sourceFilePathSuffix = className.replace('.', File.separatorChar) + ".java";
             final File sourceFile = sourcePath.findFile(sourceFilePathSuffix);
@@ -117,7 +117,7 @@ public final class ToolChain {
 
         final JavaCompiler compiler = javaCompiler();
         final String compilerName = compiler.getClass().getName();
-        final List<String> opts = new ArrayList<String>(Arrays.asList(new String[] {"-cp", classPath.toString(), "-d", outputDirectory}));
+        final List<String> opts = new ArrayList<>(Arrays.asList(new String[] {"-cp", classPath.toString(), "-d", outputDirectory}));
         if (compilerName.equals("com.sun.tools.javac.api.JavacTool")) {
             opts.add("-cp");
             opts.add(classPath.toString());
@@ -164,12 +164,12 @@ public final class ToolChain {
             opts.add(outputDirectory);
         }
 
-        final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         final StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
         final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(sourceFiles);
         final CompilationTask task = compiler.getTask(null, fileManager, diagnostics, opts, null, compilationUnits);
         final boolean result = task.call();
-        final Set<String> reportedDiagnostics = new HashSet<String>();
+        final Set<String> reportedDiagnostics = new HashSet<>();
         for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
             final String message = diagnostic.getMessage(Locale.getDefault());
             if (!reportedDiagnostics.contains(message)) {

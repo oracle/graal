@@ -47,7 +47,7 @@ public class SeekableByteArrayOutputStream extends ByteArrayOutputStream {
     /**
      * Updates the write position of this stream. The stream can only be repositioned between 0 and the
      * {@linkplain #endOfStream() end of the stream}.
-     * 
+     *
      * @param index
      *            the index to which the write position of this stream will be set
      * @throws IllegalArgumentException
@@ -71,7 +71,7 @@ public class SeekableByteArrayOutputStream extends ByteArrayOutputStream {
     }
 
     @Override
-    public void reset() {
+    public synchronized void reset() {
         super.reset();
         highestCount = 0;
     }

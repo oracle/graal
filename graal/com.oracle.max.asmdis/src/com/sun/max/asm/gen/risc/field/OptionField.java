@@ -67,7 +67,7 @@ public class OptionField extends RiscField {
         return defaultOption;
     }
 
-    protected List<Option> options = new LinkedList<Option>();
+    protected List<Option> options = new LinkedList<>();
 
     public Iterable<Option> options() {
         return options;
@@ -76,7 +76,7 @@ public class OptionField extends RiscField {
     @Override
     public OptionField clone() {
         final OptionField result = (OptionField) super.clone();
-        result.options = new LinkedList<Option>(options);
+        result.options = new LinkedList<>(options);
         return result;
     }
 

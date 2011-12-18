@@ -34,7 +34,7 @@ public enum AMD64GeneralRegister32 implements GeneralRegister<AMD64GeneralRegist
 
     EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, R8D, R9D, R10D, R11D, R12D, R13D, R14D, R15D;
 
-    public static final Enumerator<AMD64GeneralRegister32> ENUMERATOR = new Enumerator<AMD64GeneralRegister32>(AMD64GeneralRegister32.class);
+    public static final Enumerator<AMD64GeneralRegister32> ENUMERATOR = new Enumerator<>(AMD64GeneralRegister32.class);
 
     public static AMD64GeneralRegister32 from(GeneralRegister generalRegister) {
         return ENUMERATOR.get(generalRegister.id());

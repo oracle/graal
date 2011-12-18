@@ -162,15 +162,11 @@ public abstract class X86Disassembler extends Disassembler {
             byteValue = stream.read();
         } while (byteValue >= 0);
 
-        if (TRACE && !justSkip) {
-            System.out.println("Scanned header: " + header);
-        }
-
         return justSkip ? null : header;
     }
 
     private List<Argument> scanArguments(BufferedInputStream stream, X86Template template, X86InstructionHeader header, byte modRMByte, byte sibByte) throws IOException {
-        final List<Argument> arguments = new ArrayList<Argument>();
+        final List<Argument> arguments = new ArrayList<>();
         final byte rexByte = (header.rexPrefix != null) ? header.rexPrefix.byteValue() : 0;
         for (X86Parameter parameter : template.parameters()) {
             int value = 0;
@@ -249,7 +245,7 @@ public abstract class X86Disassembler extends Disassembler {
         return arguments;
     }
 
-    private int getModVariantParameterIndex(X86Template template, byte modRMByte, byte sibByte) {
+    private static int getModVariantParameterIndex(X86Template template, byte modRMByte, byte sibByte) {
         if (template.modCase() == X86TemplateContext.ModCase.MOD_0 && X86Field.MOD.extract(modRMByte) != X86TemplateContext.ModCase.MOD_0.value()) {
             switch (template.rmCase()) {
                 case NORMAL: {
@@ -357,7 +353,7 @@ public abstract class X86Disassembler extends Disassembler {
 
                                 // Remove the mod variant argument
                                 final Argument modVariantArgument = arguments.get(modVariantParameterIndex);
-                                final List<Argument> result = new ArrayList<Argument>();
+                                final List<Argument> result = new ArrayList<>();
                                 for (Argument argument : arguments) {
                                     if (modVariantArgument != argument) {
                                         result.add(argument);
@@ -367,19 +363,14 @@ public abstract class X86Disassembler extends Disassembler {
                             }
                             if (!(Utils.indexOfIdentical(arguments, null) != -1)) {
                                 byte[] bytes;
-                                if (true) {
-                                    final Assembler assembler = createAssembler(currentPosition);
-                                    try {
-                                        assembly.assemble(assembler, template, arguments);
-                                    } catch (AssemblyException e) {
-                                        // try the next template
-                                        continue;
-                                    }
-                                    bytes = assembler.toByteArray();
-                                } else { // TODO: does not work yet
-                                    final X86TemplateAssembler templateAssembler = new X86TemplateAssembler(template, addressWidth());
-                                    bytes = templateAssembler.assemble(arguments);
+                                final Assembler assembler = createAssembler(currentPosition);
+                                try {
+                                    assembly.assemble(assembler, template, arguments);
+                                } catch (AssemblyException e) {
+                                    // try the next template
+                                    continue;
                                 }
+                                bytes = assembler.toByteArray();
                                 if (bytes != null) {
                                     stream.reset();
                                     if (Streams.startsWith(stream, bytes)) {
@@ -416,17 +407,15 @@ public abstract class X86Disassembler extends Disassembler {
                 return disassembledInstruction;
             }
         }
-        if (INLINE_INVALID_INSTRUCTIONS_AS_BYTES) {
-            stream.reset();
-            final int size = 1;
-            final byte[] data = new byte[size];
-            Streams.readFully(stream, data);
-            final InlineData inlineData = new InlineData(currentPosition, data);
-            final DisassembledData disassembledData = createDisassembledDataObjects(inlineData).iterator().next();
-            currentPosition += size;
-            return disassembledData;
-        }
-        throw new AssemblyException("unknown instruction");
+
+        stream.reset();
+        final int size = 1;
+        final byte[] data = new byte[size];
+        Streams.readFully(stream, data);
+        final InlineData inlineData = new InlineData(currentPosition, data);
+        final DisassembledData disassembledData = createDisassembledDataObjects(inlineData).iterator().next();
+        currentPosition += size;
+        return disassembledData;
     }
 
     /**
@@ -444,11 +433,9 @@ public abstract class X86Disassembler extends Disassembler {
     }
 
     private static final int MORE_THAN_ANY_INSTRUCTION_LENGTH = 100;
-    private static final boolean INLINE_INVALID_INSTRUCTIONS_AS_BYTES = true;
-
     @Override
     public List<DisassembledObject> scanOne0(BufferedInputStream stream) throws IOException, AssemblyException {
-        final List<DisassembledObject> disassembledObjects = new ArrayList<DisassembledObject>();
+        final List<DisassembledObject> disassembledObjects = new ArrayList<>();
         stream.mark(MORE_THAN_ANY_INSTRUCTION_LENGTH);
         final X86InstructionHeader header = scanInstructionHeader(stream, false);
         if (header == null) {
@@ -460,8 +447,8 @@ public abstract class X86Disassembler extends Disassembler {
 
     @Override
     public List<DisassembledObject> scan0(BufferedInputStream stream) throws IOException, AssemblyException {
-        final SortedSet<Integer> knownGoodCodePositions = new TreeSet<Integer>();
-        final List<DisassembledObject> result = new ArrayList<DisassembledObject>();
+        final SortedSet<Integer> knownGoodCodePositions = new TreeSet<>();
+        final List<DisassembledObject> result = new ArrayList<>();
         boolean processingKnownValidCode = true;
 
         while (true) {
@@ -518,7 +505,7 @@ public abstract class X86Disassembler extends Disassembler {
         }
     }
 
-    private boolean isRelativeJumpForward(DisassembledInstruction instruction) {
+    private static boolean isRelativeJumpForward(DisassembledInstruction instruction) {
         return instruction.template().internalName().equals("jmp") && // check if this is a jump instruction...
             instruction.arguments().size() == 1 && // that accepts one operand...
             ((Utils.first(instruction.arguments()) instanceof Immediate32Argument && // which is a relative offset...
@@ -539,11 +526,11 @@ public abstract class X86Disassembler extends Disassembler {
 
     @Override
     public String operandsToString(DisassembledInstruction di, AddressMapper addressMapper) {
-        final LinkedList<X86Operand> operandQueue = new LinkedList<X86Operand>();
+        final LinkedList<X86Operand> operandQueue = new LinkedList<>();
         for (Operand operand : di.template().operands()) {
             operandQueue.add((X86Operand) operand);
         }
-        final LinkedList<Argument> argumentQueue = new LinkedList<Argument>(di.arguments());
+        final LinkedList<Argument> argumentQueue = new LinkedList<>(di.arguments());
         String result = "";
         String separator = "";
         while (!operandQueue.isEmpty()) {
@@ -562,7 +549,7 @@ public abstract class X86Disassembler extends Disassembler {
         return Strings.padLengthWithSpaces(mnemonic(di), 8) + s;
     }
 
-    private String getSibIndexAndScale(Queue<X86Operand> operands, Queue<Argument> arguments) {
+    private static String getSibIndexAndScale(Queue<X86Operand> operands, Queue<Argument> arguments) {
         X86Parameter parameter = (X86Parameter) operands.remove();
         assert parameter.place() == ParameterPlace.SIB_INDEX || parameter.place() == ParameterPlace.SIB_INDEX_REXX;
         final String result = arguments.remove().disassembledValue();
@@ -575,7 +562,7 @@ public abstract class X86Disassembler extends Disassembler {
         return result + " * " + scale.disassembledValue();
     }
 
-    private String addition(Argument argument, String space) {
+    private static String addition(Argument argument, String space) {
         assert argument instanceof ImmediateArgument;
         final long value = argument.asLong();
         final String s = Long.toString(value);
@@ -585,7 +572,7 @@ public abstract class X86Disassembler extends Disassembler {
         return "-" + space + s.substring(1);
     }
 
-    private String getOperand(DisassembledInstruction di, Queue<X86Operand> operands, Queue<Argument> arguments, AddressMapper addressMapper) {
+    private static String getOperand(DisassembledInstruction di, Queue<X86Operand> operands, Queue<Argument> arguments, AddressMapper addressMapper) {
         final X86Operand operand = operands.remove();
         if (operand instanceof ImplicitOperand) {
             final ImplicitOperand implicitOperand = (ImplicitOperand) operand;

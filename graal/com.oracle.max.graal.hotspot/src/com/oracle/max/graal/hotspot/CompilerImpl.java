@@ -96,8 +96,9 @@ public final class CompilerImpl implements Compiler, Remote {
         return config;
     }
 
-    private CompilerImpl(VMEntries entries) {
+    private CompilerImpl(VMEntries initialEntries) {
 
+        VMEntries entries = initialEntries;
         // initialize VMEntries
         if (entries == null) {
             entries = new VMEntriesNative();

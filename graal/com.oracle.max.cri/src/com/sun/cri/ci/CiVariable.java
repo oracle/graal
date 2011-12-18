@@ -30,6 +30,11 @@ package com.sun.cri.ci;
 public final class CiVariable extends CiValue {
 
     /**
+     * 
+     */
+    private static final long serialVersionUID = 4507578431686109809L;
+
+    /**
      * The identifier of the variable. This is a non-zero index in a contiguous 0-based name space.
      */
     public final int index;

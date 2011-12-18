@@ -53,6 +53,7 @@ public abstract class AssemblerTestCase extends MaxTestCase {
     /**
      * Subclasses override this to modify a tester that is about to be {@linkplain #run() run}.
      * Typically, the modification is based on the values of any subclasses specific addition to {@link #options}.
+     * @param tester
      */
     protected void configure(AssemblyTester tester) {
     }

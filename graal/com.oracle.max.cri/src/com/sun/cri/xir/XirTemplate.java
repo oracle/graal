@@ -161,9 +161,9 @@ public class XirTemplate {
         assert labels != null;
         assert parameters != null;
 
-        List<XirOperand> inputOperands = new ArrayList<XirOperand>(4);
-        List<XirOperand> inputTempOperands = new ArrayList<XirOperand>(4);
-        List<XirOperand> tempOperands = new ArrayList<XirOperand>(4);
+        List<XirOperand> inputOperandList = new ArrayList<>(4);
+        List<XirOperand> inputTempOperandList = new ArrayList<>(4);
+        List<XirOperand> tempOperandList = new ArrayList<>(4);
 
         parameterDestroyed = new boolean[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
@@ -183,21 +183,21 @@ public class XirTemplate {
             }
 
             if (parameterDestroyed[i]) {
-                inputTempOperands.add(parameters[i]);
+                inputTempOperandList.add(parameters[i]);
             } else {
-                inputOperands.add(parameters[i]);
+                inputOperandList.add(parameters[i]);
             }
         }
 
         for (XirTemp temp : temps) {
             if (temp.reserve) {
-                tempOperands.add(temp);
+                tempOperandList.add(temp);
             }
         }
 
-        this.inputOperands = inputOperands.toArray(new XirOperand[inputOperands.size()]);
-        this.inputTempOperands = inputTempOperands.toArray(new XirOperand[inputTempOperands.size()]);
-        this.tempOperands = tempOperands.toArray(new XirOperand[tempOperands.size()]);
+        this.inputOperands = inputOperandList.toArray(new XirOperand[inputOperandList.size()]);
+        this.inputTempOperands = inputTempOperandList.toArray(new XirOperand[inputTempOperandList.size()]);
+        this.tempOperands = tempOperandList.toArray(new XirOperand[tempOperandList.size()]);
     }
 
     /**

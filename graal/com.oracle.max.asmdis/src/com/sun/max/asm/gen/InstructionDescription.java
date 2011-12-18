@@ -75,7 +75,7 @@ public abstract class InstructionDescription implements Iterable<Object>, Clonea
      */
     public List<InstructionConstraint> constraints() {
         if (constraints == null) {
-            constraints = new ArrayList<InstructionConstraint>(specifications.size());
+            constraints = new ArrayList<>(specifications.size());
             for (Object s : specifications) {
                 if (s instanceof InstructionConstraint) {
                     constraints.add((InstructionConstraint) s);

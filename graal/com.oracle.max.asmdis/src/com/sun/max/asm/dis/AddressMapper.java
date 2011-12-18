@@ -36,8 +36,8 @@ public class AddressMapper {
 
     private int serial;
     private int unnamedLabels;
-    private final Map<ImmediateArgument, DisassembledObject> objectMap = new HashMap<ImmediateArgument, DisassembledObject>();
-    private final Map<ImmediateArgument, DisassembledLabel> labelMap = new TreeMap<ImmediateArgument, DisassembledLabel>(new Comparator<ImmediateArgument>() {
+    private final Map<ImmediateArgument, DisassembledObject> objectMap = new HashMap<>();
+    private final Map<ImmediateArgument, DisassembledLabel> labelMap = new TreeMap<>(new Comparator<ImmediateArgument>() {
         public int compare(ImmediateArgument o1, ImmediateArgument o2) {
             final long l1 = o1.asLong();
             final long l2 = o2.asLong();

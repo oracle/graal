@@ -40,6 +40,7 @@ public class MonitorTest extends GraphTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
+    @SuppressWarnings("all")
     public static synchronized int referenceSnippet(int a) {
         return 1;
     }
@@ -53,6 +54,7 @@ public class MonitorTest extends GraphTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("all")
     public static synchronized int test1Snippet(int a) {
         return const1();
     }
@@ -66,6 +68,7 @@ public class MonitorTest extends GraphTest {
         Assert.assertEquals(monitor.stateAfter().bci, 3);
     }
 
+    @SuppressWarnings("all")
     public static int test2Snippet(int a) {
         return const2();
     }
@@ -85,7 +88,7 @@ public class MonitorTest extends GraphTest {
                 n.replaceFirstInput(local, constant);
             }
         }
-        Collection<Invoke> hints = new ArrayList<Invoke>();
+        Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }

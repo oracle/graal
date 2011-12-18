@@ -72,6 +72,7 @@ public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable, Nod
         tool.getRuntime().lower(this, tool);
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
     public static <T> T load(Object object, long offset, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");

@@ -32,6 +32,11 @@ import java.io.*;
 public class RiTypeProfile implements Serializable {
 
     /**
+     * 
+     */
+    private static final long serialVersionUID = -6877016333706838441L;
+
+    /**
      * How often the instruction was executed, which may be used to judge the maturity of this profile.
      */
     public int count;

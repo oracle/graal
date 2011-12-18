@@ -43,17 +43,17 @@ public class OpcodeMaskGroup {
         return mask;
     }
 
-    private final Set<RiscTemplate> templates = new HashSet<RiscTemplate>();
+    private final Set<RiscTemplate> templates = new HashSet<>();
 
-    private final IntHashMap<List<RiscTemplate>> templatesForOpcodes = new IntHashMap<List<RiscTemplate>>();
-    private final List<RiscTemplate> empty = new LinkedList<RiscTemplate>();
+    private final IntHashMap<List<RiscTemplate>> templatesForOpcodes = new IntHashMap<>();
+    private final List<RiscTemplate> empty = new LinkedList<>();
 
     public void add(RiscTemplate template) {
         assert template.opcodeMask() == mask;
         templates.add(template);
         List<RiscTemplate> templatesForOpcode = templatesForOpcodes.get(template.opcode());
         if (templatesForOpcode == null) {
-            templatesForOpcode = new LinkedList<RiscTemplate>();
+            templatesForOpcode = new LinkedList<>();
             templatesForOpcodes.put(template.opcode(), templatesForOpcode);
         }
         templatesForOpcode.add(template);

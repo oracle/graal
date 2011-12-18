@@ -26,6 +26,10 @@ import com.sun.cri.ri.*;
 
 
 public class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 7110038548061733686L;
     private int startBci;
     private int endBci;
     private int handlerBci;

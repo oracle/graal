@@ -60,6 +60,6 @@ public enum SegmentRegister implements EnumerableArgument<SegmentRegister> {
         return ES;
     }
 
-    public static final Enumerator<SegmentRegister> ENUMERATOR = new Enumerator<SegmentRegister>(SegmentRegister.class);
+    public static final Enumerator<SegmentRegister> ENUMERATOR = new Enumerator<>(SegmentRegister.class);
 
 }

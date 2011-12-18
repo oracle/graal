@@ -31,11 +31,11 @@ public class IdentityHashMapping<K, V> implements Mapping<K, V> {
     private final Map<K, V> delegate;
 
     public IdentityHashMapping() {
-        delegate = new IdentityHashMap<K, V>();
+        delegate = new IdentityHashMap<>();
     }
 
     public IdentityHashMapping(int expectedMaxSize) {
-        delegate = new IdentityHashMap<K, V>(expectedMaxSize);
+        delegate = new IdentityHashMap<>(expectedMaxSize);
     }
 
     public synchronized V put(K key, V value) {
