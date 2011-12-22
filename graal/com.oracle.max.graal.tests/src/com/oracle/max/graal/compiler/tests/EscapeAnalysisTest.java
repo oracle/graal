@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.tests;
 
-import junit.framework.Assert;
+import junit.framework.*;
 
 import org.junit.Test;
 
@@ -92,7 +92,7 @@ public class EscapeAnalysisTest extends GraphTest {
         return x.intValue();
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void testMonitor2() {
         test("testMonitor2Snippet", CiConstant.forInt(0));
     }

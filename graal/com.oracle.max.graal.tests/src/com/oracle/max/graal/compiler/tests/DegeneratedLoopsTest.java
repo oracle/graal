@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.tests;
 
+import junit.framework.AssertionFailedError;
+
 import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
@@ -42,7 +44,7 @@ public class DegeneratedLoopsTest extends GraphTest {
         return 1;
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test1() {
         test("test1Snippet");
     }

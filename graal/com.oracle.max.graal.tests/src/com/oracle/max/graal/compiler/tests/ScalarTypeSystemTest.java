@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.tests;
 
+import junit.framework.AssertionFailedError;
+
 import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
@@ -40,7 +42,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test1() {
         test("test1Snippet", "referenceSnippet1");
     }
@@ -57,7 +59,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test2() {
         test("test2Snippet", "referenceSnippet1");
     }
@@ -74,7 +76,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test3() {
         test("test3Snippet", "referenceSnippet2");
     }
@@ -99,7 +101,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test4() {
         test("test4Snippet", "referenceSnippet2");
     }
@@ -116,7 +118,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test5() {
         test("test5Snippet", "referenceSnippet3");
     }
@@ -141,7 +143,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test6() {
         test("test6Snippet", "referenceSnippet3");
     }
