@@ -36,7 +36,6 @@ final class MoveResolver {
 
     private final LinearScan allocator;
 
-    private List<LIRInstruction> insertList;
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
@@ -88,7 +87,7 @@ final class MoveResolver {
     private boolean verifyBeforeResolve() {
         assert mappingFrom.size() == mappingFromOpr.size() : "length must be equal";
         assert mappingFrom.size() == mappingTo.size() : "length must be equal";
-        assert insertList != null && insertIdx != -1 : "insert position not set";
+        assert insertIdx != -1 : "insert position not set";
 
         int i;
         int j;
@@ -187,14 +186,13 @@ final class MoveResolver {
         }
         assert !insertionBuffer.initialized() : "must be uninitialized now";
 
-        insertList = null;
         insertIdx = -1;
     }
 
     private void insertMove(Interval fromInterval, Interval toInterval) {
         assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
         assert Util.archKindsEqual(fromInterval.kind(), toInterval.kind()) : "move between different types";
-        assert insertList != null && insertIdx != -1 : "must setup insert position first";
+        assert insertIdx != -1 : "must setup insert position first";
 
         CiValue fromOpr = fromInterval.operand;
         CiValue toOpr = toInterval.operand;
@@ -208,7 +206,7 @@ final class MoveResolver {
 
     private void insertMove(CiValue fromOpr, Interval toInterval) {
         assert Util.archKindsEqual(fromOpr.kind, toInterval.kind()) : "move between different types";
-        assert insertList != null && insertIdx != -1 : "must setup insert position first";
+        assert insertIdx != -1 : "must setup insert position first";
 
         CiValue toOpr = toInterval.operand;
         insertionBuffer.append(insertIdx, StandardOpcode.MOVE.create(toOpr, fromOpr));
@@ -303,27 +301,25 @@ final class MoveResolver {
     }
 
     void setInsertPosition(List<LIRInstruction> insertList, int insertIdx) {
-        assert this.insertList == null && this.insertIdx == -1 : "use moveInsertPosition instead of setInsertPosition when data already set";
+        assert this.insertIdx == -1 : "use moveInsertPosition instead of setInsertPosition when data already set";
 
         createInsertionBuffer(insertList);
-        this.insertList = insertList;
         this.insertIdx = insertIdx;
     }
 
     void moveInsertPosition(List<LIRInstruction> newInsertList, int newInsertIdx) {
-        if (this.insertList != null && (this.insertList != newInsertList || this.insertIdx != newInsertIdx)) {
+        if (insertionBuffer.lirList() != null && (insertionBuffer.lirList() != newInsertList || this.insertIdx != newInsertIdx)) {
             // insert position changed . resolve current mappings
             resolveMappings();
         }
 
-        if (this.insertList != newInsertList) {
+        if (insertionBuffer.lirList() != newInsertList) {
             // block changed . append insertionBuffer because it is
             // bound to a specific block and create a new insertionBuffer
             appendInsertionBuffer();
             createInsertionBuffer(newInsertList);
         }
 
-        this.insertList = newInsertList;
         this.insertIdx = newInsertIdx;
     }
 

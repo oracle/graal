@@ -76,6 +76,10 @@ public final class LIRInsertionBuffer {
         return lir != null;
     }
 
+    public List<LIRInstruction> lirList() {
+        return lir;
+    }
+
     /**
      * Enqueue a new instruction that will be appended to the instruction list when {@link #finish()} is called.
      * The new instruction is added <b>before</b> the existing instruction with the given index. This method can only be called
