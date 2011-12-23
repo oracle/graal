@@ -245,7 +245,7 @@ final class LinearScanWalker extends IntervalWalker {
         assert list.get(index).id() == opId : "error in calculation";
 
         // insert new instruction before instruction at position index
-        moveResolver.moveInsertPosition(opBlock.lir(), index - 1);
+        moveResolver.moveInsertPosition(opBlock.lir(), index);
         moveResolver.addMapping(srcIt, dstIt);
     }
 

@@ -195,12 +195,11 @@ final class MoveResolver {
         assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
         assert Util.archKindsEqual(fromInterval.kind(), toInterval.kind()) : "move between different types";
         assert insertList != null && insertIdx != -1 : "must setup insert position first";
-        assert insertionBuffer.lirList() == insertList : "wrong insertion buffer";
 
         CiValue fromOpr = fromInterval.operand;
         CiValue toOpr = toInterval.operand;
 
-        insertionBuffer.move(insertIdx, fromOpr, toOpr);
+        insertionBuffer.append(insertIdx, StandardOpcode.MOVE.create(toOpr, fromOpr));
 
         if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.println("MoveResolver: inserted move from %d (%s) to %d (%s)", fromInterval.operandNumber, fromInterval.location(), toInterval.operandNumber, toInterval.location());
@@ -210,10 +209,9 @@ final class MoveResolver {
     private void insertMove(CiValue fromOpr, Interval toInterval) {
         assert Util.archKindsEqual(fromOpr.kind, toInterval.kind()) : "move between different types";
         assert insertList != null && insertIdx != -1 : "must setup insert position first";
-        assert insertionBuffer.lirList() == insertList : "wrong insertion buffer";
 
         CiValue toOpr = toInterval.operand;
-        insertionBuffer.move(insertIdx, fromOpr, toOpr);
+        insertionBuffer.append(insertIdx, StandardOpcode.MOVE.create(toOpr, fromOpr));
 
         if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.print("MoveResolver: inserted move from constant %s to %d (%s)", fromOpr, toInterval.operandNumber, toInterval.location());

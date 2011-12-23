@@ -457,7 +457,7 @@ public final class LinearScan {
                         assert fromLocation.isRegister() : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
                         assert toLocation.isStackSlot() : "to operand must be a stack slot";
 
-                        insertionBuffer.move(j, fromLocation, toLocation);
+                        insertionBuffer.append(j + 1, StandardOpcode.MOVE.create(toLocation, fromLocation));
 
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
                             CiStackSlot slot = interval.spillSlot();
@@ -1436,9 +1436,9 @@ public final class LinearScan {
             if (instr instanceof LIRBranch) {
                 // insert moves before branch
                 assert instr.code == StandardOpcode.JUMP : "block does not end with an unconditional jump";
-                moveResolver.setInsertPosition(fromBlock.lir(), instructions.size() - 2);
-            } else {
                 moveResolver.setInsertPosition(fromBlock.lir(), instructions.size() - 1);
+            } else {
+                moveResolver.setInsertPosition(fromBlock.lir(), instructions.size());
             }
 
         } else {
@@ -1458,7 +1458,7 @@ public final class LinearScan {
                 }
             }
 
-            moveResolver.setInsertPosition(toBlock.lir(), 0);
+            moveResolver.setInsertPosition(toBlock.lir(), 1);
         }
     }
 
@@ -1497,7 +1497,7 @@ public final class LinearScan {
                         // directly resolve between pred and sux (without looking at the empty block between)
                         resolveCollectMappings(pred, sux, moveResolver);
                         if (moveResolver.hasMappings()) {
-                            moveResolver.setInsertPosition(block.lir(), 0);
+                            moveResolver.setInsertPosition(block.lir(), 1);
                             moveResolver.resolveAndAppendMoves();
                         }
                     }
