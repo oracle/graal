@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
+import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
 
 import com.oracle.max.graal.compiler.*;
@@ -275,9 +276,6 @@ public final class FrameMap {
      * Encapsulates the details of a stack block reserved by a call to {@link FrameMap#reserveStackBlock(int, boolean)}.
      */
     public static final class StackBlock extends CiValue {
-        /**
-         * 
-         */
         private static final long serialVersionUID = -5260976274149772987L;
 
         /**
@@ -300,21 +298,8 @@ public final class FrameMap {
         }
 
         @Override
-        public String name() {
+        public String toString() {
             return "StackBlock " + offset;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return this == obj;
-        }
-        @Override
-        public boolean equalsIgnoringKind(CiValue other) {
-            return this == other;
-        }
-        @Override
-        public int hashCode() {
-            return offset;
         }
     }
 
@@ -391,12 +376,39 @@ public final class FrameMap {
         return (outgoingSize + customAreaSize()) / target.spillSlotSize;
     }
 
+
+
+
+    private int registerRefMapSize() {
+        return target.arch.registerReferenceMapBitCount;
+    }
+
+    private int frameRefMapSize() {
+        if (incomingArguments.stackSize > 0) {
+            return (frameSize() + target.arch.returnAddressSize + customAreaSize() + incomingArguments.stackSize) / target.wordSize;
+        } else {
+            return frameSize() / target.wordSize;
+        }
+    }
+
+    private int frameRefMapIndex(CiStackSlot slot) {
+        int offset = offsetForStackSlot(slot);
+        assert offset % target.wordSize == 0 && offset / target.wordSize < frameRefMapSize();
+        return offset / target.wordSize;
+    }
+
     /**
-     * Initializes a ref map that covers all the slots in the frame.
+     * Initializes a reference map that covers all registers of the target architecture.
+     */
+    public CiBitMap initRegisterRefMap() {
+        return new CiBitMap(registerRefMapSize());
+    }
+
+    /**
+     * Initializes a reference map that covers all the slots in the frame.
      */
     public CiBitMap initFrameRefMap() {
-        int frameWords = frameSize() / target.spillSlotSize;
-        CiBitMap frameRefMap = new CiBitMap(frameWords);
+        CiBitMap frameRefMap = new CiBitMap(frameRefMapSize());
         for (StackBlock sb = stackBlocks; sb != null; sb = sb.next) {
             if (sb.kind == CiKind.Object) {
                 int firstSlot = offsetForStackBlock(sb) / target.wordSize;
@@ -407,5 +419,49 @@ public final class FrameMap {
             }
         }
         return frameRefMap;
+    }
+
+    /**
+     * Marks the specified location as a reference in the reference map of the debug information.
+     * The tracked location can be a {@link CiRegisterValue} or a {@link CiStackSlot}. Note that a
+     * {@link CiConstant} is automatically tracked.
+     *
+     * @param location The location to be added to the reference map.
+     * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
+     * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
+     */
+    public void setReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+//        assert registerRefMap.size() == registerRefMapSize() && frameRefMap.size() == frameRefMapSize();
+        if (location.kind == CiKind.Object) {
+            if (isRegister(location)) {
+                registerRefMap.set(asRegister(location).number);
+            } else if (isStackSlot(location)) {
+                frameRefMap.set(frameRefMapIndex(asStackSlot(location)));
+            } else {
+                assert isConstant(location);
+            }
+        }
+    }
+
+    /**
+     * Clears the specified location as a reference in the reference map of the debug information.
+     * The tracked location can be a {@link CiRegisterValue} or a {@link CiStackSlot}. Note that a
+     * {@link CiConstant} is automatically tracked.
+     *
+     * @param location The location to be removed from the reference map.
+     * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
+     * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
+     */
+    public void clearReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+//        assert registerRefMap.size() == registerRefMapSize() && frameRefMap.size() == frameRefMapSize();
+        if (location.kind == CiKind.Object) {
+            if (location instanceof CiRegisterValue) {
+                registerRefMap.clear(asRegister(location).number);
+            } else if (isStackSlot(location)) {
+                frameRefMap.clear(frameRefMapIndex(asStackSlot(location)));
+            } else {
+                assert isConstant(location);
+            }
+        }
     }
 }

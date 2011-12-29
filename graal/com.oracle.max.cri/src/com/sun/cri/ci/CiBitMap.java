@@ -62,6 +62,19 @@ public final class CiBitMap implements Serializable {
     }
 
     /**
+     * Constructs a copy of the given bit map.
+     *
+     * @param bitmap the bit map to copy.
+     */
+    public CiBitMap(CiBitMap bitmap) {
+        this.size = bitmap.size;
+        this.low = bitmap.low;
+        if (bitmap.extra != null) {
+            this.extra = Arrays.copyOf(bitmap.extra, bitmap.extra.length);
+        }
+    }
+
+    /**
      * Constructs a new bit map from a byte array encoded bit map.
      *
      * @param arr the byte array containing the bit map to convert

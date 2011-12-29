@@ -32,7 +32,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiAddress.Scale;
 import com.sun.cri.ci.CiTargetMethod.JumpTable;
-import com.sun.cri.ci.CiValue.Formatter;
 
 public class AMD64ControlFlowOpcode {
 
@@ -50,7 +49,7 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
+                public String operationString() {
                     return label.toString();
                 }
             };
@@ -86,7 +85,7 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
+                public String operationString() {
                     return  "[" + destination + "]";
                 }
             };
@@ -106,7 +105,7 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
+                public String operationString() {
                     return cond.operator + " [" + destination + "]";
                 }
             };
@@ -125,7 +124,7 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
+                public String operationString() {
                     return cond.operator + " [" + destination + "]" + (unorderedIsTrue ? " unorderedIsTrue" : " unorderedIsFalse");
                 }
             };
@@ -147,8 +146,8 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
-                    StringBuilder buf = new StringBuilder(super.operationString(operandFmt));
+                public String operationString() {
+                    StringBuilder buf = new StringBuilder(super.operationString());
                     buf.append("\ndefault: [").append(defaultTarget).append(']');
                     int key = lowKey;
                     for (LabelRef l : targets) {
@@ -181,8 +180,8 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
-                    return condition.toString() + " " + super.operationString(operandFmt);
+                public String operationString() {
+                    return condition.toString() + " " + super.operationString();
                 }
             };
         }
@@ -202,8 +201,8 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public String operationString(Formatter operandFmt) {
-                    return condition.toString() + " unordered=" + unorderedIsTrue + " " + super.operationString(operandFmt);
+                public String operationString() {
+                    return condition.toString() + " unordered=" + unorderedIsTrue + " " + super.operationString();
                 }
             };
         }

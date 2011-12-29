@@ -43,6 +43,11 @@ public class Block {
     private int loopIndex = -1;
     private double probability;
 
+    /**
+     * For loop headers only: The list of all blocks in this loop.
+     */
+    public List<Block> loopBlocks;
+
     private Node firstNode;
     private Node lastNode;
 

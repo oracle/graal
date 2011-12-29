@@ -30,7 +30,7 @@ package com.sun.cri.ci;
 public final class CiVariable extends CiValue {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 4507578431686109809L;
 
@@ -116,7 +116,7 @@ public final class CiVariable extends CiValue {
     }
 
     @Override
-    public String name() {
-        return "v" + index;
+    public String toString() {
+        return "v" + index + kindSuffix();
     }
 }

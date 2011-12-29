@@ -23,10 +23,8 @@
 package com.oracle.max.graal.compiler.lir;
 
 import com.oracle.max.graal.compiler.asm.*;
-import com.oracle.max.graal.compiler.lir.LIRDebugInfo.ValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiValue.Formatter;
 
 /**
  * The {@code LIRInstruction} class definition.
@@ -36,6 +34,20 @@ public abstract class LIRInstruction {
     public static final CiValue[] NO_OPERANDS = {};
 
     public static final OperandMode[] OPERAND_MODES = OperandMode.values();
+
+    /**
+     * Iterator interface for iterating over a list of values.
+     */
+    public interface ValueProcedure {
+        /**
+         * The iterator method.
+         *
+         * @param value The value that is iterated.
+         * @return The new value to replace the value that was passed in.
+         */
+        CiValue doValue(CiValue value);
+    }
+
 
     /**
      * Constants denoting how a LIR instruction uses an operand.
@@ -209,7 +221,7 @@ public abstract class LIRInstruction {
     public final void setOperandAt(OperandMode mode, int index, CiValue location) {
         assert index < operandCount(mode);
         assert location.kind != CiKind.Illegal;
-        assert operandAt(mode, index).isVariable() && operandAt(mode, index).kind == location.kind;
+        assert operandAt(mode, index).kind == location.kind;
         switch (mode) {
             case Output: result = location; break;
             case Input:  inputs[index] = location; break;
@@ -219,11 +231,39 @@ public abstract class LIRInstruction {
         }
     }
 
-    public final void forEachOperand(OperandMode mode, ValueProcedure proc) {
-        for (int i = 0; i < operandCount(mode); i++) {
-            CiValue newValue = proc.doValue(operandAt(mode, i));
-            if (newValue != null) {
-                setOperandAt(mode, i, newValue);
+    public final void forEachInput(ValueProcedure proc) {
+        for (int i = 0; i < inputs.length; i++) {
+            inputs[i] = proc.doValue(inputs[i]);
+        }
+    }
+
+    public final void forEachAlive(ValueProcedure proc) {
+        for (int i = 0; i < alives.length; i++) {
+            alives[i] = proc.doValue(alives[i]);
+        }
+    }
+
+    public final void forEachTemp(ValueProcedure proc) {
+        for (int i = 0; i < temps.length; i++) {
+            temps[i] = proc.doValue(temps[i]);
+        }
+    }
+
+    public final void forEachOutput(ValueProcedure proc) {
+        if (result != CiValue.IllegalValue) {
+            result = proc.doValue(result);
+        }
+    }
+
+    public final void forEachState(ValueProcedure proc) {
+        if (info != null) {
+            info.forEachState(proc);
+
+            if (this instanceof LIRXirInstruction) {
+                LIRXirInstruction xir = (LIRXirInstruction) this;
+                if (xir.infoAfter != null) {
+                    xir.infoAfter.forEachState(proc);
+                }
             }
         }
     }
@@ -255,11 +295,6 @@ public abstract class LIRInstruction {
     }
 
 
-    @Override
-    public String toString() {
-        return toString(Formatter.DEFAULT);
-    }
-
     public final String toStringWithIdPrefix() {
         if (id != -1) {
             return String.format("%4d %s", id, toString());
@@ -270,21 +305,21 @@ public abstract class LIRInstruction {
     /**
      * Gets the operation performed by this instruction in terms of its operands as a string.
      */
-    public String operationString(Formatter operandFmt) {
+    public String operationString() {
         StringBuilder buf = new StringBuilder();
         if (result.isLegal()) {
-            buf.append(operandFmt.format(result)).append(" = ");
+            buf.append(result).append(" = ");
         }
         if (inputs.length + alives.length > 1) {
             buf.append("(");
         }
         String sep = "";
         for (CiValue input : inputs) {
-            buf.append(sep).append(operandFmt.format(input));
+            buf.append(sep).append(input);
             sep = ", ";
         }
         for (CiValue input : alives) {
-            buf.append(sep).append(operandFmt.format(input)).append(" ~");
+            buf.append(sep).append(input).append(" ~");
             sep = ", ";
         }
         if (inputs.length + alives.length > 1) {
@@ -296,7 +331,7 @@ public abstract class LIRInstruction {
         }
         sep = "";
         for (CiValue temp : temps) {
-            buf.append(sep).append(operandFmt.format(temp));
+            buf.append(sep).append(temp);
             sep = ", ";
         }
         if (temps.length > 0) {
@@ -305,7 +340,7 @@ public abstract class LIRInstruction {
         return buf.toString();
     }
 
-    protected static String refMapToString(CiDebugInfo debugInfo, Formatter operandFmt) {
+    protected static String refMapToString(CiDebugInfo debugInfo) {
         StringBuilder buf = new StringBuilder();
         if (debugInfo.hasStackRefMap()) {
             CiBitMap bm = debugInfo.frameRefMap;
@@ -313,7 +348,7 @@ public abstract class LIRInstruction {
                 if (buf.length() != 0) {
                     buf.append(", ");
                 }
-                buf.append(operandFmt.format(CiStackSlot.get(CiKind.Object, slot)));
+                buf.append(CiStackSlot.get(CiKind.Object, slot));
             }
         }
         if (debugInfo.hasRegisterRefMap()) {
@@ -328,12 +363,12 @@ public abstract class LIRInstruction {
         return buf.toString();
     }
 
-    protected void appendDebugInfo(StringBuilder buf, Formatter operandFmt) {
+    protected void appendDebugInfo(StringBuilder buf) {
         if (info != null) {
             buf.append(" [bci:").append(info.topFrame.bci);
             if (info.hasDebugInfo()) {
                 CiDebugInfo debugInfo = info.debugInfo();
-                String refmap = refMapToString(debugInfo, operandFmt);
+                String refmap = refMapToString(debugInfo);
                 if (refmap.length() != 0) {
                     buf.append(", refmap(").append(refmap.trim()).append(')');
                 }
@@ -342,9 +377,10 @@ public abstract class LIRInstruction {
         }
     }
 
-    public String toString(Formatter operandFmt) {
-        StringBuilder buf = new StringBuilder(name()).append(' ').append(operationString(operandFmt));
-        appendDebugInfo(buf, operandFmt);
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder(name()).append(' ').append(operationString());
+        appendDebugInfo(buf);
         return buf.toString();
     }
 }

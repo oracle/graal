@@ -25,15 +25,16 @@ package com.oracle.max.graal.compiler.lir;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.lir.LIRDebugInfo.ValueProcedure;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.PhiNode.*;
 import com.sun.cri.ci.*;
 
 public class LIRPhiMapping {
     private final LIRBlock block;
 
-    private final CiValue[][] inputs;
-    private final CiValue[] results;
+    private CiValue[][] inputs;
+    private CiValue[] results;
 
     public LIRPhiMapping(LIRBlock block, LIRGenerator gen) {
         this.block = block;
@@ -42,23 +43,43 @@ public class LIRPhiMapping {
         MergeNode mergeNode = (MergeNode) block.firstNode();
         List<PhiNode> phis = mergeNode.phis().snapshot();
 
-        int numPhis = phis.size();
+        for (int i = 0; i < phis.size(); i++) {
+            PhiNode phi = phis.get(i);
+            if (phi.type() == PhiType.Value) {
+                gen.setResult(phi, gen.newVariable(phi.kind()));
+            }
+        }
+    }
+
+    public void fillInputs(LIRGenerator gen) {
+        assert block.firstNode() instanceof MergeNode : "phi functions are only present at control flow merges";
+        MergeNode mergeNode = (MergeNode) block.firstNode();
+        List<PhiNode> phis = mergeNode.phis().snapshot();
+
+        int numPhis = 0;
+        for (int i = 0; i < phis.size(); i++) {
+            if (phis.get(i).type() == PhiType.Value) {
+                numPhis++;
+            }
+        }
         int numPreds = block.numberOfPreds();
 
         results = new CiValue[numPhis];
-        for (int i = 0; i < numPhis; i++) {
-            CiVariable opd = gen.newVariable(phis.get(i).kind());
-            gen.setResult(phis.get(i), opd);
-            results[i] = opd;
-        }
-
         inputs = new CiValue[numPreds][numPhis];
-        for (int i = 0; i < numPreds; i++) {
-            assert i == mergeNode.phiPredecessorIndex((FixedNode) block.predAt(i).lastNode()) : "block predecessors and node predecessors must have same order";
-            for (int j = 0; j < numPhis; j++) {
-                inputs[i][j] = gen.operand(phis.get(j).valueAt(i));
+
+        int phiIdx = 0;
+        for (int i = 0; i < phis.size(); i++) {
+            PhiNode phi = phis.get(i);
+            if (phi.type() == PhiType.Value) {
+                results[phiIdx] = gen.operand(phi);
+                for (int j = 0; j < numPreds; j++) {
+                    assert j == mergeNode.phiPredecessorIndex((FixedNode) block.predAt(j).lastNode()) : "block predecessors and node predecessors must have same order";
+                    inputs[j][phiIdx] = gen.operand(phi.valueAt(j));
+                }
+                phiIdx++;
             }
         }
+        assert phiIdx == numPhis;
     }
 
     public CiValue[] results() {
@@ -73,19 +94,29 @@ public class LIRPhiMapping {
     public void forEachInput(LIRBlock pred, ValueProcedure proc) {
         CiValue[] predInputs = inputs(pred);
         for (int i = 0; i < predInputs.length; i++) {
-            CiValue newValue = proc.doValue(predInputs[i]);
-            if (newValue != null) {
-                predInputs[i] = newValue;
-            }
+            predInputs[i] = proc.doValue(predInputs[i]);
         }
     }
 
     public void forEachOutput(ValueProcedure proc) {
         for (int i = 0; i < results.length; i++) {
-            CiValue newValue = proc.doValue(results[i]);
-            if (newValue != null) {
-                results[i] = newValue;
-            }
+            results[i] = proc.doValue(results[i]);
         }
+    }
+
+    public void forEachInput(LIRBlock pred, PhiValueProcedure proc) {
+        CiValue[] predInputs = inputs(pred);
+        for (int i = 0; i < predInputs.length; i++) {
+            proc.doValue(predInputs[i], results[i]);
+        }
+    }
+
+    public interface PhiValueProcedure {
+        void doValue(CiValue input, CiValue output);
+    }
+
+    @Override
+    public String toString() {
+        return "PhiMapping for " + block + ": " + Arrays.toString(results);
     }
 }

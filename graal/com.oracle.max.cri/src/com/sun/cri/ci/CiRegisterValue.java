@@ -28,11 +28,8 @@ package com.sun.cri.ci;
  * retrieve the canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
  */
 public final class CiRegisterValue extends CiValue {
-
-    /**
-     * 
-     */
     private static final long serialVersionUID = 7999341472196897163L;
+
     /**
      * The register.
      */
@@ -41,14 +38,14 @@ public final class CiRegisterValue extends CiValue {
     /**
      * Should only be called from {@link CiRegister#CiRegister} to ensure canonicalization.
      */
-    CiRegisterValue(CiKind kind, CiRegister register) {
+    protected CiRegisterValue(CiKind kind, CiRegister register) {
         super(kind);
         this.reg = register;
     }
 
     @Override
     public int hashCode() {
-        return kind.ordinal() ^ reg.number;
+        return (reg.number << 4) ^ kind.ordinal();
     }
 
     @Override
@@ -65,8 +62,8 @@ public final class CiRegisterValue extends CiValue {
     }
 
     @Override
-    public String name() {
-        return reg.name;
+    public String toString() {
+        return reg.name + kindSuffix();
     }
 
     @Override

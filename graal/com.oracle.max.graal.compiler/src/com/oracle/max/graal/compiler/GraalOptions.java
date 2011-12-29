@@ -105,6 +105,7 @@ public final class GraalOptions {
     public static boolean PrintCodeBytes                     = ____;
     public static int     PrintAssemblyBytesPerLine          = 16;
     public static int     TraceLinearScanLevel               = 0;
+    public static int     TraceRegisterAllocationLevel       = 0;
     public static int     TraceLIRGeneratorLevel             = 0;
     public static boolean TraceRelocation                    = ____;
     public static boolean TraceLIRVisit                      = ____;

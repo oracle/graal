@@ -25,7 +25,6 @@ package com.oracle.max.graal.compiler.lir;
 import java.util.*;
 
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiValue.Formatter;
 import com.sun.cri.ri.*;
 import com.sun.cri.xir.*;
 
@@ -98,17 +97,17 @@ public abstract class LIRXirInstruction extends LIRInstruction {
      * Prints this instruction.
      */
     @Override
-    public String operationString(Formatter operandFmt) {
-        return toString(operandFmt);
+    public String operationString() {
+        return toString();
     }
 
     @Override
-    public String toString(Formatter operandFmt) {
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("XIR: ");
 
         if (result().isLegal()) {
-            sb.append(operandFmt.format(result()) + " = ");
+            sb.append(result() + " = ");
         }
 
         sb.append(snippet.template);
@@ -119,14 +118,9 @@ public abstract class LIRXirInstruction extends LIRInstruction {
                 sb.append(", ");
             }
             if (a.constant != null) {
-                sb.append(operandFmt.format(a.constant));
+                sb.append(a.constant);
             } else {
-                Object o = a.object;
-                if (o instanceof CiValue) {
-                    sb.append(operandFmt.format((CiValue) o));
-                } else {
-                    sb.append(o);
-                }
+                sb.append(a.object);
             }
         }
         sb.append(')');
@@ -147,7 +141,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
                 sb.append(' ').append(mode.name().toLowerCase()).append("=(");
                 HashSet<String> operands = new HashSet<>();
                 for (int i = 0; i < n; i++) {
-                    String operand = operandFmt.format(operandAt(mode, i));
+                    String operand = operandAt(mode, i).toString();
                     if (!operands.contains(operand)) {
                         if (!operands.isEmpty()) {
                             sb.append(", ");
@@ -160,7 +154,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
             }
         }
 
-        appendDebugInfo(sb, operandFmt);
+        appendDebugInfo(sb);
 
         return sb.toString();
     }

@@ -29,7 +29,7 @@ package com.sun.cri.ci;
 public final class CiStackSlot extends CiValue {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = -7725071921307318433L;
 
@@ -122,8 +122,8 @@ public final class CiStackSlot extends CiValue {
     }
 
     @Override
-    public String name() {
-        return (inCallerFrame() ? "caller-stack" : "stack:") + index();
+    public String toString() {
+        return (inCallerFrame() ? "caller-stack" : "stack:") + index() + kindSuffix();
     }
 
     /**

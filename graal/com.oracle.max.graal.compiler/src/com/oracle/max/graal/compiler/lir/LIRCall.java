@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.Mark;
-import com.sun.cri.ci.CiValue.Formatter;
 import com.sun.cri.ri.*;
 import com.sun.cri.xir.CiXirAssembler.XirMark;
 
@@ -92,13 +91,13 @@ public abstract class LIRCall extends LIRInstruction {
     }
 
     @Override
-    public String operationString(Formatter operandFmt) {
+    public String operationString() {
         StringBuilder buf = new StringBuilder();
         if (result.isLegal()) {
-            buf.append(operandFmt.format(result)).append(" = ");
+            buf.append(result).append(" = ");
         }
         if (targetAddressIndex >= 0) {
-            buf.append(operandFmt.format(targetAddress()));
+            buf.append(targetAddress());
         }
         if (inputs.length + alives.length > 1) {
             buf.append("(");
@@ -106,13 +105,13 @@ public abstract class LIRCall extends LIRInstruction {
         String sep = "";
         for (CiValue input : inputs) {
             if (input != targetAddress()) {
-                buf.append(sep).append(operandFmt.format(input));
+                buf.append(sep).append(input);
                 sep = ", ";
             }
         }
         for (CiValue input : alives) {
             if (input != targetAddress()) {
-                buf.append(sep).append(operandFmt.format(input)).append(" ~");
+                buf.append(sep).append(input).append(" ~");
                 sep = ", ";
             }
         }

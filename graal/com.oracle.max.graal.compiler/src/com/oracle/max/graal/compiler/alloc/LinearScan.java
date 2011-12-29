@@ -35,7 +35,7 @@ import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRDebugInfo.ValueProcedure;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -613,7 +613,7 @@ public final class LinearScan {
                 // Add uses of live locals from interpreter's point of view for proper debug information generation
                 LIRDebugInfo info = op.info;
                 if (info != null) {
-                    info.forEachLiveStateValue(new ValueProcedure() {
+                    info.forEachState(new ValueProcedure() {
                         @Override
                         public CiValue doValue(CiValue operand) {
                             int operandNum = operandNumber(operand);
@@ -623,7 +623,7 @@ public final class LinearScan {
                                     TTY.println("  Setting liveGen for LIR opId %d, operand %d because of state for %s", op.id(), operandNum, op);
                                 }
                             }
-                            return null;
+                            return operand;
                         }
                     });
                 }
@@ -824,10 +824,10 @@ public final class LinearScan {
                             TTY.println(ins.id() + ": " + ins.result() + " " + ins.toString());
                             LIRDebugInfo info = ins.info;
                             if (info != null) {
-                                info.forEachLiveStateValue(new ValueProcedure() {
+                                info.forEachState(new ValueProcedure() {
                                     public CiValue doValue(CiValue liveStateOperand) {
                                         TTY.println("   operand=" + liveStateOperand);
-                                        return null;
+                                        return liveStateOperand;
                                     }
                                 });
                             }
@@ -1178,10 +1178,10 @@ public final class LinearScan {
                 // to a call site, the value would be in a register at the call otherwise)
                 LIRDebugInfo info = op.info;
                 if (info != null) {
-                    info.forEachLiveStateValue(new ValueProcedure() {
+                    info.forEachState(new ValueProcedure() {
                         public CiValue doValue(CiValue operand) {
                             addUse(operand, blockFrom, (opId + 1), RegisterPriority.None, operand.kind.stackKind());
-                            return null;
+                            return operand;
                         }
                     });
                 }
@@ -1638,7 +1638,7 @@ public final class LinearScan {
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
     }
 
-    void computeOopMap(IntervalWalker iw, LIRInstruction op, LIRDebugInfo info) {
+    void computeOopMap(IntervalWalker iw, LIRInstruction op, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating oop map at opId %d", op.id());
         }
@@ -1665,7 +1665,7 @@ public final class LinearScan {
                 // caller-save registers must not be included into oop-maps at calls
                 assert !op.hasCall() || !operand.isRegister() || !isCallerSave(operand) : "interval is in a caller-save register at a call . register will be overwritten";
 
-                info.setReference(interval.location(), frameMap);
+                frameMap.setReference(interval.location(), registerRefMap, frameRefMap);
 
                 // Spill optimization: when the stack value is guaranteed to be always correct,
                 // then it must be added to the oop map even if the interval is currently in a register
@@ -1673,7 +1673,7 @@ public final class LinearScan {
                     assert interval.spillDefinitionPos() > 0 : "position not set correctly";
                     assert interval.spillSlot() != null : "no spill slot assigned";
                     assert !interval.operand.isRegister() : "interval is on stack :  so stack slot is registered twice";
-                    info.setReference(interval.spillSlot(), frameMap);
+                    frameMap.setReference(interval.spillSlot(), registerRefMap, frameRefMap);
                 }
             }
         }
@@ -1698,10 +1698,11 @@ public final class LinearScan {
 
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRDebugInfo info) {
-        info.initDebugInfo(op, frameMap);
-        computeOopMap(iw, op, info);
+        CiBitMap registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
+        CiBitMap frameRefMap = frameMap.initFrameRefMap();
+        computeOopMap(iw, op, registerRefMap, frameRefMap);
 
-        info.forEachLiveStateValue(new ValueProcedure() {
+        info.forEachState(new ValueProcedure() {
             @Override
             public CiValue doValue(CiValue operand) {
                 int tempOpId = op.id();
@@ -1730,6 +1731,8 @@ public final class LinearScan {
                 return result;
             }
         });
+
+        info.finish(registerRefMap, frameRefMap, frameMap);
     }
 
     private void assignLocations(List<LIRInstruction> instructions, IntervalWalker iw) {

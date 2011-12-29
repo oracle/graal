@@ -149,6 +149,17 @@ public final class LIRBlock extends Block {
         return (LIRBlock) successors.get(i);
     }
 
+    @SuppressWarnings({"unchecked", "cast"})
+    public List<LIRBlock> getLIRSuccessors() {
+        return (List<LIRBlock>) (List) super.getSuccessors();
+    }
+
+    @SuppressWarnings({"unchecked", "cast"})
+    public List<LIRBlock> getLIRPredecessors() {
+        return (List<LIRBlock>) (List) super.getPredecessors();
+    }
+
+
     @Override
     public String toString() {
         return "B" + blockID();

@@ -29,11 +29,8 @@ import com.sun.cri.ri.*;
  * deoptimization to recreate the object.
  */
 public final class CiVirtualObject extends CiValue {
-
-    /**
-     * 
-     */
     private static final long serialVersionUID = -2907197776426346021L;
+
     private final RiType type;
     private CiValue[] values;
     private final int id;
@@ -58,8 +55,8 @@ public final class CiVirtualObject extends CiValue {
     }
 
     @Override
-    public String name() {
-        return "vobject";
+    public String toString() {
+        return "vobject:" + id;
     }
 
     /**

@@ -1113,7 +1113,7 @@ public final class Interval {
             from = String.valueOf(from());
             to = String.valueOf(to());
         }
-        String locationString = this.location == null ? "" : "@" + this.location.name();
+        String locationString = this.location == null ? "" : "@" + this.location;
         return operandNumber + ":" + operand + (operand.isRegister() ? "" : locationString) + "[" + from + "," + to + "]";
     }
 

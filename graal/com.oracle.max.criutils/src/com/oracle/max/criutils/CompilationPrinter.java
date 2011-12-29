@@ -25,8 +25,6 @@ package com.oracle.max.criutils;
 import java.io.*;
 
 import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiAddress.Scale;
-import com.sun.cri.ci.CiValue.Formatter;
 import com.sun.cri.ri.*;
 
 /**
@@ -105,7 +103,7 @@ public class CompilationPrinter {
     /**
      * Formats a given {@linkplain FrameState JVM frame state} as a multi line string.
      */
-    protected String debugInfoToString(CiCodePos codePos, CiBitMap registerRefMap, CiBitMap frameRefMap, OperandFormatter fmt, CiArchitecture arch) {
+    protected String debugInfoToString(CiCodePos codePos, CiBitMap registerRefMap, CiBitMap frameRefMap, CiArchitecture arch) {
         StringBuilder sb = new StringBuilder();
 
         if (registerRefMap != null) {
@@ -134,7 +132,7 @@ public class CompilationPrinter {
                     if (frame.numStack > 0) {
                         sb.append("stack: ");
                         for (int i = 0; i < frame.numStack; i++) {
-                            sb.append(valueToString(frame.getStackValue(i), fmt)).append(' ');
+                            sb.append(valueToString(frame.getStackValue(i))).append(' ');
                         }
                         sb.append("\n");
                     }
@@ -142,14 +140,14 @@ public class CompilationPrinter {
                     if (frame.numLocks > 0) {
                         sb.append("locks: ");
                         for (int i = 0; i < frame.numLocks; ++i) {
-                            sb.append(valueToString(frame.getLockValue(i), fmt)).append(' ');
+                            sb.append(valueToString(frame.getLockValue(i))).append(' ');
                         }
                         sb.append("\n");
                     }
 
                     sb.append("locals: ");
                     for (int i = 0; i < frame.numLocals; i++) {
-                        sb.append(valueToString(frame.getLocalValue(i), fmt)).append(' ');
+                        sb.append(valueToString(frame.getLocalValue(i))).append(' ');
                     }
                     sb.append("\n");
                 }
@@ -159,63 +157,11 @@ public class CompilationPrinter {
         return sb.toString();
     }
 
-
-    protected String valueToString(CiValue value, Formatter operandFmt) {
+    protected String valueToString(CiValue value) {
         if (value == null) {
             return "-";
         }
-        return operandFmt.format(value);
-    }
-
-
-    /**
-     * Formats LIR operands as expected by the C1 Visualizer.
-     */
-    public static class OperandFormatter extends Formatter {
-        /**
-         * The textual delimiters used for an operand depend on the context in which it is being
-         * printed. When printed as part of a frame state or as the result operand in a HIR node listing,
-         * it is enclosed in double-quotes (i.e. {@code "}'s).
-         */
-        public final boolean asStateOrHIROperandResult;
-
-        public OperandFormatter(boolean asStateOrHIROperandResult) {
-            this.asStateOrHIROperandResult = asStateOrHIROperandResult;
-        }
-
-        @Override
-        public String format(CiValue operand) {
-            if (operand.isLegal()) {
-                String op;
-                if (operand.isVariableOrRegister() || operand.isStackSlot()) {
-                    op = operand.name();
-                } else if (operand.isConstant()) {
-                    CiConstant constant = (CiConstant) operand;
-                    op = operand.kind.javaName + ":" + operand.kind.format(constant.boxedValue());
-                } else if (operand.isAddress()) {
-                    CiAddress address = (CiAddress) operand;
-                    op = "Base:" + format(address.base);
-                    if (!address.index.isIllegal()) {
-                        op += " Index:" + format(address.index);
-                    }
-                    if (address.scale != Scale.Times1) {
-                        op += " * " + address.scale.value;
-                    }
-                    op += " Disp:" + address.displacement;
-                } else {
-                    assert operand.isIllegal();
-                    op = "-";
-                }
-                if (operand.kind != CiKind.Illegal) {
-                    op += "|" + operand.kind.typeChar;
-                }
-                if (asStateOrHIROperandResult) {
-                    op = " \"" + op.replace('"', '\'') + "\" ";
-                }
-                return op;
-            }
-            return "";
-        }
+        return value.toString();
     }
 
     public void printMachineCode(String code, String label) {

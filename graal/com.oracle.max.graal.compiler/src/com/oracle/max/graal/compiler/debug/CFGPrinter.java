@@ -231,7 +231,7 @@ public class CFGPrinter extends CompilationPrinter {
         if (compilation.nodeOperands != null && node instanceof ValueNode) {
             CiValue operand = compilation.operand((ValueNode) node);
             if (operand != null) {
-                out.print("result ").print(new OperandFormatter(false).format(operand)).println(COLUMN_END);
+                out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
         }
         out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
@@ -239,7 +239,7 @@ public class CFGPrinter extends CompilationPrinter {
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
             if (stateSplit.stateAfter() != null) {
-                String state = stateToString(stateSplit.stateAfter(), null);
+                String state = stateToString(stateSplit.stateAfter());
                 out.print("st ").print(HOVER_START).print("st").print(HOVER_SEP).print(state).print(HOVER_END).println(COLUMN_END);
             }
         }
@@ -300,7 +300,7 @@ public class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    private String stateToString(FrameState state, OperandFormatter operandFmt) {
+    private String stateToString(FrameState state) {
         StringBuilder buf = new StringBuilder();
         FrameState curState = state;
         do {
@@ -309,7 +309,7 @@ public class CFGPrinter extends CompilationPrinter {
             if (curState.stackSize() > 0) {
                 buf.append("stack: ");
                 for (int i = 0; i < curState.stackSize(); i++) {
-                    buf.append(stateValueToString(curState.stackAt(i), operandFmt)).append(' ');
+                    buf.append(stateValueToString(curState.stackAt(i))).append(' ');
                 }
                 buf.append("\n");
             }
@@ -317,14 +317,14 @@ public class CFGPrinter extends CompilationPrinter {
             if (curState.locksSize() > 0) {
                 buf.append("locks: ");
                 for (int i = 0; i < curState.locksSize(); ++i) {
-                    buf.append(stateValueToString(curState.lockAt(i), operandFmt)).append(' ');
+                    buf.append(stateValueToString(curState.lockAt(i))).append(' ');
                 }
                 buf.append("\n");
             }
 
             buf.append("locals: ");
             for (int i = 0; i < curState.localsSize(); i++) {
-                buf.append(stateValueToString(curState.localAt(i), operandFmt)).append(' ');
+                buf.append(stateValueToString(curState.localAt(i))).append(' ');
             }
             buf.append("\n");
 
@@ -334,14 +334,15 @@ public class CFGPrinter extends CompilationPrinter {
         return buf.toString();
     }
 
-    private String stateValueToString(ValueNode value, OperandFormatter operandFmt) {
-        if (operandFmt == null) {
-            return nodeToString(value);
+    private String stateValueToString(ValueNode value) {
+        String result = nodeToString(value);
+        if (value != null) {
+            CiValue operand = compilation.operand(value);
+            if (operand != null) {
+                result += ": " + operand;
+            }
         }
-        if (value == null) {
-            return "-";
-        }
-        return operandFmt.format(compilation.operand(value));
+        return result;
     }
 
     /**
@@ -357,6 +358,20 @@ public class CFGPrinter extends CompilationPrinter {
 
         begin("IR");
         out.println("LIR");
+
+        if (block.phis != null) {
+            CiValue[] results = block.phis.results();
+            for (int i = 0; i < results.length; i++) {
+                out.print("instruction PHI ").print(results[i].toString()).print(" = (");
+                String sep = "";
+                for (LIRBlock pred : block.getLIRPredecessors()) {
+                    out.print(sep).print(block.phis.inputs(pred)[i].toString());
+                    sep = ", ";
+                }
+                out.print(")").print(COLUMN_END).println(COLUMN_END);
+            }
+        }
+
         for (int i = 0; i < lir.size(); i++) {
             LIRInstruction inst = lir.get(i);
             out.printf("nr %4d ", inst.id()).print(COLUMN_END);
@@ -366,9 +381,9 @@ public class CFGPrinter extends CompilationPrinter {
                 out.adjustIndentation(-level);
                 String state;
                 if (inst.info.hasDebugInfo()) {
-                    state = debugInfoToString(inst.info.debugInfo().codePos, inst.info.debugInfo().registerRefMap, inst.info.debugInfo().frameRefMap, new OperandFormatter(false), target.arch);
+                    state = debugInfoToString(inst.info.debugInfo().codePos, inst.info.debugInfo().registerRefMap, inst.info.debugInfo().frameRefMap, target.arch);
                 } else {
-                    state = debugInfoToString(inst.info.topFrame, null, null, new OperandFormatter(false), target.arch);
+                    state = debugInfoToString(inst.info.topFrame, null, null, target.arch);
                 }
                 if (state != null) {
                     out.print(" st ").print(HOVER_START).print("st").print(HOVER_SEP).print(state).print(HOVER_END).print(COLUMN_END);
@@ -376,7 +391,7 @@ public class CFGPrinter extends CompilationPrinter {
                 out.adjustIndentation(level);
             }
 
-            out.print(" instruction ").print(inst.toString(new OperandFormatter(false))).print(COLUMN_END);
+            out.print(" instruction ").print(inst.toString()).print(COLUMN_END);
             out.println(COLUMN_END);
         }
         end("IR");
@@ -428,17 +443,17 @@ public class CFGPrinter extends CompilationPrinter {
     }
 
     private void printInterval(Interval interval) {
-        out.printf("%s %s ", interval.operand.name(), (interval.operand.isRegister() ? "fixed" : interval.kind().name()));
+        out.printf("%s %s ", interval.operand, (interval.operand.isRegister() ? "fixed" : interval.kind().name()));
         if (interval.operand.isRegister()) {
-            out.printf("\"[%s|%c]\"", interval.operand.name(), interval.operand.kind.typeChar);
+            out.printf("\"[%s|%c]\"", interval.operand, interval.operand.kind.typeChar);
         } else {
             if (interval.location() != null) {
-                out.printf("\"[%s|%c]\"", interval.location().name(), interval.location().kind.typeChar);
+                out.printf("\"[%s|%c]\"", interval.location(), interval.location().kind.typeChar);
             }
         }
 
         Interval hint = interval.locationHint(false);
-        out.printf("%s %s ", interval.splitParent().operand.name(), hint != null ? hint.operand.name() : -1);
+        out.printf("%s %s ", interval.splitParent().operand, hint != null ? hint.operand : -1);
 
         // print ranges
         Range cur = interval.first();

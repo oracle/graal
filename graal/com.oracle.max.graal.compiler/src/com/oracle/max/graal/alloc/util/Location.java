@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.cri.ci;
+package com.oracle.max.graal.alloc.util;
 
-public final class CiMonitorValue extends CiValue {
-    private static final long serialVersionUID = 8241681800464483691L;
+import com.sun.cri.ci.*;
 
-    public CiValue owner;
-    public CiValue lockData;
-    public boolean eliminated;
+public class Location extends CiValue {
+    private static final long serialVersionUID = -1786677729152726126L;
 
-    public CiMonitorValue(CiValue owner, CiValue lockData, boolean eliminated) {
-        super(CiKind.Illegal);
+    public final CiVariable variable;
+    public final CiValue location;
 
-        this.owner = owner;
-        this.lockData = lockData;
-        this.eliminated = eliminated;
+    public Location(CiVariable variable, CiValue location) {
+        super(variable.kind);
+        this.variable = variable;
+        this.location = location;
+
+        assert variable.kind == location.kind;
     }
 
     @Override
     public String toString() {
-        return "monitor[" + owner + (lockData != null ? ", " + lockData : "") + (eliminated ? ", eliminated" : "") + "]";
+        return variable + "[" + location + "]";
     }
 }

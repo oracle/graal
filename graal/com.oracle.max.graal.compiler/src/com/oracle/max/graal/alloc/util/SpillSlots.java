@@ -61,6 +61,7 @@ public class SpillSlots {
      */
     public CiStackSlot allocateSpillSlot(CiKind kind) {
         assert maxSpills >= 0 : "cannot allocate new spill slots after finish() has been called";
+        assert numberOfSpillSlots(kind) <= 2 : "larger values not supported yet";
 
         CiStackSlot spillSlot;
         if (numberOfSpillSlots(kind) == 2) {

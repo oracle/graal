@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.alloc.simple.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.gen.*;
@@ -299,7 +300,7 @@ public final class GraalCompilation {
                 lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock);
 
                 if (context().isObserved()) {
-                    context().observable.fireCompilationEvent("After linear scan order", this, graph);
+                    context().observable.fireCompilationEvent("After linear scan order", this, graph, lir);
                 }
             } catch (AssertionError t) {
                     context().observable.fireCompilationEvent("AssertionError in ComputeLinearScanOrder", CompilationEvent.ERROR, this, graph);
@@ -334,15 +335,28 @@ public final class GraalCompilation {
                     for (LIRBlock b : lir.linearScanOrder()) {
                         lirGenerator.doBlock(b);
                     }
+
+                    for (LIRBlock b : lir.linearScanOrder()) {
+                        if (b.phis != null) {
+                            b.phis.fillInputs(lirGenerator);
+                        }
+                    }
                 } finally {
                     context().timers.endScope();
                 }
 
+                if (context().isObserved()) {
+                    context().observable.fireCompilationEvent("After LIR generation", this, graph, lir);
+                }
                 if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
                     LIR.printLIR(lir.linearScanOrder());
                 }
 
-                new LinearScan(this, lir, lirGenerator, frameMap()).allocate();
+                if (GraalOptions.AllocSSA) {
+                    new SpillAllAllocator(context(), lir, this, lirGenerator.operands, registerConfig).execute();
+                } else {
+                    new LinearScan(this, lir, lirGenerator, frameMap()).allocate();
+                }
             }
         } catch (Error e) {
             if (context().isObserved() && GraalOptions.PlotOnError) {

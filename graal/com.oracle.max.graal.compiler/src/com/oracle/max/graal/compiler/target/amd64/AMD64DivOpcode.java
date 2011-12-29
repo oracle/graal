@@ -37,7 +37,7 @@ public enum AMD64DivOpcode implements LIROpcode {
     public LIRInstruction create(CiRegisterValue result, LIRDebugInfo info, CiRegisterValue left, CiVariable right) {
         CiValue[] inputs = new CiValue[] {left};
         CiValue[] alives = new CiValue[] {right};
-        CiValue[] temps = new CiValue[] {AMD64.rdx.asValue()};
+        CiValue[] temps = new CiValue[] {result.reg == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind)};
 
         return new AMD64LIRInstruction(this, result, info, inputs, alives, temps) {
             @Override

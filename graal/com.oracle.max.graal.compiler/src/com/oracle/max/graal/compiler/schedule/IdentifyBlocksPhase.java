@@ -283,34 +283,36 @@ public class IdentifyBlocksPhase extends Phase {
                 Block loopBeginBlock = nodeToBlock.get(loopEnd.loopBegin());
                 block.addSuccessor(loopBeginBlock);
                 BitMap map = new BitMap(blocks.size());
+                loopBeginBlock.loopBlocks = new ArrayList<>();
                 markBlocks(block, loopBeginBlock, map, loopCount++, block.loopDepth());
                 assert loopBeginBlock.loopDepth() == block.loopDepth() && loopBeginBlock.loopIndex() == block.loopIndex();
             }
         }
     }
 
-    private void markBlocks(Block block, Block endBlock, BitMap map, int loopIndex, int initialDepth) {
+    private void markBlocks(Block block, Block loopBeginBlock, BitMap map, int loopIndex, int initialDepth) {
         if (map.get(block.blockID())) {
             return;
         }
 
         map.set(block.blockID());
+        loopBeginBlock.loopBlocks.add(block);
         if (block.loopDepth() <= initialDepth) {
             assert block.loopDepth() == initialDepth;
             block.setLoopIndex(loopIndex);
         }
         block.setLoopDepth(block.loopDepth() + 1);
 
-        if (block == endBlock) {
+        if (block == loopBeginBlock) {
             return;
         }
 
         for (Block pred : block.getPredecessors()) {
-            markBlocks(pred, endBlock, map, loopIndex, initialDepth);
+            markBlocks(pred, loopBeginBlock, map, loopIndex, initialDepth);
         }
 
         if (block.isLoopHeader()) {
-            markBlocks(nodeToBlock.get(((LoopBeginNode) block.firstNode()).loopEnd()), endBlock, map, loopIndex, initialDepth);
+            markBlocks(nodeToBlock.get(((LoopBeginNode) block.firstNode()).loopEnd()), loopBeginBlock, map, loopIndex, initialDepth);
         }
     }
 

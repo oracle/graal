@@ -230,13 +230,13 @@ public final class CiAddress extends CiValue {
     }
 
     @Override
-    public String name() {
+    public String toString() {
         // Checkstyle: stop
         switch (format()) {
-            case BASE            : return "[" + s(base) + "]";
-            case BASE_DISP       : return "[" + s(base) + signed(displacement) + "]";
-            case BASE_INDEX      : return "[" + s(base) + "+" + s(index) + "]";
-            case BASE_INDEX_DISP : return "[" + s(base) + "+(" + s(index) + "*" + scale.value + ")" + signed(displacement) + "]";
+            case BASE            : return "[" + s(base) + kindSuffix() + "]";
+            case BASE_DISP       : return "[" + s(base) + signed(displacement) + kindSuffix() + "]";
+            case BASE_INDEX      : return "[" + s(base) + "+" + s(index) + kindSuffix() + "]";
+            case BASE_INDEX_DISP : return "[" + s(base) + "+(" + s(index) + "*" + scale.value + ")" + signed(displacement) + kindSuffix() + "]";
             case PLACEHOLDER     : return "[<placeholder>]";
             default              : throw new IllegalArgumentException("unknown format: " + format());
         }

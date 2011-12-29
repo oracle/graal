@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
+import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import static com.oracle.max.cri.intrinsics.MemoryBarriers.*;
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
 import static com.sun.cri.ci.CiValue.*;
@@ -384,6 +385,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void visitCheckCast(CheckCastNode x) {
         XirSnippet snippet = xir.genCheckCast(site(x), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass());
         emitXir(snippet, x, state(), null, true);
+        // The result of a checkcast is the unmodified object, so no need to allocate a new variable for it.
+        setResult(x, operand(x.object()));
     }
 
     @Override
@@ -780,19 +783,31 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (ValueNode arg : arguments) {
             if (arg != null) {
                 CiValue operand = cc.locations[j++];
-                if (operand.isRegister()) {
-                    emitMove(operand(arg), operand.asRegister().asValue(operand.kind.stackKind()));
-                } else {
-                    assert !((CiStackSlot) operand).inCallerFrame();
-                    CiValue param = loadForStore(operand(arg), operand.kind);
-                    emitMove(param, operand);
-
-                    if (arg.kind() == CiKind.Object && pointerSlots != null) {
-                        // This slot must be marked explicitly in the pointer map.
-                        pointerSlots.add((CiStackSlot) operand);
+                if (isRegister(operand)) {
+                    if (operand.kind.stackKind() != operand.kind) {
+                        // We only have stack-kinds in the LIR, so convert the operand kind.
+                        operand = asRegister(operand).asValue(operand.kind.stackKind());
                     }
+
+                } else if (isStackSlot(operand)) {
+                    assert !asStackSlot(operand).inCallerFrame();
+                    if (operand.kind == CiKind.Object && pointerSlots != null) {
+                        // This slot must be marked explicitly in the pointer map.
+                        pointerSlots.add(asStackSlot(operand));
+                    }
+                    if (operand.kind.stackKind() != operand.kind) {
+                        // We only have stack-kinds in the LIR, so convert the operand kind.
+                        operand = CiStackSlot.get(operand.kind.stackKind(), asStackSlot(operand).index());
+                    }
+                } else {
+                    throw Util.shouldNotReachHere();
                 }
+
+                emitMove(operand(arg), operand);
                 argList.add(operand);
+
+            } else {
+                throw Util.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
             }
         }
         return argList;

@@ -30,7 +30,7 @@ package com.sun.cri.ci;
 public final class CiConstant extends CiValue {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = -6355452536852663986L;
     private static final CiConstant[] INT_CONSTANT_CACHE = new CiConstant[100];
@@ -129,8 +129,8 @@ public final class CiConstant extends CiValue {
     }
 
     @Override
-    public String name() {
-        return "const[" + kind.format(boxedValue()) + (kind != CiKind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
+    public String toString() {
+        return kind.javaName + "[" + kind.format(boxedValue()) + (kind != CiKind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
     }
 
     /**
