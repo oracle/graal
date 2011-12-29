@@ -121,7 +121,7 @@ public class VMExitsNative implements VMExits, Remote {
 
         // Compile until the queue is empty.
         int z = 0;
-        while (compileQueue.getCompletedTaskCount() < compileQueue.getTaskCount()) {
+        while (compileQueue.getCompletedTaskCount() < Math.max(2, compileQueue.getTaskCount())) {
             Thread.sleep(100);
             while (z < compileQueue.getCompletedTaskCount() / 100) {
                 ++z;
