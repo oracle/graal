@@ -517,7 +517,6 @@ public class FrameStateBuilder implements FrameStateAccess {
         return rethrowException;
     }
 
-    @Override
     public void setRethrowException(boolean b) {
         rethrowException = b;
     }

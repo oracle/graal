@@ -125,6 +125,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         this.values = new NodeInputList<>(this, localsSize + stackSize + locksSize);
         this.virtualObjectMappings = new NodeInputList<>(this);
         this.rethrowException = rethrowException;
+        assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
     }
 
     public FrameState(RiResolvedMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, List<MonitorObject> locks, boolean rethrowException) {
@@ -146,6 +147,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         this.values = new NodeInputList<>(this, newValues);
         this.virtualObjectMappings = new NodeInputList<>(this);
         this.rethrowException = rethrowException;
+        assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
     }
 
     public boolean rethrowException() {
@@ -689,11 +691,6 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         properties.put("locks", str.toString());
         properties.put("rethrowException", rethrowException);
         return properties;
-    }
-
-    @Override
-    public void setRethrowException(boolean b) {
-        rethrowException = b;
     }
 
     public CiCodePos toCodePos() {
