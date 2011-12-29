@@ -112,6 +112,7 @@ public class VMExitsNative implements VMExits, Remote {
     public void bootstrap() throws Throwable {
         TTY.print("Bootstrapping Graal");
         TTY.flush();
+        long startTime = System.currentTimeMillis();
 
         // Initialize compile queue with a selected set of methods.
         Class<Object> objectKlass = Object.class;
@@ -119,7 +120,6 @@ public class VMExitsNative implements VMExits, Remote {
         enqueue(objectKlass.getDeclaredMethod("toString"));
 
         // Compile until the queue is empty.
-        long startTime = System.currentTimeMillis();
         int z = 0;
         while (compileQueue.getCompletedTaskCount() < compileQueue.getTaskCount()) {
             Thread.sleep(100);
@@ -137,7 +137,7 @@ public class VMExitsNative implements VMExits, Remote {
     private void enqueue(Method m) throws Throwable {
         RiMethod riMethod = compiler.getRuntime().getRiMethod(m);
         assert !Modifier.isAbstract(((HotSpotMethodResolved) riMethod).accessFlags()) && !Modifier.isNative(((HotSpotMethodResolved) riMethod).accessFlags()) : riMethod;
-        compileMethod((HotSpotMethodResolved) riMethod, 0, true);
+        compileMethod((HotSpotMethodResolved) riMethod, 0, false);
     }
 
     public void shutdownCompiler() throws Throwable {
