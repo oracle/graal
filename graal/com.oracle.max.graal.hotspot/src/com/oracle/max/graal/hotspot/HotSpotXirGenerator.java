@@ -129,6 +129,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.stackOverflowCheck();
             asm.push(framePointer);
             asm.mov(framePointer, stackPointer);
+            // Compensate for the push of framePointer (the XIR instruction pushFrame is not flexible enough to reduce the frame size, wait until XIR goes away to fix this).
+            asm.add(stackPointer, stackPointer,  asm.i(8));
             asm.pushFrame();
 
             // -- out of line -------------------------------------------------------
@@ -169,9 +171,10 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         protected XirTemplate create(CiXirAssembler asm, long flags) {
             asm.restart(CiKind.Void);
             XirOperand framePointer = asm.createRegisterTemp("frame pointer", target.wordKind, AMD64.rbp);
+            XirOperand stackPointer = asm.createRegisterTemp("stack pointer", target.wordKind, AMD64.rsp);
 
             asm.popFrame();
-            asm.pop(framePointer);
+            asm.pload(CiKind.Long, framePointer, stackPointer, asm.i(-8), false);
 
             if (GraalOptions.GenSafepoints) {
                 XirOperand temp = asm.createRegisterTemp("temp", target.wordKind, AMD64.r10);

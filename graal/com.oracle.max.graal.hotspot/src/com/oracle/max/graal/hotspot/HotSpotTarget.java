@@ -25,17 +25,12 @@ package com.oracle.max.graal.hotspot;
 import com.sun.cri.ci.*;
 
 /**
- * HotSpot-specific CiTarget that provides the correct stack frame size alignment.
+ * HotSpot-specific CiTarget.
+ * TODO currently empty class, so check if it can be deleted.
  */
 public class HotSpotTarget extends CiTarget {
 
     public HotSpotTarget(CiArchitecture arch, boolean isMP, int spillSlotSize, int stackAlignment, int pageSize, int cacheAlignment, boolean inlineObjects) {
         super(arch, isMP, spillSlotSize, stackAlignment, pageSize, cacheAlignment, inlineObjects, true, true);
-    }
-
-    @Override
-    public int alignFrameSize(int frameSize) {
-        // account for the stored rbp value
-        return super.alignFrameSize(frameSize + wordSize) - wordSize;
     }
 }

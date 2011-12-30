@@ -88,7 +88,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         if (globalStubConfig) {
             registerSaveArea = new CiCalleeSaveLayout(0, -1, 8, rsaRegs);
         } else {
-            registerSaveArea = new CiCalleeSaveLayout(0, 0, 0, new CiRegister[0]);
+            registerSaveArea = new CiCalleeSaveLayout(0, 8, 8, new CiRegister[0]);
         }
 
         attributesMap = RiRegisterAttributes.createMap(this, AMD64.allRegisters);
@@ -153,8 +153,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
             }
 
             if (locations[i] == null) {
-                // we need to adjust for the frame pointer stored on the stack, which shifts incoming arguments by one slot
-                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackIndex + (type.out ? 0 : 1), !type.out);
+                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackIndex, !type.out);
                 currentStackIndex += target.spillSlots(kind);
             }
         }
