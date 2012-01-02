@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.lir.FrameMap.StackBlock;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.sun.cri.ci.*;
 
@@ -105,16 +104,6 @@ public class LIRDebugInfo {
 
     public void finish(CiBitMap registerRefMap, CiBitMap frameRefMap, FrameMap frameMap) {
         debugInfo = new CiDebugInfo(topFrame, registerRefMap, frameRefMap);
-
-        // Add locks that are in the designated frame area.
-        for (CiFrame cur = topFrame; cur != null; cur = cur.caller()) {
-            for (int i = 0; i < cur.numLocks; i++) {
-                CiMonitorValue lock = (CiMonitorValue) cur.getLockValue(i);
-                if (lock.lockData != null) {
-                    lock.lockData = frameMap.toStackSlot((StackBlock) lock.lockData);
-                }
-            }
-        }
 
         // Add additional stack slots for outgoing method parameters.
         if (pointerSlots != null) {

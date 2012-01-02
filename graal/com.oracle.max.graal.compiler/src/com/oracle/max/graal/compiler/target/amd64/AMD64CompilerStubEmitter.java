@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -222,11 +222,11 @@ public class AMD64CompilerStubEmitter {
 
     private void convertPrologue() {
         prologue(new CiCalleeSaveLayout(0, -1, comp.compiler.target.wordSize, convertArgument, convertResult));
-        asm.movq(convertArgument, comp.frameMap().toStackAddress(inArgs[0]));
+        asm.movq(convertArgument, tasm.asAddress(inArgs[0]));
     }
 
     private void convertEpilogue() {
-        asm.movq(comp.frameMap().toStackAddress(outResult), convertResult);
+        asm.movq(tasm.asAddress(outResult), convertResult);
         epilogue();
     }
 
@@ -323,7 +323,7 @@ public class AMD64CompilerStubEmitter {
         CiCallingConvention cc = comp.registerConfig.getCallingConvention(RuntimeCall, call.arguments, comp.compiler.target, false);
         for (int i = 0; i < cc.locations.length; ++i) {
             CiValue location = cc.locations[i];
-            asm.movq(location.asRegister(), comp.frameMap().toStackAddress(inArgs[i]));
+            asm.movq(location.asRegister(), tasm.asAddress(inArgs[i]));
         }
 
         if (GraalOptions.AlignCallsForPatching) {
@@ -338,7 +338,7 @@ public class AMD64CompilerStubEmitter {
 
         if (call.resultKind != CiKind.Void) {
             CiRegister returnRegister = comp.registerConfig.getReturnRegister(call.resultKind);
-            asm.movq(comp.frameMap().toStackAddress(outResult), returnRegister);
+            asm.movq(tasm.asAddress(outResult), returnRegister);
         }
     }
 }

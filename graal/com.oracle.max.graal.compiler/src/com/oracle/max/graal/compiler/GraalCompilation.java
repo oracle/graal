@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,7 +139,7 @@ public final class GraalCompilation {
         AbstractAssembler masm = compiler.backend.newAssembler(registerConfig);
         TargetMethodAssembler tasm = new TargetMethodAssembler(this, masm);
         tasm.setFrameSize(frameMap.frameSize());
-        tasm.targetMethod.setCustomStackAreaOffset(FrameMap.offsetToCustomArea());
+        tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
         return tasm;
     }
 
@@ -317,7 +317,7 @@ public final class GraalCompilation {
     }
 
     public void initFrameMap() {
-        frameMap = this.compiler.backend.newFrameMap(this, method);
+        frameMap = this.compiler.backend.newFrameMap(this);
     }
 
     private void emitLIR(RiXirGenerator xir) {
@@ -353,7 +353,7 @@ public final class GraalCompilation {
                 }
 
                 if (GraalOptions.AllocSSA) {
-                    new SpillAllAllocator(context(), lir, this, lirGenerator.operands, registerConfig).execute();
+                    new SpillAllAllocator(context(), lir, this, lirGenerator.operands, registerConfig, lirGenerator.incomingArguments).execute();
                 } else {
                     new LinearScan(this, lir, lirGenerator, frameMap()).allocate();
                 }

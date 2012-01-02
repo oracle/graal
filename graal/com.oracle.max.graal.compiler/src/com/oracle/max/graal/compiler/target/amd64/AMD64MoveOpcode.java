@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static java.lang.Float.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.FrameMap.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
 
@@ -113,11 +112,11 @@ public class AMD64MoveOpcode {
     public enum LeaStackBlockOpcode implements LIROpcode {
         LEA_STACK_BLOCK;
 
-        public LIRInstruction create(CiVariable result, final StackBlock stackBlock) {
+        public LIRInstruction create(CiVariable result, final CiStackSlot stackBlock) {
             return new AMD64LIRInstruction(this, result, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    masm.leaq(tasm.asRegister(result()), tasm.compilation.frameMap().toStackAddress(stackBlock));
+                    masm.leaq(tasm.asRegister(result()), tasm.asAddress(stackBlock));
                 }
             };
         }

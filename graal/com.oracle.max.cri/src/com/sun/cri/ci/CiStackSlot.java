@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,79 +22,88 @@
  */
 package com.sun.cri.ci;
 
+import static com.sun.cri.ci.CiKind.*;
+
 /**
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
  * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
  */
 public final class CiStackSlot extends CiValue {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -7725071921307318433L;
 
-    /**
-     * @see CiStackSlot#index()
-     */
-    private final int index;
-
-    /**
-     * Gets a {@link CiStackSlot} instance representing a stack slot in the current frame
-     * at a given index holding a value of a given kind.
-     *
-     * @param kind the kind of the value stored in the stack slot
-     * @param index the index of the stack slot
-     */
-    public static CiStackSlot get(CiKind kind, int index) {
-        return get(kind, index, false);
-    }
+    private final int offset;
+    private final boolean addFrameSize;
 
     /**
      * Gets a {@link CiStackSlot} instance representing a stack slot at a given index
      * holding a value of a given kind.
      *
-     * @param kind the kind of the value stored in the stack slot
-     * @param index the index of the stack slot
-     * @param inCallerFrame specifies if the slot is in the current frame or in the caller's frame
+     * @param kind The kind of the value stored in the stack slot.
+     * @param offset The offset of the stack slot (in bytes)
+     * @param inCallerFrame Specifies if the offset is relative to the stack pointer,
+     *        or the beginning of the frame (stack pointer + total frame size).
      */
-    public static CiStackSlot get(CiKind kind, int index, boolean inCallerFrame) {
+    public static CiStackSlot get(CiKind kind, int offset, boolean addFrameSize) {
         assert kind.stackKind() == kind;
-        CiStackSlot[][] cache = inCallerFrame ? CALLER_FRAME_CACHE : CACHE;
-        CiStackSlot[] slots = cache[kind.ordinal()];
-        CiStackSlot slot;
-        if (index < slots.length) {
-            slot = slots[index];
-        } else {
-            slot = new CiStackSlot(kind, inCallerFrame ? -(index + 1) : index);
+        assert addFrameSize || offset >= 0;
+
+        if (offset % CACHE_GRANULARITY == 0) {
+            CiStackSlot[][] cache;
+            int index = offset / CACHE_GRANULARITY;
+            if (!addFrameSize) {
+                cache = OUT_CACHE;
+            } else if (offset >= 0) {
+                cache = IN_CACHE;
+            } else {
+                cache = SPILL_CACHE;
+                index = -index;
+            }
+            CiStackSlot[] slots = cache[kind.ordinal()];
+            if (index < slots.length) {
+                CiStackSlot slot = slots[index];
+                assert slot.kind == kind && slot.offset == offset && slot.addFrameSize == addFrameSize;
+                return slot;
+            }
         }
-        assert slot.inCallerFrame() == inCallerFrame;
-        return slot;
+        return new CiStackSlot(kind, offset, addFrameSize);
     }
 
     /**
-     * Private constructor to enforce use of {@link #get(CiKind, int)} so that the
-     * shared instance {@linkplain #CACHE cache} is used.
+     * Private constructor to enforce use of {@link #get()} so that a cache can be used.
      */
-    private CiStackSlot(CiKind kind, int index) {
+    private CiStackSlot(CiKind kind, int offset, boolean addFrameSize) {
         super(kind);
-        this.index = index;
+        this.offset = offset;
+        this.addFrameSize = addFrameSize;
     }
 
     /**
-     * Gets the index of this stack slot. If this is a spill slot or outgoing stack argument to a call,
-     * then the index is relative to the current frame pointer. Otherwise this is an incoming stack
-     * argument and the index is relative to the caller frame pointer.
-     *
-     * @return the index of this slot
-     * @see #inCallerFrame()
+     * Gets the offset of this stack slot, relative to the stack pointer.
+     * @return The offset of this slot (in bytes).
      */
-    public int index() {
-        return index < 0 ? -(index + 1) : index;
+    public int offset(int totalFrameSize) {
+        assert totalFrameSize > 0 || !addFrameSize;
+        int result = offset + (addFrameSize ? totalFrameSize : 0);
+        assert result >= 0;
+        return result;
+    }
+
+    public boolean inCallerFrame() {
+        return addFrameSize && offset >= 0;
+    }
+
+    public int rawOffset() {
+        return offset;
+    }
+
+    public boolean rawAddFrameSize() {
+        return addFrameSize;
     }
 
     @Override
     public int hashCode() {
-        return kind.ordinal() + index;
+        return kind.ordinal() ^ (offset << 4) ^ (addFrameSize ? 15 : 0);
     }
 
     @Override
@@ -104,7 +113,7 @@ public final class CiStackSlot extends CiValue {
         }
         if (o instanceof CiStackSlot) {
             CiStackSlot l = (CiStackSlot) o;
-            return l.kind == kind && l.index == index;
+            return l.kind == kind && l.offset == offset && l.addFrameSize == addFrameSize;
         }
         return false;
     }
@@ -116,29 +125,31 @@ public final class CiStackSlot extends CiValue {
         }
         if (o instanceof CiStackSlot) {
             CiStackSlot l = (CiStackSlot) o;
-            return l.index == index;
+            return l.offset == offset && l.addFrameSize == addFrameSize;
         }
         return false;
     }
 
     @Override
     public String toString() {
-        return (inCallerFrame() ? "caller-stack" : "stack:") + index() + kindSuffix();
-    }
-
-    /**
-     * Determines if this is a stack slot in the caller's frame.
-     */
-    public boolean inCallerFrame() {
-        return index < 0;
+        String s;
+        if (!addFrameSize) {
+            s = "out:";
+        } else if (offset >= 0) {
+            s = "in:";
+        } else {
+            s = "spill:";
+        }
+        return s + offset + kindSuffix();
     }
 
     /**
      * Gets this stack slot used to pass an argument from the perspective of a caller.
      */
     public CiStackSlot asOutArg() {
-        if (inCallerFrame()) {
-            return get(kind, index(), false);
+        assert offset >= 0;
+        if (addFrameSize) {
+            return get(kind, offset, false);
         }
         return this;
     }
@@ -147,54 +158,31 @@ public final class CiStackSlot extends CiValue {
      * Gets this stack slot used to pass an argument from the perspective of a callee.
      */
     public CiStackSlot asInArg() {
-        if (!inCallerFrame()) {
-            return get(kind, index(), true);
+        assert offset >= 0;
+        if (!addFrameSize) {
+            return get(kind, offset, true);
         }
         return this;
     }
 
-    /**
-     * Default size of the cache to generate per kind.
-     */
-    private static final int CACHE_PER_KIND_SIZE = 100;
 
-    private static final int CALLER_FRAME_CACHE_PER_KIND_SIZE = 10;
+    private static final int CACHE_GRANULARITY = 8;
+    private static final int SPILL_CACHE_PER_KIND_SIZE = 100;
+    private static final int PARAM_CACHE_PER_KIND_SIZE = 10;
 
-    /**
-     * A cache of {@linkplain #inCallerFrame() non-caller-frame} stack slots.
-     */
-    private static final CiStackSlot[][] CACHE = makeCache(CACHE_PER_KIND_SIZE, false);
+    private static final CiStackSlot[][] SPILL_CACHE = makeCache(SPILL_CACHE_PER_KIND_SIZE, -1, true);
+    private static final CiStackSlot[][] IN_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, true);
+    private static final CiStackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
 
-    /**
-     * A cache of {@linkplain #inCallerFrame() caller-frame} stack slots.
-     */
-    private static final CiStackSlot[][] CALLER_FRAME_CACHE = makeCache(CALLER_FRAME_CACHE_PER_KIND_SIZE, true);
-
-    private static CiStackSlot[][] makeCache(int cachePerKindSize, boolean inCallerFrame) {
+    private static CiStackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
         CiStackSlot[][] cache = new CiStackSlot[CiKind.VALUES.length][];
-        cache[CiKind.Illegal.ordinal()] = makeCacheForKind(CiKind.Illegal, cachePerKindSize, inCallerFrame);
-        cache[CiKind.Int.ordinal()]     = makeCacheForKind(CiKind.Int, cachePerKindSize, inCallerFrame);
-        cache[CiKind.Long.ordinal()]    = makeCacheForKind(CiKind.Long, cachePerKindSize, inCallerFrame);
-        cache[CiKind.Float.ordinal()]   = makeCacheForKind(CiKind.Float, cachePerKindSize, inCallerFrame);
-        cache[CiKind.Double.ordinal()]  = makeCacheForKind(CiKind.Double, cachePerKindSize, inCallerFrame);
-        cache[CiKind.Object.ordinal()]  = makeCacheForKind(CiKind.Object, cachePerKindSize, inCallerFrame);
-        cache[CiKind.Jsr.ordinal()]     = makeCacheForKind(CiKind.Jsr, cachePerKindSize, inCallerFrame);
-        return cache;
-    }
-
-    /**
-     * Creates an array of {@code CiStackSlot} objects for a given {@link CiKind}.
-     * The {@link #index} values range from {@code 0} to {@code count - 1}.
-     *
-     * @param kind the {@code CiKind} of the stack slot
-     * @param count the size of the array to create
-     * @return the generated {@code CiStackSlot} array
-     */
-    private static CiStackSlot[] makeCacheForKind(CiKind kind, int count, boolean inCallerFrame) {
-        CiStackSlot[] slots = new CiStackSlot[count];
-        for (int i = 0; i < count; ++i) {
-            slots[i] = new CiStackSlot(kind, inCallerFrame ? -(i + 1) : i);
+        for (CiKind kind : new CiKind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
+            CiStackSlot[] slots = new CiStackSlot[cachePerKindSize];
+            for (int i = 0; i < cachePerKindSize; i++) {
+                slots[i] = new CiStackSlot(kind, sign * i * CACHE_GRANULARITY, addFrameSize);
+            }
+            cache[kind.ordinal()] = slots;
         }
-        return slots;
+        return cache;
     }
 }

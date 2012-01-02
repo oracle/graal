@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +23,18 @@
 package com.oracle.max.graal.compiler.alloc;
 
 import static com.sun.cri.ci.CiUtil.*;
-import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -66,8 +64,6 @@ public final class LinearScan {
     final LIRBlock[] sortedBlocks;
 
     final OperandPool operands;
-
-    final SpillSlots spillSlots;
 
     /**
      * Map from {@linkplain #operandNumber(CiValue) operand numbers} to intervals.
@@ -114,7 +110,6 @@ public final class LinearScan {
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
-        this.spillSlots = new SpillSlots(context, frameMap);
         this.sortedBlocks = ir.linearScanOrder().toArray(new LIRBlock[ir.linearScanOrder().size()]);
         CiRegister[] allocatableRegisters = compilation.registerConfig.getAllocatableRegisters();
         this.registers = new CiRegister[CiRegister.maxRegisterNumber(allocatableRegisters) + 1];
@@ -168,7 +163,7 @@ public final class LinearScan {
         if (interval.spillSlot() != null) {
             interval.assignLocation(interval.spillSlot());
         } else {
-            CiStackSlot slot = spillSlots.allocateSpillSlot(interval.kind());
+            CiStackSlot slot = frameMap.allocateSpillSlot(interval.kind());
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
@@ -461,8 +456,8 @@ public final class LinearScan {
 
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
                             CiStackSlot slot = interval.spillSlot();
-                            TTY.println("inserting move after definition of interval %d to stack slot %d%s at opId %d",
-                                            interval.operandNumber, slot.index(), slot.inCallerFrame() ? " in caller frame" : "", opId);
+                            TTY.println("inserting move after definition of interval %d to stack slot %s at opId %d",
+                                            interval.operandNumber, slot, opId);
                         }
 
                         interval = interval.next;
@@ -1034,8 +1029,6 @@ public final class LinearScan {
             if (op.input(0).isStackSlot()) {
                 CiStackSlot slot = (CiStackSlot) op.input(0);
                 if (GraalOptions.DetailedAsserts) {
-                    int argSlots = compilation.method.signature().argumentSlots(!isStatic(compilation.method.accessFlags()));
-                    assert slot.index() >= 0 && slot.index() < argSlots;
                     assert op.id() > 0 : "invalid id";
                     assert blockForId(op.id()).numberOfPreds() == 0 : "move from stack must be in first block";
                     assert op.result().isVariable() : "result of move must be a variable";
@@ -1048,7 +1041,7 @@ public final class LinearScan {
                 Interval interval = intervalFor(op.result());
                 CiStackSlot copySlot = slot;
                 if (GraalOptions.CopyPointerStackArguments && slot.kind == CiKind.Object) {
-                    copySlot = spillSlots.allocateSpillSlot(slot.kind);
+                    copySlot = frameMap.allocateSpillSlot(slot.kind);
                 }
                 interval.setSpillSlot(copySlot);
                 interval.assignLocation(copySlot);
@@ -1832,7 +1825,7 @@ public final class LinearScan {
 
         context.timers.startScope("Create Debug Info");
         try {
-            spillSlots.finish();
+            frameMap.finish();
 
             printIntervals("After register allocation");
             printLir("After register allocation", true);

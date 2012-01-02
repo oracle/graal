@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,22 +46,21 @@ public class SpillAllAllocator {
     private final FrameMap frameMap;
     private final OperandPool operands;
     private final RiRegisterConfig registerConfig;
+    private final CiCallingConvention incomingArguments;
 
     private final DataFlowAnalysis dataFlow;
 
-    private final SpillSlots spillSlots;
-
-    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, OperandPool pool, RiRegisterConfig registerConfig) {
+    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, OperandPool pool, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
         this.context = context;
         this.lir = lir;
         this.operands = pool;
         this.registerConfig = registerConfig;
         this.frameMap = compilation.frameMap();
+        this.incomingArguments = incomingArguments;
 
-        this.spillSlots = new SpillSlots(compilation.compiler.context, frameMap);
-        this.dataFlow = new DataFlowAnalysis(context, lir, pool, registerConfig, frameMap.incomingArguments());
+        this.dataFlow = new DataFlowAnalysis(context, lir, pool, registerConfig, incomingArguments);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
-        this.moveResolver = new MoveResolver(frameMap.target, spillSlots);
+        this.moveResolver = new MoveResolver(frameMap);
     }
 
 
@@ -121,7 +120,7 @@ public class SpillAllAllocator {
     private LIRInstruction curInstruction;
 
     public void execute() {
-        assert LIRVerifier.verify(true, lir, frameMap.incomingArguments(), frameMap, registerConfig, operands);
+        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig, operands);
 
         dataFlow.execute();
 
@@ -129,21 +128,21 @@ public class SpillAllAllocator {
 
         context.observable.fireCompilationEvent("After spill all allocation", lir);
 
-        spillSlots.finish();
+        frameMap.finish();
 
         ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver);
         resolveDataFlow.execute();
 
         context.observable.fireCompilationEvent("After resolve data flow", lir);
 
-        assert RegisterVerifier.verify(lir, frameMap.incomingArguments(), frameMap, registerConfig);
+        assert RegisterVerifier.verify(lir, incomingArguments, frameMap, registerConfig);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);
         assignRegisters.execute();
 
         context.observable.fireCompilationEvent("After register asignment", lir);
 
-        assert LIRVerifier.verify(true, lir, frameMap.incomingArguments(), frameMap, registerConfig, operands);
+        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig, operands);
     }
 
     private void allocate() {
@@ -171,7 +170,7 @@ public class SpillAllAllocator {
                 curStackLocations = new LocationMap(operands.numVariables());
                 trace(1, "  arguments");
                 curInstruction = lir.startBlock().lir().get(0);
-                for (CiValue value : frameMap.incomingArguments().locations) {
+                for (CiValue value : incomingArguments.locations) {
                     block(value);
                 }
             } else {
@@ -336,7 +335,7 @@ public class SpillAllAllocator {
             assert curStackLocations.get(asVariable(value)) == null;
             Location regLoc = allocateRegister(asVariable(value), null, curOutRegisterState);
             if (!isTemp) {
-                Location stackLoc = new Location(asVariable(value), spillSlots.allocateSpillSlot(value.kind));
+                Location stackLoc = new Location(asVariable(value), frameMap.allocateSpillSlot(value.kind));
                 curStackLocations.put(stackLoc);
                 moveResolver.add(regLoc, stackLoc);
             }
@@ -362,7 +361,7 @@ public class SpillAllAllocator {
     private CiValue defSlot(CiValue value) {
         if (isVariable(value)) {
             trace(3, "    assignSlot %s", value);
-            Location stackLoc = new Location(asVariable(value), spillSlots.allocateSpillSlot(value.kind));
+            Location stackLoc = new Location(asVariable(value), frameMap.allocateSpillSlot(value.kind));
             assert curStackLocations.get(asVariable(value)) == null;
             curStackLocations.put(stackLoc);
             trace(3, "      slot %s", stackLoc);

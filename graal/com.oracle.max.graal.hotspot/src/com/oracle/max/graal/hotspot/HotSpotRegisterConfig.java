@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,11 +74,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
 
     private final CiCalleeSaveLayout registerSaveArea;
 
-    private final HotSpotVMConfig config;
-
-
     public HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
-        this.config = config;
         if (config.windowsOs) {
             generalParameterRegisters = new CiRegister[] {rdx, r8, r9, rdi, rsi, rcx};
         } else {
@@ -123,7 +119,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
 
         int currentGeneral = 0;
         int currentXMM = 0;
-        int currentStackIndex = 0;
+        int currentStackOffset = 0;
 
         for (int i = 0; i < types.length; i++) {
             final CiKind kind = types[i];
@@ -153,16 +149,12 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackIndex, !type.out);
-                currentStackIndex += target.spillSlots(kind);
+                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackOffset, !type.out);
+                currentStackOffset += Math.max(target.sizeInBytes(kind), target.wordSize);
             }
         }
 
-        int stackSize = currentStackIndex * target.spillSlotSize;
-        if (type == Type.RuntimeCall && config.windowsOs) {
-            stackSize = Math.max(stackSize, config.runtimeCallStackSize);
-        }
-        return new CiCallingConvention(locations, stackSize);
+        return new CiCallingConvention(locations, currentStackOffset);
     }
 
     @Override

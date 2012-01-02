@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -277,7 +277,7 @@ final class MoveResolver {
                 // one stack slot to another can happen (not allowed by LIRAssembler
                 CiStackSlot spillSlot = fromInterval.spillSlot();
                 if (spillSlot == null) {
-                    spillSlot = allocator.spillSlots.allocateSpillSlot(spillInterval.kind());
+                    spillSlot = allocator.frameMap.allocateSpillSlot(spillInterval.kind());
                     fromInterval.setSpillSlot(spillSlot);
                 }
                 spillInterval.assignLocation(spillSlot);

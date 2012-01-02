@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.FrameMap.StackBlock;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -136,14 +135,14 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public CiVariable emitLea(CiAddress address) {
         CiVariable result = newVariable(target().wordKind);
-        append(LEA.create(result, address.base, address.index, address.scale, address.displacement));
+        append(LEA_MEMORY.create(result, address.base, address.index, address.scale, address.displacement));
         return result;
     }
 
     @Override
-    public CiVariable emitLea(StackBlock stackBlock) {
+    public CiVariable emitLea(CiStackSlot address) {
         CiVariable result = newVariable(target().wordKind);
-        append(LEA_STACK_BLOCK.create(result, stackBlock));
+        append(LEA_STACK.create(result, address));
         return result;
     }
 
@@ -490,7 +489,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
         if (kind == CiKind.Object) {
             CiVariable loadedAddress = newVariable(compilation.compiler.target.wordKind);
-            append(LEA.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, 0));
+            append(LEA_MEMORY.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, 0));
             addrBase = loadedAddress;
             addrIndex = CiVariable.IllegalValue;
 

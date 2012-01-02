@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -181,6 +181,13 @@ public interface RiRuntime {
      * @return the size of the custom area in bytes
      */
     int getCustomStackAreaSize();
+
+    /**
+     * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all cases, even when
+     * the compiled method has no regular call instructions.
+     * @return the minimum size of the outgoing parameter area in bytes
+     */
+    int getMinimumOutgoingSize();
 
     /**
      * Gets the length of the array that is wrapped in a CiConstant object.

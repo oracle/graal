@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import java.util.Map.Entry;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.FrameMap.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.virtual.*;
@@ -36,29 +35,17 @@ import com.sun.cri.ci.*;
 public class DebugInfoBuilder {
     public final GraalCompilation compilation;
 
-    private final NodeMap<StackBlock> lockDataMap;
+    private final NodeMap<CiStackSlot> lockDataMap;
 
     public DebugInfoBuilder(GraalCompilation compilation) {
         this.compilation = compilation;
-        if (needLockData()) {
-            lockDataMap = new NodeMap<>(compilation.graph);
-        } else {
-            lockDataMap = null;
-        }
+        this.lockDataMap = new NodeMap<>(compilation.graph);
     }
 
-    public boolean needLockData() {
-        return compilation.compiler.runtime.sizeOfLockData() > 0;
-    }
-
-    public StackBlock lockDataFor(MonitorObject object) {
-        if (!needLockData()) {
-            return null;
-        }
-
-        StackBlock result = lockDataMap.get(object);
+    public CiStackSlot lockDataFor(MonitorObject object) {
+        CiStackSlot result = lockDataMap.get(object);
         if (result == null) {
-            result = compilation.frameMap().reserveStackBlock(compilation.compiler.runtime.sizeOfLockData(), false);
+            result = compilation.frameMap().allocateStackBlock(compilation.compiler.runtime.sizeOfLockData(), false);
             lockDataMap.set(object, result);
         }
         return result;

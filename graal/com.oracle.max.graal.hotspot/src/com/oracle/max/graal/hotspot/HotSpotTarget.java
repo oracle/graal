@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import com.sun.cri.ci.*;
  */
 public class HotSpotTarget extends CiTarget {
 
-    public HotSpotTarget(CiArchitecture arch, boolean isMP, int spillSlotSize, int stackAlignment, int pageSize, int cacheAlignment, boolean inlineObjects) {
-        super(arch, isMP, spillSlotSize, stackAlignment, pageSize, cacheAlignment, inlineObjects, true, true);
+    public HotSpotTarget(CiArchitecture arch, boolean isMP, int stackAlignment, int pageSize, int cacheAlignment, boolean inlineObjects) {
+        super(arch, isMP, stackAlignment, pageSize, cacheAlignment, inlineObjects, true, true);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ public abstract class LIRGeneratorTool {
     public abstract CiVariable emitLoad(CiAddress loadAddress, CiKind kind, boolean canTrap);
     public abstract void emitStore(CiAddress storeAddress, CiValue input, CiKind kind, boolean canTrap);
     public abstract CiVariable emitLea(CiAddress address);
+    public abstract CiVariable emitLea(CiStackSlot address);
 
     public abstract CiVariable emitNegate(CiValue input);
     public abstract CiVariable emitAdd(CiValue a, CiValue b);

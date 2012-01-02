@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,8 +193,7 @@ public class CiRegisterConfig implements RiRegisterConfig {
 
         int currentGeneral = 0;
         int currentXMM = 0;
-        int firstStackIndex = (stackArg0Offsets[type.ordinal()]) / target.spillSlotSize;
-        int currentStackIndex = firstStackIndex;
+        int currentStackOffset = stackArg0Offsets[type.ordinal()];
 
         for (int i = 0; i < parameters.length; i++) {
             final CiKind kind = parameters[i];
@@ -226,12 +225,12 @@ public class CiRegisterConfig implements RiRegisterConfig {
             }
 
             if (locations[i] == null) {
-                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackIndex, !type.out);
-                currentStackIndex += target.spillSlots(kind);
+                locations[i] = CiStackSlot.get(kind.stackKind(), currentStackOffset, !type.out);
+                currentStackOffset += Math.max(target.sizeInBytes(kind), target.wordSize);
             }
         }
 
-        return new CiCallingConvention(locations, (currentStackIndex - firstStackIndex) * target.spillSlotSize);
+        return new CiCallingConvention(locations, currentStackOffset);
     }
 
     public CiRegister[] getCallingConventionRegisters(Type type, RegisterFlag flag) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import static com.oracle.max.cri.intrinsics.MemoryBarriers.*;
+import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
 import static com.sun.cri.ci.CiValue.*;
 
@@ -37,7 +37,6 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.OperandPool.VariableFlag;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graphbuilder.*;
-import com.oracle.max.graal.compiler.lir.FrameMap.StackBlock;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.stub.*;
@@ -73,6 +72,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public final OperandPool operands;
     private final DebugInfoBuilder debugInfoBuilder;
 
+    public final CiCallingConvention incomingArguments;
+
     private LIRBlock currentBlock;
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
@@ -86,6 +87,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.xirSupport = new XirSupport();
         this.operands = new OperandPool(compilation.compiler.target);
         this.debugInfoBuilder = new DebugInfoBuilder(compilation);
+
+        this.incomingArguments = compilation.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(compilation.method), compilation.compiler.target, false);
     }
 
     @Override
@@ -343,7 +346,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private void setOperandsForParameters() {
-        CiCallingConvention args = compilation.frameMap().incomingArguments();
+        CiCallingConvention args = incomingArguments;
         for (LocalNode local : compilation.graph.getNodes(LocalNode.class)) {
             int i = local.index();
             CiValue src = toStackKind(args.locations[i]);
@@ -403,8 +406,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirSnippet snippet = xir.genMonitorExit(site(x), obj, lockAddress);
         emitXir(snippet, x, state(), null, true);
     }
-
-    protected abstract CiVariable emitLea(StackBlock stackBlock);
 
     @Override
     public void visitLoadField(LoadFieldNode x) {
@@ -748,7 +749,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         CiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind(true));
         CiCallingConvention cc = compilation.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
-        compilation.frameMap().adjustOutgoingStackSize(cc, JavaCall);
+        compilation.frameMap().callsMethod(cc, JavaCall);
         List<CiStackSlot> pointerSlots = new ArrayList<>(2);
         List<CiValue> argList = visitInvokeArguments(cc, callTarget.arguments(), pointerSlots);
 
@@ -781,7 +782,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if (isRegister(value)) {
                 return asRegister(value).asValue(value.kind.stackKind());
             } else if (isStackSlot(value)) {
-                return CiStackSlot.get(value.kind.stackKind(), asStackSlot(value).index(), asStackSlot(value).inCallerFrame());
+                return CiStackSlot.get(value.kind.stackKind(), asStackSlot(value).rawOffset(), asStackSlot(value).rawAddFrameSize());
             } else {
                 throw Util.shouldNotReachHere();
             }
@@ -828,7 +829,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (arguments.length > 0) {
             // move the arguments into the correct location
             CiCallingConvention cc = compilation.registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
-            compilation.frameMap().adjustOutgoingStackSize(cc, RuntimeCall);
+            compilation.frameMap().callsMethod(cc, RuntimeCall);
             assert cc.locations.length == args.length : "argument count mismatch";
             for (int i = 0; i < args.length; i++) {
                 CiValue arg = args[i];
@@ -857,7 +858,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         CiValue resultOperand = resultOperandFor(x.kind());
         CiCallingConvention cc = compilation.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
-        compilation.frameMap().adjustOutgoingStackSize(cc, RuntimeCall);
+        compilation.frameMap().callsMethod(cc, RuntimeCall);
         List<CiStackSlot> pointerSlots = new ArrayList<>(2);
         List<CiValue> argList = visitInvokeArguments(cc, x.arguments(), pointerSlots);
 
@@ -1209,7 +1210,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (arguments.length > 0) {
             // move the arguments into the correct location
             CiCallingConvention cc = compilation.registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
-            compilation.frameMap().adjustOutgoingStackSize(cc, RuntimeCall);
+            compilation.frameMap().callsMethod(cc, RuntimeCall);
             assert cc.locations.length == args.length : "argument count mismatch";
             for (int i = 0; i < args.length; i++) {
                 CiValue arg = args[i];

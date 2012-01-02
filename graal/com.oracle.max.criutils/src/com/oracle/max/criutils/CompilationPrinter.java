@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,7 +109,7 @@ public class CompilationPrinter {
         if (registerRefMap != null) {
             sb.append("reg-ref-map:");
             for (int reg = registerRefMap.nextSetBit(0); reg >= 0; reg = registerRefMap.nextSetBit(reg + 1)) {
-                sb.append(' ').append(arch == null ? "reg" + reg : arch.registers[reg]);
+                sb.append(' ').append(arch == null ? "r" + reg : arch.registers[reg]);
             }
             sb.append("\n");
         }
@@ -117,7 +117,7 @@ public class CompilationPrinter {
         if (frameRefMap != null) {
             sb.append("frame-ref-map:");
             for (int reg = frameRefMap.nextSetBit(0); reg >= 0; reg = frameRefMap.nextSetBit(reg + 1)) {
-                sb.append(' ').append(CiStackSlot.get(CiKind.Object, reg));
+                sb.append(' ').append("s").append(reg);
             }
             sb.append("\n");
         }

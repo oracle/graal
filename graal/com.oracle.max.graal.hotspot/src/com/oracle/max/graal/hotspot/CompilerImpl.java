@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -131,7 +131,7 @@ public final class CompilerImpl implements Compiler, Remote {
         if (target == null) {
             final int wordSize = 8;
             final int stackFrameAlignment = 16;
-            target = new HotSpotTarget(new AMD64(), true, wordSize, stackFrameAlignment, config.vmPageSize, wordSize, true);
+            target = new HotSpotTarget(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true);
         }
 
         return target;

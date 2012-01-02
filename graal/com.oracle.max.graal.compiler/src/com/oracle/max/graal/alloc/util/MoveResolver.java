@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
 
 public final class MoveResolver {
-    private final SpillSlots spillSlots;
+    private final FrameMap frameMap;
     private final int[] registersBlocked;
     private final Map<CiValue, Integer> valuesBlocked;
     private final List<CiValue> mappingFrom;
@@ -42,10 +42,10 @@ public final class MoveResolver {
     private final LIRInsertionBuffer insertionBuffer;
     private int insertPos;
 
-    public MoveResolver(CiTarget target, SpillSlots spillSlots) {
-        this.spillSlots = spillSlots;
+    public MoveResolver(FrameMap frameMap) {
+        this.frameMap = frameMap;
 
-        registersBlocked = new int[target.arch.registers.length];
+        registersBlocked = new int[frameMap.target.arch.registers.length];
         valuesBlocked = new HashMap<>();
 
         mappingFrom = new ArrayList<>();
@@ -201,7 +201,7 @@ public final class MoveResolver {
         } else {
             assert spillCandidate != null : "no location for spilling found";
 
-            Location spillLocation = new Location(spillCandidate.variable, spillSlots.allocateSpillSlot(spillCandidate.kind));
+            Location spillLocation = new Location(spillCandidate.variable, frameMap.allocateSpillSlot(spillCandidate.kind));
             insertMove(spillCandidate, spillLocation);
 
             for (int i = mappingFrom.size() - 1; i >= 0; i--) {

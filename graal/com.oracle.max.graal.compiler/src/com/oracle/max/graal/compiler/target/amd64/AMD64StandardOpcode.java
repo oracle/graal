@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,8 @@ public class AMD64StandardOpcode {
     public static final AMD64MoveOpcode.MoveOpcode MOVE = AMD64MoveOpcode.MoveOpcode.MOVE;
     public static final AMD64MoveOpcode.LoadOpcode LOAD = AMD64MoveOpcode.LoadOpcode.LOAD;
     public static final AMD64MoveOpcode.StoreOpcode STORE = AMD64MoveOpcode.StoreOpcode.STORE;
-    public static final AMD64MoveOpcode.LeaOpcode LEA = AMD64MoveOpcode.LeaOpcode.LEA;
-    public static final AMD64MoveOpcode.LeaStackBlockOpcode LEA_STACK_BLOCK = AMD64MoveOpcode.LeaStackBlockOpcode.LEA_STACK_BLOCK;
+    public static final AMD64MoveOpcode.LeaOpcode LEA_MEMORY = AMD64MoveOpcode.LeaOpcode.LEA;
+    public static final AMD64MoveOpcode.LeaStackBlockOpcode LEA_STACK = AMD64MoveOpcode.LeaStackBlockOpcode.LEA_STACK_BLOCK;
     public static final AMD64MoveOpcode.MembarOpcode MEMBAR = AMD64MoveOpcode.MembarOpcode.MEMBAR;
     public static final AMD64MoveOpcode.NullCheckOpcode NULL_CHECK = AMD64MoveOpcode.NullCheckOpcode.NULL_CHECK;
     public static final AMD64MoveOpcode.CompareAndSwapOpcode CAS = AMD64MoveOpcode.CompareAndSwapOpcode.CAS;

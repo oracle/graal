@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -316,7 +316,6 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     }
 
                     CiCallingConvention cc = tasm.compilation.registerConfig.getCallingConvention(RuntimeCall, signature, tasm.target, false);
-                    tasm.compilation.frameMap().adjustOutgoingStackSize(cc, RuntimeCall);
                     for (int i = 0; i < inst.arguments.length; i++) {
                         CiValue argumentLocation = cc.locations[i];
                         CiValue argumentSourceLocation = operands[inst.arguments[i].index];
@@ -454,7 +453,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     }
                     CiCalleeSaveLayout csl = tasm.compilation.registerConfig.getCalleeSaveLayout();
                     if (csl != null && csl.size != 0) {
-                        int frameToCSA = tasm.compilation.frameMap().offsetToCalleeSaveAreaStart();
+                        int frameToCSA = tasm.compilation.frameMap().offsetToCalleeSaveArea();
                         assert frameToCSA >= 0;
                         masm.save(csl, frameToCSA);
                     }
@@ -467,7 +466,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     if (csl != null && csl.size != 0) {
                         tasm.targetMethod.setRegisterRestoreEpilogueOffset(masm.codeBuffer.position());
                         // saved all registers, restore all registers
-                        int frameToCSA = tasm.compilation.frameMap().offsetToCalleeSaveAreaStart();
+                        int frameToCSA = tasm.compilation.frameMap().offsetToCalleeSaveArea();
                         masm.restore(csl, frameToCSA);
                     }
 

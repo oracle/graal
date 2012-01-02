@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,19 +41,9 @@ public class CiTarget {
     public final boolean isMP;
 
     /**
-     * The number of {@link #spillSlotSize spill slots} required per kind.
-     */
-    private final int[] spillSlotsPerKindMap;
-
-    /**
      * Specifies if this target supports encoding objects inline in the machine code.
      */
     public final boolean inlineObjects;
-
-    /**
-     * The spill slot size for values that occupy 1 {@linkplain CiKind#sizeInSlots() Java slot}.
-     */
-    public final int spillSlotSize;
 
     /**
      * The machine word size on this target.
@@ -107,7 +97,6 @@ public class CiTarget {
 
     public CiTarget(CiArchitecture arch,
              boolean isMP,
-             int spillSlotSize,
              int stackAlignment,
              int pageSize,
              int cacheAlignment,
@@ -117,7 +106,6 @@ public class CiTarget {
         this.arch = arch;
         this.pageSize = pageSize;
         this.isMP = isMP;
-        this.spillSlotSize = spillSlotSize;
         this.wordSize = arch.wordSize;
         if (wordSize == 8) {
             this.wordKind = CiKind.Long;
@@ -128,19 +116,8 @@ public class CiTarget {
         this.stackBias = 0; // TODO: configure with param once SPARC port exists
         this.cacheAlignment = cacheAlignment;
         this.inlineObjects = inlineObjects;
-        this.spillSlotsPerKindMap = new int[CiKind.values().length];
         this.debugInfoDoubleWordsInSecondSlot = debugInfoDoubleWordsInSecondSlot;
         this.invokeSnippetAfterArguments = invokeSnippetAfterArguments;
-
-        for (CiKind k : CiKind.values()) {
-            // initialize the number of spill slots required for each kind
-            int size = sizeInBytes(k);
-            int slots = 0;
-            while (slots * spillSlotSize < size) {
-                slots++;
-            }
-            spillSlotsPerKindMap[k.ordinal()] = slots;
-        }
     }
 
     /**
@@ -165,15 +142,6 @@ public class CiTarget {
             default: return 0;
         }
         // Checkstyle: resume
-    }
-
-    /**
-     * Gets the number of spill slots for a specified kind in this target.
-     * @param kind the kind for which to get the spill slot count
-     * @return the number of spill slots for {@code kind}
-     */
-    public int spillSlots(CiKind kind) {
-        return spillSlotsPerKindMap[kind.ordinal()];
     }
 
     /**

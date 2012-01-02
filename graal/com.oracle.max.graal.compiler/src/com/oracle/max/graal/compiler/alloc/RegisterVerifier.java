@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,7 @@ final class RegisterVerifier {
     void verify(LIRBlock start) {
         // setup input registers (method arguments) for first block
         Interval[] inputState = new Interval[stateSize()];
-        CiCallingConvention args = compilation().frameMap().incomingArguments();
+        CiCallingConvention args = allocator.gen.incomingArguments;
         for (int n = 0; n < args.locations.length; n++) {
             CiValue operand = args.locations[n];
             if (operand.isRegister()) {

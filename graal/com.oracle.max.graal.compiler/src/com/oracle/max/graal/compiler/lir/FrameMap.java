@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,197 +23,151 @@
 package com.oracle.max.graal.compiler.lir;
 
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
-import static com.sun.cri.ci.CiCallingConvention.Type.*;
 
-import com.oracle.max.graal.compiler.*;
+import java.util.*;
+
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.cri.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiCallingConvention.Type;
 import com.sun.cri.ri.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.
- *
- * This is the format of a stack frame on an x86 (i.e. IA32 or X64) platform:
+ * A {@link CiStackSlot} is used to index slots of the frame relative to the stack pointer.
+ * The frame size is only fixed after register allocation when all spill slots have
+ * been allocated. Both the outgoing argument area and the spill are can grow until then.
+ * Therefore, outgoing arguments are indexed from the stack pointer, while spill slots
+ * are indexed from the beginning of the frame (and the total frame size has to be added
+ * to get the actual offset from the stack pointer).
+ * <br>
+ * This is the format of a stack frame:
  * <pre>
  *   Base       Contents
  *
- *          :                                :
- *          | incoming overflow argument n   |
- *          |     ...                        |
- *          | incoming overflow argument 0   |
- *          +--------------------------------+ Caller frame
- *          |                                |
- *          : custom area*                   :
- *          |                                |
- *   -------+--------------------------------+---------------------
- *          | return address                 |
- *          +--------------------------------+                  ---
- *          |                                |                   ^
- *          : callee save area               :                   |
- *          |                                |                   |
- *          +--------------------------------+ Current frame     |
- *          | alignment padding              |                   |
- *          +--------------------------------+                   |
- *          | ALLOCA block n                 |                   |
- *          :     ...                        :                   |
- *          | ALLOCA block 0                 |                   |
- *          +--------------------------------+    ---            |
- *          | spill slot n                   |     ^           frame
- *          :     ...                        :     |           size
- *          | spill slot 0                   |  shared           |
- *          +- - - - - - - - - - - - - - - - +   slot            |
- *          | outgoing overflow argument n   |  indexes          |
- *          |     ...                        |     |             |
- *          | outgoing overflow argument 0   |     v             |
- *          +--------------------------------+    ---            |
- *          |                                |                   |
- *          : custom area                    :                   |
- *    %sp   |                                |                   v
- *   -------+--------------------------------+----------------  ---
+ *            :                                :  -----
+ *   caller   | incoming overflow argument n   |    ^
+ *   frame    :     ...                        :    | positive
+ *            | incoming overflow argument 0   |    | offsets
+ *   ---------+--------------------------------+---------------------
+ *            | return address                 |    |            ^
+ *   current  +--------------------------------+    |            |    -----
+ *   frame    |                                |    |            |      ^
+ *            : callee save area               :    |            |      |
+ *            |                                |    |            |      |
+ *            +--------------------------------+    |            |      |
+ *            | spill slot 0                   |    | negative   |      |
+ *            :     ...                        :    v offsets    |      |
+ *            | spill slot n                   |  -----        total  frame
+ *            +--------------------------------+               frame  size
+ *            | alignment padding              |               size     |
+ *            +--------------------------------+  -----          |      |
+ *            | outgoing overflow argument n   |    ^            |      |
+ *            :     ...                        :    | positive   |      |
+ *            | outgoing overflow argument 0   |    | offsets    v      v
+ *    %sp-->  +--------------------------------+---------------------------
  *
  * </pre>
- * Note that the size of stack allocated memory block (ALLOCA block) in
- * the frame may be greater than the size of a {@linkplain CiTarget#spillSlotSize spill slot}.
- * Note also that the layout of the caller frame shown only applies if the caller
- * was also compiled with Graal. In particular, native frames won't have
- * a custom area if the native ABI specifies that stack arguments are at
- * the bottom of the frame (e.g. System V ABI on AMD64).
+ * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size
+ * of such a block may be greater than the size of a normal spill slot or the word size.
+ * <br>
+ * A runtime has two ways to reserve space in the stack frame for its own use: <ul>
+ * <li>A memory block somewhere in the frame of size {@link RiRuntime#getCustomStackAreaSize()}. The offset
+ *     to this block is returned in {@link CiTargetMethod#customStackAreaOffset()}.
+ * <li>At the beginning of the overflow argument area: The calling convention can specify that the first
+ *     overflow stack argument is not at offset 0, but at a specified offset o. Use
+ *     {@link RiRuntime#getMinimumOutgoingSize()} to make sure that call-free methods also have this space
+ *     reserved. Then the VM can use memory the memory at offset 0 relative to the stack pointer.
+ * </ul>
  */
 public final class FrameMap {
-
-    public final GraalRuntime runtime;
+    public final RiRuntime runtime;
     public final CiTarget target;
-    private final RiRegisterConfig registerConfig;
-    private final CiCallingConvention incomingArguments;
+    public final RiRegisterConfig registerConfig;
 
     /**
-     * The final frame size.
-     * Value is only set after register allocation is complete.
+     * The final frame size, not including the size of the return address.
+     * The value is only set after register allocation is complete, i.e., after all spill slots have been allocated.
      */
     private int frameSize;
 
     /**
-     * The number of spill slots allocated by the register allocator.
-     * The value {@code -2} means that the size of outgoing argument stack slots
-     * is not yet fixed. The value {@code -1} means that the register
-     * allocator has started allocating spill slots and so the size of
-     * outgoing stack slots cannot change as outgoing stack slots and
-     * spill slots share the same slot index address space.
+     * Size of the area occupied by spill slots and other stack-allocated memory blocks.
      */
-    private int spillSlotCount;
+    private int spillSize;
 
     /**
-     * The amount of memory allocated within the frame for uses of stack allocated memory blocks.
-     */
-    private int stackBlocksSize;
-
-    /**
-     * The list of stack blocks allocated in this frame.
-     */
-    private StackBlock stackBlocks;
-
-    /**
-     * Area occupied by outgoing overflow arguments.
+     * Size of the area occupied by outgoing overflow arguments.
      * This value is adjusted as calling conventions for outgoing calls are retrieved.
      */
     private int outgoingSize;
 
     /**
+     * The list of stack areas allocated in this frame that are present in every reference map.
+     */
+    private final List<CiStackSlot> objectStackBlocks;
+
+    /**
+     * The stack area reserved for use by the VM, or {@code null} if the VM does not request stack space.
+     */
+    private final CiStackSlot customArea;
+
+    /**
      * Creates a new frame map for the specified method.
-     *
-     * @param compilation the compilation context
-     * @param method the outermost method being compiled
      */
-    public FrameMap(GraalCompilation compilation, RiResolvedMethod method) {
-        this.runtime = compilation.compiler.runtime;
-        this.target = compilation.compiler.target;
-        this.registerConfig = compilation.registerConfig;
+    public FrameMap(RiRuntime runtime, CiTarget target, RiRegisterConfig registerConfig) {
+        this.runtime = runtime;
+        this.target = target;
+        this.registerConfig = registerConfig;
         this.frameSize = -1;
-        this.spillSlotCount = -2;
+        this.spillSize = returnAddressSize() + calleeSaveAreaSize();
+        this.outgoingSize = runtime.getMinimumOutgoingSize();
+        this.objectStackBlocks = new ArrayList<>();
+        this.customArea = allocateStackBlock(runtime.getCustomStackAreaSize(), false);
+    }
 
-        if (method == null) {
-            incomingArguments = new CiCallingConvention(new CiValue[0], 0);
-        } else {
-            incomingArguments = registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(method), target, false);
-        }
+
+    private int returnAddressSize() {
+        return target.arch.returnAddressSize;
+    }
+
+    private int calleeSaveAreaSize() {
+        CiCalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
+        return csl != null ? csl.size : 0;
     }
 
     /**
-     * Adjusts the stack-size for stack-based outgoing arguments if required.
-     *
-     * @param cc the calling convention
-     * @param type the type of calling convention
-     */
-    public void adjustOutgoingStackSize(CiCallingConvention cc, Type type) {
-        assert type.out;
-        if (frameSize != -1 && cc.stackSize != 0) {
-            // TODO(tw): This is a special work around for Windows runtime calls that can happen and must be ignored.
-            assert type == RuntimeCall;
-        } else {
-            if (type != RuntimeCall) {
-                assert frameSize == -1 : "frame size must not yet be fixed!";
-                reserveOutgoing(cc.stackSize);
-            }
-        }
-    }
-
-    /**
-     * Gets the calling convention for the incoming arguments to the compiled method.
-     * @return the calling convention for incoming arguments
-     */
-    public CiCallingConvention incomingArguments() {
-        return incomingArguments;
-    }
-
-    /**
-     * Gets the frame size of the compiled frame.
-     * @return the size in bytes of the frame
+     * Gets the frame size of the compiled frame, not including the size of the return address.
+     * @return The size of the frame (in bytes).
      */
     public int frameSize() {
-        assert this.frameSize != -1 : "frame size not computed yet";
+        assert frameSize != -1 : "frame size not computed yet";
         return frameSize;
     }
 
     /**
+     * Gets the total frame size of the compiled frame, including the size of the return address.
+     * @return The total size of the frame (in bytes).
+     */
+    public int totalFrameSize() {
+        return frameSize() + returnAddressSize();
+    }
+
+    /**
      * Sets the frame size for this frame.
-     * @param frameSize the frame size in bytes
+     * @param frameSize The frame size (in bytes).
      */
     public void setFrameSize(int frameSize) {
-        assert this.frameSize == -1 : "should only be calculated once";
+        assert this.frameSize == -1 : "must only be set once";
         this.frameSize = frameSize;
     }
 
     /**
-     * Computes the frame size for this frame, given the number of spill slots.
-     * @param finalSpillSlotCount the number of spill slots
+     * Computes the frame size for this frame. After this method has been called, methods that change the
+     * frame size cannot be called anymore, e.g., no more spill slots or outgoing arguments can be requested.
      */
-    public void finalizeFrame(int finalSpillSlotCount) {
-        assert this.spillSlotCount == -1 : "can only be set once";
-        assert this.frameSize == -1 : "should only be calculated once";
-        assert finalSpillSlotCount >= 0 : "must be positive";
-
-        this.spillSlotCount = finalSpillSlotCount;
-        int newFrameSize = offsetToStackBlocksEnd();
-        CiCalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
-        if (csl != null) {
-            newFrameSize += csl.size;
-        }
-        this.frameSize = target.alignFrameSize(newFrameSize);
-    }
-
-    /**
-     * Informs the frame map that the compiled code uses a particular compiler stub, which
-     * may need stack space for outgoing arguments.
-     *
-     * @param stub the compiler stub
-     */
-    public void usesStub(CompilerStub stub) {
-        int argsSize = stub.inArgs.length * target.spillSlotSize;
-        int resultSize = stub.resultKind.isVoid() ? 0 : target.spillSlotSize;
-        reserveOutgoing(Math.max(argsSize, resultSize));
+    public void finish() {
+        setFrameSize(target.alignFrameSize(outgoingSize + spillSize - returnAddressSize()));
     }
 
     /**
@@ -224,199 +178,128 @@ public final class FrameMap {
      * @return the offset of the stack slot
      */
     public int offsetForStackSlot(CiStackSlot slot) {
-        assert frameSize >= 0 : "fame size not computed yet";
-        if (slot.inCallerFrame()) {
-            int callerFrame = frameSize() + target.arch.returnAddressSize;
-            int callerFrameOffset = slot.index() * target.spillSlotSize;
-            return callerFrame + callerFrameOffset;
-        } else {
-            int offset = slot.index() * target.spillSlotSize;
-            assert offset <= frameSize() - target.spillSlotSize : "slot outside of frame";
-            return offset;
-        }
+        assert (!slot.rawAddFrameSize() && slot.rawOffset() < outgoingSize) ||
+            (slot.rawAddFrameSize() && slot.rawOffset() < 0 && -slot.rawOffset() <= spillSize) ||
+            (slot.rawAddFrameSize() && slot.rawOffset() >= 0);
+        return slot.offset(totalFrameSize());
     }
 
     /**
-     * Converts a stack slot into a stack address.
-     *
-     * @param slot a stack slot
-     * @return a stack address
+     * Gets the offset to the stack area where callee-saved registers are stored.
+     * @return The offset to the callee save area (in bytes).
      */
-    public CiAddress toStackAddress(CiStackSlot slot) {
-        return new CiAddress(slot.kind, registerConfig.getFrameRegister().asValue(), offsetForStackSlot(slot));
+    public int offsetToCalleeSaveArea() {
+        return frameSize() - calleeSaveAreaSize();
     }
 
     /**
-     * Gets the stack address within this frame for a given reserved stack block.
-     *
-     * @param stackBlock the value returned from {@link #reserveStackBlock(int, boolean)} identifying the stack block
-     * @return a representation of the stack location
+     * Gets the offset of the stack area stack block reserved for use by the VM, or -1 if the VM does not request stack space.
+     * @return The offset to the custom area (in bytes).
      */
-    public CiAddress toStackAddress(StackBlock stackBlock) {
-        return new CiAddress(target.wordKind, registerConfig.getFrameRegister().asValue(target.wordKind), offsetForStackBlock(stackBlock));
+    public int offsetToCustomArea() {
+        return customArea == null ? -1 : offsetForStackSlot(customArea);
     }
 
-    public CiStackSlot toStackSlot(StackBlock stackBlock) {
-        return CiStackSlot.get(stackBlock.kind, offsetForStackBlock(stackBlock) / target.spillSlotSize);
+    /**
+     * Informs the frame map that the compiled code calls a particular method, which
+     * may need stack space for outgoing arguments.
+     * @param cc The calling convention for the called method.
+     * @param type The type of calling convention.
+     */
+    public void callsMethod(CiCallingConvention cc, Type type) {
+        // TODO look at the actual stack offsets?
+        assert type.out;
+        reserveOutgoing(cc.stackSize);
+    }
+
+    /**
+     * Informs the frame map that the compiled code uses a particular compiler stub, which
+     * may need stack space for outgoing arguments.
+     * @param stub The compiler stub.
+     */
+    public void usesStub(CompilerStub stub) {
+        // TODO look at the actual stack slot offsets?
+        int argsSize = stub.inArgs.length * target.wordSize;
+        int resultSize = stub.resultKind.isVoid() ? 0 : target.wordSize;
+        reserveOutgoing(Math.max(argsSize, resultSize));
     }
 
     /**
      * Reserves space for stack-based outgoing arguments.
-     *
-     * @param argsSize the amount of space to reserve for stack-based outgoing arguments
+     * @param argsSize The amount of space (in bytes) to reserve for stack-based outgoing arguments.
      */
     public void reserveOutgoing(int argsSize) {
-        assert spillSlotCount == -2 : "cannot reserve outgoing stack slot space once register allocation has started";
-        if (argsSize > outgoingSize) {
-            outgoingSize = Util.roundUp(argsSize, target.spillSlotSize);
-        }
+        assert frameSize == -1 : "frame size must not yet be fixed";
+        outgoingSize = Math.max(outgoingSize, argsSize);
+    }
+
+    private CiStackSlot getSlot(CiKind kind, int additionalOffset) {
+        return CiStackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
     /**
-     * Encapsulates the details of a stack block reserved by a call to {@link FrameMap#reserveStackBlock(int, boolean)}.
+     * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned on its natural alignment,
+     * i.e., an 8-byte spill slot is aligned at an 8-byte boundary.
+     * @param kind The kind of the spill slot to be reserved.
+     * @return A spill slot denoting the reserved memory area.
      */
-    public static final class StackBlock extends CiValue {
-        private static final long serialVersionUID = -5260976274149772987L;
-
-        /**
-         * The size of this stack block.
-         */
-        private final int size;
-
-        /**
-         * The offset of this stack block within the frame space reserved for stack blocks.
-         */
-        private final int offset;
-
-        private final StackBlock next;
-
-        public StackBlock(StackBlock next, int size, int offset, CiKind kind) {
-            super(kind);
-            this.next = next;
-            this.size = size;
-            this.offset = offset;
-        }
-
-        @Override
-        public String toString() {
-            return "StackBlock " + offset;
-        }
+    public CiStackSlot allocateSpillSlot(CiKind kind) {
+        int size = target.sizeInBytes(kind);
+        spillSize = Util.roundUp(spillSize + size, size);
+        return getSlot(kind, 0);
     }
 
     /**
-     * Reserves a block of memory in the frame of the method being compiled.
+     * Reserves a block of memory in the frame of the method being compiled. The returned block is aligned on a word boundary.
+     * If the requested size is 0, the method returns {@code null}.
      *
-     * @param size the number of bytes to reserve
-     * @param refs specifies if the block is all references
-     * @return a descriptor of the reserved block that can be used with {@link #toStackAddress(StackBlock)} once register
-     *         allocation is complete and the size of the frame has been {@linkplain #finalizeFrame(int) finalized}.
+     * @param size The size to reserve (in bytes).
+     * @param refs Specifies if the block is all references. If true, the block will be in all reference maps for this method.
+     *             The caller is responsible to initialize the memory block before the first instruction that uses a reference map.
+     * @return A stack slot describing the begin of the memory block.
      */
-    public StackBlock reserveStackBlock(int size, boolean refs) {
-        assert size % target.wordSize == 0;
-        StackBlock block = new StackBlock(stackBlocks, size, stackBlocksSize, refs ? CiKind.Object : target.wordKind);
-        stackBlocksSize += size;
-        stackBlocks = block;
-        return block;
-    }
+    public CiStackSlot allocateStackBlock(int size, boolean refs) {
+        if (size == 0) {
+            return null;
+        }
+        spillSize = Util.roundUp(spillSize + size, target.wordSize);
 
-    private int offsetForStackBlock(StackBlock stackBlock) {
-        assert stackBlock.offset >= 0 && stackBlock.offset + stackBlock.size <= stackBlocksSize : "invalid stack block";
-        int offset = offsetToStackBlocks() + stackBlock.offset;
-        assert offset <= (frameSize() - stackBlock.size) : "stack block outside of frame";
-        return offset;
-    }
+        if (refs) {
+            assert size % target.wordSize == 0;
+            CiStackSlot result = getSlot(CiKind.Object, 0);
+            objectStackBlocks.add(result);
+            for (int i = target.wordSize; i < size; i += target.wordSize) {
+                objectStackBlocks.add(getSlot(CiKind.Object, i));
+            }
+            return result;
 
-    private int offsetToSpillArea() {
-        return outgoingSize + customAreaSize();
-    }
-
-    private int offsetToSpillEnd() {
-        return offsetToSpillArea() + spillSlotCount * target.spillSlotSize;
-    }
-
-    public int customAreaSize() {
-        return runtime.getCustomStackAreaSize();
-    }
-
-    public static int offsetToCustomArea() {
-        return 0;
-    }
-
-    private int offsetToStackBlocks() {
-        return offsetToSpillEnd();
-    }
-
-    private int offsetToStackBlocksEnd() {
-        return offsetToStackBlocks() + stackBlocksSize;
-    }
-
-    public int offsetToCalleeSaveAreaStart() {
-        CiCalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
-        if (csl != null) {
-            return offsetToCalleeSaveAreaEnd() - csl.size;
         } else {
-            return offsetToCalleeSaveAreaEnd();
+            return getSlot(target.wordKind, 0);
         }
     }
 
-    public int offsetToCalleeSaveAreaEnd() {
-        return frameSize;
-    }
-
-    /**
-     * Gets the index of the first available spill slot relative to the base of the frame.
-     * After this call, no further outgoing stack slots can be {@linkplain #reserveOutgoing(int) reserved}.
-     *
-     * @return the index of the first available spill slot
-     */
-    public int initialSpillSlot() {
-        if (spillSlotCount == -2) {
-            spillSlotCount = -1;
-        }
-        return (outgoingSize + customAreaSize()) / target.spillSlotSize;
-    }
-
-
-
-
-    private int registerRefMapSize() {
-        return target.arch.registerReferenceMapBitCount;
-    }
-
-    private int frameRefMapSize() {
-        if (incomingArguments.stackSize > 0) {
-            return (frameSize() + target.arch.returnAddressSize + customAreaSize() + incomingArguments.stackSize) / target.wordSize;
-        } else {
-            return frameSize() / target.wordSize;
-        }
-    }
 
     private int frameRefMapIndex(CiStackSlot slot) {
-        int offset = offsetForStackSlot(slot);
-        assert offset % target.wordSize == 0 && offset / target.wordSize < frameRefMapSize();
-        return offset / target.wordSize;
+        assert offsetForStackSlot(slot) % target.wordSize == 0;
+        return offsetForStackSlot(slot) / target.wordSize;
     }
 
     /**
      * Initializes a reference map that covers all registers of the target architecture.
      */
     public CiBitMap initRegisterRefMap() {
-        return new CiBitMap(registerRefMapSize());
+        return new CiBitMap(target.arch.registerReferenceMapBitCount);
     }
 
     /**
-     * Initializes a reference map that covers all the slots in the frame.
+     * Initializes a reference map. Initially, the size is large enough to cover all the
+     * slots in the frame. If the method has incoming reference arguments on the stack,
+     * the reference map might grow later when such a reference is set.
      */
     public CiBitMap initFrameRefMap() {
-        CiBitMap frameRefMap = new CiBitMap(frameRefMapSize());
-        for (StackBlock sb = stackBlocks; sb != null; sb = sb.next) {
-            if (sb.kind == CiKind.Object) {
-                int firstSlot = offsetForStackBlock(sb) / target.wordSize;
-                int words = sb.size / target.wordSize;
-                for (int i = 0; i < words; i++) {
-                    frameRefMap.set(firstSlot + i);
-                }
-            }
+        CiBitMap frameRefMap = new CiBitMap(frameSize() / target.wordSize);
+        for (CiStackSlot slot : objectStackBlocks) {
+            setReference(slot, null, frameRefMap);
         }
         return frameRefMap;
     }
@@ -431,12 +314,14 @@ public final class FrameMap {
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
     public void setReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
-//        assert registerRefMap.size() == registerRefMapSize() && frameRefMap.size() == frameRefMapSize();
         if (location.kind == CiKind.Object) {
             if (isRegister(location)) {
+                assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.set(asRegister(location).number);
             } else if (isStackSlot(location)) {
-                frameRefMap.set(frameRefMapIndex(asStackSlot(location)));
+                int index = frameRefMapIndex(asStackSlot(location));
+                frameRefMap.grow(index + 1);
+                frameRefMap.set(index);
             } else {
                 assert isConstant(location);
             }
@@ -453,12 +338,15 @@ public final class FrameMap {
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
     public void clearReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
-//        assert registerRefMap.size() == registerRefMapSize() && frameRefMap.size() == frameRefMapSize();
         if (location.kind == CiKind.Object) {
             if (location instanceof CiRegisterValue) {
+                assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.clear(asRegister(location).number);
             } else if (isStackSlot(location)) {
-                frameRefMap.clear(frameRefMapIndex(asStackSlot(location)));
+                int index = frameRefMapIndex(asStackSlot(location));
+                if (index < frameRefMap.size()) {
+                    frameRefMap.clear(index);
+                }
             } else {
                 assert isConstant(location);
             }
