@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,6 @@ package com.sun.cri.ci;
  * by a register allocator.
  */
 public final class CiVariable extends CiValue {
-
-    /**
-     *
-     */
     private static final long serialVersionUID = 4507578431686109809L;
 
     /**
@@ -94,18 +90,6 @@ public final class CiVariable extends CiValue {
         if (obj instanceof CiVariable) {
             CiVariable var = (CiVariable) obj;
             return kind == var.kind && index == var.index;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean equalsIgnoringKind(CiValue o) {
-        if (this == o) {
-            return true;
-        }
-        if (o instanceof CiVariable) {
-            CiVariable var = (CiVariable) o;
-            return index == var.index;
         }
         return false;
     }

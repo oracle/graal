@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,6 @@ import com.sun.cri.ri.*;
  * operand stack values and locked objects of the bytecode frame(s).
  */
 public class CiFrame extends CiCodePos implements Serializable {
-    /**
-     * 
-     */
     private static final long serialVersionUID = -345025397165977565L;
 
     /**
@@ -129,73 +126,8 @@ public class CiFrame extends CiCodePos implements Serializable {
         return (CiFrame) caller;
     }
 
-    /**
-     * Deep equality test.
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof CiFrame) {
-            CiFrame other = (CiFrame) obj;
-            return equals(other, false, false);
-        }
-        return false;
-    }
-
-    /**
-     * Deep equality test.
-     *
-     * @param ignoreKinds if {@code true}, compares values but {@link CiValue#equalsIgnoringKind(CiValue) ignore} their kinds
-     * @param ignoreNegativeBCIs if {@code true}, negative BCIs are treated as equal
-     */
-    public boolean equals(CiFrame other, boolean ignoreKinds, boolean ignoreNegativeBCIs) {
-        if ((other.bci == bci || (ignoreNegativeBCIs && other.bci < 0 && bci < 0)) &&
-            numLocals == other.numLocals &&
-            numStack == other.numStack &&
-            numLocks == other.numLocks &&
-            values.length == other.values.length) {
-
-            if (ignoreKinds) {
-                for (int i = 0; i < values.length; i++) {
-                    if (!values[i].equalsIgnoringKind(other.values[i])) {
-                        return false;
-                    }
-                }
-            } else {
-                for (int i = 0; i < values.length; i++) {
-                    if (!values[i].equals(other.values[i])) {
-                        return false;
-                    }
-                }
-            }
-            if (caller == null) {
-                return other.caller == null;
-            }
-            if (other.caller == null) {
-                return false;
-            }
-            return caller().equals(other.caller(), ignoreKinds, ignoreNegativeBCIs);
-        }
-        return false;
-    }
-
     @Override
     public String toString() {
         return CiUtil.append(new StringBuilder(100), this).toString();
-    }
-
-    /**
-     * Gets a copy of this frame but with an empty stack.
-     */
-    public CiFrame withEmptyStack() {
-        if (numStack == 0) {
-            return this;
-        }
-        CiValue[] ciValues = new CiValue[numLocals + numLocks];
-        System.arraycopy(this.values, 0, ciValues, 0, numLocals);
-        System.arraycopy(this.values, numLocals + numStack, ciValues, numLocals, numLocks);
-        return new CiFrame(caller(), method, bci, rethrowException, ciValues, numLocals, 0, numLocks);
     }
 }

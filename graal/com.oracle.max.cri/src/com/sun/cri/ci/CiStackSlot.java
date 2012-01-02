@@ -29,7 +29,6 @@ import static com.sun.cri.ci.CiKind.*;
  * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
  */
 public final class CiStackSlot extends CiValue {
-
     private static final long serialVersionUID = -7725071921307318433L;
 
     private final int offset;
@@ -114,18 +113,6 @@ public final class CiStackSlot extends CiValue {
         if (o instanceof CiStackSlot) {
             CiStackSlot l = (CiStackSlot) o;
             return l.kind == kind && l.offset == offset && l.addFrameSize == addFrameSize;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean equalsIgnoringKind(CiValue o) {
-        if (o == this) {
-            return true;
-        }
-        if (o instanceof CiStackSlot) {
-            CiStackSlot l = (CiStackSlot) o;
-            return l.offset == offset && l.addFrameSize == addFrameSize;
         }
         return false;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,8 @@ package com.sun.cri.ci;
  * instances that represent frequently used constant values, such as {@link #ZERO}.
  */
 public final class CiConstant extends CiValue {
-
-    /**
-     *
-     */
     private static final long serialVersionUID = -6355452536852663986L;
+
     private static final CiConstant[] INT_CONSTANT_CACHE = new CiConstant[100];
     static {
         for (int i = 0; i < INT_CONSTANT_CACHE.length; ++i) {
@@ -307,11 +304,6 @@ public final class CiConstant extends CiValue {
     @Override
     public boolean equals(Object o) {
         return o == this || o instanceof CiConstant && valueEqual((CiConstant) o, false);
-    }
-
-    @Override
-    public boolean equalsIgnoringKind(CiValue o) {
-        return o == this || o instanceof CiConstant && valueEqual((CiConstant) o, true);
     }
 
     /**
