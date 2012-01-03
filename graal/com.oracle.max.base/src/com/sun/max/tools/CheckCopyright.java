@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,8 +80,7 @@ public class CheckCopyright {
         HASH("hash");
 
         private static Map<String, CopyrightKind> copyrightMap;
-        private static final String COPYRIGHT_REGEX = "com.oracle.max.base/.copyright.regex";
-        private static String copyrightFiles = "bin/max|.*/makefile|.*/Makefile|.*\\.sh|.*\\.bash|.*\\.mk|.*\\.java|.*\\.c|.*\\.h";
+        private static String copyrightFiles = "bin/max|.*/makefile|.*/Makefile|.*\\.sh|.*\\.py|.*\\.bash|.*\\.mk|.*\\.java|.*\\.c|.*\\.h";
         private static Pattern copyrightFilePattern;
         private final String suffix;
         private String copyright;
@@ -96,8 +95,12 @@ public class CheckCopyright {
         }
 
         void readCopyright()  throws IOException {
-            final File file = new File(workSpaceDirectory, COPYRIGHT_REGEX + "." + suffix);
-            assert file.exists();
+            String cfp = COPYRIGHT_FILE_PREFIX.getValue() + "." + suffix;
+            File file = new File(cfp);
+            if (!file.isAbsolute()) {
+                file = new File(hgRoot, cfp);
+            }
+            assert file.exists() : file;
             byte[] b = new byte[(int) file.length()];
             FileInputStream is = new FileInputStream(file);
             is.read(b);
@@ -121,6 +124,7 @@ public class CheckCopyright {
                 copyrightMap.put("h", CopyrightKind.STAR);
                 copyrightMap.put("mk", CopyrightKind.HASH);
                 copyrightMap.put("sh", CopyrightKind.HASH);
+                copyrightMap.put("py", CopyrightKind.HASH);
                 copyrightMap.put("bash", CopyrightKind.HASH);
                 copyrightMap.put("", CopyrightKind.HASH);
             }
@@ -168,10 +172,11 @@ public class CheckCopyright {
     private static final Option<Boolean> REPORT_ERRORS = options.newBooleanOption("reporterrors", true, "report non-fatal errors");
     private static final Option<Boolean> CONTINUE_ON_ERROR = options.newBooleanOption("continueonerror", false, "continue after normally fatal error");
     private static final Option<String> HG_PATH = options.newStringOption("hgpath", "hg", "path to hg executable");
+    private static final Option<String> COPYRIGHT_FILE_PREFIX = options.newStringOption("cfp", "com.oracle.max.base/.copyright.regex", "path to hg executable");
     private static final String NON_EXISTENT_FILE = "abort: cannot follow nonexistent file:";
     private static String hgPath;
     private static boolean error;
-    private static File workSpaceDirectory;
+    private static File hgRoot;
 
 
     public static void main(String[] args) {
@@ -185,7 +190,7 @@ public class CheckCopyright {
 
         hgPath = HG_PATH.getValue();
 
-        workSpaceDirectory = JavaProject.findWorkspaceDirectory();
+        hgRoot = JavaProject.findHgRoot();
 
         if (FILE_PATTERN.getValue() != null) {
             CopyrightKind.addCopyrightFilesPattern(FILE_PATTERN.getValue());
@@ -284,7 +289,7 @@ public class CheckCopyright {
             assert s.startsWith("changeset");
             s = logInfo.get(ix++);
             // process every entry in a given change set
-            if (s.startsWith("tag")) {
+            while (s.startsWith("tag")) {
                 s = logInfo.get(ix++);
             }
             if (s.startsWith("branch")) {
@@ -293,7 +298,7 @@ public class CheckCopyright {
             while (s.startsWith("parent")) {
                 s = logInfo.get(ix++);
             }
-            assert s.startsWith("user");
+            assert s.startsWith("user") : logInfo;
             s = logInfo.get(ix++);
             assert s.startsWith("date");
             final int csYear = getYear(s);
