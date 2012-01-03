@@ -32,7 +32,6 @@ import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.nodes.*;
 
 public class GraalCompiler {
 
@@ -116,12 +115,6 @@ public class GraalCompiler {
         } finally {
             context.timers.endScope();
         }
-    }
-
-    public CiTargetMethod compileMethod(RiResolvedMethod method, StructuredGraph graph, PhasePlan plan) {
-        assert graph.verify();
-        GraalCompilation compilation = new GraalCompilation(context, this, method, graph, -1, null, CiCompiler.DebugInfoLevel.FULL);
-        return compilation.compile(plan);
     }
 
     private void init() {

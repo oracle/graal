@@ -24,6 +24,7 @@ package com.oracle.max.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.java.*;
 
@@ -34,24 +35,38 @@ import com.oracle.max.graal.nodes.java.*;
  */
 public class StructuredGraph extends Graph {
     private final BeginNode start;
+    private final RiResolvedMethod method;
 
     /**
      * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
      */
     public StructuredGraph(String name) {
+        this(name, null);
+    }
+
+    public StructuredGraph(String name, RiResolvedMethod method) {
         super(name);
         this.start = add(new BeginNode());
+        this.method = method;
     }
 
     /**
      * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
      */
     public StructuredGraph() {
-        this(null);
+        this((String) null);
+    }
+
+    public StructuredGraph(RiResolvedMethod method) {
+        this(null, method);
     }
 
     public BeginNode start() {
         return start;
+    }
+
+    public RiResolvedMethod method() {
+        return method;
     }
 
     @Override

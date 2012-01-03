@@ -55,19 +55,12 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private final PhasePlan plan;
 
-    private final GraphBuilderConfiguration config;
-
     public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<Invoke> hints, CiAssumptions assumptions, PhasePlan plan) {
-        this(target, runtime, hints, assumptions, plan, GraphBuilderConfiguration.getDefault(plan));
-    }
-
-    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<Invoke> hints, CiAssumptions assumptions, PhasePlan plan, GraphBuilderConfiguration config) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;
         this.assumptions = assumptions;
         this.plan = plan;
-        this.config = config;
     }
 
     @SuppressWarnings("unchecked")
@@ -166,8 +159,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     public StructuredGraph buildGraph(RiResolvedMethod method) {
-        StructuredGraph newGraph = new StructuredGraph();
-        new GraphBuilderPhase(runtime, method, null, config).apply(newGraph, currentContext, false);
+        StructuredGraph newGraph = new StructuredGraph(method);
 
         if (plan != null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, newGraph, currentContext);
@@ -220,8 +212,8 @@ public class InliningPhase extends Phase implements InliningCallback {
         int count;
         if (GraalOptions.ParseBeforeInlining) {
             if (!parsedMethods.containsKey(method)) {
-                StructuredGraph newGraph = new StructuredGraph();
-                new GraphBuilderPhase(runtime, method, null).apply(newGraph, currentContext, false);
+                StructuredGraph newGraph = new StructuredGraph(method);
+                new GraphBuilderPhase(runtime, null).apply(newGraph, currentContext, false);
                 new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph, currentContext, false);
                 count = graphComplexity(newGraph);
                 parsedMethods.put(method, count);

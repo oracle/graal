@@ -31,7 +31,9 @@ import com.oracle.max.cri.ci.CiCompiler.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.compiler.phases.PhasePlan.*;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
 import com.oracle.max.graal.snippets.*;
@@ -163,7 +165,10 @@ public class VMExitsNative implements VMExits, Remote {
             Runnable runnable = new Runnable() {
                 public void run() {
                     try {
-                        CiTargetMethod result = compiler.getCompiler().compileMethod(method, -1, null, DebugInfoLevel.FULL);
+                        PhasePlan plan = new PhasePlan();
+                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), null);
+                        plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+                        CiTargetMethod result = compiler.getCompiler().compileMethod(method, -1, null, DebugInfoLevel.FULL, plan);
                         HotSpotTargetMethod.installMethod(compiler, method, result, true);
                     } catch (CiBailout bailout) {
                         if (GraalOptions.ExitVMOnBailout) {

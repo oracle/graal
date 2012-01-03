@@ -37,7 +37,6 @@ import com.oracle.max.graal.alloc.simple.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.phases.*;
@@ -76,7 +75,7 @@ public final class GraalCompilation {
      * @param stats externally supplied statistics object to be used if not {@code null}
      * @param debugInfoLevel TODO
      */
-    public GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
+    private GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
@@ -93,7 +92,7 @@ public final class GraalCompilation {
     }
 
     public GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
-        this(context, compiler, method, new StructuredGraph(), osrBCI, stats, debugInfoLevel);
+        this(context, compiler, method, new StructuredGraph(method), osrBCI, stats, debugInfoLevel);
     }
 
 
@@ -189,11 +188,7 @@ public final class GraalCompilation {
             context().timers.startScope("HIR");
 
             if (graph.start().next() == null) {
-                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.runtime, method, stats);
-                graphBuilderPhase.apply(graph, context());
-
                 plan.runPhases(PhasePosition.AFTER_PARSING, graph, context());
-
                 new DeadCodeEliminationPhase().apply(graph, context());
             } else {
                 if (context().isObserved()) {

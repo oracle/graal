@@ -70,11 +70,11 @@ public final class GraphBuilderPhase extends Phase {
 
     private final CiStatistics stats;
     private final RiRuntime runtime;
-    private final RiResolvedMethod method;
-    private final RiConstantPool constantPool;
+    private RiConstantPool constantPool;
     private RiExceptionHandler[] exceptionHandlers;
+    private RiResolvedMethod method;
 
-    private final BytecodeStream stream;           // the bytecode stream
+    private BytecodeStream stream;           // the bytecode stream
     private final LogStream log;
 
     private FrameStateBuilder frameState;          // the current execution state
@@ -95,8 +95,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private FixedWithNextNode lastInstr;                 // the last instruction added
 
-    private final Set<Block> blocksOnWorklist = new HashSet<>();
-    private final Set<Block> blocksVisited = new HashSet<>();
+    private Set<Block> blocksOnWorklist;
+    private Set<Block> blocksVisited;
 
     private BitSet canTrapBitSet;
 
@@ -104,27 +104,33 @@ public final class GraphBuilderPhase extends Phase {
 
     private final GraphBuilderConfiguration config;
 
-    public GraphBuilderPhase(RiRuntime runtime, RiResolvedMethod method) {
-        this(runtime, method, null);
+    public GraphBuilderPhase(RiRuntime runtime) {
+        this(runtime, null);
     }
 
-    public GraphBuilderPhase(RiRuntime runtime, RiResolvedMethod method, CiStatistics stats) {
-        this(runtime, method, stats, GraphBuilderConfiguration.getDefault());
+    public GraphBuilderPhase(RiRuntime runtime, CiStatistics stats) {
+        this(runtime, stats, GraphBuilderConfiguration.getDefault());
     }
 
-    public GraphBuilderPhase(RiRuntime runtime, RiResolvedMethod method, CiStatistics stats, GraphBuilderConfiguration config) {
+    public GraphBuilderPhase(RiRuntime runtime, CiStatistics stats, GraphBuilderConfiguration config) {
         this.config = config;
         this.runtime = runtime;
-        this.method = method;
         this.stats = stats;
         this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
-        assert method.code() != null : "method must contain bytecodes: " + method;
-        this.stream = new BytecodeStream(method.code());
-        this.constantPool = method.getConstantPool();
     }
 
     @Override
     protected void run(StructuredGraph graph) {
+        method = graph.method();
+        assert method.code() != null : "method must contain bytecodes: " + method;
+        this.stream = new BytecodeStream(method.code());
+        this.constantPool = method.getConstantPool();
+        this.blocksOnWorklist = new HashSet<>();
+        this.blocksVisited = new HashSet<>();
+        unwindBlock = null;
+        returnBlock = null;
+        methodSynchronizedObject = null;
+        exceptionHandlers = null;
         assert graph != null;
         this.currentGraph = graph;
         this.frameState = new FrameStateBuilder(method, method.maxLocals(), method.maxStackSize(), graph);
