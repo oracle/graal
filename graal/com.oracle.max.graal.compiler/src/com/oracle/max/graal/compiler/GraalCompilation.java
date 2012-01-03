@@ -23,6 +23,8 @@
 
 package com.oracle.max.graal.compiler;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.max.asm.*;
@@ -112,7 +114,7 @@ public final class GraalCompilation {
 
     public void setOperand(ValueNode valueNode, CiValue operand) {
         assert operand(valueNode) == null : "operand cannot be set twice";
-        assert operand != null && operand.isLegal() : "operand must be legal";
+        assert operand != null && isLegal(operand) : "operand must be legal";
         assert operand.kind.stackKind() == valueNode.kind();
         assert !(valueNode instanceof VirtualObjectNode);
         nodeOperands.set(valueNode, operand);

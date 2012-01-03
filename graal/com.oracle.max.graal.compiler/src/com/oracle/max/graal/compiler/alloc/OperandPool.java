@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.compiler.alloc;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -84,7 +86,7 @@ public final class OperandPool {
     private BitMap mustStayInMemory;
 
     /**
-     * Flags that can be set for {@linkplain CiValue#isVariable() variable} operands.
+     * Flags that can be set for {@linkplain CiValue#xxisVariable() variable} operands.
      */
     public enum VariableFlag {
         /**
@@ -195,12 +197,12 @@ public final class OperandPool {
      * @return the unique number for {@code operand} in the range {@code [0 .. size())}
      */
     public int operandNumber(CiValue operand) {
-        if (operand.isRegister()) {
-            int number = operand.asRegister().number;
+        if (isRegister(operand)) {
+            int number = asRegister(operand).number;
             assert number < firstVariableNumber;
             return number;
         }
-        assert operand.isVariable() : operand;
+        assert isVariable(operand) : operand;
         return firstVariableNumber + ((CiVariable) operand).index;
     }
 

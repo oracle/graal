@@ -36,10 +36,6 @@ public abstract class CiValue implements Serializable {
         public String toString() {
             return "-";
         }
-        @Override
-        public CiRegister asRegister() {
-            return CiRegister.None;
-        }
     };
 
     /**
@@ -55,55 +51,10 @@ public abstract class CiValue implements Serializable {
         this.kind = kind;
     }
 
-    public final boolean isVariableOrRegister() {
-        return this instanceof CiVariable || this instanceof CiRegisterValue;
-    }
-
-    public CiRegister asRegister() {
-        throw new InternalError("Not a register: " + this);
-    }
-
-    public final boolean isIllegal() {
-        return this == IllegalValue;
-    }
-
-    public final boolean isLegal() {
-        return this != IllegalValue;
-    }
-
     /**
-     * Determines if this value represents a slot on a stack. These values are created
-     * by the register allocator for spill slots. They are also used to model method
-     * parameters passed on the stack according to a specific calling convention.
+     * String representation of the kind, which should be the end of all {@link #toString()} implementation of subclasses.
      */
-    public final boolean isStackSlot() {
-        return this instanceof CiStackSlot;
-    }
-
-    public final boolean isRegister() {
-        return this instanceof CiRegisterValue;
-    }
-
-    public final boolean isVariable() {
-        return this instanceof CiVariable;
-    }
-
-    public final boolean isAddress() {
-        return this instanceof CiAddress;
-    }
-
-    public final boolean isConstant() {
-        return this instanceof CiConstant;
-    }
-
-    @Override
-    public abstract String toString();
-
     protected final String kindSuffix() {
         return "|" + kind.typeChar;
-    }
-
-    public final boolean isConstant0() {
-        return isConstant() && ((CiConstant) this).asInt() == 0;
     }
 }

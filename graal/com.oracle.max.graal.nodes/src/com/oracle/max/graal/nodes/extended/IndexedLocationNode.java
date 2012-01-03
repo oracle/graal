@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,7 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
     @Override
     public CiAddress createAddress(LIRGeneratorTool gen, ValueNode object) {
         CiValue base = gen.operand(object);
-        if (base.isConstant() && ((CiConstant) base).isNull()) {
+        if (CiValueUtil.isConstant(base) && ((CiConstant) base).isNull()) {
             base = CiValue.IllegalValue;
         }
 

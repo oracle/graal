@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.asm;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.max.asm.*;
@@ -186,42 +188,12 @@ public class TargetMethodAssembler {
     }
 
 
-    public CiRegister asIntReg(CiValue value) {
-        assert value.kind == CiKind.Int || value.kind == CiKind.Jsr;
-        return asRegister(value);
-    }
-
-    public CiRegister asLongReg(CiValue value) {
-        assert value.kind == CiKind.Long : value.kind;
-        return asRegister(value);
-    }
-
-    public CiRegister asObjectReg(CiValue value) {
-        assert value.kind == CiKind.Object;
-        return asRegister(value);
-    }
-
-    public CiRegister asFloatReg(CiValue value) {
-        assert value.kind == CiKind.Float;
-        return asRegister(value);
-    }
-
-    public CiRegister asDoubleReg(CiValue value) {
-        assert value.kind == CiKind.Double;
-        return asRegister(value);
-    }
-
-    public CiRegister asRegister(CiValue value) {
-        assert value.isRegister();
-        return value.asRegister();
-    }
-
     /**
      * Returns the integer value of any constants that can be represented by a 32-bit integer value,
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(CiValue value) {
-        assert (value.kind.stackKind() == CiKind.Int || value.kind == CiKind.Jsr || value.kind == CiKind.Long) && value.isConstant();
+        assert (value.kind.stackKind() == CiKind.Int || value.kind == CiKind.Jsr || value.kind == CiKind.Long) && isConstant(value);
         long c = ((CiConstant) value).asLong();
         if (!(NumUtil.isInt(c))) {
             throw Util.shouldNotReachHere();
@@ -237,7 +209,7 @@ public class TargetMethodAssembler {
     }
 
     public CiAddress asFloatConstRef(CiValue value, int alignment) {
-        assert value.kind == CiKind.Float && value.isConstant();
+        assert value.kind == CiKind.Float && isConstant(value);
         return recordDataReferenceInCode((CiConstant) value, alignment);
     }
 
@@ -249,12 +221,12 @@ public class TargetMethodAssembler {
     }
 
     public CiAddress asDoubleConstRef(CiValue value, int alignment) {
-        assert value.kind == CiKind.Double && value.isConstant();
+        assert value.kind == CiKind.Double && isConstant(value);
         return recordDataReferenceInCode((CiConstant) value, alignment);
     }
 
     public CiAddress asAddress(CiValue value) {
-        if (value.isStackSlot()) {
+        if (isStackSlot(value)) {
             CiStackSlot slot = (CiStackSlot) value;
             return new CiAddress(slot.kind, compilation.registerConfig.getFrameRegister().asValue(), compilation.frameMap().offsetForStackSlot(slot));
         }

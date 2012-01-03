@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.compiler.debug;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.io.*;
 import java.util.*;
@@ -443,8 +445,8 @@ public class CFGPrinter extends CompilationPrinter {
     }
 
     private void printInterval(Interval interval) {
-        out.printf("%s %s ", interval.operand, (interval.operand.isRegister() ? "fixed" : interval.kind().name()));
-        if (interval.operand.isRegister()) {
+        out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind().name()));
+        if (isRegister(interval.operand)) {
             out.printf("\"[%s|%c]\"", interval.operand, interval.operand.kind.typeChar);
         } else {
             if (interval.location() != null) {

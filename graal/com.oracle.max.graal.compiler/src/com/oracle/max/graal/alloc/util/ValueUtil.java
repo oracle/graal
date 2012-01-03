@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,7 @@ package com.oracle.max.graal.alloc.util;
 
 import com.sun.cri.ci.*;
 
-
-public class ValueUtil {
-
-    public static boolean isIllegal(CiValue value) {
-        assert value != null;
-        assert (value == CiValue.IllegalValue) == (value.kind == CiKind.Illegal);
-        return value == CiValue.IllegalValue;
-    }
-
-    public static boolean isVirtualObject(CiValue value) {
-        assert value != null;
-        return value instanceof CiVirtualObject;
-    }
+public class ValueUtil extends CiValueUtil {
 
     public static boolean isLocation(CiValue value) {
         assert value != null;
@@ -46,69 +34,5 @@ public class ValueUtil {
     public static Location asLocation(CiValue value) {
         assert value != null;
         return (Location) value;
-    }
-
-
-    public static boolean isVariable(CiValue value) {
-        assert value != null;
-        return value instanceof CiVariable;
-    }
-
-    public static CiVariable asVariable(CiValue value) {
-        assert value != null;
-        return (CiVariable) value;
-    }
-
-    public static boolean isConstant(CiValue value) {
-        assert value != null;
-        return value instanceof CiConstant;
-    }
-
-    public static boolean isStackSlot(CiValue value) {
-        assert value != null;
-        return value instanceof CiStackSlot;
-    }
-
-    public static CiStackSlot asStackSlot(CiValue value) {
-        assert value != null;
-        return (CiStackSlot) value;
-    }
-
-
-
-    public static boolean isRegister(CiValue value) {
-        assert value != null;
-        return value instanceof CiRegisterValue;
-    }
-
-    public static CiRegister asRegister(CiValue value) {
-        assert value != null;
-        return ((CiRegisterValue) value).reg;
-    }
-
-
-    public static CiRegister asIntReg(CiValue value) {
-        assert value.kind == CiKind.Int || value.kind == CiKind.Jsr;
-        return asRegister(value);
-    }
-
-    public static CiRegister asLongReg(CiValue value) {
-        assert value.kind == CiKind.Long : value.kind;
-        return asRegister(value);
-    }
-
-    public static CiRegister asObjectReg(CiValue value) {
-        assert value.kind == CiKind.Object;
-        return asRegister(value);
-    }
-
-    public static CiRegister asFloatReg(CiValue value) {
-        assert value.kind == CiKind.Float;
-        return asRegister(value);
-    }
-
-    public static CiRegister asDoubleReg(CiValue value) {
-        assert value.kind == CiKind.Double;
-        return asRegister(value);
     }
 }

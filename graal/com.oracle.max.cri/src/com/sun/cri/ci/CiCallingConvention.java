@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.sun.cri.ci;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import com.sun.cri.ri.*;
 
@@ -98,7 +100,7 @@ public class CiCallingConvention {
     private boolean verify() {
         for (int i = 0; i < locations.length; i++) {
             CiValue location = locations[i];
-            assert location.isStackSlot() || location.isRegister();
+            assert isStackSlot(location) || isRegister(location);
         }
         return true;
     }

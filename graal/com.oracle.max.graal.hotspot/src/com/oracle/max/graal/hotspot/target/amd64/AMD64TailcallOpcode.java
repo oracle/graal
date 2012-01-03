@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.hotspot.target.amd64;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -60,18 +62,18 @@ public enum AMD64TailcallOpcode implements LIROpcode {
                 // TODO: These moves should not be part of the TAILCALL opcode, but emitted as separate MOVE instructions before.
                 for (int i = 0; i < inputs.length - 1; i++) {
                     assert inputs[i].kind == CiKind.Object || inputs[i].kind == CiKind.Int || inputs[i].kind == CiKind.Long : "only Object, int and long supported for now";
-                    assert temps[i].isRegister() : "too many parameters";
-                    if (inputs[i].isRegister()) {
-                        masm.movq(temps[i].asRegister(), inputs[i].asRegister());
+                    assert isRegister(temps[i]) : "too many parameters";
+                    if (isRegister(inputs[i])) {
+                        masm.movq(asRegister(temps[i]), asRegister(inputs[i]));
                     } else {
-                        masm.movq(temps[i].asRegister(), tasm.asAddress(inputs[i]));
+                        masm.movq(asRegister(temps[i]), tasm.asAddress(inputs[i]));
                     }
                 }
                 // destroy the current frame (now the return address is the top of stack)
                 masm.leave();
 
                 // jump to the target method
-                masm.jmp(inputs[inputs.length - 1].asRegister());
+                masm.jmp(asRegister(inputs[inputs.length - 1]));
                 masm.ensureUniquePC();
                 break;
             }

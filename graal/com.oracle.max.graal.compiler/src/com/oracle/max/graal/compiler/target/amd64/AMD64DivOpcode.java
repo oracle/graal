@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
@@ -42,7 +44,7 @@ public enum AMD64DivOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, info, inputs, alives, temps) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                emit(tasm, masm, tasm.asRegister(result()), info, tasm.asRegister(input(0)), tasm.asRegister(alive(0)));
+                emit(tasm, masm, asRegister(result()), info, asRegister(input(0)), asRegister(alive(0)));
             }
         };
     }

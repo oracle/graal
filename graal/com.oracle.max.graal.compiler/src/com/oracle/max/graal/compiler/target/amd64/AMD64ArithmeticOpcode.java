@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.compiler.target.amd64;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -46,7 +48,7 @@ public enum AMD64ArithmeticOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, null, inputs, alives, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                assert !(alive(0) instanceof CiRegisterValue) || tasm.asRegister(result()) != tasm.asRegister(alive(0)) : "result and right must be different registers";
+                assert !(alive(0) instanceof CiRegisterValue) || asRegister(result()) != asRegister(alive(0)) : "result and right must be different registers";
                 AMD64MoveOpcode.move(tasm, masm, result(), input(0));
                 emit(tasm, masm, result(), alive(0));
             }
@@ -64,9 +66,9 @@ public enum AMD64ArithmeticOpcode implements LIROpcode {
     }
 
     protected void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue leftAndResult, CiValue right) {
-        CiRegister dst = tasm.asRegister(leftAndResult);
-        if (right.isRegister()) {
-            CiRegister rreg = tasm.asRegister(right);
+        CiRegister dst = asRegister(leftAndResult);
+        if (isRegister(right)) {
+            CiRegister rreg = asRegister(right);
             switch (this) {
                 case IADD: masm.addl(dst,  rreg); break;
                 case ISUB: masm.subl(dst,  rreg); break;
@@ -88,7 +90,7 @@ public enum AMD64ArithmeticOpcode implements LIROpcode {
                 case DDIV: masm.divsd(dst, rreg); break;
                 default:   throw Util.shouldNotReachHere();
             }
-        } else if (right.isConstant()) {
+        } else if (isConstant(right)) {
             switch (this) {
                 case IADD: masm.incrementl(dst, tasm.asIntConst(right)); break;
                 case ISUB: masm.decrementl(dst, tasm.asIntConst(right)); break;

@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.alloc;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.max.criutils.*;
@@ -126,7 +128,7 @@ final class MoveResolver {
         usedRegs.clear();
         for (i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
-            if (interval != null && !interval.location().isRegister()) {
+            if (interval != null && !isRegister(interval.location())) {
                 usedRegs.add(interval.location());
             }
         }
@@ -141,8 +143,8 @@ final class MoveResolver {
     // mark assignedReg and assignedRegHi of the interval as blocked
     private void blockRegisters(Interval interval) {
         CiValue location = interval.location();
-        if (location.isRegister()) {
-            int reg = location.asRegister().number;
+        if (isRegister(location)) {
+            int reg = asRegister(location).number;
             assert multipleReadsAllowed || registerBlocked(reg) == 0 : "register already marked as used";
             setRegisterBlocked(reg, 1);
         }
@@ -151,8 +153,8 @@ final class MoveResolver {
     // mark assignedReg and assignedRegHi of the interval as unblocked
     private void unblockRegisters(Interval interval) {
         CiValue location = interval.location();
-        if (location.isRegister()) {
-            int reg = location.asRegister().number;
+        if (isRegister(location)) {
+            int reg = asRegister(location).number;
             assert registerBlocked(reg) > 0 : "register already marked as unused";
             setRegisterBlocked(reg, -1);
         }
@@ -166,8 +168,8 @@ final class MoveResolver {
         CiValue fromReg = from != null ? from.location() : null;
 
         CiValue reg = to.location();
-        if (reg.isRegister()) {
-            if (registerBlocked(reg.asRegister().number) > 1 || (registerBlocked(reg.asRegister().number) == 1 && reg != fromReg)) {
+        if (isRegister(reg)) {
+            if (registerBlocked(asRegister(reg).number) > 1 || (registerBlocked(asRegister(reg).number) == 1 && reg != fromReg)) {
                 return false;
             }
         }
@@ -251,7 +253,7 @@ final class MoveResolver {
                     mappingTo.remove(i);
 
                     processedInterval = true;
-                } else if (fromInterval != null && fromInterval.location().isRegister()) {
+                } else if (fromInterval != null && isRegister(fromInterval.location())) {
                     // this interval cannot be processed now because target is not free
                     // it starts in a register, so it is a possible candidate for spilling
                     spillCandidate = i;
@@ -339,7 +341,7 @@ final class MoveResolver {
         if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.println("MoveResolver: adding mapping from %s to %d (%s)", fromOpr, toInterval.operandNumber, toInterval.location());
         }
-        assert fromOpr.isConstant() : "only for constants";
+        assert isConstant(fromOpr) : "only for constants";
 
         mappingFrom.add(null);
         mappingFromOpr.add(fromOpr);

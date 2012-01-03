@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.compiler.target.amd64;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -66,12 +68,12 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
                 if (op.marks != null) {
                     op.marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
                 }
-                CiRegister reg = tasm.asRegister(op.targetAddress());
+                CiRegister reg = asRegister(op.targetAddress());
                 indirectCall(tasm, masm, reg, op.target, op.info);
                 break;
             }
             case NATIVE_CALL: {
-                CiRegister reg = tasm.asRegister(op.targetAddress());
+                CiRegister reg = asRegister(op.targetAddress());
                 indirectCall(tasm, masm, reg, op.target, op.info);
                 break;
             }
@@ -101,7 +103,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
 
         directCall(tasm, masm, stub.stubObject, info);
 
-        if (result.isLegal()) {
+        if (isLegal(result)) {
             AMD64MoveOpcode.move(tasm, masm, result, stub.outResult.asOutArg());
         }
 

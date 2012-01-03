@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.compiler.target.amd64;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
@@ -47,11 +49,11 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
     }
 
     private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CompilerStub stub, CiValue input, CiValue scratch) {
-        CiRegister dst = tasm.asLongReg(result);
-        CiRegister tmp = tasm.asLongReg(scratch);
+        CiRegister dst = asLongReg(result);
+        CiRegister tmp = asLongReg(scratch);
         switch (this) {
-            case F2L: masm.cvttss2siq(dst, tasm.asFloatReg(input)); break;
-            case D2L: masm.cvttsd2siq(dst, tasm.asDoubleReg(input)); break;
+            case F2L: masm.cvttss2siq(dst, asFloatReg(input)); break;
+            case D2L: masm.cvttsd2siq(dst, asDoubleReg(input)); break;
             default: throw Util.shouldNotReachHere();
         }
 

@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
 import static com.sun.cri.ci.CiValue.*;
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -190,7 +191,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                 case PointerStore: {
                     CiValue value = assureNot64BitConstant(tasm, masm, operands[inst.y().index]);
                     CiValue pointer = operands[inst.x().index];
-                    assert pointer.isVariableOrRegister();
+                    assert isRegister(pointer);
 
                     AMD64MoveOpcode.store(tasm, masm, new CiAddress(inst.kind, pointer, 0), value, inst.kind, (Boolean) inst.extra ? info : null);
                     break;
@@ -208,10 +209,10 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue index = operands[inst.y().index];
 
                     pointer = assureInRegister(tasm, masm, pointer);
-                    assert pointer.isVariableOrRegister();
+                    assert isRegister(pointer);
 
                     CiAddress src;
-                    if (index.isConstant()) {
+                    if (isConstant(index)) {
                         assert index.kind == CiKind.Int;
                         CiConstant constantIndex = (CiConstant) index;
                         src = new CiAddress(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
@@ -234,9 +235,9 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue index = operands[inst.y().index];
 
                     pointer = assureInRegister(tasm, masm, pointer);
-                    assert pointer.isVariableOrRegister();
+                    assert isRegister(pointer);
                     CiAddress src = new CiAddress(CiKind.Illegal, pointer, index, scale, displacement);
-                    masm.leaq(result.asRegister(), src);
+                    masm.leaq(asRegister(result), src);
                     break;
                 }
 
@@ -252,10 +253,10 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue index = operands[inst.y().index];
 
                     pointer = assureInRegister(tasm, masm, pointer);
-                    assert pointer.isVariableOrRegister();
+                    assert isRegister(pointer);
 
                     CiAddress dst;
-                    if (index.isConstant()) {
+                    if (isConstant(index)) {
                         assert index.kind == CiKind.Int;
                         CiConstant constantIndex = (CiConstant) index;
                         dst = new CiAddress(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
@@ -268,21 +269,21 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                 }
 
                 case RepeatMoveBytes:
-                    assert operands[inst.x().index].asRegister().equals(AMD64.rsi) : "wrong input x: " + operands[inst.x().index];
-                    assert operands[inst.y().index].asRegister().equals(AMD64.rdi) : "wrong input y: " + operands[inst.y().index];
-                    assert operands[inst.z().index].asRegister().equals(AMD64.rcx) : "wrong input z: " + operands[inst.z().index];
+                    assert asRegister(operands[inst.x().index]).equals(AMD64.rsi) : "wrong input x: " + operands[inst.x().index];
+                    assert asRegister(operands[inst.y().index]).equals(AMD64.rdi) : "wrong input y: " + operands[inst.y().index];
+                    assert asRegister(operands[inst.z().index]).equals(AMD64.rcx) : "wrong input z: " + operands[inst.z().index];
                     masm.repeatMoveBytes();
                     break;
 
                 case RepeatMoveWords:
-                    assert operands[inst.x().index].asRegister().equals(AMD64.rsi) : "wrong input x: " + operands[inst.x().index];
-                    assert operands[inst.y().index].asRegister().equals(AMD64.rdi) : "wrong input y: " + operands[inst.y().index];
-                    assert operands[inst.z().index].asRegister().equals(AMD64.rcx) : "wrong input z: " + operands[inst.z().index];
+                    assert asRegister(operands[inst.x().index]).equals(AMD64.rsi) : "wrong input x: " + operands[inst.x().index];
+                    assert asRegister(operands[inst.y().index]).equals(AMD64.rdi) : "wrong input y: " + operands[inst.y().index];
+                    assert asRegister(operands[inst.z().index]).equals(AMD64.rcx) : "wrong input z: " + operands[inst.z().index];
                     masm.repeatMoveWords();
                     break;
 
                 case PointerCAS:
-                    assert operands[inst.x().index].asRegister().equals(AMD64.rax) : "wrong input x: " + operands[inst.x().index];
+                    assert asRegister(operands[inst.x().index]).equals(AMD64.rax) : "wrong input x: " + operands[inst.x().index];
 
                     CiValue exchangedVal = operands[inst.y().index];
                     CiValue exchangedAddress = operands[inst.x().index];
@@ -292,7 +293,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     if ((Boolean) inst.extra && info != null) {
                         tasm.recordImplicitException(masm.codeBuffer.position(), info);
                     }
-                    masm.cmpxchgq(exchangedVal.asRegister(), addr);
+                    masm.cmpxchgq(asRegister(exchangedVal), addr);
 
                     break;
 
@@ -347,10 +348,10 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     Label label = labels[((XirLabel) inst.extra).index];
                     CiValue value = operands[inst.x().index];
                     if (value.kind == CiKind.Long) {
-                        masm.decq(value.asRegister());
+                        masm.decq(asRegister(value));
                     } else {
                         assert value.kind == CiKind.Int;
-                        masm.decl(value.asRegister());
+                        masm.decl(asRegister(value));
                     }
                     masm.jcc(ConditionFlag.notZero, label);
                     break;
@@ -401,7 +402,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue pointer = operands[inst.x().index];
                     CiValue offset = operands[inst.y().index];
                     CiValue bit = operands[inst.z().index];
-                    assert offset.isConstant() && bit.isConstant();
+                    assert isConstant(offset) && isConstant(bit);
                     CiConstant constantOffset = (CiConstant) offset;
                     CiConstant constantBit = (CiConstant) bit;
                     CiAddress src = new CiAddress(inst.kind, pointer, constantOffset.asInt());
@@ -424,7 +425,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                 case NullCheck: {
                     tasm.recordImplicitException(masm.codeBuffer.position(), info);
                     CiValue pointer = operands[inst.x().index];
-                    masm.nullCheck(pointer.asRegister());
+                    masm.nullCheck(asRegister(pointer));
                     break;
                 }
                 case Align: {
@@ -475,13 +476,13 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                 }
                 case Push: {
                     CiRegisterValue value = assureInRegister(tasm, masm, operands[inst.x().index]);
-                    masm.push(value.asRegister());
+                    masm.push(asRegister(value));
                     break;
                 }
                 case Pop: {
                     CiValue result = operands[inst.result.index];
-                    if (result.isRegister()) {
-                        masm.pop(result.asRegister());
+                    if (isRegister(result)) {
+                        masm.pop(asRegister(result));
                     } else {
                         CiRegister rscratch = tasm.compilation.registerConfig.getScratchRegister();
                         masm.pop(rscratch);
@@ -537,7 +538,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
         } else if (code instanceof AMD64MulOpcode) {
             ((AMD64MulOpcode) code).emit(tasm, masm, left, right);
         } else if (code instanceof AMD64DivOpcode) {
-            ((AMD64DivOpcode) code).emit(tasm, masm, tasm.asRegister(result), null, tasm.asRegister(left), tasm.asRegister(right));
+            ((AMD64DivOpcode) code).emit(tasm, masm, asRegister(result), null, asRegister(left), asRegister(right));
         } else if (code instanceof AMD64ShiftOpcode) {
             ((AMD64ShiftOpcode) code).emit(tasm, masm, left, right);
         }
@@ -570,7 +571,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
     }
 
     private static CiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue value) {
-        if (value.isConstant() && (value.kind == CiKind.Long || value.kind == CiKind.Object)) {
+        if (isConstant(value) && (value.kind == CiKind.Long || value.kind == CiKind.Object)) {
             CiRegisterValue register = tasm.compilation.registerConfig.getScratchRegister().asValue(value.kind);
             AMD64MoveOpcode.move(tasm, masm, register, value);
             return register;
@@ -579,13 +580,13 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
     }
 
     private static CiRegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue pointer) {
-        if (pointer.isConstant()) {
+        if (isConstant(pointer)) {
             CiRegisterValue register = tasm.compilation.registerConfig.getScratchRegister().asValue(pointer.kind);
             AMD64MoveOpcode.move(tasm, masm, register, pointer);
             return register;
         }
 
-        assert pointer.isRegister() : "should be register, but is: " + pointer;
+        assert isRegister(pointer) : "should be register, but is: " + pointer;
         return (CiRegisterValue) pointer;
     }
 }

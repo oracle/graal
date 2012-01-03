@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.max.graal.compiler.target.amd64;
+
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
@@ -142,7 +144,7 @@ public class AMD64ControlFlowOpcode {
             return new AMD64LIRInstruction(this, CiValue.IllegalValue, null, LIRInstruction.NO_OPERANDS, alives, temps) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    tableswitch(tasm, masm, lowKey, defaultTarget, targets, tasm.asIntReg(alive(0)), tasm.asLongReg(temp(0)));
+                    tableswitch(tasm, masm, lowKey, defaultTarget, targets, asIntReg(alive(0)), asLongReg(temp(0)));
                 }
 
                 @Override
@@ -295,17 +297,17 @@ public class AMD64ControlFlowOpcode {
     }
 
     private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, ConditionFlag cond, CiValue other) {
-        if (other.isRegister()) {
-            assert tasm.asRegister(other) != tasm.asRegister(result) : "other already overwritten by previous move";
+        if (isRegister(other)) {
+            assert asRegister(other) != asRegister(result) : "other already overwritten by previous move";
             switch (other.kind) {
-                case Int:  masm.cmovl(cond, tasm.asRegister(result), tasm.asRegister(other)); break;
-                case Long: masm.cmovq(cond, tasm.asRegister(result), tasm.asRegister(other)); break;
+                case Int:  masm.cmovl(cond, asRegister(result), asRegister(other)); break;
+                case Long: masm.cmovq(cond, asRegister(result), asRegister(other)); break;
                 default:   throw Util.shouldNotReachHere();
             }
         } else {
             switch (other.kind) {
-                case Int:  masm.cmovl(cond, tasm.asRegister(result), tasm.asAddress(other)); break;
-                case Long: masm.cmovq(cond, tasm.asRegister(result), tasm.asAddress(other)); break;
+                case Int:  masm.cmovl(cond, asRegister(result), tasm.asAddress(other)); break;
+                case Long: masm.cmovq(cond, asRegister(result), tasm.asAddress(other)); break;
                 default:   throw Util.shouldNotReachHere();
             }
         }

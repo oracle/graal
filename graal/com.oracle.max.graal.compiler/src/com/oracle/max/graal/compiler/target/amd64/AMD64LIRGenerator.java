@@ -35,6 +35,7 @@ import static com.oracle.max.graal.compiler.target.amd64.AMD64MulOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64Op1Opcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64ShiftOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64StandardOpcode.*;
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
@@ -400,7 +401,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private CiValue loadShiftCount(CiValue value) {
-        if (value.isConstant()) {
+        if (isConstant(value)) {
             return value;
         }
         // Non-constant shift count must be in RCX

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.max.graal.hotspot;
 
 import static com.oracle.max.graal.hotspot.TemplateFlag.*;
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -119,7 +120,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 XirOperand cache = asm.createRegisterTemp("cache (rax)", target.wordKind, AMD64.rax);
 
                 CiCallingConvention conventions = registerConfig.getCallingConvention(JavaCallee, new CiKind[] {CiKind.Object}, target, false);
-                XirOperand receiver = asm.createRegister("receiver", target.wordKind, conventions.locations[0].asRegister());
+                XirOperand receiver = asm.createRegister("receiver", target.wordKind, asRegister(conventions.locations[0]));
 
                 asm.pload(target.wordKind, temp, receiver, asm.i(config.hubOffset), false);
                 asm.jneq(unverifiedStub, cache, temp);
@@ -348,7 +349,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.callRuntime(config.fastMonitorEnterStub, null, useInfoAfter, object, lock);
             } else {
                 asm.reserveOutgoingStack(target.wordSize * 2);
-                XirOperand rsp = asm.createRegister("rsp", target.wordKind, AMD64.RSP.asRegister());
+                XirOperand rsp = asm.createRegister("rsp", target.wordKind, asRegister(AMD64.RSP));
                 asm.pstore(CiKind.Object, rsp, asm.i(target.wordSize), object, false);
                 asm.pstore(target.wordKind, rsp, asm.i(0), lock, false);
                 asm.callRuntime(config.monitorEnterStub, null, useInfoAfter);
@@ -377,7 +378,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.callRuntime(config.fastMonitorExitStub, null, object, lock);
             } else {
                 asm.reserveOutgoingStack(target.wordSize);
-                asm.pstore(target.wordKind, asm.createRegister("rsp", target.wordKind, AMD64.RSP.asRegister()), asm.i(0), lock, false);
+                asm.pstore(target.wordKind, asm.createRegister("rsp", target.wordKind, asRegister(AMD64.RSP)), asm.i(0), lock, false);
                 asm.callRuntime(config.monitorExitStub, null);
             }
 

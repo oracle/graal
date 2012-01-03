@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -151,8 +152,8 @@ public class AMD64CompilerStubEmitter {
         for (XirTemp t : template.temps) {
             if (t instanceof XirRegister) {
                 final XirRegister fixed = (XirRegister) t;
-                if (fixed.register.isRegister()) {
-                    allocatableRegisters.remove(fixed.register.asRegister());
+                if (isRegister(fixed.register)) {
+                    allocatableRegisters.remove(asRegister(fixed.register));
                 }
             }
         }
@@ -323,7 +324,7 @@ public class AMD64CompilerStubEmitter {
         CiCallingConvention cc = comp.registerConfig.getCallingConvention(RuntimeCall, call.arguments, comp.compiler.target, false);
         for (int i = 0; i < cc.locations.length; ++i) {
             CiValue location = cc.locations[i];
-            asm.movq(location.asRegister(), tasm.asAddress(inArgs[i]));
+            asm.movq(asRegister(location), tasm.asAddress(inArgs[i]));
         }
 
         if (GraalOptions.AlignCallsForPatching) {

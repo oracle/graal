@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.max.graal.compiler.alloc;
 
 import static com.sun.cri.ci.CiUtil.*;
+import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -88,7 +89,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     void excludeFromUse(Interval i) {
         CiValue location = i.location();
-        int i1 = location.asRegister().number;
+        int i1 = asRegister(location).number;
         if (i1 >= availableRegs[0].number && i1 <= availableRegs[availableRegs.length - 1].number) {
             usePos[i1] = 0;
         }
@@ -97,7 +98,7 @@ final class LinearScanWalker extends IntervalWalker {
     void setUsePos(Interval interval, int usePos, boolean onlyProcessUsePos) {
         if (usePos != -1) {
             assert usePos != 0 : "must use excludeFromUse to set usePos to 0";
-            int i = interval.location().asRegister().number;
+            int i = asRegister(interval.location()).number;
             if (i >= availableRegs[0].number && i <= availableRegs[availableRegs.length - 1].number) {
                 if (this.usePos[i] > usePos) {
                     this.usePos[i] = usePos;
@@ -111,7 +112,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     void setBlockPos(Interval i, int blockPos) {
         if (blockPos != -1) {
-            int reg = i.location().asRegister().number;
+            int reg = asRegister(i.location()).number;
             if (reg >= availableRegs[0].number && reg <= availableRegs[availableRegs.length - 1].number) {
                 if (this.blockPos[reg] > blockPos) {
                     this.blockPos[reg] = blockPos;
@@ -126,7 +127,7 @@ final class LinearScanWalker extends IntervalWalker {
     void freeExcludeActiveFixed() {
         Interval interval = activeLists.get(RegisterBinding.Fixed);
         while (interval != Interval.EndMarker) {
-            assert interval.location().isRegister() : "active interval must have a register assigned";
+            assert isRegister(interval.location()) : "active interval must have a register assigned";
             excludeFromUse(interval);
             interval = interval.next;
         }
@@ -135,7 +136,7 @@ final class LinearScanWalker extends IntervalWalker {
     void freeExcludeActiveAny() {
         Interval interval = activeLists.get(RegisterBinding.Any);
         while (interval != Interval.EndMarker) {
-            assert interval.location().isRegister() : "active interval must have a register assigned";
+            assert isRegister(interval.location()) : "active interval must have a register assigned";
             excludeFromUse(interval);
             interval = interval.next;
         }
@@ -486,7 +487,7 @@ final class LinearScanWalker extends IntervalWalker {
             while (parent != null && parent.isSplitChild()) {
                 parent = parent.getSplitChildBeforeOpId(parent.from());
 
-                if (parent.location().isRegister()) {
+                if (isRegister(parent.location())) {
                     if (parent.firstUsage(RegisterPriority.ShouldHaveRegister) == Integer.MAX_VALUE) {
                         // parent is never used, so kick it out of its assigned register
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -608,8 +609,8 @@ final class LinearScanWalker extends IntervalWalker {
 
         CiRegister hint = null;
         Interval locationHint = interval.locationHint(true);
-        if (locationHint != null && locationHint.location() != null && locationHint.location().isRegister()) {
-            hint = locationHint.location().asRegister();
+        if (locationHint != null && locationHint.location() != null && isRegister(locationHint.location())) {
+            hint = asRegister(locationHint.location());
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("      hint register %d from interval %s", hint.number, locationHint.logString(allocator));
             }
@@ -670,7 +671,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     CiRegister findLockedRegister(int regNeededUntil, int intervalTo, CiValue ignoreReg, boolean[] needSplit) {
         int maxReg = -1;
-        CiRegister ignore = ignoreReg.isRegister() ? ignoreReg.asRegister() : null;
+        CiRegister ignore = isRegister(ignoreReg) ? asRegister(ignoreReg) : null;
 
         for (CiRegister reg : availableRegs) {
             int i = reg.number;
@@ -738,7 +739,7 @@ final class LinearScanWalker extends IntervalWalker {
         assert regNeededUntil > 0 && regNeededUntil < Integer.MAX_VALUE : "interval has no use";
 
         CiRegister reg = null;
-        CiRegister ignore = interval.location() != null && interval.location().isRegister() ? interval.location().asRegister() : null;
+        CiRegister ignore = interval.location() != null && isRegister(interval.location()) ? asRegister(interval.location()) : null;
         for (CiRegister availableReg : availableRegs) {
             int number = availableReg.number;
             if (availableReg == ignore) {
@@ -833,7 +834,7 @@ final class LinearScanWalker extends IntervalWalker {
 
         CiValue input = op.input(0);
         CiValue result = op.result();
-        return input.isVariable() && result.isVariable() && input == from.operand && result == to.operand;
+        return isVariable(input) && isVariable(result) && input == from.operand && result == to.operand;
     }
 
     // optimization (especially for phi functions of nested loops):
@@ -881,7 +882,7 @@ final class LinearScanWalker extends IntervalWalker {
         assert interval.firstUsage(RegisterPriority.MustHaveRegister) == beginPos : "must have use position at begin of interval because of move";
         assert endHint.firstUsage(RegisterPriority.MustHaveRegister) == endPos : "must have use position at begin of interval because of move";
 
-        if (beginHint.location().isRegister()) {
+        if (isRegister(beginHint.location())) {
             // registerHint is not spilled at beginPos : so it would not be benefitial to immediately spill cur
             return;
         }
@@ -909,7 +910,7 @@ final class LinearScanWalker extends IntervalWalker {
         }
 
         final CiValue operand = interval.operand;
-        if (interval.location() != null && interval.location().isStackSlot()) {
+        if (interval.location() != null && isStackSlot(interval.location())) {
             // activating an interval that has a stack slot assigned . split it at first use position
             // used for method parameters
             if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -919,7 +920,7 @@ final class LinearScanWalker extends IntervalWalker {
             result = false;
 
         } else {
-            if (operand.isVariable() && allocator.operands.mustStartInMemory((CiVariable) operand)) {
+            if (isVariable(operand) && allocator.operands.mustStartInMemory((CiVariable) operand)) {
                 assert interval.location() == null : "register already assigned";
                 allocator.assignSpillSlot(interval);
 
@@ -951,7 +952,7 @@ final class LinearScanWalker extends IntervalWalker {
                 }
 
                 // spilled intervals need not be move to active-list
-                if (!interval.location().isRegister()) {
+                if (!isRegister(interval.location())) {
                     result = false;
                 }
             }

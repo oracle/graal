@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.max.asm.target.amd64;
 
+import static com.sun.cri.ci.CiValueUtil.*;
 import static com.oracle.max.asm.NumUtil.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 import static com.oracle.max.cri.intrinsics.MemoryBarriers.*;
@@ -166,9 +167,9 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     private void emitOperandHelper(CiRegister reg, CiAddress addr) {
-        CiRegister base = addr.base();
+        CiRegister base = isLegal(addr.base) ? asRegister(addr.base) : CiRegister.None;
+        CiRegister index = isLegal(addr.index) ? asRegister(addr.index) : CiRegister.None;
 
-        CiRegister index = addr.index();
         CiAddress.Scale scale = addr.scale;
         int disp = addr.displacement;
 
@@ -2203,29 +2204,34 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
+    private static boolean needsRex(CiValue value) {
+        return isRegister(value) && asRegister(value).encoding >= MinEncodingNeedsRex;
+    }
+
+
     private void prefix(CiAddress adr) {
-        if (adr.base().encoding >= MinEncodingNeedsRex) {
-            if (adr.index().encoding >= MinEncodingNeedsRex) {
+        if (needsRex(adr.base)) {
+            if (needsRex(adr.index)) {
                 emitByte(Prefix.REXXB);
             } else {
                 emitByte(Prefix.REXB);
             }
         } else {
-            if (adr.index().encoding >= MinEncodingNeedsRex) {
+            if (needsRex(adr.index)) {
                 emitByte(Prefix.REXX);
             }
         }
     }
 
     private void prefixq(CiAddress adr) {
-        if (adr.base().encoding >= MinEncodingNeedsRex) {
-            if (adr.index().encoding >= MinEncodingNeedsRex) {
+        if (needsRex(adr.base)) {
+            if (needsRex(adr.index)) {
                 emitByte(Prefix.REXWXB);
             } else {
                 emitByte(Prefix.REXWB);
             }
         } else {
-            if (adr.index().encoding >= MinEncodingNeedsRex) {
+            if (needsRex(adr.index)) {
                 emitByte(Prefix.REXWX);
             } else {
                 emitByte(Prefix.REXW);
@@ -2235,28 +2241,28 @@ public class AMD64Assembler extends AbstractAssembler {
 
     private void prefix(CiAddress adr, CiRegister reg) {
         if (reg.encoding < 8) {
-            if (adr.base().encoding >= MinEncodingNeedsRex) {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+            if (needsRex(adr.base)) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXXB);
                 } else {
                     emitByte(Prefix.REXB);
                 }
             } else {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXX);
                 } else if (reg.encoding >= 4) {
                     emitByte(Prefix.REX);
                 }
             }
         } else {
-            if (adr.base().encoding >= MinEncodingNeedsRex) {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+            if (needsRex(adr.base)) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXRXB);
                 } else {
                     emitByte(Prefix.REXRB);
                 }
             } else {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXRX);
                 } else {
                     emitByte(Prefix.REXR);
@@ -2267,28 +2273,28 @@ public class AMD64Assembler extends AbstractAssembler {
 
     private void prefixq(CiAddress adr, CiRegister src) {
         if (src.encoding < 8) {
-            if (adr.base().encoding >= MinEncodingNeedsRex) {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+            if (needsRex(adr.base)) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXWXB);
                 } else {
                     emitByte(Prefix.REXWB);
                 }
             } else {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXWX);
                 } else {
                     emitByte(Prefix.REXW);
                 }
             }
         } else {
-            if (adr.base().encoding >= MinEncodingNeedsRex) {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+            if (needsRex(adr.base)) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXWRXB);
                 } else {
                     emitByte(Prefix.REXWRB);
                 }
             } else {
-                if (adr.index().encoding >= MinEncodingNeedsRex) {
+                if (needsRex(adr.index)) {
                     emitByte(Prefix.REXWRX);
                 } else {
                     emitByte(Prefix.REXWR);

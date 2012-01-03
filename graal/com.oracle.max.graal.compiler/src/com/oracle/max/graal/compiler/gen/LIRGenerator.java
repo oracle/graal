@@ -119,11 +119,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public CiValue setResult(ValueNode x, CiValue operand) {
-        assert (operand.isVariable() && x.kind() == operand.kind) || (operand.isConstant() && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
+        assert (isVariable(operand) && x.kind() == operand.kind) || (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
 
         compilation.setOperand(x, operand);
         if (GraalOptions.DetailedAsserts) {
-            if (operand.isVariable()) {
+            if (isVariable(operand)) {
                 operands.recordResult((CiVariable) operand, x);
             }
         }
@@ -132,21 +132,21 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     public CiVariable load(CiValue value) {
-        if (!value.isVariable()) {
+        if (!isVariable(value)) {
             return emitMove(value);
         }
         return (CiVariable) value;
     }
 
     public CiValue loadNonConst(CiValue value) {
-        if (value.isConstant() && !canInlineConstant((CiConstant) value)) {
+        if (isConstant(value) && !canInlineConstant((CiConstant) value)) {
             return emitMove(value);
         }
         return value;
     }
 
     public CiValue loadForStore(CiValue value, CiKind storeKind) {
-        if (value.isConstant() && canStoreConstant((CiConstant) value)) {
+        if (isConstant(value) && canStoreConstant((CiConstant) value)) {
             return value;
         }
         if (storeKind == CiKind.Byte || storeKind == CiKind.Boolean) {
@@ -771,7 +771,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             append(StandardOpcode.INDIRECT_CALL.create(target, resultOperand, argList, destinationAddress, callInfo, snippet.marks));
         }
 
-        if (resultOperand.isLegal()) {
+        if (isLegal(resultOperand)) {
             setResult(x.node(), emitMove(resultOperand));
         }
     }
@@ -845,7 +845,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         append(StandardOpcode.DIRECT_CALL.create(runtimeCall, physReg, argumentList, null, info, null));
 
-        if (physReg.isLegal()) {
+        if (isLegal(physReg)) {
             return emitMove(physReg);
         } else {
             return null;
@@ -874,7 +874,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         append(StandardOpcode.DIRECT_CALL.create(x.call(), resultOperand, argList, null, info, null));
 
-        if (resultOperand.isLegal()) {
+        if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
         }
     }
@@ -1170,11 +1170,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         CiValue allocatedResultOperand = operandsArray[resultOperand.index];
-        if (!allocatedResultOperand.isVariableOrRegister()) {
+        if (!isVariable(allocatedResultOperand) && !isRegister(allocatedResultOperand)) {
             allocatedResultOperand = IllegalValue;
         }
 
-        if (setInstructionResult && allocatedResultOperand.isLegal()) {
+        if (setInstructionResult && isLegal(allocatedResultOperand)) {
             CiValue operand = compilation.operand(instruction);
             if (operand == null) {
                 setResult(instruction, allocatedResultOperand);
@@ -1185,7 +1185,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
         XirInstruction[] slowPath = snippet.template.slowPath;
-        if (!operandsArray[resultOperand.index].isConstant() || snippet.template.fastPath.length != 0 || (slowPath != null && slowPath.length > 0)) {
+        if (!isConstant(operandsArray[resultOperand.index]) || snippet.template.fastPath.length != 0 || (slowPath != null && slowPath.length > 0)) {
             // XIR instruction is only needed when the operand is not a constant!
             append(StandardOpcode.XIR.create(snippet, operandsArray, allocatedResultOperand,
                     inputOperandArray, tempOperandArray, inputOperandIndicesArray, tempOperandIndicesArray,

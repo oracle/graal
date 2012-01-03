@@ -52,9 +52,4 @@ public final class CiRegisterValue extends CiValue {
     public String toString() {
         return reg.name + kindSuffix();
     }
-
-    @Override
-    public CiRegister asRegister() {
-        return reg;
-    }
 }

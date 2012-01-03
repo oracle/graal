@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
@@ -38,7 +40,7 @@ public enum AMD64MulOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, null, inputs, alives, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                assert !(alive(0) instanceof CiRegisterValue) || tasm.asRegister(result()) != tasm.asRegister(alive(0)) : "result and right must be different registers";
+                assert !(alive(0) instanceof CiRegisterValue) || asRegister(result()) != asRegister(alive(0)) : "result and right must be different registers";
                 AMD64MoveOpcode.move(tasm, masm, result(), input(0));
                 emit(tasm, masm, result(), alive(0));
             }
@@ -56,11 +58,11 @@ public enum AMD64MulOpcode implements LIROpcode {
     }
 
     protected void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue leftAndResult, CiValue right) {
-        CiRegister dst = tasm.asRegister(leftAndResult);
-        if (right.isRegister()) {
+        CiRegister dst = asRegister(leftAndResult);
+        if (isRegister(right)) {
             switch (this) {
-                case IMUL: masm.imull(dst, tasm.asRegister(right)); break;
-                case LMUL: masm.imulq(dst, tasm.asRegister(right)); break;
+                case IMUL: masm.imull(dst, asRegister(right)); break;
+                case LMUL: masm.imulq(dst, asRegister(right)); break;
                 default:   throw Util.shouldNotReachHere();
             }
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.asm.target.amd64.*;
@@ -42,13 +44,13 @@ public enum AMD64CompareToIntOpcode implements LIROpcode {
         return new AMD64LIRInstruction(this, result, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                emit(tasm, masm, result());
+                emit(masm, result());
             }
         };
     }
 
-    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result) {
-        CiRegister dest = tasm.asIntReg(result);
+    private void emit(AMD64MacroAssembler masm, CiValue result) {
+        CiRegister dest = asIntReg(result);
         Label high = new Label();
         Label low = new Label();
         Label done = new Label();

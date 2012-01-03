@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
+import static com.sun.cri.ci.CiValueUtil.*;
+
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.sun.cri.ci.*;
@@ -199,7 +201,7 @@ public abstract class LIRInstruction {
 
     public final int operandCount(OperandMode mode) {
         switch (mode) {
-            case Output: return result.isLegal() ? 1 : 0;
+            case Output: return isLegal(result) ? 1 : 0;
             case Input:  return inputs.length;
             case Alive:  return alives.length;
             case Temp:   return temps.length;
@@ -307,7 +309,7 @@ public abstract class LIRInstruction {
      */
     public String operationString() {
         StringBuilder buf = new StringBuilder();
-        if (result.isLegal()) {
+        if (isLegal(result)) {
             buf.append(result).append(" = ");
         }
         if (inputs.length + alives.length > 1) {
