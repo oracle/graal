@@ -151,8 +151,5 @@ public class VMEntriesNative implements VMEntries, Remote {
     @Override
     public native long getMaxCallTargetOffset(CiRuntimeCall rtcall);
 
-    @Override
-    public native void notifyJavaQueue();
-
     // Checkstyle: resume
 }

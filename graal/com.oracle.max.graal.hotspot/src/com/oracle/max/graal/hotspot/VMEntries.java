@@ -105,7 +105,5 @@ public interface VMEntries {
 
     long getMaxCallTargetOffset(CiRuntimeCall rtcall);
 
-    void notifyJavaQueue();
-
     // Checkstyle: resume
 }
