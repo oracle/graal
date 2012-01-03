@@ -28,7 +28,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.InliningUtil.InlineInfo;
@@ -213,7 +212,9 @@ public class InliningPhase extends Phase implements InliningCallback {
         if (GraalOptions.ParseBeforeInlining) {
             if (!parsedMethods.containsKey(method)) {
                 StructuredGraph newGraph = new StructuredGraph(method);
-                new GraphBuilderPhase(runtime, null).apply(newGraph, currentContext, false);
+                if (plan != null) {
+                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph, currentContext);
+                }
                 new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph, currentContext, false);
                 count = graphComplexity(newGraph);
                 parsedMethods.put(method, count);

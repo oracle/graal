@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.graphbuilder;
+package com.oracle.max.graal.java;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;

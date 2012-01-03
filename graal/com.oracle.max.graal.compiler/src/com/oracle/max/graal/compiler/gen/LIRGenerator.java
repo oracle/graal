@@ -40,7 +40,6 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.OperandPool.VariableFlag;
-import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.stub.*;
@@ -695,13 +694,23 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
             if (stackIndex == 0 && !isStatic) {
                 // Current argument is receiver.
-                stackIndex += FrameStateBuilder.stackSlots(CiKind.Object);
+                stackIndex += stackSlots(CiKind.Object);
             } else {
-                stackIndex += FrameStateBuilder.stackSlots(signature.argumentKindAt(argumentIndex, false));
+                stackIndex += stackSlots(signature.argumentKindAt(argumentIndex, false));
                 argumentIndex++;
             }
         }
         return stack;
+    }
+
+
+    public static int stackSlots(CiKind kind) {
+        return isTwoSlot(kind) ? 2 : 1;
+    }
+
+    public static boolean isTwoSlot(CiKind kind) {
+        assert kind != CiKind.Void && kind != CiKind.Illegal;
+        return kind == CiKind.Long || kind == CiKind.Double;
     }
 
     @Override

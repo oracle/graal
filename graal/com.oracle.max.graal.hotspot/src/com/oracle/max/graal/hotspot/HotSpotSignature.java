@@ -26,8 +26,8 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.hotspot.ri.*;
+import com.oracle.max.graal.java.*;
 
 /**
  * Represents a method signature.
@@ -35,7 +35,7 @@ import com.oracle.max.graal.hotspot.ri.*;
 public class HotSpotSignature extends CompilerObject implements RiSignature {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = -2890917956072366116L;
     private final List<String> arguments = new ArrayList<>();

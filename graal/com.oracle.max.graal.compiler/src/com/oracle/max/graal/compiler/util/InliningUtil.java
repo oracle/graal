@@ -29,7 +29,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -110,17 +109,17 @@ public class InliningUtil {
 
         @Override
         public Node inline(StructuredGraph compilerGraph, GraalRuntime runtime, InliningCallback callback) {
-            StructuredGraph graph = GraphBuilderPhase.cachedGraphs.get(concrete);
-            if (graph != null) {
-                if (GraalOptions.TraceInlining) {
-                    TTY.println("Reusing graph for %s", methodName(concrete, invoke));
-                }
-            } else {
+            StructuredGraph graph = null; // TODO: Solve graph caching differently! GraphBuilderPhase.cachedGraphs.get(concrete);
+//            if (graph != null) {
+//                if (GraalOptions.TraceInlining) {
+//                    TTY.println("Reusing graph for %s", methodName(concrete, invoke));
+//                }
+//            } else {
                 if (GraalOptions.TraceInlining) {
                     TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(concrete, invoke), concrete.maxLocals(), concrete.maxStackSize());
                 }
                 graph = callback.buildGraph(concrete);
-            }
+//            }
 
             return InliningUtil.inline(invoke, graph, true);
         }

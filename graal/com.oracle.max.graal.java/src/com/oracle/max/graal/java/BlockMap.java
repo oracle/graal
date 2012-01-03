@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.graphbuilder;
+package com.oracle.max.graal.java;
 
-import static com.oracle.max.graal.compiler.graphbuilder.Bytecodes.*;
+import static com.oracle.max.graal.java.Bytecodes.*;
 
 import java.util.*;
 

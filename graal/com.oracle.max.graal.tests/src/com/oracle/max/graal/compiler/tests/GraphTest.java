@@ -30,10 +30,10 @@ import junit.framework.Assert;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.printer.*;
 
