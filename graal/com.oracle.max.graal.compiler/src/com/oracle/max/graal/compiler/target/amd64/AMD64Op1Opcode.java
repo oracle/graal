@@ -35,12 +35,13 @@ public enum AMD64Op1Opcode implements LIROpcode {
 
     public LIRInstruction create(Variable result, CiValue input) {
         CiValue[] inputs = new CiValue[] {input};
+        CiValue[] outputs = new CiValue[] {result};
 
-        return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
+        return new AMD64LIRInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                AMD64MoveOpcode.move(tasm, masm, result(), input(0));
-                emit(masm, result());
+                AMD64MoveOpcode.move(tasm, masm, output(0), input(0));
+                emit(masm, output(0));
             }
 
             @Override

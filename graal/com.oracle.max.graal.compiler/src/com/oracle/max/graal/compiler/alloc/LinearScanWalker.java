@@ -825,7 +825,7 @@ final class LinearScanWalker extends IntervalWalker {
         }
 
         CiValue input = op.input(0);
-        CiValue result = op.result();
+        CiValue result = op.output(0);
         return isVariable(input) && isVariable(result) && input == from.operand && result == to.operand;
     }
 

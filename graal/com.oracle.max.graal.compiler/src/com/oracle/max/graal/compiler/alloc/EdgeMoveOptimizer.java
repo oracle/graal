@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ final class EdgeMoveOptimizer {
         assert op2 != null;
 
         if (op1.code == StandardOpcode.MOVE && op2.code == StandardOpcode.MOVE) {
-            if (op1.info == op2.info && op1.input(0).equals(op2.input(0)) && op1.result().equals(op2.result())) {
+            if (op1.info == op2.info && op1.input(0).equals(op2.input(0)) && op1.output(0).equals(op2.output(0))) {
                 // these moves are exactly equal and can be optimized
                 return true;
             }

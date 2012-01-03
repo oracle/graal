@@ -22,8 +22,6 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
-
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -77,7 +75,7 @@ public abstract class LIRInstruction {
         Temp,
 
         /**
-         * The value must not have been defined beforee. The instruction has to assign a value to the register. The
+         * The value must not have been defined before. The instruction has to assign a value to the register. The
          * value can (and most likely will) be used after the instruction.
          */
         Output,
@@ -89,9 +87,9 @@ public abstract class LIRInstruction {
     public final LIROpcode code;
 
     /**
-     * The result operand for this instruction (modified by the register allocator).
+     * The output operands for this instruction (modified by the register allocator).
      */
-    protected CiValue result;
+    protected final CiValue[] outputs;
 
     /**
      * The input operands for this instruction (modified by the register allocator).
@@ -122,15 +120,14 @@ public abstract class LIRInstruction {
      * Constructs a new LIR instruction that has input and temp operands.
      *
      * @param opcode the opcode of the new instruction
-     * @param result the operand that holds the operation result of this instruction. This will be
-     *            {@link CiValue#IllegalValue} for instructions that do not produce a result.
+     * @param outputs the operands that holds the operation results of this instruction.
      * @param info the {@link LIRDebugInfo} info that is to be preserved for the instruction. This will be {@code null} when no debug info is required for the instruction.
      * @param inputs the input operands for the instruction.
      * @param temps the temp operands for the instruction.
      */
-    public LIRInstruction(LIROpcode opcode, CiValue result, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
+    public LIRInstruction(LIROpcode opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
         this.code = opcode;
-        this.result = result;
+        this.outputs = outputs;
         this.inputs = inputs;
         this.alives = alives;
         this.temps = temps;
@@ -184,8 +181,8 @@ public abstract class LIRInstruction {
      *
      * @return return the result operand
      */
-    public final CiValue result() {
-        return result;
+    public final CiValue output(int index) {
+        return outputs[index];
     }
 
     /**
@@ -196,12 +193,12 @@ public abstract class LIRInstruction {
     }
 
     public boolean hasOperands() {
-        return inputs.length > 0 || alives.length > 0 || temps.length > 0 || info != null || hasCall();
+        return inputs.length > 0 || alives.length > 0 || temps.length > 0 || outputs.length > 0 || info != null || hasCall();
     }
 
     public final int operandCount(OperandMode mode) {
         switch (mode) {
-            case Output: return isLegal(result) ? 1 : 0;
+            case Output: return outputs.length;
             case Input:  return inputs.length;
             case Alive:  return alives.length;
             case Temp:   return temps.length;
@@ -212,7 +209,7 @@ public abstract class LIRInstruction {
     public final CiValue operandAt(OperandMode mode, int index) {
         assert index < operandCount(mode);
         switch (mode) {
-            case Output: return result;
+            case Output: return outputs[index];
             case Input:  return inputs[index];
             case Alive:  return alives[index];
             case Temp:   return temps[index];
@@ -225,7 +222,7 @@ public abstract class LIRInstruction {
         assert location.kind != CiKind.Illegal;
         assert operandAt(mode, index).kind == location.kind;
         switch (mode) {
-            case Output: result = location; break;
+            case Output: outputs[index] = location; break;
             case Input:  inputs[index] = location; break;
             case Alive:  alives[index] = location; break;
             case Temp:   temps[index] = location; break;
@@ -252,8 +249,8 @@ public abstract class LIRInstruction {
     }
 
     public final void forEachOutput(ValueProcedure proc) {
-        if (result != CiValue.IllegalValue) {
-            result = proc.doValue(result);
+        for (int i = 0; i < outputs.length; i++) {
+            outputs[i] = proc.doValue(outputs[i]);
         }
     }
 
@@ -309,13 +306,19 @@ public abstract class LIRInstruction {
      */
     public String operationString() {
         StringBuilder buf = new StringBuilder();
-        if (isLegal(result)) {
-            buf.append(result).append(" = ");
+        String sep = "";
+        for (CiValue output : outputs) {
+            buf.append(output);
+            sep = ", ";
         }
+        if (outputs.length > 0) {
+            buf.append(" = ");
+        }
+
         if (inputs.length + alives.length > 1) {
             buf.append("(");
         }
-        String sep = "";
+        sep = "";
         for (CiValue input : inputs) {
             buf.append(sep).append(input);
             sep = ", ";

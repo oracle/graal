@@ -39,11 +39,12 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
     public LIRInstruction create(Variable result, final CompilerStub stub, Variable input, Variable scratch) {
         CiValue[] inputs = new CiValue[] {input};
         CiValue[] temps = new CiValue[] {scratch};
+        CiValue[] outputs = new CiValue[] {result};
 
-        return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, temps) {
+        return new AMD64LIRInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, temps) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                emit(tasm, masm, result(), stub, input(0), temp(0));
+                emit(tasm, masm, output(0), stub, input(0), temp(0));
             }
         };
     }
