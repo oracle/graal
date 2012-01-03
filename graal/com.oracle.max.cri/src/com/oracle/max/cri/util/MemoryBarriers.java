@@ -20,11 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.intrinsics;
-
-import static com.oracle.max.cri.intrinsics.IntrinsicIDs.*;
-
-import com.sun.max.annotate.*;
+package com.oracle.max.cri.util;
 
 /**
  * Constants and intrinsic definition for memory barriers.
@@ -106,14 +102,6 @@ public class MemoryBarriers {
     public static final int JMM_POST_VOLATILE_WRITE = STORE_LOAD | STORE_STORE;
     public static final int JMM_PRE_VOLATILE_READ = 0;
     public static final int JMM_POST_VOLATILE_READ = LOAD_LOAD | LOAD_STORE;
-
-
-    /**
-     * @see IntrinsicIDs#MEMBAR
-     */
-    @INTRINSIC(MEMBAR)
-    public static native void barrier(@INTRINSIC.Constant int barrierSpec);
-
 
     public static String barriersString(int barriers) {
         StringBuilder sb = new StringBuilder();

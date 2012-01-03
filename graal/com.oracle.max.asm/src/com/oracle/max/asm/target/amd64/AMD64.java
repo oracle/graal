@@ -22,7 +22,7 @@
  */
 package com.oracle.max.asm.target.amd64;
 
-import static com.oracle.max.cri.intrinsics.MemoryBarriers.*;
+import static com.oracle.max.cri.util.MemoryBarriers.*;
 import static com.sun.cri.ci.CiKind.*;
 import static com.sun.cri.ci.CiRegister.RegisterFlag.*;
 

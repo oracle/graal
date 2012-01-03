@@ -22,7 +22,7 @@
  */
 /**
  * The compiler-provided part of the bi-directional interface between the compiler and the runtime system of a virtual machine for the instruction set defined in
- * {@link com.sun.cri.bytecode.Bytecodes}.
+ * {@link com.oracle.max.graal.compiler.graphbuilder.Bytecodes}.
  *
  * The target hardware architecture is represented by {@link com.sun.cri.ci.CiArchitecture} and the specific target machine
  * environment for a compiler instance is represented by {@link com.sun.cri.ci.CiTarget}.

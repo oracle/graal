@@ -22,11 +22,10 @@
  */
 package com.oracle.max.graal.snippets;
 
-import com.oracle.max.cri.intrinsics.*;
+import com.oracle.max.cri.util.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.sun.cri.ci.*;
-import com.sun.max.annotate.*;
 
 /**
  * Snippets for {@link sun.misc.Unsafe} methods.

@@ -22,7 +22,7 @@
  */
 /**
  * The runtime-provided part of the bi-directional interface between the compiler and the runtime system of a virtual machine for the
- * instruction set defined in {@link com.sun.cri.bytecode.Bytecodes}.
+ * instruction set defined in {@link com.oracle.max.graal.compiler.graphbuilder.Bytecodes}.
  * <p>
  * Unlike the {@link com.sun.cri.ci compiler-provided interface}, the runtime-provided interface is specified largely
  * using interfaces, that must be implemented by classes provided by a specific runtime implementation.

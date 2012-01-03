@@ -25,7 +25,7 @@ package com.oracle.max.asm.target.amd64;
 import static com.sun.cri.ci.CiValueUtil.*;
 import static com.oracle.max.asm.NumUtil.*;
 import static com.oracle.max.asm.target.amd64.AMD64.*;
-import static com.oracle.max.cri.intrinsics.MemoryBarriers.*;
+import static com.oracle.max.cri.util.MemoryBarriers.*;
 
 import com.oracle.max.asm.*;
 import com.sun.cri.ci.*;

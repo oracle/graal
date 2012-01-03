@@ -20,13 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.intrinsics;
-
-import static com.oracle.max.cri.intrinsics.IntrinsicIDs.*;
-
-import java.math.*;
-
-import com.sun.max.annotate.*;
+package com.oracle.max.cri.util;
 
 /**
  * {@link INTRINSIC} method definitions for unsigned comparisons.
@@ -37,106 +31,59 @@ public class UnsignedMath {
     private static final long MASK = 0xffffffffL;
 
     /**
-     * @see IntrinsicIDs#UCMP_AT
+     * Unsigned comparison aboveThan for two numbers.
      */
-    @INTRINSIC(UCMP_AT)
     public static boolean aboveThan(int a, int b) {
         return (a & MASK) > (b & MASK);
     }
 
     /**
-     * @see IntrinsicIDs#UCMP_AE
+     * Unsigned comparison aboveOrEqual for two numbers.
      */
-    @INTRINSIC(UCMP_AE)
     public static boolean aboveOrEqual(int a, int b) {
         return (a & MASK) >= (b & MASK);
     }
 
     /**
-     * @see IntrinsicIDs#UCMP_BT
+     * Unsigned comparison belowThan for two numbers.
      */
-    @INTRINSIC(UCMP_BT)
     public static boolean belowThan(int a, int b) {
         return (a & MASK) < (b & MASK);
     }
 
     /**
-     * @see IntrinsicIDs#UCMP_BE
+     * Unsigned comparison belowOrEqual for two numbers.
      */
-    @INTRINSIC(UCMP_BE)
     public static boolean belowOrEqual(int a, int b) {
         return (a & MASK) <= (b & MASK);
     }
 
-
     /**
-     * @see IntrinsicIDs#UCMP_AT
+     * Unsigned comparison aboveThan for two numbers.
      */
-    @INTRINSIC(UCMP_AT)
     public static boolean aboveThan(long a, long b) {
         return (a > b) ^ ((a < 0) != (b < 0));
     }
 
     /**
-     * @see IntrinsicIDs#UCMP_AE
+     * Unsigned comparison aboveOrEqual for two numbers.
      */
-    @INTRINSIC(UCMP_AE)
     public static boolean aboveOrEqual(long a, long b) {
         return (a >= b) ^ ((a < 0) != (b < 0));
     }
 
     /**
-     * @see IntrinsicIDs#UCMP_BT
+     * Unsigned comparison belowThan for two numbers.
      */
-    @INTRINSIC(UCMP_BT)
     public static boolean belowThan(long a, long b) {
         return (a < b) ^ ((a < 0) != (b < 0));
     }
 
     /**
-     * @see IntrinsicIDs#UCMP_BE
+     * Unsigned comparison belowOrEqual for two numbers.
      */
-    @INTRINSIC(UCMP_BE)
     public static boolean belowOrEqual(long a, long b) {
         return (a <= b) ^ ((a < 0) != (b < 0));
-    }
-
-
-    /**
-     * @see IntrinsicIDs#UDIV
-     */
-    @INTRINSIC(UDIV)
-    public static int divide(int a, int b) {
-        return (int) ((a & MASK) / (b & MASK));
-    }
-
-    /**
-     * @see IntrinsicIDs#UREM
-     */
-    @INTRINSIC(UREM)
-    public static int remainder(int a, int b) {
-        return (int) ((a & MASK) % (b & MASK));
-    }
-
-
-    /**
-     * @see IntrinsicIDs#UDIV
-     */
-    @INTRINSIC(UDIV)
-    public static long divide(long a, long b) {
-        return bi(a).divide(bi(b)).longValue();
-    }
-
-    /**
-     * @see IntrinsicIDs#UREM
-     */
-    @INTRINSIC(UREM)
-    public static long remainder(long a, long b) {
-        return bi(a).remainder(bi(b)).longValue();
-    }
-
-    private static BigInteger bi(long unsigned) {
-        return unsigned >= 0 ? BigInteger.valueOf(unsigned) : BigInteger.valueOf(unsigned & 0x7fffffffffffffffL).setBit(63);
     }
 }
 

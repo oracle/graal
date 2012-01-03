@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.graphbuilder;
 
-import static com.sun.cri.bytecode.Bytecodes.*;
+import static com.oracle.max.graal.compiler.graphbuilder.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
@@ -45,7 +45,6 @@ import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 import com.sun.cri.ri.RiType.Representation;

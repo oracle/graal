@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.snippets;
 
+import com.oracle.max.cri.util.*;
 import com.oracle.max.graal.nodes.calc.*;
-import com.sun.max.annotate.*;
 
 /**
  * Snippets for {@link java.lang.Float} methods.

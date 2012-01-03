@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
-import static com.oracle.max.cri.intrinsics.MemoryBarriers.*;
+import static com.oracle.max.cri.util.MemoryBarriers.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import static com.sun.cri.ci.CiCallingConvention.Type.*;
 import static com.sun.cri.ci.CiValue.*;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.cri.bytecode;
+package com.oracle.max.graal.compiler.graphbuilder;
 
 /**
  * An abstract class that provides the state and methods common to {@link Bytecodes#LOOKUPSWITCH}

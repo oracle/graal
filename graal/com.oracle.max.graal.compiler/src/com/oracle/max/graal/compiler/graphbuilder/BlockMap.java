@@ -22,13 +22,12 @@
  */
 package com.oracle.max.graal.compiler.graphbuilder;
 
-import static com.sun.cri.bytecode.Bytecodes.*;
+import static com.oracle.max.graal.compiler.graphbuilder.Bytecodes.*;
 
 import java.util.*;
 
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.bytecode.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

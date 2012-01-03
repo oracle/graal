@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.cri.bytecode;
+package com.oracle.max.graal.compiler.graphbuilder;
 
 /**
  * A utility class that makes iterating over bytecodes and reading operands

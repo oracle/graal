@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.sun.max.annotate;
-
-import java.lang.annotation.*;
-
 /**
- * Every thus annotated method is never to be inlined by the compiler.
+ * A virtual machine compiler-runtime interface (CRI).
+ * <p>
+ * Specifically, this package defines an interface between the compiler and the runtime system of a virtual machine for
+ * the instruction set defined in {@link com.oracle.max.graal.compiler.graphbuilder.Bytecodes}. The interface has three components:
+ * <ol>
+ * <li>the {@link com.sun.cri.ci compiler-provided interface} that must be used by the runtime.
+ * <li>the {@link com.sun.cri.ri runtime-provided interface} that must be used by the compiler.
+ * <li>the {@link com.sun.cri.xir XIR interface} for translating object operations.
+ * </ol>
  *
- * This annotation exists primarily for annotating methods that <b>must never</b> be inlined
- * for semantic reasons. Typically, this is to ensure that a separate activation frame is
- * always used for a call to the method.
- *
- * This annotation can also be applied to a class in which is equivalent to applying
- * it to all the methods in the class <b>except</b> for those explicitly annotated with
- * {@link INLINE}.
+ * The interface is independent of any particular compiler or runtime implementation.
+ * <p>
+ * For more details see <a href="http://wikis.sun.com/download/attachments/173802383/vee2010.pdf">Improving Compiler-Runtime Separation with XIR</a>.
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.TYPE})
-public @interface NEVER_INLINE {
-
-    /**
-     * Documents the reason why the annotated code must notbe inlined.
-     */
-    String value() default "";
-}
+package com.oracle.max.cri;

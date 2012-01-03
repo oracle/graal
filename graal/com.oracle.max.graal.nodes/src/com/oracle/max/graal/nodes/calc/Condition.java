@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
-import com.oracle.max.cri.intrinsics.*;
+import com.oracle.max.cri.util.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
