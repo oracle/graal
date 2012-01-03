@@ -131,7 +131,7 @@ public final class CompilerImpl implements Compiler, Remote {
         if (target == null) {
             final int wordSize = 8;
             final int stackFrameAlignment = 16;
-            target = new HotSpotTarget(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true);
+            target = new CiTarget(new AMD64(), true, stackFrameAlignment, config.vmPageSize, wordSize, true, true, true);
         }
 
         return target;
