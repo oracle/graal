@@ -159,15 +159,6 @@ public class HotSpotRuntime implements GraalRuntime {
         return 8;
     }
 
-    public boolean isFoldable(RiResolvedMethod method) {
-        return false;
-    }
-
-    @Override
-    public CiConstant fold(RiResolvedMethod method, CiConstant[] args) {
-        return null;
-    }
-
     @Override
     public boolean areConstantObjectsEqual(CiConstant x, CiConstant y) {
         return compiler.getVMEntries().compareConstantObjects(x, y);
