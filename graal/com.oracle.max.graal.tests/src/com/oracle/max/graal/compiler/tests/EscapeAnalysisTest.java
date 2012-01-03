@@ -121,10 +121,10 @@ public class EscapeAnalysisTest extends GraphTest {
             n.node().setProbability(100000);
         }
 
-        new InliningPhase(null, runtime(), null, null, PhasePlan.DEFAULT).apply(graph);
+        new InliningPhase(null, runtime(), null, null, getDefaultPhasePlan()).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         print(graph);
-        new EscapeAnalysisPhase(null, runtime(), null, PhasePlan.DEFAULT).apply(graph);
+        new EscapeAnalysisPhase(null, runtime(), null, getDefaultPhasePlan()).apply(graph);
         print(graph);
         int retCount = 0;
         for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {

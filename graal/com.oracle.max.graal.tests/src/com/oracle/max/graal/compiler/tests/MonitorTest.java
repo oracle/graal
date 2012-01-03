@@ -94,7 +94,7 @@ public class MonitorTest extends GraphTest {
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }
-        new InliningPhase(null, runtime(), hints, null, PhasePlan.DEFAULT).apply(graph);
+        new InliningPhase(null, runtime(), hints, null, getDefaultPhasePlan()).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         return graph;
