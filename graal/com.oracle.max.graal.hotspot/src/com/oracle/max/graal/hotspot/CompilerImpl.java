@@ -30,10 +30,12 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.hotspot.logging.*;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.max.graal.printer.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.
@@ -212,6 +214,18 @@ public final class CompilerImpl implements Compiler, Remote {
     public HotSpotRuntime getRuntime() {
         if (runtime == null) {
             context = new GraalContext("Virtual Machine Compiler");
+            if (GraalOptions.PrintCFGToFile) {
+                context.addCompilationObserver(new CFGPrinterObserver());
+            }
+            if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot || GraalOptions.PlotOnError) {
+                CompilationObserver observer;
+                if (GraalOptions.PrintIdealGraphFile) {
+                    observer = new IdealGraphPrinterObserver();
+                } else {
+                    observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
+                }
+                context.addCompilationObserver(observer);
+            }
             runtime = new HotSpotRuntime(context, config, this);
         }
         return runtime;

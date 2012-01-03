@@ -23,7 +23,6 @@
 package com.oracle.max.graal.compiler;
 
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.observer.*;
 
 /**
@@ -32,7 +31,7 @@ import com.oracle.max.graal.compiler.observer.*;
  */
 public class GraalContext {
 
-    public static final GraalContext EMPTY_CONTEXT = new GraalContext(true, "silent context");
+    public static final GraalContext EMPTY_CONTEXT = new GraalContext("silent context");
 
     public final ObservableContext observable = new ObservableContext();
     public final GraalTimers timers = new GraalTimers();
@@ -40,35 +39,16 @@ public class GraalContext {
 
     private final String name;
 
-    private GraalContext(boolean empty, String name) {
-        this.name = name;
-        if (!empty) {
-            reset();
-        }
-    }
-
     public GraalContext(String name) {
-        this(false, name);
+        this.name = name;
     }
 
     public boolean isObserved() {
         return observable.isObserved();
     }
 
-    public void reset() {
-        observable.clear();
-        if (GraalOptions.PrintCFGToFile) {
-            observable.addCompilationObserver(new CFGPrinterObserver());
-        }
-        if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot || GraalOptions.PlotOnError) {
-            CompilationObserver observer;
-            if (GraalOptions.PrintIdealGraphFile) {
-                observer = new IdealGraphPrinterObserver();
-            } else {
-                observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
-            }
-            observable.addCompilationObserver(observer);
-        }
+    public void addCompilationObserver(CompilationObserver observer) {
+        observable.addCompilationObserver(observer);
     }
 
     public void print() {

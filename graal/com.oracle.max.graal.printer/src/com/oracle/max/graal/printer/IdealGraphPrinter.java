@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.debug;
+package com.oracle.max.graal.printer;
 
 import java.io.*;
 import java.util.*;
@@ -28,7 +28,6 @@ import java.util.Map.Entry;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.debug.BasicIdealGraphPrinter.Edge;
 import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -39,12 +38,13 @@ import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.loop.*;
+import com.oracle.max.graal.printer.BasicIdealGraphPrinter.*;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
  * href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
-public class IdealGraphPrinter {
+class IdealGraphPrinter {
 
     private final BasicIdealGraphPrinter printer;
     private final HashSet<Class<?>> omittedClasses = new HashSet<>();

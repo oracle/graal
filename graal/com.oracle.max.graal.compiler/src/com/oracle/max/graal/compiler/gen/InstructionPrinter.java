@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.debug;
+package com.oracle.max.graal.compiler.gen;
 
-import static com.oracle.max.graal.compiler.debug.InstructionPrinter.InstructionLineColumn.*;
+import static com.oracle.max.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.*;
 
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.nodes.*;

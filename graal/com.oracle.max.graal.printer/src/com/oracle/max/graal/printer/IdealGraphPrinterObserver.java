@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.debug;
+package com.oracle.max.graal.printer;
 
 import java.io.*;
 import java.net.*;

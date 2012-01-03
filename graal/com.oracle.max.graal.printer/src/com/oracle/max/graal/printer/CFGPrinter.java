@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.debug;
+package com.oracle.max.graal.printer;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
@@ -45,7 +45,7 @@ import com.oracle.max.graal.nodes.calc.*;
 /**
  * Utility for printing Graal IR at various compilation phases.
  */
-public class CFGPrinter extends CompilationPrinter {
+class CFGPrinter extends CompilationPrinter {
 
     public final ByteArrayOutputStream buffer;
     public final GraalCompilation compilation;

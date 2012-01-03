@@ -25,7 +25,7 @@ package com.oracle.max.graal.compiler.graphbuilder;
 /**
  * A utility for processing {@link Bytecodes#LOOKUPSWITCH} bytecodes.
  */
-public class BytecodeLookupSwitch extends BytecodeSwitch {
+class BytecodeLookupSwitch extends BytecodeSwitch {
     private static final int OFFSET_TO_NUMBER_PAIRS = 4;
     private static final int OFFSET_TO_FIRST_PAIR_MATCH = 8;
     private static final int OFFSET_TO_FIRST_PAIR_OFFSET = 12;
