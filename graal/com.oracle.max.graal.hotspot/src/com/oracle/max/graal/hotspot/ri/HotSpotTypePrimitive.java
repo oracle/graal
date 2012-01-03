@@ -20,11 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
 import java.lang.annotation.*;
 
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.hotspot.Compiler;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
@@ -34,13 +35,13 @@ import com.sun.cri.ri.*;
 public final class HotSpotTypePrimitive extends HotSpotType implements RiResolvedType {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = -6208552348908071473L;
     private CiKind kind;
 
 
-    HotSpotTypePrimitive(Compiler compiler, CiKind kind) {
+    public HotSpotTypePrimitive(Compiler compiler, CiKind kind) {
         super(compiler);
         this.kind = kind;
         this.name = kind.toString();

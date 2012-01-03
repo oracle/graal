@@ -20,21 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.snippets;
+package com.oracle.max.graal.hotspot.ri;
 
-import com.oracle.max.graal.hotspot.nodes.*;
-import com.oracle.max.graal.snippets.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
+import com.sun.cri.ri.*;
 
-@ClassSubstitution(java.lang.Thread.class)
-public class HotSpotThreadSnippets implements SnippetsInterface {
+/**
+ * Implementation of RiMethod for unresolved HotSpot methods.
+ */
+public final class HotSpotMethodUnresolved extends HotSpotMethod {
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 5610263481791970079L;
+    private final RiSignature signature;
+    protected RiType holder;
 
-    private final int threadObjectOffset;
-
-    public HotSpotThreadSnippets(int threadObjectOffset) {
-        this.threadObjectOffset = threadObjectOffset;
+    public HotSpotMethodUnresolved(Compiler compiler, String name, String signature, RiType holder) {
+        super(compiler);
+        this.name = name;
+        this.holder = holder;
+        this.signature = new HotSpotSignature(compiler, signature);
     }
 
-    public Thread currentThread() {
-        return (Thread) CurrentThread.get(threadObjectOffset);
+    @Override
+    public RiSignature signature() {
+        return signature;
+    }
+
+    @Override
+    public RiType holder() {
+        return holder;
+    }
+
+    @Override
+    public String toString() {
+        return "HotSpotMethod<" + holder.name() + ". " + name + ", unresolved>";
     }
 }

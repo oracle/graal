@@ -28,7 +28,10 @@ import java.util.concurrent.*;
 
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.max.graal.snippets.*;
 import com.sun.cri.ci.CiCompiler.DebugInfoLevel;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
@@ -85,7 +88,12 @@ public class VMExitsNative implements VMExits, Remote {
         TTY.initialize();
 
         // Install intrinsics.
-        HotSpotIntrinsic.installIntrinsics((HotSpotRuntime) compiler.getCompiler().runtime);
+        HotSpotRuntime runtime = (HotSpotRuntime) compiler.getCompiler().runtime;
+        if (GraalOptions.Intrinsify) {
+            GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
+            Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), GraalOptions.PlotSnippets, PhasePlan.DEFAULT);
+            Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), GraalOptions.PlotSnippets, PhasePlan.DEFAULT);
+        }
 
         // Create compilation queue.
         compileQueue = new ThreadPoolExecutor(GraalOptions.Threads, GraalOptions.Threads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), daemonThreadFactory);

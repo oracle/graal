@@ -20,40 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 import com.sun.cri.ri.*;
 
 /**
- * Implementation of RiMethod for unresolved HotSpot methods.
+ * Common interface for all HotSpot RiType-implementations.
  */
-public final class HotSpotMethodUnresolved extends HotSpotMethod {
+public abstract class HotSpotType extends CompilerObject implements RiType {
     /**
      * 
      */
-    private static final long serialVersionUID = 5610263481791970079L;
-    private final RiSignature signature;
-    protected RiType holder;
+    private static final long serialVersionUID = -4252886265301910771L;
+    protected String name;
 
-    public HotSpotMethodUnresolved(Compiler compiler, String name, String signature, RiType holder) {
+    protected HotSpotType(Compiler compiler) {
         super(compiler);
-        this.name = name;
-        this.holder = holder;
-        this.signature = new HotSpotSignature(compiler, signature);
     }
 
     @Override
-    public RiSignature signature() {
-        return signature;
-    }
-
-    @Override
-    public RiType holder() {
-        return holder;
-    }
-
-    @Override
-    public String toString() {
-        return "HotSpotMethod<" + holder.name() + ". " + name + ", unresolved>";
+    public final String name() {
+        return name;
     }
 }

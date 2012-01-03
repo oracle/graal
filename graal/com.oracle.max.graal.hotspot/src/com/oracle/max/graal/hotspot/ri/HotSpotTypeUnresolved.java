@@ -20,8 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
+import com.oracle.max.graal.hotspot.Compiler;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 

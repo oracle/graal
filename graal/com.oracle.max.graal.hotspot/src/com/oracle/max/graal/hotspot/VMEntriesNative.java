@@ -25,6 +25,7 @@ package com.oracle.max.graal.hotspot;
 
 import java.lang.reflect.*;
 
+import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;

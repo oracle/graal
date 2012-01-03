@@ -30,6 +30,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.hotspot.nodes.*;
+import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
@@ -174,6 +175,7 @@ public class HotSpotRuntime implements GraalRuntime {
      */
     @Override
     public int getCustomStackAreaSize() {
+        // TODO shouldn't be hard coded
         return 8;
     }
 

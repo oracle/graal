@@ -46,8 +46,6 @@ public class UnsafeSnippets implements SnippetsInterface {
         return CompareAndSwapNode.compareAndSwap(o, offset, expected, x);
     }
 
-    // TODO: volatile variants of the following methods, e.g. getObjectVolatile()
-
     public Object getObject(Object o, long offset) {
         return UnsafeLoadNode.load(o, offset, CiKind.Object);
     }

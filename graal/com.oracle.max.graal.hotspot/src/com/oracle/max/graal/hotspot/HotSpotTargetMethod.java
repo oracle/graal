@@ -25,6 +25,7 @@ package com.oracle.max.graal.hotspot;
 import java.util.*;
 
 import com.oracle.max.graal.hotspot.logging.*;
+import com.oracle.max.graal.hotspot.ri.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ci.CiTargetMethod.ExceptionHandler;
 import com.sun.cri.ci.CiTargetMethod.Mark;

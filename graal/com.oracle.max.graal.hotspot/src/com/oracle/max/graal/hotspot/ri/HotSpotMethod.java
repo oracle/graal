@@ -20,13 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
-import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 import com.sun.cri.ri.*;
 
-public interface HotSpotMethodResolved extends RiResolvedMethod, Remote {
+public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
 
-    RiResolvedMethod uniqueConcreteMethod();
-    void dumpProfile();
+    /**
+     *
+     */
+    private static final long serialVersionUID = 7167491397941960839L;
+    protected String name;
+
+    protected HotSpotMethod(Compiler compiler) {
+        super(compiler);
+    }
+
+    @Override
+    public final String name() {
+        return name;
+    }
 }

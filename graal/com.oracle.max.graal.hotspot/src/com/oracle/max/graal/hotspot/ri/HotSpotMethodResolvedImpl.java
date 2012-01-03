@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.hotspot.*;
 import com.sun.cri.ci.*;
 import com.sun.cri.ri.*;
 
