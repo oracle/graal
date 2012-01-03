@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.hotspot.nodes;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 public abstract class WriteBarrier extends FixedWithNextNode {
 

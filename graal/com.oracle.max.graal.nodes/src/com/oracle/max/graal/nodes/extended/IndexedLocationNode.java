@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.extended;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiAddress.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiAddress.Scale;
 
 public final class IndexedLocationNode extends LocationNode implements LIRLowerable, Canonicalizable {
     @Input private ValueNode index;

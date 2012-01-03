@@ -22,14 +22,14 @@
  */
 package com.oracle.max.graal.nodes.extended;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiAddress.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiAddress.Scale;
 
 public class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 

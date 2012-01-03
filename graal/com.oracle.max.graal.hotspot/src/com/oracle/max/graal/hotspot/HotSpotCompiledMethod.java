@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.hotspot;
 
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * Implementation of RiCompiledMethod for HotSpot. Stores a reference to the nmethod which contains the compiled code.

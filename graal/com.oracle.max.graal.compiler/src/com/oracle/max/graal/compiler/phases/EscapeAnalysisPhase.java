@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
@@ -36,7 +37,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.virtual.*;
-import com.sun.cri.ci.*;
 
 
 public class EscapeAnalysisPhase extends Phase {

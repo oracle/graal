@@ -24,15 +24,15 @@ package com.oracle.max.graal.compiler;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.xir.*;
 
 public class GraalCompiler {
 

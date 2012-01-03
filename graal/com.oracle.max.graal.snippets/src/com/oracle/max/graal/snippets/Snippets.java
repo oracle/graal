@@ -24,6 +24,8 @@ package com.oracle.max.graal.snippets;
 
 import java.lang.reflect.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graphbuilder.*;
@@ -35,8 +37,6 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Utilities for snippet installation and management.

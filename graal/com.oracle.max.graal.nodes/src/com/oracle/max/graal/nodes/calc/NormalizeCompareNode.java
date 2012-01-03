@@ -24,9 +24,9 @@ package com.oracle.max.graal.nodes.calc;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
 
 /**
  * Returns -1, 0, or 1 if either x > y, x == y, or x < y.

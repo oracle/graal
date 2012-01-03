@@ -22,14 +22,14 @@
  */
 package com.oracle.max.graal.compiler.alloc;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
 
 /**
  * An ordered, 0-based indexable pool of instruction operands for a method being compiled.

@@ -22,15 +22,20 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
+import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
+import static com.oracle.max.cri.ci.CiValue.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
-import static com.sun.cri.ci.CiCallingConvention.Type.*;
-import static com.sun.cri.ci.CiValue.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.*;
+import com.oracle.max.cri.xir.*;
+import com.oracle.max.cri.xir.CiXirAssembler.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
@@ -49,16 +54,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
-import com.sun.cri.xir.CiXirAssembler.XirConstant;
-import com.sun.cri.xir.CiXirAssembler.XirInstruction;
-import com.sun.cri.xir.CiXirAssembler.XirOperand;
-import com.sun.cri.xir.CiXirAssembler.XirParameter;
-import com.sun.cri.xir.CiXirAssembler.XirRegister;
-import com.sun.cri.xir.CiXirAssembler.XirTemp;
-import com.sun.cri.xir.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

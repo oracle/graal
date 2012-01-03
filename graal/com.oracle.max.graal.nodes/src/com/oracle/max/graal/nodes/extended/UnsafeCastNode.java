@@ -22,13 +22,13 @@
  */
 package com.oracle.max.graal.nodes.extended;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.

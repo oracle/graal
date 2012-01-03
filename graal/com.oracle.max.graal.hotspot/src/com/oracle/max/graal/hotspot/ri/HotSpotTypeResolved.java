@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.hotspot.ri;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
-import com.sun.cri.ri.*;
 
 public interface HotSpotTypeResolved extends RiResolvedType, Remote {
 

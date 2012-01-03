@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code TypeCheckNode} is the base class of casts and instanceof tests.

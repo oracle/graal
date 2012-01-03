@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.loop;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.type.*;
 import com.oracle.max.graal.util.*;
-import com.sun.cri.ci.*;
 
 /**
  * This is a base class for all induction variables nodes.

@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.snippets;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.cri.*;
-import com.sun.cri.ci.*;
 
 /**
  * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.

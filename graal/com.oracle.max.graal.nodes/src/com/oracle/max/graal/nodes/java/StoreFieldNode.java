@@ -22,10 +22,10 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.

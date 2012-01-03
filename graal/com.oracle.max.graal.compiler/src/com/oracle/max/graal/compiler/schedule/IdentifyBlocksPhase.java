@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.schedule;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
@@ -33,7 +34,6 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.loop.*;
 import com.oracle.max.graal.nodes.virtual.*;
-import com.sun.cri.ci.*;
 
 
 public class IdentifyBlocksPhase extends Phase {

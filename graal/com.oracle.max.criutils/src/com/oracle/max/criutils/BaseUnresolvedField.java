@@ -22,8 +22,8 @@
  */
 package com.oracle.max.criutils;
 
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * A implementation of {@link RiField} for an unresolved field.

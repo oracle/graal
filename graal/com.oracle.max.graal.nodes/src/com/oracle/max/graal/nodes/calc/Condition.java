@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Condition codes used in conditionals.

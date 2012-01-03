@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.loop;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
 
 /**
  * Counts loop iterations from 0 to Niter.

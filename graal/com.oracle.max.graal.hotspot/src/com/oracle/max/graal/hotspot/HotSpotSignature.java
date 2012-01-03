@@ -24,10 +24,10 @@ package com.oracle.max.graal.hotspot;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.hotspot.ri.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Represents a method signature.

@@ -22,8 +22,8 @@
  */
 package com.oracle.max.asm;
 
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiArchitecture.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiArchitecture.*;
 
 /**
  * The platform-independent base class for the assembler.

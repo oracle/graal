@@ -24,8 +24,8 @@ package com.oracle.max.graal.nodes.type;
 
 import java.util.*;
 
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 
 public class StampFactory {

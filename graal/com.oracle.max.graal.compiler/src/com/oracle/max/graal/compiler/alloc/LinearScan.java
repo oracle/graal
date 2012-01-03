@@ -22,11 +22,13 @@
  */
 package com.oracle.max.graal.compiler.alloc;
 
-import static com.sun.cri.ci.CiUtil.*;
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
@@ -39,8 +41,6 @@ import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described

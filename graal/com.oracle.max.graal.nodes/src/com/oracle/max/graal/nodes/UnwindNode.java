@@ -22,10 +22,10 @@
  */
 package com.oracle.max.graal.nodes;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * Unwind takes an exception object, destroys the current stack frame and passes the exception object to the system's exception dispatch code.

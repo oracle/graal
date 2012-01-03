@@ -24,11 +24,11 @@ package com.oracle.max.graal.compiler.lir;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.*;
-import com.sun.cri.ci.*;
 
 public class LIRPhiMapping {
     private final LIRBlock block;

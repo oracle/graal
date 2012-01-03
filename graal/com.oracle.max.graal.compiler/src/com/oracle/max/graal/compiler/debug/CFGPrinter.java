@@ -22,11 +22,13 @@
  */
 package com.oracle.max.graal.compiler.debug;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.io.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
@@ -39,8 +41,6 @@ import com.oracle.max.graal.graph.Node.*;
 import com.oracle.max.graal.graph.NodeClass.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Utility for printing Graal IR at various compilation phases.

@@ -22,28 +22,24 @@
  */
 package com.oracle.max.graal.hotspot;
 
+import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.hotspot.TemplateFlag.*;
-import static com.sun.cri.ci.CiCallingConvention.Type.*;
-import static com.sun.cri.ci.CiValueUtil.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiAddress.*;
+import com.oracle.max.cri.ci.CiRegister.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.*;
+import com.oracle.max.cri.xir.*;
+import com.oracle.max.cri.xir.CiXirAssembler.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.hotspot.ri.*;
-import com.sun.cri.ci.CiAddress.Scale;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiRegister.RegisterFlag;
-import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
-import com.sun.cri.xir.*;
-import com.sun.cri.xir.CiXirAssembler.XirConstant;
-import com.sun.cri.xir.CiXirAssembler.XirLabel;
-import com.sun.cri.xir.CiXirAssembler.XirMark;
-import com.sun.cri.xir.CiXirAssembler.XirOperand;
-import com.sun.cri.xir.CiXirAssembler.XirParameter;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 

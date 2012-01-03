@@ -22,10 +22,10 @@
  */
 package com.oracle.max.graal.nodes.virtual;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ri.*;
 
 
 public class BoxedVirtualObjectNode extends VirtualObjectNode implements LIRLowerable, Node.ValueNumberable {

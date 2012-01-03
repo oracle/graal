@@ -26,10 +26,10 @@ package com.oracle.max.graal.hotspot;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.*;
 import com.oracle.max.graal.compiler.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
 
 /**
  * Represents a field in a HotSpot type.

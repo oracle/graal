@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.loop;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
 
 /**
  * LinearInductionVariable that is computed in the loops with offset + scale * base.

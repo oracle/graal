@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     @Input protected final NodeInputList<ValueNode> arguments;

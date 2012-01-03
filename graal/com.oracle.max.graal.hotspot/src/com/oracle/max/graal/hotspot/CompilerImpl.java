@@ -26,14 +26,14 @@ import java.io.*;
 import java.net.*;
 
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.hotspot.logging.*;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.xir.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.

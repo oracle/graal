@@ -25,6 +25,8 @@ package com.oracle.max.graal.compiler.debug;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
@@ -34,8 +36,6 @@ import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the <a

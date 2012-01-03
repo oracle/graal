@@ -23,9 +23,9 @@
 
 package com.oracle.max.graal.hotspot;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.hotspot.ri.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Exits from the HotSpot VM into Java code.

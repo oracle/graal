@@ -28,6 +28,9 @@ import static java.lang.reflect.Modifier.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graphbuilder.BlockMap.Block;
@@ -45,9 +48,6 @@ import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.

@@ -22,12 +22,12 @@
  */
 package com.oracle.max.asm.target.amd64;
 
+import static com.oracle.max.cri.ci.CiKind.*;
+import static com.oracle.max.cri.ci.CiRegister.RegisterFlag.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
-import static com.sun.cri.ci.CiKind.*;
-import static com.sun.cri.ci.CiRegister.RegisterFlag.*;
 
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiRegister.RegisterFlag;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiRegister.*;
 
 /**
  * Represents the AMD64 architecture.

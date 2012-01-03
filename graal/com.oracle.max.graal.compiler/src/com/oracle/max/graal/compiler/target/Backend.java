@@ -25,13 +25,13 @@ package com.oracle.max.graal.compiler.target;
 import java.lang.reflect.*;
 
 import com.oracle.max.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.stub.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.xir.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.

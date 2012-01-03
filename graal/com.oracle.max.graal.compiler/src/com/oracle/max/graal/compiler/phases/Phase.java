@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
 
 public abstract class Phase {
 

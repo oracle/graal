@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.snippets.nodes;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -30,7 +31,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 import com.oracle.max.graal.snippets.target.amd64.*;
-import com.sun.cri.ci.*;
 
 public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, AMD64LIRLowerable {
 

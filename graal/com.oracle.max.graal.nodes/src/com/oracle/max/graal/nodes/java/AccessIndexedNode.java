@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code AccessIndexedNode} class is the base class of instructions that read or write

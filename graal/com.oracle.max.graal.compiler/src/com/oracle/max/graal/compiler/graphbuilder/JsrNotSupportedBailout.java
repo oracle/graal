@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.graphbuilder;
 
-import com.sun.cri.ci.*;
+import com.oracle.max.cri.ci.*;
 
 
 public class JsrNotSupportedBailout extends CiBailout{

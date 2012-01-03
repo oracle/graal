@@ -26,10 +26,10 @@ import junit.framework.*;
 
 import org.junit.Test;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.sun.cri.ci.*;
 
 /**
  * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline them all.

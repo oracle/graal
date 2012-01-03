@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.hotspot;
 
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ri.*;
 
 
 public class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {

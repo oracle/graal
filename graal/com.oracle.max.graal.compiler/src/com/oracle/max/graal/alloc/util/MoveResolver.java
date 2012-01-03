@@ -26,12 +26,12 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
 
 public final class MoveResolver {
     private final FrameMap frameMap;

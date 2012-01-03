@@ -25,12 +25,12 @@ package com.oracle.max.graal.compiler.gen;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.virtual.*;
-import com.sun.cri.ci.*;
 
 public class DebugInfoBuilder {
     public final GraalCompilation compilation;

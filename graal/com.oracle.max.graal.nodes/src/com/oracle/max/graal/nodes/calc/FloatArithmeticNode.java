@@ -22,8 +22,8 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
 
 public abstract class FloatArithmeticNode extends ArithmeticNode {
 

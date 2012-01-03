@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note that these nodes are not

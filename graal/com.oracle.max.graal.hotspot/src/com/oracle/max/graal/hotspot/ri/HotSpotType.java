@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.hotspot.ri;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
-import com.sun.cri.ri.*;
 
 /**
  * Common interface for all HotSpot RiType-implementations.

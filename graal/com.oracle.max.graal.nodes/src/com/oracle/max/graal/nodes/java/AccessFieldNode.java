@@ -25,12 +25,12 @@ package com.oracle.max.graal.nodes.java;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * The base class of all instructions that access fields.

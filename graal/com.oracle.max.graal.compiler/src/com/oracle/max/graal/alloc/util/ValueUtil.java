@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.alloc.util;
 
-import com.sun.cri.ci.*;
+import com.oracle.max.cri.ci.*;
 
 public class ValueUtil extends CiValueUtil {
 

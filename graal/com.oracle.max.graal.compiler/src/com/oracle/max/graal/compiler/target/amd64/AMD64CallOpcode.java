@@ -22,19 +22,19 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.xir.CiXirAssembler.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.Mark;
-import com.sun.cri.xir.CiXirAssembler.XirMark;
 
 public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
     DIRECT_CALL, INDIRECT_CALL, NATIVE_CALL;

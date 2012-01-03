@@ -22,10 +22,10 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
 
 @NodeInfo(shortName = ">>")
 public final class RightShiftNode extends ShiftNode implements Canonicalizable, LIRLowerable {

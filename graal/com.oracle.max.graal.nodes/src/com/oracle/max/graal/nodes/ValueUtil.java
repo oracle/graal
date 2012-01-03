@@ -24,9 +24,9 @@ package com.oracle.max.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
-import com.sun.cri.ci.*;
 
 
 public class ValueUtil {
@@ -96,7 +96,7 @@ public class ValueUtil {
 
     /**
      * Converts a given instruction to a value string. The representation of an node as
-     * a value is formed by concatenating the {@linkplain com.sun.cri.ci.CiKind#typeChar character} denoting its
+     * a value is formed by concatenating the {@linkplain com.oracle.max.cri.ci.CiKind#typeChar character} denoting its
      * {@linkplain ValueNode#kind kind} and its {@linkplain Node#id()}. For example, {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-" is returned.

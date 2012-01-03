@@ -24,11 +24,11 @@ package com.oracle.max.graal.compiler.lir;
 
 import java.util.*;
 
-import com.sun.cri.ci.CiTargetMethod.Mark;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.xir.CiXirAssembler.XirMark;
-import com.sun.cri.xir.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
+import com.oracle.max.cri.xir.CiXirAssembler.*;
 
 public class StandardOpcode {
     // Checkstyle: stop

@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.extended;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
 
 
 public final class WriteNode extends AccessNode implements LIRLowerable {

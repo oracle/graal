@@ -26,10 +26,10 @@ import static com.oracle.max.graal.compiler.graphbuilder.Bytecodes.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow

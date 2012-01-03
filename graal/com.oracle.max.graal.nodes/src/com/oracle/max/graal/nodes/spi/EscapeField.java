@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.nodes.spi;
 
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ri.*;
 
 public class EscapeField {
 

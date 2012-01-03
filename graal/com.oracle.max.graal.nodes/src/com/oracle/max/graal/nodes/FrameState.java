@@ -24,12 +24,12 @@ package com.oracle.max.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.virtual.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and

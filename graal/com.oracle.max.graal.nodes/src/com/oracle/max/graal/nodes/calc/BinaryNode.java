@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code BinaryNode} class is the base of arithmetic and logic operations with two inputs.

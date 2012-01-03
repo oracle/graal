@@ -23,6 +23,7 @@
 
 package com.oracle.max.graal.compiler.target.amd64;
 
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64ArithmeticOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareToIntOpcode.*;
@@ -35,10 +36,11 @@ import static com.oracle.max.graal.compiler.target.amd64.AMD64MulOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64Op1Opcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64ShiftOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64StandardOpcode.*;
-import static com.sun.cri.ci.CiValueUtil.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
@@ -48,8 +50,6 @@ import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.xir.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.

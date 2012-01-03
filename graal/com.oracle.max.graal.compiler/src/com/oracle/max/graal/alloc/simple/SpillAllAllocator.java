@@ -26,6 +26,9 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiRegister.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.alloc.util.MoveResolver;
@@ -36,9 +39,6 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiRegister.RegisterFlag;
-import com.sun.cri.ri.*;
 
 public class SpillAllAllocator {
     private final GraalContext context;

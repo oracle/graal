@@ -24,6 +24,8 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.lang.reflect.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.max.graal.graph.Node.NodeIntrinsic;
@@ -31,8 +33,6 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 public class SnippetIntrinsificationPhase extends Phase {
 

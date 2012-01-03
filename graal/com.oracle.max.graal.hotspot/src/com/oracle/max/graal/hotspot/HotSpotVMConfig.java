@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.hotspot;
 
-import com.sun.cri.ci.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * Used to communicate configuration details, runtime offsets, etc. to graal upon compileMethod.

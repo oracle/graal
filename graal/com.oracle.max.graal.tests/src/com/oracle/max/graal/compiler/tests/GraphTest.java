@@ -28,12 +28,12 @@ import org.junit.*;
 
 import junit.framework.Assert;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.*;
 import com.oracle.max.graal.compiler.graphbuilder.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ri.*;
 
 /**
  * Base class for Graal compiler unit tests. These are white box tests

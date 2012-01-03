@@ -25,6 +25,8 @@ package com.oracle.max.graal.compiler.util;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graphbuilder.*;
@@ -36,8 +38,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.graal.nodes.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 public class InliningUtil {
 

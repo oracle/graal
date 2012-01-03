@@ -23,11 +23,15 @@
 
 package com.oracle.max.graal.compiler;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiCompiler.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.simple.*;
 import com.oracle.max.graal.compiler.alloc.*;
@@ -42,10 +46,6 @@ import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.virtual.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiCompiler.DebugInfoLevel;
-import com.sun.cri.ri.*;
-import com.sun.cri.xir.*;
 
 /**
  * This class encapsulates global information about the compilation of a particular method,

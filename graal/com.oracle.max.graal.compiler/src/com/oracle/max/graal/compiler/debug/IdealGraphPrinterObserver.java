@@ -26,12 +26,12 @@ import java.io.*;
 import java.net.*;
 import java.util.regex.*;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
-import com.sun.cri.ri.*;
 
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation that can be

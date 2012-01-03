@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.snippets.nodes;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 public class ArrayHeaderSizeNode extends FloatingNode implements Lowerable {
     @Data private final CiKind elementKind;

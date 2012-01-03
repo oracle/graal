@@ -43,7 +43,7 @@
  * While there is only one {@code GraalCompiler} instance, there may be several compilations proceeding concurrently, each of
  * which is represented by a unique {@code GraalCompilation} instance. The static method {@link com.oracle.max.graal.compiler.GraalCompilation#currentInterval}} returns the
  * {@code GraalCompilation} instance associated with the current thread, and is managed using a {@link java.lang.ThreadLocal} variable.
- * Each {@code GraalCompilation} instance has an associated {@link com.sun.cri.ci.CiStatistics} object that accumulates information about the compilation process.
+ * Each {@code GraalCompilation} instance has an associated {@link com.oracle.max.cri.ci.CiStatistics} object that accumulates information about the compilation process.
  * </p>
  * <H3>Supported backends</H3>
  *

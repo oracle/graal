@@ -24,13 +24,13 @@ package com.oracle.max.graal.snippets;
 
 import java.lang.reflect.*;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.sun.cri.ri.*;
 
 public class IntrinsifyArrayCopyPhase extends Phase {
     private final GraalRuntime runtime;

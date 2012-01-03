@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.snippets;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.extended.*;
-import com.sun.cri.ci.*;
 
 /**
  * Snippets for {@link NodeClass} methods.

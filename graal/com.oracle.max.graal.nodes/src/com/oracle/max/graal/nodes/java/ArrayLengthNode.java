@@ -22,13 +22,13 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * The {@code ArrayLength} instruction gets the length of an array.

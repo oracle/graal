@@ -26,11 +26,11 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiCallingConvention.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiCallingConvention.Type;
-import com.sun.cri.ri.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.

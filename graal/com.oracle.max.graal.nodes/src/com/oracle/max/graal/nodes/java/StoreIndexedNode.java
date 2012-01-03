@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.

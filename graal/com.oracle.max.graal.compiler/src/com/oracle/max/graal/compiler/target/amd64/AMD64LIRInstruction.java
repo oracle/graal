@@ -23,9 +23,9 @@
 package com.oracle.max.graal.compiler.target.amd64;
 
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.sun.cri.ci.*;
 
 /**
  * Convenience class to cast AbstractAssembler to AMD64MacroAssembler for the {@link #emitCode} method.

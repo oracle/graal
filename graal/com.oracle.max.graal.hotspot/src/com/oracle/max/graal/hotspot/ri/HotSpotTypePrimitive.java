@@ -24,10 +24,10 @@ package com.oracle.max.graal.hotspot.ri;
 
 import java.lang.annotation.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.hotspot.Compiler;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Implementation of RiType for primitive HotSpot types.

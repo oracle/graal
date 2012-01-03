@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.extended;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * Store of a value at a location specified as an offset relative to an object.

@@ -22,12 +22,12 @@
  */
 package com.oracle.max.graal.nodes.spi;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.sun.cri.ci.*;
 
 public abstract class LIRGeneratorTool {
     public abstract CiTarget target();

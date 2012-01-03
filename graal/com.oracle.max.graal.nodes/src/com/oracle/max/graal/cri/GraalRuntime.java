@@ -24,9 +24,9 @@ package com.oracle.max.graal.cri;
 
 import java.util.*;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ri.*;
 
 /**
  * Graal-specific extensions for the runtime interface that must be implemented by the VM.

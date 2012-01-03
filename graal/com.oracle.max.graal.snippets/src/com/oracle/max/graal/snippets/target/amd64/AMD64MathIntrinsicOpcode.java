@@ -22,14 +22,14 @@
  */
 package com.oracle.max.graal.snippets.target.amd64;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
 
 public enum AMD64MathIntrinsicOpcode implements LIROpcode {
     SQRT,

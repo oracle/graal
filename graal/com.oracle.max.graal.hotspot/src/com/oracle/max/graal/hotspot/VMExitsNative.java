@@ -26,15 +26,15 @@ package com.oracle.max.graal.hotspot;
 import java.lang.reflect.*;
 import java.util.concurrent.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiCompiler.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
 import com.oracle.max.graal.snippets.*;
-import com.sun.cri.ci.CiCompiler.DebugInfoLevel;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /**
  * Exits from the HotSpot VM into Java code.

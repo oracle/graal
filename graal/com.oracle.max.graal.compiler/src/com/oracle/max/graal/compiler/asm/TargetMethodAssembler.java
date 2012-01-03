@@ -22,17 +22,17 @@
  */
 package com.oracle.max.graal.compiler.asm;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 public class TargetMethodAssembler {
     public final GraalCompilation compilation;

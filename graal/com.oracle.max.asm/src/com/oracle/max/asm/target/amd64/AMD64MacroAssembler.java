@@ -23,8 +23,8 @@
 package com.oracle.max.asm.target.amd64;
 
 import com.oracle.max.asm.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * This class implements commonly used X86 code patterns.

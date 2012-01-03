@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code PhiNode} represents the merging of dataflow in the graph. It refers to a merge

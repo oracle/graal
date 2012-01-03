@@ -22,12 +22,12 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 /* TODO(tw/gd) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
  * But in the back-end the comparison should not always be materialized (for example in x86 the comparison result will not be in a register but in a flag)

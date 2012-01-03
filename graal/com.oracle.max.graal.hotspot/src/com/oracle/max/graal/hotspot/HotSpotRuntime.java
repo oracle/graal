@@ -26,6 +26,10 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
@@ -36,11 +40,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.snippets.nodes.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.DataPatch;
-import com.sun.cri.ci.CiTargetMethod.Safepoint;
-import com.sun.cri.ri.*;
-import com.sun.cri.ri.RiType.Representation;
 import com.sun.max.asm.dis.*;
 import com.sun.max.lang.*;
 

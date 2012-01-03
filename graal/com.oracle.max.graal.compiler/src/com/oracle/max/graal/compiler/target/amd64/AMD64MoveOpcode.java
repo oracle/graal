@@ -22,15 +22,15 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.sun.cri.ci.*;
 
 public class AMD64MoveOpcode {
 

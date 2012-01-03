@@ -24,11 +24,11 @@ package com.oracle.max.graal.nodes.extended;
 
 import sun.misc.*;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 
 public final class ReadNode extends AccessNode implements Node.ValueNumberable, Node.IterableNodeType, LIRLowerable, Canonicalizable {

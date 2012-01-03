@@ -24,12 +24,12 @@ package com.oracle.max.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.

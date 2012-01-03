@@ -22,13 +22,13 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
-import static com.sun.cri.ci.CiValue.*;
-import static com.sun.cri.ci.CiValueUtil.*;
+import static com.oracle.max.cri.ci.CiValue.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
-import com.sun.cri.ci.*;
 
 /**
  * Converts {@link PhiNode} instructions into moves.

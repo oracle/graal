@@ -24,8 +24,8 @@ package com.oracle.max.criutils;
 
 import java.io.*;
 
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases.

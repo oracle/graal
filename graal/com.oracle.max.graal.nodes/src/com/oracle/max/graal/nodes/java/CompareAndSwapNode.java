@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * Represents an atomic compare-and-swap operation. If {@link #directResult} is true then the value read from the memory location is produced.

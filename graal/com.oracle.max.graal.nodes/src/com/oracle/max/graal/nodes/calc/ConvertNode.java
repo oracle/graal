@@ -22,13 +22,13 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
-import static com.sun.cri.ci.CiKind.*;
+import static com.oracle.max.cri.ci.CiKind.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
-import com.sun.cri.ci.*;
 
 /**
  * The {@code ConvertNode} class represents a conversion between primitive types.

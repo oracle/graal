@@ -26,8 +26,8 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.sun.cri.ci.*;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR instruction.

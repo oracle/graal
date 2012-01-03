@@ -26,8 +26,8 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.hotspot.*;
-import com.sun.cri.ci.*;
 
 public class ReplacingStreams {
 

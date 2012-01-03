@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.loop.*;
@@ -32,7 +33,6 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.*;
 import com.oracle.max.graal.nodes.extended.*;
-import com.sun.cri.ci.*;
 
 public class FloatingReadPhase extends Phase {
 

@@ -22,11 +22,11 @@
  */
 package com.oracle.max.graal.hotspot;
 
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.hotspot.ri.*;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
 
 public interface Compiler {
 

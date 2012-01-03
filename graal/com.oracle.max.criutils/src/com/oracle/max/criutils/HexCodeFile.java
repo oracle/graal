@@ -27,11 +27,8 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.regex.*;
 
-import com.sun.cri.ci.*;
-import com.sun.cri.ci.CiTargetMethod.CodeAnnotation;
-import com.sun.cri.ci.CiTargetMethod.CodeComment;
-import com.sun.cri.ci.CiTargetMethod.JumpTable;
-import com.sun.cri.ci.CiTargetMethod.LookupTable;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.*;
 
 
 /**

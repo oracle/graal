@@ -24,16 +24,16 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiCompiler.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.stub.CompilerStub.Id;
 import com.oracle.max.graal.compiler.target.*;
-import com.sun.cri.ci.CiCompiler.DebugInfoLevel;
-import com.sun.cri.ci.*;
-import com.sun.cri.ri.*;
-import com.sun.cri.xir.*;
 
 /**
  * The {@code X86Backend} class represents the backend for the AMD64 architecture.

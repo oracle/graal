@@ -26,6 +26,7 @@ import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.debug.BasicIdealGraphPrinter.Edge;
 import com.oracle.max.graal.compiler.graphbuilder.*;
@@ -38,7 +39,6 @@ import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.loop.*;
-import com.sun.cri.ri.*;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a

@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.alloc.util;
 
-import com.sun.cri.ci.*;
+import com.oracle.max.cri.ci.*;
 
 public class Location extends CiValue {
     private static final long serialVersionUID = -1786677729152726126L;
