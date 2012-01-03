@@ -37,5 +37,4 @@ public class HotSpotThreadSnippets implements SnippetsInterface {
     public Thread currentThread() {
         return (Thread) CurrentThread.get(threadObjectOffset);
     }
-
 }

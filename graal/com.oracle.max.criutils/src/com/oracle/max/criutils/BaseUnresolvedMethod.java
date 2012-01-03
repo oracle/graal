@@ -66,9 +66,4 @@ public class BaseUnresolvedMethod implements RiMethod {
     public String toString() {
         return CiUtil.format("%H.%n(%p) [unresolved]", this);
     }
-
-    @Override
-    public boolean canBePermanentlyLinked() {
-        return false;
-    }
 }

@@ -46,16 +46,4 @@ public interface RiMethod {
      * @return the signature of the method
      */
     RiSignature signature();
-
-    /**
-     * Indicates whether a direct call to this method can be linked without
-     * any concerns of the call having to be relinked (e.g. when the
-     * compiled code for this method is relocated or invalidated).
-     * This determines whether a compiler can generate code for a direct call
-     * without having to worry about thread-safe code patching issues.
-     * <p>
-     * Note that the result will always be {@code false} for methods that don't yet
-     * have compiled code.
-     */
-    boolean canBePermanentlyLinked();
 }

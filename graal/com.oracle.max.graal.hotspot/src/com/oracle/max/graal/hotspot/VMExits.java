@@ -33,6 +33,12 @@ public interface VMExits {
 
     void compileMethod(HotSpotMethodResolved method, int entryBCI, boolean blocking) throws Throwable;
 
+    void shutdownCompiler() throws Throwable;
+
+    void startCompiler() throws Throwable;
+
+    void bootstrap() throws Throwable;
+
     RiMethod createRiMethodUnresolved(String name, String signature, RiType holder);
 
     RiSignature createRiSignature(String signature);
@@ -52,10 +58,4 @@ public interface VMExits {
     CiConstant createCiConstantDouble(double value);
 
     CiConstant createCiConstantObject(Object object);
-
-    void shutdownCompiler() throws Throwable;
-
-    void startCompiler() throws Throwable;
-
-    void bootstrap() throws Throwable;
 }

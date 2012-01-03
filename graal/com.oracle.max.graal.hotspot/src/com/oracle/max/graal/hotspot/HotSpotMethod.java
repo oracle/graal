@@ -27,7 +27,7 @@ import com.sun.cri.ri.*;
 public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 7167491397941960839L;
     protected String name;
@@ -40,11 +40,4 @@ public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
     public final String name() {
         return name;
     }
-
-    @Override
-    public boolean canBePermanentlyLinked() {
-        // relevant in Maxine only
-        return false;
-    }
-
 }
