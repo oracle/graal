@@ -109,8 +109,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public CiVariable emitMove(CiValue input) {
-        CiVariable result = newVariable(input.kind);
+    public Variable emitMove(CiValue input) {
+        Variable result = newVariable(input.kind);
         append(MOVE.create(result, input));
         return result;
     }
@@ -121,8 +121,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitLoad(CiAddress loadAddress, CiKind kind, boolean canTrap) {
-        CiVariable result = newVariable(kind);
+    public Variable emitLoad(CiAddress loadAddress, CiKind kind, boolean canTrap) {
+        Variable result = newVariable(kind);
         append(LOAD.create(result, loadAddress.base, loadAddress.index, loadAddress.scale, loadAddress.displacement, kind, canTrap ? state() : null));
         return result;
     }
@@ -134,15 +134,15 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitLea(CiAddress address) {
-        CiVariable result = newVariable(target().wordKind);
+    public Variable emitLea(CiAddress address) {
+        Variable result = newVariable(target().wordKind);
         append(LEA_MEMORY.create(result, address.base, address.index, address.scale, address.displacement));
         return result;
     }
 
     @Override
-    public CiVariable emitLea(CiStackSlot address) {
-        CiVariable result = newVariable(target().wordKind);
+    public Variable emitLea(CiStackSlot address) {
+        Variable result = newVariable(target().wordKind);
         append(LEA_STACK.create(result, address));
         return result;
     }
@@ -172,10 +172,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitCMove(CiValue left, CiValue right, Condition cond, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue) {
+    public Variable emitCMove(CiValue left, CiValue right, Condition cond, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue) {
         emitCompare(left, right);
 
-        CiVariable result = newVariable(trueValue.kind);
+        Variable result = newVariable(trueValue.kind);
         switch (left.kind) {
             case Boolean:
             case Int:
@@ -189,7 +189,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private void emitCompare(CiValue a, CiValue b) {
-        CiVariable left = load(a);
+        Variable left = load(a);
         CiValue right = loadNonConst(b);
         switch (left.kind) {
             case Jsr:
@@ -203,8 +203,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitNegate(CiValue input) {
-        CiVariable result = newVariable(input.kind);
+    public Variable emitNegate(CiValue input) {
+        Variable result = newVariable(input.kind);
         switch (input.kind) {
             case Int:    append(INEG.create(result, input)); break;
             case Long:   append(LNEG.create(result, input)); break;
@@ -216,8 +216,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitAdd(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitAdd(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(IADD.create(result, a, loadNonConst(b))); break;
             case Long:   append(LADD.create(result, a, loadNonConst(b))); break;
@@ -229,8 +229,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitSub(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitSub(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(ISUB.create(result, a, loadNonConst(b))); break;
             case Long:   append(LSUB.create(result, a, loadNonConst(b))); break;
@@ -242,8 +242,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitMul(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitMul(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(IMUL.create(result, a, loadNonConst(b))); break;
             case Long:   append(LMUL.create(result, a, loadNonConst(b))); break;
@@ -255,7 +255,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitDiv(CiValue a, CiValue b) {
+    public Variable emitDiv(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
                 append(MOVE.create(RAX_I, a));
@@ -266,12 +266,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
                 append(LDIV.create(RAX_L, state(), RAX_L, load(b)));
                 return emitMove(RAX_L);
             case Float: {
-                CiVariable result = newVariable(a.kind);
+                Variable result = newVariable(a.kind);
                 append(FDIV.create(result, a, loadNonConst(b)));
                 return result;
             }
             case Double: {
-                CiVariable result = newVariable(a.kind);
+                Variable result = newVariable(a.kind);
                 append(DDIV.create(result, a, loadNonConst(b)));
                 return result;
             }
@@ -281,7 +281,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitRem(CiValue a, CiValue b) {
+    public Variable emitRem(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
                 append(MOVE.create(RAX_I, a));
@@ -301,7 +301,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitUDiv(CiValue a, CiValue b) {
+    public Variable emitUDiv(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
                 append(MOVE.create(RAX_I, load(a)));
@@ -317,7 +317,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitURem(CiValue a, CiValue b) {
+    public Variable emitURem(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
                 append(MOVE.create(RAX_I, load(a)));
@@ -334,8 +334,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public CiVariable emitAnd(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitAnd(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(IAND.create(result, a, loadNonConst(b))); break;
             case Long:   append(LAND.create(result, a, loadNonConst(b))); break;
@@ -345,8 +345,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitOr(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitOr(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(IOR.create(result, a, loadNonConst(b))); break;
             case Long:   append(LOR.create(result, a, loadNonConst(b))); break;
@@ -356,8 +356,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitXor(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitXor(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(IXOR.create(result, a, loadNonConst(b))); break;
             case Long:   append(LXOR.create(result, a, loadNonConst(b))); break;
@@ -368,8 +368,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public CiVariable emitShl(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitShl(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch (a.kind) {
             case Int:    append(ISHL.create(result, a, loadShiftCount(b))); break;
             case Long:   append(LSHL.create(result, a, loadShiftCount(b))); break;
@@ -379,8 +379,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitShr(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitShr(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch (a.kind) {
             case Int:    append(ISHR.create(result, a, loadShiftCount(b))); break;
             case Long:   append(LSHR.create(result, a, loadShiftCount(b))); break;
@@ -390,8 +390,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiVariable emitUShr(CiValue a, CiValue b) {
-        CiVariable result = newVariable(a.kind);
+    public Variable emitUShr(CiValue a, CiValue b) {
+        Variable result = newVariable(a.kind);
         switch (a.kind) {
             case Int:    append(UISHR.create(result, a, loadShiftCount(b))); break;
             case Long:   append(ULSHR.create(result, a, loadShiftCount(b))); break;
@@ -411,9 +411,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public CiVariable emitConvert(ConvertNode.Op opcode, CiValue inputVal) {
-        CiVariable input = load(inputVal);
-        CiVariable result = newVariable(opcode.to);
+    public Variable emitConvert(ConvertNode.Op opcode, CiValue inputVal) {
+        Variable input = load(inputVal);
+        Variable result = newVariable(opcode.to);
         switch (opcode) {
             case I2L: append(I2L.create(result, input)); break;
             case L2I: append(L2I.create(result, input)); break;
@@ -462,7 +462,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, CiValue index) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
-        CiVariable tmp = emitMove(index);
+        Variable tmp = emitMove(index);
         append(TABLE_SWITCH.create(lowKey, defaultTarget, targets, tmp, newVariable(compilation.compiler.target.wordKind)));
     }
 
@@ -484,15 +484,15 @@ public class AMD64LIRGenerator extends LIRGenerator {
         assert kind == node.expected().kind();
 
         CiValue expected = loadNonConst(operand(node.expected()));
-        CiVariable newValue = load(operand(node.newValue()));
-        CiVariable addrBase = load(operand(node.object()));
+        Variable newValue = load(operand(node.newValue()));
+        Variable addrBase = load(operand(node.object()));
         CiValue addrIndex = loadNonConst(operand(node.offset()));
 
         if (kind == CiKind.Object) {
-            CiVariable loadedAddress = newVariable(compilation.compiler.target.wordKind);
+            Variable loadedAddress = newVariable(compilation.compiler.target.wordKind);
             append(LEA_MEMORY.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, 0));
             addrBase = loadedAddress;
-            addrIndex = CiVariable.IllegalValue;
+            addrIndex = Variable.IllegalValue;
 
             preGCWriteBarrier(addrBase, false, null);
         }
@@ -501,7 +501,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         append(MOVE.create(rax, expected));
         append(CAS.create(rax, addrBase, addrIndex, CiAddress.Scale.Times1, 0, rax, newValue));
 
-        CiVariable result = newVariable(node.kind());
+        Variable result = newVariable(node.kind());
         if (node.directResult()) {
             append(MOVE.create(result, rax));
         } else {
@@ -518,7 +518,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void visitNormalizeCompare(NormalizeCompareNode x) {
         emitCompare(operand(x.x()), operand(x.y()));
-        CiVariable result = newVariable(x.kind());
+        Variable result = newVariable(x.kind());
         switch (x.x().kind()){
             case Float:
             case Double:

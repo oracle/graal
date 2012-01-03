@@ -22,19 +22,17 @@
  */
 package com.oracle.max.graal.alloc.simple;
 
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiRegister.*;
+import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
-import com.oracle.max.graal.alloc.util.MoveResolver;
-import com.oracle.max.graal.alloc.util.RegisterVerifier;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -44,21 +42,19 @@ public class SpillAllAllocator {
     private final GraalContext context;
     private final LIR lir;
     private final FrameMap frameMap;
-    private final OperandPool operands;
     private final RiRegisterConfig registerConfig;
     private final CiCallingConvention incomingArguments;
 
     private final DataFlowAnalysis dataFlow;
 
-    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, OperandPool pool, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
+    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
         this.context = context;
         this.lir = lir;
-        this.operands = pool;
         this.registerConfig = registerConfig;
         this.frameMap = compilation.frameMap();
         this.incomingArguments = incomingArguments;
 
-        this.dataFlow = new DataFlowAnalysis(context, lir, pool, registerConfig, incomingArguments);
+        this.dataFlow = new DataFlowAnalysis(context, lir, registerConfig, incomingArguments);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
         this.moveResolver = new MoveResolver(frameMap);
     }
@@ -120,7 +116,7 @@ public class SpillAllAllocator {
     private LIRInstruction curInstruction;
 
     public void execute() {
-        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig, operands);
+        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig);
 
         dataFlow.execute();
 
@@ -142,7 +138,7 @@ public class SpillAllAllocator {
 
         context.observable.fireCompilationEvent("After register asignment", lir);
 
-        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig, operands);
+        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig);
     }
 
     private void allocate() {
@@ -161,13 +157,13 @@ public class SpillAllAllocator {
         trace(1, "==== start spill all allocation ====");
         curInRegisterState = new Object[maxRegisterNum()];
         curOutRegisterState = new Object[maxRegisterNum()];
-        curRegisterLocations = new LocationMap(operands.numVariables());
+        curRegisterLocations = new LocationMap(lir.numVariables());
         for (LIRBlock block : lir.linearScanOrder()) {
             trace(1, "start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
             assert checkEmpty(curOutRegisterState);
 
             if (block.numberOfPreds() == 0) {
-                curStackLocations = new LocationMap(operands.numVariables());
+                curStackLocations = new LocationMap(lir.numVariables());
                 trace(1, "  arguments");
                 curInstruction = lir.startBlock().lir().get(0);
                 for (CiValue value : incomingArguments.locations) {
@@ -255,7 +251,7 @@ public class SpillAllAllocator {
         if (isVariable(value)) {
             trace(3, "    kill variable %s", value);
 
-            CiVariable variable = asVariable(value);
+            Variable variable = asVariable(value);
             curStackLocations.clear(variable);
 
             Location loc = curRegisterLocations.get(variable);
@@ -371,17 +367,9 @@ public class SpillAllAllocator {
         }
     }
 
-    private Location allocateRegister(CiVariable variable, Object[] inRegisterState, Object[] outRegisterState) {
+    private Location allocateRegister(Variable variable, Object[] inRegisterState, Object[] outRegisterState) {
         EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = registerConfig.getCategorizedAllocatableRegisters();
-        CiRegister[] availableRegs;
-        if (operands.mustBeByteRegister(variable)) {
-            assert variable.kind != CiKind.Float && variable.kind != CiKind.Double : "cpu regs only";
-            availableRegs = categorizedRegs.get(RegisterFlag.Byte);
-        } else if (variable.kind == CiKind.Float || variable.kind == CiKind.Double) {
-            availableRegs = categorizedRegs.get(RegisterFlag.FPU);
-        } else {
-            availableRegs = categorizedRegs.get(RegisterFlag.CPU);
-        }
+        CiRegister[] availableRegs = categorizedRegs.get(variable.flag);
 
         for (CiRegister reg : availableRegs) {
             if ((inRegisterState == null || inRegisterState[reg.number] == null) && (outRegisterState == null || outRegisterState[reg.number] == null)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 
 public class LocationMap {
@@ -40,7 +41,7 @@ public class LocationMap {
         locations = Arrays.copyOf(template.locations, template.locations.length);
     }
 
-    public Location get(CiVariable variable) {
+    public Location get(Variable variable) {
         assert locations[variable.index] == null || locations[variable.index].variable == variable;
         return locations[variable.index];
     }
@@ -49,7 +50,7 @@ public class LocationMap {
         locations[location.variable.index] = location;
     }
 
-    public void clear(CiVariable variable) {
+    public void clear(Variable variable) {
         locations[variable.index] = null;
     }
 

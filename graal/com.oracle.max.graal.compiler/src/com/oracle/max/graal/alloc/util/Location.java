@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,15 @@
 package com.oracle.max.graal.alloc.util;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.compiler.lir.*;
 
 public class Location extends CiValue {
     private static final long serialVersionUID = -1786677729152726126L;
 
-    public final CiVariable variable;
+    public final Variable variable;
     public final CiValue location;
 
-    public Location(CiVariable variable, CiValue location) {
+    public Location(Variable variable, CiValue location) {
         super(variable.kind);
         this.variable = variable;
         this.location = location;

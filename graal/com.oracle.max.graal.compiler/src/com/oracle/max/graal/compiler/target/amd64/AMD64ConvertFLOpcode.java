@@ -36,7 +36,7 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64ConvertFLOpcode implements LIROpcode {
     F2L, D2L;
 
-    public LIRInstruction create(CiVariable result, final CompilerStub stub, CiVariable input, CiVariable scratch) {
+    public LIRInstruction create(Variable result, final CompilerStub stub, Variable input, Variable scratch) {
         CiValue[] inputs = new CiValue[] {input};
         CiValue[] temps = new CiValue[] {scratch};
 

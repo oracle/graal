@@ -33,7 +33,7 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64CompareOpcode implements LIROpcode {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 
-    public LIRInstruction create(CiVariable left, CiValue right) {
+    public LIRInstruction create(Variable left, CiValue right) {
         assert (name().startsWith("I") && left.kind == CiKind.Int && right.kind.stackKind() == CiKind.Int)
             || (name().startsWith("I") && left.kind == CiKind.Jsr && right.kind == CiKind.Jsr)
             || (name().startsWith("L") && left.kind == CiKind.Long && right.kind == CiKind.Long)

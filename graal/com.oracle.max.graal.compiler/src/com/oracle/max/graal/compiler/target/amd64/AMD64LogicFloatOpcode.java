@@ -34,7 +34,7 @@ public enum AMD64LogicFloatOpcode implements LIROpcode {
     FAND, FOR, FXOR,
     DAND, DOR, DXOR;
 
-    public LIRInstruction create(CiVariable result, CiValue left, CiValue right) {
+    public LIRInstruction create(Variable result, CiValue left, CiValue right) {
         assert (name().startsWith("F") && result.kind == CiKind.Float && left.kind == CiKind.Float && right.kind == CiKind.Float)
             || (name().startsWith("D") && result.kind == CiKind.Double && left.kind == CiKind.Double && right.kind == CiKind.Double);
 

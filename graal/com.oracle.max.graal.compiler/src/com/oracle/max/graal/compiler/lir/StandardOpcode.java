@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public class StandardOpcode {
     }
 
     public interface NullCheckOpcode extends LIROpcode {
-        LIRInstruction create(CiVariable input, LIRDebugInfo info);
+        LIRInstruction create(Variable input, LIRDebugInfo info);
     }
 
     public interface CallOpcode extends LIROpcode {

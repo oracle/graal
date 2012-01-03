@@ -33,7 +33,7 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64MulOpcode implements LIROpcode {
     IMUL, LMUL;
 
-    public LIRInstruction create(CiVariable result, CiValue left, CiValue right) {
+    public LIRInstruction create(Variable result, CiValue left, CiValue right) {
         CiValue[] inputs = new CiValue[] {left};
         CiValue[] alives = new CiValue[] {right};
 

@@ -36,7 +36,7 @@ public enum AMD64MathIntrinsicOpcode implements LIROpcode {
     SIN, COS, TAN,
     LOG, LOG10;
 
-    public LIRInstruction create(CiVariable result, CiVariable input) {
+    public LIRInstruction create(Variable result, Variable input) {
         CiValue[] inputs = new CiValue[] {input};
 
         return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {

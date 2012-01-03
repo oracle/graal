@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@
  * <li>{@link com.oracle.max.cri.ci.CiRegisterValue}: a value stored in a {@linkplain com.oracle.max.cri.ci.CiRegister target machine register}.
  * <li>{@link com.oracle.max.cri.ci.CiStackSlot}: a spill slot or an outgoing stack-based argument in a method's frame.
  * <li>{@link com.oracle.max.cri.ci.CiAddress}: an address in target machine memory.
- * <li>{@link com.oracle.max.cri.ci.CiVariable}: a value (cf. virtual register) that is yet to be bound to a target machine location (physical register or memory address).
+ * <li>{@link com.oracle.max.graal.compiler.lir.CiVariable}: a value (cf. virtual register) that is yet to be bound to a target machine location (physical register or memory address).
  *</ul>
  */
 package com.oracle.max.cri.ci;

@@ -40,7 +40,7 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64CompareToIntOpcode implements LIROpcode {
     CMP2INT, CMP2INT_UG, CMP2INT_UL;
 
-    public LIRInstruction create(CiVariable result) {
+    public LIRInstruction create(Variable result) {
         return new AMD64LIRInstruction(this, result, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {

@@ -137,7 +137,7 @@ public class AMD64ControlFlowOpcode {
     public enum TableSwitchOpcode implements LIROpcode {
         TABLE_SWITCH;
 
-        public LIRInstruction create(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, CiVariable index, CiVariable scratch) {
+        public LIRInstruction create(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
             CiValue[] alives = new CiValue[] {index};
             CiValue[] temps = new CiValue[] {scratch};
 
@@ -166,7 +166,7 @@ public class AMD64ControlFlowOpcode {
     public enum CondMoveOpcode implements LIROpcode {
         CMOVE;
 
-        public LIRInstruction create(CiVariable result, final Condition condition, CiVariable trueValue, CiValue falseValue) {
+        public LIRInstruction create(Variable result, final Condition condition, Variable trueValue, CiValue falseValue) {
             CiValue[] inputs = new CiValue[] {falseValue};
             CiValue[] alives = new CiValue[] {trueValue};
 
@@ -193,7 +193,7 @@ public class AMD64ControlFlowOpcode {
     public enum FloatCondMoveOpcode implements LIROpcode {
         FLOAT_CMOVE;
 
-        public LIRInstruction create(CiVariable result, final Condition condition, final boolean unorderedIsTrue, CiVariable trueValue, CiVariable falseValue) {
+        public LIRInstruction create(Variable result, final Condition condition, final boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
             CiValue[] alives = new CiValue[] {trueValue, falseValue};
 
             return new AMD64LIRInstruction(this, result, null, LIRInstruction.NO_OPERANDS, alives, LIRInstruction.NO_OPERANDS) {

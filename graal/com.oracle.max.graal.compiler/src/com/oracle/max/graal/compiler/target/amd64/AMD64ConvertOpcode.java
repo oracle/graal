@@ -37,7 +37,7 @@ public enum AMD64ConvertOpcode implements LIROpcode {
     L2F, L2D,
     MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
 
-    public LIRInstruction create(CiVariable result, CiVariable input) {
+    public LIRInstruction create(Variable result, Variable input) {
         CiValue[] inputs = new CiValue[] {input};
 
         return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {

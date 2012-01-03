@@ -60,7 +60,7 @@ public class AMD64MoveOpcode {
     public enum LoadOpcode implements LIROpcode {
         LOAD;
 
-        public LIRInstruction create(CiVariable result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement, final CiKind kind, LIRDebugInfo info) {
+        public LIRInstruction create(Variable result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement, final CiKind kind, LIRDebugInfo info) {
             CiValue[] inputs = new CiValue[] {addrBase, addrIndex};
 
             return new AMD64LIRInstruction(this, result, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
@@ -92,7 +92,7 @@ public class AMD64MoveOpcode {
     public enum LeaOpcode implements LIROpcode {
         LEA;
 
-        public LIRInstruction create(CiVariable result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement) {
+        public LIRInstruction create(Variable result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement) {
             CiValue[] inputs = new CiValue[] {addrBase, addrIndex};
 
             return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
@@ -112,7 +112,7 @@ public class AMD64MoveOpcode {
     public enum LeaStackBlockOpcode implements LIROpcode {
         LEA_STACK_BLOCK;
 
-        public LIRInstruction create(CiVariable result, final CiStackSlot stackBlock) {
+        public LIRInstruction create(Variable result, final CiStackSlot stackBlock) {
             return new AMD64LIRInstruction(this, result, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
@@ -141,7 +141,7 @@ public class AMD64MoveOpcode {
         NULL_CHECK;
 
         @Override
-        public LIRInstruction create(CiVariable input, LIRDebugInfo info) {
+        public LIRInstruction create(Variable input, LIRDebugInfo info) {
             CiValue[] inputs = new CiValue[] {input};
 
             return new AMD64LIRInstruction(this, CiValue.IllegalValue, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
@@ -158,7 +158,7 @@ public class AMD64MoveOpcode {
     public enum CompareAndSwapOpcode implements LIROpcode {
         CAS;
 
-        public LIRInstruction create(CiRegisterValue result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement, CiRegisterValue cmpValue, CiVariable newValue) {
+        public LIRInstruction create(CiRegisterValue result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement, CiRegisterValue cmpValue, Variable newValue) {
             CiValue[] inputs = new CiValue[] {addrBase, addrIndex, cmpValue, newValue};
 
             return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {

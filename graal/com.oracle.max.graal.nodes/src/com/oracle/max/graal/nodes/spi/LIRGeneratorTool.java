@@ -49,37 +49,37 @@ public abstract class LIRGeneratorTool {
     public abstract boolean canStoreConstant(CiConstant c);
 
     public abstract CiValue operand(ValueNode object);
-    public abstract CiVariable newVariable(CiKind kind);
+    public abstract CiValue newVariable(CiKind kind);
     public abstract CiValue setResult(ValueNode x, CiValue operand);
 
-    public abstract CiVariable emitMove(CiValue input);
+    public abstract CiValue emitMove(CiValue input);
     public abstract void emitMove(CiValue src, CiValue dst);
-    public abstract CiVariable emitLoad(CiAddress loadAddress, CiKind kind, boolean canTrap);
+    public abstract CiValue emitLoad(CiAddress loadAddress, CiKind kind, boolean canTrap);
     public abstract void emitStore(CiAddress storeAddress, CiValue input, CiKind kind, boolean canTrap);
-    public abstract CiVariable emitLea(CiAddress address);
-    public abstract CiVariable emitLea(CiStackSlot address);
+    public abstract CiValue emitLea(CiAddress address);
+    public abstract CiValue emitLea(CiStackSlot address);
 
-    public abstract CiVariable emitNegate(CiValue input);
-    public abstract CiVariable emitAdd(CiValue a, CiValue b);
-    public abstract CiVariable emitSub(CiValue a, CiValue b);
-    public abstract CiVariable emitMul(CiValue a, CiValue b);
-    public abstract CiVariable emitDiv(CiValue a, CiValue b);
-    public abstract CiVariable emitRem(CiValue a, CiValue b);
-    public abstract CiVariable emitUDiv(CiValue a, CiValue b);
-    public abstract CiVariable emitURem(CiValue a, CiValue b);
+    public abstract CiValue emitNegate(CiValue input);
+    public abstract CiValue emitAdd(CiValue a, CiValue b);
+    public abstract CiValue emitSub(CiValue a, CiValue b);
+    public abstract CiValue emitMul(CiValue a, CiValue b);
+    public abstract CiValue emitDiv(CiValue a, CiValue b);
+    public abstract CiValue emitRem(CiValue a, CiValue b);
+    public abstract CiValue emitUDiv(CiValue a, CiValue b);
+    public abstract CiValue emitURem(CiValue a, CiValue b);
 
-    public abstract CiVariable emitAnd(CiValue a, CiValue b);
-    public abstract CiVariable emitOr(CiValue a, CiValue b);
-    public abstract CiVariable emitXor(CiValue a, CiValue b);
+    public abstract CiValue emitAnd(CiValue a, CiValue b);
+    public abstract CiValue emitOr(CiValue a, CiValue b);
+    public abstract CiValue emitXor(CiValue a, CiValue b);
 
-    public abstract CiVariable emitShl(CiValue a, CiValue b);
-    public abstract CiVariable emitShr(CiValue a, CiValue b);
-    public abstract CiVariable emitUShr(CiValue a, CiValue b);
+    public abstract CiValue emitShl(CiValue a, CiValue b);
+    public abstract CiValue emitShr(CiValue a, CiValue b);
+    public abstract CiValue emitUShr(CiValue a, CiValue b);
 
-    public abstract CiVariable emitConvert(ConvertNode.Op opcode, CiValue inputVal);
+    public abstract CiValue emitConvert(ConvertNode.Op opcode, CiValue inputVal);
     public abstract void emitMembar(int barriers);
     public abstract void emitDeoptimizeOn(Condition of, DeoptAction action, Object deoptInfo);
-    public abstract CiVariable emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args);
+    public abstract CiValue emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args);
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);

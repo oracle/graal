@@ -107,9 +107,6 @@ public final class CiAddress extends CiValue {
             this.index = IllegalValue;
             this.scale = Scale.Times1;
         } else {
-            assert isIllegal(base) || isVariable(base) || isRegister(base);
-            assert isIllegal(index) || isVariable(index) || isRegister(index);
-
             this.index = index;
             this.scale = scale;
             this.displacement = displacement;
@@ -192,14 +189,6 @@ public final class CiAddress extends CiValue {
         }
     }
 
-    private static String s(CiValue location) {
-        if (isRegister(location)) {
-            return asRegister(location).name;
-        }
-        assert isVariable(location);
-        return "v" + ((CiVariable) location).index;
-    }
-
     private static String signed(int i) {
         if (i >= 0) {
             return "+" + i;
@@ -211,10 +200,10 @@ public final class CiAddress extends CiValue {
     public String toString() {
         // Checkstyle: stop
         switch (format()) {
-            case BASE            : return "[" + s(base) + kindSuffix() + "]";
-            case BASE_DISP       : return "[" + s(base) + signed(displacement) + kindSuffix() + "]";
-            case BASE_INDEX      : return "[" + s(base) + "+" + s(index) + kindSuffix() + "]";
-            case BASE_INDEX_DISP : return "[" + s(base) + "+(" + s(index) + "*" + scale.value + ")" + signed(displacement) + kindSuffix() + "]";
+            case BASE            : return "[" + base + kindSuffix() + "]";
+            case BASE_DISP       : return "[" + base + signed(displacement) + kindSuffix() + "]";
+            case BASE_INDEX      : return "[" + base + "+" + index + kindSuffix() + "]";
+            case BASE_INDEX_DISP : return "[" + base + "+(" + index + "*" + scale.value + ")" + signed(displacement) + kindSuffix() + "]";
             case PLACEHOLDER     : return "[<placeholder>]";
             default              : throw new IllegalArgumentException("unknown format: " + format());
         }

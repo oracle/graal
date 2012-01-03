@@ -38,17 +38,6 @@ public class CiValueUtil {
     }
 
 
-    public static boolean isVariable(CiValue value) {
-        assert value != null;
-        return value instanceof CiVariable;
-    }
-
-    public static CiVariable asVariable(CiValue value) {
-        assert value != null;
-        return (CiVariable) value;
-    }
-
-
     public static boolean isConstant(CiValue value) {
         assert value != null;
         return value instanceof CiConstant;

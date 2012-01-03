@@ -257,11 +257,11 @@ public final class MoveResolver {
         return count == 0 || (count == 1 && isLocation(from) && asLocation(from).location == to.location);
     }
 
-    private static void insertExchange(Location from, Location to) {
+    private void insertExchange(Location from, Location to) {
         trace(3, "mr      XCHG %s, %s", from, to);
-        throw Util.unimplemented();
         // TODO create XCHG instruction and use it here
-        // insertionBuffer.append(StandardOp.XCHG.create(from, to));
+        insertionBuffer.append(insertPos, null);
+        throw Util.unimplemented();
     }
 
     private void insertMove(CiValue src, Location dst) {

@@ -34,7 +34,7 @@ public enum AMD64ShiftOpcode implements LIROpcode {
     ISHL, ISHR, UISHR,
     LSHL, LSHR, ULSHR;
 
-    public LIRInstruction create(CiVariable result, CiValue left, CiValue right) {
+    public LIRInstruction create(Variable result, CiValue left, CiValue right) {
         CiValue[] inputs = new CiValue[] {left};
         CiValue[] alives = new CiValue[] {right};
 

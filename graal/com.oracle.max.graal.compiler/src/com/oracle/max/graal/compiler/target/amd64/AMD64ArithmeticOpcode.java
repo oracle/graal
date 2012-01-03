@@ -36,7 +36,7 @@ public enum AMD64ArithmeticOpcode implements LIROpcode {
     FADD, FSUB, FMUL, FDIV,
     DADD, DSUB, DMUL, DDIV;
 
-    public LIRInstruction create(CiVariable result, CiValue left, CiValue right) {
+    public LIRInstruction create(Variable result, CiValue left, CiValue right) {
         assert (name().startsWith("I") && result.kind == CiKind.Int && left.kind.stackKind() == CiKind.Int && right.kind.stackKind() == CiKind.Int)
             || (name().startsWith("L") && result.kind == CiKind.Long && left.kind == CiKind.Long && right.kind == CiKind.Long)
             || (name().startsWith("F") && result.kind == CiKind.Float && left.kind == CiKind.Float && right.kind == CiKind.Float)

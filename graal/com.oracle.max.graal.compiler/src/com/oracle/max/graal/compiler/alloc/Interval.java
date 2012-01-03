@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.alloc;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
@@ -398,7 +398,7 @@ public final class Interval {
     }
 
     /**
-     * The {@linkplain CiRegisterValue register} or {@linkplain CiVariable variable} for this interval prior to register allocation.
+     * The {@linkplain CiRegisterValue register} or {@linkplain Variable variable} for this interval prior to register allocation.
      */
     public final CiValue operand;
 

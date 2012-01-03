@@ -36,7 +36,7 @@ public enum AMD64DivOpcode implements LIROpcode {
     IDIV, IREM, UIDIV, UIREM,
     LDIV, LREM, ULDIV, ULREM;
 
-    public LIRInstruction create(CiRegisterValue result, LIRDebugInfo info, CiRegisterValue left, CiVariable right) {
+    public LIRInstruction create(CiRegisterValue result, LIRDebugInfo info, CiRegisterValue left, Variable right) {
         CiValue[] inputs = new CiValue[] {left};
         CiValue[] alives = new CiValue[] {right};
         CiValue[] temps = new CiValue[] {result.reg == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind)};

@@ -23,12 +23,12 @@
 package com.oracle.max.graal.compiler.alloc;
 
 import static com.oracle.max.cri.ci.CiUtil.*;
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiRegister.*;
+import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
@@ -430,7 +430,6 @@ final class LinearScanWalker extends IntervalWalker {
 
         Interval splitPart = interval.split(optimalSplitPos, allocator);
 
-        allocator.copyRegisterFlags(interval, splitPart);
         splitPart.setInsertMoveWhenActivated(moveNecessary);
 
         assert splitPart.from() >= currentInterval.currentFrom() : "cannot append new interval before current walk position";
@@ -817,14 +816,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     void initVarsForAlloc(Interval interval) {
         EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = allocator.compilation.registerConfig.getCategorizedAllocatableRegisters();
-        if (allocator.operands.mustBeByteRegister(interval.operand)) {
-            assert interval.kind()  != CiKind.Float && interval.kind()  != CiKind.Double : "cpu regs only";
-            availableRegs = categorizedRegs.get(RegisterFlag.Byte);
-        } else if (interval.kind()  == CiKind.Float || interval.kind()  == CiKind.Double) {
-            availableRegs = categorizedRegs.get(RegisterFlag.FPU);
-        } else {
-            availableRegs = categorizedRegs.get(RegisterFlag.CPU);
-        }
+        availableRegs = categorizedRegs.get(asVariable(interval.operand).flag);
     }
 
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {
@@ -920,21 +912,7 @@ final class LinearScanWalker extends IntervalWalker {
             result = false;
 
         } else {
-            if (isVariable(operand) && allocator.operands.mustStartInMemory((CiVariable) operand)) {
-                assert interval.location() == null : "register already assigned";
-                allocator.assignSpillSlot(interval);
-
-                if (!allocator.operands.mustStayInMemory((CiVariable) operand)) {
-                    // activating an interval that must start in a stack slot but may get a register later
-                    // used for lirRoundfp: rounding is done by store to stack and reload later
-                    if (GraalOptions.TraceLinearScanLevel >= 4) {
-                        TTY.println("      interval must start in stack slot . split it before first use");
-                    }
-                    splitStackInterval(interval);
-                }
-
-                result = false;
-            } else if (interval.location() == null) {
+            if (interval.location() == null) {
                 // interval has not assigned register . normal allocation
                 // (this is the normal case for most intervals)
                 if (GraalOptions.TraceLinearScanLevel >= 4) {

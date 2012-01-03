@@ -161,7 +161,7 @@ public class DebugInfoBuilder {
 
         } else if (value != null) {
             CiValue operand = compilation.operand(value);
-            assert operand != null && operand instanceof CiVariable || operand instanceof CiConstant;
+            assert operand != null && operand instanceof Variable || operand instanceof CiConstant;
             return operand;
 
         } else {

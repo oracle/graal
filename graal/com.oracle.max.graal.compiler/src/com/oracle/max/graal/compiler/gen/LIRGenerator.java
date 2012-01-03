@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.gen;
 
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
@@ -33,13 +34,16 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.*;
+import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
+import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
+import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
+import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
+import com.oracle.max.cri.xir.CiXirAssembler.XirRegister;
+import com.oracle.max.cri.xir.CiXirAssembler.XirTemp;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.*;
-import com.oracle.max.graal.compiler.alloc.OperandPool.VariableFlag;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.stub.*;
@@ -62,7 +66,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final LIR lir;
     protected final XirSupport xirSupport;
     protected final RiXirGenerator xir;
-    public final OperandPool operands;
     private final DebugInfoBuilder debugInfoBuilder;
 
     public final CiCallingConvention incomingArguments;
@@ -78,7 +81,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.lir = compilation.lir();
         this.xir = xir;
         this.xirSupport = new XirSupport();
-        this.operands = new OperandPool(compilation.compiler.target);
         this.debugInfoBuilder = new DebugInfoBuilder(compilation);
 
         this.incomingArguments = compilation.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(compilation.method), compilation.compiler.target, false);
@@ -101,13 +103,25 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     /**
-     * Creates a new {@linkplain CiVariable variable}.
+     * Creates a new {@linkplain Variable variable}.
      * @param kind The kind of the new variable.
      * @return a new variable
      */
     @Override
-    public CiVariable newVariable(CiKind kind) {
-        return operands.newVariable(kind.stackKind());
+    public Variable newVariable(CiKind kind) {
+        CiKind stackKind = kind.stackKind();
+        switch (stackKind) {
+            case Jsr:
+            case Int:
+            case Long:
+            case Object:
+                return new Variable(stackKind, lir.nextVariable(), CiRegister.RegisterFlag.CPU);
+            case Float:
+            case Double:
+                return new Variable(stackKind, lir.nextVariable(), CiRegister.RegisterFlag.FPU);
+            default:
+                throw Util.shouldNotReachHere();
+        }
     }
 
     @Override
@@ -115,20 +129,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         assert (isVariable(operand) && x.kind() == operand.kind) || (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
 
         compilation.setOperand(x, operand);
-        if (GraalOptions.DetailedAsserts) {
-            if (isVariable(operand)) {
-                operands.recordResult((CiVariable) operand, x);
-            }
-        }
         return operand;
     }
 
+    @Override
+    public abstract Variable emitMove(CiValue input);
 
-    public CiVariable load(CiValue value) {
+    public Variable load(CiValue value) {
         if (!isVariable(value)) {
             return emitMove(value);
         }
-        return (CiVariable) value;
+        return (Variable) value;
     }
 
     public CiValue loadNonConst(CiValue value) {
@@ -143,8 +154,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return value;
         }
         if (storeKind == CiKind.Byte || storeKind == CiKind.Boolean) {
-            CiVariable tempVar = emitMove(value);
-            operands.setFlag(tempVar, VariableFlag.MustBeByteRegister);
+            Variable tempVar = new Variable(value.kind, lir.nextVariable(), CiRegister.RegisterFlag.Byte);
+            emitMove(value, tempVar);
             return tempVar;
         }
         return load(value);
@@ -343,7 +354,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         for (LocalNode local : compilation.graph.getNodes(LocalNode.class)) {
             int i = local.index();
             CiValue src = toStackKind(args.locations[i]);
-            CiVariable dest = emitMove(src);
+            Variable dest = emitMove(src);
             assert src.kind == local.kind().stackKind() : "local type check failed";
             setResult(local, dest);
         }
@@ -569,7 +580,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private void emitNullCheckGuard(NullCheckNode node) {
         assert !node.expectedNull;
         NullCheckNode x = node;
-        CiVariable value = load(operand(x.object()));
+        Variable value = load(operand(x.object()));
         LIRDebugInfo info = state();
         append(StandardOpcode.NULL_CHECK.create(value, info));
     }
@@ -636,7 +647,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         setResult(conditional, emitConditional(conditional.condition(), tVal, fVal));
     }
 
-    public CiVariable emitConditional(BooleanNode node, CiValue trueValue, CiValue falseValue) {
+    public Variable emitConditional(BooleanNode node, CiValue trueValue, CiValue falseValue) {
         assert trueValue instanceof CiConstant && trueValue.kind.stackKind() == CiKind.Int;
         assert falseValue instanceof CiConstant && falseValue.kind.stackKind() == CiKind.Int;
 
@@ -653,24 +664,24 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private CiVariable emitNullCheckConditional(NullCheckNode node, CiValue trueValue, CiValue falseValue) {
+    private Variable emitNullCheckConditional(NullCheckNode node, CiValue trueValue, CiValue falseValue) {
         Condition cond = node.expectedNull ? Condition.EQ : Condition.NE;
         return emitCMove(operand(node.object()), CiConstant.NULL_OBJECT, cond, false, trueValue, falseValue);
     }
 
-    private CiVariable emitInstanceOfConditional(InstanceOfNode x, CiValue trueValue, CiValue falseValue) {
+    private Variable emitInstanceOfConditional(InstanceOfNode x, CiValue trueValue, CiValue falseValue) {
         XirArgument obj = toXirArgument(x.object());
         XirArgument trueArg = toXirArgument(x.negated ? falseValue : trueValue);
         XirArgument falseArg = toXirArgument(x.negated ? trueValue : falseValue);
         XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass());
-        return (CiVariable) emitXir(snippet, null, null, null, false);
+        return (Variable) emitXir(snippet, null, null, null, false);
     }
 
-    private CiVariable emitConstantConditional(boolean value, CiValue trueValue, CiValue falseValue) {
+    private Variable emitConstantConditional(boolean value, CiValue trueValue, CiValue falseValue) {
         return emitMove(value ? trueValue : falseValue);
     }
 
-    private CiVariable emitCompareConditional(CompareNode compare, CiValue trueValue, CiValue falseValue) {
+    private Variable emitCompareConditional(CompareNode compare, CiValue trueValue, CiValue falseValue) {
         return emitCMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
     }
 
@@ -678,7 +689,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public abstract void emitLabel(Label label, boolean align);
     public abstract void emitJump(LabelRef label, LIRDebugInfo info);
     public abstract void emitBranch(CiValue left, CiValue right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info);
-    public abstract CiVariable emitCMove(CiValue leftVal, CiValue right, Condition cond, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue);
+    public abstract Variable emitCMove(CiValue leftVal, CiValue right, Condition cond, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue);
 
     protected FrameState stateBeforeCallWithArguments(FrameState stateAfter, MethodCallTargetNode call, int bci) {
         return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnKind(), toJVMArgumentStack(call.targetMethod().signature(), call.isStatic(), call.arguments()));
@@ -821,7 +832,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(DeoptAction action, LIRDebugInfo info, Object deoptInfo);
 
     @Override
-    public CiVariable emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {
+    public Variable emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {
         LIRDebugInfo info = canTrap ? state() : null;
 
         CiKind result = runtimeCall.resultKind;
@@ -896,7 +907,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitLookupSwitch(LookupSwitchNode x) {
-        CiVariable tag = load(operand(x.value()));
+        Variable tag = load(operand(x.value()));
         if (x.numberOfCases() == 0 || x.numberOfCases() < GraalOptions.SequentialSwitchLimit) {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
@@ -910,7 +921,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitTableSwitch(TableSwitchNode x) {
-        CiVariable value = load(operand(x.value()));
+        Variable value = load(operand(x.value()));
         // TODO: tune the defaults for the controls used to determine what kind of translation to use
         if (x.numberOfCases() == 0 || x.numberOfCases() <= GraalOptions.SequentialSwitchLimit) {
             int loKey = x.lowKey();
@@ -983,7 +994,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return res.toArray(new SwitchRange[res.size()]);
     }
 
-    private void visitSwitchRanges(SwitchRange[] x, CiVariable value, LabelRef defaultSux) {
+    private void visitSwitchRanges(SwitchRange[] x, Variable value, LabelRef defaultSux) {
         for (int i = 0; i < x.length; i++) {
             SwitchRange oneRange = x[i];
             int lowKey = oneRange.lowKey;
@@ -1029,7 +1040,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiValue result = operand(phi);
         if (result == null) {
             // allocate a variable for this phi
-            CiVariable newOperand = newVariable(phi.kind());
+            Variable newOperand = newVariable(phi.kind());
             setResult(phi, newOperand);
             return newOperand;
         } else {
@@ -1077,9 +1088,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (canBeConstant) {
             return value;
         }
-        CiVariable variable = load(value);
+        Variable variable = load(value);
         if (var.kind == CiKind.Byte || var.kind == CiKind.Boolean) {
-            operands.setFlag(variable, VariableFlag.MustBeByteRegister);
+            Variable tempVar = new Variable(value.kind, lir.nextVariable(), CiRegister.RegisterFlag.Byte);
+            emitMove(variable, tempVar);
+            variable = tempVar;
         }
         return variable;
     }
@@ -1232,7 +1245,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return physReg;
     }
 
-    protected final CiVariable callRuntimeWithResult(CiRuntimeCall runtimeCall, LIRDebugInfo info, CiValue... args) {
+    protected final Variable callRuntimeWithResult(CiRuntimeCall runtimeCall, LIRDebugInfo info, CiValue... args) {
         CiValue location = callRuntime(runtimeCall, info, args);
         return emitMove(location);
     }

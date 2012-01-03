@@ -51,7 +51,7 @@ final class RegisterVerifier {
 
     // currently, only registers are processed
     int stateSize() {
-        return allocator.operands.maxRegisterNumber() + 1;
+        return allocator.maxRegisterNumber() + 1;
     }
 
     // accessors

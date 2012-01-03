@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,14 +38,12 @@ import com.oracle.max.graal.compiler.schedule.*;
 public class DataFlowAnalysis {
     private final GraalContext context;
     private final LIR lir;
-    private final OperandPool operands;
     private final RiRegisterConfig registerConfig;
     private final CiCallingConvention incomingArguments;
 
-    public DataFlowAnalysis(GraalContext context, LIR lir, OperandPool operands, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
+    public DataFlowAnalysis(GraalContext context, LIR lir, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
         this.context = context;
         this.lir = lir;
-        this.operands = operands;
         this.registerConfig = registerConfig;
         this.incomingArguments = incomingArguments;
     }
@@ -62,7 +60,7 @@ public class DataFlowAnalysis {
     }
 
     private int numVariables() {
-        return operands.numVariables();
+        return lir.numVariables();
     }
 
     private boolean isAllocatableRegister(CiValue value) {

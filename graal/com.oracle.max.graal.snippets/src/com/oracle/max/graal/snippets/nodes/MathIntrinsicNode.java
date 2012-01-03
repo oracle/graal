@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.max.graal.snippets.nodes;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
@@ -58,8 +59,8 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
 
     @Override
     public void generateAmd64(AMD64LIRGenerator gen) {
-        CiVariable input = gen.load(gen.operand(x()));
-        CiVariable result = gen.newVariable(kind());
+        Variable input = gen.load(gen.operand(x()));
+        Variable result = gen.newVariable(kind());
         switch (operation()) {
             case ABS:   gen.append(AMD64LogicFloatOpcode.DAND.create(result, input, CiConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
             case SQRT:  gen.append(AMD64MathIntrinsicOpcode.SQRT.create(result, input)); break;

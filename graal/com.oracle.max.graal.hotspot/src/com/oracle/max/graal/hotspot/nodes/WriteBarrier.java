@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,9 @@ public abstract class WriteBarrier extends FixedWithNextNode {
         super(StampFactory.illegal());
     }
 
-    protected void generateBarrier(CiVariable obj, LIRGeneratorTool gen) {
+    protected void generateBarrier(CiValue obj, LIRGeneratorTool gen) {
         HotSpotVMConfig config = CompilerImpl.getInstance().getConfig();
-        CiVariable base = gen.emitUShr(obj, CiConstant.forInt(config.cardtableShift));
+        CiValue base = gen.emitUShr(obj, CiConstant.forInt(config.cardtableShift));
 
         long startAddress = config.cardtableStartAddress;
         int displacement = 0;

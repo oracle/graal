@@ -33,7 +33,7 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64Op1Opcode implements LIROpcode {
     INEG, LNEG;
 
-    public LIRInstruction create(CiVariable result, CiValue input) {
+    public LIRInstruction create(Variable result, CiValue input) {
         CiValue[] inputs = new CiValue[] {input};
 
         return new AMD64LIRInstruction(this, result, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {

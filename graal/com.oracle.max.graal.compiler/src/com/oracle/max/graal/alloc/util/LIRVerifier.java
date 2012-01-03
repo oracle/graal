@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.alloc.util;
 
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
@@ -29,7 +30,6 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -61,19 +61,19 @@ public final class LIRVerifier {
     }
 
 
-    public static boolean verify(boolean beforeRegisterAllocation, LIR lir, CiCallingConvention incomingArguments, FrameMap frameMap, RiRegisterConfig registerConfig, OperandPool operands) {
-        LIRVerifier verifier = new LIRVerifier(beforeRegisterAllocation, lir, frameMap, registerConfig, operands);
+    public static boolean verify(boolean beforeRegisterAllocation, LIR lir, CiCallingConvention incomingArguments, FrameMap frameMap, RiRegisterConfig registerConfig) {
+        LIRVerifier verifier = new LIRVerifier(beforeRegisterAllocation, lir, frameMap, registerConfig);
         verifier.verify(incomingArguments);
         return true;
     }
 
-    private LIRVerifier(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig, OperandPool operands) {
+    private LIRVerifier(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
         this.beforeRegisterAllocation = beforeRegisterAllocation;
         this.lir = lir;
         this.frameMap = frameMap;
         this.registerConfig = registerConfig;
         this.blockLiveOut = new BitSet[lir.linearScanOrder().size()];
-        this.variableDefinitions = new Object[operands.numVariables()];
+        this.variableDefinitions = new Object[lir.numVariables()];
     }
 
     private BitSet curVariablesLive;
