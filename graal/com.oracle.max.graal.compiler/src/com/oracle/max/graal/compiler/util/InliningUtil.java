@@ -226,7 +226,7 @@ public class InliningUtil {
         MethodCallTargetNode callTarget = invoke.callTarget();
 
         if (callTarget.invokeKind() == InvokeKind.Special || callTarget.targetMethod().canBeStaticallyBound()) {
-            if (checkTargetConditions(callTarget.targetMethod(), runtime)) {
+            if (checkTargetConditions(callTarget.targetMethod())) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, callTarget.targetMethod(), invoke);
                 return new ExactInlineInfo(invoke, weight, level, callTarget.targetMethod());
             }
@@ -236,7 +236,7 @@ public class InliningUtil {
             RiResolvedType exact = callTarget.receiver().exactType();
             assert exact.isSubtypeOf(callTarget.targetMethod().holder()) : exact + " subtype of " + callTarget.targetMethod().holder();
             RiResolvedMethod resolved = exact.resolveMethodImpl(callTarget.targetMethod());
-            if (checkTargetConditions(resolved, runtime)) {
+            if (checkTargetConditions(resolved)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
                 return new ExactInlineInfo(invoke, weight, level, resolved);
             }
@@ -258,7 +258,7 @@ public class InliningUtil {
         }
         RiResolvedMethod concrete = holder.uniqueConcreteMethod(callTarget.targetMethod());
         if (concrete != null) {
-            if (checkTargetConditions(concrete, runtime)) {
+            if (checkTargetConditions(concrete)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                 return new AssumptionInlineInfo(invoke, weight, level, holder, concrete);
             }
@@ -269,7 +269,7 @@ public class InliningUtil {
             if (GraalOptions.InlineWithTypeCheck) {
                 // type check and inlining...
                 concrete = profile.types[0].resolveMethodImpl(callTarget.targetMethod());
-                if (concrete != null && checkTargetConditions(concrete, runtime)) {
+                if (concrete != null && checkTargetConditions(concrete)) {
                     double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                     return new TypeGuardInlineInfo(invoke, weight, level, concrete, profile.types[0], profile.probabilities[0]);
                 }
@@ -315,7 +315,7 @@ public class InliningUtil {
         return true;
     }
 
-    private static boolean checkTargetConditions(RiMethod method, GraalRuntime runtime) {
+    private static boolean checkTargetConditions(RiMethod method) {
         if (!(method instanceof RiResolvedMethod)) {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because it is unresolved", method.toString());
@@ -323,12 +323,6 @@ public class InliningUtil {
             return false;
         }
         RiResolvedMethod resolvedMethod = (RiResolvedMethod) method;
-        if (runtime.mustNotInline(resolvedMethod)) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because the CRI set it to be non-inlinable", methodName(resolvedMethod));
-            }
-            return false;
-        }
         if (Modifier.isNative(resolvedMethod.accessFlags())) {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because it is a native method", methodName(resolvedMethod));

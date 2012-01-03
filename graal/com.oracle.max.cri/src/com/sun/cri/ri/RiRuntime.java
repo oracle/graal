@@ -33,32 +33,6 @@ s */
 public interface RiRuntime {
 
     /**
-     * Checks whether the specified method is required to be inlined (for semantic reasons).
-     * If this method returns true, then the null-check of the receiver emitted during
-     * inlining is omitted.
-     *
-     * @param method the method being called
-     * @return {@code true} if the method must be inlined; {@code false} to let the compiler
-     * use its own heuristics
-     */
-    boolean mustInline(RiResolvedMethod method);
-
-    /**
-     * Checks whether the specified method must not be inlined (for semantic reasons).
-     * @param method the method being called
-     * @return {@code true} if the method must not be inlined; {@code false} to let the compiler
-     * use its own heuristics
-     */
-    boolean mustNotInline(RiResolvedMethod method);
-
-    /**
-     * Checks whether the specified method cannot be compiled.
-     * @param method the method being called
-     * @return {@code true} if the method cannot be compiled
-     */
-    boolean mustNotCompile(RiResolvedMethod method);
-
-    /**
      * Offset of the lock within the lock object on the stack.
 
      * Note: superseded by sizeOfLockData() in Graal.

@@ -52,8 +52,6 @@ public class HotSpotRuntime implements GraalRuntime {
     final HotSpotRegisterConfig regConfig;
     final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
-    // TODO(ls) this is not a permanent solution - there should be a more sophisticated compiler oracle
-    private HashSet<RiResolvedMethod> notInlineableMethods = new HashSet<>();
 
     public HotSpotRuntime(GraalContext context, HotSpotVMConfig config, Compiler compiler) {
         this.context = context;
@@ -137,28 +135,6 @@ public class HotSpotRuntime implements GraalRuntime {
     @Override
     public boolean isExceptionType(RiResolvedType type) {
         return type.isSubtypeOf((RiResolvedType) compiler.getVMEntries().getType(Throwable.class));
-    }
-
-    @Override
-    public boolean mustInline(RiResolvedMethod method) {
-        return false;
-    }
-
-    @Override
-    public boolean mustNotCompile(RiResolvedMethod method) {
-        return false;
-    }
-
-    @Override
-    public boolean mustNotInline(RiResolvedMethod method) {
-        if (notInlineableMethods.contains(method)) {
-            return true;
-        }
-        return Modifier.isNative(method.accessFlags());
-    }
-
-    public void makeNotInlineable(RiResolvedMethod method) {
-        notInlineableMethods.add(method);
     }
 
     @Override
