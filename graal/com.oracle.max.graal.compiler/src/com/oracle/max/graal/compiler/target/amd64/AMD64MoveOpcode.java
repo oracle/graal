@@ -189,8 +189,6 @@ public class AMD64MoveOpcode {
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
                 stack2reg(tasm, masm, result, input);
-            } else if (isStackSlot(result)) {
-                stack2stack(tasm, masm, result, input);
             } else {
                 throw Util.shouldNotReachHere();
             }
@@ -243,25 +241,6 @@ public class AMD64MoveOpcode {
             case Double: masm.movdbl(asDoubleReg(result), tasm.asAddress(input)); break;
             case Object: masm.movq(asRegister(result),    tasm.asAddress(input)); break;
             default:     throw Util.shouldNotReachHere();
-        }
-    }
-
-    private static void stack2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
-        switch (result.kind) {
-            case Jsr:
-            case Int:
-            case Float:
-                masm.pushl(tasm.asAddress(input));
-                masm.popl(tasm.asAddress(result));
-                break;
-            case Long:
-            case Double:
-            case Object:
-                masm.pushq(tasm.asAddress(input));
-                masm.popq(tasm.asAddress(result));
-                break;
-            default:
-                throw Util.shouldNotReachHere();
         }
     }
 

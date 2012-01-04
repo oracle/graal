@@ -1516,13 +1516,6 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x58 | encode);
     }
 
-    public final void popl(CiAddress dst) {
-        // NOTE: this will adjust stack by 8byte on 64bits
-        prefix(dst);
-        emitByte(0x8F);
-        emitOperandHelper(rax, dst);
-    }
-
     public final void prefetchPrefix(CiAddress src) {
         prefix(src);
         emitByte(0x0F);
@@ -1652,13 +1645,6 @@ public class AMD64Assembler extends AbstractAssembler {
 
     public final void pushf() {
         emitByte(0x9C);
-    }
-
-    public final void pushl(CiAddress src) {
-        // Note this will push 64bit on 64bit
-        prefix(src);
-        emitByte(0xFF);
-        emitOperandHelper(rsi, src);
     }
 
     public final void pxor(CiRegister dst, CiAddress src) {
