@@ -119,15 +119,13 @@ public final class CiStackSlot extends CiValue {
 
     @Override
     public String toString() {
-        String s;
         if (!addFrameSize) {
-            s = "out:";
+            return "out:" + offset + kindSuffix();
         } else if (offset >= 0) {
-            s = "in:";
+            return "in:" + offset + kindSuffix();
         } else {
-            s = "spill:";
+            return "spill:" + (-offset) + kindSuffix();
         }
-        return s + offset + kindSuffix();
     }
 
     /**
