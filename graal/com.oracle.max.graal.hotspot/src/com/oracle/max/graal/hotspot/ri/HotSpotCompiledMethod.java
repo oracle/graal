@@ -20,43 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.max.graal.hotspot.ri;
 
-package com.oracle.max.graal.hotspot;
-
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.ri.*;
 
 /**
- * Exits from the HotSpot VM into Java code.
+ * Implementation of RiCompiledMethod for HotSpot. Stores a reference to the nmethod which contains the compiled code.
  */
-public interface VMExits {
+public class HotSpotCompiledMethod implements RiCompiledMethod {
 
-    void compileMethod(HotSpotMethodResolved method, int entryBCI, boolean blocking) throws Throwable;
+    private final RiResolvedMethod method;
+    private long nmethod;
 
-    void shutdownCompiler() throws Throwable;
+    public HotSpotCompiledMethod(RiResolvedMethod method) {
+        this.method = method;
+    }
 
-    void startCompiler() throws Throwable;
+    @Override
+    public RiResolvedMethod method() {
+        return method;
+    }
 
-    void bootstrap() throws Throwable;
+    @Override
+    public boolean isValid() {
+        return nmethod != 0;
+    }
 
-    RiMethod createRiMethodUnresolved(String name, String signature, RiType holder);
-
-    RiSignature createRiSignature(String signature);
-
-    RiField createRiField(RiType holder, String name, RiType type, int offset, int flags);
-
-    RiType createRiType(HotSpotConstantPool pool, String name);
-
-    RiType createRiTypePrimitive(int basicType);
-
-    RiType createRiTypeUnresolved(String name);
-
-    CiConstant createCiConstant(CiKind kind, long value);
-
-    CiConstant createCiConstantFloat(float value);
-
-    CiConstant createCiConstantDouble(double value);
-
-    CiConstant createCiConstantObject(Object object);
+    @Override
+    public String toString() {
+        return "compiled method " + method + " @" + nmethod;
+    }
 }

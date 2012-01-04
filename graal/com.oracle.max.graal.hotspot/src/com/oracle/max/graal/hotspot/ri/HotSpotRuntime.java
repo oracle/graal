@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -33,8 +33,9 @@ import com.oracle.max.cri.ri.RiType.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.nodes.*;
-import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
@@ -50,7 +51,7 @@ public class HotSpotRuntime implements GraalRuntime {
     final GraalContext context;
     final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
-    final HotSpotRegisterConfig globalStubRegConfig;
+    public final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
 
     public HotSpotRuntime(GraalContext context, HotSpotVMConfig config, Compiler compiler) {

@@ -30,6 +30,7 @@ import javax.net.*;
 
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
+import com.oracle.max.graal.hotspot.bridge.*;
 import com.oracle.max.graal.hotspot.logging.*;
 
 /**
@@ -88,7 +89,7 @@ public class CompilationServer implements Runnable {
                 ReplacingStreams streams = new ReplacingStreams(socket.getOutputStream(), socket.getInputStream());
 
                 // get the VMEntries proxy from the client
-                VMEntries entries = (VMEntries) streams.getInvocation().waitForResult(false);
+                CompilerToVM entries = (CompilerToVM) streams.getInvocation().waitForResult(false);
 
                 // return the initialized compiler to the client
                 Compiler compiler = CompilerImpl.initializeServer(entries);

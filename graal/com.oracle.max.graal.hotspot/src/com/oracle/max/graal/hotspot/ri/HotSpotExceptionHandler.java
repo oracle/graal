@@ -20,34 +20,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.hotspot.*;
 
-/**
- * Implementation of RiCompiledMethod for HotSpot. Stores a reference to the nmethod which contains the compiled code.
- */
-public class HotSpotCompiledMethod implements RiCompiledMethod {
 
-    private final RiResolvedMethod method;
-    private long nmethod;
+public class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 7110038548061733686L;
+    private int startBci;
+    private int endBci;
+    private int handlerBci;
+    private int catchClassIndex;
+    private RiType catchClass;
 
-    public HotSpotCompiledMethod(RiResolvedMethod method) {
-        this.method = method;
+    public HotSpotExceptionHandler() {
+        super(null);
     }
 
     @Override
-    public RiResolvedMethod method() {
-        return method;
+    public int startBCI() {
+        return startBci;
     }
 
     @Override
-    public boolean isValid() {
-        return nmethod != 0;
+    public int endBCI() {
+        return endBci;
+    }
+
+    @Override
+    public int handlerBCI() {
+        return handlerBci;
+    }
+
+    @Override
+    public int catchTypeCPI() {
+        return catchClassIndex;
+    }
+
+    @Override
+    public boolean isCatchAll() {
+        return catchClassIndex == 0;
+    }
+
+    @Override
+    public RiType catchType() {
+        return catchClass;
     }
 
     @Override
     public String toString() {
-        return "compiled method " + method + " @" + nmethod;
+        return String.format("HotSpotExceptionHandler[startBci=%d, endBci=%d, handlerBci=%d, catchClassIndex=%d, catchClass=%s", startBci, endBci, handlerBci, catchClassIndex, catchClass);
     }
 }

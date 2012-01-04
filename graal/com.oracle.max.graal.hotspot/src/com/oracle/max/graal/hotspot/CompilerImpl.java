@@ -32,6 +32,7 @@ import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.hotspot.bridge.*;
 import com.oracle.max.graal.hotspot.logging.*;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
@@ -63,7 +64,7 @@ public final class CompilerImpl implements Compiler, Remote {
                 System.out.println("Graal compiler started in client/server mode, server: " + remote);
                 Socket socket = new Socket(remote, 1199);
                 ReplacingStreams streams = new ReplacingStreams(socket.getOutputStream(), socket.getInputStream());
-                streams.getInvocation().sendResult(new VMEntriesNative());
+                streams.getInvocation().sendResult(new CompilerToVMImpl());
 
                 theInstance = (Compiler) streams.getInvocation().waitForResult(false);
             } catch (IOException e1) {
@@ -79,14 +80,14 @@ public final class CompilerImpl implements Compiler, Remote {
         }
     }
 
-    public static Compiler initializeServer(VMEntries entries) {
+    public static Compiler initializeServer(CompilerToVM entries) {
         assert theInstance == null;
         theInstance = new CompilerImpl(entries);
         return theInstance;
     }
 
-    private final VMEntries vmEntries;
-    private final VMExits vmExits;
+    private final CompilerToVM vmEntries;
+    private final VMToCompiler vmExits;
 
     private GraalContext context;
     private HotSpotRuntime runtime;
@@ -99,25 +100,25 @@ public final class CompilerImpl implements Compiler, Remote {
         return config;
     }
 
-    private CompilerImpl(VMEntries initialEntries) {
+    private CompilerImpl(CompilerToVM initialEntries) {
 
-        VMEntries entries = initialEntries;
+        CompilerToVM entries = initialEntries;
         // initialize VMEntries
         if (entries == null) {
-            entries = new VMEntriesNative();
+            entries = new CompilerToVMImpl();
         }
 
         // initialize VMExits
-        VMExits exits = new VMExitsNative(this);
+        VMToCompiler exits = new VMToCompilerImpl(this);
 
         // logging, etc.
         if (CountingProxy.ENABLED) {
-            exits = CountingProxy.getProxy(VMExits.class, exits);
-            entries = CountingProxy.getProxy(VMEntries.class, entries);
+            exits = CountingProxy.getProxy(VMToCompiler.class, exits);
+            entries = CountingProxy.getProxy(CompilerToVM.class, entries);
         }
         if (Logger.ENABLED) {
-            exits = LoggingProxy.getProxy(VMExits.class, exits);
-            entries = LoggingProxy.getProxy(VMEntries.class, entries);
+            exits = LoggingProxy.getProxy(VMToCompiler.class, exits);
+            entries = LoggingProxy.getProxy(CompilerToVM.class, entries);
         }
 
         // set the final fields
@@ -166,19 +167,19 @@ public final class CompilerImpl implements Compiler, Remote {
     }
 
     @Override
-    public VMEntries getVMEntries() {
+    public CompilerToVM getVMEntries() {
         return vmEntries;
     }
 
     @Override
-    public VMExits getVMExits() {
+    public VMToCompiler getVMExits() {
         return vmExits;
     }
 
     @Override
     public RiType lookupType(String returnType, HotSpotTypeResolved accessingClass) {
-        if (returnType.length() == 1 && vmExits instanceof VMExitsNative) {
-            VMExitsNative exitsNative = (VMExitsNative) vmExits;
+        if (returnType.length() == 1 && vmExits instanceof VMToCompilerImpl) {
+            VMToCompilerImpl exitsNative = (VMToCompilerImpl) vmExits;
             CiKind kind = CiKind.fromPrimitiveOrVoidTypeChar(returnType.charAt(0));
             switch(kind) {
                 case Boolean:

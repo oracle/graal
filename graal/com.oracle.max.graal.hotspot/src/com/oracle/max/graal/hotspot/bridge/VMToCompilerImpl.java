@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 import java.util.concurrent.*;
@@ -33,6 +33,8 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
 import com.oracle.max.graal.java.*;
@@ -41,7 +43,7 @@ import com.oracle.max.graal.snippets.*;
 /**
  * Exits from the HotSpot VM into Java code.
  */
-public class VMExitsNative implements VMExits, Remote {
+public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
 
@@ -71,7 +73,7 @@ public class VMExitsNative implements VMExits, Remote {
     }
     private ThreadPoolExecutor compileQueue;
 
-    public VMExitsNative(Compiler compiler) {
+    public VMToCompilerImpl(Compiler compiler) {
         this.compiler = compiler;
 
         typeBoolean = new HotSpotTypePrimitive(compiler, CiKind.Boolean);

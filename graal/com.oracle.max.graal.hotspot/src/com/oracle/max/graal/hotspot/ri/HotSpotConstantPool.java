@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.ri.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 
 /**
  * Implementation of RiConstantPool for HotSpot.

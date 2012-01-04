@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.*;
 
 /**
  * Implementation of RiType for resolved non-primitive HotSpot classes.

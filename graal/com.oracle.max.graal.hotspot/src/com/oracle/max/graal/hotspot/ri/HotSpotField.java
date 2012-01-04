@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.max.graal.hotspot;
+package com.oracle.max.graal.hotspot.ri;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -30,6 +30,8 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 
 /**
  * Represents a field in a HotSpot type.

@@ -30,7 +30,6 @@ import java.util.concurrent.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.hotspot.*;
 
 /**
  * Implementation of RiMethod for resolved HotSpot methods.
