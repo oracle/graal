@@ -350,7 +350,7 @@ public final class GraalCompilation {
                 }
 
                 if (GraalOptions.AllocSSA) {
-                    new SpillAllAllocator(context(), lir, this, registerConfig, lirGenerator.incomingArguments).execute();
+                    new SpillAllAllocator(context(), lir, this, registerConfig).execute();
                 } else {
                     new LinearScan(this, lir, lirGenerator, frameMap()).allocate();
                 }

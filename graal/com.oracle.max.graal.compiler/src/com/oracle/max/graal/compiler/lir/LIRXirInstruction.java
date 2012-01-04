@@ -54,7 +54,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
                              RiMethod method) {
         // Note that we register the XIR input operands as Alive, because the XIR specification allows that input operands
         // are used at any time, even when the temp operands and the actual output operands have already be assigned.
-        super(opcode, new CiValue[] {outputOperand}, info, LIRInstruction.NO_OPERANDS, inputs, temps);
+        super(opcode, isLegal(outputOperand) ? new CiValue[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
         this.infoAfter = infoAfter;
         this.method = method;
         this.snippet = snippet;
@@ -62,6 +62,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         this.tempOperandIndices = tempOperandIndices;
         this.outputOperandIndex = outputOperandIndex;
         this.originalOperands = originalOperands;
+        assert isLegal(outputOperand) || outputOperandIndex == -1;
     }
 
 
@@ -108,7 +109,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         StringBuilder sb = new StringBuilder();
         sb.append("XIR: ");
 
-        if (isLegal(output(0))) {
+        if (operandCount(LIRInstruction.OperandMode.Output) > 0) {
             sb.append(output(0) + " = ");
         }
 

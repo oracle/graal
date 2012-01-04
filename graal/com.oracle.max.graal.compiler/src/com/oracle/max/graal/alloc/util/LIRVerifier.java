@@ -61,9 +61,9 @@ public final class LIRVerifier {
     }
 
 
-    public static boolean verify(boolean beforeRegisterAllocation, LIR lir, CiCallingConvention incomingArguments, FrameMap frameMap, RiRegisterConfig registerConfig) {
+    public static boolean verify(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
         LIRVerifier verifier = new LIRVerifier(beforeRegisterAllocation, lir, frameMap, registerConfig);
-        verifier.verify(incomingArguments);
+        verifier.verify();
         return true;
     }
 
@@ -82,7 +82,7 @@ public final class LIRVerifier {
     private LIRBlock curBlock;
     private Object curInstruction;
 
-    private void verify(CiCallingConvention incomingArguments) {
+    private void verify() {
         ValueProcedure useProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value); } };
         ValueProcedure tempProc =   new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value, true); } };
         ValueProcedure outputProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value, false); } };
@@ -92,12 +92,7 @@ public final class LIRVerifier {
             curVariablesLive = new BitSet();
             curRegistersLive = new CiValue[maxRegisterNum()];
 
-            if (block.numberOfPreds() == 0) {
-                curInstruction = "Argument";
-                for (CiValue value : incomingArguments.locations) {
-                    def(value, false);
-                }
-            } else {
+            if (block.dominator() != null) {
                 curVariablesLive.or(liveOutFor(block.dominator()));
             }
 

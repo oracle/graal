@@ -39,13 +39,11 @@ public class DataFlowAnalysis {
     private final GraalContext context;
     private final LIR lir;
     private final RiRegisterConfig registerConfig;
-    private final CiCallingConvention incomingArguments;
 
-    public DataFlowAnalysis(GraalContext context, LIR lir, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
+    public DataFlowAnalysis(GraalContext context, LIR lir, RiRegisterConfig registerConfig) {
         this.context = context;
         this.lir = lir;
         this.registerConfig = registerConfig;
-        this.incomingArguments = incomingArguments;
     }
 
     public void execute() {
@@ -210,15 +208,6 @@ public class DataFlowAnalysis {
                 curOpId = block.firstLirInstructionId();
                 trace(1, "  phis %d  variableLive: %s  registerLive: %s", curOpId, variableLive, registerLive);
                 block.phis.forEachOutput(outputProc);
-            }
-
-            if (block.numberOfPreds() == 0) {
-                curOpId = block.firstLirInstructionId();
-                trace(1, "  arguments %d  variableLive: %s  registerLive: %s", curOpId, variableLive, registerLive);
-                for (CiValue value : incomingArguments.locations) {
-                    def(value, false);
-                }
-                assert variableLive.isEmpty() : "no variables must be live at method entry";
             }
 
             assert registerLive.isEmpty() : "no fixed register must be alive after processing a block";

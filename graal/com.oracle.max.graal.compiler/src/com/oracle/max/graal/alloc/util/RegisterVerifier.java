@@ -70,9 +70,9 @@ public final class RegisterVerifier {
         return new HashMap<>(inputState);
     }
 
-    public static boolean verify(LIR lir, CiCallingConvention incomingArguments, FrameMap frameMap, RiRegisterConfig registerConfig) {
+    public static boolean verify(LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
         RegisterVerifier verifier = new RegisterVerifier(lir, frameMap, registerConfig);
-        verifier.verify(lir.startBlock(), incomingArguments);
+        verifier.verify(lir.startBlock());
         return true;
     }
 
@@ -86,15 +86,12 @@ public final class RegisterVerifier {
 
     private Map<Object, CiValue> curInputState;
 
-    private void verify(LIRBlock startBlock, CiCallingConvention incomingArguments) {
+    private void verify(LIRBlock startBlock) {
         ValueProcedure useProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value); } };
         ValueProcedure tempProc =   new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return temp(value); } };
         ValueProcedure outputProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return output(value); } };
 
         curInputState = new HashMap<>();
-        for (CiValue value : incomingArguments.locations) {
-            curInputState.put(key(value), value);
-        }
         setStateFor(startBlock, curInputState);
         addToWorkList(startBlock);
 

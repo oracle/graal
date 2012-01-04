@@ -24,11 +24,12 @@ package com.oracle.max.graal.compiler.lir;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.graal.compiler.asm.*;
 
 public class StandardOpcode {
     // Checkstyle: stop
@@ -40,6 +41,7 @@ public class StandardOpcode {
     public static LIROpcode JUMP;
     public static ReturnOpcode RETURN;
     public static XirOpcode XIR;
+    public static ParametersOpcode PARAMS = ParametersOpcode.PARAMS;
     // Checkstyle: resume
 
     public interface MoveOpcode extends LIROpcode {
@@ -61,5 +63,20 @@ public class StandardOpcode {
     public interface XirOpcode extends LIROpcode {
         LIRInstruction create(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
                         LIRDebugInfo info, LIRDebugInfo infoAfter, RiMethod method);
+    }
+
+
+    public enum ParametersOpcode implements LIROpcode {
+        @SuppressWarnings("hiding")
+        PARAMS;
+
+        public LIRInstruction create(CiValue[] params) {
+            return new LIRInstruction(this, params, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
+                @Override
+                public void emitCode(TargetMethodAssembler tasm) {
+                    // No code to emit. This is not the actual method prologue, but only a meta-instruction that defines the incoming method parameters.
+                }
+            };
+        }
     }
 }

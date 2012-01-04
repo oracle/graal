@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
+import static com.oracle.max.graal.compiler.lir.StandardOpcode.*;
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
@@ -68,8 +69,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final RiXirGenerator xir;
     private final DebugInfoBuilder debugInfoBuilder;
 
-    public final CiCallingConvention incomingArguments;
-
     private LIRBlock currentBlock;
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
@@ -82,8 +81,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.xir = xir;
         this.xirSupport = new XirSupport();
         this.debugInfoBuilder = new DebugInfoBuilder(compilation);
-
-        this.incomingArguments = compilation.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(compilation.method), compilation.compiler.target, false);
     }
 
     @Override
@@ -226,11 +223,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         if (block == lir.startBlock()) {
-            XirSnippet prologue = xir.genPrologue(null, compilation.method);
-            if (prologue != null) {
-                emitXir(prologue, null, null, null, false);
-            }
-            setOperandsForParameters();
+            emitPrologue();
         } else if (block.getPredecessors().size() > 0) {
             FrameState fs = null;
             for (Block p : block.getPredecessors()) {
@@ -349,14 +342,24 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return !(location instanceof IndexedLocationNode) && location.displacement() < 4096;
     }
 
-    private void setOperandsForParameters() {
-        CiCallingConvention args = incomingArguments;
+    private void emitPrologue() {
+        CiCallingConvention incomingArguments = compilation.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(compilation.method), compilation.compiler.target, false);
+
+        CiValue[] params = new CiValue[incomingArguments.locations.length];
+        for (int i = 0; i < params.length; i++) {
+            params[i] = toStackKind(incomingArguments.locations[i]);
+        }
+        append(PARAMS.create(params));
+
+        XirSnippet prologue = xir.genPrologue(null, compilation.method);
+        if (prologue != null) {
+            emitXir(prologue, null, null, null, false);
+        }
+
         for (LocalNode local : compilation.graph.getNodes(LocalNode.class)) {
-            int i = local.index();
-            CiValue src = toStackKind(args.locations[i]);
-            Variable dest = emitMove(src);
-            assert src.kind == local.kind().stackKind() : "local type check failed";
-            setResult(local, dest);
+            CiValue param = params[local.index()];
+            assert param.kind == local.kind().stackKind();
+            setResult(local, emitMove(param));
         }
     }
 
@@ -1205,7 +1208,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             // XIR instruction is only needed when the operand is not a constant!
             append(StandardOpcode.XIR.create(snippet, operandsArray, allocatedResultOperand,
                     inputOperandArray, tempOperandArray, inputOperandIndicesArray, tempOperandIndicesArray,
-                    (operandsArray[resultOperand.index] == IllegalValue) ? -1 : resultOperand.index,
+                    (allocatedResultOperand == IllegalValue) ? -1 : resultOperand.index,
                     info, infoAfter, method));
             if (GraalOptions.Meter) {
                 context.metrics.LIRXIRInstructions++;

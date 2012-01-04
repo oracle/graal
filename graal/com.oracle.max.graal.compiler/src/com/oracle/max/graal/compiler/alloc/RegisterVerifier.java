@@ -79,16 +79,6 @@ final class RegisterVerifier {
     void verify(LIRBlock start) {
         // setup input registers (method arguments) for first block
         Interval[] inputState = new Interval[stateSize()];
-        CiCallingConvention args = allocator.gen.incomingArguments;
-        for (int n = 0; n < args.locations.length; n++) {
-            CiValue operand = args.locations[n];
-            if (isRegister(operand)) {
-                CiValue reg = operand;
-                Interval interval = intervalAt(reg);
-                inputState[asRegister(reg).number] = interval;
-            }
-        }
-
         setStateForBlock(start, inputState);
         addToWorkList(start);
 

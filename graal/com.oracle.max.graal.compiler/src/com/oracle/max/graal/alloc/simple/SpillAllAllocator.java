@@ -43,22 +43,37 @@ public class SpillAllAllocator {
     private final LIR lir;
     private final FrameMap frameMap;
     private final RiRegisterConfig registerConfig;
-    private final CiCallingConvention incomingArguments;
 
     private final DataFlowAnalysis dataFlow;
 
-    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, RiRegisterConfig registerConfig, CiCallingConvention incomingArguments) {
+    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, RiRegisterConfig registerConfig) {
         this.context = context;
         this.lir = lir;
         this.registerConfig = registerConfig;
         this.frameMap = compilation.frameMap();
-        this.incomingArguments = incomingArguments;
 
-        this.dataFlow = new DataFlowAnalysis(context, lir, registerConfig, incomingArguments);
+        this.dataFlow = new DataFlowAnalysis(context, lir, registerConfig);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
-        this.moveResolver = new MoveResolver(frameMap);
+        this.moveResolver = new MoveResolverImpl(frameMap);
     }
 
+    private class MoveResolverImpl extends MoveResolver {
+        public MoveResolverImpl(FrameMap frameMap) {
+            super(frameMap);
+        }
+
+        @Override
+        protected CiValue scratchRegister(Variable spilled) {
+            EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = registerConfig.getCategorizedAllocatableRegisters();
+            CiRegister[] availableRegs = categorizedRegs.get(spilled.flag);
+            for (CiRegister reg : availableRegs) {
+                if (curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null) {
+                    return reg.asValue(spilled.kind);
+                }
+            }
+            throw new CiBailout("No register found");
+        }
+    }
 
     private class ResolveDataFlowImpl extends ResolveDataFlow {
         public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver) {
@@ -116,7 +131,7 @@ public class SpillAllAllocator {
     private LIRInstruction curInstruction;
 
     public void execute() {
-        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig);
+        assert LIRVerifier.verify(true, lir, frameMap, registerConfig);
 
         dataFlow.execute();
 
@@ -131,14 +146,14 @@ public class SpillAllAllocator {
 
         context.observable.fireCompilationEvent("After resolve data flow", lir);
 
-        assert RegisterVerifier.verify(lir, incomingArguments, frameMap, registerConfig);
+        assert RegisterVerifier.verify(lir, frameMap, registerConfig);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);
         assignRegisters.execute();
 
         context.observable.fireCompilationEvent("After register asignment", lir);
 
-        assert LIRVerifier.verify(true, lir, incomingArguments, frameMap, registerConfig);
+        assert LIRVerifier.verify(true, lir, frameMap, registerConfig);
     }
 
     private void allocate() {
@@ -162,20 +177,15 @@ public class SpillAllAllocator {
             trace(1, "start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
             assert checkEmpty(curOutRegisterState);
 
-            if (block.numberOfPreds() == 0) {
-                curStackLocations = new LocationMap(lir.numVariables());
-                trace(1, "  arguments");
-                curInstruction = lir.startBlock().lir().get(0);
-                for (CiValue value : incomingArguments.locations) {
-                    block(value);
-                }
-            } else {
+            if (block.dominator() != null) {
                 LocationMap dominatorState = locationsFor(block.dominator());
                 curStackLocations = new LocationMap(dominatorState);
                 // Clear out all variables that are not live at the begin of this block
                 curLiveIn = dataFlow.liveIn(block);
                 curStackLocations.forEachLocation(killNonLiveProc);
                 assert checkInputState(block);
+            } else {
+                curStackLocations = new LocationMap(lir.numVariables());
             }
             traceState();
 
