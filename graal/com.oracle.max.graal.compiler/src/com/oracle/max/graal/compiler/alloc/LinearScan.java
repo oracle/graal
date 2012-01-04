@@ -1070,12 +1070,8 @@ public final class LinearScan {
                 }
 
                 Interval interval = intervalFor(op.output(0));
-                CiStackSlot copySlot = slot;
-                if (GraalOptions.CopyPointerStackArguments && slot.kind == CiKind.Object) {
-                    copySlot = frameMap.allocateSpillSlot(slot.kind);
-                }
-                interval.setSpillSlot(copySlot);
-                interval.assignLocation(copySlot);
+                interval.setSpillSlot(slot);
+                interval.assignLocation(slot);
             }
         }
     }

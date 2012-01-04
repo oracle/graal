@@ -125,9 +125,6 @@ public final class GraalOptions {
     // state merging settings
     public static boolean AssumeVerifiedBytecode             = true;
 
-    // Linear scan settings
-    public static boolean CopyPointerStackArguments          = true;
-
     // Code generator settings
     public static boolean GenLIR                             = true;
     public static boolean GenCode                            = true;
