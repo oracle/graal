@@ -1020,7 +1020,7 @@ public final class LinearScan {
      */
     static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
         if (op.code == StandardOpcode.MOVE) {
-            if (isStackSlot(op.input(0))) {
+            if (isStackSlot(op.input(0)) && op.input(0).kind != CiKind.Object) {
                 // method argument (condition must be equal to handleMethodArguments)
                 return RegisterPriority.None;
             }
@@ -1057,7 +1057,7 @@ public final class LinearScan {
      */
     void handleMethodArguments(LIRInstruction op) {
         if (op.code == StandardOpcode.MOVE) {
-            if (isStackSlot(op.input(0))) {
+            if (isStackSlot(op.input(0)) && op.input(0).kind != CiKind.Object) {
                 CiStackSlot slot = (CiStackSlot) op.input(0);
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
