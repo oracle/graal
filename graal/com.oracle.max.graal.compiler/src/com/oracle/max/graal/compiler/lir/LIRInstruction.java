@@ -307,15 +307,21 @@ public abstract class LIRInstruction {
     public String operationString() {
         StringBuilder buf = new StringBuilder();
         String sep = "";
+        if (outputs.length > 1) {
+            buf.append("(");
+        }
         for (CiValue output : outputs) {
-            buf.append(output);
+            buf.append(sep).append(output);
             sep = ", ";
+        }
+        if (outputs.length > 1) {
+            buf.append(")");
         }
         if (outputs.length > 0) {
             buf.append(" = ");
         }
 
-        if (inputs.length + alives.length > 1) {
+        if (inputs.length + alives.length != 1) {
             buf.append("(");
         }
         sep = "";
@@ -327,7 +333,7 @@ public abstract class LIRInstruction {
             buf.append(sep).append(input).append(" ~");
             sep = ", ";
         }
-        if (inputs.length + alives.length > 1) {
+        if (inputs.length + alives.length != 1) {
             buf.append(")");
         }
 
