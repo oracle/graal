@@ -33,7 +33,7 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 
-public final class MoveResolver {
+public abstract class MoveResolver {
     private final FrameMap frameMap;
     private final int[] registersBlocked;
     private final Map<CiValue, Integer> valuesBlocked;
@@ -265,10 +265,43 @@ public final class MoveResolver {
     }
 
     private void insertMove(CiValue src, Location dst) {
-        trace(3, "mr      MOV %s -> %s", src, dst);
-        insertionBuffer.append(insertPos, StandardOpcode.MOVE.create(dst,  src));
+        if (isStackSlot(dst.location) && isLocation(src) && isStackSlot(asLocation(src).location)) {
+            // Move between two stack slots. We need a temporary registers. If the allocator can give
+            // us a free register, we need two moves: src->scratch, scratch->dst
+            // If the allocator cannot give us a free register (it returns a Location in this case),
+            // we need to spill the scratch register first, so we need four moves in total.
+
+            CiValue scratch = scratchRegister(dst.variable);
+
+            Location scratchSaved = null;
+            CiValue scratchRegister = scratch;
+            if (isLocation(scratch)) {
+                scratchSaved = new Location(asLocation(scratch).variable, frameMap.allocateSpillSlot(scratch.kind));
+                insertMove(scratch, scratchSaved);
+                scratchRegister = asLocation(scratch).location;
+            }
+            assert isRegister(scratchRegister);
+
+            Location scratchLocation = new Location(dst.variable, scratchRegister);
+            insertMove(src, scratchLocation);
+            insertMove(scratchLocation, dst);
+
+            if (scratchSaved != null) {
+                insertMove(scratchSaved, asLocation(scratch));
+            }
+
+        } else {
+            trace(3, "mr      MOV %s -> %s", src, dst);
+            insertionBuffer.append(insertPos, StandardOpcode.MOVE.create(dst,  src));
+        }
     }
 
+    /**
+     * Provides a register that can be used by the move resolver. If the returned value is a 
+     * {@link CiRegisterValue}, the register can be overwritten without precautions. If the
+     * returned value is a {@link Location}, it needs to be spilled and rescued itself. 
+     */
+    protected abstract CiValue scratchRegister(Variable spilled);
 
     private boolean checkEmpty() {
         assert insertPos == -1;
