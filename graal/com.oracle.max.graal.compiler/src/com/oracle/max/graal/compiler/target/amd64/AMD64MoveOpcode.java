@@ -91,8 +91,8 @@ public class AMD64MoveOpcode {
     }
 
 
-    public enum LeaOpcode implements LIROpcode {
-        LEA;
+    public enum LeaMemoryOpcode implements LIROpcode {
+        LEA_MEMORY;
 
         public LIRInstruction create(Variable result, CiValue addrBase, CiValue addrIndex, final CiAddress.Scale addrScale, final int addrDisplacement) {
             CiValue[] inputs = new CiValue[] {addrBase, addrIndex};
@@ -112,8 +112,8 @@ public class AMD64MoveOpcode {
     // However, the address that is loaded depends on the stack slot, and the stack slot numbers are
     // only fixed after register allocation when the number of spill slots is known. Therefore, the address
     // is not known when the LIR is generated.
-    public enum LeaStackBlockOpcode implements LIROpcode {
-        LEA_STACK_BLOCK;
+    public enum LeaStackOpcode implements LIROpcode {
+        LEA_STACK;
 
         public LIRInstruction create(Variable result, final CiStackSlot stackBlock) {
             CiValue[] outputs = new CiValue[] {result};
