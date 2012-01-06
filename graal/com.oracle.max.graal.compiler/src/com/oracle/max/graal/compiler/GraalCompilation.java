@@ -84,7 +84,7 @@ public final class GraalCompilation {
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.compilerStubRegisterConfig : compiler.runtime.getRegisterConfig(method);
-        this.placeholderState = debugInfoLevel == DebugInfoLevel.REF_MAPS ? new FrameState(method, 0, 0, 0, 0, false) : null;
+        this.placeholderState = debugInfoLevel == DebugInfoLevel.REF_MAPS ? new FrameState(method, 0, 0, 0, false) : null;
 
         if (context().isObserved() && method != null) {
             context().observable.fireCompilationStarted(this);
@@ -392,25 +392,6 @@ public final class GraalCompilation {
         }
 
         return null;
-    }
-
-    /**
-     * Gets the maximum number of locks in the graph's frame states.
-     */
-    public int maxLocks() {
-        int maxLocks = 0;
-        for (FrameState node : graph.getNodes(FrameState.class)) {
-            int lockCount = 0;
-            FrameState current = node;
-            while (current != null) {
-                lockCount += current.locksSize();
-                current = current.outerFrameState();
-            }
-            if (lockCount > maxLocks) {
-                maxLocks = lockCount;
-            }
-        }
-        return maxLocks;
     }
 
     private GraalContext context() {

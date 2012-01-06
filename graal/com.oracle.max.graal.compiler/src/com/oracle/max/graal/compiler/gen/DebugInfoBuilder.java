@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.gen.LIRGenerator.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -35,32 +36,20 @@ import com.oracle.max.graal.nodes.virtual.*;
 public class DebugInfoBuilder {
     public final GraalCompilation compilation;
 
-    private final NodeMap<CiStackSlot> lockDataMap;
-
     public DebugInfoBuilder(GraalCompilation compilation) {
         this.compilation = compilation;
-        this.lockDataMap = new NodeMap<>(compilation.graph);
-    }
-
-    public CiStackSlot lockDataFor(MonitorObject object) {
-        CiStackSlot result = lockDataMap.get(object);
-        if (result == null) {
-            result = compilation.frameMap().allocateStackBlock(compilation.compiler.runtime.sizeOfLockData(), false);
-            lockDataMap.set(object, result);
-        }
-        return result;
     }
 
 
     private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<>();
 
-    public LIRDebugInfo build(FrameState topState, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
+    public LIRDebugInfo build(FrameState topState, LockScope locks, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
         if (compilation.placeholderState != null) {
             return null;
         }
 
         assert virtualObjects.size() == 0;
-        CiFrame frame = computeFrameForState(topState);
+        CiFrame frame = computeFrameForState(topState, locks);
 
         CiVirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
@@ -121,28 +110,37 @@ public class DebugInfoBuilder {
         return new LIRDebugInfo(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
     }
 
-    private CiFrame computeFrameForState(FrameState state) {
-        CiValue[] values = new CiValue[state.valuesSize() + state.locksSize()];
+    private CiFrame computeFrameForState(FrameState state, LockScope locks) {
+        int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
+
+        CiValue[] values = new CiValue[state.valuesSize() + numLocks];
         int valueIndex = 0;
 
         for (int i = 0; i < state.valuesSize(); i++) {
             values[valueIndex++] = toCiValue(state.valueAt(i));
         }
 
-        for (int i = 0; i < state.locksSize(); i++) {
-            MonitorObject monitorObject = state.lockAt(i);
-            CiValue owner = toCiValue(monitorObject.owner());
-            CiValue lockData = lockDataFor(monitorObject);
-            boolean eliminated = owner instanceof CiVirtualObject;
+        LockScope nextLock = locks;
+        for (int i = numLocks - 1; i >= 0; i--) {
+            assert locks != null && nextLock.callerState == state.outerFrameState() && nextLock.stateDepth == i;
 
-            values[valueIndex++] = new CiMonitorValue(owner, lockData, eliminated);
+            CiValue owner = toCiValue(nextLock.monitor.object());
+            CiValue lockData = nextLock.lockData;
+            boolean eliminated = nextLock.monitor.eliminated();
+            values[state.valuesSize() + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
+
+            nextLock = nextLock.outer;
         }
 
         CiFrame caller = null;
         if (state.outerFrameState() != null) {
-            caller = computeFrameForState(state.outerFrameState());
+            caller = computeFrameForState(state.outerFrameState(), nextLock);
+        } else {
+            if (nextLock != null) {
+                throw new CiBailout("unbalanced monitors: found monitor for unknown frame");
+            }
         }
-        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), values, state.localsSize(), state.stackSize(), state.locksSize());
+        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), values, state.localsSize(), state.stackSize(), numLocks);
         return frame;
     }
 

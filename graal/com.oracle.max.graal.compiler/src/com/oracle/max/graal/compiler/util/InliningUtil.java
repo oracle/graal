@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -294,22 +294,11 @@ public class InliningUtil {
             }
             return false;
         }
-        if (invoke.stateAfter().locksSize() > 0) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because of locks", methodName(invoke.callTarget().targetMethod(), invoke));
-            }
-            return false;
-        }
         if (invoke.predecessor() == null) {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because the invoke is dead code", methodName(invoke.callTarget().targetMethod(), invoke));
             }
             return false;
-        }
-        if (invoke.stateAfter() == null) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because of missing frame state", methodName(invoke.callTarget().targetMethod(), invoke));
-            }
         }
         return true;
     }

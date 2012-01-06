@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,8 +46,8 @@ public abstract class EscapeOp {
         } else if (usage instanceof FrameState) {
             assert ((FrameState) usage).inputs().contains(node);
             return true;
-        } else if (usage instanceof MonitorObject) {
-            assert ((MonitorObject) usage).owner() == node;
+        } else if (usage instanceof AccessMonitorNode) {
+            assert ((AccessMonitorNode) usage).object() == node;
             return false;
         } else if (usage instanceof LoadFieldNode) {
             assert ((LoadFieldNode) usage).object() == node;
@@ -107,14 +107,8 @@ public abstract class EscapeOp {
             IsTypeNode x = (IsTypeNode) usage;
             assert x.type() == ((ValueNode) node).exactType();
             x.replaceAndDelete(ConstantNode.forBoolean(true, node.graph()));
-        } else if (usage instanceof MonitorObject) {
-            // delete all MonitorEnterNode and MonitorExitNode
-            for (Node n : usage.usages().snapshot()) {
-                if (n instanceof AccessMonitorNode) {
-                    AccessMonitorNode x = (AccessMonitorNode) n;
-                    x.replaceAndDelete(x.next());
-                }
-            }
+        } else if (usage instanceof AccessMonitorNode) {
+            ((AccessMonitorNode) usage).makeEliminated();
         }
     }
 

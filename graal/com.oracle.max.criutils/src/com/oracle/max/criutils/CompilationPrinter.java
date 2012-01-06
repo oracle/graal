@@ -22,7 +22,10 @@
  */
 package com.oracle.max.criutils;
 
+import static com.oracle.max.cri.ci.CiValueUtil.*;
+
 import java.io.*;
+import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -124,6 +127,7 @@ public class CompilationPrinter {
 
         if (codePos != null) {
             CiCodePos curCodePos = codePos;
+            List<CiVirtualObject> virtualObjects = new ArrayList<>();
             do {
                 sb.append(CiUtil.toLocation(curCodePos.method, curCodePos.bci));
                 sb.append('\n');
@@ -132,34 +136,46 @@ public class CompilationPrinter {
                     if (frame.numStack > 0) {
                         sb.append("stack: ");
                         for (int i = 0; i < frame.numStack; i++) {
-                            sb.append(valueToString(frame.getStackValue(i))).append(' ');
+                            sb.append(valueToString(frame.getStackValue(i), virtualObjects)).append(' ');
                         }
                         sb.append("\n");
                     }
-
+                    sb.append("locals: ");
+                    for (int i = 0; i < frame.numLocals; i++) {
+                        sb.append(valueToString(frame.getLocalValue(i), virtualObjects)).append(' ');
+                    }
+                    sb.append("\n");
                     if (frame.numLocks > 0) {
                         sb.append("locks: ");
                         for (int i = 0; i < frame.numLocks; ++i) {
-                            sb.append(valueToString(frame.getLockValue(i))).append(' ');
+                            sb.append(valueToString(frame.getLockValue(i), virtualObjects)).append(' ');
                         }
                         sb.append("\n");
                     }
 
-                    sb.append("locals: ");
-                    for (int i = 0; i < frame.numLocals; i++) {
-                        sb.append(valueToString(frame.getLocalValue(i))).append(' ');
-                    }
-                    sb.append("\n");
                 }
                 curCodePos = curCodePos.caller;
             } while (curCodePos != null);
+
+            for (int i = 0; i < virtualObjects.size(); i++) {
+                CiVirtualObject obj = virtualObjects.get(i);
+                sb.append(obj).append(" ").append(obj.type().name()).append(" ");
+                for (int j = 0; j < obj.values().length; j++) {
+                    sb.append(valueToString(obj.values()[j], virtualObjects)).append(' ');
+                }
+                sb.append("\n");
+
+            }
         }
         return sb.toString();
     }
 
-    protected String valueToString(CiValue value) {
+    protected String valueToString(CiValue value, List<CiVirtualObject> virtualObjects) {
         if (value == null) {
             return "-";
+        }
+        if (isVirtualObject(value) && !virtualObjects.contains(asVirtualObject(value))) {
+            virtualObjects.add(asVirtualObject(value));
         }
         return value.toString();
     }

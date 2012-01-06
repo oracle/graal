@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     private final ValueNode[] locals;
     private final ValueNode[] stack;
-    private final ArrayList<MonitorObject> locks;
 
     private int stackIndex;
     private boolean rethrowException;
@@ -84,7 +83,6 @@ public class FrameStateBuilder implements FrameStateAccess {
             javaIndex += stackSlots(kind);
             index++;
         }
-        this.locks = new ArrayList<>();
     }
 
     @Override
@@ -103,19 +101,15 @@ public class FrameStateBuilder implements FrameStateAccess {
         for (int i = 0; i < other.stackSize(); i++) {
             stack[i] = other.stackAt(i);
         }
-        locks.clear();
-        for (int i = 0; i < other.locksSize(); i++) {
-            locks.add(other.lockAt(i));
-        }
         this.rethrowException = other.rethrowException();
     }
 
     public FrameState create(int bci) {
-        return graph.add(new FrameState(method, bci, locals, stack, stackIndex, locks, rethrowException));
+        return graph.add(new FrameState(method, bci, locals, stack, stackIndex, rethrowException));
     }
 
     public FrameState duplicateWithException(int bci, ValueNode exceptionObject) {
-        FrameState frameState = graph.add(new FrameState(method, bci, locals, new ValueNode[]{exceptionObject}, 1, locks, true));
+        FrameState frameState = graph.add(new FrameState(method, bci, locals, new ValueNode[]{exceptionObject}, 1, true));
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }
@@ -371,24 +365,6 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     /**
-     * Locks a new object within the specified IRScope.
-     * @param scope the IRScope in which this locking operation occurs
-     * @param obj the object being locked
-     */
-    public void lock(MonitorObject obj) {
-        assert obj == null || (obj.kind() != CiKind.Void && obj.kind() != CiKind.Illegal) : "unexpected value: " + obj;
-        locks.add(obj);
-    }
-
-    /**
-     * Unlock the lock on the top of the stack.
-     */
-    public void unlock(MonitorObject obj) {
-        assert locks.get(locks.size() - 1) == obj;
-        locks.remove(locks.size() - 1);
-    }
-
-    /**
      * Get the value on the stack at the specified stack index.
      *
      * @param i the index into the stack, with {@code 0} being the bottom of the stack
@@ -409,28 +385,12 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     /**
-     * Retrieves the lock at the specified index in the lock stack.
-     * @param i the index into the lock stack
-     * @return the instruction which produced the object at the specified location in the lock stack
-     */
-    public final MonitorObject lockAt(int i) {
-        return locks.get(i);
-    }
-
-    /**
      * Returns the size of the local variables.
      *
      * @return the size of the local variables
      */
     public int localsSize() {
         return locals.length;
-    }
-
-    /**
-     * Gets number of locks held by this frame state.
-     */
-    public int locksSize() {
-        return locks.size();
     }
 
     /**
@@ -446,10 +406,6 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     public Iterator<ValueNode> stack() {
         return new ValueArrayIterator(locals);
-    }
-
-    public List<MonitorObject> locks() {
-        return Collections.unmodifiableList(locks);
     }
 
 
@@ -494,10 +450,8 @@ public class FrameStateBuilder implements FrameStateAccess {
     public ValueNode valueAt(int i) {
         if (i < locals.length) {
             return locals[i];
-        } else if (i < locals.length + stackIndex) {
-            return stack[i - locals.length];
         } else {
-            return locks.get(i - locals.length - stack.length);
+            return stack[i - locals.length];
         }
     }
 
@@ -507,7 +461,7 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     public FrameState duplicateWithoutStack(int bci) {
-        FrameState frameState = graph.add(new FrameState(method, bci, locals, new ValueNode[0], 0, locks, false));
+        FrameState frameState = graph.add(new FrameState(method, bci, locals, new ValueNode[0], 0, false));
         frameState.setOuterFrameState(outerFrameState());
         return frameState;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,15 +32,11 @@ public interface FrameStateAccess {
 
     int stackSize();
 
-    int locksSize();
-
     boolean rethrowException();
 
     ValueNode valueAt(int i);
 
     ValueNode localAt(int i);
-
-    ValueNode lockAt(int i);
 
     ValueNode stackAt(int i);
 

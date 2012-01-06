@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1091,26 +1091,14 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private MonitorEnterNode genMonitorEnter(ValueNode x) {
-        MonitorObject monitorObject = currentGraph.add(new MonitorObject(x));
-        MonitorEnterNode monitorEnter = currentGraph.add(new MonitorEnterNode(monitorObject));
-        frameState.lock(monitorObject);
+        MonitorEnterNode monitorEnter = currentGraph.add(new MonitorEnterNode(x));
         appendWithBCI(monitorEnter);
         return monitorEnter;
     }
 
     private MonitorExitNode genMonitorExit(ValueNode x) {
-        if (frameState.locksSize() <= 0) {
-            throw new CiBailout("monitor stack underflow");
-        }
-        MonitorObject monitorObject = frameState.lockAt(frameState.locksSize() - 1);
-
-        // We only compile methods with balanced monitors.  However, x might be a phi function
-        // that can be optimized away later on, so we have to disable the check for phi functions.
-        assert x == monitorObject.owner() || x instanceof PhiNode;
-
-        MonitorExitNode monitorExit = currentGraph.add(new MonitorExitNode(monitorObject));
+        MonitorExitNode monitorExit = currentGraph.add(new MonitorExitNode(x));
         appendWithBCI(monitorExit);
-        frameState.unlock(monitorObject);
         return monitorExit;
     }
 
@@ -1474,10 +1462,6 @@ public final class GraphBuilderPhase extends Phase {
             for (int i = 0; i < frameState.stackSize(); ++i) {
                 ValueNode value = frameState.stackAt(i);
                 log.println(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().javaName, value));
-            }
-            for (int i = 0; i < frameState.locksSize(); ++i) {
-                ValueNode value = frameState.lockAt(i);
-                log.println(String.format("|   lock[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().javaName, value));
             }
         }
     }

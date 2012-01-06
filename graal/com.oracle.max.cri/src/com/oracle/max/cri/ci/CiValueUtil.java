@@ -37,6 +37,10 @@ public class CiValueUtil {
         return value instanceof CiVirtualObject;
     }
 
+    public static CiVirtualObject asVirtualObject(CiValue value) {
+        assert value != null;
+        return (CiVirtualObject) value;
+    }
 
     public static boolean isConstant(CiValue value) {
         assert value != null;

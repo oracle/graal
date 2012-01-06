@@ -74,6 +74,62 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private ValueNode lastInstructionPrinted; // Debugging only
     private FrameState lastState;
 
+    /**
+     * Class used to reconstruct the nesting of locks that is required for debug information.
+     */
+    public static class LockScope {
+        /**
+         * Linked list of locks. {@link LIRGenerator#curLocks} is the head of the list.
+         */
+        public final LockScope outer;
+
+        /**
+         * The frame state of the caller of the method performing the lock, or null if the outermost method
+         * performs the lock. This information is used to compute the {@link CiFrame} that this lock belongs to.
+         * We cannot use the actual frame state of the locking method, because it is now unique for a method. The
+         * caller frame states are unique, i.e., all frame states of an inlined methods refer to the same caller frame state.
+         */
+        public final FrameState callerState;
+
+        /**
+         * The number of locks already found for this frame state.
+         */
+        public final int stateDepth;
+
+        /**
+         * The monitor enter node, with information about the object that is locked and the elimination status.
+         */
+        public final MonitorEnterNode monitor;
+
+        /**
+         * Space in the stack frame needed by the VM to perform the locking.
+         */
+        public final CiStackSlot lockData;
+
+        public LockScope(LockScope outer, FrameState callerState, MonitorEnterNode monitor, CiStackSlot lockData) {
+            this.outer = outer;
+            this.callerState = callerState;
+            this.monitor = monitor;
+            this.lockData = lockData;
+            if (outer != null && outer.callerState == callerState) {
+                this.stateDepth = outer.stateDepth + 1;
+            } else {
+                this.stateDepth = 0;
+            }
+        }
+    }
+
+    /**
+     * Mapping from blocks to the lock state at the end of the block, indexed by the id number of the block.
+     */
+    private LockScope[] blockLocks;
+
+    /**
+     * The list of currently locked monitors.
+     */
+    private LockScope curLocks;
+
+
     public LIRGenerator(GraalCompilation compilation, RiXirGenerator xir) {
         this.context = compilation.compiler.context;
         this.compilation = compilation;
@@ -81,6 +137,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.xir = xir;
         this.xirSupport = new XirSupport();
         this.debugInfoBuilder = new DebugInfoBuilder(compilation);
+        this.blockLocks = new LockScope[lir.linearScanOrder().size()];
     }
 
     @Override
@@ -88,6 +145,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return compilation.compiler.target;
     }
 
+    private LockScope locksFor(LIRBlock block) {
+        return blockLocks[block.blockID()];
+    }
+
+    private void setLocksFor(LIRBlock block, LockScope locks) {
+        blockLocks[block.blockID()] = locks;
+    }
 
     /**
      * Returns the operand that has been previously initialized by {@link #setResult()}
@@ -176,7 +240,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     public LIRDebugInfo stateFor(FrameState state, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
-        return debugInfoBuilder.build(state, pointerSlots, exceptionEdge);
+        return debugInfoBuilder.build(state, curLocks, pointerSlots, exceptionEdge);
     }
 
     /**
@@ -223,9 +287,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         if (block == lir.startBlock()) {
+            assert block.getPredecessors().size() == 0;
             emitPrologue();
-        } else if (block.getPredecessors().size() > 0) {
+            curLocks = null;
+
+        } else {
+            assert block.getPredecessors().size() > 0;
             FrameState fs = null;
+            curLocks = locksFor(block.predAt(0));
+
             for (Block p : block.getPredecessors()) {
                 LIRBlock pred = (LIRBlock) p;
                 if (fs == null) {
@@ -233,6 +303,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 } else if (fs != pred.lastState()) {
                     fs = null;
                     break;
+                }
+                if (curLocks != locksFor(pred)) {
+                    throw new CiBailout("unbalanced monitors: predecessor blocks have different monitor states");
                 }
             }
             if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
@@ -308,6 +381,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             TTY.println("END Generating LIR for block B" + block.blockID());
         }
 
+        setLocksFor(currentBlock, curLocks);
         block.setLastState(lastState);
         currentBlock = null;
 
@@ -400,18 +474,46 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitMonitorEnter(MonitorEnterNode x) {
-        XirArgument obj = toXirArgument(x.object().owner());
-        XirArgument lockAddress = toXirArgument(emitLea(debugInfoBuilder.lockDataFor(x.object())));
+        CiStackSlot lockData = compilation.frameMap().allocateStackBlock(compilation.compiler.runtime.sizeOfLockData(), false);
+        if (x.eliminated()) {
+            // No code is emitted for elimianted locks, but for proper debug information generation we need to
+            // register the monitor and its lock data.
+            curLocks = new LockScope(curLocks, x.stateAfter().outerFrameState(), x, lockData);
+            return;
+        }
+
+        XirArgument obj = toXirArgument(x.object());
+        XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
+
+        LIRDebugInfo stateBefore = state();
+        // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
+        curLocks = new LockScope(curLocks, x.stateAfter().outerFrameState(), x, lockData);
+        // The state after the monitor enter is used for deotpimization, after the montior has blocked, so it must contain the newly locked object.
+        LIRDebugInfo stateAfter = stateFor(x.stateAfter());
+
         XirSnippet snippet = xir.genMonitorEnter(site(x), obj, lockAddress);
-        emitXir(snippet, x, state(), stateFor(x.stateAfter()), null, true);
+        emitXir(snippet, x, stateBefore, stateAfter, null, true);
     }
 
     @Override
     public void visitMonitorExit(MonitorExitNode x) {
-        XirArgument obj = toXirArgument(x.object().owner());
-        XirArgument lockAddress = toXirArgument(emitLea(debugInfoBuilder.lockDataFor(x.object())));
+        if (curLocks == null || curLocks.monitor.object() != x.object() || curLocks.monitor.eliminated() != x.eliminated()) {
+            throw new CiBailout("unbalanced monitors: attempting to unlock an object that is not on top of the locking stack");
+        }
+        if (x.eliminated()) {
+            curLocks = curLocks.outer;
+            return;
+        }
+
+        CiStackSlot lockData = curLocks.lockData;
+        XirArgument obj = toXirArgument(x.object());
+        XirArgument lockAddress = lockData == null ? null : toXirArgument(emitLea(lockData));
+
+        LIRDebugInfo stateBefore = state();
+        curLocks = curLocks.outer;
+
         XirSnippet snippet = xir.genMonitorExit(site(x), obj, lockAddress);
-        emitXir(snippet, x, state(), null, true);
+        emitXir(snippet, x, stateBefore, null, true);
     }
 
     @Override
