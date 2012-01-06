@@ -92,7 +92,6 @@ public class EscapeAnalysisTest extends GraphTest {
         return x.intValue();
     }
 
-    @Test(expected = AssertionFailedError.class)
     public void testMonitor2() {
         test("testMonitor2Snippet", CiConstant.forInt(0));
     }
