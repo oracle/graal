@@ -44,6 +44,7 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirRegister;
 import com.oracle.max.cri.xir.CiXirAssembler.XirTemp;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -258,6 +259,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
 
     public void append(LIRInstruction op) {
+        assert LIRVerifier.verify(op);
         if (GraalOptions.PrintIRWithLIR && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;

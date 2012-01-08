@@ -26,6 +26,8 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.*;
@@ -91,28 +93,34 @@ public class LIRPhiMapping {
         return inputs[block.getPredecessors().indexOf(pred)];
     }
 
-    public void forEachInput(LIRBlock pred, ValueProcedure proc) {
+    private static final EnumSet<OperandFlag> INPUT_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+    private static final EnumSet<OperandFlag> OUTPUT_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+
+    public void forEachInput(LIRBlock pred, PhiValueProcedure proc) {
         CiValue[] predInputs = inputs(pred);
         for (int i = 0; i < predInputs.length; i++) {
-            predInputs[i] = proc.doValue(predInputs[i]);
+            predInputs[i] = proc.doValue(predInputs[i], results[i]);
         }
     }
 
     public void forEachOutput(ValueProcedure proc) {
         for (int i = 0; i < results.length; i++) {
-            results[i] = proc.doValue(results[i]);
+            results[i] = proc.doValue(results[i], OperandMode.Output, OUTPUT_FLAGS);
         }
     }
 
-    public void forEachInput(LIRBlock pred, PhiValueProcedure proc) {
-        CiValue[] predInputs = inputs(pred);
-        for (int i = 0; i < predInputs.length; i++) {
-            proc.doValue(predInputs[i], results[i]);
+    public abstract static class PhiValueProcedure extends ValueProcedure {
+        /**
+         * Iterator method to be overwritten. This version of the iterator has both the input and output of the phi function as parameters.
+         * to keep the signature short.
+         *
+         * @param input The input value that is iterated.
+         * @param output The output value that is iterated.
+         * @return The new value to replace the input value that was passed in.
+         */
+        protected CiValue doValue(CiValue input, CiValue output) {
+            return doValue(input, OperandMode.Input, INPUT_FLAGS);
         }
-    }
-
-    public interface PhiValueProcedure {
-        void doValue(CiValue input, CiValue output);
     }
 
     @Override

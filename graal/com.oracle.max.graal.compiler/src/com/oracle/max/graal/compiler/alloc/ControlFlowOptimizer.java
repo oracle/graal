@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.alloc;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -45,7 +44,7 @@ final class ControlFlowOptimizer {
         //optimizer.reorderShortLoops(code);
         optimizer.deleteEmptyBlocks(code);
         ControlFlowOptimizer.deleteUnnecessaryJumps(code);
-        ControlFlowOptimizer.deleteJumpsToReturn(code);
+        //ControlFlowOptimizer.deleteJumpsToReturn(code);
     }
 
     private final LIR ir;
@@ -175,6 +174,7 @@ final class ControlFlowOptimizer {
         assert verify(code);
     }
 
+/*
     private static void deleteJumpsToReturn(List<LIRBlock> code) {
         for (int i = code.size() - 1; i >= 0; i--) {
             LIRBlock block = code.get(i);
@@ -212,6 +212,7 @@ final class ControlFlowOptimizer {
             }
         }
     }
+*/
 
     private static boolean verify(List<LIRBlock> code) {
         for (LIRBlock block : code) {

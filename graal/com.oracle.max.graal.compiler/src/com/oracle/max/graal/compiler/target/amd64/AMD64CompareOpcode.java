@@ -24,6 +24,8 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -49,8 +51,11 @@ public enum AMD64CompareOpcode implements LIROpcode {
             }
 
             @Override
-            public boolean inputCanBeMemory(int index) {
-                return index == 1;
+            public EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                if (mode == OperandMode.Input && index == 1) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+                }
+                return super.flagsFor(mode, index);
             }
         };
     }

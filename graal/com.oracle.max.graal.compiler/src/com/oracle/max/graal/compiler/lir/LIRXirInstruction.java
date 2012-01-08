@@ -65,6 +65,13 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         assert isLegal(outputOperand) || outputOperandIndex == -1;
     }
 
+    @Override
+    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+        if (mode == OperandMode.Alive || mode == OperandMode.Temp) {
+            return EnumSet.of(OperandFlag.Register, OperandFlag.Constant, OperandFlag.Illegal);
+        }
+        return super.flagsFor(mode, index);
+    }
 
     public void setFalseSuccessor(LabelRef falseSuccessor) {
         this.falseSuccessor = falseSuccessor;
@@ -96,69 +103,8 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         return originalOperands;
     }
 
-     /**
-     * Prints this instruction.
-     */
     @Override
-    public String operationString() {
-        return toString();
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("XIR: ");
-
-        if (operandCount(LIRInstruction.OperandMode.Output) > 0) {
-            sb.append(output(0) + " = ");
-        }
-
-        sb.append(snippet.template);
-        sb.append("(");
-        for (int i = 0; i < snippet.arguments.length; i++) {
-            XirArgument a = snippet.arguments[i];
-            if (i > 0) {
-                sb.append(", ");
-            }
-            if (a.constant != null) {
-                sb.append(a.constant);
-            } else {
-                sb.append(a.object);
-            }
-        }
-        sb.append(')');
-
-        if (method != null) {
-            sb.append(" method=");
-            sb.append(method.toString());
-        }
-
-
-        for (LIRInstruction.OperandMode mode : LIRInstruction.OPERAND_MODES) {
-            int n = operandCount(mode);
-            if (mode == OperandMode.Output && n <= 1) {
-                // Already printed single output (i.e. result())
-                continue;
-            }
-            if (n != 0) {
-                sb.append(' ').append(mode.name().toLowerCase()).append("=(");
-                HashSet<String> operands = new HashSet<>();
-                for (int i = 0; i < n; i++) {
-                    String operand = operandAt(mode, i).toString();
-                    if (!operands.contains(operand)) {
-                        if (!operands.isEmpty()) {
-                            sb.append(", ");
-                        }
-                        operands.add(operand);
-                        sb.append(operand);
-                    }
-                }
-                sb.append(')');
-            }
-        }
-
-        appendDebugInfo(sb);
-
-        return sb.toString();
+    public String name() {
+        return "XIR: " + snippet.template;
     }
 }

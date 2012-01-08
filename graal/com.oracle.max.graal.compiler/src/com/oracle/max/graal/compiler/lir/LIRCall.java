@@ -30,6 +30,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.graal.compiler.util.*;
 
 /**
  * This class represents a call instruction; either to a {@linkplain CiRuntimeCall runtime method},
@@ -90,5 +91,15 @@ public abstract class LIRCall extends LIRInstruction {
             return input(targetAddressIndex);
         }
         return null;
+    }
+
+    @Override
+    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+        if (mode == OperandMode.Input) {
+            return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+        } else if (mode == OperandMode.Output) {
+            return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
+        }
+        throw Util.shouldNotReachHere();
     }
 }

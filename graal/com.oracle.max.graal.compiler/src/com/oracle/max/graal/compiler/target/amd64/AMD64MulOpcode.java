@@ -24,6 +24,8 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -47,13 +49,15 @@ public enum AMD64MulOpcode implements LIROpcode {
             }
 
             @Override
-            public boolean inputCanBeMemory(int index) {
-                return index == 0;
-            }
-
-            @Override
-            public CiValue registerHint() {
-                return input(0);
+            public EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                if (mode == OperandMode.Input && index == 0) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+                } else if (mode == OperandMode.Alive && index == 0) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
+                } else if (mode == OperandMode.Output && index == 0) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
+                }
+                return super.flagsFor(mode, index);
             }
         };
     }
@@ -66,12 +70,14 @@ public enum AMD64MulOpcode implements LIROpcode {
                 case LMUL: masm.imulq(dst, asRegister(right)); break;
                 default:   throw Util.shouldNotReachHere();
             }
-        } else {
+        } else if (isConstant(right)) {
             switch (this) {
                 case IMUL: masm.imull(dst, dst, tasm.asIntConst(right)); break;
                 case LMUL: masm.imulq(dst, dst, tasm.asIntConst(right)); break;
                 default:   throw Util.shouldNotReachHere();
             }
+        } else {
+            throw Util.shouldNotReachHere();
         }
     }
 }

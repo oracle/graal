@@ -30,10 +30,11 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.asm.*;
+import com.oracle.max.graal.compiler.util.*;
 
 public class StandardOpcode {
     // Checkstyle: stop
-    public static MoveOpcode MOVE;
+    public static MoveOpcode SPILL_MOVE;
     public static NullCheckOpcode NULL_CHECK;
     public static CallOpcode DIRECT_CALL;
     public static CallOpcode INDIRECT_CALL;
@@ -45,7 +46,7 @@ public class StandardOpcode {
     // Checkstyle: resume
 
     public interface MoveOpcode extends LIROpcode {
-        LIRInstruction create(CiValue result, CiValue input);
+        MoveInstruction create(CiValue result, CiValue input);
     }
 
     public interface NullCheckOpcode extends LIROpcode {
@@ -75,6 +76,14 @@ public class StandardOpcode {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm) {
                     // No code to emit. This is not the actual method prologue, but only a meta-instruction that defines the incoming method parameters.
+                }
+
+                @Override
+                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                    if (mode == OperandMode.Output) {
+                        return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+                    }
+                    throw Util.shouldNotReachHere();
                 }
             };
         }

@@ -30,6 +30,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
 import com.oracle.max.graal.compiler.util.*;
 
 /**
@@ -205,76 +206,58 @@ final class RegisterVerifier {
         return true;
     }
 
-    void processOperations(List<LIRInstruction> ops, Interval[] inputState) {
+    void processOperations(List<LIRInstruction> ops, final Interval[] inputState) {
         // visit all instructions of the block
         for (int i = 0; i < ops.size(); i++) {
-            LIRInstruction op = ops.get(i);
+            final LIRInstruction op = ops.get(i);
 
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println(op.toStringWithIdPrefix());
             }
 
+            ValueProcedure useProc = new ValueProcedure() {
+                @Override
+                public CiValue doValue(CiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+                        Interval interval = intervalAt(operand);
+                        if (op.id() != -1) {
+                            interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
+                        }
+
+                        assert checkState(inputState, interval.location(), interval.splitParent());
+                    }
+                    return operand;
+                }
+            };
+
+            ValueProcedure defProc = new ValueProcedure() {
+                @Override
+                public CiValue doValue(CiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+                        Interval interval = intervalAt(operand);
+                        if (op.id() != -1) {
+                            interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
+                        }
+
+                        statePut(inputState, interval.location(), interval.splitParent());
+                    }
+                    return operand;
+                }
+            };
+
             // check if input operands are correct
-            int n = op.operandCount(LIRInstruction.OperandMode.Input);
-            for (int j = 0; j < n; j++) {
-                CiValue operand = op.operandAt(LIRInstruction.OperandMode.Input, j);
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                    Interval interval = intervalAt(operand);
-                    if (op.id() != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Input, allocator);
-                    }
-
-                    assert checkState(inputState, interval.location(), interval.splitParent());
-                }
-            }
-            n = op.operandCount(LIRInstruction.OperandMode.Alive);
-            for (int j = 0; j < n; j++) {
-                CiValue operand = op.operandAt(LIRInstruction.OperandMode.Alive, j);
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                    Interval interval = intervalAt(operand);
-                    if (op.id() != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Input, allocator);
-                    }
-
-                    assert checkState(inputState, interval.location(), interval.splitParent());
-                }
-            }
-
+            op.forEachInput(useProc);
             // invalidate all caller save registers at calls
             if (op.hasCall()) {
                 for (CiRegister r : allocator.compilation.registerConfig.getCallerSaveRegisters()) {
                     statePut(inputState, r.asValue(), null);
                 }
             }
-
+            op.forEachAlive(useProc);
             // set temp operands (some operations use temp operands also as output operands, so can't set them null)
-            n = op.operandCount(LIRInstruction.OperandMode.Temp);
-            for (int j = 0; j < n; j++) {
-                CiValue operand = op.operandAt(LIRInstruction.OperandMode.Temp, j);
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                    Interval interval = intervalAt(operand);
-                    assert interval != null : "Could not find interval for operand " + operand;
-                    if (op.id() != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Temp, allocator);
-                    }
-
-                    statePut(inputState, interval.location(), interval.splitParent());
-                }
-            }
-
+            op.forEachTemp(defProc);
             // set output operands
-            n = op.operandCount(LIRInstruction.OperandMode.Output);
-            for (int j = 0; j < n; j++) {
-                CiValue operand = op.operandAt(LIRInstruction.OperandMode.Output, j);
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                    Interval interval = intervalAt(operand);
-                    if (op.id() != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id(), LIRInstruction.OperandMode.Output, allocator);
-                    }
-
-                    statePut(inputState, interval.location(), interval.splitParent());
-                }
-            }
+            op.forEachOutput(defProc);
         }
     }
 }

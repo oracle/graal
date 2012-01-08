@@ -24,6 +24,8 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -51,13 +53,15 @@ public enum AMD64LogicFloatOpcode implements LIROpcode {
             }
 
             @Override
-            public boolean inputCanBeMemory(int index) {
-                return true;
-            }
-
-            @Override
-            public CiValue registerHint() {
-                return input(0);
+            public EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                if (mode == OperandMode.Input && index == 0) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+                } else if (mode == OperandMode.Alive && index == 0) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
+                } else if (mode == OperandMode.Output && index == 0) {
+                    return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
+                }
+                return super.flagsFor(mode, index);
             }
         };
     }

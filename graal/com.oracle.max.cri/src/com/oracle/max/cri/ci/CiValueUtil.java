@@ -47,6 +47,11 @@ public class CiValueUtil {
         return value instanceof CiConstant;
     }
 
+    public static CiConstant asConstant(CiValue value) {
+        assert value != null;
+        return (CiConstant) value;
+    }
+
 
     public static boolean isStackSlot(CiValue value) {
         assert value != null;

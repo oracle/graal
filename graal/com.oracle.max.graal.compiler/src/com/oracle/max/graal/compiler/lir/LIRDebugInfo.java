@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
+import static com.oracle.max.graal.compiler.lir.LIRInstruction.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
@@ -71,17 +72,22 @@ public class LIRDebugInfo {
         }
     }
 
+    /**
+     * We filter out constant and illegal values ourself before calling the procedure, so {@link OperandFlag#Constant} and {@link OperandFlag#Illegal} need not be set.
+     */
+    private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+
     private void processValues(CiValue[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
             CiValue value = values[i];
             if (value instanceof CiMonitorValue) {
                 CiMonitorValue monitor = (CiMonitorValue) value;
                 if (processed(monitor.owner)) {
-                    monitor.owner = proc.doValue(monitor.owner);
+                    monitor.owner = proc.doValue(monitor.owner, OperandMode.Alive, STATE_FLAGS);
                 }
 
             } else if (processed(value)) {
-                values[i] = proc.doValue(value);
+                values[i] = proc.doValue(value, OperandMode.Alive, STATE_FLAGS);
             }
         }
     }

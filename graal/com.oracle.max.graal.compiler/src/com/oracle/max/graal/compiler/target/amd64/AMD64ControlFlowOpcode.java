@@ -24,12 +24,14 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiAddress.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.ci.CiAddress.Scale;
+import com.oracle.max.cri.ci.CiTargetMethod.JumpTable;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -69,6 +71,14 @@ public class AMD64ControlFlowOpcode {
                 @Override
                 public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
                     masm.ret(0);
+                }
+
+                @Override
+                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                    if (mode == OperandMode.Input && index == 0) {
+                        return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
+                    }
+                    throw Util.shouldNotReachHere();
                 }
             };
         }
@@ -178,8 +188,13 @@ public class AMD64ControlFlowOpcode {
                 }
 
                 @Override
-                public CiValue registerHint() {
-                    return input(0);
+                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                    if (mode == OperandMode.Input && index == 0) {
+                        return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+                    } else if (mode == OperandMode.Output && index == 0) {
+                        return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
+                    }
+                    return super.flagsFor(mode, index);
                 }
 
                 @Override

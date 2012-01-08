@@ -48,7 +48,7 @@ public abstract class ResolveDataFlow {
 
     public void execute() {
         ValueProcedure locMappingProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return locMapping(value); } };
-        PhiValueProcedure phiMappingProc = new PhiValueProcedure() { @Override public void doValue(CiValue input, CiValue output) { phiMapping(input, output); } };
+        PhiValueProcedure phiMappingProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue input, CiValue output) { return phiMapping(input, output); } };
 
         trace(1, "==== start resolve data flow ====");
         for (LIRBlock toBlock : lir.linearScanOrder()) {
@@ -86,11 +86,12 @@ public abstract class ResolveDataFlow {
         return value;
     }
 
-    private void phiMapping(CiValue input, CiValue output) {
+    private CiValue phiMapping(CiValue input, CiValue output) {
         Location to = asLocation(output);
         if (input != to) {
             moveResolver.add(input, to);
         }
+        return input;
     }
 
     private void findInsertPos(LIRBlock fromBlock, LIRBlock toBlock) {

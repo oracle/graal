@@ -63,7 +63,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     private static final CiRegisterValue RCX_I = AMD64.rcx.asValue(CiKind.Int);
 
     static {
-        StandardOpcode.MOVE = AMD64StandardOpcode.MOVE;
+        StandardOpcode.SPILL_MOVE = AMD64MoveOpcode.SpillMoveOpcode.SPILL_MOVE;
         StandardOpcode.NULL_CHECK = AMD64StandardOpcode.NULL_CHECK;
         StandardOpcode.DIRECT_CALL = AMD64CallOpcode.DIRECT_CALL;
         StandardOpcode.INDIRECT_CALL = AMD64CallOpcode.INDIRECT_CALL;
@@ -486,20 +486,28 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiValue expected = loadNonConst(operand(node.expected()));
         Variable newValue = load(operand(node.newValue()));
         Variable addrBase = load(operand(node.object()));
-        CiValue addrIndex = loadNonConst(operand(node.offset()));
+        CiValue addrIndex = operand(node.offset());
+        int addrDisplacement = 0;
+        if (isConstant(addrIndex) && NumUtil.isInt(asConstant(addrIndex).asLong())) {
+            addrDisplacement = (int) asConstant(addrIndex).asLong();
+            addrIndex = CiValue.IllegalValue;
+        } else {
+            addrIndex = load(addrIndex);
+        }
 
         if (kind == CiKind.Object) {
             Variable loadedAddress = newVariable(compilation.compiler.target.wordKind);
-            append(LEA_MEMORY.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, 0));
+            append(LEA_MEMORY.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, addrDisplacement));
+            preGCWriteBarrier(loadedAddress, false, null);
+
             addrBase = loadedAddress;
             addrIndex = Variable.IllegalValue;
-
-            preGCWriteBarrier(addrBase, false, null);
+            addrDisplacement = 0;
         }
 
         CiRegisterValue rax = AMD64.rax.asValue(kind);
         append(MOVE.create(rax, expected));
-        append(CAS.create(rax, addrBase, addrIndex, CiAddress.Scale.Times1, 0, rax, newValue));
+        append(CAS.create(rax, addrBase, addrIndex, CiAddress.Scale.Times1, addrDisplacement, rax, newValue));
 
         Variable result = newVariable(node.kind());
         if (node.directResult()) {

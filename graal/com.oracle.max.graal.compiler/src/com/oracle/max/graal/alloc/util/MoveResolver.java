@@ -292,14 +292,14 @@ public abstract class MoveResolver {
 
         } else {
             trace(3, "mr      MOV %s -> %s", src, dst);
-            insertionBuffer.append(insertPos, StandardOpcode.MOVE.create(dst,  src));
+            insertionBuffer.append(insertPos, StandardOpcode.SPILL_MOVE.create(dst,  src));
         }
     }
 
     /**
-     * Provides a register that can be used by the move resolver. If the returned value is a 
+     * Provides a register that can be used by the move resolver. If the returned value is a
      * {@link CiRegisterValue}, the register can be overwritten without precautions. If the
-     * returned value is a {@link Location}, it needs to be spilled and rescued itself. 
+     * returned value is a {@link Location}, it needs to be spilled and rescued itself.
      */
     protected abstract CiValue scratchRegister(Variable spilled);
 

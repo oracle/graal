@@ -88,8 +88,10 @@ final class EdgeMoveOptimizer {
         assert op1 != null;
         assert op2 != null;
 
-        if (op1.code == StandardOpcode.MOVE && op2.code == StandardOpcode.MOVE) {
-            if (op1.info == op2.info && op1.input(0).equals(op2.input(0)) && op1.output(0).equals(op2.output(0))) {
+        if (op1 instanceof MoveInstruction && op2 instanceof MoveInstruction) {
+            MoveInstruction move1 = (MoveInstruction) op1;
+            MoveInstruction move2 = (MoveInstruction) op2;
+            if (move1.getSource() == move2.getSource() && move1.getDest() == move2.getDest()) {
                 // these moves are exactly equal and can be optimized
                 return true;
             }

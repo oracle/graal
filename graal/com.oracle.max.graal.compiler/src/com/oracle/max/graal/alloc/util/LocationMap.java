@@ -57,7 +57,7 @@ public class LocationMap {
     public void forEachLocation(ValueProcedure proc) {
         for (int i = 0; i < locations.length; i++) {
             if (locations[i] != null) {
-                CiValue newValue = proc.doValue(locations[i]);
+                CiValue newValue = proc.doValue(locations[i], null, null);
                 assert newValue == null || asLocation(newValue).variable == locations[i].variable;
                 locations[i] = (Location) newValue;
             }

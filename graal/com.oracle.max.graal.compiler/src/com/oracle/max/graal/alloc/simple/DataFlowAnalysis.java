@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.alloc.simple;
 
+import static com.oracle.max.graal.compiler.lir.LIRPhiMapping.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
@@ -98,13 +99,13 @@ public class DataFlowAnalysis {
         if (entry == null) {
             // Nothing to do
         } else if (entry instanceof CiValue) {
-            CiValue newValue = proc.doValue((CiValue) entry);
+            CiValue newValue = proc.doValue((CiValue) entry, null, null);
             assert newValue == entry : "procedure does not allow to change values";
         } else {
             CiValue[] values = (CiValue[]) entry;
             for (int i = 0; i < values.length; i++) {
                 if (values[i] != null) {
-                    CiValue newValue = proc.doValue(values[i]);
+                    CiValue newValue = proc.doValue(values[i], null, null);
                     assert newValue == values[i] : "procedure does not allow to change values";
                 }
             }
@@ -161,11 +162,11 @@ public class DataFlowAnalysis {
     private int curOpId;
 
     private void backwardDataFlow() {
-        ValueProcedure inputProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, curOpId); } };
-        ValueProcedure aliveProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, curOpId + 1); } };
-        ValueProcedure phiInputProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, -1); } };
-        ValueProcedure tempProc =     new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value, true); } };
-        ValueProcedure outputProc =   new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value, false); } };
+        ValueProcedure inputProc =       new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return use(value, curOpId); } };
+        ValueProcedure aliveProc =       new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return use(value, curOpId + 1); } };
+        PhiValueProcedure phiInputProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, -1); } };
+        ValueProcedure tempProc =        new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return def(value, true); } };
+        ValueProcedure outputProc =      new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return def(value, false); } };
 
         blockLiveIn = new BitSet[blocks().size()];
         registerLive = new BitSet();

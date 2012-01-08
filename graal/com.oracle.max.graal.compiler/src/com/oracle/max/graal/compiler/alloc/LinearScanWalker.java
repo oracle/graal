@@ -820,13 +820,11 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {
-        if (op.code != StandardOpcode.MOVE) {
-            return false;
+        if (op instanceof MoveInstruction) {
+            MoveInstruction move = (MoveInstruction) op;
+            return isVariable(move.getSource()) && isVariable(move.getDest()) && move.getSource() == from.operand && move.getDest() == to.operand;
         }
-
-        CiValue input = op.input(0);
-        CiValue result = op.output(0);
-        return isVariable(input) && isVariable(result) && input == from.operand && result == to.operand;
+        return false;
     }
 
     // optimization (especially for phi functions of nested loops):
