@@ -207,7 +207,7 @@ public class EscapeAnalysisPhase extends Phase {
     }
 
 
-    public class EscapementFixup {
+    public static class EscapementFixup {
 
         private final Map<Object, Integer> fields = new HashMap<>();
         private final EscapeOp op;

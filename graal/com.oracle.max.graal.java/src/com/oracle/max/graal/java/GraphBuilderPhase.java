@@ -130,7 +130,6 @@ public final class GraphBuilderPhase extends Phase {
         returnBlock = null;
         methodSynchronizedObject = null;
         exceptionHandlers = null;
-        assert graph != null;
         this.currentGraph = graph;
         this.frameState = new FrameStateBuilder(method, method.maxLocals(), method.maxStackSize(), graph);
         build();
@@ -1067,9 +1066,9 @@ public final class GraphBuilderPhase extends Phase {
                     exact = runtime.getTypeOf(receiver.asConstant());
                 }
                 if (exact == null) {
-                    RiType declared = receiver.declaredType();
-                    if (declared instanceof RiResolvedType) {
-                        exact = ((RiResolvedType) declared).exactType();
+                    RiResolvedType declared = receiver.declaredType();
+                    if (declared != null) {
+                        exact = declared.exactType();
                     }
                 }
             }

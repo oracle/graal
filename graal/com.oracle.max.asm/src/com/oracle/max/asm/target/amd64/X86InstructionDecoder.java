@@ -30,7 +30,7 @@ public final class X86InstructionDecoder {
     private int currentEndOfInstruction;
     private int currentDisplacementPosition;
 
-    private class Prefix {
+    private static class Prefix {
 
         // segment overrides
         public static final int CSSegment = 0x2e;

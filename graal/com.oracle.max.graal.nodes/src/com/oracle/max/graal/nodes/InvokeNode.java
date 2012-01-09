@@ -49,7 +49,6 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
      */
     public InvokeNode(MethodCallTargetNode callTarget, int bci) {
         super(callTarget.returnStamp());
-        assert callTarget != null;
         this.callTarget = callTarget;
         this.bci = bci;
     }

@@ -79,7 +79,7 @@ public class AMD64Assembler extends AbstractAssembler {
     /**
      * Constants for X86 prefix bytes.
      */
-    private class Prefix {
+    private static class Prefix {
         private static final int REX = 0x40;
         private static final int REXB = 0x41;
         private static final int REXX = 0x42;

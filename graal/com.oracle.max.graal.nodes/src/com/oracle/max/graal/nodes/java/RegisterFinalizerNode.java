@@ -52,10 +52,10 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        RiType declaredType = object.declaredType();
+        RiResolvedType declaredType = object.declaredType();
         RiResolvedType exactType = object.exactType();
-        if (exactType == null && declaredType instanceof RiResolvedType) {
-            exactType = ((RiResolvedType) declaredType).exactType();
+        if (exactType == null && declaredType != null) {
+            exactType = declaredType.exactType();
         }
 
         boolean needsCheck = true;
@@ -64,8 +64,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
             needsCheck = exactType.hasFinalizer();
         } else {
             // if either the declared type of receiver or the holder can be assumed to have no finalizers
-            if (declaredType instanceof RiResolvedType && !((RiResolvedType) declaredType).hasFinalizableSubclass()) {
-                if (tool.assumptions() != null && tool.assumptions().recordNoFinalizableSubclassAssumption((RiResolvedType) declaredType)) {
+            if (declaredType != null && !declaredType.hasFinalizableSubclass()) {
+                if (tool.assumptions() != null && tool.assumptions().recordNoFinalizableSubclassAssumption(declaredType)) {
                     needsCheck = false;
                 }
             }
