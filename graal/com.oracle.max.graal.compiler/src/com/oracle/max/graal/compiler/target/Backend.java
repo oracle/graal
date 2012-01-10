@@ -54,7 +54,7 @@ public abstract class Backend {
         }
     }
 
-    public abstract FrameMap newFrameMap(GraalCompilation compilation);
+    public abstract FrameMap newFrameMap(RiRuntime runtime, CiTarget target, RiRegisterConfig registerConfig);
     public abstract LIRGenerator newLIRGenerator(GraalCompilation compilation, RiXirGenerator xir);
     public abstract AbstractAssembler newAssembler(RiRegisterConfig registerConfig);
     public abstract CiXirAssembler newXirAssembler();

@@ -30,6 +30,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -75,6 +76,7 @@ public class CFGPrinterObserver implements CompilationObserver {
         }
 
         RiRuntime runtime = cfgPrinter.runtime;
+        cfgPrinter.setLIRGenerator(event.debugObject(LIRGenerator.class));
         BlockMap blockMap = event.debugObject(BlockMap.class);
         Graph graph = event.debugObject(Graph.class);
         IdentifyBlocksPhase schedule = event.debugObject(IdentifyBlocksPhase.class);

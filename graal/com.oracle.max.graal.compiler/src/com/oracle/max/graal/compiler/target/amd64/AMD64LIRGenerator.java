@@ -453,8 +453,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        int necessaryBarriers = compilation.compiler.target.arch.requiredBarriers(barriers);
-        if (compilation.compiler.target.isMP && necessaryBarriers != 0) {
+        int necessaryBarriers = target.arch.requiredBarriers(barriers);
+        if (target.isMP && necessaryBarriers != 0) {
             append(MEMBAR.create(necessaryBarriers));
         }
     }
@@ -463,7 +463,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, CiValue index) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
         Variable tmp = emitMove(index);
-        append(TABLE_SWITCH.create(lowKey, defaultTarget, targets, tmp, newVariable(compilation.compiler.target.wordKind)));
+        append(TABLE_SWITCH.create(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
     }
 
     @Override
@@ -496,7 +496,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
 
         if (kind == CiKind.Object) {
-            Variable loadedAddress = newVariable(compilation.compiler.target.wordKind);
+            Variable loadedAddress = newVariable(target.wordKind);
             append(LEA_MEMORY.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, addrDisplacement));
             preGCWriteBarrier(loadedAddress, false, null);
 

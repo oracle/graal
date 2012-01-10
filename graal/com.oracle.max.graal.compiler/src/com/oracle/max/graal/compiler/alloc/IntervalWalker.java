@@ -32,7 +32,6 @@ import com.oracle.max.graal.compiler.alloc.Interval.State;
  */
 public class IntervalWalker {
 
-    protected final GraalCompilation compilation;
     protected final LinearScan allocator;
 
     /**
@@ -91,7 +90,6 @@ public class IntervalWalker {
      * @param unhandledAny the list of unhandled {@linkplain RegisterBinding#Any non-fixed} intervals
      */
     IntervalWalker(LinearScan allocator, Interval unhandledFixed, Interval unhandledAny) {
-        this.compilation = allocator.compilation;
         this.allocator = allocator;
 
         unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny);

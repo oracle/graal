@@ -54,8 +54,8 @@ public class AMD64Backend extends Backend {
     }
 
     @Override
-    public FrameMap newFrameMap(GraalCompilation compilation) {
-        return new FrameMap(compilation.compiler.runtime, compilation.compiler.target, compilation.registerConfig);
+    public FrameMap newFrameMap(RiRuntime runtime, CiTarget target, RiRegisterConfig registerConfig) {
+        return new FrameMap(runtime, target, registerConfig);
     }
 
     @Override

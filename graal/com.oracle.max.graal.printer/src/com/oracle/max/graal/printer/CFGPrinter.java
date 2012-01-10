@@ -33,6 +33,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
@@ -48,7 +49,8 @@ import com.oracle.max.graal.nodes.calc.*;
 class CFGPrinter extends CompilationPrinter {
 
     public final ByteArrayOutputStream buffer;
-    public final GraalCompilation compilation;
+    private final LIR lir;
+    private LIRGenerator lirGenerator;
     public final CiTarget target;
     public final RiRuntime runtime;
 
@@ -56,11 +58,12 @@ class CFGPrinter extends CompilationPrinter {
      * Creates a control flow graph printer.
      *
      * @param buffer where the output generated via this printer shown be written
+     * @param nodeOperands
      */
     public CFGPrinter(ByteArrayOutputStream buffer, GraalCompilation compilation) {
         super(buffer);
         this.buffer = buffer;
-        this.compilation = compilation;
+        this.lir = compilation.lir();
         this.target = compilation.compiler.target;
         this.runtime = compilation.compiler.runtime;
     }
@@ -68,9 +71,13 @@ class CFGPrinter extends CompilationPrinter {
     public CFGPrinter(ByteArrayOutputStream buffer, GraalCompilation compilation, CiTarget target, RiRuntime runtime) {
         super(buffer);
         this.buffer = buffer;
-        this.compilation = compilation;
+        this.lir = compilation.lir();
         this.target = target;
         this.runtime = runtime;
+    }
+
+    public void setLIRGenerator(LIRGenerator lirGenerator) {
+        this.lirGenerator = lirGenerator;
     }
 
     /**
@@ -230,8 +237,8 @@ class CFGPrinter extends CompilationPrinter {
         } else if (node instanceof FloatingNode) {
             out.print("f ").print(HOVER_START).print("~").print(HOVER_SEP).print("floating").print(HOVER_END).println(COLUMN_END);
         }
-        if (compilation.nodeOperands != null && node instanceof ValueNode) {
-            CiValue operand = compilation.operand((ValueNode) node);
+        if (lirGenerator != null && lirGenerator.nodeOperands != null && node instanceof ValueNode) {
+            CiValue operand = lirGenerator.nodeOperands.get(node);
             if (operand != null) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
@@ -330,8 +337,8 @@ class CFGPrinter extends CompilationPrinter {
 
     private String stateValueToString(ValueNode value) {
         String result = nodeToString(value);
-        if (value != null) {
-            CiValue operand = compilation.operand(value);
+        if (lirGenerator != null && lirGenerator.nodeOperands != null && value != null) {
+            CiValue operand = lirGenerator.nodeOperands.get(value);
             if (operand != null) {
                 result += ": " + operand;
             }
@@ -345,8 +352,8 @@ class CFGPrinter extends CompilationPrinter {
      * @param block the block to print
      */
     private void printLIR(LIRBlock block) {
-        List<LIRInstruction> lir = block.lir();
-        if (lir == null) {
+        List<LIRInstruction> lirInstructions = block.lir();
+        if (lirInstructions == null) {
             return;
         }
 
@@ -366,8 +373,8 @@ class CFGPrinter extends CompilationPrinter {
             }
         }
 
-        for (int i = 0; i < lir.size(); i++) {
-            LIRInstruction inst = lir.get(i);
+        for (int i = 0; i < lirInstructions.size(); i++) {
+            LIRInstruction inst = lirInstructions.get(i);
             out.printf("nr %4d ", inst.id()).print(COLUMN_END);
 
             if (inst.info != null) {
@@ -396,7 +403,7 @@ class CFGPrinter extends CompilationPrinter {
             return "-";
         }
         String prefix;
-        if (node instanceof BeginNode && compilation != null && compilation.lir() == null) {
+        if (node instanceof BeginNode && lir == null) {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
@@ -412,7 +419,7 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private String blockToString(Block block) {
-        if (compilation != null && compilation.lir() == null) {
+        if (lir == null) {
             // During all the front-end phases, the block schedule is built only for the debug output.
             // Therefore, the block numbers would be different for every CFG printed -> use the id of the first instruction.
             return "B" + block.firstNode().toString(Verbosity.Id);
