@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,7 +105,7 @@ public final class GraalOptions {
     public static boolean PrintCodeBytes                     = ____;
     public static int     PrintAssemblyBytesPerLine          = 16;
     public static int     TraceLinearScanLevel               = 0;
-    public static int     TraceRegisterAllocationLevel       = 0;
+    public static boolean TraceRegisterAllocation            = false;
     public static int     TraceLIRGeneratorLevel             = 0;
     public static boolean TraceRelocation                    = ____;
     public static boolean TraceLIRVisit                      = ____;

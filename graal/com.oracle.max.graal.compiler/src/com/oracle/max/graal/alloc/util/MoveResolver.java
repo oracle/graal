@@ -74,7 +74,7 @@ public abstract class MoveResolver {
         assert isLocation(from) || isConstant(from);
         assert from != to;
 
-        trace(3, "mr    add mapping from %s to %s", from, to);
+        assert trace("mr    add mapping from %s to %s", from, to);
         mappingFrom.add(from);
         mappingTo.add(to);
 
@@ -86,12 +86,12 @@ public abstract class MoveResolver {
 
         if (mappingFrom.size() == 1) {
             // If there is only one mapping, it is trivial that this mapping is safe to resolve.
-            trace(3, "mr    resolve  mappings: %d", mappingFrom.size());
+            assert trace("mr    resolve  mappings: %d", mappingFrom.size());
             insertMove(mappingFrom.get(0), mappingTo.get(0));
             mappingFrom.remove(0);
             mappingTo.remove(0);
         } else if (mappingFrom.size() > 1) {
-            trace(3, "mr    resolve  mappings: %d", mappingFrom.size());
+            assert trace("mr    resolve  mappings: %d", mappingFrom.size());
             doResolve();
         }
         insertPos = -1;
@@ -258,7 +258,7 @@ public abstract class MoveResolver {
     }
 
     private void insertExchange(Location from, Location to) {
-        trace(3, "mr      XCHG %s, %s", from, to);
+        assert trace("mr      XCHG %s, %s", from, to);
         // TODO create XCHG instruction and use it here
         insertionBuffer.append(insertPos, null);
         throw Util.unimplemented();
@@ -291,7 +291,7 @@ public abstract class MoveResolver {
             }
 
         } else {
-            trace(3, "mr      MOV %s -> %s", src, dst);
+            assert trace("mr      MOV %s -> %s", src, dst);
             insertionBuffer.append(insertPos, StandardOpcode.SPILL_MOVE.create(dst,  src));
         }
     }
@@ -337,9 +337,10 @@ public abstract class MoveResolver {
     }
 
 
-    private static void trace(int level, String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocationLevel >= level) {
+    private static boolean trace(String format, Object...args) {
+        if (GraalOptions.TraceRegisterAllocation) {
             TTY.println(format, args);
         }
+        return true;
     }
 }
