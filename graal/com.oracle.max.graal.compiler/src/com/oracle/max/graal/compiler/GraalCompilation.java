@@ -71,11 +71,12 @@ public final class GraalCompilation {
      * @param context the compilation context
      * @param compiler the compiler
      * @param method the method to be compiled or {@code null} if generating code for a stub
+     * @param graph the initial graph
      * @param osrBCI the bytecode index for on-stack replacement, if requested
      * @param stats externally supplied statistics object to be used if not {@code null}
      * @param debugInfoLevel TODO
      */
-    private GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
+    public GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
@@ -90,11 +91,6 @@ public final class GraalCompilation {
             context().observable.fireCompilationStarted(this);
         }
     }
-
-    public GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
-        this(context, compiler, method, new StructuredGraph(method), osrBCI, stats, debugInfoLevel);
-    }
-
 
     public void close() {
         // TODO(tw): Check if we can delete this method.
