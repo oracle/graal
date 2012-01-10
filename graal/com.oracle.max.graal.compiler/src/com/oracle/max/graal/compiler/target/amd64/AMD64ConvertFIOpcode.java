@@ -36,8 +36,8 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64ConvertFIOpcode implements LIROpcode {
     F2I, D2I;
 
-    public LIRInstruction create(Variable result, final CompilerStub stub, Variable input) {
-        CiValue[] inputs = new CiValue[] {input};
+    public LIRInstruction create(CiValue result, final CompilerStub stub, CiValue x) {
+        CiValue[] inputs = new CiValue[] {x};
         CiValue[] outputs = new CiValue[] {result};
 
         return new AMD64LIRInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
@@ -48,17 +48,17 @@ public enum AMD64ConvertFIOpcode implements LIROpcode {
         };
     }
 
-    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CompilerStub stub, CiValue input) {
+    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CompilerStub stub, CiValue x) {
         switch (this) {
-            case F2I: masm.cvttss2sil(asIntReg(result), asFloatReg(input)); break;
-            case D2I: masm.cvttsd2sil(asIntReg(result), asDoubleReg(input)); break;
+            case F2I: masm.cvttss2sil(asIntReg(result), asFloatReg(x)); break;
+            case D2I: masm.cvttsd2sil(asIntReg(result), asDoubleReg(x)); break;
             default: throw Util.shouldNotReachHere();
         }
 
         Label endLabel = new Label();
         masm.cmp32(asIntReg(result), Integer.MIN_VALUE);
         masm.jcc(ConditionFlag.notEqual, endLabel);
-        AMD64CallOpcode.callStub(tasm, masm, stub, null, result, input);
+        AMD64CallOpcode.callStub(tasm, masm, stub, null, result, x);
         masm.bind(endLabel);
     }
 }

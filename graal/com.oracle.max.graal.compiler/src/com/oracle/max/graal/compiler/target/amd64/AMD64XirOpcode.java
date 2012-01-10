@@ -154,7 +154,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     break;
 
                 case Shr:
-                    emitXirViaLir(tasm, masm, AMD64ShiftOpcode.UISHR, AMD64ShiftOpcode.ULSHR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64ShiftOpcode.IUSHR, AMD64ShiftOpcode.LUSHR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case And:
@@ -531,13 +531,13 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
         }
 
         if (code instanceof AMD64ArithmeticOpcode) {
-            ((AMD64ArithmeticOpcode) code).emit(tasm, masm, left, right);
+            ((AMD64ArithmeticOpcode) code).emit(tasm, masm, result, left, right);
         } else if (code instanceof AMD64MulOpcode) {
-            ((AMD64MulOpcode) code).emit(tasm, masm, left, right);
+            ((AMD64MulOpcode) code).emit(tasm, masm, result, left, right);
         } else if (code instanceof AMD64DivOpcode) {
-            ((AMD64DivOpcode) code).emit(tasm, masm, asRegister(result), null, asRegister(left), asRegister(right));
+            ((AMD64DivOpcode) code).emit(tasm, masm, result, null, left, right);
         } else if (code instanceof AMD64ShiftOpcode) {
-            ((AMD64ShiftOpcode) code).emit(tasm, masm, left, right);
+            ((AMD64ShiftOpcode) code).emit(tasm, masm, result, left, right);
         }
     }
 

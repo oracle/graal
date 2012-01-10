@@ -171,22 +171,22 @@ public class DataFlowAnalysis {
         blockLiveIn = new BitSet[blocks().size()];
         registerLive = new BitSet();
 
-        trace(1, "==== start backward data flow analysis ====");
+        assert trace("==== start backward data flow analysis ====");
         for (int i = blocks().size() - 1; i >= 0; i--) {
             LIRBlock block = blocks().get(i);
-            trace(1, "start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
+            assert trace("start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
 
             variableLive = new BitSet();
             for (LIRBlock sux : block.getLIRSuccessors()) {
                 BitSet suxLive = liveIn(sux);
                 if (suxLive != null) {
-                    trace(1, "  sux %s  suxLive: %s", sux, suxLive);
+                    assert trace("  sux %s  suxLive: %s", sux, suxLive);
                     variableLive.or(suxLive);
                 }
 
                 if (sux.phis != null) {
                     curOpId = block.lastLirInstructionId();
-                    trace(1, "  phis %d  variableLive: %s", curOpId, variableLive);
+                    assert trace("  phis %d  variableLive: %s", curOpId, variableLive);
                     sux.phis.forEachInput(block, phiInputProc);
                 }
             }
@@ -196,7 +196,7 @@ public class DataFlowAnalysis {
             for (int j = block.lir().size() - 1; j >= 0; j--) {
                 LIRInstruction op = block.lir().get(j);
                 curOpId = op.id();
-                trace(1, "  op %d %s  variableLive: %s  registerLive: %s", curOpId, op, variableLive, registerLive);
+                assert trace("  op %d %s  variableLive: %s  registerLive: %s", curOpId, op, variableLive, registerLive);
 
                 op.forEachOutput(outputProc);
                 op.forEachTemp(tempProc);
@@ -207,7 +207,7 @@ public class DataFlowAnalysis {
 
             if (block.phis != null) {
                 curOpId = block.firstLirInstructionId();
-                trace(1, "  phis %d  variableLive: %s  registerLive: %s", curOpId, variableLive, registerLive);
+                assert trace("  phis %d  variableLive: %s  registerLive: %s", curOpId, variableLive, registerLive);
                 block.phis.forEachOutput(outputProc);
             }
 
@@ -216,29 +216,29 @@ public class DataFlowAnalysis {
             setLiveIn(block, variableLive);
 
             if (block.isLoopHeader()) {
-                trace(1, "  loop header, propagating live set to loop blocks  variableLive: %s", variableLive);
+                assert trace("  loop header, propagating live set to loop blocks  variableLive: %s", variableLive);
                 // All variables that are live at the beginning of a loop are also live the whole loop.
                 // This is guaranteed by the SSA form.
                 for (Block loop : block.loopBlocks) {
                     BitSet loopLiveIn = liveIn(loop);
                     assert loopLiveIn != null : "All loop blocks must have been processed before the loop header";
                     loopLiveIn.or(variableLive);
-                    trace(3, "    block %s  loopLiveIn %s", loop, loopLiveIn);
+                    assert trace("    block %s  loopLiveIn %s", loop, loopLiveIn);
                 }
             }
 
-            trace(1, "end block %s  variableLive: %s", block, variableLive);
+            assert trace("end block %s  variableLive: %s", block, variableLive);
         }
-        trace(1, "==== end backward data flow analysis ====");
+        assert trace("==== end backward data flow analysis ====");
     }
 
     private CiValue use(CiValue value, int killOpId) {
-        trace(3, "    use %s", value);
+        assert trace("    use %s", value);
         if (isVariable(value)) {
             int variableIdx = asVariable(value).index;
             assert definitions[variableIdx] < curOpId;
             if (!variableLive.get(variableIdx)) {
-                trace(3, "      set live variable %d", variableIdx);
+                assert trace("      set live variable %d", variableIdx);
                 variableLive.set(variableIdx);
                 kill(value, killOpId);
             }
@@ -246,7 +246,7 @@ public class DataFlowAnalysis {
         } else if (isAllocatableRegister(value)) {
             int regNum = asRegister(value).number;
             if (!registerLive.get(regNum)) {
-                trace(3, "      set live register %d", regNum);
+                assert trace("      set live register %d", regNum);
                 registerLive.set(regNum);
                 kill(value, killOpId);
             }
@@ -255,12 +255,12 @@ public class DataFlowAnalysis {
     }
 
     private CiValue def(CiValue value, boolean isTemp) {
-        trace(3, "    def %s", value);
+        assert trace("    def %s", value);
         if (isVariable(value)) {
             int variableIdx = asVariable(value).index;
             assert definitions[variableIdx] == curOpId;
             if (variableLive.get(variableIdx)) {
-                trace(3, "      clear live variable %d", variableIdx);
+                assert trace("      clear live variable %d", variableIdx);
                 assert !isTemp : "temp variable cannot be used after the operation";
                 variableLive.clear(variableIdx);
             } else {
@@ -271,7 +271,7 @@ public class DataFlowAnalysis {
         } else if (isAllocatableRegister(value)) {
             int regNum = asRegister(value).number;
             if (registerLive.get(regNum)) {
-                trace(3, "      clear live register %d", regNum);
+                assert trace("      clear live register %d", regNum);
                 assert !isTemp : "temp variable cannot be used after the operation";
                 registerLive.clear(regNum);
             } else {
@@ -296,11 +296,11 @@ public class DataFlowAnalysis {
             if (useBlock.loopDepth() > 0 && useBlock.loopIndex() != defBlock.loopIndex()) {
                 // This is a value defined outside of the loop it is currently used in.  Therefore, it is live the whole loop
                 // and is not killed by the current instruction.
-                trace(3, "      no kill because use in loop %d, definition in loop %d", useBlock.loopIndex(), defBlock.loopIndex());
+                assert trace("      no kill because use in loop %d, definition in loop %d", useBlock.loopIndex(), defBlock.loopIndex());
                 return;
             }
         }
-        trace(3, "      kill %s at %d", value, opId);
+        assert trace("      kill %s at %d", value, opId);
 
         Object entry = killedValues(opId);
         if (entry == null) {
@@ -322,9 +322,10 @@ public class DataFlowAnalysis {
         }
     }
 
-    private static void trace(int level, String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocationLevel >= level) {
+    private static boolean trace(String format, Object...args) {
+        if (GraalOptions.TraceRegisterAllocation) {
             TTY.println(format, args);
         }
+        return true;
     }
 }

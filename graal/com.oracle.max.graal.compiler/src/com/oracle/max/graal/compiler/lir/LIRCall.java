@@ -78,14 +78,6 @@ public abstract class LIRCall extends LIRInstruction {
         this.target = target;
     }
 
-    public RiMethod method() {
-        return (RiMethod) target;
-    }
-
-    public CiRuntimeCall runtimeCall() {
-        return (CiRuntimeCall) target;
-    }
-
     public CiValue targetAddress() {
         if (targetAddressIndex >= 0) {
             return input(targetAddressIndex);
