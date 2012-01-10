@@ -33,28 +33,28 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 
 public enum AMD64DivOpcode implements LIROpcode {
-    IDIV, IREM, UIDIV, UIREM,
-    LDIV, LREM, ULDIV, ULREM;
+    IDIV, IREM, IUDIV, IUREM,
+    LDIV, LREM, LUDIV, LUREM;
 
-    public LIRInstruction create(CiRegisterValue result, LIRDebugInfo info, CiRegisterValue left, Variable right) {
-        CiValue[] inputs = new CiValue[] {left};
-        CiValue[] alives = new CiValue[] {right};
-        CiValue[] temps = new CiValue[] {result.reg == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind)};
+    public LIRInstruction create(CiValue result, LIRDebugInfo info, CiValue x, CiValue y) {
+        CiValue[] inputs = new CiValue[] {x};
+        CiValue[] alives = new CiValue[] {y};
+        CiValue[] temps = new CiValue[] {asRegister(result) == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind)};
         CiValue[] outputs = new CiValue[] {result};
 
         return new AMD64LIRInstruction(this, outputs, info, inputs, alives, temps) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                emit(tasm, masm, asRegister(output(0)), info, asRegister(input(0)), asRegister(alive(0)));
+                emit(tasm, masm, output(0), info, input(0), alive(0));
             }
         };
     }
 
-    protected void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiRegister result, LIRDebugInfo info, CiRegister left, CiRegister right) {
+    protected void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, LIRDebugInfo info, CiValue x, CiValue y) {
         // left input in rax, right input in any register but rax and rdx, result quotient in rax, result remainder in rdx
-        assert left == AMD64.rax;
-        assert right != AMD64.rax && right != AMD64.rdx;
-        assert (name().endsWith("DIV") && result == AMD64.rax) || (name().endsWith("REM") && result == AMD64.rdx);
+        assert asRegister(x) == AMD64.rax;
+        assert differentRegisters(y, AMD64.rax.asValue(), AMD64.rdx.asValue());
+        assert (name().endsWith("DIV") && asRegister(result) == AMD64.rax) || (name().endsWith("REM") && asRegister(result) == AMD64.rdx);
 
         int exceptionOffset;
         switch (this) {
@@ -62,7 +62,7 @@ public enum AMD64DivOpcode implements LIROpcode {
             case IREM:
                 masm.cdql();
                 exceptionOffset = masm.codeBuffer.position();
-                masm.idivl(right);
+                masm.idivl(asRegister(y));
                 break;
 
             case LDIV:
@@ -74,31 +74,31 @@ public enum AMD64DivOpcode implements LIROpcode {
                     masm.movq(AMD64.rdx, java.lang.Long.MIN_VALUE);
                     masm.cmpq(AMD64.rax, AMD64.rdx);
                     masm.jcc(ConditionFlag.notEqual, normalCase);
-                    masm.cmpl(right, -1);
+                    masm.cmpl(asRegister(y), -1);
                     masm.jcc(ConditionFlag.equal, continuation);
                     masm.bind(normalCase);
                 }
 
                 masm.cdqq();
                 exceptionOffset = masm.codeBuffer.position();
-                masm.idivq(right);
+                masm.idivq(asRegister(y));
                 masm.bind(continuation);
                 break;
 
-            case UIDIV:
-            case UIREM:
+            case IUDIV:
+            case IUREM:
                 // Must zero the high 64-bit word (in RDX) of the dividend
                 masm.xorq(AMD64.rdx, AMD64.rdx);
                 exceptionOffset = masm.codeBuffer.position();
-                masm.divl(right);
+                masm.divl(asRegister(y));
                 break;
 
-            case ULDIV:
-            case ULREM:
+            case LUDIV:
+            case LUREM:
                 // Must zero the high 64-bit word (in RDX) of the dividend
                 masm.xorq(AMD64.rdx, AMD64.rdx);
                 exceptionOffset = masm.codeBuffer.position();
-                masm.divq(right);
+                masm.divq(asRegister(y));
                 break;
 
             default:

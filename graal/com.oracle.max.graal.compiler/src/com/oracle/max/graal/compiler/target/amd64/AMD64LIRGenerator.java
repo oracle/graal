@@ -305,11 +305,11 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch(a.kind) {
             case Int:
                 append(MOVE.create(RAX_I, load(a)));
-                append(UIDIV.create(RAX_I, state(), RAX_I, load(b)));
+                append(IUDIV.create(RAX_I, state(), RAX_I, load(b)));
                 return emitMove(RAX_I);
             case Long:
                 append(MOVE.create(RAX_L, load(a)));
-                append(ULDIV.create(RAX_L, state(), RAX_L, load(b)));
+                append(LUDIV.create(RAX_L, state(), RAX_L, load(b)));
                 return emitMove(RAX_L);
             default:
                 throw Util.shouldNotReachHere();
@@ -321,11 +321,11 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch(a.kind) {
             case Int:
                 append(MOVE.create(RAX_I, load(a)));
-                append(UIREM.create(RDX_I, state(), RAX_I, load(b)));
+                append(IUREM.create(RDX_I, state(), RAX_I, load(b)));
                 return emitMove(RDX_I);
             case Long:
                 append(MOVE.create(RAX_L, load(a)));
-                append(ULREM.create(RDX_L, state(), RAX_L, load(b)));
+                append(LUREM.create(RDX_L, state(), RAX_L, load(b)));
                 return emitMove(RDX_L);
             default:
                 throw Util.shouldNotReachHere();
@@ -393,8 +393,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitUShr(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
-            case Int:    append(UISHR.create(result, a, loadShiftCount(b))); break;
-            case Long:   append(ULSHR.create(result, a, loadShiftCount(b))); break;
+            case Int:    append(IUSHR.create(result, a, loadShiftCount(b))); break;
+            case Long:   append(LUSHR.create(result, a, loadShiftCount(b))); break;
             default: Util.shouldNotReachHere();
         }
         return result;

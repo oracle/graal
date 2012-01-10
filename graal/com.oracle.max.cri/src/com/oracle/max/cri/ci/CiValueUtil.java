@@ -98,4 +98,27 @@ public class CiValueUtil {
         assert value.kind == CiKind.Double;
         return asRegister(value);
     }
+
+
+    public static boolean sameRegister(CiValue...values) {
+        for (int i = 0; i < values.length; i++) {
+            for (int j = i + 1; j < values.length; j++) {
+                if (isRegister(values[i]) && isRegister(values[j]) && asRegister(values[i]) != asRegister(values[j])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public static boolean differentRegisters(CiValue...values) {
+        for (int i = 0; i < values.length; i++) {
+            for (int j = i + 1; j < values.length; j++) {
+                if (isRegister(values[i]) && isRegister(values[j]) && asRegister(values[i]) == asRegister(values[j])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }

@@ -36,8 +36,8 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64ConvertFLOpcode implements LIROpcode {
     F2L, D2L;
 
-    public LIRInstruction create(Variable result, final CompilerStub stub, Variable input, Variable scratch) {
-        CiValue[] inputs = new CiValue[] {input};
+    public LIRInstruction create(CiValue result, final CompilerStub stub, CiValue x, CiValue scratch) {
+        CiValue[] inputs = new CiValue[] {x};
         CiValue[] temps = new CiValue[] {scratch};
         CiValue[] outputs = new CiValue[] {result};
 
@@ -49,12 +49,14 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
         };
     }
 
-    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CompilerStub stub, CiValue input, CiValue scratch) {
+    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CompilerStub stub, CiValue x, CiValue scratch) {
+        assert differentRegisters(result, scratch);
+
         CiRegister dst = asLongReg(result);
         CiRegister tmp = asLongReg(scratch);
         switch (this) {
-            case F2L: masm.cvttss2siq(dst, asFloatReg(input)); break;
-            case D2L: masm.cvttsd2siq(dst, asDoubleReg(input)); break;
+            case F2L: masm.cvttss2siq(dst, asFloatReg(x)); break;
+            case D2L: masm.cvttsd2siq(dst, asDoubleReg(x)); break;
             default: throw Util.shouldNotReachHere();
         }
 
@@ -62,7 +64,7 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
         masm.movq(tmp, java.lang.Long.MIN_VALUE);
         masm.cmpq(dst, tmp);
         masm.jcc(ConditionFlag.notEqual, endLabel);
-        AMD64CallOpcode.callStub(tasm, masm, stub, null, result, input);
+        AMD64CallOpcode.callStub(tasm, masm, stub, null, result, x);
         masm.bind(endLabel);
     }
 }
