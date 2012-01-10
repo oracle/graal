@@ -44,7 +44,7 @@ public class Debug {
 
     private static final Scope VOID_SCOPE = new Scope(null);
 
-    public static final class Scope implements Closeable {
+    public static final class Scope implements AutoCloseable {
         private String name;
         private Object[] context;
 
@@ -54,7 +54,7 @@ public class Debug {
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() {
         }
     }
 

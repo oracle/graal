@@ -46,6 +46,7 @@ import com.oracle.max.graal.snippets.*;
 public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
+    private int compiledMethodCount;
 
     public final HotSpotTypePrimitive typeBoolean;
     public final HotSpotTypePrimitive typeChar;
@@ -170,7 +171,37 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         PhasePlan plan = new PhasePlan();
                         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), null);
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                        CiTargetMethod result = compiler.getCompiler().compileMethod(method, -1, null, DebugInfoLevel.FULL, plan);
+                        long startTime = 0;
+                        int index = compiledMethodCount++;
+                        final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
+                        if (printCompilation) {
+                            TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...",
+                                            index,
+                                            method.holder().name(),
+                                            method.name(),
+                                            method.signature().asString()));
+                            startTime = System.nanoTime();
+                        }
+
+                        CiTargetMethod result = null;
+                        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+                        try {
+                            result = compiler.getCompiler().compileMethod(method, -1, null, DebugInfoLevel.FULL, plan);
+                        } finally {
+                            filter.remove();
+                            if (printCompilation) {
+                                long time = (System.nanoTime() - startTime) / 100000;
+                                TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB",
+                                                index,
+                                                "",
+                                                "",
+                                                "",
+                                                time / 10,
+                                                time % 10,
+                                                0,
+                                                (result != null ? result.targetCodeSize() : -1)));
+                            }
+                        }
                         HotSpotTargetMethod.installMethod(compiler, method, result, true);
                     } catch (CiBailout bailout) {
                         if (GraalOptions.ExitVMOnBailout) {

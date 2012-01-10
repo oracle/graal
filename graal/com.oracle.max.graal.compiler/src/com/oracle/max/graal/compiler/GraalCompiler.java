@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler;
 
+import static com.oracle.max.graal.debug.Debug.*;
+
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
@@ -32,6 +34,7 @@ import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 
 public class GraalCompiler {
@@ -81,20 +84,7 @@ public class GraalCompiler {
     }
 
     public CiTargetMethod compileMethod(RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, CiCompiler.DebugInfoLevel debugInfoLevel, PhasePlan plan) {
-        context.timers.startScope(getClass());
-        try {
-            long startTime = 0;
-            int index = context.metrics.CompiledMethods++;
-            final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
-            if (printCompilation) {
-                TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...",
-                                index,
-                                method.holder().name(),
-                                method.name(),
-                                method.signature().asString()));
-                startTime = System.nanoTime();
-            }
-
+        try (Scope scope = openScope("CompileMethod", method)) {
             CiTargetMethod result = null;
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
             GraalCompilation compilation = new GraalCompilation(context, this, method, graph, osrBCI, stats, debugInfoLevel);
@@ -102,23 +92,8 @@ public class GraalCompiler {
                 result = compilation.compile(plan);
             } finally {
                 filter.remove();
-                if (printCompilation) {
-                    long time = (System.nanoTime() - startTime) / 100000;
-                    TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB",
-                                    index,
-                                    "",
-                                    "",
-                                    "",
-                                    time / 10,
-                                    time % 10,
-                                    compilation.graph.getNodeCount(),
-                                    (result != null ? result.targetCodeSize() : -1)));
-                }
             }
-
             return result;
-        } finally {
-            context.timers.endScope();
         }
     }
 
