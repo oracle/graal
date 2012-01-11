@@ -22,9 +22,12 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
+import static com.oracle.max.graal.debug.Debug.*;
+
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -64,58 +67,61 @@ public abstract class Phase {
         apply(graph,  GraalContext.EMPTY_CONTEXT, plot);
     }
 
-    public final void apply(StructuredGraph graph, GraalContext context, boolean plot) {
+    public final void apply(final StructuredGraph graph, GraalContext context, boolean plot) {
 
         this.currentContext = context;
-        try {
-            assert graph != null && (!shouldVerify || graph.verify());
-        } catch (GraalInternalError e) {
-            throw e.addContext("start of phase", getDetailedName());
-        }
 
-        int startDeletedNodeCount = graph.getDeletedNodeCount();
-        int startNodeCount = graph.getNodeCount();
-        if (context != null) {
-            context.timers.startScope(getName());
-        }
-        try {
-            try {
-                run(graph);
-            } catch (CiBailout bailout) {
-                throw bailout;
-            } catch (AssertionError e) {
-                throw new GraalInternalError(e);
-            } catch (RuntimeException e) {
-                throw new GraalInternalError(e);
-            } finally {
-                if (context != null) {
-                    context.timers.endScope();
-                }
-            }
-        } catch (GraalInternalError e) {
-            throw e.addContext(graph).addContext("phase", getDetailedName());
-        }
+        Debug.scope(name, new Runnable() { public void run() { Phase.this.run(graph); }});
 
-        if (context != null) {
-            if (GraalOptions.Meter) {
-                int deletedNodeCount = graph.getDeletedNodeCount() - startDeletedNodeCount;
-                int createdNodeCount = graph.getNodeCount() - startNodeCount + deletedNodeCount;
-                context.metrics.get(getName().concat(".executed")).increment();
-                context.metrics.get(getName().concat(".deletedNodes")).increment(deletedNodeCount);
-                context.metrics.get(getName().concat(".createdNodes")).increment(createdNodeCount);
-            }
-
-            boolean shouldFireCompilationEvents = context.isObserved() && this.getClass() != IdentifyBlocksPhase.class && (plot || GraalOptions.PlotVerbose);
-            if (shouldFireCompilationEvents && context.timers.currentLevel() < GraalOptions.PlotLevel) {
-                context.observable.fireCompilationEvent("After " + getName(), graph);
-            }
-        }
-
-        try {
-            assert !shouldVerify || graph.verify();
-        } catch (GraalInternalError e) {
-            throw e.addContext("end of phase", getDetailedName());
-        }
+//        try {
+//            assert graph != null && (!shouldVerify || graph.verify());
+//        } catch (GraalInternalError e) {
+//            throw e.addContext("start of phase", getDetailedName());
+//        }
+//
+//        int startDeletedNodeCount = graph.getDeletedNodeCount();
+//        int startNodeCount = graph.getNodeCount();
+//        if (context != null) {
+//            context.timers.startScope(getName());
+//        }
+//        try {
+//            try {
+//                run(graph);
+//            } catch (CiBailout bailout) {
+//                throw bailout;
+//            } catch (AssertionError e) {
+//                throw new GraalInternalError(e);
+//            } catch (RuntimeException e) {
+//                throw new GraalInternalError(e);
+//            } finally {
+//                if (context != null) {
+//                    context.timers.endScope();
+//                }
+//            }
+//        } catch (GraalInternalError e) {
+//            throw e.addContext(graph).addContext("phase", getDetailedName());
+//        }
+//
+//        if (context != null) {
+//            if (GraalOptions.Meter) {
+//                int deletedNodeCount = graph.getDeletedNodeCount() - startDeletedNodeCount;
+//                int createdNodeCount = graph.getNodeCount() - startNodeCount + deletedNodeCount;
+//                context.metrics.get(getName().concat(".executed")).increment();
+//                context.metrics.get(getName().concat(".deletedNodes")).increment(deletedNodeCount);
+//                context.metrics.get(getName().concat(".createdNodes")).increment(createdNodeCount);
+//            }
+//
+//            boolean shouldFireCompilationEvents = context.isObserved() && this.getClass() != IdentifyBlocksPhase.class && (plot || GraalOptions.PlotVerbose);
+//            if (shouldFireCompilationEvents && context.timers.currentLevel() < GraalOptions.PlotLevel) {
+//                context.observable.fireCompilationEvent("After " + getName(), graph);
+//            }
+//        }
+//
+//        try {
+//            assert !shouldVerify || graph.verify();
+//        } catch (GraalInternalError e) {
+//            throw e.addContext("end of phase", getDetailedName());
+//        }
     }
 
     public final String getName() {

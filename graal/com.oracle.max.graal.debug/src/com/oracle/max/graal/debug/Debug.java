@@ -22,8 +22,6 @@
  */
 package com.oracle.max.graal.debug;
 
-import java.io.*;
-
 
 public class Debug {
     public static boolean ENABLED = false;
@@ -34,15 +32,16 @@ public class Debug {
         }
     }
 
-    public static Scope openScope(String name, Object... context) {
+    public static void scope(String name, Runnable runnable, Object... context) {
         if (ENABLED) {
-            return new Scope(name, context);
+            DebugContext.getInstance().scope(name, runnable, context);
         } else {
-            return VOID_SCOPE;
+            runnable.run();
         }
     }
 
     private static final Scope VOID_SCOPE = new Scope(null);
+
 
     public static final class Scope implements AutoCloseable {
         private String name;

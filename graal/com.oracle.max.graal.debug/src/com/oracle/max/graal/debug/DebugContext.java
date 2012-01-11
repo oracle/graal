@@ -37,7 +37,7 @@ class DebugContext {
     void log(String msg, Object... args) {
     }
 
-    void scope(Runnable runnable, String name, Object... context) {
+    void scope(String name, Runnable runnable, Object... context) {
         runnable.run();
     }
 }

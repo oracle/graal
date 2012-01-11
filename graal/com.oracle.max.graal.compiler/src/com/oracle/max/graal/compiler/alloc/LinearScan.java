@@ -280,7 +280,7 @@ public final class LinearScan {
     }
 
     int numLoops() {
-        return compilation.stats.loopCount;
+        return ir.numLoops();
     }
 
     boolean isIntervalInLoop(int interval, int loop) {

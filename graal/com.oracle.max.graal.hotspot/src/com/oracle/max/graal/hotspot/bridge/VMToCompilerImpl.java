@@ -169,7 +169,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 public void run() {
                     try {
                         PhasePlan plan = new PhasePlan();
-                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), null);
+                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                         long startTime = 0;
                         int index = compiledMethodCount++;
@@ -186,7 +186,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         CiTargetMethod result = null;
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
                         try {
-                            result = compiler.getCompiler().compileMethod(method, -1, null, DebugInfoLevel.FULL, plan);
+                            result = compiler.getCompiler().compileMethod(method, -1, DebugInfoLevel.FULL, plan);
                         } finally {
                             filter.remove();
                             if (printCompilation) {

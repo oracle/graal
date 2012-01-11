@@ -54,7 +54,6 @@ public final class GraalCompilation {
     public final GraalCompiler compiler;
     public final RiResolvedMethod method;
     public final RiRegisterConfig registerConfig;
-    public final CiStatistics stats;
     public final FrameState placeholderState;
 
     public final StructuredGraph graph;
@@ -76,14 +75,13 @@ public final class GraalCompilation {
      * @param stats externally supplied statistics object to be used if not {@code null}
      * @param debugInfoLevel TODO
      */
-    public GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, DebugInfoLevel debugInfoLevel) {
+    public GraalCompilation(GraalContext context, GraalCompiler compiler, RiResolvedMethod method, StructuredGraph graph, int osrBCI, DebugInfoLevel debugInfoLevel) {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
         this.compiler = compiler;
         this.graph = graph;
         this.method = method;
-        this.stats = stats == null ? new CiStatistics() : stats;
         this.registerConfig = method == null ? compiler.compilerStubRegisterConfig : compiler.runtime.getRegisterConfig(method);
         this.placeholderState = debugInfoLevel == DebugInfoLevel.REF_MAPS ? new FrameState(method, 0, 0, 0, false) : null;
 
@@ -260,9 +258,6 @@ public final class GraalCompilation {
 
             IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
             schedule.apply(graph, context());
-            if (stats != null) {
-                stats.loopCount = schedule.loopCount();
-            }
 
             if (context().isObserved()) {
                 context().observable.fireCompilationEvent("After IdentifyBlocksPhase", this, graph, schedule);
@@ -281,7 +276,7 @@ public final class GraalCompilation {
 
             context().timers.startScope("Compute Linear Scan Order");
             try {
-                ComputeLinearScanOrder clso = new ComputeLinearScanOrder(blocks.size(), stats.loopCount, startBlock);
+                ComputeLinearScanOrder clso = new ComputeLinearScanOrder(blocks.size(), schedule.loopCount(), startBlock);
                 List<LIRBlock> linearScanOrder = clso.linearScanOrder();
                 List<LIRBlock> codeEmittingOrder = clso.codeEmittingOrder();
 
@@ -290,7 +285,7 @@ public final class GraalCompilation {
                     b.setLinearScanNumber(z++);
                 }
 
-                lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock);
+                lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock, schedule.loopCount());
 
                 if (context().isObserved()) {
                     context().observable.fireCompilationEvent("After linear scan order", this, graph, lir);

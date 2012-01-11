@@ -75,26 +75,26 @@ public class GraalCompiler {
         init();
     }
 
-    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiStatistics stats, CiCompiler.DebugInfoLevel debugInfoLevel) {
-        return compileMethod(method, osrBCI, stats, debugInfoLevel, PhasePlan.DEFAULT);
+    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiCompiler.DebugInfoLevel debugInfoLevel) {
+        return compileMethod(method, osrBCI, debugInfoLevel, PhasePlan.DEFAULT);
     }
 
-    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiStatistics stats, CiCompiler.DebugInfoLevel debugInfoLevel, PhasePlan plan) {
-        return compileMethod(method, new StructuredGraph(method), osrBCI, stats, debugInfoLevel, plan);
+    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiCompiler.DebugInfoLevel debugInfoLevel, PhasePlan plan) {
+        return compileMethod(method, new StructuredGraph(method), osrBCI, debugInfoLevel, plan);
     }
 
-    public CiTargetMethod compileMethod(RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiStatistics stats, CiCompiler.DebugInfoLevel debugInfoLevel, PhasePlan plan) {
-        try (Scope scope = openScope("CompileMethod", method)) {
-            CiTargetMethod result = null;
+    public CiTargetMethod compileMethod(final RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiCompiler.DebugInfoLevel debugInfoLevel, final PhasePlan plan) {
+        final GraalCompilation compilation = new GraalCompilation(context, GraalCompiler.this, method, graph, osrBCI, debugInfoLevel);
+        final CiTargetMethod[] result = new CiTargetMethod[1];
+        Debug.scope("CompileMethod", new Runnable() { public void run() {
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
-            GraalCompilation compilation = new GraalCompilation(context, this, method, graph, osrBCI, stats, debugInfoLevel);
             try {
-                result = compilation.compile(plan);
+                result[0] = compilation.compile(plan);
             } finally {
                 filter.remove();
             }
-            return result;
-        }
+        }}, method);
+        return result[0];
     }
 
     private void init() {

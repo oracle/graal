@@ -64,6 +64,7 @@ public class LIR {
     public SlowPath methodEndMarker;
 
     private int numVariables;
+    private int numLoops;
 
 
     public interface SlowPath {
@@ -74,11 +75,12 @@ public class LIR {
      * Creates a new LIR instance for the specified compilation.
      * @param compilation the compilation
      */
-    public LIR(LIRBlock startBlock, List<LIRBlock> linearScanOrder, List<LIRBlock> codeEmittingOrder, NodeMap<LIRBlock> valueToBlock) {
+    public LIR(LIRBlock startBlock, List<LIRBlock> linearScanOrder, List<LIRBlock> codeEmittingOrder, NodeMap<LIRBlock> valueToBlock, int numLoops) {
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.startBlock = startBlock;
         this.valueToBlock = valueToBlock;
+        this.numLoops = numLoops;
 
         slowPaths = new ArrayList<>();
         deoptimizationStubs = new ArrayList<>();
@@ -244,5 +246,9 @@ public class LIR {
             }
             TTY.println();
         }
+    }
+
+    public int numLoops() {
+        return numLoops;
     }
 }
