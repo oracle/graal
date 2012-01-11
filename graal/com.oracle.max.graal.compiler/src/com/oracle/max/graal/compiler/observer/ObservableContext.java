@@ -24,8 +24,6 @@ package com.oracle.max.graal.compiler.observer;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.*;
-
 /**
  * Base class for compilers that notify subscribed {@link CompilationObserver CompilationObservers} of
  * {@link CompilationEvent CompilationEvents} that occur during their compilations.
@@ -33,6 +31,20 @@ import com.oracle.max.graal.compiler.*;
 public class ObservableContext {
 
     private List<CompilationObserver> observers;
+
+    private ThreadLocal<StringBuilder> scopeName = new ThreadLocal<StringBuilder>() {
+        @Override
+        protected StringBuilder initialValue() {
+            return new StringBuilder();
+        }
+    };
+
+    private ThreadLocal<ArrayList<Object>> debugObjects = new ThreadLocal<ArrayList<Object>>() {
+        @Override
+        protected ArrayList<Object> initialValue() {
+            return new ArrayList<>();
+        }
+    };
 
     /**
      * @return {@code true} if one or more observers are subscribed to receive notifications from this compiler,
@@ -56,28 +68,36 @@ public class ObservableContext {
         observers.add(observer);
     }
 
-    public void fireCompilationStarted(GraalCompilation compilation) {
+    public void fireCompilationStarted(Object... additionalDebugObjects) {
         if (isObserved()) {
+            addDebugObjects(null, additionalDebugObjects);
+            CompilationEvent event = new CompilationEvent("started", debugObjects.get());
             for (CompilationObserver observer : observers) {
-                observer.compilationStarted(compilation);
+                observer.compilationStarted(event);
             }
+            removeDebugObjects(null, additionalDebugObjects);
         }
     }
 
-    public void fireCompilationEvent(String label, Object...debugObjects) {
+    public void fireCompilationEvent(String label, Object... additionalDebugObjects) {
         if (isObserved()) {
-            CompilationEvent event = new CompilationEvent(label, debugObjects);
+            addDebugObjects(null, additionalDebugObjects);
+            CompilationEvent event = new CompilationEvent(label, debugObjects.get());
             for (CompilationObserver observer : observers) {
                 observer.compilationEvent(event);
             }
+            removeDebugObjects(null, additionalDebugObjects);
         }
     }
 
-    public void fireCompilationFinished(GraalCompilation compilation) {
+    public void fireCompilationFinished(Object... additionalDebugObjects) {
         if (isObserved()) {
+            addDebugObjects(null, additionalDebugObjects);
+            CompilationEvent event = new CompilationEvent("finished", debugObjects.get());
             for (CompilationObserver observer : observers) {
-                observer.compilationFinished(compilation);
+                observer.compilationFinished(event);
             }
+            removeDebugObjects(null, additionalDebugObjects);
         }
     }
 
@@ -98,6 +118,27 @@ public class ObservableContext {
     public void clear() {
         if (observers != null) {
             observers = null;
+        }
+    }
+
+    public void addDebugObjects(String name, Object[] additionalDebugObjects) {
+        if (name != null) {
+            if (scopeName.get().length() > 0) {
+                scopeName.get().append('.');
+            }
+            scopeName.get().append(name);
+        }
+        for (Object obj : additionalDebugObjects) {
+            debugObjects.get().add(obj);
+        }
+    }
+
+    public void removeDebugObjects(String name, Object[] additionalDebugObjects) {
+        if (name != null) {
+            scopeName.get().setLength(Math.max(0, scopeName.get().length() - name.length()));
+        }
+        for (int i = 0; i < additionalDebugObjects.length; i++) {
+            debugObjects.get().remove(debugObjects.get().size() - 1);
         }
     }
 }

@@ -103,13 +103,13 @@ public abstract class GraphTest {
     protected StructuredGraph parse(Method m) {
         RiResolvedMethod riMethod = runtime.getRiMethod(m);
         StructuredGraph graph = new StructuredGraph(riMethod);
-        new GraphBuilderPhase(runtime, null, GraphBuilderConfiguration.getDeoptFreeDefault()).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDeoptFreeDefault()).apply(graph);
         return graph;
     }
 
     protected PhasePlan getDefaultPhasePlan() {
         PhasePlan plan = new PhasePlan();
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, null, GraphBuilderConfiguration.getDeoptFreeDefault()));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDeoptFreeDefault()));
         return plan;
     }
 

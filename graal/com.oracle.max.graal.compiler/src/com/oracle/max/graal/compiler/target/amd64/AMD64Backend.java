@@ -31,6 +31,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * The {@code X86Backend} class represents the backend for the AMD64 architecture.
@@ -46,8 +47,8 @@ public class AMD64Backend extends Backend {
      * @return an appropriate LIR generator instance
      */
     @Override
-    public LIRGenerator newLIRGenerator(GraalCompilation compilation, RiXirGenerator xir) {
-        return new AMD64LIRGenerator(compilation, xir);
+    public LIRGenerator newLIRGenerator(GraalContext context, Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
+        return new AMD64LIRGenerator(context, graph, runtime, target, frameMap, method, lir, xir);
     }
 
     @Override

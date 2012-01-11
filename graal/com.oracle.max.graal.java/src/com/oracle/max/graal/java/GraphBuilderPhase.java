@@ -67,7 +67,6 @@ public final class GraphBuilderPhase extends Phase {
 
     private StructuredGraph currentGraph;
 
-    private final CiStatistics stats;
     private final RiRuntime runtime;
     private RiConstantPool constantPool;
     private RiExceptionHandler[] exceptionHandlers;
@@ -104,17 +103,12 @@ public final class GraphBuilderPhase extends Phase {
     private final GraphBuilderConfiguration config;
 
     public GraphBuilderPhase(RiRuntime runtime) {
-        this(runtime, null);
+        this(runtime, GraphBuilderConfiguration.getDefault());
     }
 
-    public GraphBuilderPhase(RiRuntime runtime, CiStatistics stats) {
-        this(runtime, stats, GraphBuilderConfiguration.getDefault());
-    }
-
-    public GraphBuilderPhase(RiRuntime runtime, CiStatistics stats, GraphBuilderConfiguration config) {
+    public GraphBuilderPhase(RiRuntime runtime, GraphBuilderConfiguration config) {
         this.config = config;
         this.runtime = runtime;
-        this.stats = stats;
         this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
     }
 
@@ -144,9 +138,7 @@ public final class GraphBuilderPhase extends Phase {
     private BlockMap createBlockMap() {
         BlockMap map = new BlockMap(method, config.useBranchPrediction());
         map.build();
-        if (stats != null) {
-            stats.bytecodeCount += method.code().length;
-        }
+        currentContext.metrics.bytecodeCount += method.code().length;
 
         if (currentContext.isObserved()) {
             String label = CiUtil.format("BlockListBuilder %f %R %H.%n(%P)", method);
@@ -166,9 +158,8 @@ public final class GraphBuilderPhase extends Phase {
         this.canTrapBitSet = blockMap.canTrap;
 
         exceptionHandlers = blockMap.exceptionHandlers();
-        if (stats != null) {
-            stats.blockCount += blockMap.blocks.size();
-        }
+        currentContext.metrics.blockCount += blockMap.blocks.size();
+
         nextBlockNumber = blockMap.blocks.size();
 
         lastInstr = currentGraph.start();
@@ -209,9 +200,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private int nextBlockNumber() {
-        if (stats != null) {
-            stats.blockCount++;
-        }
+        currentContext.metrics.blockCount++;
         return nextBlockNumber++;
     }
 

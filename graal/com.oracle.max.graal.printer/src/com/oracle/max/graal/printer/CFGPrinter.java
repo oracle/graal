@@ -30,15 +30,15 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.Node.*;
-import com.oracle.max.graal.graph.NodeClass.*;
+import com.oracle.max.graal.graph.Node.Verbosity;
+import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
@@ -49,34 +49,25 @@ import com.oracle.max.graal.nodes.calc.*;
 class CFGPrinter extends CompilationPrinter {
 
     public final ByteArrayOutputStream buffer;
-    private final LIR lir;
-    private LIRGenerator lirGenerator;
     public final CiTarget target;
     public final RiRuntime runtime;
+    private LIR lir;
+    private LIRGenerator lirGenerator;
 
     /**
      * Creates a control flow graph printer.
      *
      * @param buffer where the output generated via this printer shown be written
-     * @param nodeOperands
      */
-    public CFGPrinter(ByteArrayOutputStream buffer, GraalCompilation compilation) {
+    public CFGPrinter(ByteArrayOutputStream buffer, CiTarget target, RiRuntime runtime) {
         super(buffer);
         this.buffer = buffer;
-        this.lir = compilation.lir();
-        this.target = compilation.compiler.target;
-        this.runtime = compilation.compiler.runtime;
-    }
-
-    public CFGPrinter(ByteArrayOutputStream buffer, GraalCompilation compilation, CiTarget target, RiRuntime runtime) {
-        super(buffer);
-        this.buffer = buffer;
-        this.lir = compilation.lir();
         this.target = target;
         this.runtime = runtime;
     }
 
-    public void setLIRGenerator(LIRGenerator lirGenerator) {
+    public void setLIR(LIR lir, LIRGenerator lirGenerator) {
+        this.lir = lir;
         this.lirGenerator = lirGenerator;
     }
 

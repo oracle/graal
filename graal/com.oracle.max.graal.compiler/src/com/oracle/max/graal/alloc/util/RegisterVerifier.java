@@ -22,12 +22,12 @@
  */
 package com.oracle.max.graal.alloc.util;
 
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
@@ -36,7 +36,6 @@ import com.oracle.max.graal.compiler.util.*;
 
 public final class RegisterVerifier {
     private final FrameMap frameMap;
-    private final RiRegisterConfig registerConfig;
 
     /**
      * All blocks that must be processed.
@@ -70,16 +69,15 @@ public final class RegisterVerifier {
         return new HashMap<>(inputState);
     }
 
-    public static boolean verify(LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
-        RegisterVerifier verifier = new RegisterVerifier(lir, frameMap, registerConfig);
+    public static boolean verify(LIR lir, FrameMap frameMap) {
+        RegisterVerifier verifier = new RegisterVerifier(lir, frameMap);
         verifier.verify(lir.startBlock());
         return true;
     }
 
     @SuppressWarnings("unchecked")
-    private RegisterVerifier(LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
+    private RegisterVerifier(LIR lir, FrameMap frameMap) {
         this.frameMap = frameMap;
-        this.registerConfig = registerConfig;
         this.workList = new LinkedList<>();
         this.blockStates = new Map[lir.linearScanOrder().size()];
     }
@@ -162,7 +160,7 @@ public final class RegisterVerifier {
         Iterator<Object> iter = curInputState.keySet().iterator();
         while (iter.hasNext()) {
             Object value1 = iter.next();
-            if (value1 instanceof CiRegister && registerConfig.getAttributesMap()[((CiRegister) value1).number].isCallerSave) {
+            if (value1 instanceof CiRegister && frameMap.registerConfig.getAttributesMap()[((CiRegister) value1).number].isCallerSave) {
                 trace(2, "    remove caller save register %s", value1);
                 iter.remove();
             }
@@ -187,7 +185,7 @@ public final class RegisterVerifier {
     }
 
     private boolean isIgnoredRegister(CiValue value) {
-        return isRegister(value) && !registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && !frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
     private CiValue use(CiValue value) {

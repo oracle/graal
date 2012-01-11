@@ -33,22 +33,16 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.virtual.*;
 
 public class DebugInfoBuilder {
-    private final boolean disable;
     private final NodeMap<CiValue> nodeOperands;
 
-    public DebugInfoBuilder(NodeMap<CiValue> nodeOperands, boolean disable) {
+    public DebugInfoBuilder(NodeMap<CiValue> nodeOperands) {
         this.nodeOperands = nodeOperands;
-        this.disable = disable;
     }
 
 
     private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<>();
 
     public LIRDebugInfo build(FrameState topState, LockScope locks, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
-        if (disable) {
-            return null;
-        }
-
         assert virtualObjects.size() == 0;
         CiFrame frame = computeFrameForState(topState, locks);
 

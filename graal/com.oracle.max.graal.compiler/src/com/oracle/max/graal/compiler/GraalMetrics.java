@@ -74,6 +74,45 @@ public final class GraalMetrics {
     public int GlobalValueNumberingHits;
     public int ExplicitExceptions;
     public int GuardsHoisted;
+
+
+
+    /**
+     * The total number of bytes of bytecode parsed during this compilation, including any inlined methods.
+     */
+    public int bytecodeCount;
+
+    /**
+     * The number of internal graph nodes created during this compilation.
+     */
+    public int nodeCount;
+
+    /**
+     * The number of basic blocks created during this compilation.
+     */
+    public int blockCount;
+
+    /**
+     * The number of loops in the compiled method.
+     */
+    public int loopCount;
+
+    /**
+     * The number of methods inlined.
+     */
+    public int inlineCount;
+
+    /**
+     * The number of methods folded (i.e. evaluated).
+     */
+    public int foldCount;
+
+    /**
+     * The number of intrinsics inlined in this compilation.
+     */
+    public int intrinsicCount;
+
+
     // Checkstyle: resume
 
     public void print() {

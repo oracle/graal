@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.observer;
 
+import java.util.*;
+
 /**
  * An event that occurred during compilation. Instances of this class provide information about the event and the state
  * of the compilation when the event was raised. Depending on the state of the compiler and the compilation phase,
@@ -36,16 +38,17 @@ public class CompilationEvent {
     public static final Object ERROR = new Object() {};
 
     public final String label;
-    private Object[] debugObjects;
+    private List<Object> debugObjects;
 
-    protected CompilationEvent(String label, Object...debugObjects) {
+    protected CompilationEvent(String label, ArrayList<Object> debugObjects) {
         this.label = label;
         this.debugObjects = debugObjects;
     }
 
     @SuppressWarnings("unchecked")
     public <T> T debugObject(Class<T> type) {
-        for (Object o : debugObjects) {
+        for (ListIterator<Object> iter = debugObjects.listIterator(debugObjects.size()); iter.hasPrevious();) {
+            Object o = iter.previous();
             if (type.isInstance(o)) {
                 return (T) o;
             }
@@ -54,7 +57,8 @@ public class CompilationEvent {
     }
 
     public boolean hasDebugObject(Object search) {
-        for (Object o : debugObjects) {
+        for (ListIterator<Object> iter = debugObjects.listIterator(debugObjects.size()); iter.hasPrevious();) {
+            Object o = iter.previous();
             if (o == search) {
                 return true;
             }

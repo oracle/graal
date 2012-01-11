@@ -30,7 +30,6 @@ package com.oracle.max.cri.ci;
 public class CiResult {
     private final CiTargetMethod targetMethod;
     private final CiBailout bailout;
-    private final CiStatistics stats;
 
     /**
      * Creates a new compilation result.
@@ -38,10 +37,9 @@ public class CiResult {
      * @param bailout the bailout condition that occurred
      * @param stats statistics about the compilation
      */
-    public CiResult(CiTargetMethod targetMethod, CiBailout bailout, CiStatistics stats) {
+    public CiResult(CiTargetMethod targetMethod, CiBailout bailout) {
         this.targetMethod = targetMethod;
         this.bailout = bailout;
-        this.stats = stats;
     }
 
     /**
@@ -55,14 +53,6 @@ public class CiResult {
             throw bailout;
         }
         return targetMethod;
-    }
-
-    /**
-     * Returns the statistics about the compilation that were produced, if any.
-     * @return the statistics
-     */
-    public CiStatistics statistics() {
-        return stats;
     }
 
     /**

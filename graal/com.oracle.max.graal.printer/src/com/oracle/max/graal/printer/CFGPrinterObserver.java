@@ -28,7 +28,6 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
@@ -55,13 +54,15 @@ public class CFGPrinterObserver implements CompilationObserver {
     };
 
     @Override
-    public void compilationStarted(GraalCompilation compilation) {
+    public void compilationStarted(CompilationEvent event) {
         if (TTY.isSuppressed()) {
             return;
         }
+        RiRuntime runtime = event.debugObject(RiRuntime.class);
+        CiTarget target = event.debugObject(CiTarget.class);
 
-        CFGPrinter cfgPrinter = new CFGPrinter(new ByteArrayOutputStream(), compilation);
-        cfgPrinter.printCompilation(compilation.method);
+        CFGPrinter cfgPrinter = new CFGPrinter(new ByteArrayOutputStream(), target, runtime);
+        cfgPrinter.printCompilation(event.debugObject(RiResolvedMethod.class));
         observations.get().push(cfgPrinter);
     }
 
@@ -76,7 +77,7 @@ public class CFGPrinterObserver implements CompilationObserver {
         }
 
         RiRuntime runtime = cfgPrinter.runtime;
-        cfgPrinter.setLIRGenerator(event.debugObject(LIRGenerator.class));
+        cfgPrinter.setLIR(event.debugObject(LIR.class), event.debugObject(LIRGenerator.class));
         BlockMap blockMap = event.debugObject(BlockMap.class);
         Graph graph = event.debugObject(Graph.class);
         IdentifyBlocksPhase schedule = event.debugObject(IdentifyBlocksPhase.class);
@@ -118,7 +119,7 @@ public class CFGPrinterObserver implements CompilationObserver {
     }
 
     @Override
-    public void compilationFinished(GraalCompilation compilation) {
+    public void compilationFinished(CompilationEvent event) {
         if (TTY.isSuppressed()) {
             return;
         }

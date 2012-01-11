@@ -37,9 +37,12 @@ import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described
@@ -49,7 +52,6 @@ import com.oracle.max.graal.graph.*;
 public final class LinearScan {
 
     final GraalContext context;
-    final RiRegisterConfig registerConfig;
     final CiTarget target;
     final RiMethod method;
     final LIR ir;
@@ -117,19 +119,21 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
+    private final StructuredGraph graph;
 
-    public LinearScan(GraalCompilation compilation, LIR ir, LIRGenerator gen, FrameMap frameMap) {
-        this.context = compilation.compiler.context;
-        this.target = compilation.compiler.target;
-        this.registerConfig = compilation.registerConfig;
-        this.method = compilation.method;
+
+    public LinearScan(GraalContext context, CiTarget target, RiResolvedMethod method, StructuredGraph graph, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+        this.context = context;
+        this.target = target;
+        this.method = method;
+        this.graph = graph;
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
         this.sortedBlocks = ir.linearScanOrder().toArray(new LIRBlock[ir.linearScanOrder().size()]);
-        this.registerAttributes = compilation.registerConfig.getAttributesMap();
+        this.registerAttributes = frameMap.registerConfig.getAttributesMap();
 
-        this.registers = compilation.compiler.target.arch.registers;
+        this.registers = target.arch.registers;
         this.firstVariableNumber = registers.length;
         this.variables = new ArrayList<>(ir.numVariables() * 3 / 2);
     }
@@ -1063,7 +1067,7 @@ public final class LinearScan {
         intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
 
         // create a list with all caller-save registers (cpu, fpu, xmm)
-        CiRegister[] callerSaveRegs = registerConfig.getCallerSaveRegisters();
+        CiRegister[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
 
         // iterate all blocks in reverse order
         for (int i = blockCount() - 1; i >= 0; i--) {
@@ -1872,8 +1876,7 @@ public final class LinearScan {
         }
 
         if (context.isObserved()) {
-            // FIX(ls)
-//            context.observable.fireCompilationEvent(label, compilation, this, Arrays.copyOf(intervals, intervalsSize));
+            context.observable.fireCompilationEvent(label, graph, this, Arrays.copyOf(intervals, intervalsSize));
         }
     }
 
@@ -1886,8 +1889,7 @@ public final class LinearScan {
         }
 
         if (context.isObserved()) {
-            // FIX(ls)
-//            context.observable.fireCompilationEvent(label, compilation, hirValid ? compilation.graph : null, compilation.lir());
+            context.observable.fireCompilationEvent(label, hirValid ? graph : null, ir);
         }
     }
 

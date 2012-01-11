@@ -31,6 +31,7 @@ import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
@@ -56,7 +57,7 @@ public abstract class Backend {
     }
 
     public abstract FrameMap newFrameMap(RiRegisterConfig registerConfig);
-    public abstract LIRGenerator newLIRGenerator(GraalCompilation compilation, RiXirGenerator xir);
+    public abstract LIRGenerator newLIRGenerator(GraalContext context, Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir);
     public abstract AbstractAssembler newAssembler(RiRegisterConfig registerConfig);
     public abstract CiXirAssembler newXirAssembler();
 

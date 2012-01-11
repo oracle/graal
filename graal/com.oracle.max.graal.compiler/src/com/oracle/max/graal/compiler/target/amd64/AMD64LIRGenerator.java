@@ -40,11 +40,13 @@ import static com.oracle.max.graal.compiler.target.amd64.AMD64StandardOpcode.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
@@ -72,8 +74,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
         StandardOpcode.XIR = AMD64XirOpcode.XIR;
     }
 
-    public AMD64LIRGenerator(GraalCompilation compilation, RiXirGenerator xir) {
-        super(compilation, xir);
+    public AMD64LIRGenerator(GraalContext context, Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
+        super(context, graph, runtime, target, frameMap, method, lir, xir);
         lir.methodEndMarker = new AMD64MethodEndStub();
     }
 

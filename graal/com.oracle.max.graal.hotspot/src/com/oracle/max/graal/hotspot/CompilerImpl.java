@@ -31,6 +31,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.observer.*;
+import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.hotspot.bridge.*;
 import com.oracle.max.graal.hotspot.logging.*;
@@ -158,7 +159,11 @@ public final class CompilerImpl implements Compiler, Remote {
             if (Logger.ENABLED) {
                 generator = LoggingProxy.getProxy(RiXirGenerator.class, generator);
             }
-            compiler = new GraalCompiler(context, getRuntime(), getTarget(), generator);
+
+            Backend backend = Backend.create(target.arch, runtime, target);
+            generator.initialize(backend.newXirAssembler());
+
+            compiler = new GraalCompiler(context, getRuntime(), getTarget(), backend, generator);
         }
         return compiler;
     }

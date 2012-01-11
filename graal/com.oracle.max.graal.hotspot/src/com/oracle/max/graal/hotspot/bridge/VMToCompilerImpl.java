@@ -27,12 +27,11 @@ import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCompiler.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.*;
+import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
@@ -168,9 +167,9 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 public void run() {
                     try {
                         PhasePlan plan = new PhasePlan();
-                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), null);
+                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                        CiTargetMethod result = compiler.getCompiler().compileMethod(method, -1, null, DebugInfoLevel.FULL, plan);
+                        CiTargetMethod result = compiler.getCompiler().compileMethod(method, -1, plan);
                         HotSpotTargetMethod.installMethod(compiler, method, result, true);
                     } catch (CiBailout bailout) {
                         if (GraalOptions.ExitVMOnBailout) {

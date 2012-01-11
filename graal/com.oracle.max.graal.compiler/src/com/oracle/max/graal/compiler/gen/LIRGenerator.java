@@ -70,7 +70,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final CiTarget target;
     protected final RiResolvedMethod method;
     protected final FrameMap frameMap;
-    protected final RiRegisterConfig registerConfig;
     public final NodeMap<CiValue> nodeOperands;
 
     protected final LIR lir;
@@ -139,19 +138,18 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private LockScope curLocks;
 
 
-    public LIRGenerator(GraalCompilation compilation, RiXirGenerator xir) {
-        this.context = compilation.compiler.context;
-        this.graph = compilation.graph;
-        this.runtime = compilation.compiler.runtime;
-        this.target = compilation.compiler.target;
-        this.frameMap = compilation.frameMap();
-        this.method = compilation.method;
-        this.registerConfig = compilation.registerConfig;
+    public LIRGenerator(GraalContext context, Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
+        this.context = context;
+        this.graph = graph;
+        this.runtime = runtime;
+        this.target = target;
+        this.frameMap = frameMap;
+        this.method = method;
         this.nodeOperands = graph.createNodeMap();
-        this.lir = compilation.lir();
+        this.lir = lir;
         this.xir = xir;
         this.xirSupport = new XirSupport();
-        this.debugInfoBuilder = new DebugInfoBuilder(nodeOperands, compilation.placeholderState != null);
+        this.debugInfoBuilder = new DebugInfoBuilder(nodeOperands);
         this.blockLocks = new LockScope[lir.linearScanOrder().size()];
     }
 
@@ -275,7 +273,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (kind == CiKind.Void) {
             return IllegalValue;
         }
-        return registerConfig.getReturnRegister(kind).asValue(kind);
+        return frameMap.registerConfig.getReturnRegister(kind).asValue(kind);
     }
 
 
@@ -440,7 +438,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private void emitPrologue() {
-        CiCallingConvention incomingArguments = registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(method), target, false);
+        CiCallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(method), target, false);
 
         CiValue[] params = new CiValue[incomingArguments.locations.length];
         for (int i = 0; i < params.length; i++) {
@@ -890,7 +888,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiValue resultOperand = resultOperandFor(x.node().kind());
 
         CiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind(true));
-        CiCallingConvention cc = registerConfig.getCallingConvention(JavaCall, signature, target(), false);
+        CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         frameMap.callsMethod(cc, JavaCall);
         List<CiStackSlot> pointerSlots = new ArrayList<>(2);
         List<CiValue> argList = visitInvokeArguments(cc, callTarget.arguments(), pointerSlots);
@@ -970,7 +968,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         List<CiValue> argumentList;
         if (arguments.length > 0) {
             // move the arguments into the correct location
-            CiCallingConvention cc = registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
+            CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
             frameMap.callsMethod(cc, RuntimeCall);
             assert cc.locations.length == args.length : "argument count mismatch";
             for (int i = 0; i < args.length; i++) {
@@ -999,7 +997,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         // TODO Merge with emitCallToRuntime() method above.
 
         CiValue resultOperand = resultOperandFor(x.kind());
-        CiCallingConvention cc = registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
+        CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
         frameMap.callsMethod(cc, RuntimeCall);
         List<CiStackSlot> pointerSlots = new ArrayList<>(2);
         List<CiValue> argList = visitInvokeArguments(cc, x.arguments(), pointerSlots);
@@ -1336,7 +1334,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         List<CiValue> argumentList;
         if (arguments.length > 0) {
             // move the arguments into the correct location
-            CiCallingConvention cc = registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
+            CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
             frameMap.callsMethod(cc, RuntimeCall);
             assert cc.locations.length == args.length : "argument count mismatch";
             for (int i = 0; i < args.length; i++) {
