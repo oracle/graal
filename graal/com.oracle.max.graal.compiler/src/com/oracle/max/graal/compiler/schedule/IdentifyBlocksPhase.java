@@ -93,7 +93,6 @@ public class IdentifyBlocksPhase extends Phase {
                         ok = false;
                         break;
                     }
-                    assert unmarkedDominated == null : "b=" + b + ", unmarkedDominated=" + unmarkedDominated + ", dominated=" + dominated;
                     unmarkedDominated = dominated;
                 }
             }

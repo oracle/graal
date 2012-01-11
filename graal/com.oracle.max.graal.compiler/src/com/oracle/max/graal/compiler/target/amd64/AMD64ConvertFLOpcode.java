@@ -34,8 +34,8 @@ import com.oracle.max.graal.compiler.util.*;
 public enum AMD64ConvertFLOpcode implements LIROpcode {
     F2L, D2L;
 
-    public LIRInstruction create(Variable result, Variable input, Variable scratch) {
-        CiValue[] inputs = new CiValue[] {input};
+    public LIRInstruction create(CiValue result, CiValue x, CiValue scratch) {
+        CiValue[] inputs = new CiValue[] {x};
         CiValue[] temps = new CiValue[] {scratch};
         CiValue[] outputs = new CiValue[] {result};
 
@@ -47,16 +47,16 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
         };
     }
 
-    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input, CiValue scratch) {
+    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue x, CiValue scratch) {
         AMD64ConvertFSlowPath slowPath;
         switch (this) {
             case F2L:
-                masm.cvttss2siq(asLongReg(result), asFloatReg(input));
-                slowPath = new AMD64ConvertFSlowPath(masm, asLongReg(result), asFloatReg(input), false, true);
+                masm.cvttss2siq(asLongReg(result), asFloatReg(x));
+                slowPath = new AMD64ConvertFSlowPath(masm, asLongReg(result), asFloatReg(x), false, true);
                 break;
             case D2L:
-                masm.cvttsd2siq(asLongReg(result), asDoubleReg(input));
-                slowPath = new AMD64ConvertFSlowPath(masm, asLongReg(result), asDoubleReg(input), true, true);
+                masm.cvttsd2siq(asLongReg(result), asDoubleReg(x));
+                slowPath = new AMD64ConvertFSlowPath(masm, asLongReg(result), asDoubleReg(x), true, true);
                 break;
             default:
                 throw Util.shouldNotReachHere();

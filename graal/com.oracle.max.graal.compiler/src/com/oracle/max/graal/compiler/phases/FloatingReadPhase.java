@@ -124,7 +124,6 @@ public class FloatingReadPhase extends Phase {
                 }
                 assert phi.valueCount() <= phi.merge().endCount() : phi.merge();
             } else {
-                assert m != null;
                 PhiNode phi = m.graph().unique(new PhiNode(CiKind.Illegal, m, PhiType.Memory));
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
                     phi.addInput((ValueNode) original);

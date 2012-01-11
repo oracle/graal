@@ -36,20 +36,18 @@ public enum AMD64LogicFloatOpcode implements LIROpcode {
     FAND, FOR, FXOR,
     DAND, DOR, DXOR;
 
-    public LIRInstruction create(Variable result, CiValue left, CiValue right) {
-        assert (name().startsWith("F") && result.kind == CiKind.Float && left.kind == CiKind.Float && right.kind == CiKind.Float)
-            || (name().startsWith("D") && result.kind == CiKind.Double && left.kind == CiKind.Double && right.kind == CiKind.Double);
+    public LIRInstruction create(CiValue result, CiValue x, CiValue y) {
+        assert (name().startsWith("F") && result.kind == CiKind.Float && x.kind == CiKind.Float && y.kind == CiKind.Float)
+            || (name().startsWith("D") && result.kind == CiKind.Double && x.kind == CiKind.Double && y.kind == CiKind.Double);
 
-        CiValue[] inputs = new CiValue[] {left};
-        CiValue[] alives = new CiValue[] {right};
+        CiValue[] inputs = new CiValue[] {x};
+        CiValue[] alives = new CiValue[] {y};
         CiValue[] outputs = new CiValue[] {result};
 
         return new AMD64LIRInstruction(this, outputs, null, inputs, alives, LIRInstruction.NO_OPERANDS) {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                assert !(alive(0) instanceof CiRegisterValue) || asRegister(output(0)) != asRegister(alive(0)) : "result and right must be different registers";
-                AMD64MoveOpcode.move(tasm, masm, output(0), input(0));
-                emit(tasm, masm, output(0), alive(0));
+                emit(tasm, masm, output(0), input(0), alive(0));
             }
 
             @Override
@@ -66,10 +64,13 @@ public enum AMD64LogicFloatOpcode implements LIROpcode {
         };
     }
 
-    protected void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue leftAndResult, CiValue right) {
-        CiRegister dst = asRegister(leftAndResult);
-        if (isRegister(right)) {
-            CiRegister rreg = asRegister(right);
+    protected void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue x, CiValue y) {
+        assert sameRegister(x, y) || differentRegisters(result, y);
+        AMD64MoveOpcode.move(tasm, masm, result, x);
+
+        CiRegister dst = asRegister(result);
+        if (isRegister(y)) {
+            CiRegister rreg = asRegister(y);
             switch (this) {
                 case FAND: masm.andps(dst, rreg); break;
                 case FOR:  masm.orps(dst,  rreg); break;
@@ -79,18 +80,16 @@ public enum AMD64LogicFloatOpcode implements LIROpcode {
                 case DXOR: masm.xorpd(dst, rreg); break;
                 default:   throw Util.shouldNotReachHere();
             }
-        } else if (isConstant(right)) {
+        } else {
             switch (this) {
-                case FAND: masm.andps(dst, tasm.asFloatConstRef(right, 16)); break;
-                case FOR:  masm.orps(dst,  tasm.asFloatConstRef(right, 16)); break;
-                case FXOR: masm.xorps(dst, tasm.asFloatConstRef(right, 16)); break;
-                case DAND: masm.andpd(dst, tasm.asDoubleConstRef(right, 16)); break;
-                case DOR:  masm.orpd(dst,  tasm.asDoubleConstRef(right, 16)); break;
-                case DXOR: masm.xorpd(dst, tasm.asDoubleConstRef(right, 16)); break;
+                case FAND: masm.andps(dst, tasm.asFloatConstRef(y, 16)); break;
+                case FOR:  masm.orps(dst,  tasm.asFloatConstRef(y, 16)); break;
+                case FXOR: masm.xorps(dst, tasm.asFloatConstRef(y, 16)); break;
+                case DAND: masm.andpd(dst, tasm.asDoubleConstRef(y, 16)); break;
+                case DOR:  masm.orpd(dst,  tasm.asDoubleConstRef(y, 16)); break;
+                case DXOR: masm.xorpd(dst, tasm.asDoubleConstRef(y, 16)); break;
                 default:   throw Util.shouldNotReachHere();
             }
-        } else {
-            throw Util.shouldNotReachHere();
         }
     }
 }

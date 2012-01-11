@@ -93,18 +93,18 @@ public final class RegisterVerifier {
         setStateFor(startBlock, curInputState);
         addToWorkList(startBlock);
 
-        trace(1, "==== start verify register allocation ====");
+        assert trace("==== start verify register allocation ====");
         do {
             LIRBlock block = workList.remove(0);
             assert block.phis == null : "phi functions must have been resolved with moves";
 
             // Must copy state because it is modified.
             curInputState = copy(stateFor(block));
-            trace(1, "start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
-            traceState();
+            assert trace("start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
+            assert traceState();
 
             for (LIRInstruction op : block.lir()) {
-                trace(2, "  op %d %s", op.id(), op);
+                assert trace("  op %d %s", op.id(), op);
 
                 op.forEachInput(useProc);
                 if (op.hasCall()) {
@@ -120,23 +120,23 @@ public final class RegisterVerifier {
                 processSuccessor(succ);
             }
 
-            trace(1, "end block %s", block);
+            assert trace("end block %s", block);
         } while (!workList.isEmpty());
-        trace(1, "==== end verify register allocation ====");
+        assert trace("==== end verify register allocation ====");
     }
 
     private void processSuccessor(LIRBlock succ) {
         Map<Object, CiValue> savedState = stateFor(succ);
         if (savedState == null) {
             // Block was not processed before, so set initial inputState.
-            trace(2, "  successor %s: initial visit", succ);
+            assert trace("  successor %s: initial visit", succ);
             setStateFor(succ, copy(curInputState));
             addToWorkList(succ);
 
         } else {
             // This block was already processed before.
             // Check if new inputState is consistent with savedState.
-            trace(2, "  successor %s: state present", succ);
+            assert trace("  successor %s: state present", succ);
             Iterator<Map.Entry<Object, CiValue>> iter = savedState.entrySet().iterator();
             while (iter.hasNext()) {
                 Map.Entry<Object, CiValue> entry = iter.next();
@@ -146,7 +146,7 @@ public final class RegisterVerifier {
                 if (savedValue != inputValue) {
                     // Current inputState and previous savedState assume a different value in this register.
                     // Assume that this register is invalid and remove it from the saved state.
-                    trace(2, "    invalididating %s because it is inconsistent with %s", savedValue, inputValue);
+                    assert trace("    invalididating %s because it is inconsistent with %s", savedValue, inputValue);
                     iter.remove();
                     // Must re-visit this block.
                     addToWorkList(succ);
@@ -161,7 +161,7 @@ public final class RegisterVerifier {
         while (iter.hasNext()) {
             Object value1 = iter.next();
             if (value1 instanceof CiRegister && frameMap.registerConfig.getAttributesMap()[((CiRegister) value1).number].isCallerSave) {
-                trace(2, "    remove caller save register %s", value1);
+                assert trace("    remove caller save register %s", value1);
                 iter.remove();
             }
         }
@@ -201,20 +201,20 @@ public final class RegisterVerifier {
     }
 
     private CiValue temp(CiValue value) {
-        trace(2, "    temp %s -> remove key %s", value, key(value));
+        assert trace("    temp %s -> remove key %s", value, key(value));
         curInputState.remove(key(value));
         return value;
     }
 
     private CiValue output(CiValue value) {
-        trace(2, "    output %s -> set key %s", value, key(value));
+        assert trace("    output %s -> set key %s", value, key(value));
         curInputState.put(key(value), value);
         return value;
     }
 
 
-    private void traceState() {
-        if (GraalOptions.TraceRegisterAllocationLevel >= 2) {
+    private boolean traceState() {
+        if (GraalOptions.TraceRegisterAllocation) {
             ArrayList<Object> keys = new ArrayList<>(curInputState.keySet());
             Collections.sort(keys, new Comparator<Object>() {
                 @Override
@@ -241,11 +241,13 @@ public final class RegisterVerifier {
             }
             TTY.println();
         }
+        return true;
     }
 
-    private static void trace(int level, String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocationLevel >= level) {
+    private static boolean trace(String format, Object...args) {
+        if (GraalOptions.TraceRegisterAllocation) {
             TTY.println(format, args);
         }
+        return true;
     }
 }

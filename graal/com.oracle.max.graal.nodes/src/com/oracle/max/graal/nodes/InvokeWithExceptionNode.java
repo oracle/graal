@@ -47,7 +47,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
      */
     public InvokeWithExceptionNode(MethodCallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
         super(callTarget.returnStamp(), new BeginNode[]{null, exceptionEdge}, new double[]{1.0, 0.0});
-        assert callTarget != null;
         this.bci = bci;
         this.callTarget = callTarget;
     }

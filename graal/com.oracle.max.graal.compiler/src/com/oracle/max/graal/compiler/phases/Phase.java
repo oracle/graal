@@ -68,7 +68,7 @@ public abstract class Phase {
 
         this.currentContext = context;
         try {
-            assert graph != null && !shouldVerify || graph.verify();
+            assert graph != null && (!shouldVerify || graph.verify());
         } catch (GraalInternalError e) {
             throw e.addContext("start of phase", getDetailedName());
         }

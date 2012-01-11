@@ -102,8 +102,8 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         nodeStates.put(x, state);
         if (successors != null) {
             for (Node node : successors) {
-                nodeStates.put((FixedNode) node.predecessor(), state);
                 if (node != null) {
+                    nodeStates.put((FixedNode) node.predecessor(), state);
                     nodeQueue.addFirst((FixedNode) node);
                 }
             }

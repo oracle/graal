@@ -349,7 +349,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param x the instruction which produces the value for the local
      */
     public void storeLocal(int i, ValueNode x) {
-        assert x == null || (x.kind() != CiKind.Void && x.kind() != CiKind.Illegal) : "unexpected value: " + x;
+        assert x.kind() != CiKind.Void && x.kind() != CiKind.Illegal : "unexpected value: " + x;
         locals[i] = x;
         if (isTwoSlot(x.kind())) {
             // (tw) if this was a double word then kill i+1

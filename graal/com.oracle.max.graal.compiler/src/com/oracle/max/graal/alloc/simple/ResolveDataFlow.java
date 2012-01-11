@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,11 +50,11 @@ public abstract class ResolveDataFlow {
         ValueProcedure locMappingProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return locMapping(value); } };
         PhiValueProcedure phiMappingProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue input, CiValue output) { return phiMapping(input, output); } };
 
-        trace(1, "==== start resolve data flow ====");
+        assert trace("==== start resolve data flow ====");
         for (LIRBlock toBlock : lir.linearScanOrder()) {
 
             for (LIRBlock fromBlock : toBlock.getLIRPredecessors()) {
-                trace(1, "start edge %s -> %s", fromBlock, toBlock);
+                assert trace("start edge %s -> %s", fromBlock, toBlock);
                 findInsertPos(fromBlock, toBlock);
 
                 LocationMap toLocations = locationsForBlockBegin(toBlock);
@@ -68,14 +68,14 @@ public abstract class ResolveDataFlow {
                 }
 
                 moveResolver.resolve();
-                trace(1, "end edge %s -> %s", fromBlock, toBlock);
+                assert trace("end edge %s -> %s", fromBlock, toBlock);
             }
 
             // Phi functions are resolved with moves now, so delete them.
             toBlock.phis = null;
         }
         moveResolver.finish();
-        trace(1, "==== end resolve data flow ====");
+        assert trace("==== end resolve data flow ====");
     }
 
     private CiValue locMapping(CiValue value) {
@@ -102,11 +102,11 @@ public abstract class ResolveDataFlow {
             LIRInstruction instr = instructions.get(instructions.size() - 1);
             assert instr instanceof LIRBranch && instr.code == StandardOpcode.JUMP : "block does not end with an unconditional jump";
             moveResolver.init(instructions, instructions.size() - 1);
-            trace(1, "  insert at end of %s before %d", fromBlock, instructions.size() - 1);
+            assert trace("  insert at end of %s before %d", fromBlock, instructions.size() - 1);
 
         } else if (toBlock.numberOfPreds() == 1) {
             moveResolver.init(toBlock.lir(), 1);
-            trace(1, "  insert at beginning of %s before %d", toBlock, 1);
+            assert trace("  insert at beginning of %s before %d", toBlock, 1);
 
         } else {
             Util.shouldNotReachHere("Critical edge not split");
@@ -117,9 +117,10 @@ public abstract class ResolveDataFlow {
     protected abstract LocationMap locationsForBlockEnd(LIRBlock block);
 
 
-    private static void trace(int level, String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocationLevel >= level) {
+    private static boolean trace(String format, Object...args) {
+        if (GraalOptions.TraceRegisterAllocation) {
             TTY.println(format, args);
         }
+        return true;
     }
 }
