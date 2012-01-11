@@ -22,20 +22,15 @@
  */
 package com.oracle.max.graal.compiler;
 
-import java.util.*;
-
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 
 public class GraalCompiler {
-
-    public final Map<Object, CompilerStub> stubs = new HashMap<>();
 
     public final GraalContext context;
 

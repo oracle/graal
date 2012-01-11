@@ -27,9 +27,8 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.*;
+import com.oracle.max.cri.ci.CiCallingConvention.Type;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
 
 /**
@@ -210,18 +209,6 @@ public final class FrameMap {
         // TODO look at the actual stack offsets?
         assert type.out;
         reserveOutgoing(cc.stackSize);
-    }
-
-    /**
-     * Informs the frame map that the compiled code uses a particular compiler stub, which
-     * may need stack space for outgoing arguments.
-     * @param stub The compiler stub.
-     */
-    public void usesStub(CompilerStub stub) {
-        // TODO look at the actual stack slot offsets?
-        int argsSize = stub.inArgs.length * target.wordSize;
-        int resultSize = stub.resultKind.isVoid() ? 0 : target.wordSize;
-        reserveOutgoing(Math.max(argsSize, resultSize));
     }
 
     /**

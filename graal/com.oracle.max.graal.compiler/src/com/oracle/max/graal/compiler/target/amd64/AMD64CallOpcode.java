@@ -28,12 +28,11 @@ import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
 
 public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
@@ -90,30 +89,6 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
             offset += tasm.target.arch.machineCodeCallDisplacementOffset;
             while (offset++ % tasm.target.wordSize != 0) {
                 masm.nop();
-            }
-        }
-    }
-
-    public static void callStub(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CompilerStub stub, LIRDebugInfo info, CiValue result, CiValue... args) {
-        assert args.length == stub.inArgs.length;
-        for (int i = 0; i < args.length; i++) {
-            assert stub.inArgs[i].inCallerFrame();
-            AMD64MoveOpcode.move(tasm, masm, stub.inArgs[i].asOutArg(), args[i]);
-        }
-
-        directCall(tasm, masm, stub.stubObject, info);
-
-        if (isLegal(result)) {
-            AMD64MoveOpcode.move(tasm, masm, result, stub.outResult.asOutArg());
-        }
-
-        // Clear out parameters
-        if (GraalOptions.GenAssertionCode) {
-            for (int i = 0; i < args.length; i++) {
-                CiStackSlot inArg = stub.inArgs[i];
-                CiStackSlot outArg = inArg.asOutArg();
-                CiAddress dst = tasm.asAddress(outArg);
-                masm.movptr(dst, 0);
             }
         }
     }
