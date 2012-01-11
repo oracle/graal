@@ -424,12 +424,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case D2F: append(D2F.create(result, input)); break;
             case I2F: append(I2F.create(result, input)); break;
             case I2D: append(I2D.create(result, input)); break;
-            case F2I: append(F2I.create(result, stubFor(CompilerStub.Id.f2i), input)); break;
-            case D2I: append(D2I.create(result, stubFor(CompilerStub.Id.d2i), input)); break;
+            case F2I: append(F2I.create(result, input)); break;
+            case D2I: append(D2I.create(result, input)); break;
             case L2F: append(L2F.create(result, input)); break;
             case L2D: append(L2D.create(result, input)); break;
-            case F2L: append(F2L.create(result, stubFor(CompilerStub.Id.f2l), input, newVariable(CiKind.Long))); break;
-            case D2L: append(D2L.create(result, stubFor(CompilerStub.Id.d2l), input, newVariable(CiKind.Long))); break;
+            case F2L: append(F2L.create(result, input, newVariable(CiKind.Long))); break;
+            case D2L: append(D2L.create(result, input, newVariable(CiKind.Long))); break;
             case MOV_I2F: append(MOV_I2F.create(result, input)); break;
             case MOV_L2D: append(MOV_L2D.create(result, input)); break;
             case MOV_F2I: append(MOV_F2I.create(result, input)); break;
