@@ -33,6 +33,7 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.compiler.util.InliningUtil.InlineInfo;
 import com.oracle.max.graal.compiler.util.InliningUtil.InliningCallback;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -53,6 +54,10 @@ public class InliningPhase extends Phase implements InliningCallback {
     private CiAssumptions assumptions;
 
     private final PhasePlan plan;
+
+    // Metrics
+    private static final Debug.Metric metricInliningPerformed = Debug.metric("InliningPerformed");
+    private static final Debug.Metric metricInliningConsidered = Debug.metric("InliningConsidered");
 
     public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<Invoke> hints, CiAssumptions assumptions, PhasePlan plan) {
         this.target = target;
@@ -105,9 +110,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                     if (GraalOptions.Intrinsify) {
                         new IntrinsificationPhase(runtime).apply(graph, currentContext);
                     }
-                    if (GraalOptions.Meter) {
-                        currentContext.metrics.InlinePerformed++;
-                    }
+                    metricInliningPerformed.increment();
                 } catch (CiBailout bailout) {
                     // TODO determine if we should really bail out of the whole compilation.
                     throw bailout;
@@ -146,10 +149,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private void scanInvoke(Invoke invoke, int level) {
         InlineInfo info = InliningUtil.getInlineInfo(invoke, level, runtime, assumptions, this);
         if (info != null) {
-            if (GraalOptions.Meter) {
-                currentContext.metrics.InlineConsidered++;
-            }
-
+            metricInliningConsidered.increment();
             inlineCandidates.add(info);
         }
     }

@@ -36,6 +36,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.BlockMap.*;
 import com.oracle.max.graal.nodes.*;
@@ -866,9 +867,7 @@ public final class GraphBuilderPhase extends Phase {
             } else {
                 exception.exceptionEdge.setNext(createTarget(unwindBlock(bci()), frameState.duplicateWithException(bci(), exception.exception)));
             }
-            if (GraalOptions.Meter) {
-                currentContext.metrics.ExplicitExceptions++;
-            }
+            Debug.metric("ExplicitExceptions").increment();
         }
     }
 

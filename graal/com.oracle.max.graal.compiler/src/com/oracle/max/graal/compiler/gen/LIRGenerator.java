@@ -50,6 +50,7 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -1314,9 +1315,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                     inputOperandArray, tempOperandArray, inputOperandIndicesArray, tempOperandIndicesArray,
                     (allocatedResultOperand == IllegalValue) ? -1 : resultOperand.index,
                     info, infoAfter, method));
-            if (GraalOptions.Meter) {
-                context.metrics.LIRXIRInstructions++;
-            }
+            Debug.metric("LIRXIRInstructions").increment();
         }
 
         return operandsArray[resultOperand.index];

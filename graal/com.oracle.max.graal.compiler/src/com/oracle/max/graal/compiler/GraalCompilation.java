@@ -42,6 +42,7 @@ import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.virtual.*;
@@ -146,9 +147,7 @@ public final class GraalCompilation {
                 emitLIR(compiler.xir);
                 targetMethod = emitCode();
 
-                if (GraalOptions.Meter) {
-                    context().metrics.BytecodesCompiled += method.codeSize();
-                }
+                Debug.metric("BytecodesCompiled").add(method.codeSize());
             } catch (CiBailout bailout) {
                 throw bailout;
             } catch (GraalInternalError e) {

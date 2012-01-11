@@ -28,6 +28,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.
@@ -123,7 +124,7 @@ final class ControlFlowOptimizer {
             if (canDeleteBlock(block)) {
                 // adjust successor and predecessor lists
                 block.replaceWith(block.suxAt(0));
-                context.metrics.BlocksDeleted++;
+                Debug.metric("BlocksDeleted").increment();
             } else {
                 // adjust position of this block in the block list if blocks before
                 // have been deleted

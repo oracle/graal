@@ -70,11 +70,25 @@ public class Debug {
             super(name);
         }
 
+        public void increment() {
+            // TODO Auto-generated method stub
+
+        }
+
+        public void add(int targetCodeSize) {
+            // TODO Auto-generated method stub
+
+        }
+
     }
 
     public static final class Timer extends ScopeChild {
         private Timer(String name) {
             super(name);
         }
+    }
+
+    public static Metric metric(String string) {
+        return new Metric(string);
     }
 }

@@ -35,7 +35,6 @@ public class GraalContext {
 
     public final ObservableContext observable = new ObservableContext();
     public final GraalTimers timers = new GraalTimers();
-    public final GraalMetrics metrics = new GraalMetrics();
 
     private final String name;
 
@@ -57,9 +56,6 @@ public class GraalContext {
                 TTY.print('=');
             }
             TTY.println("\n========== " + name + " ==========");
-            if (GraalOptions.Meter) {
-                metrics.print();
-            }
             if (GraalOptions.Time) {
                 timers.print();
             }

@@ -33,6 +33,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 
 public class TargetMethodAssembler {
     public final GraalCompilation compilation;
@@ -75,13 +76,11 @@ public class TargetMethodAssembler {
             }
         }
 
-        if (GraalOptions.Meter) {
-            compilation.compiler.context.metrics.TargetMethods++;
-            compilation.compiler.context.metrics.CodeBytesEmitted += targetMethod.targetCodeSize();
-            compilation.compiler.context.metrics.SafepointsEmitted += targetMethod.safepoints.size();
-            compilation.compiler.context.metrics.DataPatches += targetMethod.dataReferences.size();
-            compilation.compiler.context.metrics.ExceptionHandlersEmitted += targetMethod.exceptionHandlers.size();
-        }
+        Debug.metric("TargetMethods").increment();
+        Debug.metric("CodeBytesEmitted").add(targetMethod.targetCodeSize());
+        Debug.metric("SafepointsEmitted").add(targetMethod.safepoints.size());
+        Debug.metric("DataPatches").add(targetMethod.dataReferences.size());
+        Debug.metric("ExceptionHandlersEmitted").add(targetMethod.exceptionHandlers.size());
 
         if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
             Util.printSection("Target Method", Util.SECTION_CHARACTER);

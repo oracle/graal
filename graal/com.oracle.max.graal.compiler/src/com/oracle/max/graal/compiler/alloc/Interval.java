@@ -31,6 +31,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.
@@ -659,10 +660,10 @@ public final class Interval {
      */
     static final Interval EndMarker = new Interval(null, CiValue.IllegalValue, -1);
 
+    private static final Debug.Metric instanceMetric = Debug.metric("LSRAIntervalsCreated");
+
     Interval(GraalContext context, CiValue operand, int operandNumber) {
-        if (GraalOptions.Meter && context != null) {
-            context.metrics.LSRAIntervalsCreated++;
-        }
+        instanceMetric.increment();
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
