@@ -55,5 +55,5 @@ public interface CiCompiler {
      *            on-stack-replacement compilation
      * @param debugInfoLevel TODO
      */
-    CiResult compileMethod(RiResolvedMethod method, int osrBCI, DebugInfoLevel debugInfoLevel);
+    CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, DebugInfoLevel debugInfoLevel);
 }
