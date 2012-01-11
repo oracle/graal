@@ -76,6 +76,10 @@ public class GraalCompiler {
     }
 
     public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, PhasePlan plan) {
+        return compileMethod(method, new StructuredGraph(method), osrBCI, plan);
+    }
+
+    public CiTargetMethod compileMethod(RiResolvedMethod method, StructuredGraph graph, int osrBCI, PhasePlan plan) {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
@@ -94,7 +98,6 @@ public class GraalCompiler {
             }
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
 
-            StructuredGraph graph = new StructuredGraph(method);
             CiTargetMethod result = null;
             context.observable.fireCompilationStarted(runtime, target, method);
             try {

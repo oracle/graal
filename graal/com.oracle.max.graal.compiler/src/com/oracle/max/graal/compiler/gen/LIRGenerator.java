@@ -1486,4 +1486,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return "XirSupport<" + current + ">";
         }
     }
+
+    public FrameMap frameMap() {
+        return frameMap;
+    }
 }
