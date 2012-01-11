@@ -49,7 +49,8 @@ import com.oracle.max.graal.graph.*;
 public final class LinearScan {
 
     final GraalContext context;
-    final GraalCompilation compilation;
+    final RiRegisterConfig registerConfig;
+    final CiTarget target;
     final RiMethod method;
     final LIR ir;
     final LIRGenerator gen;
@@ -119,8 +120,9 @@ public final class LinearScan {
 
     public LinearScan(GraalCompilation compilation, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.context = compilation.compiler.context;
+        this.target = compilation.compiler.target;
+        this.registerConfig = compilation.registerConfig;
         this.method = compilation.method;
-        this.compilation = compilation;
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
@@ -282,7 +284,7 @@ public final class LinearScan {
     }
 
     int numLoops() {
-        return compilation.stats.loopCount;
+        return ir.loopCount();
     }
 
     boolean isIntervalInLoop(int interval, int loop) {
@@ -1033,15 +1035,15 @@ public final class LinearScan {
         }
     }
 
-    void addRegisterHint(final LIRInstruction op, final CiValue target, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.RegisterHint) && isVariableOrRegister(target)) {
+    void addRegisterHint(final LIRInstruction op, final CiValue targetValue, OperandMode mode, EnumSet<OperandFlag> flags) {
+        if (flags.contains(OperandFlag.RegisterHint) && isVariableOrRegister(targetValue)) {
 
-            op.forEachRegisterHint(target, mode, new ValueProcedure() {
+            op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
                 @Override
                 protected CiValue doValue(CiValue registerHint) {
                     if (isVariableOrRegister(registerHint)) {
                         Interval from = intervalFor(registerHint);
-                        Interval to = intervalFor(target);
+                        Interval to = intervalFor(targetValue);
                         if (from != null && to != null) {
                             to.setLocationHint(from);
                             if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -1061,7 +1063,6 @@ public final class LinearScan {
         intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
 
         // create a list with all caller-save registers (cpu, fpu, xmm)
-        RiRegisterConfig registerConfig = compilation.registerConfig;
         CiRegister[] callerSaveRegs = registerConfig.getCallerSaveRegisters();
 
         // iterate all blocks in reverse order
@@ -1341,7 +1342,7 @@ public final class LinearScan {
         notPrecoloredIntervals = result.second;
 
         // allocate cpu registers
-        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals, !compilation.compiler.target.arch.isX86());
+        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals, !target.arch.isX86());
         lsw.walk();
         lsw.finishAllocation();
     }
@@ -1544,12 +1545,12 @@ public final class LinearScan {
                 }
 
                 case Float: {
-                    assert !compilation.compiler.target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
+                    assert !target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
                     break;
                 }
 
                 case Double: {
-                    assert !compilation.compiler.target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
+                    assert !target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
                     break;
                 }
 
@@ -1871,7 +1872,8 @@ public final class LinearScan {
         }
 
         if (context.isObserved()) {
-            context.observable.fireCompilationEvent(label, compilation, this, Arrays.copyOf(intervals, intervalsSize));
+            // FIX(ls)
+//            context.observable.fireCompilationEvent(label, compilation, this, Arrays.copyOf(intervals, intervalsSize));
         }
     }
 
@@ -1884,7 +1886,8 @@ public final class LinearScan {
         }
 
         if (context.isObserved()) {
-            context.observable.fireCompilationEvent(label, compilation, hirValid ? compilation.graph : null, compilation.lir());
+            // FIX(ls)
+//            context.observable.fireCompilationEvent(label, compilation, hirValid ? compilation.graph : null, compilation.lir());
         }
     }
 

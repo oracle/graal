@@ -32,21 +32,32 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.lir.LIR.SlowPath;
 import com.oracle.max.graal.compiler.util.*;
 
 public class TargetMethodAssembler {
-    public final GraalCompilation compilation;
+
     public final AbstractAssembler asm;
     public final CiTargetMethod targetMethod;
     public final CiTarget target;
+    public final RiRuntime runtime;
+    public final FrameMap frameMap;
+    public final List<SlowPath> slowPaths;
+    public final GraalCompiler compiler;
+
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
+    private final GraalContext context;
 
-    public TargetMethodAssembler(GraalCompilation compilation, AbstractAssembler asm) {
-        this.compilation = compilation;
+    public TargetMethodAssembler(GraalContext context, GraalCompiler compiler, CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
+        this.context = context;
+        this.compiler = compiler;
+        this.target = target;
+        this.runtime = runtime;
+        this.frameMap = frameMap;
+        this.slowPaths = slowPaths;
         this.asm = asm;
         this.targetMethod = new CiTargetMethod();
-        this.target = compilation.compiler.target;
         // 0 is a valid pc for safepoints in template methods
         this.lastSafepointPos = -1;
     }
@@ -63,7 +74,7 @@ public class TargetMethodAssembler {
         targetMethod.addAnnotation(new CiTargetMethod.CodeComment(asm.codeBuffer.position(), s));
     }
 
-    public CiTargetMethod finishTargetMethod(Object name, RiRuntime runtime, boolean isStub) {
+    public CiTargetMethod finishTargetMethod(Object name, boolean isStub) {
         // Install code, data and frame size
         targetMethod.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
@@ -76,11 +87,11 @@ public class TargetMethodAssembler {
         }
 
         if (GraalOptions.Meter) {
-            compilation.compiler.context.metrics.TargetMethods++;
-            compilation.compiler.context.metrics.CodeBytesEmitted += targetMethod.targetCodeSize();
-            compilation.compiler.context.metrics.SafepointsEmitted += targetMethod.safepoints.size();
-            compilation.compiler.context.metrics.DataPatches += targetMethod.dataReferences.size();
-            compilation.compiler.context.metrics.ExceptionHandlersEmitted += targetMethod.exceptionHandlers.size();
+            context.metrics.TargetMethods++;
+            context.metrics.CodeBytesEmitted += targetMethod.targetCodeSize();
+            context.metrics.SafepointsEmitted += targetMethod.safepoints.size();
+            context.metrics.DataPatches += targetMethod.dataReferences.size();
+            context.metrics.ExceptionHandlersEmitted += targetMethod.exceptionHandlers.size();
         }
 
         if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
@@ -226,10 +237,6 @@ public class TargetMethodAssembler {
     }
 
     public CiAddress asAddress(CiValue value) {
-        if (isStackSlot(value)) {
-            CiStackSlot slot = (CiStackSlot) value;
-            return new CiAddress(slot.kind, compilation.registerConfig.getFrameRegister().asValue(), compilation.frameMap().offsetForStackSlot(slot));
-        }
-        return (CiAddress) value;
+        return frameMap.asAddress(value);
     }
 }

@@ -59,16 +59,13 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public final RiRegisterConfig compilerStubRegisterConfig;
-
-    public GraalCompiler(GraalContext context, GraalRuntime runtime, CiTarget target, RiXirGenerator xirGen, RiRegisterConfig compilerStubRegisterConfig) {
+    public GraalCompiler(GraalContext context, GraalRuntime runtime, CiTarget target, RiXirGenerator xirGen) {
         this.context = context;
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
-        this.compilerStubRegisterConfig = compilerStubRegisterConfig;
-        this.backend = Backend.create(target.arch, this);
-        init();
+        this.backend = Backend.create(target.arch, runtime, target);
+        xir.initialize(backend.newXirAssembler());
     }
 
     public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiStatistics stats, CiCompiler.DebugInfoLevel debugInfoLevel) {
@@ -115,52 +112,5 @@ public class GraalCompiler {
         } finally {
             context.timers.endScope();
         }
-    }
-
-    private void init() {
-        final List<XirTemplate> xirTemplateStubs = xir.makeTemplates(backend.newXirAssembler());
-
-        if (xirTemplateStubs != null) {
-            for (XirTemplate template : xirTemplateStubs) {
-                TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, template.name);
-                try {
-                    stubs.put(template, backend.emit(context, template));
-                } finally {
-                    filter.remove();
-                }
-            }
-        }
-
-        for (CompilerStub.Id id : CompilerStub.Id.values()) {
-            TTY.Filter suppressor = new TTY.Filter(GraalOptions.PrintFilter, id);
-            try {
-                stubs.put(id, backend.emit(context, id));
-            } finally {
-                suppressor.remove();
-            }
-        }
-    }
-
-    public CompilerStub lookupStub(CompilerStub.Id id) {
-        CompilerStub stub = stubs.get(id);
-        assert stub != null : "no stub for global stub id: " + id;
-        return stub;
-    }
-
-    public CompilerStub lookupStub(XirTemplate template) {
-        CompilerStub stub = stubs.get(template);
-        assert stub != null : "no stub for XirTemplate: " + template;
-        return stub;
-    }
-
-    public CompilerStub lookupStub(CiRuntimeCall runtimeCall) {
-        CompilerStub stub = stubs.get(runtimeCall);
-        if (stub == null) {
-            stub = backend.emit(context, runtimeCall);
-            stubs.put(runtimeCall, stub);
-        }
-
-        assert stub != null : "could not find global stub for runtime call: " + runtimeCall;
-        return stub;
     }
 }

@@ -22,12 +22,12 @@
  */
 package com.oracle.max.graal.compiler.gen;
 
-import static com.oracle.max.graal.compiler.lir.StandardOpcode.*;
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.compiler.lir.StandardOpcode.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -48,7 +48,6 @@ import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -67,7 +66,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public final GraalContext context;
 
     protected final Graph graph;
-    private final GraalCompiler compiler;
     protected final RiRuntime runtime;
     protected final CiTarget target;
     protected final RiResolvedMethod method;
@@ -144,7 +142,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public LIRGenerator(GraalCompilation compilation, RiXirGenerator xir) {
         this.context = compilation.compiler.context;
         this.graph = compilation.graph;
-        this.compiler = compilation.compiler;
         this.runtime = compilation.compiler.runtime;
         this.target = compilation.compiler.target;
         this.frameMap = compilation.frameMap();
@@ -1024,18 +1021,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected CompilerStub stubFor(CompilerStub.Id id) {
-        CompilerStub stub = compiler.lookupStub(id);
-        frameMap.usesStub(stub);
-        return stub;
-    }
-
-    protected CompilerStub stubFor(XirTemplate template) {
-        CompilerStub stub = compiler.lookupStub(template);
-        frameMap.usesStub(stub);
-        return stub;
-    }
-
     @Override
     public void emitLookupSwitch(LookupSwitchNode x) {
         Variable tag = load(operand(x.value()));
@@ -1268,11 +1253,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                     operandsArray[t.index] = reg.register;
                 }
             }
-        }
-
-        for (XirTemplate calleeTemplate : snippet.template.calleeTemplates) {
-            // TODO Save these for use in AMD64LIRAssembler
-            stubFor(calleeTemplate);
         }
 
         for (XirConstant c : snippet.template.constants) {

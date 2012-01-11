@@ -40,6 +40,7 @@ import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -79,7 +80,7 @@ public final class GraalCompilation {
         this.graph = graph;
         this.method = method;
         this.stats = stats == null ? new CiStatistics() : stats;
-        this.registerConfig = method == null ? compiler.compilerStubRegisterConfig : compiler.runtime.getRegisterConfig(method);
+        this.registerConfig = method == null ? compiler.runtime.getGlobalStubRegisterConfig() : compiler.runtime.getRegisterConfig(method);
         this.placeholderState = debugInfoLevel == DebugInfoLevel.REF_MAPS ? new FrameState(method, 0, 0, 0, false) : null;
 
         if (context().isObserved() && method != null) {
@@ -119,7 +120,7 @@ public final class GraalCompilation {
 
     private TargetMethodAssembler createAssembler() {
         AbstractAssembler masm = compiler.backend.newAssembler(registerConfig);
-        TargetMethodAssembler tasm = new TargetMethodAssembler(this, masm);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(context(), compiler, compiler.target, compiler.runtime, frameMap, lir.slowPaths, masm);
         tasm.setFrameSize(frameMap.frameSize());
         tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
         return tasm;
@@ -245,9 +246,7 @@ public final class GraalCompilation {
 
             IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
             schedule.apply(graph, context());
-            if (stats != null) {
-                stats.loopCount = schedule.loopCount();
-            }
+            stats.loopCount = schedule.loopCount();
 
             if (context().isObserved()) {
                 context().observable.fireCompilationEvent("After IdentifyBlocksPhase", this, graph, schedule);
@@ -275,7 +274,7 @@ public final class GraalCompilation {
                     b.setLinearScanNumber(z++);
                 }
 
-                lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock);
+                lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock, schedule.loopCount());
 
                 if (context().isObserved()) {
                     context().observable.fireCompilationEvent("After linear scan order", this, graph, lir);
@@ -295,7 +294,7 @@ public final class GraalCompilation {
     }
 
     public void initFrameMap() {
-        frameMap = this.compiler.backend.newFrameMap(compiler.runtime, compiler.target, registerConfig);
+        frameMap = this.compiler.backend.newFrameMap(registerConfig);
     }
 
     private void emitLIR(RiXirGenerator xir) {
@@ -330,7 +329,7 @@ public final class GraalCompilation {
                 }
 
                 if (GraalOptions.AllocSSA) {
-                    new SpillAllAllocator(context(), lir, this, registerConfig).execute();
+                    new SpillAllAllocator(context(), lir, frameMap, registerConfig).execute();
                 } else {
                     new LinearScan(this, lir, lirGenerator, frameMap()).allocate();
                 }
@@ -357,7 +356,7 @@ public final class GraalCompilation {
                 TargetMethodAssembler tasm = createAssembler();
                 lir.emitCode(tasm);
 
-                CiTargetMethod targetMethod = tasm.finishTargetMethod(method, compiler.runtime, false);
+                CiTargetMethod targetMethod = tasm.finishTargetMethod(method, false);
                 if (assumptions != null && !assumptions.isEmpty()) {
                     targetMethod.setAssumptions(assumptions);
                 }

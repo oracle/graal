@@ -121,11 +121,11 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
     public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRDebugInfo info) {
         int before = masm.codeBuffer.position();
         if (target instanceof CiRuntimeCall) {
-            long maxOffset = tasm.compilation.compiler.runtime.getMaxCallTargetOffset((CiRuntimeCall) target);
+            long maxOffset = tasm.runtime.getMaxCallTargetOffset((CiRuntimeCall) target);
             if (maxOffset != (int) maxOffset) {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
-                CiRegister scratch = tasm.compilation.registerConfig.getScratchRegister();
+                CiRegister scratch = tasm.frameMap.registerConfig.getScratchRegister();
                 // TODO(cwi): we want to get rid of a generally reserved scratch register.
                 masm.movq(scratch, 0L);
                 masm.call(scratch);
@@ -159,7 +159,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
     }
 
     private static Object asCallTarget(TargetMethodAssembler tasm, Object o) {
-        return tasm.compilation.compiler.runtime.asCallTarget(o);
+        return tasm.runtime.asCallTarget(o);
     }
 
     public static void shouldNotReachHere(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {

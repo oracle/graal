@@ -819,7 +819,7 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = allocator.compilation.registerConfig.getCategorizedAllocatableRegisters();
+        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = allocator.registerConfig.getCategorizedAllocatableRegisters();
         availableRegs = categorizedRegs.get(asVariable(interval.operand).flag);
     }
 

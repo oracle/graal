@@ -151,17 +151,14 @@ public final class CompilerImpl implements Compiler, Remote {
     @Override
     public GraalCompiler getCompiler() {
         if (compiler == null) {
-            RiRegisterConfig registerConfig;
-
             // these options are important - graal will not generate correct code without them
             GraalOptions.StackShadowPages = config.stackShadowPages;
 
-            registerConfig = getRuntime().globalStubRegConfig;
-            RiXirGenerator generator = new HotSpotXirGenerator(config, getTarget(), registerConfig, this);
+            RiXirGenerator generator = new HotSpotXirGenerator(config, getTarget(), getRuntime().getGlobalStubRegisterConfig(), this);
             if (Logger.ENABLED) {
                 generator = LoggingProxy.getProxy(RiXirGenerator.class, generator);
             }
-            compiler = new GraalCompiler(context, getRuntime(), getTarget(), generator, registerConfig);
+            compiler = new GraalCompiler(context, getRuntime(), getTarget(), generator);
         }
         return compiler;
     }

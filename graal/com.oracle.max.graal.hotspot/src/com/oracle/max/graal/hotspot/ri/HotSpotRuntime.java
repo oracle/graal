@@ -51,7 +51,7 @@ public class HotSpotRuntime implements GraalRuntime {
     final GraalContext context;
     final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
-    public final HotSpotRegisterConfig globalStubRegConfig;
+    private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
 
     public HotSpotRuntime(GraalContext context, HotSpotVMConfig config, Compiler compiler) {
@@ -429,5 +429,10 @@ public class HotSpotRuntime implements GraalRuntime {
     public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code) {
         Compiler compilerInstance = CompilerImpl.getInstance();
         return HotSpotTargetMethod.installMethod(compilerInstance, (HotSpotMethodResolved) method, code, false);
+    }
+
+    @Override
+    public RiRegisterConfig getGlobalStubRegisterConfig() {
+        return globalStubRegConfig;
     }
 }

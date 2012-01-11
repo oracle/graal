@@ -30,7 +30,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
 
 /**
  */
@@ -193,7 +192,7 @@ final class MoveResolver {
 
     private void insertMove(Interval fromInterval, Interval toInterval) {
         assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
-        assert Util.archKindsEqual(fromInterval.kind(), toInterval.kind()) : "move between different types";
+        assert fromInterval.kind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         CiValue fromOpr = fromInterval.operand;
@@ -207,7 +206,7 @@ final class MoveResolver {
     }
 
     private void insertMove(CiValue fromOpr, Interval toInterval) {
-        assert Util.archKindsEqual(fromOpr.kind, toInterval.kind()) : "move between different types";
+        assert fromOpr.kind == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         CiValue toOpr = toInterval.operand;
@@ -331,7 +330,7 @@ final class MoveResolver {
         }
 
         assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
-        assert Util.archKindsEqual(fromInterval.kind(), toInterval.kind());
+        assert fromInterval.kind() == toInterval.kind();
         mappingFrom.add(fromInterval);
         mappingFromOpr.add(CiValue.IllegalValue);
         mappingTo.add(toInterval);

@@ -61,7 +61,7 @@ public enum AMD64ConvertFLOpcode implements LIROpcode {
             default:
                 throw Util.shouldNotReachHere();
         }
-        tasm.compilation.lir().slowPaths.add(slowPath);
+        tasm.slowPaths.add(slowPath);
 
         CiRegister tmp = asLongReg(scratch);
         masm.movq(tmp, java.lang.Long.MIN_VALUE);

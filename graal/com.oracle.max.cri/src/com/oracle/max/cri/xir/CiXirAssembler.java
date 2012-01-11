@@ -499,10 +499,6 @@ public abstract class CiXirAssembler {
          */
         PointerCAS,
         /**
-         * Call the {@link XirTemplate.GlobalFlags#GLOBAL_STUB shared stub} defined by {@code extra} with {@code args} and put the result in {@code r}.
-         */
-        CallStub,
-        /**
          * Call the {@link RiMethod} defined by {@code extra}  with {@code args} and put the result in {@code r}.
          */
         CallRuntime,
@@ -819,11 +815,6 @@ public abstract class CiXirAssembler {
 
     public void shouldNotReachHere(String message) {
         append(new XirInstruction(CiKind.Void, message, ShouldNotReachHere, null));
-    }
-
-    public void callStub(XirTemplate stub, XirOperand result, XirOperand... args) {
-        CiKind resultKind = result == null ? CiKind.Void : result.kind;
-        append(new XirInstruction(resultKind, stub, CallStub, result, args));
     }
 
     public void callRuntime(Object rt, XirOperand result, XirOperand... args) {

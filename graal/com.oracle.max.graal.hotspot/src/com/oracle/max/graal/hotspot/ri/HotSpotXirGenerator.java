@@ -1306,10 +1306,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public List<XirTemplate> makeTemplates(CiXirAssembler asm) {
+    public void initialize(CiXirAssembler asm) {
         this.globalAsm = asm;
-        List<XirTemplate> templates = new ArrayList<>();
-        return templates;
     }
 
     private void verifyPointer(CiXirAssembler asm, XirOperand pointer) {

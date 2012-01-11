@@ -53,7 +53,7 @@ public class AMD64DeoptimizationStub implements LIR.SlowPath {
         AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
 
         // TODO(cwi): we want to get rid of a generally reserved scratch register.
-        CiRegister scratch = tasm.compilation.registerConfig.getScratchRegister();
+        CiRegister scratch = tasm.frameMap.registerConfig.getScratchRegister();
 
         masm.bind(label);
         if (GraalOptions.CreateDeoptInfo && deoptInfo != null) {

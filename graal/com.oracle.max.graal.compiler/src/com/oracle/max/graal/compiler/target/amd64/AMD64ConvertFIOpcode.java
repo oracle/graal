@@ -60,7 +60,7 @@ public enum AMD64ConvertFIOpcode implements LIROpcode {
             default:
                 throw Util.shouldNotReachHere();
         }
-        tasm.compilation.lir().slowPaths.add(slowPath);
+        tasm.slowPaths.add(slowPath);
 
         masm.cmp32(asIntReg(result), Integer.MIN_VALUE);
         masm.jcc(ConditionFlag.equal, slowPath.start);

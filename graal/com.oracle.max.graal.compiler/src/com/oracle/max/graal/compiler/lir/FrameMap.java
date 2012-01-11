@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
@@ -351,5 +351,13 @@ public final class FrameMap {
                 assert isConstant(location);
             }
         }
+    }
+
+    public CiAddress asAddress(CiValue value) {
+        if (isStackSlot(value)) {
+            CiStackSlot slot = (CiStackSlot) value;
+            return new CiAddress(slot.kind, registerConfig.getFrameRegister().asValue(), offsetForStackSlot(slot));
+        }
+        return (CiAddress) value;
     }
 }

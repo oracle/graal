@@ -47,11 +47,11 @@ public class SpillAllAllocator {
 
     private final DataFlowAnalysis dataFlow;
 
-    public SpillAllAllocator(GraalContext context, LIR lir, GraalCompilation compilation, RiRegisterConfig registerConfig) {
+    public SpillAllAllocator(GraalContext context, LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
         this.context = context;
         this.lir = lir;
         this.registerConfig = registerConfig;
-        this.frameMap = compilation.frameMap();
+        this.frameMap = frameMap;
 
         this.dataFlow = new DataFlowAnalysis(context, lir, registerConfig);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
