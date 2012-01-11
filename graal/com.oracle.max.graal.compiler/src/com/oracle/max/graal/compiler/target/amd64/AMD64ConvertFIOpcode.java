@@ -55,7 +55,7 @@ public enum AMD64ConvertFIOpcode implements LIROpcode {
                 break;
             case D2I:
                 masm.cvttsd2sil(asIntReg(result), asDoubleReg(input));
-                slowPath = new AMD64ConvertFSlowPath(masm, asIntReg(result), asFloatReg(input), true, false);
+                slowPath = new AMD64ConvertFSlowPath(masm, asIntReg(result), asDoubleReg(input), true, false);
                 break;
             default:
                 throw Util.shouldNotReachHere();
