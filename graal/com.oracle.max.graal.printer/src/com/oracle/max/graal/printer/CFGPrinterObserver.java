@@ -77,11 +77,16 @@ public class CFGPrinterObserver implements CompilationObserver {
         }
 
         RiRuntime runtime = cfgPrinter.runtime;
-        cfgPrinter.setLIR(event.debugObject(LIR.class), event.debugObject(LIRGenerator.class));
+        if (event.debugObject(LIR.class) != null) {
+            cfgPrinter.lir = event.debugObject(LIR.class);
+        }
+        if (event.debugObject(LIRGenerator.class) != null) {
+            cfgPrinter.lirGenerator = event.debugObject(LIRGenerator.class);
+        }
+
         BlockMap blockMap = event.debugObject(BlockMap.class);
         Graph graph = event.debugObject(Graph.class);
         IdentifyBlocksPhase schedule = event.debugObject(IdentifyBlocksPhase.class);
-        LIR lir = event.debugObject(LIR.class);
         LinearScan allocator = event.debugObject(LinearScan.class);
         Interval[] intervals = event.debugObject(Interval[].class);
         CiTargetMethod targetMethod = event.debugObject(CiTargetMethod.class);
@@ -90,8 +95,8 @@ public class CFGPrinterObserver implements CompilationObserver {
             cfgPrinter.printCFG(event.label, blockMap);
             cfgPrinter.printBytecodes(runtime.disassemble(blockMap.method));
         }
-        if (lir != null) {
-            cfgPrinter.printCFG(event.label, lir.codeEmittingOrder(), graph != null);
+        if (cfgPrinter.lir != null) {
+            cfgPrinter.printCFG(event.label, cfgPrinter.lir.codeEmittingOrder());
             if (targetMethod != null) {
                 cfgPrinter.printMachineCode(runtime.disassemble(targetMethod), null);
             }
@@ -110,7 +115,7 @@ public class CFGPrinterObserver implements CompilationObserver {
                 }
             }
             if (blocks != null) {
-                cfgPrinter.printCFG(event.label, blocks, true);
+                cfgPrinter.printCFG(event.label, blocks);
             }
         }
         if (allocator != null && intervals != null) {

@@ -305,7 +305,7 @@ public class GraalCompiler {
                 }
 
                 if (context.isObserved()) {
-                    context.observable.fireCompilationEvent("After LIR generation", graph, lir);
+                    context.observable.fireCompilationEvent("After LIR generation", graph, lir, lirGenerator);
                 }
                 if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
                     LIR.printLIR(lir.linearScanOrder());

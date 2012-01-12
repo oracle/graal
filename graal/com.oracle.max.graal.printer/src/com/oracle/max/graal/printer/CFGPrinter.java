@@ -51,8 +51,8 @@ class CFGPrinter extends CompilationPrinter {
     public final ByteArrayOutputStream buffer;
     public final CiTarget target;
     public final RiRuntime runtime;
-    private LIR lir;
-    private LIRGenerator lirGenerator;
+    public LIR lir;
+    public LIRGenerator lirGenerator;
 
     /**
      * Creates a control flow graph printer.
@@ -64,11 +64,6 @@ class CFGPrinter extends CompilationPrinter {
         this.buffer = buffer;
         this.target = target;
         this.runtime = runtime;
-    }
-
-    public void setLIR(LIR lir, LIRGenerator lirGenerator) {
-        this.lir = lir;
-        this.lirGenerator = lirGenerator;
     }
 
     /**
@@ -129,18 +124,17 @@ class CFGPrinter extends CompilationPrinter {
      *
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
-     * @param printNodes If {@code true} the nodes in the block will be printed.
      */
-    public void printCFG(String label, List<? extends Block> blocks, boolean printNodes) {
+    public void printCFG(String label, List<? extends Block> blocks) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
         for (Block block : blocks) {
-            printBlock(block, printNodes);
+            printBlock(block);
         }
         end("cfg");
     }
 
-    private void printBlock(Block block, boolean printNodes) {
+    private void printBlock(Block block) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
@@ -184,9 +178,7 @@ class CFGPrinter extends CompilationPrinter {
         out.print("loop_index ").println(block.loopIndex());
         out.print("loop_depth ").println(block.loopDepth());
 
-        if (printNodes) {
-            printNodes(block);
-        }
+        printNodes(block);
 
         if (block instanceof LIRBlock) {
             printLIR((LIRBlock) block);
@@ -228,13 +220,14 @@ class CFGPrinter extends CompilationPrinter {
         } else if (node instanceof FloatingNode) {
             out.print("f ").print(HOVER_START).print("~").print(HOVER_SEP).print("floating").print(HOVER_END).println(COLUMN_END);
         }
-        if (lirGenerator != null && lirGenerator.nodeOperands != null && node instanceof ValueNode) {
+        out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
+
+        if (lirGenerator != null) {
             CiValue operand = lirGenerator.nodeOperands.get(node);
             if (operand != null) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
         }
-        out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
 
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
