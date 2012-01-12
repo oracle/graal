@@ -339,12 +339,4 @@ public final class FrameMap {
             }
         }
     }
-
-    public CiAddress asAddress(CiValue value) {
-        if (isStackSlot(value)) {
-            CiStackSlot slot = (CiStackSlot) value;
-            return new CiAddress(slot.kind, registerConfig.getFrameRegister().asValue(), offsetForStackSlot(slot));
-        }
-        return (CiAddress) value;
-    }
 }

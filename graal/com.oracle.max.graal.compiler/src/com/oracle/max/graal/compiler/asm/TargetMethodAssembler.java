@@ -234,7 +234,19 @@ public class TargetMethodAssembler {
         return recordDataReferenceInCode((CiConstant) value, alignment);
     }
 
+    /**
+     * Returns the address of a long constant that is embedded as a data references into the code.
+     */
+    public CiAddress asLongConstRef(CiValue value) {
+        assert value.kind == CiKind.Long && isConstant(value);
+        return recordDataReferenceInCode((CiConstant) value, 8);
+    }
+
     public CiAddress asAddress(CiValue value) {
-        return frameMap.asAddress(value);
+        if (isStackSlot(value)) {
+            CiStackSlot slot = (CiStackSlot) value;
+            return new CiAddress(slot.kind, frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
+        }
+        return (CiAddress) value;
     }
 }
