@@ -89,7 +89,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
         }
     }
 
-    private static class SlowPath implements LIR.SlowPath {
+    private static class SlowPath extends AMD64SlowPath {
         public final LIRXirInstruction instruction;
         public final Label[] labels;
         public final Map<XirMark, Mark> marks;
@@ -100,8 +100,9 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
             this.marks = marks;
         }
 
-        public void emitCode(TargetMethodAssembler tasm) {
-            emitSlowPath(tasm, (AMD64MacroAssembler) tasm.asm, this);
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            emitSlowPath(tasm, masm, this);
         }
     }
 

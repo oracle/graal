@@ -33,7 +33,7 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 
-public class AMD64DeoptimizationStub implements LIR.SlowPath {
+public class AMD64DeoptimizationStub extends AMD64SlowPath {
     public final Label label = new Label();
     public final LIRDebugInfo info;
     public final DeoptAction action;
@@ -49,9 +49,7 @@ public class AMD64DeoptimizationStub implements LIR.SlowPath {
     private static ArrayList<Object> keepAlive = new ArrayList<>();
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm) {
-        AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
-
+    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         // TODO(cwi): we want to get rid of a generally reserved scratch register.
         CiRegister scratch = tasm.frameMap.registerConfig.getScratchRegister();
 
