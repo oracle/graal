@@ -219,6 +219,11 @@ public class GraalCompiler {
 
             if (GraalOptions.Lower) {
                 new FloatingReadPhase().apply(graph, context);
+
+                if (GraalOptions.OptGVN) {
+                    new GlobalValueNumberingPhase().apply(graph, context);
+                }
+
                 if (GraalOptions.OptReadElimination) {
                     new ReadEliminationPhase().apply(graph, context);
                 }
