@@ -663,7 +663,7 @@ public final class Interval {
     private static final Debug.Metric instanceMetric = Debug.metric("LSRAIntervalsCreated");
 
     Interval(GraalContext context, CiValue operand, int operandNumber) {
-        instanceMetric.increment();
+        //instanceMetric.increment();
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;

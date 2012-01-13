@@ -24,71 +24,89 @@ package com.oracle.max.graal.debug;
 
 
 public class Debug {
-    public static boolean ENABLED = false;
-
-    public static void log(String msg, Object... args) {
-        if (ENABLED) {
-            DebugContext.getInstance().log(msg, args);
-        }
-    }
+    public static boolean SCOPE = false;
+    public static boolean LOG = false;
+    public static boolean METER = false;
+    public static boolean TIME = false;
 
     public static void scope(String name, Runnable runnable, Object... context) {
-        if (ENABLED) {
+        if (SCOPE) {
             DebugContext.getInstance().scope(name, runnable, context);
         } else {
             runnable.run();
         }
     }
 
-    private static final Scope VOID_SCOPE = new Scope(null);
-
-
-    public static final class Scope implements AutoCloseable {
-        private String name;
-        private Object[] context;
-
-        private Scope(String name, Object... context) {
-            this.name = name;
-            this.context = context;
-        }
-
-        @Override
-        public void close() {
+    public static void log(String msg, Object... args) {
+        if (LOG) {
+            DebugContext.getInstance().log(msg, args);
         }
     }
 
-    private static class ScopeChild {
-        private String name;
-
-        protected ScopeChild(String name) {
-            this.name = name;
+    public static Metric metric(String name) {
+        if (METER) {
+            return new MetricImpl(name);
+        } else {
+            return VOID_METRIC;
         }
     }
 
-    public static final class Metric extends ScopeChild {
-        private Metric(String name) {
+    public interface Metric {
+        void increment();
+        void add(int value);
+    }
+
+    private static final Metric VOID_METRIC = new Metric() {
+        public void increment() { }
+        public void add(int value) { }
+    };
+
+    public static Timer timer(String name) {
+        if (TIME) {
+            return new TimerImpl(name);
+        } else {
+            return VOID_TIMER;
+        }
+    }
+
+    public interface Timer {
+        void start();
+        void stop();
+    }
+
+    private static final Timer VOID_TIMER = new Timer() {
+        public void start() { };
+        public void stop() { };
+    };
+
+    private static final class MetricImpl extends ScopeChild implements Metric {
+        private MetricImpl(String name) {
             super(name);
         }
 
         public void increment() {
-            // TODO Auto-generated method stub
-
         }
 
-        public void add(int targetCodeSize) {
-            // TODO Auto-generated method stub
-
+        public void add(int value) {
         }
 
     }
 
-    public static final class Timer extends ScopeChild {
-        private Timer(String name) {
+    public static final class TimerImpl extends ScopeChild implements Timer {
+        private TimerImpl(String name) {
             super(name);
         }
-    }
 
-    public static Metric metric(String string) {
-        return new Metric(string);
+        @Override
+        public void start() {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void stop() {
+            // TODO Auto-generated method stub
+
+        }
     }
 }
