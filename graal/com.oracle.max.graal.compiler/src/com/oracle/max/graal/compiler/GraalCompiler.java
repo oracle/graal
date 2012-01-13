@@ -82,12 +82,12 @@ public class GraalCompiler {
         return compileMethod(method, new StructuredGraph(method), osrBCI, plan);
     }
 
-    public CiTargetMethod compileMethod(RiResolvedMethod method, StructuredGraph graph, int osrBCI, PhasePlan plan) {
+    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final PhasePlan plan) {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
         final CiTargetMethod[] result = new CiTargetMethod[1];
-        Debug.scope("CompileMethod", new Runnable() { 
+        Debug.scope("CompileMethod", new Runnable() {
                 public void run() {
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
                         CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
@@ -95,7 +95,7 @@ public class GraalCompiler {
                         FrameMap frameMap = emitLIR(lir, graph, method);
                         result[0] = emitCode(assumptions, method, lir, frameMap);
                 }
-        }}, method);
+        }, method);
         return result[0];
     }
 

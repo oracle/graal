@@ -81,7 +81,6 @@ public class LIR {
         this.startBlock = startBlock;
         this.valueToBlock = valueToBlock;
         this.numLoops = numLoops;
-        this.loopCount = loopCount;
 
         slowPaths = new ArrayList<>();
         deoptimizationStubs = new ArrayList<>();
@@ -105,10 +104,6 @@ public class LIR {
 
     public NodeMap<LIRBlock> valueToBlock() {
         return valueToBlock;
-    }
-
-    public int loopCount() {
-        return loopCount;
     }
 
     public int numVariables() {
