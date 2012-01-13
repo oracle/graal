@@ -28,7 +28,6 @@ import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
@@ -41,7 +40,6 @@ import com.oracle.max.graal.compiler.util.*;
 public final class LIRVerifier {
     private final LIR lir;
     private final FrameMap frameMap;
-    private final RiRegisterConfig registerConfig;
 
     private final boolean beforeRegisterAllocation;
 
@@ -60,7 +58,7 @@ public final class LIRVerifier {
     }
 
     private boolean isAllocatableRegister(CiValue value) {
-        return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
+        return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
     public static boolean verify(final LIRInstruction op) {
@@ -74,18 +72,17 @@ public final class LIRVerifier {
         return true;
     }
 
-    public static boolean verify(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
-        LIRVerifier verifier = new LIRVerifier(beforeRegisterAllocation, lir, frameMap, registerConfig);
+    public static boolean verify(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap) {
+        LIRVerifier verifier = new LIRVerifier(beforeRegisterAllocation, lir, frameMap);
         verifier.verify();
         return true;
     }
 
 
-    private LIRVerifier(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap, RiRegisterConfig registerConfig) {
+    private LIRVerifier(boolean beforeRegisterAllocation, LIR lir, FrameMap frameMap) {
         this.beforeRegisterAllocation = beforeRegisterAllocation;
         this.lir = lir;
         this.frameMap = frameMap;
-        this.registerConfig = registerConfig;
         this.blockLiveOut = new BitSet[lir.linearScanOrder().size()];
         this.variableDefinitions = new Object[lir.numVariables()];
     }
@@ -120,7 +117,7 @@ public final class LIRVerifier {
 
                 op.forEachInput(useProc);
                 if (op.hasCall()) {
-                    for (CiRegister register : registerConfig.getCallerSaveRegisters()) {
+                    for (CiRegister register : frameMap.registerConfig.getCallerSaveRegisters()) {
                         curRegistersLive[register.number] = null;
                     }
                 }

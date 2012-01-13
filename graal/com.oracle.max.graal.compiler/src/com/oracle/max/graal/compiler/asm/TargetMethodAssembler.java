@@ -32,22 +32,31 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.lir.LIR.SlowPath;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 
 public class TargetMethodAssembler {
-    public final GraalCompilation compilation;
+
     public final AbstractAssembler asm;
     public final CiTargetMethod targetMethod;
     public final CiTarget target;
+    public final RiRuntime runtime;
+    public final FrameMap frameMap;
+    public final List<SlowPath> slowPaths;
+
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
+    private final GraalContext context;
 
-    public TargetMethodAssembler(GraalCompilation compilation, AbstractAssembler asm) {
-        this.compilation = compilation;
+    public TargetMethodAssembler(GraalContext context, CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
+        this.context = context;
+        this.target = target;
+        this.runtime = runtime;
+        this.frameMap = frameMap;
+        this.slowPaths = slowPaths;
         this.asm = asm;
         this.targetMethod = new CiTargetMethod();
-        this.target = compilation.compiler.target;
         // 0 is a valid pc for safepoints in template methods
         this.lastSafepointPos = -1;
     }
@@ -64,7 +73,7 @@ public class TargetMethodAssembler {
         targetMethod.addAnnotation(new CiTargetMethod.CodeComment(asm.codeBuffer.position(), s));
     }
 
-    public CiTargetMethod finishTargetMethod(Object name, RiRuntime runtime, boolean isStub) {
+    public CiTargetMethod finishTargetMethod(Object name, boolean isStub) {
         // Install code, data and frame size
         targetMethod.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
@@ -224,10 +233,18 @@ public class TargetMethodAssembler {
         return recordDataReferenceInCode((CiConstant) value, alignment);
     }
 
+    /**
+     * Returns the address of a long constant that is embedded as a data references into the code.
+     */
+    public CiAddress asLongConstRef(CiValue value) {
+        assert value.kind == CiKind.Long && isConstant(value);
+        return recordDataReferenceInCode((CiConstant) value, 8);
+    }
+
     public CiAddress asAddress(CiValue value) {
         if (isStackSlot(value)) {
             CiStackSlot slot = (CiStackSlot) value;
-            return new CiAddress(slot.kind, compilation.registerConfig.getFrameRegister().asValue(), compilation.frameMap().offsetForStackSlot(slot));
+            return new CiAddress(slot.kind, frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));
         }
         return (CiAddress) value;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,8 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
+import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
@@ -54,13 +54,15 @@ public class CFGPrinterObserver implements CompilationObserver {
     };
 
     @Override
-    public void compilationStarted(GraalCompilation compilation) {
+    public void compilationStarted(CompilationEvent event) {
         if (TTY.isSuppressed()) {
             return;
         }
+        RiRuntime runtime = event.debugObject(RiRuntime.class);
+        CiTarget target = event.debugObject(CiTarget.class);
 
-        CFGPrinter cfgPrinter = new CFGPrinter(new ByteArrayOutputStream(), compilation);
-        cfgPrinter.printCompilation(compilation.method);
+        CFGPrinter cfgPrinter = new CFGPrinter(new ByteArrayOutputStream(), target, runtime);
+        cfgPrinter.printCompilation(event.debugObject(RiResolvedMethod.class));
         observations.get().push(cfgPrinter);
     }
 
@@ -75,10 +77,16 @@ public class CFGPrinterObserver implements CompilationObserver {
         }
 
         RiRuntime runtime = cfgPrinter.runtime;
+        if (event.debugObject(LIR.class) != null) {
+            cfgPrinter.lir = event.debugObject(LIR.class);
+        }
+        if (event.debugObject(LIRGenerator.class) != null) {
+            cfgPrinter.lirGenerator = event.debugObject(LIRGenerator.class);
+        }
+
         BlockMap blockMap = event.debugObject(BlockMap.class);
         Graph graph = event.debugObject(Graph.class);
         IdentifyBlocksPhase schedule = event.debugObject(IdentifyBlocksPhase.class);
-        LIR lir = event.debugObject(LIR.class);
         LinearScan allocator = event.debugObject(LinearScan.class);
         Interval[] intervals = event.debugObject(Interval[].class);
         CiTargetMethod targetMethod = event.debugObject(CiTargetMethod.class);
@@ -87,8 +95,8 @@ public class CFGPrinterObserver implements CompilationObserver {
             cfgPrinter.printCFG(event.label, blockMap);
             cfgPrinter.printBytecodes(runtime.disassemble(blockMap.method));
         }
-        if (lir != null) {
-            cfgPrinter.printCFG(event.label, lir.codeEmittingOrder(), graph != null);
+        if (cfgPrinter.lir != null) {
+            cfgPrinter.printCFG(event.label, cfgPrinter.lir.codeEmittingOrder());
             if (targetMethod != null) {
                 cfgPrinter.printMachineCode(runtime.disassemble(targetMethod), null);
             }
@@ -107,7 +115,7 @@ public class CFGPrinterObserver implements CompilationObserver {
                 }
             }
             if (blocks != null) {
-                cfgPrinter.printCFG(event.label, blocks, true);
+                cfgPrinter.printCFG(event.label, blocks);
             }
         }
         if (allocator != null && intervals != null) {
@@ -116,7 +124,7 @@ public class CFGPrinterObserver implements CompilationObserver {
     }
 
     @Override
-    public void compilationFinished(GraalCompilation compilation) {
+    public void compilationFinished(CompilationEvent event) {
         if (TTY.isSuppressed()) {
             return;
         }

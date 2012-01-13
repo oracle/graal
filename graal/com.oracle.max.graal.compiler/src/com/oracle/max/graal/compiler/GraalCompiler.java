@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,20 +26,27 @@ import static com.oracle.max.graal.debug.Debug.*;
 
 import java.util.*;
 
+import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.alloc.simple.*;
+import com.oracle.max.graal.compiler.alloc.*;
+import com.oracle.max.graal.compiler.asm.*;
+import com.oracle.max.graal.compiler.gen.*;
+import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.stub.*;
+import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
 public class GraalCompiler {
-
-    public final Map<Object, CompilerStub> stubs = new HashMap<>();
 
     public final GraalContext context;
 
@@ -63,84 +70,251 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public final RiRegisterConfig compilerStubRegisterConfig;
-
-    public GraalCompiler(GraalContext context, GraalRuntime runtime, CiTarget target, RiXirGenerator xirGen, RiRegisterConfig compilerStubRegisterConfig) {
+    public GraalCompiler(GraalContext context, GraalRuntime runtime, CiTarget target, Backend backend, RiXirGenerator xirGen) {
         this.context = context;
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;
-        this.compilerStubRegisterConfig = compilerStubRegisterConfig;
-        this.backend = Backend.create(target.arch, this);
-        init();
+        this.backend = backend;
     }
 
-    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiCompiler.DebugInfoLevel debugInfoLevel) {
-        return compileMethod(method, osrBCI, debugInfoLevel, PhasePlan.DEFAULT);
+    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, PhasePlan plan) {
+        return compileMethod(method, new StructuredGraph(method), osrBCI, plan);
     }
 
-    public CiTargetMethod compileMethod(RiResolvedMethod method, int osrBCI, CiCompiler.DebugInfoLevel debugInfoLevel, PhasePlan plan) {
-        return compileMethod(method, new StructuredGraph(method), osrBCI, debugInfoLevel, plan);
-    }
-
-    public CiTargetMethod compileMethod(final RiResolvedMethod method, StructuredGraph graph, int osrBCI, CiCompiler.DebugInfoLevel debugInfoLevel, final PhasePlan plan) {
-        final GraalCompilation compilation = new GraalCompilation(context, GraalCompiler.this, method, graph, osrBCI, debugInfoLevel);
+    public CiTargetMethod compileMethod(RiResolvedMethod method, StructuredGraph graph, int osrBCI, PhasePlan plan) {
+        if (osrBCI != -1) {
+            throw new CiBailout("No OSR supported");
+        }
         final CiTargetMethod[] result = new CiTargetMethod[1];
-        Debug.scope("CompileMethod", new Runnable() { public void run() {
-            TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
-            try {
-                result[0] = compilation.compile(plan);
-            } finally {
-                filter.remove();
-            }
+        Debug.scope("CompileMethod", new Runnable() { 
+                public void run() {
+                        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+                        CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
+                        LIR lir = emitHIR(graph, assumptions, plan);
+                        FrameMap frameMap = emitLIR(lir, graph, method);
+                        result[0] = emitCode(assumptions, method, lir, frameMap);
+                }
         }}, method);
         return result[0];
     }
 
-    private void init() {
-        final List<XirTemplate> xirTemplateStubs = xir.makeTemplates(backend.newXirAssembler());
+    /**
+     * Builds the graph, optimizes it.
+     */
+    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, PhasePlan plan) {
+        try {
+            context.timers.startScope("HIR");
 
-        if (xirTemplateStubs != null) {
-            for (XirTemplate template : xirTemplateStubs) {
-                TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, template.name);
-                try {
-                    stubs.put(template, backend.emit(context, template));
-                } finally {
-                    filter.remove();
+            if (graph.start().next() == null) {
+                plan.runPhases(PhasePosition.AFTER_PARSING, graph, context);
+                new DeadCodeEliminationPhase().apply(graph, context);
+            } else {
+                if (context.isObserved()) {
+                    context.observable.fireCompilationEvent("initial state", graph);
                 }
             }
-        }
 
-        for (CompilerStub.Id id : CompilerStub.Id.values()) {
-            TTY.Filter suppressor = new TTY.Filter(GraalOptions.PrintFilter, id);
+            new PhiStampPhase().apply(graph);
+
+            if (GraalOptions.ProbabilityAnalysis && graph.start().probability() == 0) {
+                new ComputeProbabilityPhase().apply(graph, context);
+            }
+
+            if (GraalOptions.Intrinsify) {
+                new IntrinsificationPhase(runtime).apply(graph, context);
+            }
+
+            if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
+                new InliningPhase(target, runtime, null, assumptions, plan).apply(graph, context);
+                new DeadCodeEliminationPhase().apply(graph, context);
+                new PhiStampPhase().apply(graph);
+            }
+
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph, context);
+            }
+
+            plan.runPhases(PhasePosition.HIGH_LEVEL, graph, context);
+
+            if (GraalOptions.OptLoops) {
+                graph.mark();
+                new FindInductionVariablesPhase().apply(graph, context);
+                if (GraalOptions.OptCanonicalizer) {
+                    new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph, context);
+                }
+                new SafepointPollingEliminationPhase().apply(graph, context);
+            }
+
+            if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
+                new EscapeAnalysisPhase(target, runtime, assumptions, plan).apply(graph, context);
+                new PhiStampPhase().apply(graph);
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph, context);
+            }
+
+            if (GraalOptions.OptGVN) {
+                new GlobalValueNumberingPhase().apply(graph, context);
+            }
+
+            graph.mark();
+            new LoweringPhase(runtime).apply(graph, context);
+            new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph, context);
+
+            if (GraalOptions.OptLoops) {
+                graph.mark();
+                new RemoveInductionVariablesPhase().apply(graph, context);
+                if (GraalOptions.OptCanonicalizer) {
+                    new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph, context);
+                }
+            }
+
+            if (GraalOptions.Lower) {
+                new FloatingReadPhase().apply(graph, context);
+                if (GraalOptions.OptReadElimination) {
+                    new ReadEliminationPhase().apply(graph, context);
+                }
+            }
+            new RemovePlaceholderPhase().apply(graph, context);
+            new DeadCodeEliminationPhase().apply(graph, context);
+
+            plan.runPhases(PhasePosition.MID_LEVEL, graph, context);
+
+            plan.runPhases(PhasePosition.LOW_LEVEL, graph, context);
+
+            IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
+            schedule.apply(graph, context);
+
+            if (context.isObserved()) {
+                context.observable.fireCompilationEvent("After IdentifyBlocksPhase", graph, schedule);
+            }
+
+            List<Block> blocks = schedule.getBlocks();
+            NodeMap<LIRBlock> valueToBlock = new NodeMap<>(graph);
+            for (Block b : blocks) {
+                for (Node i : b.getInstructions()) {
+                    valueToBlock.set(i, (LIRBlock) b);
+                }
+            }
+            LIRBlock startBlock = valueToBlock.get(graph.start());
+            assert startBlock != null;
+            assert startBlock.numberOfPreds() == 0;
+
+            context.timers.startScope("Compute Linear Scan Order");
             try {
-                stubs.put(id, backend.emit(context, id));
+                ComputeLinearScanOrder clso = new ComputeLinearScanOrder(blocks.size(), schedule.loopCount(), startBlock);
+                List<LIRBlock> linearScanOrder = clso.linearScanOrder();
+                List<LIRBlock> codeEmittingOrder = clso.codeEmittingOrder();
+
+                int z = 0;
+                for (LIRBlock b : linearScanOrder) {
+                    b.setLinearScanNumber(z++);
+                }
+
+                LIR lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock, schedule.loopCount());
+
+                if (context.isObserved()) {
+                    context.observable.fireCompilationEvent("After linear scan order", graph, lir);
+                }
+                return lir;
+            } catch (AssertionError t) {
+                    context.observable.fireCompilationEvent("AssertionError in ComputeLinearScanOrder", CompilationEvent.ERROR, graph);
+                throw t;
+            } catch (RuntimeException t) {
+                    context.observable.fireCompilationEvent("RuntimeException in ComputeLinearScanOrder", CompilationEvent.ERROR, graph);
+                throw t;
             } finally {
-                suppressor.remove();
+                context.timers.endScope();
+            }
+        } finally {
+            context.timers.endScope();
+        }
+    }
+
+    public FrameMap emitLIR(LIR lir, StructuredGraph graph, RiResolvedMethod method) {
+        context.timers.startScope("LIR");
+        try {
+            if (GraalOptions.GenLIR) {
+                context.timers.startScope("Create LIR");
+                LIRGenerator lirGenerator = null;
+                FrameMap frameMap;
+                try {
+                    frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
+
+                    lirGenerator = backend.newLIRGenerator(context, graph, frameMap, method, lir, xir);
+
+                    for (LIRBlock b : lir.linearScanOrder()) {
+                        lirGenerator.doBlock(b);
+                    }
+
+                    for (LIRBlock b : lir.linearScanOrder()) {
+                        if (b.phis != null) {
+                            b.phis.fillInputs(lirGenerator);
+                        }
+                    }
+                } finally {
+                    context.timers.endScope();
+                }
+
+                if (context.isObserved()) {
+                    context.observable.fireCompilationEvent("After LIR generation", graph, lir, lirGenerator);
+                }
+                if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
+                    LIR.printLIR(lir.linearScanOrder());
+                }
+
+                if (GraalOptions.AllocSSA) {
+                    new SpillAllAllocator(context, lir, frameMap).execute();
+                } else {
+                    new LinearScan(context, target, method, graph, lir, lirGenerator, frameMap).allocate();
+                }
+                return frameMap;
+            } else {
+                return null;
+            }
+        } catch (Error e) {
+            if (context.isObserved() && GraalOptions.PlotOnError) {
+                context.observable.fireCompilationEvent(e.getClass().getSimpleName() + " in emitLIR", CompilationEvent.ERROR, graph);
+            }
+            throw e;
+        } catch (RuntimeException e) {
+            if (context.isObserved() && GraalOptions.PlotOnError) {
+                context.observable.fireCompilationEvent(e.getClass().getSimpleName() + " in emitLIR", CompilationEvent.ERROR, graph);
+            }
+            throw e;
+        } finally {
+            context.timers.endScope();
+        }
+    }
+
+    private TargetMethodAssembler createAssembler(FrameMap frameMap, LIR lir) {
+        AbstractAssembler masm = backend.newAssembler(frameMap.registerConfig);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(context, target, runtime, frameMap, lir.slowPaths, masm);
+        tasm.setFrameSize(frameMap.frameSize());
+        tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
+        return tasm;
+    }
+
+    public CiTargetMethod emitCode(CiAssumptions assumptions, RiResolvedMethod method, LIR lir, FrameMap frameMap) {
+        if (GraalOptions.GenLIR && GraalOptions.GenCode) {
+            context.timers.startScope("Create Code");
+            try {
+                TargetMethodAssembler tasm = createAssembler(frameMap, lir);
+                lir.emitCode(tasm);
+
+                CiTargetMethod targetMethod = tasm.finishTargetMethod(method, false);
+                if (assumptions != null && !assumptions.isEmpty()) {
+                    targetMethod.setAssumptions(assumptions);
+                }
+
+                if (context.isObserved()) {
+                    context.observable.fireCompilationEvent("After code generation", lir, targetMethod);
+                }
+                return targetMethod;
+            } finally {
+                context.timers.endScope();
             }
         }
-    }
 
-    public CompilerStub lookupStub(CompilerStub.Id id) {
-        CompilerStub stub = stubs.get(id);
-        assert stub != null : "no stub for global stub id: " + id;
-        return stub;
-    }
-
-    public CompilerStub lookupStub(XirTemplate template) {
-        CompilerStub stub = stubs.get(template);
-        assert stub != null : "no stub for XirTemplate: " + template;
-        return stub;
-    }
-
-    public CompilerStub lookupStub(CiRuntimeCall runtimeCall) {
-        CompilerStub stub = stubs.get(runtimeCall);
-        if (stub == null) {
-            stub = backend.emit(context, runtimeCall);
-            stubs.put(runtimeCall, stub);
-        }
-
-        assert stub != null : "could not find global stub for runtime call: " + runtimeCall;
-        return stub;
+        return null;
     }
 }

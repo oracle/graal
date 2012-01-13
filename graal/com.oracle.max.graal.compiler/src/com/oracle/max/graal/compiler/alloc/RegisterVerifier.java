@@ -42,10 +42,6 @@ final class RegisterVerifier {
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
-    GraalCompilation compilation() {
-        return allocator.compilation;
-    }
-
     Interval intervalAt(CiValue operand) {
         return allocator.intervalFor(operand);
     }
@@ -249,7 +245,7 @@ final class RegisterVerifier {
             op.forEachInput(useProc);
             // invalidate all caller save registers at calls
             if (op.hasCall()) {
-                for (CiRegister r : allocator.compilation.registerConfig.getCallerSaveRegisters()) {
+                for (CiRegister r : allocator.frameMap.registerConfig.getCallerSaveRegisters()) {
                     statePut(inputState, r.asValue(), null);
                 }
             }

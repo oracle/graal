@@ -37,9 +37,12 @@ import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described
@@ -49,7 +52,8 @@ import com.oracle.max.graal.graph.*;
 public final class LinearScan {
 
     final GraalContext context;
-    final GraalCompilation compilation;
+    final CiTarget target;
+    final RiMethod method;
     final LIR ir;
     final LIRGenerator gen;
     final FrameMap frameMap;
@@ -115,17 +119,21 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
+    private final StructuredGraph graph;
 
-    public LinearScan(GraalCompilation compilation, LIR ir, LIRGenerator gen, FrameMap frameMap) {
-        this.context = compilation.compiler.context;
-        this.compilation = compilation;
+
+    public LinearScan(GraalContext context, CiTarget target, RiResolvedMethod method, StructuredGraph graph, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+        this.context = context;
+        this.target = target;
+        this.method = method;
+        this.graph = graph;
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
         this.sortedBlocks = ir.linearScanOrder().toArray(new LIRBlock[ir.linearScanOrder().size()]);
-        this.registerAttributes = compilation.registerConfig.getAttributesMap();
+        this.registerAttributes = frameMap.registerConfig.getAttributesMap();
 
-        this.registers = compilation.compiler.target.arch.registers;
+        this.registers = target.arch.registers;
         this.firstVariableNumber = registers.length;
         this.variables = new ArrayList<>(ir.numVariables() * 3 / 2);
     }
@@ -814,7 +822,7 @@ public final class LinearScan {
     }
 
     private void reportFailure(int numBlocks) {
-        TTY.println(compilation.method.toString());
+        TTY.println(method.toString());
         TTY.println("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined)");
         TTY.print("affected registers:");
         TTY.println(ir.startBlock().liveIn.toString());
@@ -1031,15 +1039,15 @@ public final class LinearScan {
         }
     }
 
-    void addRegisterHint(final LIRInstruction op, final CiValue target, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.RegisterHint) && isVariableOrRegister(target)) {
+    void addRegisterHint(final LIRInstruction op, final CiValue targetValue, OperandMode mode, EnumSet<OperandFlag> flags) {
+        if (flags.contains(OperandFlag.RegisterHint) && isVariableOrRegister(targetValue)) {
 
-            op.forEachRegisterHint(target, mode, new ValueProcedure() {
+            op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
                 @Override
                 protected CiValue doValue(CiValue registerHint) {
                     if (isVariableOrRegister(registerHint)) {
                         Interval from = intervalFor(registerHint);
-                        Interval to = intervalFor(target);
+                        Interval to = intervalFor(targetValue);
                         if (from != null && to != null) {
                             to.setLocationHint(from);
                             if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -1059,8 +1067,7 @@ public final class LinearScan {
         intervals = new Interval[intervalsSize + INITIAL_SPLIT_INTERVALS_CAPACITY];
 
         // create a list with all caller-save registers (cpu, fpu, xmm)
-        RiRegisterConfig registerConfig = compilation.registerConfig;
-        CiRegister[] callerSaveRegs = registerConfig.getCallerSaveRegisters();
+        CiRegister[] callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
 
         // iterate all blocks in reverse order
         for (int i = blockCount() - 1; i >= 0; i--) {
@@ -1339,7 +1346,7 @@ public final class LinearScan {
         notPrecoloredIntervals = result.second;
 
         // allocate cpu registers
-        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
+        LinearScanWalker lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals, !target.arch.isX86());
         lsw.walk();
         lsw.finishAllocation();
     }
@@ -1542,12 +1549,12 @@ public final class LinearScan {
                 }
 
                 case Float: {
-                    assert !compilation.compiler.target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
+                    assert !target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
                     break;
                 }
 
                 case Double: {
-                    assert !compilation.compiler.target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
+                    assert !target.arch.isX86() || reg.isFpu() : "not xmm register: " + reg;
                     break;
                 }
 
@@ -1869,7 +1876,7 @@ public final class LinearScan {
         }
 
         if (context.isObserved()) {
-            context.observable.fireCompilationEvent(label, compilation, this, Arrays.copyOf(intervals, intervalsSize));
+            context.observable.fireCompilationEvent(label, graph, this, Arrays.copyOf(intervals, intervalsSize));
         }
     }
 
@@ -1882,7 +1889,7 @@ public final class LinearScan {
         }
 
         if (context.isObserved()) {
-            context.observable.fireCompilationEvent(label, compilation, hirValid ? compilation.graph : null, compilation.lir());
+            context.observable.fireCompilationEvent(label, hirValid ? graph : null, ir);
         }
     }
 

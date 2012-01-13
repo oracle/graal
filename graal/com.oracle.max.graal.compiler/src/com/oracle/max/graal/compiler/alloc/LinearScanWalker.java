@@ -42,6 +42,8 @@ import com.oracle.max.graal.compiler.util.*;
  */
 final class LinearScanWalker extends IntervalWalker {
 
+    private final boolean hasCalleeSavedRegisters;
+
     private CiRegister[] availableRegs;
 
     private final int[] usePos;
@@ -50,6 +52,7 @@ final class LinearScanWalker extends IntervalWalker {
     private List<Interval>[] spillIntervals;
 
     private MoveResolver moveResolver; // for ordering spill moves
+
 
     // accessors mapped to same functions in class LinearScan
     int blockCount() {
@@ -64,8 +67,9 @@ final class LinearScanWalker extends IntervalWalker {
         return allocator.blockForId(opId);
     }
 
-    LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
+    LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst, boolean hasCalleeSavedRegisters) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
+        this.hasCalleeSavedRegisters = hasCalleeSavedRegisters;
         moveResolver = new MoveResolver(allocator);
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
         for (int i = 0; i < allocator.registers.length; i++) {
@@ -789,7 +793,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     boolean noAllocationPossible(Interval interval) {
 
-        if (compilation.compiler.target.arch.isX86()) {
+        if (!hasCalleeSavedRegisters) {
             // fast calculation of intervals that can never get a register because the
             // the next instruction is a call that blocks all registers
             // Note: this does not work if callee-saved registers are available (e.g. on Sparc)
@@ -815,7 +819,7 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = allocator.compilation.registerConfig.getCategorizedAllocatableRegisters();
+        EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = allocator.frameMap.registerConfig.getCategorizedAllocatableRegisters();
         availableRegs = categorizedRegs.get(asVariable(interval.operand).flag);
     }
 

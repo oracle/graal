@@ -85,23 +85,23 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
     }
 
     @Override
-    public void compilationStarted(GraalCompilation compilation) {
-        openPrinter(compilation, false);
+    public void compilationStarted(CompilationEvent event) {
+        openPrinter(event.debugObject(RiResolvedMethod.class), false);
     }
 
-    private void openPrinter(GraalCompilation compilation, boolean error) {
+    private void openPrinter(RiResolvedMethod method, boolean error) {
         assert (context().stream == null && printer() == null);
         if ((!TTY.isSuppressed() && GraalOptions.Plot) || (GraalOptions.PlotOnError && error)) {
             String name;
-            if (compilation != null) {
-                name = compilation.method.holder().name();
+            if (method != null) {
+                name = method.holder().name();
                 name = name.substring(1, name.length() - 1).replace('/', '.');
-                name = name + "." + compilation.method.name();
+                name = name + "." + method.name();
             } else {
                 name = "null";
             }
 
-            openPrinter(name, compilation == null ? null : compilation.method);
+            openPrinter(name, method);
         }
     }
 
@@ -189,7 +189,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
     public void compilationEvent(CompilationEvent event) {
         boolean lazyStart = false;
         if (printer() == null && event.hasDebugObject(CompilationEvent.ERROR)) {
-            openPrinter(event.debugObject(GraalCompilation.class), true);
+            openPrinter(event.debugObject(RiResolvedMethod.class), true);
             lazyStart = true;
         }
         Graph graph = event.debugObject(Graph.class);
@@ -202,7 +202,7 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
     }
 
     @Override
-    public void compilationFinished(GraalCompilation compilation) {
+    public void compilationFinished(CompilationEvent event) {
         if (printer() != null) {
             closePrinter();
         }

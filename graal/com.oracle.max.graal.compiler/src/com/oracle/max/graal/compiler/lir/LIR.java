@@ -64,8 +64,7 @@ public class LIR {
     public SlowPath methodEndMarker;
 
     private int numVariables;
-    private int numLoops;
-
+    private final int numLoops;
 
     public interface SlowPath {
         void emitCode(TargetMethodAssembler tasm);
@@ -73,6 +72,7 @@ public class LIR {
 
     /**
      * Creates a new LIR instance for the specified compilation.
+     * @param loopCount number of loops
      * @param compilation the compilation
      */
     public LIR(LIRBlock startBlock, List<LIRBlock> linearScanOrder, List<LIRBlock> codeEmittingOrder, NodeMap<LIRBlock> valueToBlock, int numLoops) {
@@ -81,6 +81,7 @@ public class LIR {
         this.startBlock = startBlock;
         this.valueToBlock = valueToBlock;
         this.numLoops = numLoops;
+        this.loopCount = loopCount;
 
         slowPaths = new ArrayList<>();
         deoptimizationStubs = new ArrayList<>();
@@ -104,6 +105,10 @@ public class LIR {
 
     public NodeMap<LIRBlock> valueToBlock() {
         return valueToBlock;
+    }
+
+    public int loopCount() {
+        return loopCount;
     }
 
     public int numVariables() {
@@ -185,7 +190,7 @@ public class LIR {
     private void printAssembly(TargetMethodAssembler tasm) {
         byte[] currentBytes = tasm.asm.codeBuffer.copyData(lastDecodeStart, tasm.asm.codeBuffer.position());
         if (currentBytes.length > 0) {
-            String disasm = tasm.compilation.compiler.runtime.disassemble(currentBytes, lastDecodeStart);
+            String disasm = tasm.runtime.disassemble(currentBytes, lastDecodeStart);
             if (disasm.length() != 0) {
                 TTY.println(disasm);
             } else {

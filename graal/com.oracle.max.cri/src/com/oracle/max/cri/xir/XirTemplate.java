@@ -112,8 +112,6 @@ public class XirTemplate {
 
     public final boolean allocateResultOperand;
 
-    public final XirTemplate[] calleeTemplates;
-
     public final XirMark[] marks;
 
     public final int outgoingStackSize;
@@ -139,7 +137,6 @@ public class XirTemplate {
                        XirTemp[] temps,
                        XirConstant[] constantValues,
                        int flags,
-                       XirTemplate[] calleeTemplates,
                        XirMark[] marks,
                        int outgoingStackSize) {
         this.name = name;
@@ -153,7 +150,6 @@ public class XirTemplate {
         this.temps = temps;
         this.allocateResultOperand = allocateResultOperand;
         this.constants = constantValues;
-        this.calleeTemplates = calleeTemplates;
         this.marks = marks;
         this.outgoingStackSize = outgoingStackSize;
 

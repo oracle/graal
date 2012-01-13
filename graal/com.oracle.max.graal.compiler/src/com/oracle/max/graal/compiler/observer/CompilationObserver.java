@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.compiler.observer;
 
-import com.oracle.max.graal.compiler.*;
 
 /**
  * Interface for classes that observe events of an {@link ObservableCompiler}.
@@ -31,11 +30,11 @@ public interface CompilationObserver {
 
     /**
      * Called when compilation of a method has started. This is always the first event raised for a particular
-     * {@link GraalCompilation}.
+     * method compilation.
      *
-     * @param compilation Current state of the compilation.
+     * @param event Information associated with the event and current state of the compilation.
      */
-    void compilationStarted(GraalCompilation compilation);
+    void compilationStarted(CompilationEvent event);
 
     /**
      * Called when an event has occurred, for example that a particular phase in the compilation has been entered.
@@ -46,10 +45,10 @@ public interface CompilationObserver {
 
     /**
      * Called when compilation of a method has completed (successfully or not). This is always the last event raised for
-     * a particular {@link GraalCompilation}.
+     * a particular method compilation.
      *
-     * @param compilation Current state of the compilation.
+     * @param event Information associated with the event and current state of the compilation.
      */
-    void compilationFinished(GraalCompilation compilation);
+    void compilationFinished(CompilationEvent event);
 
 }

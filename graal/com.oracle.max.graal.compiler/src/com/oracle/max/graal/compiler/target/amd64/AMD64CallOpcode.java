@@ -28,12 +28,11 @@ import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
 
 public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
@@ -94,38 +93,14 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
         }
     }
 
-    public static void callStub(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CompilerStub stub, LIRDebugInfo info, CiValue result, CiValue... args) {
-        assert args.length == stub.inArgs.length;
-        for (int i = 0; i < args.length; i++) {
-            assert stub.inArgs[i].inCallerFrame();
-            AMD64MoveOpcode.move(tasm, masm, stub.inArgs[i].asOutArg(), args[i]);
-        }
-
-        directCall(tasm, masm, stub.stubObject, info);
-
-        if (isLegal(result)) {
-            AMD64MoveOpcode.move(tasm, masm, result, stub.outResult.asOutArg());
-        }
-
-        // Clear out parameters
-        if (GraalOptions.GenAssertionCode) {
-            for (int i = 0; i < args.length; i++) {
-                CiStackSlot inArg = stub.inArgs[i];
-                CiStackSlot outArg = inArg.asOutArg();
-                CiAddress dst = tasm.asAddress(outArg);
-                masm.movptr(dst, 0);
-            }
-        }
-    }
-
     public static void directCall(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Object target, LIRDebugInfo info) {
         int before = masm.codeBuffer.position();
         if (target instanceof CiRuntimeCall) {
-            long maxOffset = tasm.compilation.compiler.runtime.getMaxCallTargetOffset((CiRuntimeCall) target);
+            long maxOffset = tasm.runtime.getMaxCallTargetOffset((CiRuntimeCall) target);
             if (maxOffset != (int) maxOffset) {
                 // offset might not fit a 32-bit immediate, generate an
                 // indirect call with a 64-bit immediate
-                CiRegister scratch = tasm.compilation.registerConfig.getScratchRegister();
+                CiRegister scratch = tasm.frameMap.registerConfig.getScratchRegister();
                 // TODO(cwi): we want to get rid of a generally reserved scratch register.
                 masm.movq(scratch, 0L);
                 masm.call(scratch);
@@ -159,7 +134,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
     }
 
     private static Object asCallTarget(TargetMethodAssembler tasm, Object o) {
-        return tasm.compilation.compiler.runtime.asCallTarget(o);
+        return tasm.runtime.asCallTarget(o);
     }
 
     public static void shouldNotReachHere(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {

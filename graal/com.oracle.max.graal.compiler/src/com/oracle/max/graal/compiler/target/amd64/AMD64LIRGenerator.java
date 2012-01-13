@@ -27,8 +27,6 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64ArithmeticOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareToIntOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64ConvertFIOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64ConvertFLOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64ConvertOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64DivOpcode.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64LogicFloatOpcode.*;
@@ -40,12 +38,13 @@ import static com.oracle.max.graal.compiler.target.amd64.AMD64StandardOpcode.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.stub.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
@@ -73,8 +72,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
         StandardOpcode.XIR = AMD64XirOpcode.XIR;
     }
 
-    public AMD64LIRGenerator(GraalCompilation compilation, RiXirGenerator xir) {
-        super(compilation, xir);
+    public AMD64LIRGenerator(GraalContext context, Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
+        super(context, graph, runtime, target, frameMap, method, lir, xir);
         lir.methodEndMarker = new AMD64MethodEndStub();
     }
 
@@ -424,12 +423,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case D2F: append(D2F.create(result, input)); break;
             case I2F: append(I2F.create(result, input)); break;
             case I2D: append(I2D.create(result, input)); break;
-            case F2I: append(F2I.create(result, stubFor(CompilerStub.Id.f2i), input)); break;
-            case D2I: append(D2I.create(result, stubFor(CompilerStub.Id.d2i), input)); break;
+            case F2I: append(F2I.create(result, input)); break;
+            case D2I: append(D2I.create(result, input)); break;
             case L2F: append(L2F.create(result, input)); break;
             case L2D: append(L2D.create(result, input)); break;
-            case F2L: append(F2L.create(result, stubFor(CompilerStub.Id.f2l), input, newVariable(CiKind.Long))); break;
-            case D2L: append(D2L.create(result, stubFor(CompilerStub.Id.d2l), input, newVariable(CiKind.Long))); break;
+            case F2L: append(F2L.create(result, input)); break;
+            case D2L: append(D2L.create(result, input)); break;
             case MOV_I2F: append(MOV_I2F.create(result, input)); break;
             case MOV_L2D: append(MOV_L2D.create(result, input)); break;
             case MOV_F2I: append(MOV_F2I.create(result, input)); break;
@@ -453,8 +452,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        int necessaryBarriers = compilation.compiler.target.arch.requiredBarriers(barriers);
-        if (compilation.compiler.target.isMP && necessaryBarriers != 0) {
+        int necessaryBarriers = target.arch.requiredBarriers(barriers);
+        if (target.isMP && necessaryBarriers != 0) {
             append(MEMBAR.create(necessaryBarriers));
         }
     }
@@ -463,7 +462,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, CiValue index) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
         Variable tmp = emitMove(index);
-        append(TABLE_SWITCH.create(lowKey, defaultTarget, targets, tmp, newVariable(compilation.compiler.target.wordKind)));
+        append(TABLE_SWITCH.create(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
     }
 
     @Override
@@ -496,7 +495,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
 
         if (kind == CiKind.Object) {
-            Variable loadedAddress = newVariable(compilation.compiler.target.wordKind);
+            Variable loadedAddress = newVariable(target.wordKind);
             append(LEA_MEMORY.create(loadedAddress, addrBase, addrIndex, CiAddress.Scale.Times1, addrDisplacement));
             preGCWriteBarrier(loadedAddress, false, null);
 

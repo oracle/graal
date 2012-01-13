@@ -31,36 +31,34 @@ import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.stub.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
  */
 public abstract class Backend {
-    public final GraalCompiler compiler;
+    public final RiRuntime runtime;
+    public final CiTarget target;
 
-    protected Backend(GraalCompiler compiler) {
-        this.compiler = compiler;
+    protected Backend(RiRuntime runtime, CiTarget target) {
+        this.runtime = runtime;
+        this.target = target;
     }
 
-    public static Backend create(CiArchitecture arch, GraalCompiler compiler) {
+    public static Backend create(CiArchitecture arch, RiRuntime runtime, CiTarget target) {
         String className = arch.getClass().getName().replace("com.oracle.max.asm", "com.oracle.max.graal.compiler") + "Backend";
         try {
             Class<?> c = Class.forName(className);
-            Constructor<?> cons = c.getDeclaredConstructor(GraalCompiler.class);
-            return (Backend) cons.newInstance(compiler);
+            Constructor<?> cons = c.getDeclaredConstructor(RiRuntime.class, CiTarget.class);
+            return (Backend) cons.newInstance(runtime, target);
         } catch (Exception e) {
             throw new Error("Could not instantiate " + className, e);
         }
     }
 
-    public abstract FrameMap newFrameMap(GraalCompilation compilation);
-    public abstract LIRGenerator newLIRGenerator(GraalCompilation compilation, RiXirGenerator xir);
+    public abstract FrameMap newFrameMap(RiRegisterConfig registerConfig);
+    public abstract LIRGenerator newLIRGenerator(GraalContext context, Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir);
     public abstract AbstractAssembler newAssembler(RiRegisterConfig registerConfig);
     public abstract CiXirAssembler newXirAssembler();
-
-    public abstract CompilerStub emit(GraalContext context, CompilerStub.Id stub);
-    public abstract CompilerStub emit(GraalContext context, CiRuntimeCall runtimeCall);
-    public abstract CompilerStub emit(GraalContext context, XirTemplate t);
 
 }

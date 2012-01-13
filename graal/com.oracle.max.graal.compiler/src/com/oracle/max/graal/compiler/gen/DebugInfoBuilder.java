@@ -26,28 +26,23 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.gen.LIRGenerator.*;
+import com.oracle.max.graal.compiler.gen.LIRGenerator.LockScope;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.virtual.*;
 
 public class DebugInfoBuilder {
-    public final GraalCompilation compilation;
+    private final NodeMap<CiValue> nodeOperands;
 
-    public DebugInfoBuilder(GraalCompilation compilation) {
-        this.compilation = compilation;
+    public DebugInfoBuilder(NodeMap<CiValue> nodeOperands) {
+        this.nodeOperands = nodeOperands;
     }
 
 
     private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<>();
 
     public LIRDebugInfo build(FrameState topState, LockScope locks, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
-        if (compilation.placeholderState != null) {
-            return null;
-        }
-
         assert virtualObjects.size() == 0;
         CiFrame frame = computeFrameForState(topState, locks);
 
@@ -158,8 +153,8 @@ public class DebugInfoBuilder {
             return ((ConstantNode) value).value;
 
         } else if (value != null) {
-            CiValue operand = compilation.operand(value);
-            assert operand != null && operand instanceof Variable || operand instanceof CiConstant;
+            CiValue operand = nodeOperands.get(value);
+            assert operand != null && (operand instanceof Variable || operand instanceof CiConstant);
             return operand;
 
         } else {

@@ -43,7 +43,6 @@ public class AMD64XirAssembler extends CiXirAssembler {
     protected XirTemplate buildTemplate(String name, boolean isStub) {
         List<XirInstruction> fastPath = new ArrayList<>(instructions.size());
         List<XirInstruction> slowPath = new ArrayList<>();
-        List<XirTemplate> calleeTemplates = new ArrayList<>();
 
         int flags = 0;
 
@@ -164,18 +163,6 @@ public class AMD64XirAssembler extends CiXirAssembler {
                     currentList.add(new XirInstruction(i.kind, i.op, i.result, i.x(), i.y(), fixedRAX));
                     appended = true;
                     break;
-                case CallStub:
-                    for (int j = 0; j < i.arguments.length; j++) {
-                        XirOperand op = i.arguments[j];
-                        if (op instanceof XirConstantOperand && (op.kind == CiKind.Object || op.kind == CiKind.Long)) {
-                            XirOperand tempLocation = createTemp("callStubTempLocation", op.kind);
-                            currentList.add(new XirInstruction(op.kind, XirOp.Mov, tempLocation, op));
-                            i.arguments[j] = tempLocation;
-                        }
-                    }
-                    flags |= HAS_STUB_CALL.mask;
-                    calleeTemplates.add((XirTemplate) i.extra);
-                    break;
                 case CallRuntime:
                     flags |= HAS_RUNTIME_CALL.mask;
                     break;
@@ -228,9 +215,8 @@ public class AMD64XirAssembler extends CiXirAssembler {
         XirParameter[] xirParameters = parameters.toArray(new XirParameter[parameters.size()]);
         XirTemp[] temporaryOperands = temps.toArray(new XirTemp[temps.size()]);
         XirConstant[] constantOperands = constants.toArray(new XirConstant[constants.size()]);
-        XirTemplate[] calleeTemplateArray = calleeTemplates.toArray(new XirTemplate[calleeTemplates.size()]);
         XirMark[] marksArray = marks.toArray(new XirMark[marks.size()]);
-        return new XirTemplate(name, this.variableCount, this.allocateResultOperand, resultOperand, fp, sp, xirLabels, xirParameters, temporaryOperands, constantOperands, flags, calleeTemplateArray, marksArray, outgoingStackSize);
+        return new XirTemplate(name, this.variableCount, this.allocateResultOperand, resultOperand, fp, sp, xirLabels, xirParameters, temporaryOperands, constantOperands, flags, marksArray, outgoingStackSize);
     }
 
     @Override

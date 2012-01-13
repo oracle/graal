@@ -27,12 +27,11 @@ import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCompiler.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.*;
+import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
@@ -186,7 +185,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         CiTargetMethod result = null;
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
                         try {
-                            result = compiler.getCompiler().compileMethod(method, -1, DebugInfoLevel.FULL, plan);
+                            result = compiler.getCompiler().compileMethod(method, -1, plan);
                         } finally {
                             filter.remove();
                             if (printCompilation) {

@@ -28,7 +28,7 @@ import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 
 /**
- * Convenience class to cast AbstractAssembler to AMD64MacroAssembler for the {@link #emitCode} method.
+ * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.
  */
 public abstract class AMD64LIRInstruction extends LIRInstruction {
 

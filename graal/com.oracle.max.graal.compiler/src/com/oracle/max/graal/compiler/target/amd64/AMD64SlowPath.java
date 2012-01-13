@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,17 @@
 package com.oracle.max.graal.compiler.target.amd64;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
+import com.oracle.max.graal.compiler.lir.*;
 
-public class AMD64MethodEndStub extends AMD64SlowPath {
+/**
+ * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.
+ */
+public abstract class AMD64SlowPath implements LIR.SlowPath {
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
-            masm.int3();
-        }
+    public final void emitCode(TargetMethodAssembler tasm) {
+        emitCode(tasm, (AMD64MacroAssembler) tasm.asm);
     }
+
+    public abstract void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm);
 }

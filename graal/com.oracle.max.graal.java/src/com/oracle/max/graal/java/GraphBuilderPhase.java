@@ -108,7 +108,6 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     public GraphBuilderPhase(RiRuntime runtime, GraphBuilderConfiguration config) {
-        assert config != null && runtime != null;
         this.config = config;
         this.runtime = runtime;
         this.log = GraalOptions.TraceBytecodeParserLevel > 0 ? new LogStream(TTY.out()) : null;
@@ -158,6 +157,7 @@ public final class GraphBuilderPhase extends Phase {
         this.canTrapBitSet = blockMap.canTrap;
 
         exceptionHandlers = blockMap.exceptionHandlers();
+
         nextBlockNumber = blockMap.blocks.size();
 
         lastInstr = currentGraph.start();

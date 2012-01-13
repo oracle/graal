@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -344,24 +343,6 @@ public class Util {
         assert isShort(v);
         return (short) v;
     }
-
-    /**
-     * Determines if the kinds of two given IR nodes are equal at the {@linkplain #archKind(CiKind) architecture}
-     * level in the context of the {@linkplain GraalCompilation#compilation()} compilation.
-     */
-    public static boolean archKindsEqual(ValueNode i, ValueNode other) {
-        return archKindsEqual(i.kind(), other.kind());
-    }
-
-    /**
-     * Determines if two given kinds are equal at the {@linkplain #archKind(CiKind) architecture} level
-     * in the context of the {@linkplain GraalCompilation#compilation()} compilation.
-     */
-    public static boolean archKindsEqual(CiKind k1, CiKind k2) {
-        // TODO(cwi): I think that implementation should do it with the new handling of Word types.
-        return k1 == k2;
-    }
-
 
     /**
      * Checks that two instructions are equivalent, optionally comparing constants.

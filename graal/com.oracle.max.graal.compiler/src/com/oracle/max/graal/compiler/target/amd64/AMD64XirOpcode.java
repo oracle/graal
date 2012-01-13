@@ -85,11 +85,11 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
         }
 
         if (snippet.template.slowPath != null) {
-            tasm.compilation.lir().slowPaths.add(new SlowPath(op, labels, snippet.marks));
+            tasm.slowPaths.add(new SlowPath(op, labels, snippet.marks));
         }
     }
 
-    private static class SlowPath implements LIR.SlowPath {
+    private static class SlowPath extends AMD64SlowPath {
         public final LIRXirInstruction instruction;
         public final Label[] labels;
         public final Map<XirMark, Mark> marks;
@@ -100,8 +100,9 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
             this.marks = marks;
         }
 
-        public void emitCode(TargetMethodAssembler tasm) {
-            emitSlowPath(tasm, (AMD64MacroAssembler) tasm.asm, this);
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            emitSlowPath(tasm, masm, this);
         }
     }
 
@@ -294,26 +295,13 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
 
                     break;
 
-                case CallStub: {
-                    XirTemplate stubId = (XirTemplate) inst.extra;
-                    CiValue result = CiValue.IllegalValue;
-                    if (inst.result != null) {
-                        result = operands[inst.result.index];
-                    }
-                    CiValue[] args = new CiValue[inst.arguments.length];
-                    for (int i = 0; i < args.length; i++) {
-                        args[i] = operands[inst.arguments[i].index];
-                    }
-                    AMD64CallOpcode.callStub(tasm, masm, tasm.compilation.compiler.lookupStub(stubId), info, result, args);
-                    break;
-                }
                 case CallRuntime: {
                     CiKind[] signature = new CiKind[inst.arguments.length];
                     for (int i = 0; i < signature.length; i++) {
                         signature[i] = inst.arguments[i].kind;
                     }
 
-                    CiCallingConvention cc = tasm.compilation.registerConfig.getCallingConvention(RuntimeCall, signature, tasm.target, false);
+                    CiCallingConvention cc = tasm.frameMap.registerConfig.getCallingConvention(RuntimeCall, signature, tasm.target, false);
                     for (int i = 0; i < inst.arguments.length; i++) {
                         CiValue argumentLocation = cc.locations[i];
                         CiValue argumentSourceLocation = operands[inst.arguments[i].index];
@@ -326,7 +314,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     AMD64CallOpcode.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
 
                     if (inst.result != null && inst.result.kind != CiKind.Illegal && inst.result.kind != CiKind.Void) {
-                        CiRegister returnRegister = tasm.compilation.registerConfig.getReturnRegister(inst.result.kind);
+                        CiRegister returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
                         CiValue resultLocation = returnRegister.asValue(inst.result.kind.stackKind());
                         AMD64MoveOpcode.move(tasm, masm, operands[inst.result.index], resultLocation);
                     }
@@ -430,7 +418,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     break;
                 }
                 case StackOverflowCheck: {
-                    int frameSize = tasm.compilation.frameMap().frameSize();
+                    int frameSize = tasm.frameMap.frameSize();
                     int lastFramePage = frameSize / tasm.target.pageSize;
                     // emit multiple stack bangs for methods with frames larger than a page
                     for (int i = 0; i <= lastFramePage; i++) {
@@ -441,7 +429,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     break;
                 }
                 case PushFrame: {
-                    int frameSize = tasm.compilation.frameMap().frameSize();
+                    int frameSize = tasm.frameMap.frameSize();
                     masm.decrementq(AMD64.rsp, frameSize); // does not emit code for frameSize == 0
                     if (GraalOptions.ZapStackOnMethodEntry) {
                         final int intSize = 4;
@@ -449,22 +437,22 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                             masm.movl(new CiAddress(CiKind.Int, AMD64.rsp.asValue(), i * intSize), 0xC1C1C1C1);
                         }
                     }
-                    CiCalleeSaveLayout csl = tasm.compilation.registerConfig.getCalleeSaveLayout();
+                    CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
                     if (csl != null && csl.size != 0) {
-                        int frameToCSA = tasm.compilation.frameMap().offsetToCalleeSaveArea();
+                        int frameToCSA = tasm.frameMap.offsetToCalleeSaveArea();
                         assert frameToCSA >= 0;
                         masm.save(csl, frameToCSA);
                     }
                     break;
                 }
                 case PopFrame: {
-                    int frameSize = tasm.compilation.frameMap().frameSize();
+                    int frameSize = tasm.frameMap.frameSize();
 
-                    CiCalleeSaveLayout csl = tasm.compilation.registerConfig.getCalleeSaveLayout();
+                    CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
                     if (csl != null && csl.size != 0) {
                         tasm.targetMethod.setRegisterRestoreEpilogueOffset(masm.codeBuffer.position());
                         // saved all registers, restore all registers
-                        int frameToCSA = tasm.compilation.frameMap().offsetToCalleeSaveArea();
+                        int frameToCSA = tasm.frameMap.offsetToCalleeSaveArea();
                         masm.restore(csl, frameToCSA);
                     }
 
@@ -481,7 +469,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     if (isRegister(result)) {
                         masm.pop(asRegister(result));
                     } else {
-                        CiRegister rscratch = tasm.compilation.registerConfig.getScratchRegister();
+                        CiRegister rscratch = tasm.frameMap.registerConfig.getScratchRegister();
                         masm.pop(rscratch);
                         AMD64MoveOpcode.move(tasm, masm, result, rscratch.asValue());
                     }
@@ -569,7 +557,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
 
     private static CiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue value) {
         if (isConstant(value) && (value.kind == CiKind.Long || value.kind == CiKind.Object)) {
-            CiRegisterValue register = tasm.compilation.registerConfig.getScratchRegister().asValue(value.kind);
+            CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
             AMD64MoveOpcode.move(tasm, masm, register, value);
             return register;
         }
@@ -578,7 +566,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
 
     private static CiRegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue pointer) {
         if (isConstant(pointer)) {
-            CiRegisterValue register = tasm.compilation.registerConfig.getScratchRegister().asValue(pointer.kind);
+            CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.kind);
             AMD64MoveOpcode.move(tasm, masm, register, pointer);
             return register;
         }
