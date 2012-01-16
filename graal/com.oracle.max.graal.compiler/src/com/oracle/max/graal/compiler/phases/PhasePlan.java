@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.nodes.*;
 
 /**
@@ -68,10 +67,10 @@ public class PhasePlan {
         phases[pos.ordinal()].add(phase);
     }
 
-    public void runPhases(PhasePosition pos, StructuredGraph graph, GraalContext context) {
+    public void runPhases(PhasePosition pos, StructuredGraph graph) {
         if (phases[pos.ordinal()] != null) {
             for (Phase p : phases[pos.ordinal()]) {
-                p.apply(graph, context);
+                p.apply(graph);
             }
         }
     }

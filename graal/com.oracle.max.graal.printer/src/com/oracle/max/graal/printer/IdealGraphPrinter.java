@@ -137,7 +137,7 @@ class IdealGraphPrinter {
         if (schedule == null) {
             try {
                 schedule = new IdentifyBlocksPhase(true);
-                schedule.apply((StructuredGraph) graph, false);
+                schedule.apply((StructuredGraph) graph);
             } catch (Throwable t) {
                 // nothing to do here...
             }

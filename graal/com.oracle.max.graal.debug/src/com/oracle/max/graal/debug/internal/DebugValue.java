@@ -20,24 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.debug;
+package com.oracle.max.graal.debug.internal;
 
+public class DebugValue {
 
-class DebugContext {
+    private String name;
+    private int index;
 
-    private static ThreadLocal<DebugContext> instance = new ThreadLocal<>();
+    protected DebugValue(String name) {
+        this.name = name;
+        this.index = -1;
+    }
 
-    static DebugContext getInstance() {
-        if (instance.get() == null) {
-            instance.set(new DebugContext());
+    protected long getCurrentValue() {
+        ensureInitialized();
+        return DebugScope.getInstance().getCurrentValue(index);
+    }
+
+    protected void setCurrentValue(long l) {
+        ensureInitialized();
+        DebugScope.getInstance().setCurrentValue(index, l);
+    }
+
+    private void ensureInitialized() {
+        if (index == -1) {
+            index = KeyRegistry.register(name);
         }
-        return instance.get();
     }
 
-    void log(String msg, Object... args) {
-    }
-
-    void scope(String name, Runnable runnable, Object... context) {
-        runnable.run();
+    protected void addToCurrentValue(long timeSpan) {
+        setCurrentValue(getCurrentValue() + timeSpan);
     }
 }

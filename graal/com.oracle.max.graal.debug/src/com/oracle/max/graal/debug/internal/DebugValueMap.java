@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.phases;
+package com.oracle.max.graal.debug.internal;
 
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.nodes.*;
+import java.util.Arrays;
 
-public abstract class Phase {
+public class DebugValueMap {
 
-    private final String name;
+    private long[] values;
 
-    protected Phase() {
-        this.name = this.getClass().getSimpleName();
+    public void setCurrentValue(int index, long l) {
+        ensureSize(index);
+        values[index] = l;
     }
 
-    protected Phase(String name) {
-        this.name = name;
+    public long getCurrentValue(int index) {
+        ensureSize(index);
+        return values[index];
     }
 
-    protected String getDetailedName() {
-        return getName();
+    private void ensureSize(int index) {
+        if (values == null || values.length <= index) {
+            values = Arrays.copyOf(values, index + 1);
+        }
     }
-
-    public final void apply(final StructuredGraph graph) {
-        Debug.scope(name, new Runnable() { public void run() { Phase.this.run(graph); }});
-    }
-
-    public final String getName() {
-        return name;
-    }
-
-    protected abstract void run(StructuredGraph graph);
 }

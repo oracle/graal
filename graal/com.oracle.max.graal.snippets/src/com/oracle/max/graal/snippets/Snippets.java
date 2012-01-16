@@ -131,13 +131,13 @@ public class Snippets {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDeoptFreeDefault();
         GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config);
         StructuredGraph graph = new StructuredGraph(snippetRiMethod);
-        graphBuilder.apply(graph, context);
+        graphBuilder.apply(graph);
 
         if (observer != null) {
             observer.printGraph(snippetRiMethod.name() + ":" + GraphBuilderPhase.class.getSimpleName(), graph);
         }
 
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph, context);
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
         for (Invoke invoke : graph.getInvokes()) {
             MethodCallTargetNode callTarget = invoke.callTarget();
@@ -153,13 +153,13 @@ public class Snippets {
             }
         }
 
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph, context);
+        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
         if (observer != null) {
             observer.printGraph(snippetRiMethod.name() + ":" + SnippetIntrinsificationPhase.class.getSimpleName(), graph);
         }
-        new DeadCodeEliminationPhase().apply(graph, context);
-        new CanonicalizerPhase(target, runtime, null).apply(graph, context);
+        new DeadCodeEliminationPhase().apply(graph);
+        new CanonicalizerPhase(target, runtime, null).apply(graph);
 
         // TODO (gd) remove when we have safepoint polling elimination
         for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {

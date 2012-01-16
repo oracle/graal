@@ -22,8 +22,6 @@
  */
 package com.oracle.max.graal.compiler;
 
-import static com.oracle.max.graal.debug.Debug.*;
-
 import java.util.*;
 
 import com.oracle.max.asm.*;
@@ -107,8 +105,8 @@ public class GraalCompiler {
             context.timers.startScope("HIR");
 
             if (graph.start().next() == null) {
-                plan.runPhases(PhasePosition.AFTER_PARSING, graph, context);
-                new DeadCodeEliminationPhase().apply(graph, context);
+                plan.runPhases(PhasePosition.AFTER_PARSING, graph);
+                new DeadCodeEliminationPhase().apply(graph);
             } else {
                 if (context.isObserved()) {
                     context.observable.fireCompilationEvent("initial state", graph);
@@ -118,71 +116,71 @@ public class GraalCompiler {
             new PhiStampPhase().apply(graph);
 
             if (GraalOptions.ProbabilityAnalysis && graph.start().probability() == 0) {
-                new ComputeProbabilityPhase().apply(graph, context);
+                new ComputeProbabilityPhase().apply(graph);
             }
 
             if (GraalOptions.Intrinsify) {
-                new IntrinsificationPhase(runtime).apply(graph, context);
+                new IntrinsificationPhase(runtime).apply(graph);
             }
 
             if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
-                new InliningPhase(target, runtime, null, assumptions, plan).apply(graph, context);
-                new DeadCodeEliminationPhase().apply(graph, context);
+                new InliningPhase(target, runtime, null, assumptions, plan).apply(graph);
+                new DeadCodeEliminationPhase().apply(graph);
                 new PhiStampPhase().apply(graph);
             }
 
             if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, assumptions).apply(graph, context);
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
             }
 
-            plan.runPhases(PhasePosition.HIGH_LEVEL, graph, context);
+            plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
             if (GraalOptions.OptLoops) {
                 graph.mark();
-                new FindInductionVariablesPhase().apply(graph, context);
+                new FindInductionVariablesPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph, context);
+                    new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
                 }
-                new SafepointPollingEliminationPhase().apply(graph, context);
+                new SafepointPollingEliminationPhase().apply(graph);
             }
 
             if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
-                new EscapeAnalysisPhase(target, runtime, assumptions, plan).apply(graph, context);
+                new EscapeAnalysisPhase(target, runtime, assumptions, plan).apply(graph);
                 new PhiStampPhase().apply(graph);
-                new CanonicalizerPhase(target, runtime, assumptions).apply(graph, context);
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
             }
 
             if (GraalOptions.OptGVN) {
-                new GlobalValueNumberingPhase().apply(graph, context);
+                new GlobalValueNumberingPhase().apply(graph);
             }
 
             graph.mark();
-            new LoweringPhase(runtime).apply(graph, context);
-            new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph, context);
+            new LoweringPhase(runtime).apply(graph);
+            new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
 
             if (GraalOptions.OptLoops) {
                 graph.mark();
-                new RemoveInductionVariablesPhase().apply(graph, context);
+                new RemoveInductionVariablesPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph, context);
+                    new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
                 }
             }
 
             if (GraalOptions.Lower) {
-                new FloatingReadPhase().apply(graph, context);
+                new FloatingReadPhase().apply(graph);
                 if (GraalOptions.OptReadElimination) {
-                    new ReadEliminationPhase().apply(graph, context);
+                    new ReadEliminationPhase().apply(graph);
                 }
             }
-            new RemovePlaceholderPhase().apply(graph, context);
-            new DeadCodeEliminationPhase().apply(graph, context);
+            new RemovePlaceholderPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
 
-            plan.runPhases(PhasePosition.MID_LEVEL, graph, context);
+            plan.runPhases(PhasePosition.MID_LEVEL, graph);
 
-            plan.runPhases(PhasePosition.LOW_LEVEL, graph, context);
+            plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
             IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
-            schedule.apply(graph, context);
+            schedule.apply(graph);
 
             if (context.isObserved()) {
                 context.observable.fireCompilationEvent("After IdentifyBlocksPhase", graph, schedule);
@@ -288,7 +286,7 @@ public class GraalCompiler {
 
     private TargetMethodAssembler createAssembler(FrameMap frameMap, LIR lir) {
         AbstractAssembler masm = backend.newAssembler(frameMap.registerConfig);
-        TargetMethodAssembler tasm = new TargetMethodAssembler(context, target, runtime, frameMap, lir.slowPaths, masm);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime, frameMap, lir.slowPaths, masm);
         tasm.setFrameSize(frameMap.frameSize());
         tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
         return tasm;

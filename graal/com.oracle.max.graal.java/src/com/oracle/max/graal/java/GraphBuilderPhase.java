@@ -139,10 +139,11 @@ public final class GraphBuilderPhase extends Phase {
         BlockMap map = new BlockMap(method, config.useBranchPrediction());
         map.build();
 
-        if (currentContext.isObserved()) {
-            String label = CiUtil.format("BlockListBuilder %f %R %H.%n(%P)", method);
-            currentContext.observable.fireCompilationEvent(label, map);
-        }
+//        if (currentContext.isObserved()) {
+//            String label = CiUtil.format("BlockListBuilder %f %R %H.%n(%P)", method);
+//            currentContext.observable.fireCompilationEvent(label, map);
+//        }
+        // TODO(tw): Reinstall this logging code when debug framework is finished.
         return map;
     }
 

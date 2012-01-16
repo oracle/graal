@@ -47,10 +47,7 @@ public class TargetMethodAssembler {
 
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
-    private final GraalContext context;
-
-    public TargetMethodAssembler(GraalContext context, CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
-        this.context = context;
+    public TargetMethodAssembler(CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
         this.target = target;
         this.runtime = runtime;
         this.frameMap = frameMap;

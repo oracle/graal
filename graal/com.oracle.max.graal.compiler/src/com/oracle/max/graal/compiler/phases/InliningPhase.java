@@ -99,16 +99,14 @@ public class InliningPhase extends Phase implements InliningCallback {
                     if (GraalOptions.TraceInlining) {
                         TTY.println("inlining %f: %s", info.weight, info);
                     }
-                    if (GraalOptions.TraceInlining) {
-                        currentContext.observable.fireCompilationEvent("after inlining " + info, graph);
-                    }
+                    Debug.dump(graph, "after inlining %s", info);
                     // get the new nodes here, the canonicalizer phase will reset the mark
                     newNodes = graph.getNewNodes();
                     if (GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
                     }
                     if (GraalOptions.Intrinsify) {
-                        new IntrinsificationPhase(runtime).apply(graph, currentContext);
+                        new IntrinsificationPhase(runtime).apply(graph);
                     }
                     metricInliningPerformed.increment();
                 } catch (CiBailout bailout) {
@@ -161,14 +159,14 @@ public class InliningPhase extends Phase implements InliningCallback {
         StructuredGraph newGraph = new StructuredGraph(method);
 
         if (plan != null) {
-            plan.runPhases(PhasePosition.AFTER_PARSING, newGraph, currentContext);
+            plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
         }
 
         if (GraalOptions.ProbabilityAnalysis) {
-            new DeadCodeEliminationPhase().apply(newGraph, currentContext, false);
-            new ComputeProbabilityPhase().apply(newGraph, currentContext, false);
+            new DeadCodeEliminationPhase().apply(newGraph);
+            new ComputeProbabilityPhase().apply(newGraph);
         }
-        new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph, currentContext, false);
+        new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
         return newGraph;
     }
 
@@ -213,9 +211,9 @@ public class InliningPhase extends Phase implements InliningCallback {
             if (!parsedMethods.containsKey(method)) {
                 StructuredGraph newGraph = new StructuredGraph(method);
                 if (plan != null) {
-                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph, currentContext);
+                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
                 }
-                new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph, currentContext, false);
+                new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
                 count = graphComplexity(newGraph);
                 parsedMethods.put(method, count);
             } else {

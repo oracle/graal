@@ -237,7 +237,7 @@ public final class LinearScan {
         assert isProcessed(operand);
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
-        Interval interval = new Interval(context, operand, operandNumber);
+        Interval interval = new Interval(operand, operandNumber);
         assert operandNumber < intervalsSize;
         assert intervals[operandNumber] == null;
         intervals[operandNumber] = interval;
@@ -1619,7 +1619,7 @@ public final class LinearScan {
         // intervals that have no oops inside need not to be processed.
         // to ensure a walking until the last instruction id, add a dummy interval
         // with a high operation id
-        nonOopIntervals = new Interval(context, CiValue.IllegalValue, -1);
+        nonOopIntervals = new Interval(CiValue.IllegalValue, -1);
         nonOopIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
 
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
@@ -1846,7 +1846,7 @@ public final class LinearScan {
         try {
             printLir("After register number assignment", true);
             EdgeMoveOptimizer.optimize(ir.linearScanOrder());
-            ControlFlowOptimizer.optimize(ir, context);
+            ControlFlowOptimizer.optimize(ir);
             printLir("After control flow optimization", false);
         } finally {
             context.timers.endScope();
@@ -2027,7 +2027,7 @@ public final class LinearScan {
         fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).first;
         // to ensure a walking until the last instruction id, add a dummy interval
         // with a high operation id
-        otherIntervals = new Interval(context, CiValue.IllegalValue, -1);
+        otherIntervals = new Interval(CiValue.IllegalValue, -1);
         otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
         IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
 

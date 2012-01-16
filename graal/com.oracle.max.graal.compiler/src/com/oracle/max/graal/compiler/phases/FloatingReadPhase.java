@@ -249,7 +249,7 @@ public class FloatingReadPhase extends Phase {
 
         // Identify blocks.
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
-        s.apply(graph, currentContext);
+        s.apply(graph);
         List<Block> blocks = s.getBlocks();
 
         // Process blocks (predecessors first).

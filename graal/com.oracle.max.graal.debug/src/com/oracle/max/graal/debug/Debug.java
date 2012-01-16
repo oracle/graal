@@ -22,6 +22,11 @@
  */
 package com.oracle.max.graal.debug;
 
+import com.oracle.max.graal.debug.internal.DebugScope;
+import com.oracle.max.graal.debug.internal.MetricImpl;
+import com.oracle.max.graal.debug.internal.TimerImpl;
+import java.util.Collections;
+
 
 public class Debug {
     public static boolean SCOPE = false;
@@ -31,7 +36,15 @@ public class Debug {
 
     public static void scope(String name, Runnable runnable, Object... context) {
         if (SCOPE) {
-            DebugContext.getInstance().scope(name, runnable, context);
+            DebugScope.getInstance().scope(name, runnable, false, context);
+        } else {
+            runnable.run();
+        }
+    }
+
+    public static void sandbox(String name, Runnable runnable, Object... context) {
+        if (SCOPE) {
+            DebugScope.getInstance().scope(name, runnable, true, context);
         } else {
             runnable.run();
         }
@@ -39,7 +52,21 @@ public class Debug {
 
     public static void log(String msg, Object... args) {
         if (LOG) {
-            DebugContext.getInstance().log(msg, args);
+            DebugScope.getInstance().log(msg, args);
+        }
+    }
+
+    public static void dump(Object object, String msg, Object... args) {
+        if (LOG) {
+            DebugScope.getInstance().log(msg, args);
+        }
+    }
+
+    public static Iterable<Object> context() {
+        if (SCOPE) {
+            return DebugScope.getInstance().getCurrentContext();
+        } else {
+            return Collections.emptyList();
         }
     }
 
@@ -57,7 +84,9 @@ public class Debug {
     }
 
     private static final Metric VOID_METRIC = new Metric() {
+        @Override
         public void increment() { }
+        @Override
         public void add(int value) { }
     };
 
@@ -75,38 +104,9 @@ public class Debug {
     }
 
     private static final Timer VOID_TIMER = new Timer() {
-        public void start() { };
-        public void stop() { };
+        @Override
+        public void start() { }
+        @Override
+        public void stop() { }
     };
-
-    private static final class MetricImpl extends ScopeChild implements Metric {
-        private MetricImpl(String name) {
-            super(name);
-        }
-
-        public void increment() {
-        }
-
-        public void add(int value) {
-        }
-
-    }
-
-    public static final class TimerImpl extends ScopeChild implements Timer {
-        private TimerImpl(String name) {
-            super(name);
-        }
-
-        @Override
-        public void start() {
-            // TODO Auto-generated method stub
-
-        }
-
-        @Override
-        public void stop() {
-            // TODO Auto-generated method stub
-
-        }
-    }
 }
