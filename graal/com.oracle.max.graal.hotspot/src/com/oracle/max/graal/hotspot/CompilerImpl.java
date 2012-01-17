@@ -90,7 +90,6 @@ public final class CompilerImpl implements Compiler, Remote {
     private final CompilerToVM vmEntries;
     private final VMToCompiler vmExits;
 
-    private GraalContext context;
     private HotSpotRuntime runtime;
     private GraalCompiler compiler;
     private CiTarget target;
@@ -163,7 +162,7 @@ public final class CompilerImpl implements Compiler, Remote {
             Backend backend = Backend.create(target.arch, runtime, target);
             generator.initialize(backend.newXirAssembler());
 
-            compiler = new GraalCompiler(context, getRuntime(), getTarget(), backend, generator);
+            compiler = new GraalCompiler(getRuntime(), getTarget(), backend, generator);
         }
         return compiler;
     }
@@ -216,9 +215,8 @@ public final class CompilerImpl implements Compiler, Remote {
     @Override
     public HotSpotRuntime getRuntime() {
         if (runtime == null) {
-            context = new GraalContext("Virtual Machine Compiler");
             if (GraalOptions.PrintCFGToFile) {
-                context.addCompilationObserver(new CFGPrinterObserver());
+//                context.addCompilationObserver(new CFGPrinterObserver());
             }
             if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot || GraalOptions.PlotOnError) {
                 CompilationObserver observer;
@@ -227,9 +225,10 @@ public final class CompilerImpl implements Compiler, Remote {
                 } else {
                     observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
                 }
-                context.addCompilationObserver(observer);
+//                context.addCompilationObserver(observer);
+                // TODO(tw): Install observer.
             }
-            runtime = new HotSpotRuntime(context, config, this);
+            runtime = new HotSpotRuntime(config, this);
         }
         return runtime;
     }

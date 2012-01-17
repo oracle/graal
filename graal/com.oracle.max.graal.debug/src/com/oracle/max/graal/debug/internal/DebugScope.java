@@ -25,6 +25,7 @@ package com.oracle.max.graal.debug.internal;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.*;
 
 
 public final class DebugScope {
@@ -56,7 +57,7 @@ public final class DebugScope {
     public void log(String msg, Object... args) {
     }
 
-    public void scope(String newName, Runnable runnable, boolean sandbox, Object... newContext) {
+    public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, Object[] newContext) {
         DebugScope oldContext = getInstance();
         DebugScope newChild = null;
         if (sandbox) {
@@ -65,21 +66,28 @@ public final class DebugScope {
             oldContext.createChild(newName, newContext);
         }
         instance.set(newChild);
+        T result = null;
         try {
-            runnable.run();
-        } catch (Throwable t) {
-            interceptException(t);
-            throw t;
+            if (runnable != null) {
+                runnable.run();
+            }
+            if (callable != null) {
+                call(callable);
+            }
+        } catch (RuntimeException e) {
+            throw interceptException(e);
         } finally {
             instance.set(oldContext);
         }
+        return result;
     }
 
     public DebugValueMap getValueMap() {
         return valueMap;
     }
 
-    private void interceptException(Throwable t) {
+    private RuntimeException interceptException(RuntimeException e) {
+        return e;
     }
 
     long getCurrentValue(int index) {
@@ -135,6 +143,18 @@ public final class DebugScope {
                 };
             }
         };
+    }
+
+    public static <T> T call(Callable<T> callable) {
+        try {
+            return callable.call();
+        } catch (Exception e) {
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            } else {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
 

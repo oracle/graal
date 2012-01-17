@@ -26,6 +26,7 @@ import com.oracle.max.graal.debug.internal.DebugScope;
 import com.oracle.max.graal.debug.internal.MetricImpl;
 import com.oracle.max.graal.debug.internal.TimerImpl;
 import java.util.Collections;
+import java.util.concurrent.*;
 
 
 public class Debug {
@@ -34,19 +35,35 @@ public class Debug {
     public static boolean METER = false;
     public static boolean TIME = false;
 
-    public static void scope(String name, Runnable runnable, Object... context) {
+    public static void sandbox(String name, Runnable runnable) {
         if (SCOPE) {
-            DebugScope.getInstance().scope(name, runnable, false, context);
+            DebugScope.getInstance().scope(name, runnable, null, true, new Object[0]);
         } else {
             runnable.run();
         }
     }
 
-    public static void sandbox(String name, Runnable runnable, Object... context) {
+    public static void scope(String name, Runnable runnable) {
+        scope(name, null, runnable);
+    }
+
+    public static <T> T scope(String name, Callable<T> callable) {
+        return scope(name, null, callable);
+    }
+
+    public static void scope(String name, Object context, Runnable runnable) {
         if (SCOPE) {
-            DebugScope.getInstance().scope(name, runnable, true, context);
+            DebugScope.getInstance().scope(name, runnable, null, false, new Object[]{context});
         } else {
             runnable.run();
+        }
+    }
+
+    public static <T> T scope(String name, Object context, Callable<T> callable) {
+        if (SCOPE) {
+            return DebugScope.getInstance().scope(name, null, callable, false, new Object[]{context});
+        } else {
+            return DebugScope.call(callable);
         }
     }
 

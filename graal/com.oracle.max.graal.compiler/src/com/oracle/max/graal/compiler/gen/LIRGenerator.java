@@ -64,8 +64,6 @@ import com.oracle.max.graal.nodes.virtual.*;
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
 public abstract class LIRGenerator extends LIRGeneratorTool {
-    public final GraalContext context;
-
     protected final Graph graph;
     protected final RiRuntime runtime;
     protected final CiTarget target;
@@ -139,8 +137,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private LockScope curLocks;
 
 
-    public LIRGenerator(GraalContext context, Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
-        this.context = context;
+    public LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
         this.graph = graph;
         this.runtime = runtime;
         this.target = target;

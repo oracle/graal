@@ -35,21 +35,20 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.debug.*;
 
 public class DataFlowAnalysis {
-    private final GraalContext context;
     private final LIR lir;
     private final RiRegisterConfig registerConfig;
 
-    public DataFlowAnalysis(GraalContext context, LIR lir, RiRegisterConfig registerConfig) {
-        this.context = context;
+    public DataFlowAnalysis(LIR lir, RiRegisterConfig registerConfig) {
         this.lir = lir;
         this.registerConfig = registerConfig;
     }
 
     public void execute() {
         numberInstructions();
-        context.observable.fireCompilationEvent("After instruction numbering", lir);
+        Debug.dump(lir, "After instruction numbering");
         backwardDataFlow();
     }
 
