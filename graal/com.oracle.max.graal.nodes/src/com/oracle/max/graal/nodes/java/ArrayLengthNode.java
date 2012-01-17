@@ -25,7 +25,6 @@ package com.oracle.max.graal.nodes.java;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -52,7 +51,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (array() instanceof NewArrayNode) {
             ValueNode length = ((NewArrayNode) array()).dimension(0);
             assert length != null;

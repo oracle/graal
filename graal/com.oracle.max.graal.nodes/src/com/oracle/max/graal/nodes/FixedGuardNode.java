@@ -53,7 +53,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Canonical
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         for (BooleanNode n : conditions.snapshot()) {
             if (n instanceof ConstantNode) {
                 ConstantNode c = (ConstantNode) n;

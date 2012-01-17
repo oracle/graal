@@ -126,12 +126,10 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
                     int index = ((AccessIndexedNode) current).index().asConstant().asInt();
                     if (current instanceof LoadIndexedNode) {
                         x.replaceAtUsages(fieldState[index]);
-                        assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        ((StructuredGraph) x.graph()).removeFixed(x);
                     } else if (current instanceof StoreIndexedNode) {
                         fieldState[index] = ((StoreIndexedNode) x).value();
-                        assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        ((StructuredGraph) x.graph()).removeFixed(x);
                         return index;
                     }
                 }

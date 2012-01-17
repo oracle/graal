@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,26 +23,46 @@
 package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.type.*;
 
+public abstract class FloatingAccessNode extends FloatingNode implements Access {
 
-public class SafeReadNode extends SafeAccessNode implements Lowerable {
+    @Input private ValueNode object;
+    @Input private GuardNode guard;
+    @Input private LocationNode location;
+    @Data private boolean nullCheck;
 
-    public SafeReadNode(CiKind kind, ValueNode object, LocationNode location) {
-        super(kind, object, location);
-        assert object != null && location != null;
+    public ValueNode object() {
+        return object;
     }
 
-    @Override
-    public void lower(CiLoweringTool tool) {
-        StructuredGraph graph = (StructuredGraph) graph();
-        GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(object(), false)));
-        ReadNode read = graph.add(new ReadNode(kind(), object(), location()));
-        read.setGuard(guard);
+    public GuardNode guard() {
+        return guard;
+    }
 
-        graph.replaceFixedWithFixed(this, read);
+    public void setGuard(GuardNode x) {
+        updateUsages(guard, x);
+        guard = x;
+    }
+
+    public LocationNode location() {
+        return location;
+    }
+
+    public boolean getNullCheck() {
+        return nullCheck;
+    }
+
+    public void setNullCheck(boolean check) {
+        this.nullCheck = check;
+    }
+
+    public FloatingAccessNode(CiKind kind, ValueNode object, GuardNode guard, LocationNode location) {
+        super(StampFactory.forKind(kind));
+        this.object = object;
+        this.guard = guard;
+        this.location = location;
     }
 }

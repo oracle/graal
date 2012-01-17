@@ -183,7 +183,7 @@ public final class GraphBuilderPhase extends Phase {
 
         // remove Placeholders (except for loop exits)
         for (PlaceholderNode n : currentGraph.getNodes(PlaceholderNode.class)) {
-            n.replaceAndDelete(n.next());
+            currentGraph.removeFixed(n);
         }
 
         // remove dead FrameStates

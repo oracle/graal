@@ -65,7 +65,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         CiConstant constant = null;
         if (isStatic()) {
             constant = field().constantValue(null);

@@ -28,6 +28,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
 import com.oracle.max.graal.nodes.*;
@@ -206,10 +207,6 @@ public class IdentifyBlocksPhase extends Phase {
         return b;
     }
 
-    public static boolean isFixed(Node n) {
-        return n != null && n instanceof FixedNode && !(n instanceof AccessNode && n.predecessor() == null);
-    }
-
     public static boolean isBlockEnd(Node n) {
         return trueSuccessorCount(n) > 1 || n instanceof ReturnNode || n instanceof UnwindNode || n instanceof DeoptimizeNode;
     }
@@ -238,7 +235,8 @@ public class IdentifyBlocksPhase extends Phase {
                     }
                     prev = currentNode;
                     currentNode = currentNode.predecessor();
-                    assert !(currentNode instanceof AccessNode && ((AccessNode) currentNode).next() != prev) : currentNode;
+                    // FIX(ls) what's the meaning of this assert?
+//                    assert !(currentNode instanceof AccessNode && ((AccessNode) currentNode).next() != prev) : currentNode;
                     assert !currentNode.isDeleted() : prev + " " + currentNode;
                 }
             }
@@ -255,7 +253,7 @@ public class IdentifyBlocksPhase extends Phase {
                 }
             } else {
                 if (n.predecessor() != null) {
-                    if (isFixed(n.predecessor())) {
+                    if (Util.isFixed(n.predecessor())) {
                         Block predBlock = nodeToBlock.get(n.predecessor());
                         predBlock.addSuccessor(block);
                     }
@@ -646,7 +644,7 @@ public class IdentifyBlocksPhase extends Phase {
         }
         int i = 0;
         for (Node s : n.successors()) {
-            if (isFixed(s)) {
+            if (Util.isFixed(s)) {
                 i++;
             }
         }

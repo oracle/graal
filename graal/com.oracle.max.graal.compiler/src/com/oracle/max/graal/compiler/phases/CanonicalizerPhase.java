@@ -26,10 +26,10 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.spi.*;
 
 public class CanonicalizerPhase extends Phase {
@@ -69,48 +69,55 @@ public class CanonicalizerPhase extends Phase {
                     TTY.println("Canonicalizer: work on " + node);
                 }
                 graph.mark();
-                Node canonical = ((Canonicalizable) node).canonical(tool);
-                if (canonical == null) {
-                    node.safeDelete();
-                } else if (canonical != node) {
+                ValueNode canonical = ((Canonicalizable) node).canonical(tool);
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
 //                                         --------------------------------------------
-//                                     null|   1    |        X        |       3       |
+//                                     null|   1    |        X        |       1       |
 //                                         --------------------------------------------
-//                                 Floating|   1    |        X        |       3       |
+//                                 Floating|   2    |        X        |       4       |
 //       canonical node:                   --------------------------------------------
-//                        Fixed-unconnected|   X    |        X        |       2       |
+//                        Fixed-unconnected|   X    |        X        |       3       |
 //                                         --------------------------------------------
-//                          Fixed-connected|   1    |        X        |       3       |
+//                          Fixed-connected|   2    |        X        |       4       |
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
-                    if (node instanceof FloatingNode) {
-                        // case 1
-                        assert canonical == null || canonical instanceof FloatingNode || (canonical instanceof FixedNode && canonical.predecessor() != null) || canonical instanceof ReadNode : canonical;
-                        node.replaceAndDelete(canonical);
+                if (canonical == null) {
+                    // case 1
+                    node.replaceAtUsages(null);
+                    if (Util.isFixed(node)) {
+                        graph.removeFixed((FixedWithNextNode) node);
                     } else {
-                        assert node instanceof FixedNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
-                        if (canonical instanceof FixedNode && canonical.predecessor() == null) {
-                            // case 2
-                            node.replaceAndDelete(canonical);
-                        } else {
+                        graph.removeFloating((FloatingNode) node);
+                    }
+                } else if (canonical != node) {
+                    if (node instanceof FloatingNode) {
+                        // case 2
+                        assert Util.isFloating(canonical) || (Util.isFixed(canonical) && canonical.predecessor() != null) : canonical;
+                        graph.replaceFloating((FloatingNode) node, canonical);
+                    } else {
+                        assert Util.isFixed(node) && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
+                        if (Util.isFixed(canonical) && canonical.predecessor() == null) {
                             // case 3
-                            FixedNode nextNode = null;
+                            graph.replaceFixedWithFixed((FixedWithNextNode) node, (FixedWithNextNode) canonical);
+                        } else {
+                            // case 4
+                            node.replaceAtUsages(canonical);
                             if (node instanceof FixedWithNextNode) {
-                                nextNode = ((FixedWithNextNode) node).next();
+                                graph.removeFixed((FixedWithNextNode) node);
                             } else if (node instanceof ControlSplitNode) {
-                                for (FixedNode sux : ((ControlSplitNode) node).blockSuccessors()) {
-                                    if (nextNode == null) {
-                                        nextNode = sux;
+                                // FIX(ls) is this logic really used? the semantics might be hard to understand...
+                                ControlSplitNode split = (ControlSplitNode) node;
+                                int survivingSuccessor = -1;
+                                for (int i = 0; i < split.blockSuccessorCount(); i++) {
+                                    if (survivingSuccessor == -1 && split.blockSuccessor(i) != null) {
+                                        survivingSuccessor = i;
                                     } else {
-                                        assert sux == null;
+                                        assert split.blockSuccessor(i) == null;
                                     }
                                 }
+                                graph.removeSplit(split, survivingSuccessor);
                             }
-                            node.clearSuccessors();
-                            node.replaceAtPredecessors(nextNode);
-                            node.replaceAndDelete(canonical);
                         }
                     }
 

@@ -35,7 +35,7 @@ public final class IntegerSubNode extends IntegerArithmeticNode implements Canon
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forIntegerKind(kind(), 0, graph());
         }

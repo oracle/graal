@@ -23,7 +23,6 @@
 package com.oracle.max.graal.nodes.loop;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.calc.*;
@@ -84,7 +83,7 @@ public class BasicInductionVariableNode extends LinearInductionVariableNode impl
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (this.init().isConstant() && this.init().asConstant().asLong() == 0 && this.stride().isConstant() && this.stride().asConstant().asLong() == 1) {
             return this.loopCounter();
         }

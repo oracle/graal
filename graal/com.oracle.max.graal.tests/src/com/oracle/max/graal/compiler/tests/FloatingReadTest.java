@@ -68,9 +68,9 @@ public class FloatingReadTest extends GraphScheduleTest {
 
         Assert.assertNotNull(returnNode);
         Assert.assertNotNull(monitor);
-        Assert.assertTrue(returnNode.result() instanceof ReadNode);
+        Assert.assertTrue(returnNode.result() instanceof FloatingReadNode);
 
-        ReadNode read = (ReadNode) returnNode.result();
+        FloatingReadNode read = (FloatingReadNode) returnNode.result();
 
         assertOrderedAfterSchedule(graph, read, monitor);
     }

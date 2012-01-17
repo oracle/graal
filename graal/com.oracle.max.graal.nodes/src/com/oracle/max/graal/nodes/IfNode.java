@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.nodes;
 
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
@@ -100,7 +99,7 @@ public final class IfNode extends ControlSplitNode implements Canonicalizable, L
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (compare() instanceof ConstantNode) {
             ConstantNode c = (ConstantNode) compare();
             if (c.asConstant().asBoolean()) {

@@ -140,7 +140,16 @@ public class StructuredGraph extends Graph {
         return getNodes(LoopBeginNode.class).iterator().hasNext();
     }
 
+    public void removeFloating(FloatingNode node) {
+        assert node != null && node.isAlive() : "cannot remove " + node;
+        node.safeDelete();
+    }
 
+    public void replaceFloating(FloatingNode node, ValueNode replacement) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        node.replaceAtUsages(replacement);
+        node.safeDelete();
+    }
 
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;

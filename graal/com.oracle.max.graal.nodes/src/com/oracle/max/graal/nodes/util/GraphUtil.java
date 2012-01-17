@@ -65,7 +65,7 @@ public class GraphUtil {
     private static void replaceLoopPhis(MergeNode merge) {
         for (Node usage : merge.usages().snapshot()) {
             assert usage instanceof PhiNode;
-            usage.replaceAndDelete(((PhiNode) usage).valueAt(0));
+            ((StructuredGraph) merge.graph()).replaceFloating((PhiNode) usage, ((PhiNode) usage).valueAt(0));
         }
     }
 

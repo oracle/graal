@@ -160,7 +160,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         ValueNode singleValue = singleValue();
 
         if (singleValue != null) {
@@ -170,7 +170,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
         return canonicalizeMaterializationPhi();
     }
 
-    private Node canonicalizeMaterializationPhi() {
+    private ValueNode canonicalizeMaterializationPhi() {
         if (merge().endCount() != 2 || merge() instanceof LoopBeginNode) {
             return this;
         }

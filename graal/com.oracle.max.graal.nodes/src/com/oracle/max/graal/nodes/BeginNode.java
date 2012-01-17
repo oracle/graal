@@ -50,7 +50,7 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Canon
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         FixedNode prev = (FixedNode) this.predecessor();
         if (prev == null) {
             // This is the start node.

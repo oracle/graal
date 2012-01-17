@@ -42,7 +42,7 @@ public final class AnchorNode extends FixedWithNextNode implements LIRLowerable,
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (this.usages().size() == 0 && guards.size() == 0) {
             return next();
         }

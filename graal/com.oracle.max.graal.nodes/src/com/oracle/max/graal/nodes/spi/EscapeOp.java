@@ -102,11 +102,11 @@ public abstract class EscapeOp {
         // IsNonNullNode and IsTypeNode should have been eliminated by the CanonicalizerPhase, but we can't rely on this
         if (usage instanceof NullCheckNode) {
             NullCheckNode x = (NullCheckNode) usage;
-            x.replaceAndDelete(ConstantNode.forBoolean(!x.expectedNull, node.graph()));
+            ((StructuredGraph) x.graph()).replaceFloating(x, ConstantNode.forBoolean(!x.expectedNull, node.graph()));
         } else if (usage instanceof IsTypeNode) {
             IsTypeNode x = (IsTypeNode) usage;
             assert x.type() == ((ValueNode) node).exactType();
-            x.replaceAndDelete(ConstantNode.forBoolean(true, node.graph()));
+            ((StructuredGraph) x.graph()).replaceFloating(x, ConstantNode.forBoolean(true, node.graph()));
         } else if (usage instanceof AccessMonitorNode) {
             ((AccessMonitorNode) usage).makeEliminated();
         }

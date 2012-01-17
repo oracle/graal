@@ -24,7 +24,6 @@ package com.oracle.max.graal.nodes.calc;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -116,7 +115,7 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
         }
     }
 
-    private Node optimizeMaterialize(CiConstant constant, MaterializeNode materializeNode, RiRuntime runtime) {
+    private ValueNode optimizeMaterialize(CiConstant constant, MaterializeNode materializeNode, RiRuntime runtime) {
         CiConstant trueConstant = materializeNode.trueValue().asConstant();
         CiConstant falseConstant = materializeNode.falseValue().asConstant();
 
@@ -144,7 +143,7 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
         return this;
     }
 
-    private Node optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode) {
+    private ValueNode optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode) {
         if (constant.kind == CiKind.Int && constant.asInt() == 0) {
             Condition cond = condition();
             if (normalizeNode.x().kind().isFloatOrDouble()) {
@@ -167,7 +166,7 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) { // move constants to the left (y)
             return graph().unique(new CompareNode(y(), condition.mirror(), unorderedIsTrue(), x()));
         } else if (x().isConstant() && y().isConstant()) {

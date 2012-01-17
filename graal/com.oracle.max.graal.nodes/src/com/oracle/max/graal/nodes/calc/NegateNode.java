@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -50,7 +49,7 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, L
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant()) {
             switch (x().kind()) {
                 case Int:

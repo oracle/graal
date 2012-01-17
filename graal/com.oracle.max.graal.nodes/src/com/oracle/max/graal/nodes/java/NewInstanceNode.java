@@ -100,7 +100,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         public void beforeUpdate(Node node, Node usage) {
             if (usage instanceof RegisterFinalizerNode) {
                 RegisterFinalizerNode x = (RegisterFinalizerNode) usage;
-                x.replaceAndDelete(x.next());
+                ((StructuredGraph) x.graph()).removeFixed(x);
             } else {
                 super.beforeUpdate(node, usage);
             }
@@ -115,12 +115,10 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
                     if (current instanceof LoadFieldNode) {
                         assert fieldState[field] != null : field + ", " + ((AccessFieldNode) current).field();
                         x.replaceAtUsages(fieldState[field]);
-                        assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        ((StructuredGraph) x.graph()).removeFixed(x);
                     } else if (current instanceof StoreFieldNode) {
                         fieldState[field] = ((StoreFieldNode) x).value();
-                        assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        ((StructuredGraph) x.graph()).removeFixed(x);
                         return field;
                     }
                 }

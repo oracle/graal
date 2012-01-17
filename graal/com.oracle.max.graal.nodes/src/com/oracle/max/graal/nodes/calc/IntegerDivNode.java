@@ -35,7 +35,7 @@ public final class IntegerDivNode extends IntegerArithmeticNode implements Canon
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
             long yConst = y().asConstant().asLong();
             if (yConst == 0) {

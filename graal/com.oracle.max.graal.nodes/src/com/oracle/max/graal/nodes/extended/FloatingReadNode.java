@@ -29,10 +29,17 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 
 
-public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
+public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
-    public ReadNode(CiKind kind, ValueNode object, LocationNode location) {
-        super(kind, object, location);
+    @Input private final NodeInputList<Node> dependencies;
+
+    public NodeInputList<Node> dependencies() {
+        return dependencies;
+    }
+
+    public FloatingReadNode(CiKind kind, ValueNode object, GuardNode guard, LocationNode location, Node... dependencies) {
+        super(kind, object, guard, location);
+        this.dependencies = new NodeInputList<>(this, dependencies);
     }
 
     @Override
@@ -43,7 +50,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (object() != null && object().isConstant() && object().kind() == CiKind.Object) {
-            if (location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
+            if (this.location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
                 Object value = object().asConstant().asObject();
                 long displacement = location().displacement();
                 CiKind kind = location().kind();

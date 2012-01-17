@@ -340,7 +340,7 @@ public class InliningUtil {
      */
     public static Node inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
         NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
-        Graph graph = invoke.node().graph();
+        StructuredGraph graph = (StructuredGraph) invoke.node().graph();
 
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter.isAlive();
@@ -375,16 +375,11 @@ public class InliningUtil {
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
 
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        FixedNode invokeReplacement;
         MethodCallTargetNode callTarget = invoke.callTarget();
-        if (callTarget.isStatic() || !receiverNullCheck || parameters.get(0).kind() != CiKind.Object || parameters.get(0).stamp().nonNull()) {
-            invokeReplacement = firstCFGNodeDuplicate;
-        } else {
-            FixedGuardNode guard = graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(parameters.get(0), false))));
-            guard.setNext(firstCFGNodeDuplicate);
-            invokeReplacement = guard;
+        if (!callTarget.isStatic() && receiverNullCheck && parameters.get(0).kind() == CiKind.Object && !parameters.get(0).stamp().nonNull()) {
+            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(parameters.get(0), false)))));
         }
-        invoke.node().replaceAtPredecessors(invokeReplacement);
+        invoke.node().replaceAtPredecessors(firstCFGNodeDuplicate);
 
         FrameState stateAtExceptionEdge = null;
         if (invoke instanceof InvokeWithExceptionNode) {

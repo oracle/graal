@@ -32,8 +32,8 @@ import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.util.*;
 
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
-    private static final int NORMAL_EDGE = 0;
-    private static final int EXCEPTION_EDGE = 1;
+    public static final int NORMAL_EDGE = 0;
+    public static final int EXCEPTION_EDGE = 1;
 
     @Input private final MethodCallTargetNode callTarget;
     @Input private FrameState stateAfter;

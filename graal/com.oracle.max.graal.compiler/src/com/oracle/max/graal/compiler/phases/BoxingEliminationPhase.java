@@ -66,7 +66,8 @@ public class BoxingEliminationPhase extends Phase {
             if (phiNode.stamp().nonNull()) {
                 RiResolvedType exactType = phiNode.stamp().exactType();
                 if (exactType != null && exactType.toJava() == kind.toUnboxedJavaClass()) {
-                    result = phiNode.graph().add(new PhiNode(kind, phiNode.merge(), PhiType.Value));
+                    StructuredGraph graph = (StructuredGraph) phiNode.graph();
+                    result = graph.add(new PhiNode(kind, phiNode.merge(), PhiType.Value));
                     phiReplacements.put(phiNode, result);
                     virtualizeUsages(phiNode, result, exactType);
                     int i = 0;
@@ -76,10 +77,9 @@ public class BoxingEliminationPhase extends Phase {
                             assert unboxedValue.kind() == kind;
                             result.addInput(unboxedValue);
                         } else {
-                            UnboxNode unboxNode = phiNode.graph().add(new UnboxNode(kind, n));
+                            UnboxNode unboxNode = graph.add(new UnboxNode(kind, n));
                             FixedNode pred = phiNode.merge().phiPredecessorAt(i);
-                            pred.replaceAtPredecessors(unboxNode);
-                            unboxNode.setNext(pred);
+                            graph.addBeforeFixed(pred, unboxNode);
                             result.addInput(unboxNode);
                         }
                         ++i;

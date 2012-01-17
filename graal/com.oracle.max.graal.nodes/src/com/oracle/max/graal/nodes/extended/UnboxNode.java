@@ -58,7 +58,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (source.isConstant()) {
             CiConstant constant = source.asConstant();
             Object o = constant.asObject();

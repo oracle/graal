@@ -24,7 +24,6 @@ package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -49,7 +48,7 @@ public final class UnsafeCastNode extends FloatingNode implements Canonicalizabl
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x != null && x.declaredType() != null && x.declaredType().isSubtypeOf(toType)) {
             return x;
         }
@@ -58,7 +57,7 @@ public final class UnsafeCastNode extends FloatingNode implements Canonicalizabl
 
     @Override
     public void lower(CiLoweringTool tool) {
-        replaceAndDelete(x);
+        ((StructuredGraph) graph()).replaceFloating(this, x);
     }
 
     @SuppressWarnings("unused")
