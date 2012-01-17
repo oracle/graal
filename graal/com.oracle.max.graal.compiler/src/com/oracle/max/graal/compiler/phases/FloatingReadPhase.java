@@ -263,9 +263,7 @@ public class FloatingReadPhase extends Phase {
         BeginNode entryPoint = graph.start();
         FixedNode next = entryPoint.next();
         if (!(next instanceof MemoryCheckpoint)) {
-            WriteMemoryCheckpointNode checkpoint = graph.add(new WriteMemoryCheckpointNode());
-            entryPoint.setNext(checkpoint);
-            checkpoint.setNext(next);
+            graph.addAfterFixed(entryPoint, graph.add(new WriteMemoryCheckpointNode()));
         }
     }
 

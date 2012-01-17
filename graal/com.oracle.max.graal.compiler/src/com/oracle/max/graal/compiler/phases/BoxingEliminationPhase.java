@@ -40,7 +40,7 @@ public class BoxingEliminationPhase extends Phase {
 
             Map<PhiNode, PhiNode> phiReplacements = new HashMap<>();
             for (UnboxNode unboxNode : graph.getNodes(UnboxNode.class)) {
-                tryEliminate(unboxNode, phiReplacements);
+                tryEliminate(graph, unboxNode, phiReplacements);
             }
 
             new DeadCodeEliminationPhase().apply(graph);
@@ -51,11 +51,12 @@ public class BoxingEliminationPhase extends Phase {
         }
     }
 
-    private void tryEliminate(UnboxNode unboxNode, Map<PhiNode, PhiNode> phiReplacements) {
+    private void tryEliminate(StructuredGraph graph, UnboxNode unboxNode, Map<PhiNode, PhiNode> phiReplacements) {
         ValueNode unboxedValue = unboxedValue(unboxNode.source(), unboxNode.destinationKind(), phiReplacements);
         if (unboxedValue != null) {
             assert unboxedValue.kind() == unboxNode.destinationKind();
-            unboxNode.replaceAndUnlink(unboxedValue);
+            unboxNode.replaceAtUsages(unboxedValue);
+            graph.removeFixed(unboxNode);
         }
     }
 
@@ -112,13 +113,13 @@ public class BoxingEliminationPhase extends Phase {
             }
         }
 
+        // TODO(ls) this seems weird: there might still be references to boxNode, yet it is deleted...
+
         FrameState stateAfter = boxNode.stateAfter();
         boxNode.setStateAfter(null);
         stateAfter.safeDelete();
-        FixedNode next = boxNode.next();
-        boxNode.setNext(null);
-        boxNode.replaceAtPredecessors(next);
-        boxNode.safeDelete();
+
+        ((StructuredGraph) boxNode.graph()).removeFixed(boxNode);
     }
 
     private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, RiResolvedType exactType) {

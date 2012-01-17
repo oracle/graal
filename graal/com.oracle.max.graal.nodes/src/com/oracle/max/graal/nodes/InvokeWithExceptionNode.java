@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -151,21 +150,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
                 stateAfter().delete();
             }
         }
-
-        if (node instanceof FixedWithNextNode) {
-            FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
-            FixedNode next = this.next();
-            setNext(null);
-            fixedWithNextNode.setNext(next);
-            this.replaceAndDelete(node);
-        } else if (node instanceof FloatingNode || (node == null && this.kind() == CiKind.Void)) {
-            FixedNode next = this.next();
-            setNext(null);
-            this.replaceAtPredecessors(next);
-            this.replaceAtUsages(node);
-            this.delete();
+        if (node == null) {
+            assert kind() == CiKind.Void && usages().isEmpty();
+            ((StructuredGraph) graph()).removeSplit(this, NORMAL_EDGE);
         } else {
-            assert false : node;
+            ((StructuredGraph) graph()).replaceSplit(this, node, NORMAL_EDGE);
         }
     }
 }

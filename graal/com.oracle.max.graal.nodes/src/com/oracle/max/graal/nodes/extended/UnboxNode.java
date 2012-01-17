@@ -54,7 +54,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
         RiResolvedField field = pool.getBoxField(kind());
         LoadFieldNode loadField = graph().add(new LoadFieldNode(source, field));
         loadField.setProbability(probability());
-        this.replaceWithFixedWithNext(loadField);
+        ((StructuredGraph) graph()).replaceFixedWithFixed(this, loadField);
     }
 
     @Override

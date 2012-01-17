@@ -208,25 +208,20 @@ public class HotSpotRuntime implements GraalRuntime {
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.graph(), arrayLengthNode.array());
-            FixedNode nextNode = arrayLengthNode.next();
-            arrayLengthNode.clearSuccessors();
-            safeReadArrayLength.setNext(nextNode);
-            arrayLengthNode.replaceAndDelete(safeReadArrayLength);
+            StructuredGraph graph = (StructuredGraph) arrayLengthNode.graph();
+            graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
             safeReadArrayLength.lower(tool);
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
             if (field.isVolatile()) {
                 return;
             }
-            Graph graph = field.graph();
+            StructuredGraph graph = (StructuredGraph) field.graph();
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind() != CiKind.Illegal;
             ReadNode memoryRead = graph.unique(new ReadNode(field.field().kind(true).stackKind(), field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph)));
             memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false))));
-            FixedNode next = field.next();
-            field.setNext(null);
-            memoryRead.setNext(next);
-            field.replaceAndDelete(memoryRead);
+            graph.replaceFixedWithFixed(field, memoryRead);
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode field = (StoreFieldNode) n;
             if (field.isVolatile()) {
@@ -249,17 +244,14 @@ public class HotSpotRuntime implements GraalRuntime {
             field.replaceAndDelete(memoryWrite);
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
-            Graph graph = loadIndexed.graph();
+            StructuredGraph graph = (StructuredGraph) loadIndexed.graph();
             GuardNode boundsCheck = createBoundsCheck(loadIndexed, tool);
 
             CiKind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
             ReadNode memoryRead = graph.unique(new ReadNode(elementKind.stackKind(), loadIndexed.array(), arrayLocation));
             memoryRead.setGuard(boundsCheck);
-            FixedNode next = loadIndexed.next();
-            loadIndexed.setNext(null);
-            memoryRead.setNext(next);
-            loadIndexed.replaceAndDelete(memoryRead);
+            graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
             Graph graph = storeIndexed.graph();
@@ -309,30 +301,23 @@ public class HotSpotRuntime implements GraalRuntime {
             storeIndexed.safeDelete();
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
-            Graph graph = load.graph();
+            StructuredGraph graph = (StructuredGraph) load.graph();
             assert load.kind() != CiKind.Illegal;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph);
             location.setIndexScalingEnabled(false);
             ReadNode memoryRead = graph.unique(new ReadNode(load.kind(), load.object(), location));
             memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(load.object(), false))));
-            FixedNode next = load.next();
-            load.setNext(null);
-            memoryRead.setNext(next);
-            load.replaceAndDelete(memoryRead);
+            graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
-            Graph graph = store.graph();
+            StructuredGraph graph = (StructuredGraph) store.graph();
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.storeKind(), store.displacement(), store.offset(), graph);
             location.setIndexScalingEnabled(false);
             WriteNode write = graph.add(new WriteNode(store.object(), store.value(), location));
             FieldWriteBarrier barrier = graph.add(new FieldWriteBarrier(store.object()));
-            FixedNode next = store.next();
-            store.setNext(null);
-            barrier.setNext(next);
-            write.setNext(barrier);
             write.setStateAfter(store.stateAfter());
-            store.replaceAtPredecessors(write);
-            store.safeDelete();
+            graph.replaceFixedWithFixed(store, write);
+            graph.addBeforeFixed(write, barrier);
         } else if (n instanceof ArrayHeaderSizeNode) {
             n.replaceAndDelete(ConstantNode.forLong(config.getArrayOffset(((ArrayHeaderSizeNode) n).elementKind()), n.graph()));
         }

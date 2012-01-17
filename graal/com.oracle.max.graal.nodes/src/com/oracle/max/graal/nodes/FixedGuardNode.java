@@ -78,12 +78,9 @@ public final class FixedGuardNode extends FixedWithNextNode implements Canonical
     @Override
     public void lower(CiLoweringTool tool) {
         AnchorNode newAnchor = graph().add(new AnchorNode());
-        FixedNode next = this.next();
-        this.setNext(null);
-        newAnchor.setNext(next);
         for (BooleanNode b : conditions) {
             newAnchor.addGuard((GuardNode) tool.createGuard(b));
         }
-        this.replaceAndDelete(newAnchor);
+        ((StructuredGraph) graph()).replaceFixedWithFixed(this, newAnchor);
     }
 }

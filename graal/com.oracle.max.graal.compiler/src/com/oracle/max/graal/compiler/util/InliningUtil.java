@@ -155,8 +155,7 @@ public class InliningUtil {
             IsTypeNode isType = graph.unique(new IsTypeNode(invoke.callTarget().receiver(), type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isType));
             assert invoke.predecessor() != null;
-            invoke.predecessor().replaceFirstSuccessor(invoke.node(), guard);
-            guard.setNext(invoke.node());
+            graph.addBeforeFixed(invoke.node(), guard);
 
             if (GraalOptions.TraceInlining) {
                 TTY.println("inlining with type check, type probability: %5.3f", probability);
