@@ -611,9 +611,14 @@ public final class GraphBuilderPhase extends Phase {
             probability = 0.5;
         }
 
+        CompareNode condition = currentGraph.unique(new CompareNode(x, cond, y));
         FixedNode trueSuccessor = createTarget(currentBlock.successors.get(0), frameState);
         FixedNode falseSuccessor = createTarget(currentBlock.successors.get(1), frameState);
-        append(currentGraph.add(new IfNode(currentGraph.unique(new CompareNode(x, cond, y)), trueSuccessor, falseSuccessor, probability)));
+        if (trueSuccessor == falseSuccessor) {
+            appendGoto(trueSuccessor);
+        } else {
+            append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, probability)));
+        }
 
         assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
     }

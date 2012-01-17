@@ -110,8 +110,8 @@ public class GraalCompiler {
                     if (GraalOptions.Meter) {
                         context.metrics.BytecodesCompiled += method.codeSize();
                     }
-                } catch (CiBailout bailout) {
-                    throw bailout;
+                } catch (CiBailout | GraalInternalError exception) {
+                    throw exception;
                 } catch (Throwable t) {
                     throw new GraalInternalError(t);
                 }
