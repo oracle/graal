@@ -140,21 +140,22 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     @Override
     public void intrinsify(Node node) {
-        this.callTarget.delete();
+        MethodCallTargetNode call = callTarget;
+        FrameState state = stateAfter();
         killExceptionEdge();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(stateAfter());
-        } else {
-            if (stateAfter().usages().size() == 1) {
-                stateAfter().delete();
-            }
+            stateSplit.setStateAfter(state);
         }
         if (node == null) {
             assert kind() == CiKind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeSplit(this, NORMAL_EDGE);
         } else {
             ((StructuredGraph) graph()).replaceSplit(this, node, NORMAL_EDGE);
+        }
+        call.safeDelete();
+        if (state.usages().isEmpty()) {
+            state.safeDelete();
         }
     }
 }

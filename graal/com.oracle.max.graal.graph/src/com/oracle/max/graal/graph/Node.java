@@ -311,7 +311,7 @@ public abstract class Node implements Cloneable {
         delete();
     }
 
-    public void delete() {
+    private void delete() {
         clearInputs();
         clearSuccessors();
         graph.unregister(this);

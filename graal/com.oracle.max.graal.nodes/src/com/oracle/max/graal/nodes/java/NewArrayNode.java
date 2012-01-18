@@ -111,7 +111,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
             if (usage instanceof ArrayLengthNode) {
                 ArrayLengthNode x = (ArrayLengthNode) usage;
                 StructuredGraph graph = (StructuredGraph) node.graph();
-                node.replaceAtUsages(((NewArrayNode) node).dimension(0));
+                x.replaceAtUsages(((NewArrayNode) node).dimension(0));
                 graph.removeFixed(x);
             } else {
                 super.beforeUpdate(node, usage);

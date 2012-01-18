@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,11 @@
  */
 package com.oracle.max.graal.nodes.spi;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.*;
 
 
-public interface CanonicalizerTool {
-    CiTarget target();
-    CiAssumptions assumptions();
-    RiRuntime runtime();
+public interface SimplifierTool extends CanonicalizerTool {
+    void deleteBranch(FixedNode branch);
+    void addToWorkList(Node node);
 }

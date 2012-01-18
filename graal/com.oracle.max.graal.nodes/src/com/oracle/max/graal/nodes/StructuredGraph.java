@@ -153,7 +153,7 @@ public class StructuredGraph extends Graph {
 
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;
-        assert node.usages().isEmpty();
+        assert node.usages().isEmpty() : node + " " + node.usages();
         FixedNode next = node.next();
         node.setNext(null);
         node.replaceAtPredecessors(next);

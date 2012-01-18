@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,14 @@
  */
 package com.oracle.max.graal.nodes.spi;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+/**
+ * This interface allows nodes to perform more complicated simplifications, in contrast to {@link Canonicalizable},
+ * which supports only replacing the current node.
+ *
+ * Implementors of this interface need to be aware that they need to call {@link SimplifierTool#addToWorkList(com.oracle.max.graal.graph.Node)} for each node that might
+ * be influenced (in terms of simplification and canonicalization) by the actions performed in simplify.
+ */
+public interface Simplifiable {
 
-
-public interface CanonicalizerTool {
-    CiTarget target();
-    CiAssumptions assumptions();
-    RiRuntime runtime();
+    void simplify(SimplifierTool tool);
 }

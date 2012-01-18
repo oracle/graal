@@ -22,6 +22,9 @@
  */
 package com.oracle.max.graal.nodes;
 
+import java.util.*;
+
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
@@ -29,7 +32,9 @@ import com.oracle.max.graal.nodes.type.*;
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome of a
  * comparison.
  */
-public final class IfNode extends ControlSplitNode implements Canonicalizable, LIRLowerable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+    public static final int TRUE_EDGE = 0;
+    public static final int FALSE_EDGE = 1;
 
     private static final BeginNode[] EMPTY_IF_SUCCESSORS = new BeginNode[] {null, null};
 
@@ -99,35 +104,76 @@ public final class IfNode extends ControlSplitNode implements Canonicalizable, L
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         if (compare() instanceof ConstantNode) {
             ConstantNode c = (ConstantNode) compare();
             if (c.asConstant().asBoolean()) {
                 tool.deleteBranch(falseSuccessor());
-                return trueSuccessor();
+                tool.addToWorkList(trueSuccessor());
+                ((StructuredGraph) graph()).removeSplit(this, TRUE_EDGE);
             } else {
                 tool.deleteBranch(trueSuccessor());
-                return falseSuccessor();
+                tool.addToWorkList(falseSuccessor());
+                ((StructuredGraph) graph()).removeSplit(this, FALSE_EDGE);
+            }
+        } else {
+            if (trueSuccessor().next() instanceof EndNode && falseSuccessor().next() instanceof EndNode) {
+                EndNode trueEnd = (EndNode) trueSuccessor().next();
+                EndNode falseEnd = (EndNode) falseSuccessor().next();
+                MergeNode merge = trueEnd.merge();
+                if (merge == falseEnd.merge() && merge.endCount() == 2) {
+                    Iterator<PhiNode> phis = merge.phis().iterator();
+                    if (!phis.hasNext()) {
+                        // empty if construct with no phis: remove it
+                        removeEmptyIf(tool);
+                    } else {
+                        PhiNode singlePhi = phis.next();
+                        if (!phis.hasNext()) {
+                            // one phi at the merge of an otherwise empty if construct: try to convert into a MaterializeNode
+                            boolean inverted = trueEnd == merge.endAt(FALSE_EDGE);
+                            ValueNode trueValue = singlePhi.valueAt(inverted ? 1 : 0);
+                            ValueNode falseValue = singlePhi.valueAt(inverted ? 0 : 1);
+                            if (trueValue.kind() != falseValue.kind()) {
+                                return;
+                            }
+                            if (trueValue.kind() != CiKind.Int && trueValue.kind() != CiKind.Long) {
+                                return;
+                            }
+                            if (trueValue.isConstant() && falseValue.isConstant()) {
+                                MaterializeNode materialize = MaterializeNode.create(compare(), graph(), (ConstantNode) trueValue, (ConstantNode) falseValue);
+                                ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
+                                removeEmptyIf(tool);
+                            }
+                        }
+                    }
+                }
             }
         }
-        if (trueSuccessor().next() instanceof EndNode && falseSuccessor().next() instanceof EndNode) {
-            EndNode trueEnd = (EndNode) trueSuccessor().next();
-            EndNode falseEnd = (EndNode) falseSuccessor().next();
-            MergeNode merge = trueEnd.merge();
-            if (merge == falseEnd.merge() && !merge.phis().iterator().hasNext() && merge.endCount() == 2) {
-                FixedNode next = merge.next();
-                merge.safeDelete();
-                BeginNode falseSuccessor = this.falseSuccessor();
-                BeginNode trueSuccessor = this.trueSuccessor();
-                this.setTrueSuccessor(null);
-                this.setFalseSuccessor(null);
-                trueSuccessor.safeDelete();
-                falseSuccessor.safeDelete();
-                trueEnd.safeDelete();
-                falseEnd.safeDelete();
-                return next;
-            }
-        }
-        return this;
+    }
+
+    private void removeEmptyIf(SimplifierTool tool) {
+        BeginNode trueSuccessor = trueSuccessor();
+        BeginNode falseSuccessor = falseSuccessor();
+        assert trueSuccessor.next() instanceof EndNode && falseSuccessor.next() instanceof EndNode;
+
+        EndNode trueEnd = (EndNode) trueSuccessor.next();
+        EndNode falseEnd = (EndNode) falseSuccessor.next();
+        assert trueEnd.merge() == falseEnd.merge();
+
+        MergeNode merge = trueEnd.merge();
+        assert merge.usages().isEmpty();
+
+        FixedNode next = merge.next();
+        merge.setNext(null);
+        setTrueSuccessor(null);
+        setFalseSuccessor(null);
+        ((FixedWithNextNode) predecessor()).setNext(next);
+        safeDelete();
+        trueSuccessor.safeDelete();
+        falseSuccessor.safeDelete();
+        merge.safeDelete();
+        trueEnd.safeDelete();
+        falseEnd.safeDelete();
+        tool.addToWorkList(next);
     }
 }

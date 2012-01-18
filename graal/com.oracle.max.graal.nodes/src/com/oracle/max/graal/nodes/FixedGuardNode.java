@@ -28,7 +28,7 @@ import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-public final class FixedGuardNode extends FixedWithNextNode implements Canonicalizable, Lowerable, LIRLowerable {
+public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable {
 
     @Input private final NodeInputList<BooleanNode> conditions;
 
@@ -53,7 +53,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Canonical
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         for (BooleanNode n : conditions.snapshot()) {
             if (n instanceof ConstantNode) {
                 ConstantNode c = (ConstantNode) n;
@@ -61,18 +61,17 @@ public final class FixedGuardNode extends FixedWithNextNode implements Canonical
                     conditions.remove(n);
                 } else {
                     FixedNode next = this.next();
+                    setNext(graph().add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
                     if (next != null) {
                         tool.deleteBranch(next);
                     }
-                    return graph().add(new DeoptimizeNode(DeoptAction.InvalidateRecompile));
+                    return;
                 }
             }
         }
-
         if (conditions.isEmpty()) {
-            return next();
+            ((StructuredGraph) graph()).removeFixed(this);
         }
-        return this;
     }
 
     @Override

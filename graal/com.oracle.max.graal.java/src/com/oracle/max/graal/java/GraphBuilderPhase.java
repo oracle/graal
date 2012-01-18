@@ -1330,8 +1330,8 @@ public final class GraphBuilderPhase extends Phase {
                 EndNode loopEntryEnd = begin.forwardEdge();
                 FixedNode beginSucc = begin.next();
                 FrameState stateAfter = begin.stateAfter();
-                stateAfter.delete();
                 begin.safeDelete();
+                stateAfter.safeDelete();
                 loopEntryEnd.replaceAndDelete(beginSucc);
             }
         }

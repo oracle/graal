@@ -28,7 +28,7 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-public class BeginNode extends AbstractStateSplit implements LIRLowerable, Canonicalizable {
+public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simplifiable {
     public BeginNode() {
         super(StampFactory.illegal());
     }
@@ -50,22 +50,23 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Canon
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         FixedNode prev = (FixedNode) this.predecessor();
         if (prev == null) {
             // This is the start node.
-            return this;
         } else if (prev instanceof ControlSplitNode) {
             // This begin node is necessary.
-            return this;
         } else {
             // This begin node can be removed and all guards moved up to the preceding begin node.
             Node prevBegin = prev;
             while (!(prevBegin instanceof BeginNode)) {
                 prevBegin = prevBegin.predecessor();
             }
-            this.replaceAtUsages(prevBegin);
-            return next();
+            for (Node usage : usages()) {
+                tool.addToWorkList(usage);
+            }
+            replaceAtUsages(prevBegin);
+            ((StructuredGraph) graph()).removeFixed(this);
         }
     }
 

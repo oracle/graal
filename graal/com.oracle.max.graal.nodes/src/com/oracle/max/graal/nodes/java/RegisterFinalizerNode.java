@@ -71,7 +71,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
         }
 
         if (!needsCheck) {
-            return next();
+            return null;
         }
 
         return this;

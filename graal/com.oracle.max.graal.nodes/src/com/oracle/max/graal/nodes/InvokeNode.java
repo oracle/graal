@@ -96,20 +96,21 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
 
     @Override
     public void intrinsify(Node node) {
-        this.callTarget.delete();
+        MethodCallTargetNode call = callTarget;
+        FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(stateAfter());
-        } else {
-            if (stateAfter().usages().size() == 1) {
-                stateAfter().delete();
-            }
+            stateSplit.setStateAfter(stateAfter);
         }
         if (node == null) {
             assert kind() == CiKind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeFixed(this);
         } else {
             ((StructuredGraph) graph()).replaceFixed(this, node);
+        }
+        call.safeDelete();
+        if (stateAfter.usages().isEmpty()) {
+            stateAfter.safeDelete();
         }
     }
 }

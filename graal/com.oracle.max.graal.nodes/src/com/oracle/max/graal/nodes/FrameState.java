@@ -476,7 +476,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         if (!phiNode.isDeleted()) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             phiNode.replaceAtUsages(null);
-            phiNode.delete();
+            phiNode.safeDelete();
             for (Node n : phiUsages) {
                 deleteInvalidPhi((PhiNode) n);
             }

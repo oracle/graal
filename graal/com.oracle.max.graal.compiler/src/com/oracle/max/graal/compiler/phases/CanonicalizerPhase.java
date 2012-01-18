@@ -26,7 +26,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
@@ -73,50 +72,45 @@ public class CanonicalizerPhase extends Phase {
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
 //                                         --------------------------------------------
-//                                     null|   1    |        X        |       1       |
+//                                     null|   1    |        X        |       3       |
 //                                         --------------------------------------------
 //                                 Floating|   2    |        X        |       4       |
 //       canonical node:                   --------------------------------------------
-//                        Fixed-unconnected|   X    |        X        |       3       |
+//                        Fixed-unconnected|   X    |        X        |       5       |
 //                                         --------------------------------------------
-//                          Fixed-connected|   2    |        X        |       4       |
+//                          Fixed-connected|   2    |        X        |       6       |
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
-                if (canonical == null) {
-                    // case 1
-                    node.replaceAtUsages(null);
-                    if (Util.isFixed(node)) {
-                        graph.removeFixed((FixedWithNextNode) node);
-                    } else {
-                        graph.removeFloating((FloatingNode) node);
-                    }
-                } else if (canonical != node) {
+                if (canonical != node) {
                     if (node instanceof FloatingNode) {
-                        // case 2
-                        assert Util.isFloating(canonical) || (Util.isFixed(canonical) && canonical.predecessor() != null) : canonical;
-                        graph.replaceFloating((FloatingNode) node, canonical);
-                    } else {
-                        assert Util.isFixed(node) && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
-                        if (Util.isFixed(canonical) && canonical.predecessor() == null) {
-                            // case 3
-                            graph.replaceFixedWithFixed((FixedWithNextNode) node, (FixedWithNextNode) canonical);
+                        if (canonical == null) {
+                            // case 1
+                            graph.removeFloating((FloatingNode) node);
                         } else {
+                            // case 2
+                            assert canonical instanceof FloatingNode || (canonical instanceof FixedNode && canonical.predecessor() != null) : node + " -> " + canonical +
+                                            " : replacement should be floating or fixed and connected";
+                            graph.replaceFloating((FloatingNode) node, canonical);
+                        }
+                    } else {
+                        assert node instanceof FixedWithNextNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
+                        if (canonical == null) {
+                            // case 3
+                            graph.removeFixed((FixedWithNextNode) node);
+                        } else if (canonical instanceof FloatingNode) {
                             // case 4
-                            node.replaceAtUsages(canonical);
-                            if (node instanceof FixedWithNextNode) {
+                            graph.replaceFixedWithFloating((FixedWithNextNode) node, (FloatingNode) canonical);
+                        } else {
+                            assert canonical instanceof FixedNode;
+                            if (canonical.predecessor() == null) {
+                                assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
+                                // case 5
+                                graph.replaceFixedWithFixed((FixedWithNextNode) node, (FixedWithNextNode) canonical);
+                            } else {
+                                assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
+                                // case 6
+                                node.replaceAtUsages(canonical);
                                 graph.removeFixed((FixedWithNextNode) node);
-                            } else if (node instanceof ControlSplitNode) {
-                                // FIX(ls) is this logic really used? the semantics might be hard to understand...
-                                ControlSplitNode split = (ControlSplitNode) node;
-                                int survivingSuccessor = -1;
-                                for (int i = 0; i < split.blockSuccessorCount(); i++) {
-                                    if (survivingSuccessor == -1 && split.blockSuccessor(i) != null) {
-                                        survivingSuccessor = i;
-                                    } else {
-                                        assert split.blockSuccessor(i) == null;
-                                    }
-                                }
-                                graph.removeSplit(split, survivingSuccessor);
                             }
                         }
                     }
@@ -128,6 +122,8 @@ public class CanonicalizerPhase extends Phase {
                         nodeWorkList.replaced(canonical, node, false);
                     }
                 }
+            } else if (node instanceof Simplifiable) {
+                ((Simplifiable) node).simplify(tool);
             }
         }
 
@@ -148,7 +144,7 @@ public class CanonicalizerPhase extends Phase {
         }
     }
 
-    private static final class Tool implements CanonicalizerTool {
+    private static final class Tool implements SimplifierTool {
 
         private final NodeWorkList nodeWorkList;
         private final RiRuntime runtime;
@@ -222,8 +218,10 @@ public class CanonicalizerPhase extends Phase {
                         FixedNode next = merge.next();
                         merge.setNext(null);
                         pred.replaceFirstSuccessor(replacedSux, next);
-                        if (merge.stateAfter().usages().size() == 1) {
-                            merge.stateAfter().delete();
+                        FrameState stateAfter = merge.stateAfter();
+                        merge.setStateAfter(null);
+                        if (stateAfter.usages().isEmpty()) {
+                            stateAfter.safeDelete();
                         }
                         merge.safeDelete();
                         replacedSux.safeDelete();
@@ -267,6 +265,11 @@ public class CanonicalizerPhase extends Phase {
         @Override
         public RiRuntime runtime() {
             return runtime;
+        }
+
+        @Override
+        public void addToWorkList(Node node) {
+            nodeWorkList.add(node);
         }
     }
 }

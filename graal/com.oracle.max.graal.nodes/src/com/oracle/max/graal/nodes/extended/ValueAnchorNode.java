@@ -54,17 +54,17 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (object == null) {
-            return next();
+            return null;
         }
         if (object instanceof ConstantNode) {
-            return next();
+            return null;
         }
         if (object instanceof IntegerDivNode || object instanceof IntegerRemNode) {
             if (((ArithmeticNode) object).y().isConstant()) {
                 CiConstant  constant = ((ArithmeticNode) object).y().asConstant();
                 assert constant.kind == object.kind() : constant.kind + " != " + object.kind();
                 if (constant.asLong() != 0) {
-                    return next();
+                    return null;
                 }
             }
         }
