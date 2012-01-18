@@ -92,11 +92,13 @@ public final class LIRVerifier {
 
     private LIRBlock curBlock;
     private Object curInstruction;
+    private BitSet curRegistersDefined;
 
     private void verify() {
         PhiValueProcedure useProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
         ValueProcedure defProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
+        curRegistersDefined = new BitSet();
         for (LIRBlock block : lir.linearScanOrder()) {
             curBlock = block;
             curVariablesLive = new BitSet();
@@ -121,6 +123,7 @@ public final class LIRVerifier {
                         curRegistersLive[register.number] = null;
                     }
                 }
+                curRegistersDefined.clear();
                 op.forEachAlive(useProc);
                 op.forEachState(useProc);
                 op.forEachTemp(defProc);
@@ -189,10 +192,19 @@ public final class LIRVerifier {
 
         } else if (beforeRegisterAllocation && isAllocatableRegister(value)) {
             int regNum = asRegister(value).number;
-            if (mode == OperandMode.Output) {
-                curRegistersLive[regNum] = value;
-            } else {
-                curRegistersLive[regNum] = null;
+            if (curRegistersDefined.get(regNum)) {
+                TTY.println("block %s  instruction %s", curBlock, curInstruction);
+                TTY.println("ERROR: Same register defined twice in the same instruction: %s", value);
+                throw Util.shouldNotReachHere();
+            }
+            curRegistersDefined.set(regNum);
+
+            if (beforeRegisterAllocation) {
+                if (mode == OperandMode.Output) {
+                    curRegistersLive[regNum] = value;
+                } else {
+                    curRegistersLive[regNum] = null;
+                }
             }
         }
         return value;
