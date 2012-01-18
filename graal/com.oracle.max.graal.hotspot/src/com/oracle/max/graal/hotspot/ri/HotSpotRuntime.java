@@ -27,9 +27,13 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Call;
+import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
+import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
+import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.*;
+import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
@@ -85,37 +89,52 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public String disassemble(final CiTargetMethod targetMethod) {
-
-        final DisassemblyPrinter disassemblyPrinter = new DisassemblyPrinter(false) {
-
-            private String siteInfo(int pcOffset) {
-                for (Safepoint site : targetMethod.safepoints) {
-                    if (site.pcOffset == pcOffset) {
-                        return "{safepoint}";
-                    }
+    public String disassemble(CiTargetMethod tm) {
+        byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
+        CiTarget target = compiler.getTarget();
+        HexCodeFile hcf = new HexCodeFile(code, 0L, target.arch.name, target.wordSize * 8);
+        HexCodeFile.addAnnotations(hcf, tm.annotations());
+        addExceptionHandlersComment(tm, hcf);
+        CiRegister fp = regConfig.getFrameRegister();
+        RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
+        for (Safepoint safepoint : tm.safepoints) {
+            if (safepoint instanceof Call) {
+                Call call = (Call) safepoint;
+                if (call.debugInfo != null) {
+                    hcf.addComment(call.pcOffset + call.size, CiUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
                 }
-                for (DataPatch site : targetMethod.dataReferences) {
-                    if (site.pcOffset == pcOffset) {
-                        return "{" + site.constant + "}";
-                    }
+                addOperandComment(hcf, call.pcOffset, "{" + call.target + "}");
+            } else {
+                if (safepoint.debugInfo != null) {
+                    hcf.addComment(safepoint.pcOffset, CiUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
                 }
-                return null;
+                addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
             }
+        }
+        for (DataPatch site : tm.dataReferences) {
+            hcf.addOperandComment(site.pcOffset, "{" + site.constant + "}");
+        }
+        return hcf.toEmbeddedString();
+    }
 
-            @Override
-            protected String disassembledObjectString(Disassembler disassembler, DisassembledObject disassembledObject) {
-                final String string = super.disassembledObjectString(disassembler, disassembledObject);
-
-                String site = siteInfo(disassembledObject.startPosition());
-                if (site != null) {
-                    return string + " " + site;
-                }
-                return string;
+    private static void addExceptionHandlersComment(CiTargetMethod tm, HexCodeFile hcf) {
+        if (!tm.exceptionHandlers.isEmpty()) {
+            String nl = HexCodeFile.NEW_LINE;
+            StringBuilder buf = new StringBuilder("------ Exception Handlers ------").append(nl);
+            for (CiTargetMethod.ExceptionHandler e : tm.exceptionHandlers) {
+                buf.append("    ").
+                    append(e.pcOffset).append(" -> ").
+                    append(e.handlerPos).
+                    append("  ").append(e.exceptionType == null ? "<any>" : e.exceptionType).
+                    append(nl);
             }
-        };
-        final byte[] code = Arrays.copyOf(targetMethod.targetCode(), targetMethod.targetCodeSize());
-        return disassemble(code, disassemblyPrinter, 0L);
+            hcf.addComment(0, buf.toString());
+        }
+    }
+
+    private static void addOperandComment(HexCodeFile hcf, int pos, String comment) {
+        String oldValue = hcf.addOperandComment(pos, comment);
+        assert oldValue == null : "multiple comments for operand of instruction at " + pos + ": " + comment + ", " + oldValue;
     }
 
     @Override
