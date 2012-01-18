@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.debug.internal;
 
-import com.oracle.max.graal.debug.Debug;
+import com.oracle.max.graal.debug.*;
 
-public final class TimerImpl extends DebugValue implements Debug.Timer {
+public final class TimerImpl extends DebugValue implements DebugTimer {
 
     private long startTime = -1;
 

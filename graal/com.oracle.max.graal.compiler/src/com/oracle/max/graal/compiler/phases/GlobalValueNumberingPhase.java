@@ -30,7 +30,7 @@ import com.oracle.max.graal.nodes.*;
 
 public class GlobalValueNumberingPhase extends Phase {
 
-    public static final Debug.Metric metricGlobalValueNumberingHits = Debug.metric("GlobalValueNumberingHits");
+    public static final DebugMetric metricGlobalValueNumberingHits = Debug.metric("GlobalValueNumberingHits");
 
     @Override
     protected void run(StructuredGraph graph) {

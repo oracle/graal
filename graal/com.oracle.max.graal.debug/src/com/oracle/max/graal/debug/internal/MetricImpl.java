@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.debug.internal;
 
-import com.oracle.max.graal.debug.Debug.Metric;
+import com.oracle.max.graal.debug.*;
 
-public final class MetricImpl extends DebugValue implements Metric {
+public final class MetricImpl extends DebugValue implements DebugMetric {
 
     public MetricImpl(String name) {
         super(name);

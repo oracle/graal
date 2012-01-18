@@ -87,7 +87,7 @@ public class Debug {
         }
     }
 
-    public static Metric metric(String name) {
+    public static DebugMetric metric(String name) {
         if (METER) {
             return new MetricImpl(name);
         } else {
@@ -95,19 +95,14 @@ public class Debug {
         }
     }
 
-    public interface Metric {
-        void increment();
-        void add(int value);
-    }
-
-    private static final Metric VOID_METRIC = new Metric() {
+    private static final DebugMetric VOID_METRIC = new DebugMetric() {
         @Override
         public void increment() { }
         @Override
         public void add(int value) { }
     };
 
-    public static Timer timer(String name) {
+    public static DebugTimer timer(String name) {
         if (TIME) {
             return new TimerImpl(name);
         } else {
@@ -115,12 +110,7 @@ public class Debug {
         }
     }
 
-    public interface Timer {
-        void start();
-        void stop();
-    }
-
-    private static final Timer VOID_TIMER = new Timer() {
+    private static final DebugTimer VOID_TIMER = new DebugTimer() {
         @Override
         public void start() { }
         @Override

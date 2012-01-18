@@ -119,13 +119,10 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    private final StructuredGraph graph;
-
 
     public LinearScan(CiTarget target, RiResolvedMethod method, StructuredGraph graph, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
         this.method = method;
-        this.graph = graph;
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
@@ -1785,11 +1782,11 @@ public final class LinearScan {
         }
     }
 
-    private static final Debug.Timer timerLifetimeAnalysis = Debug.timer("LifetimeAnalysis");
-    private static final Debug.Timer timerLinearScan = Debug.timer("LinearScan");
-    private static final Debug.Timer timerLinearScanResolution = Debug.timer("LinearScanResolution");
-    private static final Debug.Timer timerDebugInfo = Debug.timer("DebugInfo");
-    private static final Debug.Timer timerControlFlowOptimizations = Debug.timer("ControlFlowOptimizations");
+    private static final DebugTimer timerLifetimeAnalysis = Debug.timer("LifetimeAnalysis");
+    private static final DebugTimer timerLinearScan = Debug.timer("LinearScan");
+    private static final DebugTimer timerLinearScanResolution = Debug.timer("LinearScanResolution");
+    private static final DebugTimer timerDebugInfo = Debug.timer("DebugInfo");
+    private static final DebugTimer timerControlFlowOptimizations = Debug.timer("ControlFlowOptimizations");
 
     public void allocate() {
 
