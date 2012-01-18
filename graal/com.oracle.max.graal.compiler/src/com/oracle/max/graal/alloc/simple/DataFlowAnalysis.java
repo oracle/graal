@@ -112,6 +112,10 @@ public class DataFlowAnalysis {
         }
     }
 
+    public int definition(Variable value) {
+        return definitions[value.index];
+    }
+
     /**
      * Numbers all instructions in all blocks. The numbering follows the {@linkplain ComputeLinearScanOrder linear scan order}.
      */

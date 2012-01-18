@@ -76,8 +76,8 @@ public class SpillAllAllocator {
     }
 
     private class ResolveDataFlowImpl extends ResolveDataFlow {
-        public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver) {
-            super(lir, moveResolver);
+        public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver, DataFlowAnalysis dataFlow) {
+            super(lir, moveResolver, dataFlow);
         }
 
         @Override
@@ -139,7 +139,7 @@ public class SpillAllAllocator {
 
         context.observable.fireCompilationEvent("After spill all allocation", lir);
 
-        ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver);
+        ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
         resolveDataFlow.execute();
 
         context.observable.fireCompilationEvent("After resolve data flow", lir);
@@ -149,7 +149,7 @@ public class SpillAllAllocator {
         assignRegisters.execute();
 
         context.observable.fireCompilationEvent("After register asignment", lir);
-        assert LIRVerifier.verify(true, lir, frameMap);
+        assert LIRVerifier.verify(false, lir, frameMap);
     }
 
     private void allocate() {

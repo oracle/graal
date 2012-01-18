@@ -147,7 +147,7 @@ public abstract class MoveResolver {
         int exchangeCandidate = -1;
         int exchangeOther = -1;
 
-        for (int i = mappingFrom.size(); i >= 0; i--) {
+        for (int i = mappingFrom.size() - 1; i >= 0; i--) {
             CiValue from = mappingFrom.get(i);
             Location to = mappingTo.get(i);
             assert !safeToProcessMove(from, to) : "would not be in this code otherwise";
@@ -326,7 +326,6 @@ public abstract class MoveResolver {
             Location to = mappingTo.get(i);
 
             assert from.kind.stackKind() == to.kind;
-            assert !isLocation(from) || asLocation(from).location != to.location;
 
             for (int j = i + 1; j < mappingTo.size(); j++) {
                 Location otherTo = mappingTo.get(j);
