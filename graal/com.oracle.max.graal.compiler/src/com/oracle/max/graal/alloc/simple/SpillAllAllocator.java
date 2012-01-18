@@ -52,7 +52,7 @@ public class SpillAllAllocator {
         this.lir = lir;
         this.frameMap = frameMap;
 
-        this.dataFlow = new DataFlowAnalysis(context, lir, frameMap.registerConfig);
+        this.dataFlow = new DataFlowAnalysis(lir, frameMap.registerConfig);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
         this.moveResolver = new MoveResolverImpl(frameMap);
     }
@@ -134,15 +134,17 @@ public class SpillAllAllocator {
         assert LIRVerifier.verify(true, lir, frameMap);
 
         dataFlow.execute();
-        allocate();
-        frameMap.finish();
+        IntervalPrinter.printBeforeAllocation("Before register allocation", context, lir, frameMap.registerConfig, dataFlow);
 
-        context.observable.fireCompilationEvent("After spill all allocation", lir);
+        allocate();
+
+        IntervalPrinter.printAfterAllocation("After spill all allocation", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
 
         ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
         resolveDataFlow.execute();
+        frameMap.finish();
 
-        context.observable.fireCompilationEvent("After resolve data flow", lir);
+        IntervalPrinter.printAfterAllocation("After resolve data flow", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
         assert RegisterVerifier.verify(lir, frameMap);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);

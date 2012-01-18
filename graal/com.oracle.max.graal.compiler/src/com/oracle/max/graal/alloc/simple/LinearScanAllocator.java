@@ -52,7 +52,7 @@ public class LinearScanAllocator {
         this.lir = lir;
         this.frameMap = frameMap;
 
-        this.dataFlow = new DataFlowAnalysis(context, lir, frameMap.registerConfig);
+        this.dataFlow = new DataFlowAnalysis(lir, frameMap.registerConfig);
         this.blockBeginLocations = new LocationMap[lir.linearScanOrder().size()];
         this.blockEndLocations = new LocationMap[lir.linearScanOrder().size()];
         this.moveResolver = new MoveResolverImpl(frameMap);
@@ -159,16 +159,17 @@ public class LinearScanAllocator {
         assert LIRVerifier.verify(true, lir, frameMap);
 
         dataFlow.execute();
+        IntervalPrinter.printBeforeAllocation("Before register allocation", context, lir, frameMap.registerConfig, dataFlow);
+
         allocate();
 
-        context.observable.fireCompilationEvent("After linear scan allocation", lir);
+        IntervalPrinter.printAfterAllocation("After linear scan allocation", context, lir, frameMap.registerConfig, dataFlow, blockEndLocations);
 
         ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
         resolveDataFlow.execute();
-
         frameMap.finish();
 
-        context.observable.fireCompilationEvent("After resolve data flow", lir);
+        IntervalPrinter.printAfterAllocation("After resolve data flow", context, lir, frameMap.registerConfig, dataFlow, blockEndLocations);
         assert RegisterVerifier.verify(lir, frameMap);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);

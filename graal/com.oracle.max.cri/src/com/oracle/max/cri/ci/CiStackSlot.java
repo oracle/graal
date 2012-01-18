@@ -124,7 +124,7 @@ public final class CiStackSlot extends CiValue {
         } else if (offset >= 0) {
             return "in:" + offset + kindSuffix();
         } else {
-            return "spill:" + (-offset) + kindSuffix();
+            return "stack:" + (-offset) + kindSuffix();
         }
     }
 
