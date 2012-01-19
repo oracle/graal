@@ -328,6 +328,12 @@ public class InliningUtil {
             }
             return false;
         }
+        if (!resolvedMethod.canBeInlined()) {
+            if (GraalOptions.TraceInlining) {
+                TTY.println("not inlining %s because it is marked non-inlinable", methodName(resolvedMethod));
+            }
+            return false;
+        }
         return true;
     }
 

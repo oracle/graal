@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.max.graal.compiler.gen.*;
@@ -347,6 +348,9 @@ class CFGPrinter extends CompilationPrinter {
         if (block.phis != null) {
             CiValue[] results = block.phis.results();
             for (int i = 0; i < results.length; i++) {
+                if (i == 0) {
+                    out.printf("nr %4d ", block.firstLirInstructionId()).print(COLUMN_END);
+                }
                 out.print("instruction PHI ").print(results[i].toString()).print(" = (");
                 String sep = "";
                 for (LIRBlock pred : block.getLIRPredecessors()) {
@@ -460,4 +464,33 @@ class CFGPrinter extends CompilationPrinter {
         out.printf(" \"%s\"", interval.spillState());
         out.println();
     }
+
+    public void printIntervals(String label, IntervalPrinter.Interval[] intervals) {
+        begin("intervals");
+        out.println(String.format("name \"%s\"", label));
+
+        for (IntervalPrinter.Interval interval : intervals) {
+            printInterval(interval);
+        }
+
+        end("intervals");
+    }
+
+    private void printInterval(IntervalPrinter.Interval interval) {
+        out.printf("%s %s \"%s\" %s %s ", interval.name, interval.type, interval.description, interval.variable, "no");
+        if (interval.ranges.size() == 0) {
+            // One range is required in the spec, so output a dummy range.
+            out.printf("[0, 0[ ");
+        } else {
+            for (IntervalPrinter.Range range : interval.ranges) {
+                out.printf("[%d, %d[ ", range.from, range.to);
+            }
+        }
+        for (IntervalPrinter.UsePosition usePos : interval.uses) {
+            out.printf("%d %s ", usePos.pos, usePos.kind);
+        }
+        out.printf("\"%s\"", "no");
+        out.println();
+    }
 }
+

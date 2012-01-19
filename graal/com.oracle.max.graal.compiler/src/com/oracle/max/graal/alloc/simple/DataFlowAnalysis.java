@@ -37,19 +37,16 @@ import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
 
 public class DataFlowAnalysis {
-    private final GraalContext context;
     private final LIR lir;
     private final RiRegisterConfig registerConfig;
 
-    public DataFlowAnalysis(GraalContext context, LIR lir, RiRegisterConfig registerConfig) {
-        this.context = context;
+    public DataFlowAnalysis(LIR lir, RiRegisterConfig registerConfig) {
         this.lir = lir;
         this.registerConfig = registerConfig;
     }
 
     public void execute() {
         numberInstructions();
-        context.observable.fireCompilationEvent("After instruction numbering", lir);
         backwardDataFlow();
     }
 
@@ -110,6 +107,10 @@ public class DataFlowAnalysis {
                 }
             }
         }
+    }
+
+    public int definition(Variable value) {
+        return definitions[value.index];
     }
 
     /**
