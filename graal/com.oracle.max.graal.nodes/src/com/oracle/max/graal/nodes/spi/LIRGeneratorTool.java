@@ -52,12 +52,13 @@ public abstract class LIRGeneratorTool {
     public abstract CiValue newVariable(CiKind kind);
     public abstract CiValue setResult(ValueNode x, CiValue operand);
 
+    public abstract CiAddress makeAddress(LocationNode location, ValueNode object);
+
     public abstract CiValue emitMove(CiValue input);
     public abstract void emitMove(CiValue src, CiValue dst);
-    public abstract CiValue emitLoad(CiAddress loadAddress, CiKind kind, boolean canTrap);
-    public abstract void emitStore(CiAddress storeAddress, CiValue input, CiKind kind, boolean canTrap);
-    public abstract CiValue emitLea(CiAddress address);
-    public abstract CiValue emitLea(CiStackSlot address);
+    public abstract CiValue emitLoad(CiValue loadAddress, boolean canTrap);
+    public abstract void emitStore(CiValue storeAddress, CiValue input, boolean canTrap);
+    public abstract CiValue emitLea(CiValue address);
 
     public abstract CiValue emitNegate(CiValue input);
     public abstract CiValue emitAdd(CiValue a, CiValue b);

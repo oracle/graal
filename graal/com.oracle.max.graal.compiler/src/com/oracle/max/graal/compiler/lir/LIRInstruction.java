@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
+import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
@@ -113,6 +114,11 @@ public abstract class LIRInstruction {
         Stack,
 
         /**
+         * The value can be a {@link CiAddress}.
+         */
+        Address,
+
+        /**
          * The value can be a {@link CiConstant}.
          */
         Constant,
@@ -127,6 +133,25 @@ public abstract class LIRInstruction {
          * Use {@link LIRInstruction#forEachRegisterHint} to access the register hints.
          */
         RegisterHint,
+
+        /**
+         * The value can be uninitialized, e.g., a stack slot that has not written to before. This is only
+         * used to avoid false positives in verification code.
+         */
+        Uninitialized,
+    }
+
+    /**
+     * For validity checking of the operand flags defined by instruction subclasses.
+     */
+    private static final EnumMap<OperandMode, EnumSet<OperandFlag>> ALLOWED_FLAGS;
+
+    static {
+        ALLOWED_FLAGS = new EnumMap<>(OperandMode.class);
+        ALLOWED_FLAGS.put(OperandMode.Input,  EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Address, OperandFlag.Constant, OperandFlag.Illegal, OperandFlag.RegisterHint, OperandFlag.Uninitialized));
+        ALLOWED_FLAGS.put(OperandMode.Alive,  EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Address, OperandFlag.Constant, OperandFlag.Illegal, OperandFlag.RegisterHint, OperandFlag.Uninitialized));
+        ALLOWED_FLAGS.put(OperandMode.Temp,   EnumSet.of(OperandFlag.Register, OperandFlag.Constant, OperandFlag.Illegal, OperandFlag.RegisterHint));
+        ALLOWED_FLAGS.put(OperandMode.Output, EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Illegal, OperandFlag.RegisterHint));
     }
 
     /**
@@ -244,9 +269,21 @@ public abstract class LIRInstruction {
         return inputs.length > 0 || alives.length > 0 || temps.length > 0 || outputs.length > 0 || info != null || hasCall();
     }
 
+    private static final EnumSet<OperandFlag> ADDRESS_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
+
     private void forEach(CiValue[] values, OperandMode mode, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
-            values[i] = proc.doValue(values[i], mode, flagsFor(mode, i));
+            assert ALLOWED_FLAGS.get(mode).containsAll(flagsFor(mode, i));
+
+            CiValue value = values[i];
+            if (isAddress(value)) {
+                assert flagsFor(mode, i).contains(OperandFlag.Address);
+                CiAddress address = asAddress(value);
+                address.base = proc.doValue(address.base, mode, ADDRESS_FLAGS);
+                address.index = proc.doValue(address.index, mode, ADDRESS_FLAGS);
+            } else {
+                values[i] = proc.doValue(values[i], mode, flagsFor(mode, i));
+            }
         }
     }
 
@@ -387,40 +424,15 @@ public abstract class LIRInstruction {
         return buf.toString();
     }
 
-    protected static String refMapToString(CiDebugInfo debugInfo) {
-        StringBuilder buf = new StringBuilder();
-        if (debugInfo.hasStackRefMap()) {
-            CiBitMap bm = debugInfo.frameRefMap;
-            for (int slot = bm.nextSetBit(0); slot >= 0; slot = bm.nextSetBit(slot + 1)) {
-                if (buf.length() != 0) {
-                    buf.append(", ");
-                }
-                buf.append("s").append(slot);
-            }
-        }
-        if (debugInfo.hasRegisterRefMap()) {
-            CiBitMap bm = debugInfo.registerRefMap;
-            for (int reg = bm.nextSetBit(0); reg >= 0; reg = bm.nextSetBit(reg + 1)) {
-                if (buf.length() != 0) {
-                    buf.append(", ");
-                }
-                buf.append("r").append(reg);
-            }
-        }
-        return buf.toString();
-    }
-
     protected void appendDebugInfo(StringBuilder buf) {
         if (info != null) {
-            buf.append(" [bci:").append(info.topFrame.bci);
-            if (info.hasDebugInfo()) {
-                CiDebugInfo debugInfo = info.debugInfo();
-                String refmap = refMapToString(debugInfo);
-                if (refmap.length() != 0) {
-                    buf.append(", refmap(").append(refmap.trim()).append(')');
-                }
+            buf.append(" [bci:");
+            String sep = "";
+            for (CiFrame cur = info.topFrame; cur != null; cur = cur.caller()) {
+                buf.append(sep).append(cur.bci);
+                sep = ",";
             }
-            buf.append(']');
+            buf.append("]");
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
 import com.oracle.max.graal.compiler.util.*;
 
 public final class RegisterVerifier {
@@ -85,7 +85,7 @@ public final class RegisterVerifier {
     private Map<Object, CiValue> curInputState;
 
     private void verify(LIRBlock startBlock) {
-        ValueProcedure useProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value); } };
+        ValueProcedure useProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, flags); } };
         ValueProcedure tempProc =   new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return temp(value); } };
         ValueProcedure outputProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return output(value); } };
 
@@ -188,10 +188,12 @@ public final class RegisterVerifier {
         return isRegister(value) && !frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
-    private CiValue use(CiValue value) {
+    private CiValue use(CiValue value, EnumSet<OperandFlag> flags) {
         if (!isConstant(value) && value != CiValue.IllegalValue && !isIgnoredRegister(value)) {
             CiValue actual = curInputState.get(key(value));
-            if (value != actual) {
+            if (actual == null && flags.contains(OperandFlag.Uninitialized)) {
+                // OK, since uninitialized values are allowed explicitly.
+            } else if (value != actual) {
                 TTY.println("!! Error in register allocation: %s != %s for key %s", value, actual, key(value));
                 traceState();
                 throw Util.shouldNotReachHere();

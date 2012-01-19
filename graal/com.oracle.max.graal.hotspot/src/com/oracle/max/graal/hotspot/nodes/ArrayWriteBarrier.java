@@ -46,8 +46,8 @@ public final class ArrayWriteBarrier extends WriteBarrier implements LIRLowerabl
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        CiValue obj = generator.emitLea(location().createAddress(generator, object()));
-        generateBarrier(obj, generator);
+    public void generate(LIRGeneratorTool gen) {
+        CiValue obj = gen.emitLea(gen.makeAddress(location(), object()));
+        generateBarrier(obj, gen);
     }
 }

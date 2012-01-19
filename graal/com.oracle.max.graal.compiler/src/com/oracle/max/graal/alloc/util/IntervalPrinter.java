@@ -135,6 +135,9 @@ public final class IntervalPrinter {
         PhiValueProcedure useProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
         ValueProcedure    defProc = new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
 
+        intervals.put("call", new Interval(-2, "call", "", "call", "hasCall"));
+        intervals.put("st", new Interval(-1, "st", "", "st", "hasState"));
+
         for (int i = lir.linearScanOrder().size() - 1; i >= 0; i--) {
             LIRBlock block = lir.linearScanOrder().get(i);
 
@@ -172,6 +175,13 @@ public final class IntervalPrinter {
                 curUseKind = "L";
                 op.forEachState(useProc);
                 curUseKind = null;
+
+                if (op.hasCall()) {
+                    intervals.get("call").ranges.add(new Range(curOpId, curOpId + 1));
+                }
+                if (op.info != null) {
+                    intervals.get("st").ranges.add(new Range(curOpId, curOpId + 1));
+                }
             }
 
             if (block.phis != null) {
