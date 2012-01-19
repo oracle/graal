@@ -95,7 +95,7 @@ public class DerivedInductionVariableNode extends LinearInductionVariableNode  i
             counter = (LoopCounterNode) b;
         }
         BasicInductionVariableNode newBIV = graph().add(new BasicInductionVariableNode(kind(), init, stride, counter));
-        this.replaceAndDelete(newBIV);
+        ((StructuredGraph) graph()).replaceFloating(this, newBIV);
         return newBIV;
     }
 

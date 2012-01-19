@@ -78,7 +78,7 @@ public class BasicInductionVariableNode extends LinearInductionVariableNode impl
      */
     public DerivedInductionVariableNode toDerivedInductionVariable() {
         DerivedInductionVariableNode newDIV = graph().add(new DerivedInductionVariableNode(kind(), init(), stride(), loopCounter()));
-        this.replaceAndDelete(newDIV);
+        ((StructuredGraph) graph()).replaceFloating(this, newDIV);
         return newDIV;
     }
 
