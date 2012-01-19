@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.hotspot.ri;
 
-import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -45,8 +44,6 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.snippets.nodes.*;
-import com.sun.max.asm.dis.*;
-import com.sun.max.lang.*;
 
 /**
  * CRI runtime implementation for the HotSpot VM.
@@ -78,14 +75,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public String disassemble(byte[] code, long address) {
-        return disassemble(code, new DisassemblyPrinter(false), address);
-    }
-
-    private static String disassemble(byte[] code, DisassemblyPrinter disassemblyPrinter, long address) {
-        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        final ISA instructionSet = ISA.AMD64;
-        Disassembler.disassemble(byteArrayOutputStream, code, instructionSet, WordWidth.BITS_64, address, null, disassemblyPrinter);
-        return byteArrayOutputStream.toString();
+        return compiler.getVMEntries().disassembleNative(code, address);
     }
 
     @Override
@@ -139,7 +129,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public String disassemble(RiResolvedMethod method) {
-        return "No disassembler available";
+        return compiler.getVMEntries().disassembleJava((HotSpotMethodResolved) method);
     }
 
     @Override

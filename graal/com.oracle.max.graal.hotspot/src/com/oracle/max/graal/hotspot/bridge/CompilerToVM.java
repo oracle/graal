@@ -107,5 +107,9 @@ public interface CompilerToVM {
 
     long getMaxCallTargetOffset(CiRuntimeCall rtcall);
 
+    String disassembleNative(byte[] code, long address);
+
+    String disassembleJava(HotSpotMethodResolved method);
+
     // Checkstyle: resume
 }
