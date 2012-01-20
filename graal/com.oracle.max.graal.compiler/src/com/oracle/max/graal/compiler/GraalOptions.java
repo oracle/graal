@@ -82,9 +82,15 @@ public final class GraalOptions {
     public static boolean PrintLIR                           = ____;
     public static boolean PrintCFGToFile                     = ____;
 
+    // Debug settings:
+    public static boolean Debug                              = true;
+    public static String Dump                                = null;
+    public static String Meter                               = null;
+    public static String Time                                = null;
+    public static String Log                                 = null;
+    public static String MethodFilter                        = null;
+
     // Ideal graph visualizer output settings
-    public static boolean Plot                               = ____;
-    public static boolean PlotVerbose                        = ____;
     public static boolean PlotOnError                        = ____;
     public static int     PlotLevel                          = 3;
     public static boolean PlotSnippets                       = ____;
@@ -95,8 +101,6 @@ public final class GraalOptions {
     public static int     PrintIdealGraphPort                = 4444;
 
     // Other printing settings
-    public static boolean Meter                              = ____;
-    public static boolean Time                               = ____;
     public static boolean PrintQueue                         = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintXirTemplates                  = ____;

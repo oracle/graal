@@ -30,14 +30,12 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.hotspot.bridge.*;
 import com.oracle.max.graal.hotspot.logging.*;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
-import com.oracle.max.graal.printer.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.
@@ -218,16 +216,16 @@ public final class CompilerImpl implements Compiler, Remote {
             if (GraalOptions.PrintCFGToFile) {
 //                context.addCompilationObserver(new CFGPrinterObserver());
             }
-            if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot || GraalOptions.PlotOnError) {
-                CompilationObserver observer;
-                if (GraalOptions.PrintIdealGraphFile) {
-                    observer = new IdealGraphPrinterObserver();
-                } else {
-                    observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
-                }
+           // if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot || GraalOptions.PlotOnError) {
+             //   CompilationObserver observer;
+               // if (GraalOptions.PrintIdealGraphFile) {
+              //      observer = new IdealGraphPrinterObserver();
+              //  } else {
+              //      observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
+              //  }
 //                context.addCompilationObserver(observer);
                 // TODO(tw): Install observer.
-            }
+           // }
             runtime = new HotSpotRuntime(config, this);
         }
         return runtime;

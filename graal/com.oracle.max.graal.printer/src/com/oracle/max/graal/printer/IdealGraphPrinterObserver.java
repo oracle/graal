@@ -28,7 +28,6 @@ import java.util.regex.*;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.observer.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
@@ -91,18 +90,16 @@ public class IdealGraphPrinterObserver implements CompilationObserver {
 
     private void openPrinter(RiResolvedMethod method, boolean error) {
         assert (context().stream == null && printer() == null);
-        if ((!TTY.isSuppressed() && GraalOptions.Plot) || (GraalOptions.PlotOnError && error)) {
-            String name;
-            if (method != null) {
-                name = method.holder().name();
-                name = name.substring(1, name.length() - 1).replace('/', '.');
-                name = name + "." + method.name();
-            } else {
-                name = "null";
-            }
-
-            openPrinter(name, method);
+        String name;
+        if (method != null) {
+            name = method.holder().name();
+            name = name.substring(1, name.length() - 1).replace('/', '.');
+            name = name + "." + method.name();
+        } else {
+            name = "null";
         }
+
+        openPrinter(name, method);
     }
 
     private void openPrinter(String title, RiResolvedMethod method) {

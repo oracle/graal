@@ -39,7 +39,10 @@ public class DebugValueMap {
     }
 
     private void ensureSize(int index) {
-        if (values == null || values.length <= index) {
+        if (values == null) {
+            values = new long[index + 1];
+        }
+        if (values.length <= index) {
             values = Arrays.copyOf(values, index + 1);
         }
     }

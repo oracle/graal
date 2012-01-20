@@ -22,84 +22,156 @@
  */
 package com.oracle.max.graal.debug.internal;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.*;
+
+import com.oracle.max.graal.debug.*;
 
 
 public final class DebugScope {
 
     private static ThreadLocal<DebugScope> instance = new ThreadLocal<>();
-    private final List<DebugScope> children = new ArrayList<>(4);
+    private static ThreadLocal<DebugConfig> config = new ThreadLocal<>();
+
     private final String name;
     private final DebugScope parent;
-    private final Object[] context;
-    private final DebugValueMap valueMap = new DebugValueMap();
 
-    public static final DebugScope DEFAULT_CONTEXT = new DebugScope("DEFAULT", null);
+    private Object[] context;
+
+    private List<DebugScope> children;
+    private DebugValueMap valueMap;
+    private String qualifiedName;
+
+    public static final DebugScope DEFAULT_CONTEXT = new DebugScope("DEFAULT", "DEFAULT", null);
+    private static final char SCOPE_SEP = '.';
+
+    private boolean logEnabled;
+    private boolean meterEnabled;
+    private boolean timerEnabled;
+    private boolean dumpEnabled;
 
     public static DebugScope getInstance() {
         DebugScope result = instance.get();
         if (result == null) {
-            return DEFAULT_CONTEXT;
+            instance.set(new DebugScope("DEFAULT", "DEFAULT", null));
+            return instance.get();
         } else {
             return result;
         }
     }
 
-    private DebugScope(String name, DebugScope parent, Object... context) {
+    public static DebugConfig getConfig() {
+        return config.get();
+    }
+
+    private DebugScope(String name, String qualifiedName, DebugScope parent, Object... context) {
         this.name = name;
         this.parent = parent;
         this.context = context;
+        this.qualifiedName = qualifiedName;
+    }
+
+    public boolean isDumpEnabled() {
+        return dumpEnabled;
+    }
+
+    public boolean isLogEnabled() {
+        return logEnabled;
+    }
+
+    public boolean isMeterEnabled() {
+        return meterEnabled;
+    }
+
+    public boolean isTimerEnabled() {
+        return timerEnabled;
     }
 
     public void log(String msg, Object... args) {
+        if (isLogEnabled()) {
+            cachedOut.println(String.format(msg, args));
+        }
+    }
+
+    public void dump(Object object, String msg, Object[] args) {
     }
 
     public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, Object[] newContext) {
         DebugScope oldContext = getInstance();
+        DebugConfig oldConfig = getConfig();
         DebugScope newChild = null;
         if (sandbox) {
-            newChild = new DebugScope(name, null, newContext);
+            newChild = new DebugScope(newName, newName, null, newContext);
+            setConfig(null);
         } else {
-            oldContext.createChild(newName, newContext);
+            newChild = oldContext.createChild(newName, newContext);
         }
         instance.set(newChild);
         T result = null;
+        updateFlags();
+        log("Starting scope %s", newChild.getQualifiedName());
         try {
             if (runnable != null) {
                 runnable.run();
             }
             if (callable != null) {
-                call(callable);
+                result = call(callable);
             }
         } catch (RuntimeException e) {
             throw interceptException(e);
         } finally {
+            newChild.deactivate();
             instance.set(oldContext);
+            setConfig(oldConfig);
         }
         return result;
     }
 
-    public DebugValueMap getValueMap() {
-        return valueMap;
+    private void updateFlags() {
+        DebugConfig config = getConfig();
+        if (config == null) {
+            logEnabled = false;
+            meterEnabled = false;
+            timerEnabled = false;
+            dumpEnabled = false;
+        } else {
+            logEnabled = config.isLogEnabled();
+            meterEnabled = config.isMeterEnabled();
+            timerEnabled = config.isTimerEnabled();
+            dumpEnabled = config.isDumpEnabled();
+        }
+    }
+
+    private void deactivate() {
+        context = null;
     }
 
     private RuntimeException interceptException(RuntimeException e) {
         return e;
     }
 
+    private DebugValueMap getValueMap() {
+        if (valueMap == null) {
+            valueMap = new DebugValueMap();
+        }
+        return valueMap;
+    }
+
     long getCurrentValue(int index) {
-        return valueMap.getCurrentValue(index);
+        return getValueMap().getCurrentValue(index);
     }
 
     void setCurrentValue(int index, long l) {
-        valueMap.setCurrentValue(index, l);
+        getValueMap().setCurrentValue(index, l);
     }
 
     private DebugScope createChild(String newName, Object[] newContext) {
-        DebugScope result = new DebugScope(newName, this, newContext);
+        String newQualifiedName = this.qualifiedName + SCOPE_SEP + newName;
+        DebugScope result = new DebugScope(newName, newQualifiedName, this, newContext);
+        if (children == null) {
+            children = new ArrayList<>(4);
+        }
         children.add(result);
         return result;
     }
@@ -155,6 +227,21 @@ public final class DebugScope {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public void setConfig(DebugConfig newConfig) {
+        config.set(newConfig);
+        updateFlags();
+    }
+
+    public String getQualifiedName() {
+        return qualifiedName;
+    }
+
+    public static PrintStream cachedOut;
+
+    public static void initialize() {
+        cachedOut = System.out;
     }
 }
 

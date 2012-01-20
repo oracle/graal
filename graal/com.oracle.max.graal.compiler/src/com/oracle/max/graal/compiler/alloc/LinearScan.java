@@ -120,7 +120,7 @@ public final class LinearScan {
     private final int firstVariableNumber;
 
 
-    public LinearScan(CiTarget target, RiResolvedMethod method, StructuredGraph graph, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(CiTarget target, RiResolvedMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
         this.method = method;
         this.ir = ir;
@@ -1782,78 +1782,66 @@ public final class LinearScan {
         }
     }
 
-    private static final DebugTimer timerLifetimeAnalysis = Debug.timer("LifetimeAnalysis");
-    private static final DebugTimer timerLinearScan = Debug.timer("LinearScan");
-    private static final DebugTimer timerLinearScanResolution = Debug.timer("LinearScanResolution");
-    private static final DebugTimer timerDebugInfo = Debug.timer("DebugInfo");
-    private static final DebugTimer timerControlFlowOptimizations = Debug.timer("ControlFlowOptimizations");
-
     public void allocate() {
 
-        timerLifetimeAnalysis.start();
-        try {
-            numberInstructions();
+        Debug.scope("LifetimeAnalysis", new Runnable() {
 
-            printLir("Before register allocation", true);
-
-            computeLocalLiveSets();
-            computeGlobalLiveSets();
-
-            buildIntervals();
-            sortIntervalsBeforeAllocation();
-        } finally {
-            timerLifetimeAnalysis.stop();
-        }
-
-        timerLinearScan.start();
-        try {
-            printIntervals("Before register allocation");
-
-            allocateRegisters();
-
-        } finally {
-            timerLinearScan.stop();
-        }
-
-        timerLinearScanResolution.start();
-        try {
-            resolveDataFlow();
-        } finally {
-            timerLinearScanResolution.stop();
-        }
-
-        timerDebugInfo.start();
-        try {
-            frameMap.finish();
-
-            printIntervals("After register allocation");
-            printLir("After register allocation", true);
-
-            sortIntervalsAfterAllocation();
-
-            if (GraalOptions.DetailedAsserts) {
-                verify();
+            public void run() {
+                numberInstructions();
+                printLir("Before register allocation", true);
+                computeLocalLiveSets();
+                computeGlobalLiveSets();
+                buildIntervals();
+                sortIntervalsBeforeAllocation();
             }
+        });
 
-            eliminateSpillMoves();
-            assignLocations();
+        Debug.scope("RegisterAllocation", new Runnable() {
 
-            if (GraalOptions.DetailedAsserts) {
-                verifyIntervals();
+            public void run() {
+                printIntervals("Before register allocation");
+                allocateRegisters();
             }
-        } finally {
-            timerDebugInfo.stop();
-        }
+        });
 
-        timerControlFlowOptimizations.start();
-        try {
-            printLir("After register number assignment", true);
-            EdgeMoveOptimizer.optimize(ir.linearScanOrder());
-            ControlFlowOptimizer.optimize(ir);
-            printLir("After control flow optimization", false);
-        } finally {
-            timerControlFlowOptimizations.stop();
-        }
+        Debug.scope("ResolveDataFlow", new Runnable() {
+            public void run() {
+                resolveDataFlow();
+            }
+        });
+
+        Debug.scope("DebugInfo", new Runnable() {
+
+            public void run() {
+                frameMap.finish();
+
+                printIntervals("After register allocation");
+                printLir("After register allocation", true);
+
+                sortIntervalsAfterAllocation();
+
+                if (GraalOptions.DetailedAsserts) {
+                    verify();
+                }
+
+                eliminateSpillMoves();
+                assignLocations();
+
+                if (GraalOptions.DetailedAsserts) {
+                    verifyIntervals();
+                }
+            }
+        });
+
+        Debug.scope("ControlFlowOptimizations", new Runnable() {
+
+            public void run() {
+                printLir("After register number assignment", true);
+                EdgeMoveOptimizer.optimize(ir.linearScanOrder());
+                ControlFlowOptimizer.optimize(ir);
+                printLir("After control flow optimization", false);
+            }
+        });
     }
 
     void printIntervals(String label) {

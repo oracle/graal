@@ -32,6 +32,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
@@ -46,6 +47,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
     private int compiledMethodCount;
+    private DebugConfig debugConfig;
 
     public final HotSpotTypePrimitive typeBoolean;
     public final HotSpotTypePrimitive typeChar;
@@ -57,18 +59,23 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     public final HotSpotTypePrimitive typeLong;
     public final HotSpotTypePrimitive typeVoid;
 
-    ThreadFactory daemonThreadFactory = new ThreadFactory() {
+    ThreadFactory compilerThreadFactory = new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
-            Thread t = new CompilerThread(r);
-            t.setDaemon(true);
-            return t;
+            return new CompilerThread(r);
         }
     };
-    private static final class CompilerThread extends Thread {
+    private final class CompilerThread extends Thread {
         public CompilerThread(Runnable r) {
             super(r);
-            this.setName("CompilerThread-" + this.getId());
+            this.setName("GraalCompilerThread-" + this.getId());
+            this.setDaemon(true);
+        }
+
+        @Override
+        public void run() {
+            Debug.setConfig(debugConfig);
+            super.run();
         }
     }
     private ThreadPoolExecutor compileQueue;
@@ -100,7 +107,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         }
 
         // Create compilation queue.
-        compileQueue = new ThreadPoolExecutor(GraalOptions.Threads, GraalOptions.Threads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), daemonThreadFactory);
+        compileQueue = new ThreadPoolExecutor(GraalOptions.Threads, GraalOptions.Threads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), compilerThreadFactory);
 
         // Create queue status printing thread.
         if (GraalOptions.PrintQueue) {
@@ -118,6 +125,13 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             };
             t.setDaemon(true);
             t.start();
+        }
+
+        if (GraalOptions.Debug) {
+            Debug.enable();
+            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
+            System.out.println(hotspotDebugConfig);
+            this.debugConfig = hotspotDebugConfig;
         }
     }
 

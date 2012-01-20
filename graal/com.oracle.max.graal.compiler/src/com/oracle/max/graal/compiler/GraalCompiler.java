@@ -82,16 +82,24 @@ public class GraalCompiler {
             throw new CiBailout("No OSR supported");
         }
         return Debug.scope("CompileMethod", method, new Callable<CiTargetMethod>() {
-                public CiTargetMethod call() {
-                        final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
-                        LIR lir = Debug.scope("EmitHIR", graph, new Callable<LIR>() {
-                            public LIR call() {
-                                return emitHIR(graph, assumptions, plan);
-                            }
-                        });
-                        FrameMap frameMap = emitLIR(lir, graph, method);
+            public CiTargetMethod call() {
+                final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
+                final LIR lir = Debug.scope("FrontEnd", graph, new Callable<LIR>() {
+                    public LIR call() {
+                        return emitHIR(graph, assumptions, plan);
+                    }
+                });
+                final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
+                    public FrameMap call() {
+                        return emitLIR(lir, graph, method);
+                    }
+                });
+                return Debug.scope("CodeGen", frameMap, new Callable<CiTargetMethod>() {
+                    public CiTargetMethod call() {
                         return emitCode(assumptions, method, lir, frameMap);
-                }
+                    }
+                });
+            }
         });
     }
 
@@ -208,34 +216,39 @@ public class GraalCompiler {
         });
     }
 
-    public FrameMap emitLIR(LIR lir, StructuredGraph graph, RiResolvedMethod method) {
-                LIRGenerator lirGenerator = null;
-                FrameMap frameMap;
-                    frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
+    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final RiResolvedMethod method) {
+        final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
+        final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir);
 
-                    lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir);
+        Debug.scope("LIRGen", new Runnable() {
+            public void run() {
+                for (LIRBlock b : lir.linearScanOrder()) {
+                    lirGenerator.doBlock(b);
+                }
 
-                    for (LIRBlock b : lir.linearScanOrder()) {
-                        lirGenerator.doBlock(b);
+                for (LIRBlock b : lir.linearScanOrder()) {
+                    if (b.phis != null) {
+                        b.phis.fillInputs(lirGenerator);
                     }
-
-                    for (LIRBlock b : lir.linearScanOrder()) {
-                        if (b.phis != null) {
-                            b.phis.fillInputs(lirGenerator);
-                        }
-                    }
+                }
 
                 Debug.dump(lirGenerator, "After LIR generation");
                 if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
                     LIR.printLIR(lir.linearScanOrder());
                 }
+            }
+        });
 
+        Debug.scope("Allocator", new Runnable() {
+            public void run() {
                 if (GraalOptions.AllocSSA) {
                     new SpillAllAllocator(lir, frameMap).execute();
                 } else {
-                    new LinearScan(target, method, graph, lir, lirGenerator, frameMap).allocate();
+                    new LinearScan(target, method, lir, lirGenerator, frameMap).allocate();
                 }
-                return frameMap;
+            }
+        });
+        return frameMap;
     }
 
     private TargetMethodAssembler createAssembler(FrameMap frameMap, LIR lir) {
