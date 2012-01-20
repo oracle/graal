@@ -159,29 +159,10 @@ public interface RiResolvedMethod extends RiMethod {
     int invocationCount();
 
     /**
-     * Returns an estimate of hot often an exception was seen at the given bytecode.
-     * @return The estimate in percent (0-100), with 0 meaning never and 100 meaning always, or -1 if this information isn't available.
+     * Returns an object that provides access to the method's profiling information.
+     * @return The profiling information recorded for this method.
      */
-    int exceptionProbability(int bci);
-
-    /**
-     * Returns the type profile of the instruction at the given byte code index.
-     * @return The RiTypeProfile information, or null if it isn't available.
-     */
-    RiTypeProfile typeProfile(int bci);
-
-    /**
-     * Returns an estimate of how often the branch at the given byte code was taken.
-     * @return The estimated probability, with 0.0 meaning never and 1.0 meaning always, or -1 if this information isn't available.
-     */
-    double branchProbability(int bci);
-
-    /**
-     * Returns an estimate of how often the branches of the switch at the given byte code were taken.
-     * @return The estimated probability, with 0.0 meaning never and 1.0 meaning always, or NULL if this information isn't available.
-     * The default case is specified at the last index.
-     */
-    double[] switchProbability(int bci);
+    RiProfilingInfo profilingInfo();
 
     /**
      * Returns a map that the compiler can use to store objects that should survive the current compilation.

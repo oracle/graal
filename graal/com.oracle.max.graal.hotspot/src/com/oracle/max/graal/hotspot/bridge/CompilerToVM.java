@@ -49,13 +49,7 @@ public interface CompilerToVM {
 
     int RiMethod_invocationCount(HotSpotMethodResolved method);
 
-    int RiMethod_exceptionProbability(HotSpotMethodResolved method, int bci);
-
-    RiTypeProfile RiMethod_typeProfile(HotSpotMethodResolved method, int bci);
-
-    double RiMethod_branchProbability(HotSpotMethodResolved method, int bci);
-
-    double[] RiMethod_switchProbability(HotSpotMethodResolved method, int bci);
+    HotSpotMethodData RiMethod_methodData(HotSpotMethodResolved method);
 
     RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass);
 

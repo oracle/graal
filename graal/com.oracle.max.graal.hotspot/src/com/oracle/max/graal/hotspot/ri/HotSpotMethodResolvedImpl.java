@@ -55,6 +55,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private Boolean hasBalancedMonitors;
     private Map<Object, Object> compilerStorage;
     private RiResolvedType holder;
+    private HotSpotMethodData methodData;
     private byte[] code;
 
     private HotSpotMethodResolvedImpl() {
@@ -189,24 +190,17 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         return null;
     }
 
+    @Override
     public int invocationCount() {
         return compiler.getVMEntries().RiMethod_invocationCount(this);
     }
 
-    public int exceptionProbability(int bci) {
-        return compiler.getVMEntries().RiMethod_exceptionProbability(this, bci);
-    }
-
-    public RiTypeProfile typeProfile(int bci) {
-        return compiler.getVMEntries().RiMethod_typeProfile(this, bci);
-    }
-
-    public double branchProbability(int bci) {
-        return compiler.getVMEntries().RiMethod_branchProbability(this, bci);
-    }
-
-    public double[] switchProbability(int bci) {
-        return compiler.getVMEntries().RiMethod_switchProbability(this, bci);
+    @Override
+    public RiProfilingInfo profilingInfo() {
+        if (methodData == null) {
+            methodData = compiler.getVMEntries().RiMethod_methodData(this);
+        }
+        return new HotSpotProfilingInfoImpl(compiler, methodData);
     }
 
     @Override
