@@ -31,8 +31,9 @@ import com.oracle.max.graal.debug.*;
 
 public final class DebugScope {
 
-    private static ThreadLocal<DebugScope> instance = new ThreadLocal<>();
-    private static ThreadLocal<DebugConfig> config = new ThreadLocal<>();
+    private static ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
+    private static ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
+    private static ThreadLocal<RuntimeException> lastExceptionThrownTL = new ThreadLocal<>();
 
     private final String name;
     private final DebugScope parent;
@@ -52,17 +53,17 @@ public final class DebugScope {
     private boolean dumpEnabled;
 
     public static DebugScope getInstance() {
-        DebugScope result = instance.get();
+        DebugScope result = instanceTL.get();
         if (result == null) {
-            instance.set(new DebugScope("DEFAULT", "DEFAULT", null));
-            return instance.get();
+            instanceTL.set(new DebugScope("DEFAULT", "DEFAULT", null));
+            return instanceTL.get();
         } else {
             return result;
         }
     }
 
     public static DebugConfig getConfig() {
-        return config.get();
+        return configTL.get();
     }
 
     private DebugScope(String name, String qualifiedName, DebugScope parent, Object... context) {
@@ -107,7 +108,7 @@ public final class DebugScope {
         } else {
             newChild = oldContext.createChild(newName, newContext);
         }
-        instance.set(newChild);
+        instanceTL.set(newChild);
         T result = null;
         updateFlags();
         log("Starting scope %s", newChild.getQualifiedName());
@@ -119,10 +120,16 @@ public final class DebugScope {
                 result = call(callable);
             }
         } catch (RuntimeException e) {
-            throw interceptException(e);
+            if (e == lastExceptionThrownTL.get()) {
+                throw e;
+            } else {
+                RuntimeException newException = interceptException(e);
+                lastExceptionThrownTL.set(newException);
+                throw newException;
+            }
         } finally {
             newChild.deactivate();
-            instance.set(oldContext);
+            instanceTL.set(oldContext);
             setConfig(oldConfig);
         }
         return result;
@@ -147,7 +154,19 @@ public final class DebugScope {
         context = null;
     }
 
-    private RuntimeException interceptException(RuntimeException e) {
+    private RuntimeException interceptException(final RuntimeException e) {
+        final DebugConfig config = getConfig();
+        if (config != null) {
+            return scope("InterceptException", null, new Callable<RuntimeException>(){
+                @Override
+                public RuntimeException call() throws Exception {
+                    try {
+                        return config.interceptException(e);
+                    } catch (Throwable t) {
+                        return e;
+                    }
+                }}, false, new Object[]{e});
+        }
         return e;
     }
 
@@ -230,7 +249,7 @@ public final class DebugScope {
     }
 
     public void setConfig(DebugConfig newConfig) {
-        config.set(newConfig);
+        configTL.set(newConfig);
         updateFlags();
     }
 

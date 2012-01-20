@@ -25,7 +25,7 @@ package com.oracle.max.graal.debug;
 import com.oracle.max.graal.debug.internal.DebugScope;
 import com.oracle.max.graal.debug.internal.MetricImpl;
 import com.oracle.max.graal.debug.internal.TimerImpl;
-import java.util.Collections;
+import java.util.*;
 import java.util.concurrent.*;
 
 
@@ -97,6 +97,18 @@ public class Debug {
         }
     }
 
+    public static List<Object> contextSnapshot() {
+        if (ENABLED) {
+            List<Object> result = new ArrayList<>();
+            for (Object o : context()) {
+                result.add(o);
+            }
+            return result;
+        } else {
+            return Collections.emptyList();
+        }
+    }
+
     public static DebugMetric metric(String name) {
         if (ENABLED && DebugScope.getInstance().isMeterEnabled()) {
             return new MetricImpl(name);
@@ -109,6 +121,36 @@ public class Debug {
         if (ENABLED) {
             DebugScope.getInstance().setConfig(config);
         }
+    }
+
+    public static DebugConfig fixedConfix(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled) {
+        return new DebugConfig() {
+
+            @Override
+            public boolean isLogEnabled() {
+                return isLogEnabled;
+            }
+
+            @Override
+            public boolean isMeterEnabled() {
+                return isMeterEnabled;
+            }
+
+            @Override
+            public boolean isDumpEnabled() {
+                return isDumpEnabled;
+            }
+
+            @Override
+            public boolean isTimerEnabled() {
+                return isTimerEnabled;
+            }
+
+            @Override
+            public RuntimeException interceptException(RuntimeException e) {
+                return e;
+            }
+        };
     }
 
     private static final DebugMetric VOID_METRIC = new DebugMetric() {

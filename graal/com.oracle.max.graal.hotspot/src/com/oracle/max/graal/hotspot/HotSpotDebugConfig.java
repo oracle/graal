@@ -24,6 +24,7 @@ package com.oracle.max.graal.hotspot;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 
 
 public class HotSpotDebugConfig implements DebugConfig {
@@ -97,5 +98,20 @@ public class HotSpotDebugConfig implements DebugConfig {
             sb.append('=');
             sb.append(filter);
         }
+    }
+
+    @Override
+    public RuntimeException interceptException(RuntimeException e) {
+        Debug.setConfig(Debug.fixedConfix(true, true, false, false));
+        Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
+        for (Object o : Debug.context()) {
+            Debug.log("Context obj %s", o);
+            if (o instanceof Graph) {
+                Graph graph = (Graph) o;
+                Debug.log("Found graph in context: ", graph);
+                Debug.dump(o, "Exception graph");
+            }
+        }
+        return e;
     }
 }

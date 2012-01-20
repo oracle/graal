@@ -131,7 +131,7 @@ public final class LinearScan {
 
         this.registers = target.arch.registers;
         this.firstVariableNumber = registers.length;
-        this.variables = new ArrayList<>(ir.numVariables() * 3 / 2);
+        this.variables = new ArrayList<>(ir.numVariables() * 3 / 2); throw new NullPointerException();
     }
 
     public static boolean isVariableOrRegister(CiValue value) {

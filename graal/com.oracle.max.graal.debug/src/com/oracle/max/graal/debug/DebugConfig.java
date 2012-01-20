@@ -28,4 +28,5 @@ public interface DebugConfig {
     boolean isMeterEnabled();
     boolean isDumpEnabled();
     boolean isTimerEnabled();
+    RuntimeException interceptException(RuntimeException e);
 }
