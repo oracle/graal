@@ -171,7 +171,7 @@ public class GraalCompiler {
         if (GraalOptions.Lower) {
             new FloatingReadPhase().apply(graph);
             if (GraalOptions.OptGVN) {
-                new GlobalValueNumberingPhase().apply(graph, context);
+                new GlobalValueNumberingPhase().apply(graph);
             }
             if (GraalOptions.OptReadElimination) {
                 new ReadEliminationPhase().apply(graph);
@@ -244,8 +244,8 @@ public class GraalCompiler {
 
         Debug.scope("Allocator", new Runnable() {
             public void run() {
-                new LinearScanAllocator(context, lir, frameMap).execute();
-//              new SpillAllAllocator(context, lir, frameMap).execute();
+                new LinearScanAllocator(lir, frameMap).execute();
+//              new SpillAllAllocator(lir, frameMap).execute();
             }
         });
         return frameMap;
