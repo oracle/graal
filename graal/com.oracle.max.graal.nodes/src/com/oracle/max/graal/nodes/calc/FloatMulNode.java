@@ -35,7 +35,7 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) {
             return graph().unique(new FloatMulNode(kind(), y(), x(), isStrictFP()));
         }

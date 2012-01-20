@@ -125,14 +125,14 @@ public class LIR {
 
         // generate code for slow cases
         for (SlowPath sp : slowPaths) {
-            sp.emitCode(tasm);
+            emitSlowPath(tasm, sp);
         }
         // generate deoptimization stubs
         for (SlowPath sp : deoptimizationStubs) {
-            sp.emitCode(tasm);
+            emitSlowPath(tasm, sp);
         }
         // generate traps at the end of the method
-        methodEndMarker.emitCode(tasm);
+        emitSlowPath(tasm, methodEndMarker);
     }
 
     private void emitBlock(TargetMethodAssembler tasm, LIRBlock block) {
@@ -141,16 +141,12 @@ public class LIR {
         }
 
         if (GraalOptions.CommentedAssembly) {
-            String st = String.format(" block B%d", block.blockID());
-            tasm.blockComment(st);
+            tasm.blockComment(String.format("block B%d loop %d depth %d", block.blockID(), block.loopIndex(), block.loopDepth()));
         }
 
         for (LIRInstruction op : block.lir()) {
             if (GraalOptions.CommentedAssembly) {
-                // Only print out branches
-                if (op.code instanceof LIRBranch) {
-                    tasm.blockComment(op.toStringWithIdPrefix());
-                }
+                tasm.blockComment(String.format("%d %s", op.id(), op));
             }
             if (GraalOptions.PrintLIRWithAssembly && !TTY.isSuppressed()) {
                 // print out the LIR operation followed by the resulting assembly
@@ -178,6 +174,13 @@ public class LIR {
         } catch (GraalInternalError e) {
             throw e.addContext("lir instruction", op);
         }
+    }
+
+    private static void emitSlowPath(TargetMethodAssembler tasm, SlowPath sp) {
+        if (GraalOptions.CommentedAssembly) {
+            tasm.blockComment(String.format("slow case %s", sp.getClass().getName()));
+        }
+        sp.emitCode(tasm);
     }
 
     private int lastDecodeStart;

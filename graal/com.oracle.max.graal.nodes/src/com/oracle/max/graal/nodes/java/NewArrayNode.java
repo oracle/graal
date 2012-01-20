@@ -110,10 +110,9 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
         public void beforeUpdate(Node node, Node usage) {
             if (usage instanceof ArrayLengthNode) {
                 ArrayLengthNode x = (ArrayLengthNode) usage;
-                FixedNode next = x.next();
-                x.setNext(null);
-                x.replaceAtPredecessors(next);
-                x.replaceAndDelete(((NewArrayNode) node).dimension(0));
+                StructuredGraph graph = (StructuredGraph) node.graph();
+                x.replaceAtUsages(((NewArrayNode) node).dimension(0));
+                graph.removeFixed(x);
             } else {
                 super.beforeUpdate(node, usage);
             }
@@ -127,12 +126,10 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
                     int index = ((AccessIndexedNode) current).index().asConstant().asInt();
                     if (current instanceof LoadIndexedNode) {
                         x.replaceAtUsages(fieldState[index]);
-                        assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        ((StructuredGraph) x.graph()).removeFixed(x);
                     } else if (current instanceof StoreIndexedNode) {
                         fieldState[index] = ((StoreIndexedNode) x).value();
-                        assert x.usages().size() == 0;
-                        x.replaceAndDelete(x.next());
+                        ((StructuredGraph) x.graph()).removeFixed(x);
                         return index;
                     }
                 }

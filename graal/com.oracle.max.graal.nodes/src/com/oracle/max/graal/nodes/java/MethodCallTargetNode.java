@@ -132,7 +132,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (!isStatic()) {
             ValueNode receiver = receiver();
             if (receiver != null && receiver.exactType() != null) {

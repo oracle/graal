@@ -224,7 +224,7 @@ public class EscapeAnalysisPhase extends Phase {
 
         public void apply() {
             if (node.usages().isEmpty()) {
-                node.replaceAndDelete(node.next());
+                graph.removeFixed(node);
             } else {
                 process();
                 removeAllocation();
@@ -241,8 +241,8 @@ public class EscapeAnalysisPhase extends Phase {
                 TTY.println("new virtual object: " + virtual);
             }
             node.replaceAtUsages(virtual);
-            final FixedNode next = node.next();
-            node.replaceAndDelete(next);
+            FixedNode next = node.next();
+            graph.removeFixed(node);
 
             if (virtual.fieldsCount() > 0) {
                 final BlockExitState startState = new BlockExitState(escapeFields, virtual);
@@ -476,7 +476,7 @@ public class EscapeAnalysisPhase extends Phase {
                 }
             }
             if (!required) {
-                phi.replaceAndDelete(simpleValue);
+                ((StructuredGraph) node.graph()).replaceFloating(phi, simpleValue);
             }
         }
     }

@@ -35,7 +35,7 @@ public final class OrNode extends LogicNode implements Canonicalizable, LIRLower
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return x();
         }

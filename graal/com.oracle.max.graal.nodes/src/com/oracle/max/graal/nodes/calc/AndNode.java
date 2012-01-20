@@ -35,7 +35,7 @@ public final class AndNode extends LogicNode implements Canonicalizable, LIRLowe
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return x();
         }

@@ -60,6 +60,6 @@ public final class BoxNode extends AbstractStateSplit implements Node.IterableNo
         InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci));
         invokeNode.setProbability(this.probability());
         invokeNode.setStateAfter(stateAfter());
-        this.replaceWithFixedWithNext(invokeNode);
+        ((StructuredGraph) graph()).replaceFixedWithFixed(this, invokeNode);
     }
 }

@@ -236,7 +236,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             XirParameter receiver = asm.createInputParameter("receiver", CiKind.Object);
             XirParameter addr = asm.createConstantInputParameter("addr", target.wordKind);
             XirOperand temp = asm.createRegisterTemp("temp", target.wordKind, AMD64.rax);
-            XirOperand tempO = asm.createRegisterTemp("tempO", CiKind.Object, AMD64.rax);
+            XirOperand tempO = asm.createRegister("tempO", CiKind.Object, AMD64.rax);
 
             if (is(NULL_CHECK, flags)) {
                 asm.mark(MARK_IMPLICIT_NULL);
@@ -257,7 +257,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             XirParameter receiver = asm.createInputParameter("receiver", CiKind.Object);
             XirParameter addr = asm.createConstantInputParameter("addr", target.wordKind);
             XirOperand temp = asm.createRegisterTemp("temp", target.wordKind, AMD64.rax);
-            XirOperand tempO = asm.createRegisterTemp("tempO", CiKind.Object, AMD64.rax);
+            XirOperand tempO = asm.createRegister("tempO", CiKind.Object, AMD64.rax);
 
             if (is(NULL_CHECK, flags)) {
                 asm.mark(MARK_IMPLICIT_NULL);
@@ -448,9 +448,9 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             XirOperand type = asm.createInputParameter("type", CiKind.Object);
 
             XirOperand temp1 = asm.createRegisterTemp("temp1", target.wordKind, AMD64.rcx);
-            XirOperand temp1o = asm.createRegisterTemp("temp1o", CiKind.Object, AMD64.rcx);
+            XirOperand temp1o = asm.createRegister("temp1o", CiKind.Object, AMD64.rcx);
             XirOperand temp2 = asm.createRegisterTemp("temp2", target.wordKind, AMD64.rbx);
-            XirOperand temp2i = asm.createRegisterTemp("temp2i", CiKind.Int, AMD64.rbx);
+            XirOperand temp2i = asm.createRegister("temp2i", CiKind.Int, AMD64.rbx);
             useRegisters(asm, AMD64.rsi);
             XirLabel tlabFull = asm.createOutOfLineLabel("tlab full");
             XirLabel resume = asm.createInlineLabel("resume");
@@ -533,7 +533,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         // Registers rsi, rcx, rdi, and rax are needed by the runtime call.
         // Hub needs to be on rdx, length on rbx.
         XirOperand temp1 = asm.createRegisterTemp("temp1", target.wordKind, AMD64.rcx);
-        XirOperand temp1o = asm.createRegisterTemp("temp1o", CiKind.Object, AMD64.rcx);
+        XirOperand temp1o = asm.createRegister("temp1o", CiKind.Object, AMD64.rcx);
         XirOperand temp2 = asm.createRegisterTemp("temp2", target.wordKind, AMD64.rax);
         XirOperand temp3 = asm.createRegisterTemp("temp3", target.wordKind, AMD64.rdi);
         XirOperand size = asm.createRegisterTemp("size", CiKind.Int, AMD64.rsi);
@@ -631,7 +631,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             asm.mov(hub, asm.createConstantInputParameter("hub", CiKind.Object));
 
             asm.mov(rank, asm.i(dimensions));
-            useRegisters(asm, AMD64.rax);
+            // not necessary because we already have a temp in rax:  useRegisters(asm, AMD64.rax);
             asm.callRuntime(config.newMultiArrayStub, result);
             return asm.finishTemplate("multiNewArray" + dimensions);
         }

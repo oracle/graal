@@ -64,47 +64,44 @@ public class FindInductionVariablesPhase extends Phase {
                 continue;
             }
             if (loopNodes.isMarked(backEdge)) {
-                BinaryNode binary;
                 if (backEdge instanceof IntegerAddNode || backEdge instanceof IntegerSubNode) {
-                    binary = (BinaryNode) backEdge;
-                } else {
-                    continue;
-                }
-                ValueNode stride;
-                if (binary.x() == phi) {
-                    stride = binary.y();
-                } else if (binary.y() == phi) {
-                    stride = binary.x();
-                } else {
-                    continue;
-                }
-                if (loopNodes.isNotNewNotMarked(stride)) {
-                    Graph graph = loopBegin.graph();
-                    if (backEdge instanceof IntegerSubNode) {
-                        stride = graph.unique(new NegateNode(stride));
-                    }
-                    CiKind kind = phi.kind();
-                    LoopCounterNode counter = loopBegin.loopCounter(kind);
-                    BasicInductionVariableNode biv1 = null;
-                    BasicInductionVariableNode biv2 = null;
-                    if (phi.usages().size() > 1) {
-                        biv1 = graph.add(new BasicInductionVariableNode(kind, init, stride, counter));
-                        phi.replaceAndDelete(biv1);
+                    final IntegerArithmeticNode arithmetic = (IntegerArithmeticNode) backEdge;
+                    ValueNode stride;
+                    if (arithmetic.x() == phi) {
+                        stride = arithmetic.y();
+                    } else if (arithmetic.y() == phi) {
+                        stride = arithmetic.x();
                     } else {
-                        phi.replaceFirstInput(binary, null);
-                        phi.safeDelete();
+                        continue;
                     }
-                    if (backEdge.usages().size() > 0) {
-                        biv2 = graph.add(new BasicInductionVariableNode(kind, IntegerArithmeticNode.add(init, stride), stride, counter));
-                        backEdge.replaceAndDelete(biv2);
-                    } else {
-                        backEdge.safeDelete();
-                    }
-                    if (biv1 != null) {
-                        findDerivedInductionVariable(biv1, kind, loopNodes);
-                    }
-                    if (biv2 != null) {
-                        findDerivedInductionVariable(biv2, kind, loopNodes);
+                    if (loopNodes.isNotNewNotMarked(stride)) {
+                        Graph graph = loopBegin.graph();
+                        if (arithmetic instanceof IntegerSubNode) {
+                            stride = graph.unique(new NegateNode(stride));
+                        }
+                        CiKind kind = phi.kind();
+                        LoopCounterNode counter = loopBegin.loopCounter(kind);
+                        BasicInductionVariableNode biv1 = null;
+                        BasicInductionVariableNode biv2 = null;
+                        if (phi.usages().size() > 1) {
+                            biv1 = graph.add(new BasicInductionVariableNode(kind, init, stride, counter));
+                            ((StructuredGraph) phi.graph()).replaceFloating(phi, biv1);
+                        } else {
+                            phi.replaceFirstInput(arithmetic, null);
+                            phi.safeDelete();
+                        }
+                        if (arithmetic.usages().size() > 0) {
+                            biv2 = graph.add(new BasicInductionVariableNode(kind, IntegerArithmeticNode.add(init, stride), stride, counter));
+                            ((StructuredGraph) arithmetic.graph()).replaceFloating(arithmetic, biv2);
+                        } else {
+                            arithmetic.safeDelete();
+                        }
+                        if (biv1 != null) {
+                            findDerivedInductionVariable(biv1, kind, loopNodes);
+                        }
+                        if (biv2 != null) {
+                            findDerivedInductionVariable(biv2, kind, loopNodes);
+                        }
                     }
                 }
             }
@@ -141,7 +138,8 @@ public class FindInductionVariablesPhase extends Phase {
                     offset = ConstantNode.forIntegerKind(kind, 0, biv.graph());
                 }
                 DerivedInductionVariableNode div = biv.graph().add(new DerivedInductionVariableNode(kind, offset, scale, biv));
-                node.replaceAndDelete(div);
+                assert node instanceof FloatingNode;
+                ((StructuredGraph) node.graph()).replaceFloating((FloatingNode) node, div);
             }
         }
     }

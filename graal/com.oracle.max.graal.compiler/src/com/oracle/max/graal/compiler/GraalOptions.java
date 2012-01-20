@@ -176,5 +176,6 @@ public final class GraalOptions {
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
         assert (DetailedAsserts = true) == true;
+        assert (CommentedAssembly = true) == true;
     }
 }

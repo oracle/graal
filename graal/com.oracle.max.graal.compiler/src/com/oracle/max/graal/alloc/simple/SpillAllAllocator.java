@@ -75,8 +75,8 @@ public class SpillAllAllocator {
     }
 
     private class ResolveDataFlowImpl extends ResolveDataFlow {
-        public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver) {
-            super(lir, moveResolver);
+        public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver, DataFlowAnalysis dataFlow) {
+            super(lir, moveResolver, dataFlow);
         }
 
         @Override
@@ -133,22 +133,28 @@ public class SpillAllAllocator {
         assert LIRVerifier.verify(true, lir, frameMap);
 
         dataFlow.execute();
+        IntervalPrinter.printBeforeAllocation("Before register allocation", context, lir, frameMap.registerConfig, dataFlow);
+
         allocate();
+
+        IntervalPrinter.printAfterAllocation("After spill all allocation", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
+
+        ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
+        resolveDataFlow.execute();
         frameMap.finish();
 
-        Debug.dump(lir, "After spill all allocation");
 
         ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver);
         resolveDataFlow.execute();
 
-        Debug.dump(lir, "After resolve data flow");
+        IntervalPrinter.printAfterAllocation("After resolve data flow", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
         assert RegisterVerifier.verify(lir, frameMap);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);
         assignRegisters.execute();
 
         Debug.dump(lir, "After register asignment");
-        assert LIRVerifier.verify(true, lir, frameMap);
+        assert LIRVerifier.verify(false, lir, frameMap);
     }
 
     private void allocate() {

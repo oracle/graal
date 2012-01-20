@@ -24,7 +24,6 @@ package com.oracle.max.graal.nodes.java;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -55,7 +54,7 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (object().exactType() != null) {
             boolean result = object().exactType().isSubtypeOf(targetClass());
             if (result != negated) {

@@ -182,7 +182,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue pointer = operands[inst.x().index];
                     CiRegisterValue register = assureInRegister(tasm, masm, pointer);
 
-                    AMD64MoveOpcode.load(tasm, masm, result, new CiAddress(inst.kind, register, 0), inst.kind, (Boolean) inst.extra ? info : null);
+                    AMD64MoveOpcode.load(tasm, masm, result, new CiAddress(inst.kind, register), (Boolean) inst.extra ? info : null);
                     break;
                 }
 
@@ -191,7 +191,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue pointer = operands[inst.x().index];
                     assert isRegister(pointer);
 
-                    AMD64MoveOpcode.store(tasm, masm, new CiAddress(inst.kind, pointer, 0), value, inst.kind, (Boolean) inst.extra ? info : null);
+                    AMD64MoveOpcode.store(tasm, masm, new CiAddress(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
                     break;
                 }
 
@@ -218,7 +218,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                         src = new CiAddress(inst.kind, pointer, index, scale, displacement);
                     }
 
-                    AMD64MoveOpcode.load(tasm, masm, result, src, inst.kind, canTrap ? info : null);
+                    AMD64MoveOpcode.load(tasm, masm, result, src, canTrap ? info : null);
                     break;
                 }
 
@@ -262,7 +262,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                         dst = new CiAddress(inst.kind, pointer, index, scale, displacement);
                     }
 
-                    AMD64MoveOpcode.store(tasm, masm, dst, value, inst.kind, canTrap ? info : null);
+                    AMD64MoveOpcode.store(tasm, masm, dst, value, canTrap ? info : null);
                     break;
                 }
 

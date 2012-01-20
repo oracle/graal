@@ -48,7 +48,6 @@ public class DataFlowAnalysis {
 
     public void execute() {
         numberInstructions();
-        Debug.dump(lir, "After instruction numbering");
         backwardDataFlow();
     }
 
@@ -109,6 +108,10 @@ public class DataFlowAnalysis {
                 }
             }
         }
+    }
+
+    public int definition(Variable value) {
+        return definitions[value.index];
     }
 
     /**

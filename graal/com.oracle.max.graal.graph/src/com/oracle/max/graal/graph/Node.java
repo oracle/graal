@@ -222,6 +222,7 @@ public abstract class Node implements Cloneable {
     private boolean checkReplaceWith(Node other) {
         assert assertFalse(other == this, "cannot replace a node with itself");
         assert assertFalse(isDeleted(), "cannot replace deleted node");
+//        assert assertTrue(other != null, "cannot replace with null node");
         assert assertTrue(other == null || !other.isDeleted(), "cannot replace with deleted node %s", other);
         assert assertTrue(other == null || other.graph() == graph, "cannot replace with node in different graph: %s", other == null ? null : other.graph());
         return true;
@@ -308,10 +309,6 @@ public abstract class Node implements Cloneable {
 
     public void safeDelete() {
         assert checkDeletion();
-        delete();
-    }
-
-    public void delete() {
         clearInputs();
         clearSuccessors();
         graph.unregister(this);

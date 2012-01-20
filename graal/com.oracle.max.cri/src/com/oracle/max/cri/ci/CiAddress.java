@@ -26,8 +26,8 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base register, an index register,
- * a displacement and a scale. Note that the base and index registers may be {@link CiVariable variable}, that is as yet
- * unassigned to target machine registers.
+ * a displacement and a scale. Note that the base and index registers may be a variable that will get a register assigned
+ * later by the register allocator.
  */
 public final class CiAddress extends CiValue {
     private static final long serialVersionUID = -1003772042519945089L;
@@ -38,18 +38,22 @@ public final class CiAddress extends CiValue {
     public static final CiAddress Placeholder = new CiAddress(CiKind.Illegal, CiValue.IllegalValue);
 
     /**
-     * Base register that defines the start of the address computation; always present.
-     */
-    public final CiValue base;
-    /**
-     * Optional index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
+     * Base register that defines the start of the address computation.
      * If not present, is denoted by {@link CiValue#IllegalValue}.
      */
-    public final CiValue index;
+    public CiValue base;
+
+    /**
+     * Index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
+     * If not present, is denoted by {@link CiValue#IllegalValue}.
+     */
+    public CiValue index;
+
     /**
      * Scaling factor for indexing, dependent on target operand size.
      */
     public final Scale scale;
+
     /**
      * Optional additive displacement.
      */
@@ -75,16 +79,6 @@ public final class CiAddress extends CiValue {
     }
 
     /**
-     * Creates a {@code CiAddress} with given base and offset registers, no scaling and no displacement.
-     * @param kind the kind of the value being addressed
-     * @param base the base register
-     * @param offset the offset register
-     */
-    public CiAddress(CiKind kind, CiValue base, CiValue offset) {
-        this(kind, base, offset, Scale.Times1, 0);
-    }
-
-    /**
      * Creates a {@code CiAddress} with given base and index registers, scaling and displacement.
      * This is the most general constructor..
      * @param kind the kind of the value being addressed
@@ -95,22 +89,13 @@ public final class CiAddress extends CiValue {
      */
     public CiAddress(CiKind kind, CiValue base, CiValue index, Scale scale, int displacement) {
         super(kind);
-
         this.base = base;
-        if (isConstant(index)) {
-            long longIndex = ((CiConstant) index).asLong();
-            long longDisp = displacement + longIndex * scale.value;
-            if ((int) longIndex != longIndex || (int) longDisp != longDisp) {
-                throw new Error("integer overflow when computing constant displacement");
-            }
-            this.displacement = (int) longDisp;
-            this.index = IllegalValue;
-            this.scale = Scale.Times1;
-        } else {
-            this.index = index;
-            this.scale = scale;
-            this.displacement = displacement;
-        }
+        this.index = index;
+        this.scale = scale;
+        this.displacement = displacement;
+
+        assert !isConstant(base) && !isStackSlot(base);
+        assert !isConstant(index) && !isStackSlot(index);
     }
 
     /**
@@ -122,7 +107,7 @@ public final class CiAddress extends CiValue {
         Times4(4, 2),
         Times8(8, 3);
 
-        Scale(int value, int log2) {
+        private Scale(int value, int log2) {
             this.value = value;
             this.log2 = log2;
         }
@@ -138,76 +123,40 @@ public final class CiAddress extends CiValue {
         public final int log2;
 
         public static Scale fromInt(int scale) {
-            // Checkstyle: stop
             switch (scale) {
-                case 1: return Times1;
-                case 2: return Times2;
-                case 4: return Times4;
-                case 8: return Times8;
+                case 1:  return Times1;
+                case 2:  return Times2;
+                case 4:  return Times4;
+                case 8:  return Times8;
                 default: throw new IllegalArgumentException(String.valueOf(scale));
             }
-            // Checkstyle: resume
         }
-
-        public static Scale fromShift(int shift) {
-            return fromInt(1 << shift);
-        }
-    }
-
-    /**
-     * Encodes the possible addressing modes as a simple value.
-     */
-    public enum Format {
-        BASE,
-        BASE_DISP,
-        BASE_INDEX,
-        BASE_INDEX_DISP,
-        PLACEHOLDER;
-    }
-
-    /**
-     * Returns the {@link Format encoded addressing mode} that this {@code CiAddress} represents.
-     * @return the encoded addressing mode
-     */
-    public Format format() {
-        if (this == Placeholder) {
-            return Format.PLACEHOLDER;
-        }
-        assert isLegal(base);
-        if (isLegal(index)) {
-            if (displacement != 0) {
-                return Format.BASE_INDEX_DISP;
-            } else {
-                return Format.BASE_INDEX;
-            }
-        } else {
-            if (displacement != 0) {
-                return Format.BASE_DISP;
-            } else {
-                return Format.BASE;
-            }
-        }
-    }
-
-    private static String signed(int i) {
-        if (i >= 0) {
-            return "+" + i;
-        }
-        return String.valueOf(i);
     }
 
     @Override
     public String toString() {
-        // Checkstyle: stop
-        switch (format()) {
-            case BASE            : return "[" + base + kindSuffix() + "]";
-            case BASE_DISP       : return "[" + base + signed(displacement) + kindSuffix() + "]";
-            case BASE_INDEX      : return "[" + base + "+" + index + kindSuffix() + "]";
-            case BASE_INDEX_DISP : return "[" + base + "+(" + index + "*" + scale.value + ")" + signed(displacement) + kindSuffix() + "]";
-            case PLACEHOLDER     : return "[<placeholder>]";
-            default              : throw new IllegalArgumentException("unknown format: " + format());
+        if (this == Placeholder) {
+            return "[<placeholder>]";
         }
-        // Checkstyle: resume
+
+        StringBuilder s = new StringBuilder();
+        s.append(kind.javaName).append("[");
+        String sep = "";
+        if (isLegal(base)) {
+            s.append(base);
+            sep = " + ";
+        }
+        if (isLegal(index)) {
+            s.append(sep).append(index).append(" * ").append(scale.value);
+            sep = " + ";
+        }
+        if (displacement < 0) {
+            s.append(" - ").append(-displacement);
+        } else if (displacement > 0) {
+            s.append(sep).append(displacement);
+        }
+        s.append("]");
+        return s.toString();
     }
 
     @Override
@@ -221,6 +170,6 @@ public final class CiAddress extends CiValue {
 
     @Override
     public int hashCode() {
-        return (base.hashCode() << 4) | kind.ordinal();
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ (kind.ordinal() << 12);
     }
 }

@@ -357,11 +357,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                     GuardNode guardNode = (GuardNode) instr;
                     if (guardNode.condition() instanceof NullCheckNode) {
                         NullCheckNode nullCheckNode = (NullCheckNode) guardNode.condition();
-                        if (!nullCheckNode.expectedNull && nextInstr instanceof AccessNode) {
-                            AccessNode accessNode = (AccessNode) nextInstr;
-                            if (nullCheckNode.object() == accessNode.object() && canBeNullCheck(accessNode.location())) {
+                        if (!nullCheckNode.expectedNull && nextInstr instanceof Access) {
+                            Access access = (Access) nextInstr;
+                            if (nullCheckNode.object() == access.object() && canBeNullCheck(access.location())) {
                                 //TTY.println("implicit null check");
-                                accessNode.setNullCheck(true);
+                                access.setNullCheck(true);
                                 continue;
                             }
                         }
