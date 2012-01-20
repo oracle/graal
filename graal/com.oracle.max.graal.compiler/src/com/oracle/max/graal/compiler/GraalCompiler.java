@@ -244,8 +244,12 @@ public class GraalCompiler {
 
         Debug.scope("Allocator", new Runnable() {
             public void run() {
-                new LinearScanAllocator(lir, frameMap).execute();
-//              new SpillAllAllocator(lir, frameMap).execute();
+                if (GraalOptions.AllocSSA) {
+                    new LinearScanAllocator(lir, frameMap).execute();
+                    // new SpillAllAllocator(context, lir, frameMap).execute();
+                } else {
+                    new LinearScan(target, method, lir, lirGenerator, frameMap).allocate();
+                }
             }
         });
         return frameMap;
