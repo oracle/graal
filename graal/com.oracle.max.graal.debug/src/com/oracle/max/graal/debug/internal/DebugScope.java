@@ -95,7 +95,16 @@ public final class DebugScope {
         }
     }
 
-    public void dump(Object object, String msg, Object[] args) {
+    public void dump(Object object, String formatString, Object[] args) {
+        if (isDumpEnabled()) {
+            String message = String.format(formatString, args);
+            for (Object o : Debug.context()) {
+                if (o instanceof DebugDumpHandler) {
+                    DebugDumpHandler dumpHandler = (DebugDumpHandler) o;
+                    dumpHandler.dump(object, message);
+                }
+            }
+        }
     }
 
     public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, Object[] newContext) {
