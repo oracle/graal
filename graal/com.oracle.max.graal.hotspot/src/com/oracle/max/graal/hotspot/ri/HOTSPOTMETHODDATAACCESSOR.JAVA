@@ -28,12 +28,15 @@ public interface HotSpotMethodDataAccessor {
     int getTag();
     int getBCI(HotSpotMethodData data, int position);
     int getSize(HotSpotMethodData data, int position);
-    boolean hasExceptionOccurred(HotSpotMethodData data, int position);
-    long getExecutionCount(HotSpotMethodDataAccessor data, int position);
 
     RiResolvedType[] getTypes(HotSpotMethodData data, int position);
     double[] getTypeProbabilities(HotSpotMethodData data, int position);
 
     double getBranchTakenProbability(HotSpotMethodData data, int position);
+
     double[] getSwitchProbabilities(HotSpotMethodData data, int position);
+
+    boolean getImplicitExceptionSeen(HotSpotMethodData data, int position);
+
+    int getExecutionCount(HotSpotMethodData data, int position);
 }

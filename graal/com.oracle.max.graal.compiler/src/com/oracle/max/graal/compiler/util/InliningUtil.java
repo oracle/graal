@@ -263,14 +263,19 @@ public class InliningUtil {
             }
             return null;
         }
-        RiTypeProfile profile = parent.typeProfile(invoke.bci());
-        if (profile != null && profile.probabilities != null && profile.probabilities.length > 0 && profile.morphism == 1) {
+
+        int invokeBCI = invoke.bci();
+        RiProfilingInfo profilingInfo = parent.profilingInfo();
+        RiResolvedType[] types = profilingInfo.getTypes(invokeBCI);
+        double[] typeProbabilities = profilingInfo.getTypeProbabilities(invokeBCI);
+        if (types != null && typeProbabilities != null && types.length == 1) {
+            assert types.length == typeProbabilities.length : "length must match";
             if (GraalOptions.InlineWithTypeCheck) {
                 // type check and inlining...
-                concrete = profile.types[0].resolveMethodImpl(callTarget.targetMethod());
+                concrete = types[0].resolveMethodImpl(callTarget.targetMethod());
                 if (concrete != null && checkTargetConditions(concrete)) {
                     double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
-                    return new TypeGuardInlineInfo(invoke, weight, level, concrete, profile.types[0], profile.probabilities[0]);
+                    return new TypeGuardInlineInfo(invoke, weight, level, concrete, types[0], typeProbabilities[0]);
                 }
                 return null;
             } else {

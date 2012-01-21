@@ -236,6 +236,7 @@ public final class BlockMap {
         // mark the entrypoints of basic blocks and build lists of successors for
         // all bytecodes that end basic blocks (i.e. goto, ifs, switches, throw, jsr, returns, ret)
         byte[] code = method.code();
+        RiProfilingInfo profilingInfo = method.profilingInfo();
         Block current = null;
         int bci = 0;
         while (bci < code.length) {
@@ -282,7 +283,7 @@ public final class BlockMap {
                 case IFNULL:    // fall through
                 case IFNONNULL: {
                     current = null;
-                    double probability = useBranchPrediction ? method.branchProbability(bci) : -1;
+                    double probability = useBranchPrediction ? profilingInfo.getBranchTakenProbability(bci) : -1;
 
                     Block b1 = probability == 0.0 ? new DeoptBlock(bci + Bytes.beS2(code, bci + 1)) : makeBlock(bci + Bytes.beS2(code, bci + 1));
                     Block b2 = probability == 1.0 ? new DeoptBlock(bci + 3) : makeBlock(bci + 3);
@@ -351,7 +352,7 @@ public final class BlockMap {
                     break;
                 }
                 default: {
-                    if (canTrap(opcode, bci)) {
+                    if (canTrap(opcode, bci, profilingInfo)) {
                         canTrap.set(bci);
                     }
                 }
@@ -360,7 +361,7 @@ public final class BlockMap {
         }
     }
 
-    public boolean canTrap(int opcode, int bci) {
+    private static boolean canTrap(int opcode, int bci, RiProfilingInfo profilingInfo) {
         switch (opcode) {
             case INVOKESTATIC:
             case INVOKESPECIAL:
@@ -387,7 +388,7 @@ public final class BlockMap {
             case PUTFIELD:
             case GETFIELD: {
                 if (GraalOptions.AllowExplicitExceptionChecks) {
-                    return method.exceptionProbability(bci) > 0;
+                    return profilingInfo.getImplicitExceptionSeen(bci);
                 }
             }
         }

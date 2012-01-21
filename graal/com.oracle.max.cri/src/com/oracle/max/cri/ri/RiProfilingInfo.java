@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,20 +27,42 @@ package com.oracle.max.cri.ri;
  * Represents profiling information for one specific method.
  */
 public interface RiProfilingInfo {
-    // iterating the profiling information
-    boolean setBCI(int bci);
-    int currentBCI();
-    boolean next();
-    boolean isAtValidData();
+    /**
+     * Returns an estimate of how often the branch at the given byte code was taken.
+     * @return The estimated probability, with 0.0 meaning never and 1.0 meaning always, or -1 if this information is not available.
+     */
+    double getBranchTakenProbability(int bci);
 
-    // invokevirtual/invokeinterface
-    RiResolvedType[] getTypes();
-    double[] getTypeProbabilities();
+    /**
+     * Returns an estimate of how often the switch cases are taken at the given BCI.
+     * @return An array of double values that contains the estimated probabilities, with 0.0 meaning never and 1.0 meaning always,
+     * or null if this information is not available. The default case is stored as the last entry.
+     */
+    double[] getSwitchProbabilities(int bci);
 
-    // branches
-    double getBranchTakenProbability();
-    double[] getSwitchProbabilities();
+    /**
+     * Returns all types that were encountered at the given BCI.
+     * @return An array containing all types that were encountered during profiling at the given BCI, or null if not available.
+     */
+    RiResolvedType[] getTypes(int bci);
 
-    // exceptions
-    boolean hasExceptionOccurred();
+    /**
+     * Returns an estimate of how often each individual type is encountered at the given BCI.
+     * @return An array of double values that contains the estimated probabilities, with 0.0 meaning never and 1.0 meaning always,
+     * or null if this information is not available.
+     */
+    double[] getTypeProbabilities(int bci);
+
+    /**
+     * Returns true if the given BCI did throw an implicit exception (NullPointerException, ClassCastException,
+     * ArrayStoreException, or ArithmeticException) during profiling.
+     * @return true if any of the exceptions was encountered during profiling, false otherwise.
+     */
+    boolean getImplicitExceptionSeen(int bci);
+
+    /**
+     * Returns an estimate how often the current BCI was executed.
+     * @return the estimated execution count or -1 if not available.
+     */
+    int getExecutionCount(int bci);
 }

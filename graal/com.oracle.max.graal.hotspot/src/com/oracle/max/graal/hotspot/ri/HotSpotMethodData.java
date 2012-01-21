@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private static final long serialVersionUID = -8873133496591225071L;
     // TODO (ch) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
+    private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoDataAccessor();
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
         null, new BitData(), new CounterData(), new JumpData(),
         new TypeCheckData(), new VirtualCallData(), new RetData(),
@@ -44,22 +45,51 @@ public final class HotSpotMethodData extends CompilerObject {
     };
 
     private Object javaMirror;
-    private int dataSize;
+    private int normalDataSize;
+    private int extraDataSize;
 
     private HotSpotMethodData(Compiler compiler) {
         super(compiler);
-        javaMirror = null;
-        dataSize = 0;
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
     }
 
-    public HotSpotMethodDataAccessor getDataAccessor(int position) {
-        if (position < 0 || position >= dataSize) {
+    public boolean hasNormalData() {
+        return normalDataSize > 0;
+    }
+
+    public boolean hasExtraData() {
+        return extraDataSize > 0;
+    }
+
+    public boolean isWithinData(int position) {
+        return position >= 0 && position < normalDataSize + extraDataSize;
+    }
+
+    public HotSpotMethodDataAccessor getNormalData(int position) {
+        if (position >= normalDataSize) {
             return null;
         }
 
-        int tag = AbstractMethodDataAccessor.readTag(this, position);
-        assert tag > 0 && tag < PROFILE_DATA_ACCESSORS.length : "illegal tag";
+        HotSpotMethodDataAccessor result = getData(position, 0);
+        assert result != null : "NO_DATA tag is not allowed";
+        return result;
+    }
+
+    public HotSpotMethodDataAccessor getExtraData(int position) {
+        if (position >= extraDataSize) {
+            return null;
+        }
+        return getData(position, normalDataSize);
+    }
+
+    public static HotSpotMethodDataAccessor getNoDataAccessor() {
+        return NO_DATA_ACCESSOR;
+    }
+
+    private HotSpotMethodDataAccessor getData(int position, int displacement) {
+        assert position >= 0 : "out of bounds";
+        int tag = AbstractMethodDataAccessor.readTag(this, displacement + position);
+        assert tag >= 0 && tag < PROFILE_DATA_ACCESSORS.length : "illegal tag";
         return PROFILE_DATA_ACCESSORS[tag];
     }
 
@@ -78,9 +108,18 @@ public final class HotSpotMethodData extends CompilerObject {
         return unsafe.getInt(javaMirror, fullOffset) & 0xFFFFFFFFL;
     }
 
+    private int readUnsignedIntAsSignedInt(int position, int offsetInCells) {
+        long value = readUnsignedInt(position, offsetInCells);
+        return truncateLongToInt(value);
+    }
+
     private int readInt(int position, int offsetInCells) {
         long fullOffset = computeFullOffset(position, offsetInCells);
         return unsafe.getInt(javaMirror, fullOffset);
+    }
+
+    private static int truncateLongToInt(long value) {
+        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
     private static int computeFullOffset(int position, int offsetInCells) {
@@ -94,6 +133,8 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private abstract static class AbstractMethodDataAccessor implements HotSpotMethodDataAccessor {
+        private static final int IMPLICIT_EXCEPTIONS_MASK = 0x0E;
+
         private final int tag;
         private final int staticCellCount;
 
@@ -125,33 +166,39 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public boolean hasExceptionOccurred(HotSpotMethodData data, int position) {
-            return false;
+        public boolean getImplicitExceptionSeen(HotSpotMethodData data, int position) {
+            // TODO (ch) might return true too often because flags are also used for deoptimization reasons
+            return (getFlags(data, position) & IMPLICIT_EXCEPTIONS_MASK) != 0;
         }
 
         @Override
         public RiResolvedType[] getTypes(HotSpotMethodData data, int position) {
-            throw new IllegalStateException("not supported by current method data");
+            return null;
         }
 
         @Override
         public double[] getTypeProbabilities(HotSpotMethodData data, int position) {
-            throw new IllegalStateException("not supported by current method data");
+            return null;
         }
 
         @Override
         public double getBranchTakenProbability(HotSpotMethodData data, int position) {
-            throw new IllegalStateException("not supported by current method data");
+            return -1;
         }
 
         @Override
         public double[] getSwitchProbabilities(HotSpotMethodData data, int position) {
-            throw new IllegalStateException("not supported by current method data");
+            return null;
         }
 
         @Override
-        public long getExecutionCount(HotSpotMethodData data, int position) {
-            throw new IllegalStateException("not supported by current method data");
+        public int getExecutionCount(HotSpotMethodData data, int position) {
+            return -1;
+        }
+
+        protected int getFlags(HotSpotMethodData data, int position) {
+            HotSpotVMConfig config = getHotSpotVMConfig();
+            return data.readUnsignedByte(position, config.dataLayoutFlagsOffset);
         }
 
         protected int getDynamicCellCount(HotSpotMethodData data, int position) {
@@ -159,9 +206,30 @@ public final class HotSpotMethodData extends CompilerObject {
         }
     }
 
+    private static class NoDataAccessor extends AbstractMethodDataAccessor {
+        private static final int NO_DATA_TAG = 0;
+        private static final int NO_DATA_SIZE = 0;
+
+        protected NoDataAccessor() {
+            super(NO_DATA_TAG, NO_DATA_SIZE);
+        }
+
+        @Override
+        public int getBCI(HotSpotMethodData data, int position) {
+            return -1;
+        }
+
+
+        @Override
+        public boolean getImplicitExceptionSeen(HotSpotMethodData data, int position) {
+            return false;
+        }
+    }
+
     private static class BitData extends AbstractMethodDataAccessor {
         private static final int BIT_DATA_TAG = 1;
         private static final int BIT_DATA_CELLS = 0;
+        private static final int BIT_DATA_NULL_SEEN_FLAG = 0x01;
 
         private BitData() {
             super(BIT_DATA_TAG, BIT_DATA_CELLS);
@@ -169,6 +237,10 @@ public final class HotSpotMethodData extends CompilerObject {
 
         protected BitData(int tag, int staticCellCount) {
             super(tag, staticCellCount);
+        }
+
+        public boolean getNullSeen(HotSpotMethodData data, int position) {
+            return (getFlags(data, position) & BIT_DATA_NULL_SEEN_FLAG) != 0;
         }
     }
 
@@ -186,12 +258,12 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public long getExecutionCount(HotSpotMethodData data, int position) {
+        public int getExecutionCount(HotSpotMethodData data, int position) {
             return getCounterValue(data, position);
         }
 
-        protected long getCounterValue(HotSpotMethodData data, int position) {
-            return data.readUnsignedInt(position, COUNTER_DATA_COUNT_OFFSET);
+        protected int getCounterValue(HotSpotMethodData data, int position) {
+            return data.readUnsignedIntAsSignedInt(position, COUNTER_DATA_COUNT_OFFSET);
         }
     }
 
@@ -215,8 +287,8 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public long getExecutionCount(HotSpotMethodData data, int position) {
-            return data.readUnsignedInt(position, TAKEN_COUNT_OFFSET);
+        public int getExecutionCount(HotSpotMethodData data, int position) {
+            return data.readUnsignedIntAsSignedInt(position, TAKEN_COUNT_OFFSET);
         }
 
         public int getDisplacement(HotSpotMethodData data, int position) {
@@ -285,12 +357,8 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public long getExecutionCount(HotSpotMethodData data, int position) {
-            throw new IllegalStateException("not supported by current method data");
-        }
-
-        public long getTypeCheckFailedCount(HotSpotMethodData data, int position) {
-            return super.getCounterValue(data, position);
+        public int getExecutionCount(HotSpotMethodData data, int position) {
+            return -1;
         }
     }
 
@@ -303,7 +371,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public long getExecutionCount(HotSpotMethodData data, int position) {
+        public int getExecutionCount(HotSpotMethodData data, int position) {
             HotSpotVMConfig config = getHotSpotVMConfig();
             int typeProfileWidth = config.typeProfileWidth;
 
@@ -312,7 +380,8 @@ public final class HotSpotMethodData extends CompilerObject {
                 total += data.readUnsignedInt(position, getCountOffset(i));
             }
 
-            return total + getCounterValue(data, position);
+            total += getCounterValue(data, position);
+            return truncateLongToInt(total);
         }
     }
 
@@ -399,12 +468,19 @@ public final class HotSpotMethodData extends CompilerObject {
                 for (int i = 0; i < length; i++) {
                     result[i] = result[i] / total;
                 }
+
+                // default case is expected as last entry
+                if (length >= 2) {
+                    double defaultCase = result[0];
+                    result[0] = result[length - 1];
+                    result[length - 1] = defaultCase;
+                }
             }
             return result;
         }
 
         @Override
-        public long getExecutionCount(HotSpotMethodData data, int position) {
+        public int getExecutionCount(HotSpotMethodData data, int position) {
             int length = getLength(data, position);
             long total = 0;
 
@@ -413,7 +489,7 @@ public final class HotSpotMethodData extends CompilerObject {
                 total += data.readUnsignedInt(position, offset);
             }
 
-            return total;
+            return truncateLongToInt(total);
         }
 
         private static int getCountOffset(int index) {

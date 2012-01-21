@@ -220,26 +220,37 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         TTY.println("profile info for %s", this);
         TTY.println("canBeStaticallyBound: " + canBeStaticallyBound());
         TTY.println("invocationCount: " + invocationCount());
+        RiProfilingInfo profilingInfo = this.profilingInfo();
         for (int i = 0; i < codeSize(); i++) {
-            if (branchProbability(i) != -1) {
-                TTY.println("  branchProbability@%d: %f", i, branchProbability(i));
+            if (profilingInfo.getExecutionCount(i) != -1) {
+                TTY.println("  executionCount@%d: %d", i, profilingInfo.getExecutionCount(i));
             }
-            if (exceptionProbability(i) > 0) {
-                TTY.println("  exceptionProbability@%d: %d", i, exceptionProbability(i));
+
+            if (profilingInfo.getBranchTakenProbability(i) != -1) {
+                TTY.println("  branchProbability@%d: %f", i, profilingInfo.getBranchTakenProbability(i));
             }
-            RiTypeProfile profile = typeProfile(i);
-            if (profile != null && profile.count > 0) {
-                TTY.print("  profile@%d: count: %d, morphism: %d", i, profile.count, profile.morphism);
-                if (profile.types != null) {
-                    TTY.print(", types:");
-                    for (int i2 = 0; i2 < profile.types.length; i2++) {
-                        TTY.print(" %s (%f)", profile.types[i2], profile.probabilities[i2]);
-                    }
+
+            double[] switchProbabilities = profilingInfo.getSwitchProbabilities(i);
+            if (switchProbabilities != null) {
+                TTY.println("  switchProbabilities@%d:");
+                for (int j = 0; j < switchProbabilities.length; j++) {
+                    TTY.print(" %f", switchProbabilities[j]);
+                }
+            }
+
+            if (profilingInfo.getImplicitExceptionSeen(i)) {
+                TTY.println("  implicitExceptionSeen@%d: true", i);
+            }
+
+            RiResolvedType[] types = profilingInfo.getTypes(i);
+            double[] typeProbabilities = profilingInfo.getTypeProbabilities(i);
+            if (types != null && typeProbabilities != null) {
+                assert types.length == typeProbabilities.length : "length must match";
+                TTY.print("  types@%d:", i);
+                for (int j = 0; j < types.length; j++) {
+                    TTY.print(" %s (%f)", types[j], typeProbabilities[j]);
                 }
                 TTY.println();
-                if (exceptionProbability(i) > 0) {
-                    TTY.println("  exceptionProbability@%d: %d", i, exceptionProbability(i));
-                }
             }
         }
     }

@@ -181,10 +181,11 @@ public class InliningPhase extends Phase implements InliningCallback {
             if (GraalOptions.ProbabilityAnalysis) {
                 ratio = invoke.node().probability();
             } else {
-                RiTypeProfile profile = caller.typeProfile(invoke.bci());
-                if (profile != null && profile.count > 0) {
+                RiProfilingInfo profilingInfo = method.profilingInfo();
+                int executionCount = profilingInfo.getExecutionCount(invoke.bci());
+                if (executionCount > 0) {
                     RiResolvedMethod parent = invoke.stateAfter().method();
-                    ratio = profile.count / (float) parent.invocationCount();
+                    ratio = executionCount / (float) parent.invocationCount();
                 } else {
                     ratio = 1;
                 }

@@ -34,71 +34,104 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
      */
     private static final long serialVersionUID = -8307682725047864875L;
 
-    private boolean atValidData;
     private int position;
+    private int hintPosition;
+    private int hintBCI;
     private HotSpotMethodDataAccessor dataAccessor;
     private HotSpotMethodData methodData;
 
     public HotSpotProfilingInfoImpl(Compiler compiler, HotSpotMethodData methodData) {
         super(compiler);
         this.methodData = methodData;
-        setBCI(0);
-    }
-
-    public boolean setBCI(int value) {
-        assert value >= 0 : "invalid BCI";
-
-        seek(0);
-        while (atValidData && currentBCI() < value) {
-            next();
-        }
-
-        return atValidData;
+        hintPosition = 0;
+        hintBCI = -1;
     }
 
     @Override
-    public int currentBCI() {
-        return dataAccessor.getBCI(methodData, position);
-    }
-
-    @Override
-    public boolean isAtValidData() {
-        return atValidData;
-    }
-
-    @Override
-    public boolean next() {
-        return seek(position + dataAccessor.getSize(methodData, position));
-    }
-
-    @Override
-    public RiResolvedType[] getTypes() {
+    public RiResolvedType[] getTypes(int bci) {
+        findBCI(bci);
         return dataAccessor.getTypes(methodData, position);
     }
 
     @Override
-    public double[] getTypeProbabilities() {
+    public double[] getTypeProbabilities(int bci) {
+        findBCI(bci);
         return dataAccessor.getTypeProbabilities(methodData, position);
     }
 
     @Override
-    public double getBranchTakenProbability() {
+    public double getBranchTakenProbability(int bci) {
+        findBCI(bci);
         return dataAccessor.getBranchTakenProbability(methodData, position);
     }
 
     @Override
-    public double[] getSwitchProbabilities() {
+    public double[] getSwitchProbabilities(int bci) {
+        findBCI(bci);
         return dataAccessor.getSwitchProbabilities(methodData, position);
     }
 
     @Override
-    public boolean hasExceptionOccurred() {
-        return dataAccessor.hasExceptionOccurred(methodData, position);
+    public boolean getImplicitExceptionSeen(int bci) {
+        findBCI(bci);
+        return dataAccessor.getImplicitExceptionSeen(methodData, position);
     }
 
-    private boolean seek(int value) {
-        position = value;
-        dataAccessor = methodData.getDataAccessor(position);
-        return dataAccessor != null;
+    @Override
+    public int getExecutionCount(int bci) {
+        findBCI(bci);
+        return dataAccessor.getExecutionCount(methodData, position);
+    }
+
+    private void findBCI(int targetBCI) {
+        assert targetBCI >= 0 : "invalid BCI";
+
+        if (methodData.hasNormalData()) {
+            int currentPosition = targetBCI < hintBCI ? 0 : hintPosition;
+            HotSpotMethodDataAccessor currentAccessor;
+            while ((currentAccessor = methodData.getNormalData(currentPosition)) != null) {
+                int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
+                if (currentBCI == targetBCI) {
+                    normalDataFound(currentAccessor, currentPosition, currentBCI);
+                    return;
+                } else if (currentBCI > targetBCI) {
+                    break;
+                }
+                currentAccessor = methodData.getNormalData(currentPosition);
+            }
+        }
+
+        if (methodData.hasExtraData()) {
+            int currentPosition = 0;
+            HotSpotMethodDataAccessor currentAccessor;
+            while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
+                int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
+                if (currentBCI == targetBCI) {
+                    extraDataFound(currentAccessor, currentPosition);
+                    return;
+                }
+            }
+        }
+
+        noDataFound();
+    }
+
+    private void normalDataFound(HotSpotMethodDataAccessor data, int pos, int bci) {
+        setCurrentData(data, pos);
+        this.hintPosition = position;
+        this.hintBCI = bci;
+    }
+
+    private void extraDataFound(HotSpotMethodDataAccessor data, int pos) {
+        setCurrentData(data, pos);
+    }
+
+    private void noDataFound() {
+        setCurrentData(HotSpotMethodData.getNoDataAccessor(), -1);
+    }
+
+    private void setCurrentData(HotSpotMethodDataAccessor dataAccessor, int position) {
+        this.dataAccessor = dataAccessor;
+        this.position = position;
     }
 }

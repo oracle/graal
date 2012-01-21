@@ -71,6 +71,7 @@ public final class GraphBuilderPhase extends Phase {
     private RiConstantPool constantPool;
     private RiExceptionHandler[] exceptionHandlers;
     private RiResolvedMethod method;
+    private RiProfilingInfo profilingInfo;
 
     private BytecodeStream stream;           // the bytecode stream
     private final LogStream log;
@@ -115,6 +116,7 @@ public final class GraphBuilderPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         method = graph.method();
+        profilingInfo = method.profilingInfo();
         assert method.code() != null : "method must contain bytecodes: " + method;
         this.stream = new BytecodeStream(method.code());
         this.constantPool = method.getConstantPool();
@@ -322,7 +324,7 @@ public final class GraphBuilderPhase extends Phase {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
 
         if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && method.exceptionProbability(bci) == 0) {
+            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && !profilingInfo.getImplicitExceptionSeen(bci)) {
                 return null;
             }
         }
@@ -603,7 +605,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
-        double probability = method.branchProbability(bci());
+        double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
             if (GraalOptions.TraceProbability) {
                 TTY.println("missing probability in " + method + " at bci " + bci());
@@ -1132,7 +1134,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private double[] switchProbability(int numberOfCases, int bci) {
-        double[] prob = method.switchProbability(bci);
+        double[] prob = profilingInfo.getSwitchProbabilities(bci);
         if (prob != null) {
             assert prob.length == numberOfCases;
         } else {

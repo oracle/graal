@@ -111,7 +111,7 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native boolean RiType_isInitialized(HotSpotTypeResolved klass);
 
     @Override
-    public native RiProfilingInfo RiMethod_profilingInfo(HotSpotMethodResolved method);
+    public native HotSpotMethodData RiMethod_methodData(HotSpotMethodResolved method);
 
     @Override
     public native RiType getType(Class<?> javaClass);
