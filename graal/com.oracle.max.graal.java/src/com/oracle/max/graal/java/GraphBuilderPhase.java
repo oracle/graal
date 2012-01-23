@@ -383,14 +383,11 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genLoadConstant(int cpi, int opcode) {
-        Object con = constantPool.lookupConstant(cpi);
+        Object con = lookupConstant(cpi, opcode);
 
         if (con instanceof RiType) {
             // this is a load of class constant which might be unresolved
             RiType riType = (RiType) con;
-            if (config.eagerResolving() && !(riType instanceof RiResolvedType)) {
-                riType = lookupType(cpi, opcode);
-            }
             if (riType instanceof RiResolvedType) {
                 frameState.push(CiKind.Object, append(ConstantNode.forCiConstant(((RiResolvedType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
             } else {
@@ -672,6 +669,19 @@ public final class GraphBuilderPhase extends Phase {
         RiField result = constantPool.lookupField(cpi, opcode);
         assert !config.eagerResolvingForSnippets() || (result instanceof RiResolvedField && ((RiResolvedField) result).holder().isInitialized());
         return result;
+    }
+
+    private Object lookupConstant(int cpi, int opcode) {
+        eagerResolving(cpi, opcode);
+        Object result = constantPool.lookupConstant(cpi);
+        assert !config.eagerResolving() || !(result instanceof RiType) || (result instanceof RiResolvedType);
+        return result;
+    }
+
+    private void eagerResolving(int cpi, int bytecode) {
+        if (config.eagerResolving()) {
+            constantPool.loadReferencedType(cpi, bytecode);
+        }
     }
 
     private void eagerResolvingForSnippets(int cpi, int bytecode) {
