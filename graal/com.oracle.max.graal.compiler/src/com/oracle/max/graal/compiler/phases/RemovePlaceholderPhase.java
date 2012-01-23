@@ -28,7 +28,7 @@ public class RemovePlaceholderPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (PlaceholderNode n : graph.getNodes(PlaceholderNode.class)) {
-            n.replaceAndDelete(n.next());
+            graph.removeFixed(n);
         }
     }
 }

@@ -28,6 +28,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.calc.*;
 
 /**
  * The {@code Util} class contains a motley collection of utility methods used throughout the compiler.
@@ -361,5 +362,13 @@ public class Util {
             }
         }
         return false;
+    }
+
+    public static boolean isFixed(Node n) {
+        return n instanceof FixedNode;
+    }
+
+    public static boolean isFloating(Node n) {
+        return n instanceof FloatingNode;
     }
 }

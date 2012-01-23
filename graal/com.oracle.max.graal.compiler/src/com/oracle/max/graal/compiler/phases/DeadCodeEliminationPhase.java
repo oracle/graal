@@ -101,7 +101,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private static void replacePhis(MergeNode merge) {
         for (PhiNode phi : merge.phis().snapshot()) {
-            phi.replaceAndDelete((phi).valueAt(0));
+            ((StructuredGraph) merge.graph()).replaceFloating(phi, phi.valueAt(0));
         }
     }
 

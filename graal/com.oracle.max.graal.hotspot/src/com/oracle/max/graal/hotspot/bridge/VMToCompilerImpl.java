@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,6 +120,17 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         }
     }
 
+    /**
+     * This method is the first method compiled during bootstrapping. Put any code in there that
+     * warms up compiler paths that are otherwise no exercised during bootstrapping and lead to later
+     * deoptimization when application code is compiled.
+     */
+    @SuppressWarnings("unused")
+    @Deprecated
+    private synchronized void compileWarmup() {
+        // Method is synchronized to exercise the synchronization code in the compiler.
+    }
+
     public void bootstrap() throws Throwable {
         TTY.print("Bootstrapping Graal");
         TTY.flush();
@@ -127,12 +138,13 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
         // Initialize compile queue with a selected set of methods.
         Class<Object> objectKlass = Object.class;
+        enqueue(getClass().getDeclaredMethod("compileWarmup"));
         enqueue(objectKlass.getDeclaredMethod("equals", Object.class));
         enqueue(objectKlass.getDeclaredMethod("toString"));
 
         // Compile until the queue is empty.
         int z = 0;
-        while (compileQueue.getCompletedTaskCount() < Math.max(2, compileQueue.getTaskCount())) {
+        while (compileQueue.getCompletedTaskCount() < Math.max(3, compileQueue.getTaskCount())) {
             Thread.sleep(100);
             while (z < compileQueue.getCompletedTaskCount() / 100) {
                 ++z;

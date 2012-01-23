@@ -23,10 +23,8 @@
 package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiAddress.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.Node.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.graph.Node.ValueNumberable;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -67,14 +65,6 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
 
     public CiKind getValueKind() {
         return valueKind;
-    }
-
-    public CiAddress createAddress(LIRGeneratorTool gen, ValueNode object) {
-        CiValue base = gen.operand(object);
-        if (CiValueUtil.isConstant(base) && ((CiConstant) base).isNull()) {
-            base = CiValue.IllegalValue;
-        }
-        return new CiAddress(valueKind, base, CiValue.IllegalValue, Scale.Times1, displacement());
     }
 
     public Object locationIdentity() {

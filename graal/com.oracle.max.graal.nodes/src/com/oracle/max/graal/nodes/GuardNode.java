@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.nodes;
 
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -60,7 +59,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (condition() instanceof ConstantNode) {
             ConstantNode c = (ConstantNode) condition();
             if (c.asConstant().asBoolean()) {

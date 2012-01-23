@@ -35,7 +35,7 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (y().isConstant()) {
             int amount = y().asConstant().asInt();
             int originalAmout = amount;

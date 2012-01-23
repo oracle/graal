@@ -23,7 +23,6 @@
 package com.oracle.max.graal.nodes.loop;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -96,7 +95,7 @@ public class DerivedInductionVariableNode extends LinearInductionVariableNode  i
             counter = (LoopCounterNode) b;
         }
         BasicInductionVariableNode newBIV = graph().add(new BasicInductionVariableNode(kind(), init, stride, counter));
-        this.replaceAndDelete(newBIV);
+        ((StructuredGraph) graph()).replaceFloating(this, newBIV);
         return newBIV;
     }
 
@@ -106,7 +105,7 @@ public class DerivedInductionVariableNode extends LinearInductionVariableNode  i
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (base() instanceof DerivedInductionVariableNode) {
             DerivedInductionVariableNode divBase = (DerivedInductionVariableNode) base();
             IntegerArithmeticNode newOffset = IntegerArithmeticNode.add(offset(), IntegerArithmeticNode.mul(scale(), divBase.offset()));

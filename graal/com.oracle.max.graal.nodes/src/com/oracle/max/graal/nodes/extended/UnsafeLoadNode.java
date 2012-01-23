@@ -24,7 +24,6 @@ package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -32,7 +31,7 @@ import com.oracle.max.graal.nodes.type.*;
 /**
  * Load of a value from a location specified as an offset relative to an object.
  */
-public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable, Node.ValueNumberable {
+public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;

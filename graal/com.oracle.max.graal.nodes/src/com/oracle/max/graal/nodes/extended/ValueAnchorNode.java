@@ -33,7 +33,7 @@ import com.oracle.max.graal.nodes.type.*;
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
  */
 
-public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable {
+public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
     @Input private ValueNode object;
 
@@ -52,19 +52,19 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (object == null) {
-            return next();
+            return null;
         }
         if (object instanceof ConstantNode) {
-            return next();
+            return null;
         }
         if (object instanceof IntegerDivNode || object instanceof IntegerRemNode) {
             if (((ArithmeticNode) object).y().isConstant()) {
                 CiConstant  constant = ((ArithmeticNode) object).y().asConstant();
                 assert constant.kind == object.kind() : constant.kind + " != " + object.kind();
                 if (constant.asLong() != 0) {
-                    return next();
+                    return null;
                 }
             }
         }

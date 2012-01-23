@@ -23,7 +23,6 @@
 package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiAddress.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -69,23 +68,7 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
     }
 
     @Override
-    public CiAddress createAddress(LIRGeneratorTool gen, ValueNode object) {
-        CiValue base = gen.operand(object);
-        if (CiValueUtil.isConstant(base) && ((CiConstant) base).isNull()) {
-            base = CiValue.IllegalValue;
-        }
-
-        CiValue indexValue = gen.operand(index());
-        Scale indexScale = Scale.Times1;
-        if (indexScalingEnabled) {
-            indexScale = Scale.fromInt(gen.target().sizeInBytes(getValueKind()));
-        }
-
-        return new CiAddress(getValueKind(), base, indexValue, indexScale, displacement());
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         CiConstant constantIndex = index.asConstant();
         if (constantIndex != null && constantIndex.kind.stackKind().isInt()) {
             long constantIndexLong = constantIndex.asInt();

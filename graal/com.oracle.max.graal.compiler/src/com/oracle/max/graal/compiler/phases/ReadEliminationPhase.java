@@ -32,8 +32,9 @@ public class ReadEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ReadNode n : graph.getNodes(ReadNode.class)) {
+        for (FloatingReadNode n : graph.getNodes(FloatingReadNode.class)) {
             if (n.dependencies().size() > 0) {
+                assert n.dependencies().size() == 1;
                 Node memoryInput = n.dependencies().get(0);
                 if (memoryInput instanceof WriteNode) {
                     WriteNode other = (WriteNode) memoryInput;
@@ -41,7 +42,7 @@ public class ReadEliminationPhase extends Phase {
                         if (GraalOptions.TraceReadElimination) {
                             TTY.println("Eliminated memory read " + n + "and replaced with node " + other.value());
                         }
-                        n.replaceAndDelete(other.value());
+                        graph.replaceFloating(n, other.value());
                     }
                 }
             }

@@ -26,7 +26,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -75,7 +74,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant()) {
             double value = x().asConstant().asDouble();
             switch (operation()) {

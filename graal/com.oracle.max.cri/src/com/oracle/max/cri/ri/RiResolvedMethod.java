@@ -206,4 +206,9 @@ public interface RiResolvedMethod extends RiMethod {
      * @see Method#getGenericReturnType()
      */
     Type getGenericReturnType();
+
+    /**
+     * @return {@code true} if this method can be inlined
+     */
+    boolean canBeInlined();
 }

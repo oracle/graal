@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.nodes;
+package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.type.*;
 
-public final class ArrayWriteBarrier extends WriteBarrier implements LIRLowerable {
+public abstract class FloatingAccessNode extends FloatingNode implements Access {
 
     @Input private ValueNode object;
+    @Input private GuardNode guard;
     @Input private LocationNode location;
+    @Data private boolean nullCheck;
 
     public ValueNode object() {
         return object;
+    }
+
+    public GuardNode guard() {
+        return guard;
+    }
+
+    public void setGuard(GuardNode x) {
+        updateUsages(guard, x);
+        guard = x;
     }
 
     public LocationNode location() {
         return location;
     }
 
-    public ArrayWriteBarrier(ValueNode object, LocationNode location) {
-        this.object = object;
-        this.location = location;
+    public boolean getNullCheck() {
+        return nullCheck;
     }
 
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        CiValue obj = gen.emitLea(gen.makeAddress(location(), object()));
-        generateBarrier(obj, gen);
+    public void setNullCheck(boolean check) {
+        this.nullCheck = check;
+    }
+
+    public FloatingAccessNode(CiKind kind, ValueNode object, GuardNode guard, LocationNode location) {
+        super(StampFactory.forKind(kind));
+        this.object = object;
+        this.guard = guard;
+        this.location = location;
     }
 }

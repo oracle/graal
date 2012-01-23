@@ -57,13 +57,10 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private RiResolvedType holder;
     private HotSpotMethodData methodData;
     private byte[] code;
+    private boolean canBeInlined;
 
     private HotSpotMethodResolvedImpl() {
         super(null);
-        codeSize = -1;
-        accessFlags = -1;
-        maxLocals = -1;
-        maxStackSize = -1;
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
     }
 
@@ -313,5 +310,14 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         } catch (NoSuchMethodException e) {
             return null;
         }
+    }
+
+    @Override
+    public boolean canBeInlined() {
+        return canBeInlined;
+    }
+
+    public void setCanBeInlined(boolean canBeInlined) {
+        this.canBeInlined = canBeInlined;
     }
 }

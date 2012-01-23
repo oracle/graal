@@ -22,7 +22,6 @@
  */
 package com.oracle.max.graal.nodes;
 
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.type.*;
 
 /**
@@ -43,20 +42,5 @@ public abstract class FixedWithNextNode extends FixedNode {
 
     public FixedWithNextNode(Stamp stamp) {
         super(stamp);
-    }
-
-    public void replaceAndUnlink(Node other) {
-        FixedNode tmpNext = this.next();
-        setNext(null);
-        replaceAtPredecessors(tmpNext);
-        replaceAtUsages(other);
-        safeDelete();
-    }
-
-    public void replaceWithFixedWithNext(FixedWithNextNode other) {
-        FixedNode tmpNext = this.next();
-        setNext(null);
-        other.setNext(tmpNext);
-        replaceAndDelete(other);
     }
 }

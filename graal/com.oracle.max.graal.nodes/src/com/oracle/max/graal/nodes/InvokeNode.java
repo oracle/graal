@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -97,27 +96,21 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
 
     @Override
     public void intrinsify(Node node) {
-        this.callTarget.delete();
+        MethodCallTargetNode call = callTarget;
+        FrameState stateAfter = stateAfter();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(stateAfter());
-        } else {
-            if (stateAfter().usages().size() == 1) {
-                stateAfter().delete();
-            }
+            stateSplit.setStateAfter(stateAfter);
         }
-        if (node instanceof FixedWithNextNode) {
-            FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
-            FixedNode next = this.next();
-            setNext(null);
-            fixedWithNextNode.setNext(next);
-            this.replaceAndDelete(node);
-        } else if (node instanceof FloatingNode || (node == null && this.kind() == CiKind.Void)) {
-            FixedNode next = this.next();
-            setNext(null);
-            this.replaceAtPredecessors(next);
-            this.replaceAtUsages(node);
-            this.safeDelete();
+        if (node == null) {
+            assert kind() == CiKind.Void && usages().isEmpty();
+            ((StructuredGraph) graph()).removeFixed(this);
+        } else {
+            ((StructuredGraph) graph()).replaceFixed(this, node);
+        }
+        call.safeDelete();
+        if (stateAfter.usages().isEmpty()) {
+            stateAfter.safeDelete();
         }
     }
 }

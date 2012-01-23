@@ -152,18 +152,20 @@ public class FloatingReadPhase extends Phase {
         }
 
         public void processRead(ReadNode readNode) {
-            FixedNode next = readNode.next();
-            readNode.setNext(null);
-            readNode.replaceAtPredecessors(next);
+            StructuredGraph graph = (StructuredGraph) readNode.graph();
+            assert readNode.getNullCheck() == false;
 
             if (GraalOptions.TraceMemoryMaps) {
                 TTY.println("Register read to node " + readNode);
             }
 
-            if (readNode.location().locationIdentity() != LocationNode.FINAL_LOCATION) {
-                // Create dependency on previous node that creates the memory state for this location.
-                readNode.addDependency(getLocationForRead(readNode));
+            FloatingReadNode floatingRead;
+            if (readNode.location().locationIdentity() == LocationNode.FINAL_LOCATION) {
+                floatingRead = graph.unique(new FloatingReadNode(readNode.kind(), readNode.object(), readNode.guard(), readNode.location()));
+            } else {
+                floatingRead = graph.unique(new FloatingReadNode(readNode.kind(), readNode.object(), readNode.guard(), readNode.location(), getLocationForRead(readNode)));
             }
+            graph.replaceFixedWithFloating(readNode, floatingRead);
         }
 
         private Node getLocationForRead(ReadNode readNode) {
@@ -263,9 +265,7 @@ public class FloatingReadPhase extends Phase {
         BeginNode entryPoint = graph.start();
         FixedNode next = entryPoint.next();
         if (!(next instanceof MemoryCheckpoint)) {
-            WriteMemoryCheckpointNode checkpoint = graph.add(new WriteMemoryCheckpointNode());
-            entryPoint.setNext(checkpoint);
-            checkpoint.setNext(next);
+            graph.addAfterFixed(entryPoint, graph.add(new WriteMemoryCheckpointNode()));
         }
     }
 

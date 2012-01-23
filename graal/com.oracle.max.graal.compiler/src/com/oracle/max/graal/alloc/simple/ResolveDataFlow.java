@@ -38,12 +38,15 @@ import com.oracle.max.graal.compiler.util.*;
 public abstract class ResolveDataFlow {
     public final LIR lir;
     public final MoveResolver moveResolver;
+    public final DataFlowAnalysis dataFlow;
 
-    public ResolveDataFlow(LIR lir, MoveResolver moveResolver) {
+    public ResolveDataFlow(LIR lir, MoveResolver moveResolver, DataFlowAnalysis dataFlow) {
         this.lir = lir;
         this.moveResolver = moveResolver;
+        this.dataFlow = dataFlow;
     }
 
+    private LIRBlock curToBlock;
     private LocationMap curFromLocations;
 
     public void execute() {
@@ -52,6 +55,7 @@ public abstract class ResolveDataFlow {
 
         assert trace("==== start resolve data flow ====");
         for (LIRBlock toBlock : lir.linearScanOrder()) {
+            curToBlock = toBlock;
 
             for (LIRBlock fromBlock : toBlock.getLIRPredecessors()) {
                 assert trace("start edge %s -> %s", fromBlock, toBlock);
@@ -79,17 +83,17 @@ public abstract class ResolveDataFlow {
     }
 
     private CiValue locMapping(CiValue value) {
-        Location to = curFromLocations.get(asLocation(value).variable);
-        if (value != to && to != null) {
-            moveResolver.add(value, to);
+        Location to = asLocation(value);
+        Location from = curFromLocations.get(to.variable);
+        if (value != from && dataFlow.liveIn(curToBlock).get(to.variable.index)) {
+            moveResolver.add(from, to);
         }
         return value;
     }
 
     private CiValue phiMapping(CiValue input, CiValue output) {
-        Location to = asLocation(output);
-        if (input != to) {
-            moveResolver.add(input, to);
+        if (input != output) {
+            moveResolver.add(input, asLocation(output));
         }
         return input;
     }

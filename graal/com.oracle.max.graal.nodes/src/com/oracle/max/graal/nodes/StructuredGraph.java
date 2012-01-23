@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.java.*;
 
 
@@ -138,4 +139,114 @@ public class StructuredGraph extends Graph {
     public boolean hasLoops() {
         return getNodes(LoopBeginNode.class).iterator().hasNext();
     }
+
+    public void removeFloating(FloatingNode node) {
+        assert node != null && node.isAlive() : "cannot remove " + node;
+        node.safeDelete();
+    }
+
+    public void replaceFloating(FloatingNode node, ValueNode replacement) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        node.replaceAtUsages(replacement);
+        node.safeDelete();
+    }
+
+    public void removeFixed(FixedWithNextNode node) {
+        assert node != null;
+        assert node.usages().isEmpty() : node + " " + node.usages();
+        FixedNode next = node.next();
+        node.setNext(null);
+        node.replaceAtPredecessors(next);
+        node.safeDelete();
+    }
+
+    public void replaceFixed(FixedWithNextNode node, Node replacement) {
+        if (replacement instanceof FixedWithNextNode) {
+            replaceFixedWithFixed(node, (FixedWithNextNode) replacement);
+        } else {
+            assert replacement != null : "cannot replace " + node + " with null";
+            assert replacement instanceof FloatingNode : "cannot replace " + node + " with " + replacement;
+            replaceFixedWithFloating(node, (FloatingNode) replacement);
+        }
+    }
+
+    public void replaceFixedWithFixed(FixedWithNextNode node, FixedWithNextNode replacement) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        FixedNode next = node.next();
+        node.setNext(null);
+        replacement.setNext(next);
+        node.replaceAndDelete(replacement);
+    }
+
+    public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        FixedNode next = node.next();
+        node.setNext(null);
+        node.replaceAtPredecessors(next);
+        node.replaceAtUsages(replacement);
+        node.safeDelete();
+    }
+
+    public void removeSplit(ControlSplitNode node, int survivingSuccessor) {
+        assert node != null;
+        assert node.usages().isEmpty();
+        assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
+        FixedNode next = node.blockSuccessor(survivingSuccessor);
+        for (int i = 0; i < node.blockSuccessorCount(); i++) {
+            node.setBlockSuccessor(i, null);
+        }
+        node.replaceAtPredecessors(next);
+        node.safeDelete();
+    }
+
+    public void replaceSplit(ControlSplitNode node, Node replacement, int survivingSuccessor) {
+        if (replacement instanceof FixedWithNextNode) {
+            replaceSplitWithFixed(node, (FixedWithNextNode) replacement, survivingSuccessor);
+        } else {
+            assert replacement != null : "cannot replace " + node + " with null";
+            assert replacement instanceof FloatingNode : "cannot replace " + node + " with " + replacement;
+            replaceSplitWithFloating(node, (FloatingNode) replacement, survivingSuccessor);
+        }
+    }
+
+    public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, int survivingSuccessor) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
+        FixedNode next = node.blockSuccessor(survivingSuccessor);
+        for (int i = 0; i < node.blockSuccessorCount(); i++) {
+            node.setBlockSuccessor(i, null);
+        }
+        replacement.setNext(next);
+        node.replaceAndDelete(replacement);
+    }
+
+    public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, int survivingSuccessor) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
+        FixedNode next = node.blockSuccessor(survivingSuccessor);
+        for (int i = 0; i < node.blockSuccessorCount(); i++) {
+            node.setBlockSuccessor(i, null);
+        }
+        node.replaceAtPredecessors(next);
+        node.replaceAtUsages(replacement);
+        node.safeDelete();
+    }
+
+    public void addAfterFixed(FixedWithNextNode node, FixedWithNextNode newNode) {
+        assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " after " + node;
+        assert newNode.next() == null;
+        FixedNode next = node.next();
+        node.setNext(newNode);
+        newNode.setNext(next);
+    }
+
+    public void addBeforeFixed(FixedNode node, FixedWithNextNode newNode) {
+        assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
+        assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
+        assert newNode.next() == null;
+        FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
+        pred.setNext(newNode);
+        newNode.setNext(node);
+    }
+
 }

@@ -185,7 +185,7 @@ public final class GraphBuilderPhase extends Phase {
 
         // remove Placeholders (except for loop exits)
         for (PlaceholderNode n : currentGraph.getNodes(PlaceholderNode.class)) {
-            n.replaceAndDelete(n.next());
+            currentGraph.removeFixed(n);
         }
 
         // remove dead FrameStates
@@ -613,10 +613,14 @@ public final class GraphBuilderPhase extends Phase {
             probability = 0.5;
         }
 
-        IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new CompareNode(x, cond, y)), probability));
-        append(ifNode);
-        ifNode.setTrueSuccessor(BeginNode.begin(createTarget(currentBlock.successors.get(0), frameState)));
-        ifNode.setFalseSuccessor(BeginNode.begin(createTarget(currentBlock.successors.get(1), frameState)));
+        CompareNode condition = currentGraph.unique(new CompareNode(x, cond, y));
+        FixedNode trueSuccessor = createTarget(currentBlock.successors.get(0), frameState);
+        FixedNode falseSuccessor = createTarget(currentBlock.successors.get(1), frameState);
+        if (trueSuccessor == falseSuccessor) {
+            appendGoto(trueSuccessor);
+        } else {
+            append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, probability)));
+        }
 
         assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
     }
@@ -1328,8 +1332,8 @@ public final class GraphBuilderPhase extends Phase {
                 EndNode loopEntryEnd = begin.forwardEdge();
                 FixedNode beginSucc = begin.next();
                 FrameState stateAfter = begin.stateAfter();
-                stateAfter.delete();
                 begin.safeDelete();
+                stateAfter.safeDelete();
                 loopEntryEnd.replaceAndDelete(beginSucc);
             }
         }

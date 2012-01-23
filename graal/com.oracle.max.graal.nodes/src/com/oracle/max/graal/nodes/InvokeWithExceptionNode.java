@@ -26,15 +26,14 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.util.*;
 
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
-    private static final int NORMAL_EDGE = 0;
-    private static final int EXCEPTION_EDGE = 1;
+    public static final int NORMAL_EDGE = 0;
+    public static final int EXCEPTION_EDGE = 1;
 
     @Input private final MethodCallTargetNode callTarget;
     @Input private FrameState stateAfter;
@@ -141,31 +140,22 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     @Override
     public void intrinsify(Node node) {
-        this.callTarget.delete();
+        MethodCallTargetNode call = callTarget;
+        FrameState state = stateAfter();
         killExceptionEdge();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(stateAfter());
-        } else {
-            if (stateAfter().usages().size() == 1) {
-                stateAfter().delete();
-            }
+            stateSplit.setStateAfter(state);
         }
-
-        if (node instanceof FixedWithNextNode) {
-            FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
-            FixedNode next = this.next();
-            setNext(null);
-            fixedWithNextNode.setNext(next);
-            this.replaceAndDelete(node);
-        } else if (node instanceof FloatingNode || (node == null && this.kind() == CiKind.Void)) {
-            FixedNode next = this.next();
-            setNext(null);
-            this.replaceAtPredecessors(next);
-            this.replaceAtUsages(node);
-            this.delete();
+        if (node == null) {
+            assert kind() == CiKind.Void && usages().isEmpty();
+            ((StructuredGraph) graph()).removeSplit(this, NORMAL_EDGE);
         } else {
-            assert false : node;
+            ((StructuredGraph) graph()).replaceSplit(this, node, NORMAL_EDGE);
+        }
+        call.safeDelete();
+        if (state.usages().isEmpty()) {
+            state.safeDelete();
         }
     }
 }

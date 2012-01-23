@@ -52,7 +52,7 @@ public class SpillAllAllocator {
         this.lir = lir;
         this.frameMap = frameMap;
 
-        this.dataFlow = new DataFlowAnalysis(context, lir, frameMap.registerConfig);
+        this.dataFlow = new DataFlowAnalysis(lir, frameMap.registerConfig);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
         this.moveResolver = new MoveResolverImpl(frameMap);
     }
@@ -76,8 +76,8 @@ public class SpillAllAllocator {
     }
 
     private class ResolveDataFlowImpl extends ResolveDataFlow {
-        public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver) {
-            super(lir, moveResolver);
+        public ResolveDataFlowImpl(LIR lir, MoveResolver moveResolver, DataFlowAnalysis dataFlow) {
+            super(lir, moveResolver, dataFlow);
         }
 
         @Override
@@ -134,22 +134,24 @@ public class SpillAllAllocator {
         assert LIRVerifier.verify(true, lir, frameMap);
 
         dataFlow.execute();
+        IntervalPrinter.printBeforeAllocation("Before register allocation", context, lir, frameMap.registerConfig, dataFlow);
+
         allocate();
+
+        IntervalPrinter.printAfterAllocation("After spill all allocation", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
+
+        ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
+        resolveDataFlow.execute();
         frameMap.finish();
 
-        context.observable.fireCompilationEvent("After spill all allocation", lir);
-
-        ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver);
-        resolveDataFlow.execute();
-
-        context.observable.fireCompilationEvent("After resolve data flow", lir);
+        IntervalPrinter.printAfterAllocation("After resolve data flow", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
         assert RegisterVerifier.verify(lir, frameMap);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);
         assignRegisters.execute();
 
         context.observable.fireCompilationEvent("After register asignment", lir);
-        assert LIRVerifier.verify(true, lir, frameMap);
+        assert LIRVerifier.verify(false, lir, frameMap);
     }
 
     private void allocate() {

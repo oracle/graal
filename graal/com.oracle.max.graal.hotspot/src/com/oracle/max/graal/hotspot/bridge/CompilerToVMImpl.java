@@ -144,5 +144,11 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     @Override
     public native long getMaxCallTargetOffset(CiRuntimeCall rtcall);
 
+    @Override
+    public native String disassembleNative(byte[] code, long address);
+
+    @Override
+    public native String disassembleJava(HotSpotMethodResolved method);
+
     // Checkstyle: resume
 }

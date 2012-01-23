@@ -23,16 +23,14 @@
 package com.oracle.max.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.type.*;
 
-public abstract class AccessNode extends AbstractStateSplit {
+public abstract class AccessNode extends AbstractStateSplit implements Access {
 
     @Input private ValueNode object;
     @Input private GuardNode guard;
     @Input private LocationNode location;
-    @Input private final NodeInputList<Node> dependencies = new NodeInputList<>(this);
     @Data private boolean nullCheck;
 
     public ValueNode object() {
@@ -64,13 +62,5 @@ public abstract class AccessNode extends AbstractStateSplit {
         super(StampFactory.forKind(kind));
         this.object = object;
         this.location = location;
-    }
-
-    public void addDependency(Node x) {
-        dependencies.add(x);
-    }
-
-    public NodeInputList<Node> dependencies() {
-        return dependencies;
     }
 }

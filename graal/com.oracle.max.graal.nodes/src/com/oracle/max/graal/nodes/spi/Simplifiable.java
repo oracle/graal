@@ -20,34 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.nodes;
+package com.oracle.max.graal.nodes.spi;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.spi.*;
+/**
+ * This interface allows nodes to perform more complicated simplifications, in contrast to {@link Canonicalizable},
+ * which supports only replacing the current node.
+ *
+ * Implementors of this interface need to be aware that they need to call {@link SimplifierTool#addToWorkList(com.oracle.max.graal.graph.Node)} for each node that might
+ * be influenced (in terms of simplification and canonicalization) by the actions performed in simplify.
+ */
+public interface Simplifiable {
 
-public final class ArrayWriteBarrier extends WriteBarrier implements LIRLowerable {
-
-    @Input private ValueNode object;
-    @Input private LocationNode location;
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public LocationNode location() {
-        return location;
-    }
-
-    public ArrayWriteBarrier(ValueNode object, LocationNode location) {
-        this.object = object;
-        this.location = location;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        CiValue obj = gen.emitLea(gen.makeAddress(location(), object()));
-        generateBarrier(obj, gen);
-    }
+    void simplify(SimplifierTool tool);
 }

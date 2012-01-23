@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -71,7 +70,7 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (object().exactType() != null) {
             return ConstantNode.forBoolean(object().exactType() == type(), graph());
         }

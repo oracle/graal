@@ -90,7 +90,7 @@ public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRL
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (condition instanceof ConstantNode) {
             ConstantNode c = (ConstantNode) condition;
             if (c.asConstant().asBoolean()) {

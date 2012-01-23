@@ -231,6 +231,7 @@ public final class FrameMap {
      * @return A spill slot denoting the reserved memory area.
      */
     public CiStackSlot allocateSpillSlot(CiKind kind) {
+        assert frameSize == -1 : "frame size must not yet be fixed";
         int size = target.sizeInBytes(kind);
         spillSize = Util.roundUp(spillSize + size, size);
         return getSlot(kind, 0);
@@ -246,6 +247,7 @@ public final class FrameMap {
      * @return A stack slot describing the begin of the memory block.
      */
     public CiStackSlot allocateStackBlock(int size, boolean refs) {
+        assert frameSize == -1 : "frame size must not yet be fixed";
         if (size == 0) {
             return null;
         }

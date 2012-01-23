@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.nodes.spi;
 
-import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.nodes.*;
 
 public interface Canonicalizable {
 
-    Node canonical(CanonicalizerTool tool);
+    ValueNode canonical(CanonicalizerTool tool);
 }

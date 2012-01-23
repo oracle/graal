@@ -31,7 +31,6 @@ import com.oracle.max.graal.hotspot.logging.*;
 public class HotSpotOptions {
 
     public static void setDefaultOptions() {
-        GraalOptions.CommentedAssembly = false;
         GraalOptions.MethodEndBreakpointGuards = 2;
         GraalOptions.ResolveClassBeforeStaticInvoke = false;
     }

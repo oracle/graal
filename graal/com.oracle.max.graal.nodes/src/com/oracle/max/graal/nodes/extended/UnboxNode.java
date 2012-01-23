@@ -54,11 +54,11 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
         RiResolvedField field = pool.getBoxField(kind());
         LoadFieldNode loadField = graph().add(new LoadFieldNode(source, field));
         loadField.setProbability(probability());
-        this.replaceWithFixedWithNext(loadField);
+        ((StructuredGraph) graph()).replaceFixedWithFixed(this, loadField);
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         if (source.isConstant()) {
             CiConstant constant = source.asConstant();
             Object o = constant.asObject();
