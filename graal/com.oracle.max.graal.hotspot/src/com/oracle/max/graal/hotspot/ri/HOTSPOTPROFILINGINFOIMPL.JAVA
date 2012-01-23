@@ -79,30 +79,31 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
 
     private void findBCI(int targetBCI) {
         assert targetBCI >= 0 : "invalid BCI";
-
-        if (methodData.hasNormalData()) {
-            int currentPosition = targetBCI < hintBCI ? 0 : hintPosition;
-            HotSpotMethodDataAccessor currentAccessor;
-            while ((currentAccessor = methodData.getNormalData(currentPosition)) != null) {
-                int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
-                if (currentBCI == targetBCI) {
-                    normalDataFound(currentAccessor, currentPosition, currentBCI);
-                    return;
-                } else if (currentBCI > targetBCI) {
-                    break;
+        if (methodData != null) {
+            if (methodData.hasNormalData()) {
+                int currentPosition = targetBCI < hintBCI ? 0 : hintPosition;
+                HotSpotMethodDataAccessor currentAccessor;
+                while ((currentAccessor = methodData.getNormalData(currentPosition)) != null) {
+                    int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
+                    if (currentBCI == targetBCI) {
+                        normalDataFound(currentAccessor, currentPosition, currentBCI);
+                        return;
+                    } else if (currentBCI > targetBCI) {
+                        break;
+                    }
+                    currentAccessor = methodData.getNormalData(currentPosition);
                 }
-                currentAccessor = methodData.getNormalData(currentPosition);
             }
-        }
 
-        if (methodData.hasExtraData()) {
-            int currentPosition = 0;
-            HotSpotMethodDataAccessor currentAccessor;
-            while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
-                int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
-                if (currentBCI == targetBCI) {
-                    extraDataFound(currentAccessor, currentPosition);
-                    return;
+            if (methodData.hasExtraData()) {
+                int currentPosition = 0;
+                HotSpotMethodDataAccessor currentAccessor;
+                while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
+                    int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
+                    if (currentBCI == targetBCI) {
+                        extraDataFound(currentAccessor, currentPosition);
+                        return;
+                    }
                 }
             }
         }
