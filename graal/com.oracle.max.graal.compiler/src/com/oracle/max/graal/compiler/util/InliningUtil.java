@@ -264,26 +264,29 @@ public class InliningUtil {
             return null;
         }
 
-        int invokeBCI = invoke.bci();
         RiProfilingInfo profilingInfo = parent.profilingInfo();
-        RiResolvedType[] types = profilingInfo.getTypes(invokeBCI);
-        double[] typeProbabilities = profilingInfo.getTypeProbabilities(invokeBCI);
-        if (types != null && typeProbabilities != null && types.length == 1) {
-            assert types.length == typeProbabilities.length : "length must match";
-            if (GraalOptions.InlineWithTypeCheck) {
-                // type check and inlining...
-                concrete = types[0].resolveMethodImpl(callTarget.targetMethod());
-                if (concrete != null && checkTargetConditions(concrete)) {
-                    double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
-                    return new TypeGuardInlineInfo(invoke, weight, level, concrete, types[0], typeProbabilities[0]);
+        RiTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
+        if (typeProfile != null) {
+            RiResolvedType[] types = typeProfile.getTypes();
+            double[] probabilities = typeProfile.getProbabilities();
+            if (types != null && probabilities != null && types.length == 1) {
+                assert types.length == probabilities.length : "length must match";
+                if (GraalOptions.InlineWithTypeCheck) {
+                    // type check and inlining...
+                    concrete = types[0].resolveMethodImpl(callTarget.targetMethod());
+                    if (concrete != null && checkTargetConditions(concrete)) {
+                        double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
+                        return new TypeGuardInlineInfo(invoke, weight, level, concrete, types[0], probabilities[0]);
+                    }
+                    return null;
+                } else {
+                    if (GraalOptions.TraceInlining) {
+                        TTY.println("not inlining %s because GraalOptions.InlineWithTypeCheck == false", methodName(callTarget.targetMethod(), invoke));
+                    }
+                    return null;
                 }
-                return null;
-            } else {
-                if (GraalOptions.TraceInlining) {
-                    TTY.println("not inlining %s because GraalOptions.InlineWithTypeCheck == false", methodName(callTarget.targetMethod(), invoke));
-                }
-                return null;
             }
+            return null;
         } else {
             if (GraalOptions.TraceInlining) {
                 TTY.println("not inlining %s because no monomorphic receiver could be found", methodName(callTarget.targetMethod(), invoke));

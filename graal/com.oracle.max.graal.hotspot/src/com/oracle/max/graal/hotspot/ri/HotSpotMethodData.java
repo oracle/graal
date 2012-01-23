@@ -48,6 +48,8 @@ public final class HotSpotMethodData extends CompilerObject {
     private int normalDataSize;
     private int extraDataSize;
 
+    // TODO (ch) how are we going to handle methodData->is_mature()
+
     private HotSpotMethodData(Compiler compiler) {
         super(compiler);
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
@@ -94,18 +96,18 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private int readUnsignedByte(int position, int offsetInCells) {
-        long fullOffset = computeFullOffset(position, offsetInCells);
-        return unsafe.getByte(javaMirror, fullOffset) & 0xFF;
+        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
+        return unsafe.getByte(javaMirror, offsetInBytes) & 0xFF;
     }
 
     private int readUnsignedShort(int position, int offsetInCells) {
-        long fullOffset = computeFullOffset(position, offsetInCells);
-        return unsafe.getShort(javaMirror, fullOffset) & 0xFFFF;
+        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
+        return unsafe.getShort(javaMirror, offsetInBytes) & 0xFFFF;
     }
 
     private long readUnsignedInt(int position, int offsetInCells) {
-        long fullOffset = computeFullOffset(position, offsetInCells);
-        return unsafe.getInt(javaMirror, fullOffset) & 0xFFFFFFFFL;
+        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
+        return unsafe.getInt(javaMirror, offsetInBytes) & 0xFFFFFFFFL;
     }
 
     private int readUnsignedIntAsSignedInt(int position, int offsetInCells) {
@@ -114,22 +116,26 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private int readInt(int position, int offsetInCells) {
-        long fullOffset = computeFullOffset(position, offsetInCells);
-        return unsafe.getInt(javaMirror, fullOffset);
+        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
+        return unsafe.getInt(javaMirror, offsetInBytes);
+    }
+
+    private Object readObject(int position, int offsetInCells) {
+        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
+        return unsafe.getObject(javaMirror, offsetInBytes);
     }
 
     private static int truncateLongToInt(long value) {
         return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
-    private static int computeFullOffset(int position, int offsetInCells) {
+    private static int computeOffsetInBytes(int position, int offsetInCells) {
         HotSpotVMConfig config = getHotSpotVMConfig();
-        return config.methodDataDataOffset + position + offsetInCells * config.dataLayoutCellSize;
+        return config.methodDataOopDataOffset + position + offsetInCells * config.dataLayoutCellSize;
     }
 
     private static HotSpotVMConfig getHotSpotVMConfig() {
-        // TODO: implement, cache config somewhere?
-        return null;
+        return CompilerImpl.getInstance().getConfig();
     }
 
     private abstract static class AbstractMethodDataAccessor implements HotSpotMethodDataAccessor {
@@ -162,7 +168,7 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         public int getSize(HotSpotMethodData data, int position) {
             HotSpotVMConfig config = getHotSpotVMConfig();
-            return config.dataLayoutHeaderSizeInBytes + (staticCellCount + getDynamicCellCount(data, position)) * config.dataLayoutCellSize;
+            return config.dataLayoutHeaderSize + (staticCellCount + getDynamicCellCount(data, position)) * config.dataLayoutCellSize;
         }
 
         @Override
@@ -172,12 +178,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public RiResolvedType[] getTypes(HotSpotMethodData data, int position) {
-            return null;
-        }
-
-        @Override
-        public double[] getTypeProbabilities(HotSpotMethodData data, int position) {
+        public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
             return null;
         }
 
@@ -201,7 +202,7 @@ public final class HotSpotMethodData extends CompilerObject {
             return data.readUnsignedByte(position, config.dataLayoutFlagsOffset);
         }
 
-        protected int getDynamicCellCount(HotSpotMethodData data, int position) {
+        protected int getDynamicCellCount(@SuppressWarnings("unused") HotSpotMethodData data, @SuppressWarnings("unused") int position) {
             return 0;
         }
     }
@@ -306,31 +307,55 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public double[] getTypeProbabilities(HotSpotMethodData data, int position) {
+        public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
             HotSpotVMConfig config = getHotSpotVMConfig();
             int typeProfileWidth = config.typeProfileWidth;
 
-            long total = 0;
-            double[] result = new double[typeProfileWidth];
+            RiResolvedType[] sparseTypes = new RiResolvedType[typeProfileWidth];
+            double[] counts = new double[typeProfileWidth];
+            long totalCount = 0;
+            int entries = 0;
 
             for (int i = 0; i < typeProfileWidth; i++) {
-                long count = data.readUnsignedInt(position, getCountOffset(i));
-                total += count;
-                result[i] = count;
-            }
+                Object receiverKlassOop = data.readObject(position, getReceiverOffset(i));
+                if (receiverKlassOop != null) {
+                    Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.klassOopGraalMirrorOffset);
+                    if (graalMirror == null) {
+                        Class<?> javaClass = (Class<?>) unsafe.getObject(receiverKlassOop, (long) config.classMirrorOffset);
+                        graalMirror = CompilerImpl.getInstance().getVMEntries().getType(javaClass);
+                        assert graalMirror != null : "must not return null";
+                    }
 
-            if (total != 0) {
-                for (int i = 0; i < typeProfileWidth; i++) {
-                    result[i] = result[i] / total;
+                    long count = data.readUnsignedInt(position, getCountOffset(i));
+                    if (count > 0) {
+                        totalCount += count;
+                        counts[entries] = count;
+                        entries++;
+                    }
+
+                    sparseTypes[i] = (RiResolvedType) graalMirror;
                 }
             }
-            return result;
-        }
 
-        @Override
-        public RiResolvedType[] getTypes(HotSpotMethodData data, int position) {
-            // TODO: seems to require a native call...
-            return null;
+            RiResolvedType[] types;
+            double[] probabilities;
+
+            if (entries <= 0) {
+                return null;
+            } else if (entries < typeProfileWidth) {
+                RiResolvedType[] compactedTypes = new RiResolvedType[entries];
+                System.arraycopy(sparseTypes, 0, compactedTypes, 0, entries);
+                types = compactedTypes;
+                probabilities = new double[entries];
+            } else {
+                types = sparseTypes;
+                probabilities = counts;
+            }
+
+            for (int i = 0; i < typeProfileWidth; i++) {
+                probabilities[i] = counts[i] / totalCount;
+            }
+            return new RiTypeProfile(types, probabilities);
         }
 
         @Override
@@ -414,8 +439,13 @@ public final class HotSpotMethodData extends CompilerObject {
         public double getBranchTakenProbability(HotSpotMethodData data, int position) {
             long takenCount = data.readUnsignedInt(position, TAKEN_COUNT_OFFSET);
             long notTakenCount = data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
-            double total = takenCount + notTakenCount;
-            return takenCount / total;
+            long total = takenCount + notTakenCount;
+
+            if (total < 40) {
+                return -1;
+            } else {
+                return takenCount / (double) total;
+            }
         }
     }
 
@@ -454,6 +484,8 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         public double[] getSwitchProbabilities(HotSpotMethodData data, int position) {
             int length = getLength(data, position);
+            assert length > 0 : "switch must have at least the default case";
+
             long total = 0;
             double[] result = new double[length];
 
@@ -464,7 +496,9 @@ public final class HotSpotMethodData extends CompilerObject {
                 result[i] = count;
             }
 
-            if (total != 0) {
+            if (total < 10 * (length + 2)) {
+                return null;
+            } else {
                 for (int i = 0; i < length; i++) {
                     result[i] = result[i] / total;
                 }
@@ -475,8 +509,8 @@ public final class HotSpotMethodData extends CompilerObject {
                     result[0] = result[length - 1];
                     result[length - 1] = defaultCase;
                 }
+                return result;
             }
-            return result;
         }
 
         @Override

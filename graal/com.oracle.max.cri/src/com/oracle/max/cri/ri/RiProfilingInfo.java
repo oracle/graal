@@ -35,23 +35,17 @@ public interface RiProfilingInfo {
 
     /**
      * Returns an estimate of how often the switch cases are taken at the given BCI.
-     * @return An array of double values that contains the estimated probabilities, with 0.0 meaning never and 1.0 meaning always,
-     * or null if this information is not available. The default case is stored as the last entry.
+     * The default case is stored as the last entry.
+     * @return A double value that contains the estimated probabilities, with 0.0 meaning never and 1.0 meaning always,
+     * or -1 if this information is not available.
      */
     double[] getSwitchProbabilities(int bci);
 
     /**
-     * Returns all types that were encountered at the given BCI.
-     * @return An array containing all types that were encountered during profiling at the given BCI, or null if not available.
+     * Returns the TypeProfile for the given BCI.
+     * @return Returns an RiTypeProfile object, or null if not available.
      */
-    RiResolvedType[] getTypes(int bci);
-
-    /**
-     * Returns an estimate of how often each individual type is encountered at the given BCI.
-     * @return An array of double values that contains the estimated probabilities, with 0.0 meaning never and 1.0 meaning always,
-     * or null if this information is not available.
-     */
-    double[] getTypeProbabilities(int bci);
+    RiTypeProfile getTypeProfile(int bci);
 
     /**
      * Returns true if the given BCI did throw an implicit exception (NullPointerException, ClassCastException,

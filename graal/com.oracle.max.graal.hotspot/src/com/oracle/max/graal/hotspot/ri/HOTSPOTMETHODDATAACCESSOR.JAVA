@@ -29,8 +29,7 @@ public interface HotSpotMethodDataAccessor {
     int getBCI(HotSpotMethodData data, int position);
     int getSize(HotSpotMethodData data, int position);
 
-    RiResolvedType[] getTypes(HotSpotMethodData data, int position);
-    double[] getTypeProbabilities(HotSpotMethodData data, int position);
+    RiTypeProfile getTypeProfile(HotSpotMethodData data, int position);
 
     double getBranchTakenProbability(HotSpotMethodData data, int position);
 

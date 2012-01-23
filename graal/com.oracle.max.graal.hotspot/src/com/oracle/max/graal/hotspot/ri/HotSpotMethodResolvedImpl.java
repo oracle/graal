@@ -242,15 +242,18 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
                 TTY.println("  implicitExceptionSeen@%d: true", i);
             }
 
-            RiResolvedType[] types = profilingInfo.getTypes(i);
-            double[] typeProbabilities = profilingInfo.getTypeProbabilities(i);
-            if (types != null && typeProbabilities != null) {
-                assert types.length == typeProbabilities.length : "length must match";
-                TTY.print("  types@%d:", i);
-                for (int j = 0; j < types.length; j++) {
-                    TTY.print(" %s (%f)", types[j], typeProbabilities[j]);
+            RiTypeProfile typeProfile = profilingInfo.getTypeProfile(i);
+            if (typeProfile != null) {
+                RiResolvedType[] types = typeProfile.getTypes();
+                double[] probabilities = typeProfile.getProbabilities();
+                if (types != null && probabilities != null) {
+                    assert types.length == probabilities.length : "length must match";
+                    TTY.print("  types@%d:", i);
+                    for (int j = 0; j < types.length; j++) {
+                        TTY.print(" %s (%f)", types[j], probabilities[j]);
+                    }
+                    TTY.println();
                 }
-                TTY.println();
             }
         }
     }

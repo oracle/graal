@@ -48,15 +48,9 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
     }
 
     @Override
-    public RiResolvedType[] getTypes(int bci) {
+    public RiTypeProfile getTypeProfile(int bci) {
         findBCI(bci);
-        return dataAccessor.getTypes(methodData, position);
-    }
-
-    @Override
-    public double[] getTypeProbabilities(int bci) {
-        findBCI(bci);
-        return dataAccessor.getTypeProbabilities(methodData, position);
+        return dataAccessor.getTypeProfile(methodData, position);
     }
 
     @Override

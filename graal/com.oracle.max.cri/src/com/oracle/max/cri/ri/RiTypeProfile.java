@@ -29,33 +29,33 @@ import java.io.*;
  * the supplied values may vary, but a runtime that provides this information should be aware that it will be used to
  * guide performance-critical decisions like speculative inlining, etc.
  */
-public class RiTypeProfile implements Serializable {
-
+public final class RiTypeProfile implements Serializable {
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = -6877016333706838441L;
 
-    /**
-     * How often the instruction was executed, which may be used to judge the maturity of this profile.
-     */
-    public int count;
+    private RiResolvedType[] types;
+    private double[] probabilities;
 
-    /**
-     * An estimation of how many different receiver types were encountered. This may or may not be the same as
-     * probabilities.length/types.length, as the runtime may store probabilities for a limited number of receivers.
-     */
-    public int morphism;
-
-    /**
-     * A list of receivers for which the runtime has recorded probability information. This array needs to have the same
-     * length as {@link RiTypeProfile#probabilities}.
-     */
-    public RiResolvedType[] types;
+    public RiTypeProfile(RiResolvedType[] types, double[] probabilites) {
+        this.types = types;
+        this.probabilities = probabilites;
+    }
 
     /**
      * The estimated probabilities of the different receivers. This array needs to have the same length as
      * {@link RiTypeProfile#types}.
      */
-    public float[] probabilities;
+    public double[] getProbabilities() {
+        return probabilities;
+    }
+
+    /**
+     * A list of receivers for which the runtime has recorded probability information. This array needs to have the same
+     * length as {@link RiTypeProfile#probabilities}.
+     */
+    public RiResolvedType[] getTypes() {
+        return types;
+    }
 }
