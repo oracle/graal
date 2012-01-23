@@ -26,13 +26,18 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 
 public class GraphBuilderConfiguration {
+
+    public static enum ResolvePolicy {
+        Default, EagerForSnippets, Eager,
+    }
+
     private final boolean useBranchPrediction;
-    private final boolean eagerResolving;
+    private final ResolvePolicy resolving;
     private final PhasePlan plan;
 
-    public GraphBuilderConfiguration(boolean useBranchPrediction, boolean eagerResolving, PhasePlan plan) {
+    public GraphBuilderConfiguration(boolean useBranchPrediction, ResolvePolicy resolving, PhasePlan plan) {
         this.useBranchPrediction = useBranchPrediction;
-        this.eagerResolving = eagerResolving;
+        this.resolving = resolving;
         this.plan = plan;
     }
 
@@ -40,8 +45,12 @@ public class GraphBuilderConfiguration {
         return useBranchPrediction;
     }
 
+    public boolean eagerResolvingForSnippets() {
+        return (resolving == ResolvePolicy.EagerForSnippets || resolving == ResolvePolicy.Eager);
+    }
+
     public boolean eagerResolving() {
-        return eagerResolving;
+        return (resolving == ResolvePolicy.Eager);
     }
 
     public PhasePlan plan() {
@@ -53,14 +62,14 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(GraalOptions.UseBranchPrediction, false, plan);
+        return new GraphBuilderConfiguration(GraalOptions.UseBranchPrediction, ResolvePolicy.Default, plan);
     }
 
-    public static GraphBuilderConfiguration getDeoptFreeDefault() {
-        return getDeoptFreeDefault(null);
+    public static GraphBuilderConfiguration getSnippetDefault() {
+        return getSnippetDefault(null);
     }
 
-    public static GraphBuilderConfiguration getDeoptFreeDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(false, true, plan);
+    public static GraphBuilderConfiguration getSnippetDefault(PhasePlan plan) {
+        return new GraphBuilderConfiguration(false, ResolvePolicy.EagerForSnippets, plan);
     }
 }
