@@ -196,12 +196,16 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     public RiProfilingInfo profilingInfo() {
         if (methodData == null) {
             methodData = compiler.getVMEntries().RiMethod_methodData(this);
-            // TEMP:
             if (methodData != null) {
                 dumpProfile();
             }
         }
-        return new HotSpotProfilingInfoImpl(compiler, methodData);
+
+        if (methodData == null || !methodData.isMature()) {
+            return new HotSpotNoProfilingInfo(compiler);
+        } else {
+            return new HotSpotProfilingInfo(compiler, methodData);
+        }
     }
 
     @Override

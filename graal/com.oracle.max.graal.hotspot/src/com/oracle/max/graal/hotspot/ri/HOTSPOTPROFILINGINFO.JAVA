@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 
 
-public final class HotSpotProfilingInfoImpl extends CompilerObject implements RiProfilingInfo {
+public final class HotSpotProfilingInfo extends CompilerObject implements RiProfilingInfo {
 
     /**
      *
@@ -40,7 +40,7 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
     private HotSpotMethodDataAccessor dataAccessor;
     private HotSpotMethodData methodData;
 
-    public HotSpotProfilingInfoImpl(Compiler compiler, HotSpotMethodData methodData) {
+    public HotSpotProfilingInfo(Compiler compiler, HotSpotMethodData methodData) {
         super(compiler);
         this.methodData = methodData;
         hintPosition = 0;
@@ -79,33 +79,32 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
 
     private void findBCI(int targetBCI) {
         assert targetBCI >= 0 : "invalid BCI";
-        if (methodData != null) {
-            if (methodData.hasNormalData()) {
-                int currentPosition = targetBCI < hintBCI ? 0 : hintPosition;
-                HotSpotMethodDataAccessor currentAccessor;
-                while ((currentAccessor = methodData.getNormalData(currentPosition)) != null) {
-                    int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
-                    if (currentBCI == targetBCI) {
-                        normalDataFound(currentAccessor, currentPosition, currentBCI);
-                        return;
-                    } else if (currentBCI > targetBCI) {
-                        break;
-                    }
-                    currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
-                }
-            }
 
-            if (methodData.hasExtraData()) {
-                int currentPosition = 0;
-                HotSpotMethodDataAccessor currentAccessor;
-                while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
-                    int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
-                    if (currentBCI == targetBCI) {
-                        extraDataFound(currentAccessor, currentPosition);
-                        return;
-                    }
-                    currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
+        if (methodData.hasNormalData()) {
+            int currentPosition = targetBCI < hintBCI ? 0 : hintPosition;
+            HotSpotMethodDataAccessor currentAccessor;
+            while ((currentAccessor = methodData.getNormalData(currentPosition)) != null) {
+                int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
+                if (currentBCI == targetBCI) {
+                    normalDataFound(currentAccessor, currentPosition, currentBCI);
+                    return;
+                } else if (currentBCI > targetBCI) {
+                    break;
                 }
+                currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
+            }
+        }
+
+        if (methodData.hasExtraData()) {
+            int currentPosition = 0;
+            HotSpotMethodDataAccessor currentAccessor;
+            while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
+                int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
+                if (currentBCI == targetBCI) {
+                    extraDataFound(currentAccessor, currentPosition);
+                    return;
+                }
+                currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
             }
         }
 

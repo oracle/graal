@@ -114,6 +114,9 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native HotSpotMethodData RiMethod_methodData(HotSpotMethodResolved method);
 
     @Override
+    public native boolean HotSpotMethodData_isMature(HotSpotMethodData methodData);
+
+    @Override
     public native RiType getType(Class<?> javaClass);
 
     @Override

@@ -53,6 +53,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private Object hotspotMirror;
     private int normalDataSize;
     private int extraDataSize;
+    private boolean mature;
 
     // TODO (ch) how are we going to handle methodData->is_mature()
 
@@ -67,6 +68,13 @@ public final class HotSpotMethodData extends CompilerObject {
 
     public boolean hasExtraData() {
         return extraDataSize > 0;
+    }
+
+    public boolean isMature() {
+        if (!mature) {
+            mature = compiler.getVMEntries().HotSpotMethodData_isMature(this);
+        }
+        return mature;
     }
 
     public boolean isWithin(int position) {
@@ -490,11 +498,17 @@ public final class HotSpotMethodData extends CompilerObject {
             long totalCount = 0;
             double[] result = new double[length];
 
-            for (int i = 0; i < length; i++) {
-                int offset = getCountOffset(i);
-                long count = data.readUnsignedInt(position, offset);
+            // default case is expected as last entry
+            int offset = getCountOffset(0);
+            long count = data.readUnsignedInt(position, offset);
+            totalCount += count;
+            result[length - 1] = count;
+
+            for (int i = 1; i < length; i++) {
+                offset = getCountOffset(i);
+                count = data.readUnsignedInt(position, offset);
                 totalCount += count;
-                result[i] = count;
+                result[i - 1] = count;
             }
 
             if (totalCount < 10 * (length + 2)) {
@@ -502,13 +516,6 @@ public final class HotSpotMethodData extends CompilerObject {
             } else {
                 for (int i = 0; i < length; i++) {
                     result[i] = result[i] / totalCount;
-                }
-
-                // default case is expected as last entry
-                if (length >= 2) {
-                    double defaultCase = result[0];
-                    result[0] = result[length - 1];
-                    result[length - 1] = defaultCase;
                 }
                 return result;
             }
