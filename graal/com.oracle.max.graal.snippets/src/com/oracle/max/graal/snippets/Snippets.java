@@ -88,7 +88,7 @@ public class Snippets {
 
     private static StructuredGraph buildSnippetGraph(RiResolvedMethod snippetRiMethod, GraalRuntime runtime, CiTarget target, BoxingMethodPool pool, PhasePlan plan) {
 
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDeoptFreeDefault();
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
         GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config);
         StructuredGraph graph = new StructuredGraph(snippetRiMethod);
         graphBuilder.apply(graph);

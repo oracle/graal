@@ -30,7 +30,7 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.*;
+import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
@@ -38,11 +38,12 @@ import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.BlockMap.*;
+import com.oracle.max.graal.java.BlockMap.Block;
+import com.oracle.max.graal.java.BlockMap.DeoptBlock;
+import com.oracle.max.graal.java.BlockMap.ExceptionBlock;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
-import com.oracle.max.graal.java.BlockMap.Block;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
@@ -380,8 +381,8 @@ public final class GraphBuilderPhase extends Phase {
         return p;
     }
 
-    private void genLoadConstant(int cpi) {
-        Object con = constantPool.lookupConstant(cpi);
+    private void genLoadConstant(int cpi, int opcode) {
+        Object con = lookupConstant(cpi, opcode);
 
         if (con instanceof RiType) {
             // this is a load of class constant which might be unresolved
@@ -649,28 +650,41 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private RiType lookupType(int cpi, int bytecode) {
-        eagerResolving(cpi, bytecode);
+        eagerResolvingForSnippets(cpi, bytecode);
         RiType result = constantPool.lookupType(cpi, bytecode);
-        assert !config.eagerResolving() || result instanceof RiResolvedType;
+        assert !config.eagerResolvingForSnippets() || result instanceof RiResolvedType;
         return result;
     }
 
     private RiMethod lookupMethod(int cpi, int opcode) {
-        eagerResolving(cpi, opcode);
+        eagerResolvingForSnippets(cpi, opcode);
         RiMethod result = constantPool.lookupMethod(cpi, opcode);
-        assert !config.eagerResolving() || ((result instanceof RiResolvedMethod) && ((RiResolvedMethod) result).holder().isInitialized());
+        assert !config.eagerResolvingForSnippets() || ((result instanceof RiResolvedMethod) && ((RiResolvedMethod) result).holder().isInitialized());
         return result;
     }
 
     private RiField lookupField(int cpi, int opcode) {
-        eagerResolving(cpi, opcode);
+        eagerResolvingForSnippets(cpi, opcode);
         RiField result = constantPool.lookupField(cpi, opcode);
-        assert !config.eagerResolving() || (result instanceof RiResolvedField && ((RiResolvedField) result).holder().isInitialized());
+        assert !config.eagerResolvingForSnippets() || (result instanceof RiResolvedField && ((RiResolvedField) result).holder().isInitialized());
+        return result;
+    }
+
+    private Object lookupConstant(int cpi, int opcode) {
+        eagerResolving(cpi, opcode);
+        Object result = constantPool.lookupConstant(cpi);
+        assert !config.eagerResolving() || !(result instanceof RiType) || (result instanceof RiResolvedType);
         return result;
     }
 
     private void eagerResolving(int cpi, int bytecode) {
         if (config.eagerResolving()) {
+            constantPool.loadReferencedType(cpi, bytecode);
+        }
+    }
+
+    private void eagerResolvingForSnippets(int cpi, int bytecode) {
+        if (config.eagerResolvingForSnippets()) {
             constantPool.loadReferencedType(cpi, bytecode);
         }
     }
@@ -1383,6 +1397,9 @@ public final class GraphBuilderPhase extends Phase {
             assert frameState.stackSize() == 1 : frameState;
 
             RiType catchType = block.handler.catchType();
+            if (config.eagerResolving()) {
+                catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
+            }
             ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, catchType, (catchType instanceof RiResolvedType) && ((RiResolvedType) catchType).isInitialized());
             if (typeInstruction != null) {
                 Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
@@ -1480,7 +1497,7 @@ public final class GraphBuilderPhase extends Phase {
             case SIPUSH         : frameState.ipush(appendConstant(CiConstant.forInt(stream.readShort()))); break;
             case LDC            : // fall through
             case LDC_W          : // fall through
-            case LDC2_W         : genLoadConstant(stream.readCPI()); break;
+            case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;
             case ILOAD          : loadLocal(stream.readLocalIndex(), CiKind.Int); break;
             case LLOAD          : loadLocal(stream.readLocalIndex(), CiKind.Long); break;
             case FLOAD          : loadLocal(stream.readLocalIndex(), CiKind.Float); break;

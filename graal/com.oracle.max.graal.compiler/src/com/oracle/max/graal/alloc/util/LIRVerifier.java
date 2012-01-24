@@ -147,7 +147,9 @@ public final class LIRVerifier {
     private CiValue use(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
-        if (beforeRegisterAllocation && isVariable(value)) {
+        if (isVariable(value)) {
+            assert beforeRegisterAllocation;
+
             int variableIdx = asVariable(value).index;
             if (!curVariablesLive.get(variableIdx)) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
@@ -159,9 +161,13 @@ public final class LIRVerifier {
                 throw Util.shouldNotReachHere();
             }
 
-        } else if (beforeRegisterAllocation && isAllocatableRegister(value)) {
+        } else if (isAllocatableRegister(value)) {
             int regNum = asRegister(value).number;
-            if (curRegistersLive[regNum] != value) {
+            if (mode == OperandMode.Alive) {
+                curRegistersDefined.set(regNum);
+            }
+
+            if (beforeRegisterAllocation && curRegistersLive[regNum] != value) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
                 TTY.println("live registers: %s", Arrays.toString(curRegistersLive));
                 TTY.println("ERROR: Use of fixed register %s that is not defined in this block", value);
@@ -174,7 +180,9 @@ public final class LIRVerifier {
     private CiValue def(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
-        if (beforeRegisterAllocation && isVariable(value)) {
+        if (isVariable(value)) {
+            assert beforeRegisterAllocation;
+
             int variableIdx = asVariable(value).index;
             if (variableDefinitions[variableIdx] != null) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
@@ -190,7 +198,7 @@ public final class LIRVerifier {
                 curVariablesLive.set(variableIdx);
             }
 
-        } else if (beforeRegisterAllocation && isAllocatableRegister(value)) {
+        } else if (isAllocatableRegister(value)) {
             int regNum = asRegister(value).number;
             if (curRegistersDefined.get(regNum)) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
