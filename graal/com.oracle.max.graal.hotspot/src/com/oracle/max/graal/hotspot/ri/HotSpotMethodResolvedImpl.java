@@ -196,6 +196,10 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     public RiProfilingInfo profilingInfo() {
         if (methodData == null) {
             methodData = compiler.getVMEntries().RiMethod_methodData(this);
+            // TEMP:
+            if (methodData != null) {
+                dumpProfile();
+            }
         }
         return new HotSpotProfilingInfoImpl(compiler, methodData);
     }
@@ -229,10 +233,11 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
             double[] switchProbabilities = profilingInfo.getSwitchProbabilities(i);
             if (switchProbabilities != null) {
-                TTY.println("  switchProbabilities@%d:");
+                TTY.print("  switchProbabilities@%d:", i);
                 for (int j = 0; j < switchProbabilities.length; j++) {
                     TTY.print(" %f", switchProbabilities[j]);
                 }
+                TTY.println();
             }
 
             if (profilingInfo.getImplicitExceptionSeen(i)) {

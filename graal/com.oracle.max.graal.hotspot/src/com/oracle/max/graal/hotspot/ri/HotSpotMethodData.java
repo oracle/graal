@@ -35,16 +35,22 @@ public final class HotSpotMethodData extends CompilerObject {
      *
      */
     private static final long serialVersionUID = -8873133496591225071L;
+
+    static {
+        config = CompilerImpl.getInstance().getConfig();
+    }
+
     // TODO (ch) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoDataAccessor();
+    private static final HotSpotVMConfig config;
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
         null, new BitData(), new CounterData(), new JumpData(),
         new TypeCheckData(), new VirtualCallData(), new RetData(),
         new BranchData(), new MultiBranchData(), new ArgInfoData()
     };
 
-    private Object javaMirror;
+    private Object hotspotMirror;
     private int normalDataSize;
     private int extraDataSize;
 
@@ -63,7 +69,7 @@ public final class HotSpotMethodData extends CompilerObject {
         return extraDataSize > 0;
     }
 
-    public boolean isWithinData(int position) {
+    public boolean isWithin(int position) {
         return position >= 0 && position < normalDataSize + extraDataSize;
     }
 
@@ -95,58 +101,61 @@ public final class HotSpotMethodData extends CompilerObject {
         return PROFILE_DATA_ACCESSORS[tag];
     }
 
-    private int readUnsignedByte(int position, int offsetInCells) {
-        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
-        return unsafe.getByte(javaMirror, offsetInBytes) & 0xFF;
+    private int readUnsignedByte(int position, int offsetInBytes) {
+        long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
+        return unsafe.getByte(hotspotMirror, fullOffsetInBytes) & 0xFF;
     }
 
-    private int readUnsignedShort(int position, int offsetInCells) {
-        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
-        return unsafe.getShort(javaMirror, offsetInBytes) & 0xFFFF;
+    private int readUnsignedShort(int position, int offsetInBytes) {
+        long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
+        return unsafe.getShort(hotspotMirror, fullOffsetInBytes) & 0xFFFF;
     }
 
-    private long readUnsignedInt(int position, int offsetInCells) {
-        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
-        return unsafe.getInt(javaMirror, offsetInBytes) & 0xFFFFFFFFL;
+    private long readUnsignedInt(int position, int offsetInBytes) {
+        long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
+        return unsafe.getInt(hotspotMirror, fullOffsetInBytes) & 0xFFFFFFFFL;
     }
 
-    private int readUnsignedIntAsSignedInt(int position, int offsetInCells) {
-        long value = readUnsignedInt(position, offsetInCells);
+    private int readUnsignedIntAsSignedInt(int position, int offsetInBytes) {
+        long value = readUnsignedInt(position, offsetInBytes);
         return truncateLongToInt(value);
     }
 
-    private int readInt(int position, int offsetInCells) {
-        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
-        return unsafe.getInt(javaMirror, offsetInBytes);
+    private int readInt(int position, int offsetInBytes) {
+        long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
+        return unsafe.getInt(hotspotMirror, fullOffsetInBytes);
     }
 
-    private Object readObject(int position, int offsetInCells) {
-        long offsetInBytes = computeOffsetInBytes(position, offsetInCells);
-        return unsafe.getObject(javaMirror, offsetInBytes);
+    private Object readObject(int position, int offsetInBytes) {
+        long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
+        return unsafe.getObject(hotspotMirror, fullOffsetInBytes);
     }
 
     private static int truncateLongToInt(long value) {
         return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
-    private static int computeOffsetInBytes(int position, int offsetInCells) {
-        HotSpotVMConfig config = getHotSpotVMConfig();
-        return config.methodDataOopDataOffset + position + offsetInCells * config.dataLayoutCellSize;
+    private static int computeFullOffset(int position, int offsetInBytes) {
+        return config.methodDataOopDataOffset + position + offsetInBytes;
     }
 
-    private static HotSpotVMConfig getHotSpotVMConfig() {
-        return CompilerImpl.getInstance().getConfig();
+    private static int cellIndexToOffset(int cells) {
+        return config.dataLayoutHeaderSize + cellsToBytes(cells);
+    }
+
+    private static int cellsToBytes(int cells) {
+        return cells * config.dataLayoutCellSize;
     }
 
     private abstract static class AbstractMethodDataAccessor implements HotSpotMethodDataAccessor {
         private static final int IMPLICIT_EXCEPTIONS_MASK = 0x0E;
 
         private final int tag;
-        private final int staticCellCount;
+        private final int staticSize;
 
-        protected AbstractMethodDataAccessor(int tag, int staticCellCount) {
+        protected AbstractMethodDataAccessor(int tag, int staticSize) {
             this.tag = tag;
-            this.staticCellCount = staticCellCount;
+            this.staticSize = staticSize;
         }
 
         @Override
@@ -155,20 +164,17 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         public static int readTag(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
             return data.readUnsignedByte(position, config.dataLayoutTagOffset);
         }
 
         @Override
         public int getBCI(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
             return data.readUnsignedShort(position, config.dataLayoutBCIOffset);
         }
 
         @Override
         public int getSize(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
-            return config.dataLayoutHeaderSize + (staticCellCount + getDynamicCellCount(data, position)) * config.dataLayoutCellSize;
+            return staticSize + getDynamicSize(data, position);
         }
 
         @Override
@@ -198,18 +204,21 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         protected int getFlags(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
             return data.readUnsignedByte(position, config.dataLayoutFlagsOffset);
         }
 
-        protected int getDynamicCellCount(@SuppressWarnings("unused") HotSpotMethodData data, @SuppressWarnings("unused") int position) {
+        protected int getDynamicSize(@SuppressWarnings("unused") HotSpotMethodData data, @SuppressWarnings("unused") int position) {
             return 0;
+        }
+
+        protected static int addressData(int offset) {
+            return config.dataLayoutHeaderSize + offset;
         }
     }
 
     private static class NoDataAccessor extends AbstractMethodDataAccessor {
         private static final int NO_DATA_TAG = 0;
-        private static final int NO_DATA_SIZE = 0;
+        private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
         protected NoDataAccessor() {
             super(NO_DATA_TAG, NO_DATA_SIZE);
@@ -229,15 +238,15 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static class BitData extends AbstractMethodDataAccessor {
         private static final int BIT_DATA_TAG = 1;
-        private static final int BIT_DATA_CELLS = 0;
+        private static final int BIT_DATA_SIZE = cellIndexToOffset(0);
         private static final int BIT_DATA_NULL_SEEN_FLAG = 0x01;
 
         private BitData() {
-            super(BIT_DATA_TAG, BIT_DATA_CELLS);
+            super(BIT_DATA_TAG, BIT_DATA_SIZE);
         }
 
-        protected BitData(int tag, int staticCellCount) {
-            super(tag, staticCellCount);
+        protected BitData(int tag, int staticSize) {
+            super(tag, staticSize);
         }
 
         public boolean getNullSeen(HotSpotMethodData data, int position) {
@@ -247,15 +256,15 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static class CounterData extends BitData {
         private static final int COUNTER_DATA_TAG = 2;
-        private static final int COUNTER_DATA_CELLS = 1;
-        private static final int COUNTER_DATA_COUNT_OFFSET = 0;
+        private static final int COUNTER_DATA_SIZE = cellIndexToOffset(1);
+        private static final int COUNTER_DATA_COUNT_OFFSET = cellIndexToOffset(0);
 
         public CounterData() {
-            super(COUNTER_DATA_TAG, COUNTER_DATA_CELLS);
+            super(COUNTER_DATA_TAG, COUNTER_DATA_SIZE);
         }
 
-        protected CounterData(int tag, int staticCellCount) {
-            super(tag, staticCellCount);
+        protected CounterData(int tag, int staticSize) {
+            super(tag, staticSize);
         }
 
         @Override
@@ -270,16 +279,16 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static class JumpData extends AbstractMethodDataAccessor {
         private static final int JUMP_DATA_TAG = 3;
-        private static final int JUMP_DATA_CELLS = 2;
-        protected static final int TAKEN_COUNT_OFFSET = 0;
-        protected static final int TAKEN_DISPLACEMENT_OFFSET = 1;
+        private static final int JUMP_DATA_SIZE = cellIndexToOffset(2);
+        protected static final int TAKEN_COUNT_OFFSET = cellIndexToOffset(0);
+        protected static final int TAKEN_DISPLACEMENT_OFFSET = cellIndexToOffset(1);
 
         public JumpData() {
-            super(JUMP_DATA_TAG, JUMP_DATA_CELLS);
+            super(JUMP_DATA_TAG, JUMP_DATA_SIZE);
         }
 
-        protected JumpData(int tag, int staticCellCount) {
-            super(tag, staticCellCount);
+        protected JumpData(int tag, int staticSize) {
+            super(tag, staticSize);
         }
 
         @Override
@@ -298,17 +307,17 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private static class AbstractTypeData extends CounterData {
-        private static final int RECEIVER_TYPE_DATA_ROW_CELL_COUNT = 2;
-        private static final int RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET = 1;
-        private static final int RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET = 2;
+        private static final int RECEIVER_TYPE_DATA_ROW_SIZE = cellsToBytes(2);
+        private static final int RECEIVER_TYPE_DATA_SIZE = cellIndexToOffset(1) + RECEIVER_TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
+        private static final int RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET = cellIndexToOffset(1);
+        private static final int RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET = cellIndexToOffset(2);
 
-        protected AbstractTypeData(int tag, int staticCellCount) {
-            super(tag, staticCellCount);
+        protected AbstractTypeData(int tag) {
+            super(tag, RECEIVER_TYPE_DATA_SIZE);
         }
 
         @Override
         public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
             int typeProfileWidth = config.typeProfileWidth;
 
             RiResolvedType[] sparseTypes = new RiResolvedType[typeProfileWidth];
@@ -319,7 +328,7 @@ public final class HotSpotMethodData extends CompilerObject {
             for (int i = 0; i < typeProfileWidth; i++) {
                 Object receiverKlassOop = data.readObject(position, getReceiverOffset(i));
                 if (receiverKlassOop != null) {
-                    Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.klassOopGraalMirrorOffset);
+                    Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.graalMirrorKlassOffset);
                     if (graalMirror == null) {
                         Class<?> javaClass = (Class<?>) unsafe.getObject(receiverKlassOop, (long) config.classMirrorOffset);
                         graalMirror = CompilerImpl.getInstance().getVMEntries().getType(javaClass);
@@ -352,33 +361,26 @@ public final class HotSpotMethodData extends CompilerObject {
                 probabilities = counts;
             }
 
-            for (int i = 0; i < typeProfileWidth; i++) {
+            for (int i = 0; i < entries; i++) {
                 probabilities[i] = counts[i] / totalCount;
             }
             return new RiTypeProfile(types, probabilities);
         }
 
-        @Override
-        protected int getDynamicCellCount(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
-            return config.typeProfileWidth * RECEIVER_TYPE_DATA_ROW_CELL_COUNT;
-        }
-
         private static int getReceiverOffset(int row) {
-            return RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET + row * RECEIVER_TYPE_DATA_ROW_CELL_COUNT;
+            return RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET + row * RECEIVER_TYPE_DATA_ROW_SIZE;
         }
 
         protected static int getCountOffset(int row) {
-            return RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET + row * RECEIVER_TYPE_DATA_ROW_CELL_COUNT;
+            return RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET + row * RECEIVER_TYPE_DATA_ROW_SIZE;
         }
     }
 
     private static class TypeCheckData extends AbstractTypeData {
         private static final int RECEIVER_TYPE_DATA_TAG = 4;
-        private static final int RECEIVER_TYPE_DATA_CELLS = 1;
 
         public TypeCheckData() {
-            super(RECEIVER_TYPE_DATA_TAG, RECEIVER_TYPE_DATA_CELLS);
+            super(RECEIVER_TYPE_DATA_TAG);
         }
 
         @Override
@@ -389,15 +391,13 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static class VirtualCallData extends AbstractTypeData {
         private static final int VIRTUAL_CALL_DATA_TAG = 5;
-        private static final int VIRTUAL_CALL_DATA_CELLS = 1;
 
         public VirtualCallData() {
-            super(VIRTUAL_CALL_DATA_TAG, VIRTUAL_CALL_DATA_CELLS);
+            super(VIRTUAL_CALL_DATA_TAG);
         }
 
         @Override
         public int getExecutionCount(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
             int typeProfileWidth = config.typeProfileWidth;
 
             long total = 0;
@@ -412,27 +412,22 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static class RetData extends CounterData {
         private static final int RET_DATA_TAG = 6;
-        private static final int RET_DATA_CELLS = 1;
-        private static final int RET_DATA_ROW_CELL_COUNT = 3;
+        private static final int RET_DATA_ROW_SIZE = cellsToBytes(3);
+        private static final int RET_DATA_SIZE = cellIndexToOffset(1) + RET_DATA_ROW_SIZE * config.bciProfileWidth;
 
         public RetData() {
-            super(RET_DATA_TAG, RET_DATA_CELLS);
-        }
-
-        @Override
-        protected int getDynamicCellCount(HotSpotMethodData data, int position) {
-            HotSpotVMConfig config = getHotSpotVMConfig();
-            return config.bciProfileWidth * RET_DATA_ROW_CELL_COUNT;
+            super(RET_DATA_TAG, RET_DATA_SIZE);
         }
     }
 
     private static class BranchData extends JumpData {
         private static final int BRANCH_DATA_TAG = 7;
-        private static final int BRANCH_DATA_CELLS = 3;
-        private static final int NOT_TAKEN_COUNT_OFFSET = 2;
+        private static final int BRANCH_DATA_SIZE = cellIndexToOffset(3);
+        private static final int NOT_TAKEN_COUNT_OFFSET = cellIndexToOffset(2);
+        private static final int BRANCH_DATA_MATURE_COUNT = 40;
 
         public BranchData() {
-            super(BRANCH_DATA_TAG, BRANCH_DATA_CELLS);
+            super(BRANCH_DATA_TAG, BRANCH_DATA_SIZE);
         }
 
         @Override
@@ -441,66 +436,72 @@ public final class HotSpotMethodData extends CompilerObject {
             long notTakenCount = data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
             long total = takenCount + notTakenCount;
 
-            if (total < 40) {
+            if (total < BRANCH_DATA_MATURE_COUNT) {
                 return -1;
             } else {
                 return takenCount / (double) total;
             }
         }
+
+        @Override
+        public int getExecutionCount(HotSpotMethodData data, int position) {
+            long count = data.readUnsignedInt(position, TAKEN_COUNT_OFFSET) + data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
+            return truncateLongToInt(count);
+        }
     }
 
     private static class ArrayData extends AbstractMethodDataAccessor {
-        private static final int ARRAY_DATA_LENGTH_OFFSET = 0;
-        private static final int ARRAY_DATA_START_OFFSET = 1;
+        private static final int ARRAY_DATA_LENGTH_OFFSET = cellIndexToOffset(0);
+        protected static final int ARRAY_DATA_START_OFFSET = cellIndexToOffset(1);
 
-        public ArrayData(int tag, int staticCellCount) {
-            super(tag, staticCellCount);
+        public ArrayData(int tag, int staticSize) {
+            super(tag, staticSize);
         }
 
         @Override
-        protected int getDynamicCellCount(HotSpotMethodData data, int position) {
-            return getLength(data, position);
+        protected int getDynamicSize(HotSpotMethodData data, int position) {
+            return cellsToBytes(getLength(data, position));
         }
 
         protected static int getLength(HotSpotMethodData data, int position) {
             return data.readInt(position, ARRAY_DATA_LENGTH_OFFSET);
         }
-
-        protected static int getElementOffset(int index) {
-            return ARRAY_DATA_START_OFFSET + index;
-        }
     }
 
     private static class MultiBranchData extends ArrayData {
         private static final int MULTI_BRANCH_DATA_TAG = 8;
-        private static final int MULTI_BRANCH_DATA_CELLS = 1;
-        private static final int MULTI_BRANCH_DATA_COUNT_OFFSET = 0;
-        private static final int MULTI_BRANCH_DATA_DISPLACEMENT_OFFSET = 1;
+        private static final int MULTI_BRANCH_DATA_SIZE = cellIndexToOffset(1);
+        private static final int MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS = 2;
+        private static final int MULTI_BRANCH_DATA_ROW_SIZE = cellsToBytes(MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS);
+        private static final int MULTI_BRANCH_DATA_FIRST_COUNT_OFFSET = ARRAY_DATA_START_OFFSET + cellsToBytes(0);
+        private static final int MULTI_BRANCH_DATA_FIRST_DISPLACEMENT_OFFSET = ARRAY_DATA_START_OFFSET + cellsToBytes(1);
 
         public MultiBranchData() {
-            super(MULTI_BRANCH_DATA_TAG, MULTI_BRANCH_DATA_CELLS);
+            super(MULTI_BRANCH_DATA_TAG, MULTI_BRANCH_DATA_SIZE);
         }
 
         @Override
         public double[] getSwitchProbabilities(HotSpotMethodData data, int position) {
-            int length = getLength(data, position);
-            assert length > 0 : "switch must have at least the default case";
+            int arrayLength = getLength(data, position);
+            assert arrayLength > 0 : "switch must have at least the default case";
+            assert arrayLength % MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS == 0 : "array must have full rows";
 
-            long total = 0;
+            int length = arrayLength / MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS;
+            long totalCount = 0;
             double[] result = new double[length];
 
             for (int i = 0; i < length; i++) {
                 int offset = getCountOffset(i);
                 long count = data.readUnsignedInt(position, offset);
-                total += count;
+                totalCount += count;
                 result[i] = count;
             }
 
-            if (total < 10 * (length + 2)) {
+            if (totalCount < 10 * (length + 2)) {
                 return null;
             } else {
                 for (int i = 0; i < length; i++) {
-                    result[i] = result[i] / total;
+                    result[i] = result[i] / totalCount;
                 }
 
                 // default case is expected as last entry
@@ -515,28 +516,31 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public int getExecutionCount(HotSpotMethodData data, int position) {
-            int length = getLength(data, position);
-            long total = 0;
+            int arrayLength = getLength(data, position);
+            assert arrayLength > 0 : "switch must have at least the default case";
+            assert arrayLength % MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS == 0 : "array must have full rows";
 
+            int length = arrayLength / MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS;
+            long totalCount = 0;
             for (int i = 0; i < length; i++) {
                 int offset = getCountOffset(i);
-                total += data.readUnsignedInt(position, offset);
+                totalCount += data.readUnsignedInt(position, offset);
             }
 
-            return truncateLongToInt(total);
+            return truncateLongToInt(totalCount);
         }
 
         private static int getCountOffset(int index) {
-            return getElementOffset(index + MULTI_BRANCH_DATA_COUNT_OFFSET);
+            return MULTI_BRANCH_DATA_FIRST_COUNT_OFFSET + index * MULTI_BRANCH_DATA_ROW_SIZE;
         }
     }
 
     private static class ArgInfoData extends ArrayData {
         private static final int ARG_INFO_DATA_TAG = 9;
-        private static final int ARG_INFO_DATA_CELLS = 1;
+        private static final int ARG_INFO_DATA_SIZE = cellIndexToOffset(1);
 
         public ArgInfoData() {
-            super(ARG_INFO_DATA_TAG, ARG_INFO_DATA_CELLS);
+            super(ARG_INFO_DATA_TAG, ARG_INFO_DATA_SIZE);
         }
     }
 }

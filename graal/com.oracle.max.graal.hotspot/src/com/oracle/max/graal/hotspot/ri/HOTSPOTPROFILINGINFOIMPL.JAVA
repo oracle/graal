@@ -91,7 +91,7 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
                     } else if (currentBCI > targetBCI) {
                         break;
                     }
-                    currentAccessor = methodData.getNormalData(currentPosition);
+                    currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
                 }
             }
 
@@ -104,6 +104,7 @@ public final class HotSpotProfilingInfoImpl extends CompilerObject implements Ri
                         extraDataFound(currentAccessor, currentPosition);
                         return;
                     }
+                    currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
                 }
             }
         }

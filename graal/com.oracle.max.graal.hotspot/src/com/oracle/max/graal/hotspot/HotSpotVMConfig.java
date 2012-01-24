@@ -70,7 +70,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int runtimeCallStackSize;
     public int klassModifierFlagsOffset;
     public int klassOopOffset;
-    public int klassOopGraalMirrorOffset;
+    public int graalMirrorKlassOffset;
     public int nmethodEntryOffset;
 
     // methodData information
