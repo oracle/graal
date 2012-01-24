@@ -97,10 +97,10 @@ public final class DebugScope {
 
     public void dump(Object object, String formatString, Object[] args) {
         if (isDumpEnabled()) {
-            String message = String.format(formatString, args);
-            for (Object o : Debug.context()) {
-                if (o instanceof DebugDumpHandler) {
-                    DebugDumpHandler dumpHandler = (DebugDumpHandler) o;
+            DebugConfig config = getConfig();
+            if (config != null) {
+                String message = String.format(formatString, args);
+                for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
                     dumpHandler.dump(object, message);
                 }
             }
@@ -119,8 +119,8 @@ public final class DebugScope {
         }
         instanceTL.set(newChild);
         T result = null;
-        updateFlags();
-        log("Starting scope %s", newChild.getQualifiedName());
+        newChild.updateFlags();
+        newChild.log("Starting scope %s", newChild.getQualifiedName());
         try {
             if (runnable != null) {
                 runnable.run();

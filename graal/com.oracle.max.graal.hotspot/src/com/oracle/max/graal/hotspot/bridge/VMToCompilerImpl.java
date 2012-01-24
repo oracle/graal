@@ -47,7 +47,6 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
     private int compiledMethodCount;
-    private DebugConfig debugConfig;
 
     public final HotSpotTypePrimitive typeBoolean;
     public final HotSpotTypePrimitive typeChar;
@@ -74,7 +73,11 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
         @Override
         public void run() {
-            Debug.setConfig(debugConfig);
+            if (GraalOptions.Debug) {
+                Debug.enable();
+                HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
+                Debug.setConfig(hotspotDebugConfig);
+            }
             super.run();
         }
     }
@@ -102,8 +105,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         HotSpotRuntime runtime = (HotSpotRuntime) compiler.getCompiler().runtime;
         if (GraalOptions.Intrinsify) {
             GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
-            Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), GraalOptions.PlotSnippets, PhasePlan.DEFAULT);
-            Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), GraalOptions.PlotSnippets, PhasePlan.DEFAULT);
+            Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
+            Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
         }
 
         // Create compilation queue.
@@ -125,13 +128,6 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             };
             t.setDaemon(true);
             t.start();
-        }
-
-        if (GraalOptions.Debug) {
-            Debug.enable();
-            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
-            System.out.println(hotspotDebugConfig);
-            this.debugConfig = hotspotDebugConfig;
         }
     }
 

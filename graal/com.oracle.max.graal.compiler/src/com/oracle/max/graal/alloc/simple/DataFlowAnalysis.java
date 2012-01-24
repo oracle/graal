@@ -35,7 +35,6 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.debug.*;
 
 public class DataFlowAnalysis {
     private final LIR lir;

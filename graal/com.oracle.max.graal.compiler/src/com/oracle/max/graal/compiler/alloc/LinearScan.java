@@ -43,7 +43,6 @@ import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described
@@ -131,7 +130,7 @@ public final class LinearScan {
 
         this.registers = target.arch.registers;
         this.firstVariableNumber = registers.length;
-        this.variables = new ArrayList<>(ir.numVariables() * 3 / 2); throw new NullPointerException();
+        this.variables = new ArrayList<>(ir.numVariables() * 3 / 2);
     }
 
     public static boolean isVariableOrRegister(CiValue value) {

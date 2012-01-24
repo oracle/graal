@@ -97,11 +97,14 @@ public class Debug {
         }
     }
 
-    public static List<Object> contextSnapshot() {
+    @SuppressWarnings("unchecked")
+    public static <T> List<T> contextSnapshot(Class<T> clazz) {
         if (ENABLED) {
-            List<Object> result = new ArrayList<>();
+            List<T> result = new ArrayList<>();
             for (Object o : context()) {
-                result.add(o);
+                if (clazz.isInstance(o)) {
+                    result.add((T) o);
+                }
             }
             return result;
         } else {
@@ -149,6 +152,11 @@ public class Debug {
             @Override
             public RuntimeException interceptException(RuntimeException e) {
                 return e;
+            }
+
+            @Override
+            public Collection< ? extends DebugDumpHandler> dumpHandlers() {
+                return Collections.emptyList();
             }
         };
     }

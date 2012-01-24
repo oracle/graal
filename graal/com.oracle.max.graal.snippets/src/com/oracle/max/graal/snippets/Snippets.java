@@ -26,33 +26,32 @@ import java.lang.reflect.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.printer.*;
 
 /**
  * Utilities for snippet installation and management.
  */
 public class Snippets {
 
-    public static void install(GraalRuntime runtime, CiTarget target, SnippetsInterface obj, boolean plotGraphs, PhasePlan plan) {
+    public static void install(GraalRuntime runtime, CiTarget target, SnippetsInterface obj, PhasePlan plan) {
         Class<? extends SnippetsInterface> clazz = obj.getClass();
         BoxingMethodPool pool = new BoxingMethodPool(runtime);
         if (clazz.isAnnotationPresent(ClassSubstitution.class)) {
-            installSubstitution(runtime, target, plotGraphs, plan, clazz, pool, clazz.getAnnotation(ClassSubstitution.class).value());
+            installSubstitution(runtime, target, plan, clazz, pool, clazz.getAnnotation(ClassSubstitution.class).value());
         } else {
-            installSnippets(runtime, target, plotGraphs, plan, clazz, pool);
+            installSnippets(runtime, target, plan, clazz, pool);
         }
     }
 
-    private static void installSnippets(GraalRuntime runtime, CiTarget target, boolean plotGraphs, PhasePlan plan, Class< ? extends SnippetsInterface> clazz,
+    private static void installSnippets(GraalRuntime runtime, CiTarget target, PhasePlan plan, Class< ? extends SnippetsInterface> clazz,
                     BoxingMethodPool pool) {
         for (Method snippet : clazz.getDeclaredMethods()) {
             int modifiers = snippet.getModifiers();
@@ -61,12 +60,12 @@ public class Snippets {
             }
             RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
             if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
-                buildSnippetGraph(snippetRiMethod, runtime, target, pool, plotGraphs, plan);
+                buildSnippetGraph(snippetRiMethod, runtime, target, pool, plan);
             }
         }
     }
 
-    private static void installSubstitution(GraalRuntime runtime, CiTarget target, boolean plotGraphs, PhasePlan plan, Class< ? extends SnippetsInterface> clazz,
+    private static void installSubstitution(GraalRuntime runtime, CiTarget target, PhasePlan plan, Class< ? extends SnippetsInterface> clazz,
                     BoxingMethodPool pool, Class<?> original) throws GraalInternalError {
         for (Method snippet : clazz.getDeclaredMethods()) {
             try {
@@ -79,7 +78,7 @@ public class Snippets {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
-                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool, plotGraphs, plan);
+                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool, plan);
                 runtime.getRiMethod(method).compilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("Could not resolve method to substitute with: " + snippet.getName(), e);
@@ -87,29 +86,14 @@ public class Snippets {
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(RiResolvedMethod snippetRiMethod, GraalRuntime runtime, CiTarget target, BoxingMethodPool pool, boolean plotGraphs, PhasePlan plan) {
-        IdealGraphPrinterObserver observer = null;
-        if (plotGraphs) {
-            observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
-            observer.compilationStarted(CiUtil.format("snippet:%h.%n(%p)", snippetRiMethod));
-        }
-        StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool, plan, observer);
-        if (observer != null) {
-            observer.compilationFinished(null);
-        }
-        return graph;
-    }
-
-    private static StructuredGraph buildSnippetGraph(RiResolvedMethod snippetRiMethod, GraalRuntime runtime, CiTarget target, BoxingMethodPool pool, PhasePlan plan, IdealGraphPrinterObserver observer) {
+    private static StructuredGraph buildSnippetGraph(RiResolvedMethod snippetRiMethod, GraalRuntime runtime, CiTarget target, BoxingMethodPool pool, PhasePlan plan) {
 
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDeoptFreeDefault();
         GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config);
         StructuredGraph graph = new StructuredGraph(snippetRiMethod);
         graphBuilder.apply(graph);
 
-        if (observer != null) {
-            observer.printGraph(snippetRiMethod.name() + ":" + GraphBuilderPhase.class.getSimpleName(), graph);
-        }
+        Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
 
         new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
@@ -120,7 +104,7 @@ public class Snippets {
             if (holder.isSubtypeOf(runtime.getType(SnippetsInterface.class))) {
                 StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
                 if (targetGraph == null) {
-                    targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool, plan, observer);
+                    targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool, plan);
                 }
                 InliningUtil.inline(invoke, targetGraph, true);
                 new CanonicalizerPhase(target, runtime, null).apply(graph);
@@ -129,9 +113,7 @@ public class Snippets {
 
         new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
-        if (observer != null) {
-            observer.printGraph(snippetRiMethod.name() + ":" + SnippetIntrinsificationPhase.class.getSimpleName(), graph);
-        }
+        Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
         new DeadCodeEliminationPhase().apply(graph);
         new CanonicalizerPhase(target, runtime, null).apply(graph);
 
@@ -140,9 +122,7 @@ public class Snippets {
             end.setSafepointPolling(false);
         }
 
-        if (observer != null) {
-            observer.printGraph(snippetRiMethod.name() + ":" + "Final", graph);
-        }
+        Debug.dump(graph, "%s: Final", snippetRiMethod.name());
 
         snippetRiMethod.compilerStorage().put(Graph.class, graph);
 

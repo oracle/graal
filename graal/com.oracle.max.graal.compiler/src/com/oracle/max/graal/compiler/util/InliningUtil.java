@@ -24,12 +24,14 @@ package com.oracle.max.graal.compiler.util;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -108,19 +110,13 @@ public class InliningUtil {
         }
 
         @Override
-        public Node inline(StructuredGraph compilerGraph, GraalRuntime runtime, InliningCallback callback) {
-            StructuredGraph graph = null; // TODO: Solve graph caching differently! GraphBuilderPhase.cachedGraphs.get(concrete);
-//            if (graph != null) {
-//                if (GraalOptions.TraceInlining) {
-//                    TTY.println("Reusing graph for %s", methodName(concrete, invoke));
-//                }
-//            } else {
-                if (GraalOptions.TraceInlining) {
-                    TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(concrete, invoke), concrete.maxLocals(), concrete.maxStackSize());
+        public Node inline(StructuredGraph compilerGraph, GraalRuntime runtime, final InliningCallback callback) {
+            StructuredGraph graph = Debug.scope("Inlining", concrete, new Callable<StructuredGraph>() {
+                @Override
+                public StructuredGraph call() throws Exception {
+                    return callback.buildGraph(concrete);
                 }
-                graph = callback.buildGraph(concrete);
-//            }
-
+            });
             return InliningUtil.inline(invoke, graph, true);
         }
 
