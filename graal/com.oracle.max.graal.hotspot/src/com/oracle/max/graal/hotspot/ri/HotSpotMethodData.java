@@ -42,7 +42,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     // TODO (ch) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
-    private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoDataAccessor();
+    private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoMethodData();
     private static final HotSpotVMConfig config;
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
         null, new BitData(), new CounterData(), new JumpData(),
@@ -54,8 +54,6 @@ public final class HotSpotMethodData extends CompilerObject {
     private int normalDataSize;
     private int extraDataSize;
     private boolean mature;
-
-    // TODO (ch) how are we going to handle methodData->is_mature()
 
     private HotSpotMethodData(Compiler compiler) {
         super(compiler);
@@ -98,13 +96,13 @@ public final class HotSpotMethodData extends CompilerObject {
         return getData(position, normalDataSize);
     }
 
-    public static HotSpotMethodDataAccessor getNoDataAccessor() {
+    public static HotSpotMethodDataAccessor getNoMethodData() {
         return NO_DATA_ACCESSOR;
     }
 
     private HotSpotMethodDataAccessor getData(int position, int displacement) {
         assert position >= 0 : "out of bounds";
-        int tag = AbstractMethodDataAccessor.readTag(this, displacement + position);
+        int tag = AbstractMethodData.readTag(this, displacement + position);
         assert tag >= 0 && tag < PROFILE_DATA_ACCESSORS.length : "illegal tag";
         return PROFILE_DATA_ACCESSORS[tag];
     }
@@ -155,13 +153,13 @@ public final class HotSpotMethodData extends CompilerObject {
         return cells * config.dataLayoutCellSize;
     }
 
-    private abstract static class AbstractMethodDataAccessor implements HotSpotMethodDataAccessor {
+    private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
         private static final int IMPLICIT_EXCEPTIONS_MASK = 0x0E;
 
         private final int tag;
         private final int staticSize;
 
-        protected AbstractMethodDataAccessor(int tag, int staticSize) {
+        protected AbstractMethodData(int tag, int staticSize) {
             this.tag = tag;
             this.staticSize = staticSize;
         }
@@ -218,17 +216,13 @@ public final class HotSpotMethodData extends CompilerObject {
         protected int getDynamicSize(@SuppressWarnings("unused") HotSpotMethodData data, @SuppressWarnings("unused") int position) {
             return 0;
         }
-
-        protected static int addressData(int offset) {
-            return config.dataLayoutHeaderSize + offset;
-        }
     }
 
-    private static class NoDataAccessor extends AbstractMethodDataAccessor {
+    private static class NoMethodData extends AbstractMethodData {
         private static final int NO_DATA_TAG = 0;
         private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
-        protected NoDataAccessor() {
+        protected NoMethodData() {
             super(NO_DATA_TAG, NO_DATA_SIZE);
         }
 
@@ -244,7 +238,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
     }
 
-    private static class BitData extends AbstractMethodDataAccessor {
+    private static class BitData extends AbstractMethodData {
         private static final int BIT_DATA_TAG = 1;
         private static final int BIT_DATA_SIZE = cellIndexToOffset(0);
         private static final int BIT_DATA_NULL_SEEN_FLAG = 0x01;
@@ -285,7 +279,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
     }
 
-    private static class JumpData extends AbstractMethodDataAccessor {
+    private static class JumpData extends AbstractMethodData {
         private static final int JUMP_DATA_TAG = 3;
         private static final int JUMP_DATA_SIZE = cellIndexToOffset(2);
         protected static final int TAKEN_COUNT_OFFSET = cellIndexToOffset(0);
@@ -307,10 +301,6 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         public int getExecutionCount(HotSpotMethodData data, int position) {
             return data.readUnsignedIntAsSignedInt(position, TAKEN_COUNT_OFFSET);
-        }
-
-        public int getDisplacement(HotSpotMethodData data, int position) {
-            return data.readInt(position, TAKEN_DISPLACEMENT_OFFSET);
         }
     }
 
@@ -342,24 +332,26 @@ public final class HotSpotMethodData extends CompilerObject {
                         graalMirror = CompilerImpl.getInstance().getVMEntries().getType(javaClass);
                         assert graalMirror != null : "must not return null";
                     }
+                    sparseTypes[entries] = (RiResolvedType) graalMirror;
 
                     long count = data.readUnsignedInt(position, getCountOffset(i));
-                    if (count > 0) {
-                        totalCount += count;
-                        counts[entries] = count;
-                        entries++;
-                    }
+                    totalCount += count;
+                    counts[entries] = count;
 
-                    sparseTypes[i] = (RiResolvedType) graalMirror;
+                    entries++;
                 }
             }
 
+            return createRiTypeProfile(sparseTypes, counts, totalCount, entries);
+        }
+
+        private static RiTypeProfile createRiTypeProfile(RiResolvedType[] sparseTypes, double[] counts, long totalCount, int entries) {
             RiResolvedType[] types;
             double[] probabilities;
 
             if (entries <= 0) {
                 return null;
-            } else if (entries < typeProfileWidth) {
+            } else if (entries < sparseTypes.length) {
                 RiResolvedType[] compactedTypes = new RiResolvedType[entries];
                 System.arraycopy(sparseTypes, 0, compactedTypes, 0, entries);
                 types = compactedTypes;
@@ -458,7 +450,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
     }
 
-    private static class ArrayData extends AbstractMethodDataAccessor {
+    private static class ArrayData extends AbstractMethodData {
         private static final int ARRAY_DATA_LENGTH_OFFSET = cellIndexToOffset(0);
         protected static final int ARRAY_DATA_START_OFFSET = cellIndexToOffset(1);
 
@@ -498,15 +490,13 @@ public final class HotSpotMethodData extends CompilerObject {
             long totalCount = 0;
             double[] result = new double[length];
 
-            // default case is expected as last entry
-            int offset = getCountOffset(0);
-            long count = data.readUnsignedInt(position, offset);
+            // default case is first in HotSpot but last for the compiler
+            long count = readCount(data, position, 0);
             totalCount += count;
             result[length - 1] = count;
 
             for (int i = 1; i < length; i++) {
-                offset = getCountOffset(i);
-                count = data.readUnsignedInt(position, offset);
+                count = readCount(data, position, i);
                 totalCount += count;
                 result[i - 1] = count;
             }
@@ -519,6 +509,14 @@ public final class HotSpotMethodData extends CompilerObject {
                 }
                 return result;
             }
+        }
+
+        private static long readCount(HotSpotMethodData data, int position, int i) {
+            int offset;
+            long count;
+            offset = getCountOffset(i);
+            count = data.readUnsignedInt(position, offset);
+            return count;
         }
 
         @Override

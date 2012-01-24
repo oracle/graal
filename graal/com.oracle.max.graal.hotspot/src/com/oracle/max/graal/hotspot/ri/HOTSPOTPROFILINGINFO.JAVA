@@ -122,7 +122,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     private void noDataFound() {
-        setCurrentData(HotSpotMethodData.getNoDataAccessor(), -1);
+        setCurrentData(HotSpotMethodData.getNoMethodData(), -1);
     }
 
     private void setCurrentData(HotSpotMethodDataAccessor dataAccessor, int position) {

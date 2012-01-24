@@ -32,7 +32,7 @@ public final class HotSpotNoProfilingInfo extends CompilerObject implements RiPr
      *
      */
     private static final long serialVersionUID = 4357945025049704109L;
-    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoDataAccessor();
+    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoMethodData();
 
     public HotSpotNoProfilingInfo(Compiler compiler) {
         super(compiler);
