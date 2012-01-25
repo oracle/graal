@@ -24,9 +24,7 @@ package com.oracle.max.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.loop.*;
 import com.oracle.max.graal.nodes.spi.*;
 
 
@@ -85,20 +83,6 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         throw ValueUtil.shouldNotReachHere();
     }
 
-    public Collection<InductionVariableNode> inductionVariables() {
-        // TODO (gd) produces useless garbage
-        List<InductionVariableNode> list = new LinkedList<>();
-        collectInductionVariables(this, list);
-        return list;
-    }
-
-    private static void collectInductionVariables(Node node, Collection<InductionVariableNode> collection) {
-        for (InductionVariableNode iv : node.usages().filter(InductionVariableNode.class)) {
-            collection.add(iv);
-            collectInductionVariables(iv, collection);
-        }
-    }
-
     @Override
     public Iterable<? extends Node> phiPredecessors() {
         return Arrays.asList(new Node[]{this.forwardEdge(), this.loopEnd()});
@@ -106,19 +90,6 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
 
     public EndNode forwardEdge() {
         return this.endAt(0);
-    }
-
-    public LoopCounterNode loopCounter() {
-        return loopCounter(CiKind.Long);
-    }
-
-    public LoopCounterNode loopCounter(CiKind kind) {
-        for (LoopCounterNode counter : usages().filter(LoopCounterNode.class)) {
-            if (counter.kind() == kind) {
-                return counter;
-            }
-        }
-        return graph().add(new LoopCounterNode(kind, this));
     }
 
     @Override
