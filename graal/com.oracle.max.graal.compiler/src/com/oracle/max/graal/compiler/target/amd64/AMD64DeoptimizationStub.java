@@ -57,9 +57,9 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
         if (GraalOptions.CreateDeoptInfo && deoptInfo != null) {
             masm.nop();
             keepAlive.add(deoptInfo.toString());
-            AMD64MoveOpcode.move(tasm, masm, scratch.asValue(), CiConstant.forObject(deoptInfo));
+            AMD64Move.move(tasm, masm, scratch.asValue(), CiConstant.forObject(deoptInfo));
             // TODO Why use scratch register here? Is it an implicit calling convention that the runtime function reads this register?
-            AMD64CallOpcode.directCall(tasm, masm, CiRuntimeCall.SetDeoptInfo, info);
+            AMD64Call.directCall(tasm, masm, CiRuntimeCall.SetDeoptInfo, info);
         }
         int code;
         switch(action) {
@@ -83,7 +83,7 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
         }
         masm.movq(scratch, code);
         // TODO Why use scratch register here? Is it an implicit calling convention that the runtime function reads this register?
-        AMD64CallOpcode.directCall(tasm, masm, CiRuntimeCall.Deoptimize, info);
-        AMD64CallOpcode.shouldNotReachHere(tasm, masm);
+        AMD64Call.directCall(tasm, masm, CiRuntimeCall.Deoptimize, info);
+        AMD64Call.shouldNotReachHere(tasm, masm);
     }
 }

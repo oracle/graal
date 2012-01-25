@@ -71,6 +71,6 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
 
         CiValue entry = gen.emitLoad(new CiAddress(CiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
 
-        gen.append(AMD64TailcallOpcode.TAILCALL.create(argList, entry, cc.locations));
+        gen.append(new AMD64TailcallOp(argList, entry, cc.locations));
     }
 }
