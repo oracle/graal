@@ -27,8 +27,8 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
+import com.oracle.max.graal.compiler.util.*;
 
 public abstract class LIRXirInstruction extends LIRInstruction {
 
@@ -37,12 +37,11 @@ public abstract class LIRXirInstruction extends LIRInstruction {
     public final int[] inputOperandIndices;
     public final int[] tempOperandIndices;
     public final XirSnippet snippet;
-    public final RiMethod method;
     public final LIRDebugInfo infoAfter;
-    private LabelRef trueSuccessor;
-    private LabelRef falseSuccessor;
+    public final LabelRef trueSuccessor;
+    public final LabelRef falseSuccessor;
 
-    public LIRXirInstruction(LIROpcode opcode,
+    public LIRXirInstruction(Object opcode,
                              XirSnippet snippet,
                              CiValue[] originalOperands,
                              CiValue outputOperand,
@@ -51,17 +50,19 @@ public abstract class LIRXirInstruction extends LIRInstruction {
                              int outputOperandIndex,
                              LIRDebugInfo info,
                              LIRDebugInfo infoAfter,
-                             RiMethod method) {
+                             LabelRef trueSuccessor,
+                             LabelRef falseSuccessor) {
         // Note that we register the XIR input operands as Alive, because the XIR specification allows that input operands
         // are used at any time, even when the temp operands and the actual output operands have already be assigned.
         super(opcode, isLegal(outputOperand) ? new CiValue[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
         this.infoAfter = infoAfter;
-        this.method = method;
         this.snippet = snippet;
         this.inputOperandIndices = inputOperandIndices;
         this.tempOperandIndices = tempOperandIndices;
         this.outputOperandIndex = outputOperandIndex;
         this.originalOperands = originalOperands;
+        this.falseSuccessor = falseSuccessor;
+        this.trueSuccessor = trueSuccessor;
         assert isLegal(outputOperand) || outputOperandIndex == -1;
     }
 
@@ -69,25 +70,10 @@ public abstract class LIRXirInstruction extends LIRInstruction {
     protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
         if (mode == OperandMode.Alive || mode == OperandMode.Temp) {
             return EnumSet.of(OperandFlag.Register, OperandFlag.Constant, OperandFlag.Illegal);
+        } else if (mode == OperandMode.Output && index == 0) {
+            return EnumSet.of(OperandFlag.Register);
         }
-        return super.flagsFor(mode, index);
-    }
-
-    public void setFalseSuccessor(LabelRef falseSuccessor) {
-        this.falseSuccessor = falseSuccessor;
-    }
-
-
-    public void setTrueSuccessor(LabelRef trueSuccessor) {
-        this.trueSuccessor = trueSuccessor;
-    }
-
-    public LabelRef falseSuccessor() {
-        return falseSuccessor;
-    }
-
-    public LabelRef trueSuccessor() {
-        return trueSuccessor;
+        throw Util.shouldNotReachHere();
     }
 
     public CiValue[] getOperands() {

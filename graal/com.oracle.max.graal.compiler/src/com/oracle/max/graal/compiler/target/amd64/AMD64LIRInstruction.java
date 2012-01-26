@@ -32,7 +32,7 @@ import com.oracle.max.graal.compiler.lir.*;
  */
 public abstract class AMD64LIRInstruction extends LIRInstruction {
 
-    public AMD64LIRInstruction(LIROpcode opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
+    public AMD64LIRInstruction(Object opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
         super(opcode, outputs, info, inputs, alives, temps);
     }
 

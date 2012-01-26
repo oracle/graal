@@ -35,7 +35,7 @@ import com.oracle.max.graal.hotspot.ri.*;
 public final class HotSpotTargetMethod extends CompilerObject {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 7807321392203253218L;
     public final CiTargetMethod targetMethod;
@@ -45,7 +45,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
 
-    private HotSpotTargetMethod(Compiler compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
+    public HotSpotTargetMethod(Compiler compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
         super(compiler);
         this.method = method;
         this.targetMethod = targetMethod;
@@ -98,10 +98,6 @@ public final class HotSpotTargetMethod extends CompilerObject {
             }
         }
         return result;
-    }
-
-    public static HotSpotCompiledMethod installMethod(Compiler compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod, boolean installCode) {
-        return compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, method, targetMethod), installCode);
     }
 
     public static Object installStub(Compiler compiler, CiTargetMethod targetMethod, String name) {

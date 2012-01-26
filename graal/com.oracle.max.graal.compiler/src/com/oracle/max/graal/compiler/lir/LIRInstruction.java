@@ -157,7 +157,7 @@ public abstract class LIRInstruction {
     /**
      * The opcode of this instruction.
      */
-    public final LIROpcode code;
+    protected final Object code;
 
     /**
      * The output operands for this instruction (modified by the register allocator).
@@ -198,7 +198,7 @@ public abstract class LIRInstruction {
      * @param inputs the input operands for the instruction.
      * @param temps the temp operands for the instruction.
      */
-    public LIRInstruction(LIROpcode opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
+    public LIRInstruction(Object opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
         this.code = opcode;
         this.outputs = outputs;
         this.inputs = inputs;
@@ -319,8 +319,8 @@ public abstract class LIRInstruction {
     /**
      * Returns true when this instruction is a call instruction that destroys all caller-saved registers.
      */
-    public boolean hasCall() {
-        return false;
+    public final boolean hasCall() {
+        return this instanceof StandardOp.CallOp;
     }
 
     /**
@@ -362,8 +362,9 @@ public abstract class LIRInstruction {
      * @return The flags for the operand.
      */
     // TODO this method will go away when we have named operands, the flags will be specified as annotations instead.
-    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        return EnumSet.of(OperandFlag.Register);
+    protected abstract EnumSet<OperandFlag> flagsFor(OperandMode mode, int index);
+
+    protected void verify() {
     }
 
 

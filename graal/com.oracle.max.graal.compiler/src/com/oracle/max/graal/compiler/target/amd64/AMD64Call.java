@@ -35,49 +35,75 @@ import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 
-public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
-    DIRECT_CALL, INDIRECT_CALL, NATIVE_CALL;
+public class AMD64Call {
 
-    public LIRInstruction create(Object target, CiValue result, List<CiValue> arguments, CiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-        return new LIRCall(this, target, result, arguments, targetAddress, info, marks) {
-            @Override
-            public void emitCode(TargetMethodAssembler tasm) {
-                emit(tasm, (AMD64MacroAssembler) tasm.asm, this);
-            }
+    public static class DirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+        private final Object targetMethod;
+        private final Map<XirMark, Mark> marks;
 
-            @Override
-            public boolean hasCall() {
-                return true;
+        public DirectCallOp(Object targetMethod, CiValue result, CiValue[] parameters, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+            super("CALL_DIRECT", new CiValue[] {result}, info, parameters, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.targetMethod = targetMethod;
+            this.marks = marks;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            callAlignment(tasm, masm);
+            if (marks != null) {
+                marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
             }
-        };
+            directCall(tasm, masm, targetMethod, info);
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+            } else if (mode == OperandMode.Output) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
+            }
+            throw Util.shouldNotReachHere();
+        }
     }
 
-    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, LIRCall op) {
-        switch (this) {
-            case DIRECT_CALL: {
-                callAlignment(tasm, masm);
-                if (op.marks != null) {
-                    op.marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
-                }
-                directCall(tasm, masm, op.target, op.info);
-                break;
+    public static class IndirectCallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
+        private final Object targetMethod;
+        private final Map<XirMark, Mark> marks;
+
+        private static CiValue[] concat(CiValue[] parameters, CiValue targetAddress) {
+            CiValue[] result = Arrays.copyOf(parameters, parameters.length + 1);
+            result[result.length - 1] = targetAddress;
+            return result;
+        }
+
+        public IndirectCallOp(Object targetMethod, CiValue result, CiValue[] parameters, CiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+            super("CALL_INDIRECT", new CiValue[] {result}, info, concat(parameters, targetAddress), LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.targetMethod = targetMethod;
+            this.marks = marks;
+        }
+
+        private CiValue targetAddress() {
+            return input(inputs.length - 1);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            callAlignment(tasm, masm);
+            if (marks != null) {
+                marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
             }
-            case INDIRECT_CALL: {
-                callAlignment(tasm, masm);
-                if (op.marks != null) {
-                    op.marks.put(XirMark.CALLSITE, tasm.recordMark(null, new Mark[0]));
-                }
-                CiRegister reg = asRegister(op.targetAddress());
-                indirectCall(tasm, masm, reg, op.target, op.info);
-                break;
+            indirectCall(tasm, masm, asRegister(targetAddress()), targetMethod, info);
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+            } else if (mode == OperandMode.Output) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
             }
-            case NATIVE_CALL: {
-                CiRegister reg = asRegister(op.targetAddress());
-                indirectCall(tasm, masm, reg, op.target, op.info);
-                break;
-            }
-            default:
-                throw Util.shouldNotReachHere();
+            throw Util.shouldNotReachHere();
         }
     }
 
@@ -111,7 +137,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
             masm.call();
         }
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, asCallTarget(tasm, target), info);
+        tasm.recordDirectCall(before, after, tasm.runtime.asCallTarget(target), info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
     }
@@ -120,7 +146,7 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
         int before = masm.codeBuffer.position();
         masm.jmp(0, true);
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, asCallTarget(tasm, target), null);
+        tasm.recordDirectCall(before, after, tasm.runtime.asCallTarget(target), null);
         masm.ensureUniquePC();
     }
 
@@ -128,13 +154,9 @@ public enum AMD64CallOpcode implements StandardOpcode.CallOpcode {
         int before = masm.codeBuffer.position();
         masm.call(dst);
         int after = masm.codeBuffer.position();
-        tasm.recordIndirectCall(before, after, asCallTarget(tasm, target), info);
+        tasm.recordIndirectCall(before, after, tasm.runtime.asCallTarget(target), info);
         tasm.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
-    }
-
-    private static Object asCallTarget(TargetMethodAssembler tasm, Object o) {
-        return tasm.runtime.asCallTarget(o);
     }
 
     public static void shouldNotReachHere(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {

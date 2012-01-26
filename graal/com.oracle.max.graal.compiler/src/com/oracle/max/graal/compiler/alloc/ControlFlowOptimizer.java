@@ -102,9 +102,9 @@ final class ControlFlowOptimizer {
         List<LIRInstruction> instructions = block.lir();
 
         assert instructions.size() >= 2 : "block must have label and branch";
-        assert instructions.get(0).code == StandardOpcode.LABEL : "first instruction must always be a label";
-        assert instructions.get(instructions.size() - 1).code == StandardOpcode.JUMP : "last instruction must always be a branch";
-        assert ((LIRBranch) instructions.get(instructions.size() - 1)).destination().label() == block.suxAt(0).label() : "branch target must be the successor " + ((LIRBranch) instructions.get(instructions.size() - 1)).destination();
+        assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+        assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
+        assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == block.suxAt(0).label() : "branch target must be the successor";
 
         // block must have exactly one successor
 
@@ -147,22 +147,22 @@ final class ControlFlowOptimizer {
             List<LIRInstruction> instructions = block.lir();
 
             LIRInstruction lastOp = instructions.get(instructions.size() - 1);
-            if (lastOp instanceof LIRBranch) {
-                LIRBranch lastBranch = (LIRBranch) lastOp;
+            if (lastOp instanceof StandardOp.JumpOp) {
+                StandardOp.JumpOp lastJump = (StandardOp.JumpOp) lastOp;
 
-                if (lastBranch.info == null) {
-                    if (lastBranch.destination().label() == code.get(i + 1).label()) {
+                if (lastOp.info == null) {
+                    if (lastJump.destination().label() == code.get(i + 1).label()) {
                         // delete last branch instruction
                         Util.truncate(instructions, instructions.size() - 1);
 
                     } else {
                         LIRInstruction prevOp = instructions.get(instructions.size() - 2);
-                        if (prevOp instanceof LIRBranch) {
-                            LIRBranch prevBranch = (LIRBranch) prevOp;
+                        if (prevOp instanceof StandardOp.BranchOp) {
+                            StandardOp.BranchOp prevBranch = (StandardOp.BranchOp) prevOp;
 
-                            if (prevBranch.destination().label() == code.get(i + 1).label && prevBranch.info == null) {
+                            if (prevBranch.destination().label() == code.get(i + 1).label && prevOp.info == null) {
                                 // eliminate a conditional branch to the immediate successor
-                                prevBranch.negate(lastBranch.destination());
+                                prevBranch.negate(lastJump.destination());
                                 Util.truncate(instructions, instructions.size() - 1);
                             }
                         }

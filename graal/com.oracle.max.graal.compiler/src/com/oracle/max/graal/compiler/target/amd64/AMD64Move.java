@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.compiler.target.amd64;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
@@ -32,55 +32,27 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.lir.StandardOp.MoveOp;
 import com.oracle.max.graal.compiler.util.*;
 
-public class AMD64MoveOpcode {
+public class AMD64Move {
 
-    public enum MoveOpcode implements LIROpcode {
-        MOVE;
-
-        public LIRInstruction create(CiValue result, CiValue input) {
-            assert result.kind == result.kind.stackKind() && result.kind != CiKind.Illegal;
-            CiValue[] inputs = new CiValue[] {input};
-            CiValue[] outputs = new CiValue[] {result};
-
-            if (isRegister(input) || isStackSlot(result)) {
-                return new AMD64MoveFromRegInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
-            } else {
-                return new AMD64MoveToRegInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
-            }
-        }
-    }
-
-    public enum SpillMoveOpcode implements StandardOpcode.MoveOpcode {
-        SPILL_MOVE;
-
-        @Override
-        public MoveInstruction create(CiValue result, CiValue input) {
-            assert result.kind == result.kind.stackKind() && result.kind != CiKind.Illegal;
-            CiValue[] inputs = new CiValue[] {input};
-            CiValue[] outputs = new CiValue[] {result};
-
-            return new AMD64SpillMoveInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
-        }
-    }
-
-    protected static class AMD64SpillMoveInstruction extends MoveInstruction {
-        public AMD64SpillMoveInstruction(LIROpcode opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
-            super(opcode, outputs, info, inputs, alives, temps);
+    public static class SpillMoveOp extends AMD64LIRInstruction implements MoveOp {
+        public SpillMoveOp(CiValue result, CiValue input) {
+            super("MOVE", new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm) {
-            move(tasm, (AMD64MacroAssembler) tasm.asm, getDest(), getSource());
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            move(tasm, masm, getResult(), getInput());
         }
 
         @Override
-        public CiValue getSource() {
+        public CiValue getInput() {
             return input(0);
         }
         @Override
-        public CiValue getDest() {
+        public CiValue getResult() {
             return output(0);
         }
 
@@ -93,25 +65,25 @@ public class AMD64MoveOpcode {
             }
             throw Util.shouldNotReachHere();
         }
-
     }
 
-    protected static class AMD64MoveToRegInstruction extends MoveInstruction {
-        public AMD64MoveToRegInstruction(LIROpcode opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
-            super(opcode, outputs, info, inputs, alives, temps);
+
+    public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
+        public MoveToRegOp(CiValue result, CiValue input) {
+            super("MOVE", new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm) {
-            move(tasm, (AMD64MacroAssembler) tasm.asm, getDest(), getSource());
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            move(tasm, masm, getResult(), getInput());
         }
 
         @Override
-        public CiValue getSource() {
+        public CiValue getInput() {
             return input(0);
         }
         @Override
-        public CiValue getDest() {
+        public CiValue getResult() {
             return output(0);
         }
 
@@ -126,25 +98,25 @@ public class AMD64MoveOpcode {
         }
     }
 
-    protected static class AMD64MoveFromRegInstruction extends MoveInstruction {
-        public AMD64MoveFromRegInstruction(LIROpcode opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps) {
-            super(opcode, outputs, info, inputs, alives, temps);
+
+    public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
+        public MoveFromRegOp(CiValue result, CiValue input) {
+            super("MOVE", new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm) {
-            move(tasm, (AMD64MacroAssembler) tasm.asm, getDest(), getSource());
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            move(tasm, masm, getResult(), getInput());
         }
 
         @Override
-        public CiValue getSource() {
+        public CiValue getInput() {
             return input(0);
         }
         @Override
-        public CiValue getDest() {
+        public CiValue getResult() {
             return output(0);
         }
-
 
         @Override
         protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
@@ -157,137 +129,139 @@ public class AMD64MoveOpcode {
         }
     }
 
-    public enum LoadOpcode implements LIROpcode {
-        LOAD;
 
-        public LIRInstruction create(CiValue result, CiValue address, LIRDebugInfo info) {
-            CiValue[] inputs = new CiValue[] {address};
-            CiValue[] outputs = new CiValue[] {result};
-
-            return new AMD64LIRInstruction(this, outputs, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-                @Override
-                public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    load(tasm, masm, output(0), (CiAddress) input(0), info);
-                }
-
-                @Override
-                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-                    if (mode == OperandMode.Input && index == 0) {
-                        return EnumSet.of(OperandFlag.Address);
-                    }
-                    return super.flagsFor(mode, index);
-                }
-            };
+    public static class LoadOp extends AMD64LIRInstruction {
+        public LoadOp(CiValue result, CiValue address, LIRDebugInfo info) {
+            super("LOAD", new CiValue[] {result}, info, new CiValue[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
-    }
-
-
-    public enum StoreOpcode implements LIROpcode {
-        STORE;
-
-        public LIRInstruction create(CiValue address, CiValue input, LIRDebugInfo info) {
-            CiValue[] inputs = new CiValue[] {address, input};
-
-            return new AMD64LIRInstruction(this, LIRInstruction.NO_OPERANDS, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-                @Override
-                public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    store(tasm, masm, (CiAddress) input(0), input(1), info);
-                }
-
-                @Override
-                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-                    if (mode == OperandMode.Input && index == 0) {
-                        return EnumSet.of(OperandFlag.Address);
-                    } else if (mode == OperandMode.Input && index == 1) {
-                        return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
-                    }
-                    return super.flagsFor(mode, index);
-                }
-            };
-        }
-    }
-
-
-    public enum LeaOpcode implements LIROpcode {
-        LEA;
-
-        public LIRInstruction create(CiValue result, CiValue address) {
-            CiValue[] inputs = new CiValue[] {address};
-            CiValue[] outputs = new CiValue[] {result};
-
-            return new AMD64LIRInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-                @Override
-                public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    masm.leaq(asLongReg(output(0)), tasm.asAddress(input(0)));
-                }
-
-                @Override
-                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-                    if (mode == OperandMode.Input && index == 0) {
-                        return EnumSet.of(OperandFlag.Address, OperandFlag.Stack, OperandFlag.Uninitialized);
-                    }
-                    return super.flagsFor(mode, index);
-                }
-            };
-        }
-    }
-
-
-    public enum MembarOpcode implements LIROpcode {
-        MEMBAR;
-
-        public LIRInstruction create(final int barriers) {
-            return new AMD64LIRInstruction(this, LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-                @Override
-                public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    masm.membar(barriers);
-                }
-            };
-        }
-    }
-
-
-    public enum NullCheckOpcode implements StandardOpcode.NullCheckOpcode {
-        NULL_CHECK;
 
         @Override
-        public LIRInstruction create(Variable input, LIRDebugInfo info) {
-            CiValue[] inputs = new CiValue[] {input};
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            load(tasm, masm, output(0), (CiAddress) input(0), info);
+        }
 
-            return new AMD64LIRInstruction(this, LIRInstruction.NO_OPERANDS, info, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-                @Override
-                public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    tasm.recordImplicitException(masm.codeBuffer.position(), info);
-                    masm.nullCheck(asRegister(input(0)));
-                }
-            };
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input && index == 0) {
+                return EnumSet.of(OperandFlag.Address);
+            } else if (mode == OperandMode.Output && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            }
+            throw Util.shouldNotReachHere();
         }
     }
 
 
-    public enum CompareAndSwapOpcode implements LIROpcode {
-        CAS;
+    public static class StoreOp extends AMD64LIRInstruction {
+        public StoreOp(CiValue address, CiValue input, LIRDebugInfo info) {
+            super("STORE", LIRInstruction.NO_OPERANDS, info, new CiValue[] {address, input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        }
 
-        public LIRInstruction create(CiValue result, CiAddress address, CiValue cmpValue, CiValue newValue) {
-            CiValue[] inputs = new CiValue[] {address, cmpValue, newValue};
-            CiValue[] outputs = new CiValue[] {result};
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            store(tasm, masm, (CiAddress) input(0), input(1), info);
+        }
 
-            return new AMD64LIRInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-                @Override
-                public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                    compareAndSwap(tasm, masm, output(0), asAddress(input(0)), input(1), input(2));
-                }
-
-                @Override
-                protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-                    if (mode == OperandMode.Input && index == 0) {
-                        return EnumSet.of(OperandFlag.Address);
-                    }
-                    return super.flagsFor(mode, index);
-                }
-            };
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input && index == 0) {
+                return EnumSet.of(OperandFlag.Address);
+            } else if (mode == OperandMode.Input && index == 1) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
+            }
+            throw Util.shouldNotReachHere();
         }
     }
+
+
+    public static class LeaOp extends AMD64LIRInstruction {
+        public LeaOp(CiValue result, CiValue address) {
+            super("LEA", new CiValue[] {result}, null, new CiValue[] {address}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            masm.leaq(asLongReg(output(0)), tasm.asAddress(input(0)));
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input && index == 0) {
+                return EnumSet.of(OperandFlag.Address, OperandFlag.Stack, OperandFlag.Uninitialized);
+            } else if (mode == OperandMode.Output && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            }
+            throw Util.shouldNotReachHere();
+        }
+    }
+
+
+    public static class MembarOp extends AMD64LIRInstruction {
+        private final int barriers;
+
+        public MembarOp(final int barriers) {
+            super("MEMBAR", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+            this.barriers = barriers;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            masm.membar(barriers);
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            throw Util.shouldNotReachHere();
+        }
+    }
+
+
+    public static class NullCheckOp extends AMD64LIRInstruction {
+        public NullCheckOp(Variable input, LIRDebugInfo info) {
+            super("NULL_CHECK", LIRInstruction.NO_OPERANDS, info, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            tasm.recordImplicitException(masm.codeBuffer.position(), info);
+            masm.nullCheck(asRegister(input(0)));
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            }
+            throw Util.shouldNotReachHere();
+        }
+    }
+
+
+    public static class CompareAndSwapOp extends AMD64LIRInstruction {
+        public CompareAndSwapOp(CiValue result, CiAddress address, CiValue cmpValue, CiValue newValue) {
+            super("CAS", new CiValue[] {result}, null, new CiValue[] {address, cmpValue, newValue}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            compareAndSwap(tasm, masm, output(0), asAddress(input(0)), input(1), input(2));
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input && index == 0) {
+                return EnumSet.of(OperandFlag.Address);
+            } else if (mode == OperandMode.Input && index == 1) {
+                return EnumSet.of(OperandFlag.Register);
+            } else if (mode == OperandMode.Input && index == 2) {
+                return EnumSet.of(OperandFlag.Register);
+            } else if (mode == OperandMode.Output && index == 0) {
+                return EnumSet.of(OperandFlag.Register);
+            }
+            throw Util.shouldNotReachHere();
+        }
+    }
+
 
     protected static void move(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
         if (isRegister(input)) {

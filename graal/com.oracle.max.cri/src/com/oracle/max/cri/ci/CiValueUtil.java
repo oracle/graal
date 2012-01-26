@@ -110,25 +110,19 @@ public class CiValueUtil {
     }
 
 
-    public static boolean sameRegister(CiValue...values) {
-        for (int i = 0; i < values.length; i++) {
-            for (int j = i + 1; j < values.length; j++) {
-                if (isRegister(values[i]) && isRegister(values[j]) && asRegister(values[i]) != asRegister(values[j])) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    public static boolean sameRegister(CiValue v1, CiValue v2) {
+        return isRegister(v1) && isRegister(v2) && asRegister(v1) == asRegister(v2);
     }
 
-    public static boolean differentRegisters(CiValue...values) {
-        for (int i = 0; i < values.length; i++) {
-            for (int j = i + 1; j < values.length; j++) {
-                if (isRegister(values[i]) && isRegister(values[j]) && asRegister(values[i]) == asRegister(values[j])) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    public static boolean sameRegister(CiValue v1, CiValue v2, CiValue v3) {
+        return sameRegister(v1, v2) && sameRegister(v1, v3);
+    }
+
+    public static boolean differentRegisters(CiValue v1, CiValue v2) {
+        return !isRegister(v1) || !isRegister(v2) || asRegister(v1) != asRegister(v2);
+    }
+
+    public static boolean differentRegisters(CiValue v1, CiValue v2, CiValue v3) {
+        return differentRegisters(v1, v2) && differentRegisters(v1, v3) && differentRegisters(v2, v3);
     }
 }

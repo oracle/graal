@@ -24,6 +24,8 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.asm.target.amd64.*;
@@ -37,7 +39,7 @@ import com.oracle.max.graal.compiler.util.*;
  * integer constants -1, 0, 1 on less, equal, or greater, respectively.  For floating point compares,
  * unordered can be either greater {@link #CMP2INT_UG} or less {@link #CMP2INT_UL}.
  */
-public enum AMD64CompareToIntOpcode implements LIROpcode {
+public enum AMD64CompareToIntOpcode {
     CMP2INT, CMP2INT_UG, CMP2INT_UL;
 
     public LIRInstruction create(CiValue result) {
@@ -47,6 +49,14 @@ public enum AMD64CompareToIntOpcode implements LIROpcode {
             @Override
             public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
                 emit(masm, output(0));
+            }
+
+            @Override
+            protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+                if (mode == OperandMode.Output && index == 0) {
+                    return EnumSet.of(OperandFlag.Register);
+                }
+                throw Util.shouldNotReachHere();
             }
         };
     }

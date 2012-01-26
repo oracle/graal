@@ -34,6 +34,7 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 
 public abstract class MoveResolver {
+    private final LIR lir;
     private final FrameMap frameMap;
     private final int[] registersBlocked;
     private final Map<CiValue, Integer> valuesBlocked;
@@ -42,7 +43,8 @@ public abstract class MoveResolver {
     private final LIRInsertionBuffer insertionBuffer;
     private int insertPos;
 
-    public MoveResolver(FrameMap frameMap) {
+    public MoveResolver(LIR lir, FrameMap frameMap) {
+        this.lir = lir;
         this.frameMap = frameMap;
 
         registersBlocked = new int[frameMap.target.arch.registers.length];
@@ -292,7 +294,7 @@ public abstract class MoveResolver {
 
         } else {
             assert trace("mr      MOV %s -> %s", src, dst);
-            insertionBuffer.append(insertPos, StandardOpcode.SPILL_MOVE.create(dst,  src));
+            insertionBuffer.append(insertPos, lir.spillMoveFactory.createMove(dst,  src));
         }
     }
 

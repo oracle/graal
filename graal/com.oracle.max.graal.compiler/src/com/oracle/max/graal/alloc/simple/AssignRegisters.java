@@ -76,7 +76,7 @@ public abstract class AssignRegisters {
                     if (op instanceof LIRXirInstruction) {
                         LIRXirInstruction xir = (LIRXirInstruction) op;
                         if (xir.infoAfter != null) {
-                            xir.infoAfter.finish(op.hasCall() ? null : new CiBitMap(curRegisterRefMap), new CiBitMap(curFrameRefMap), frameMap);
+                            xir.infoAfter.finish(new CiBitMap(curRegisterRefMap), new CiBitMap(curFrameRefMap), frameMap);
                         }
                     }
                 }

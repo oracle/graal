@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.lir;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -67,6 +68,12 @@ public class LIR {
 
     private final int loopCount;
 
+    public SpillMoveFactory spillMoveFactory;
+
+    public interface SpillMoveFactory {
+        LIRInstruction createMove(CiValue result, CiValue input);
+        LIRInstruction createExchange(CiValue input1, CiValue input2);
+    }
 
     public interface SlowPath {
         void emitCode(TargetMethodAssembler tasm);

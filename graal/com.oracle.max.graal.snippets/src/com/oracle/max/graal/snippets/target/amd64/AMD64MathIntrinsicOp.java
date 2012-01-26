@@ -24,6 +24,8 @@ package com.oracle.max.graal.snippets.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -31,35 +33,41 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
 
-public enum AMD64MathIntrinsicOpcode implements LIROpcode {
-    SQRT,
-    SIN, COS, TAN,
-    LOG, LOG10;
-
-    public LIRInstruction create(Variable result, Variable input) {
-        CiValue[] inputs = new CiValue[] {input};
-        CiValue[] outputs = new CiValue[] {result};
-
-        return new AMD64LIRInstruction(this, outputs, null, inputs, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS) {
-            @Override
-            public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-                emit(tasm, masm, asDoubleReg(output(0)), asDoubleReg(input(0)));
-            }
-        };
+public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
+    public enum Opcode  {
+        SQRT,
+        SIN, COS, TAN,
+        LOG, LOG10;
     }
 
-    /**
-     * @param tasm
-     */
-    private void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiRegister result, CiRegister input) {
-        switch (this) {
-            case SQRT:  masm.sqrtsd(result, input); break;
-            case LOG:   masm.flog(result, input, false); break;
-            case LOG10: masm.flog(result, input, true); break;
-            case SIN:   masm.fsin(result, input); break;
-            case COS:   masm.fcos(result, input); break;
-            case TAN:   masm.ftan(result, input); break;
+    public AMD64MathIntrinsicOp(Opcode opcode, CiValue result, CiValue input) {
+        super(opcode, new CiValue[] {result}, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+    }
+
+    @Override
+    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        Opcode opcode = (Opcode) code;
+        CiValue result = output(0);
+        CiValue input = input(0);
+
+        switch (opcode) {
+            case SQRT:  masm.sqrtsd(asDoubleReg(result), asDoubleReg(input)); break;
+            case LOG:   masm.flog(asDoubleReg(result), asDoubleReg(input), false); break;
+            case LOG10: masm.flog(asDoubleReg(result), asDoubleReg(input), true); break;
+            case SIN:   masm.fsin(asDoubleReg(result), asDoubleReg(input)); break;
+            case COS:   masm.fcos(asDoubleReg(result), asDoubleReg(input)); break;
+            case TAN:   masm.ftan(asDoubleReg(result), asDoubleReg(input)); break;
             default:    throw Util.shouldNotReachHere();
         }
+    }
+
+    @Override
+    protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+        if (mode == OperandMode.Input && index == 0) {
+            return EnumSet.of(OperandFlag.Register);
+        } else if (mode == OperandMode.Output && index == 0) {
+            return EnumSet.of(OperandFlag.Register);
+        }
+        throw Util.shouldNotReachHere();
     }
 }
