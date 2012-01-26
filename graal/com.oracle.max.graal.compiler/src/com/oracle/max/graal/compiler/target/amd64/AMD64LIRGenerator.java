@@ -23,33 +23,49 @@
 
 package com.oracle.max.graal.compiler.target.amd64;
 
-import com.oracle.max.graal.compiler.target.amd64.AMD64Call.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64Compare.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareToIntOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.*;
 
 import java.util.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.DivOp;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op1Reg;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op1Stack;
-import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2RegCommutative;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Stack;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.ShiftOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Call.DirectCallOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Compare.CompareOp;
-import com.oracle.max.graal.compiler.target.amd64.AMD64Move.*;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.BranchOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.CondMoveOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.FloatBranchOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.FloatCondMoveOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.JumpOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.LabelOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.ReturnOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.CompareAndSwapOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.LeaOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.LoadOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.MembarOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.MoveFromRegOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.MoveToRegOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.NullCheckOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.SpillMoveOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.StoreOp;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -248,8 +264,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch (input.kind) {
             case Int:    append(new Op1Stack(INEG, result, input)); break;
             case Long:   append(new Op1Stack(LNEG, result, input)); break;
-            case Float:  append(new Op2RegCommutative(FXOR, result, input, CiConstant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
-            case Double: append(new Op2RegCommutative(DXOR, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
+            case Float:  append(new Op2Reg(FXOR, result, input, CiConstant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
+            case Double: append(new Op2Reg(DXOR, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
             default: throw Util.shouldNotReachHere();
         }
         return result;
@@ -285,8 +301,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitMul(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(new Op2RegCommutative(IMUL, result, a, loadNonConst(b))); break;
-            case Long:   append(new Op2RegCommutative(LMUL, result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2Reg(IMUL, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2Reg(LMUL, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FMUL, result, a, loadNonConst(b))); break;
             case Double: append(new Op2Stack(DMUL, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();

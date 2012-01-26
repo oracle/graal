@@ -135,6 +135,45 @@ public enum AMD64Arithmetic {
         }
     }
 
+    public static class Op2Reg extends AMD64LIRInstruction {
+        public Op2Reg(AMD64Arithmetic opcode, CiValue result, CiValue x, CiValue y) {
+            super(opcode, new CiValue[] {result}, null, new CiValue[] {x}, new CiValue[] {y}, LIRInstruction.NO_OPERANDS);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            CiValue result = output(0);
+            CiValue x = input(0);
+            CiValue y = alive(0);
+
+            AMD64Move.move(tasm, masm, result, x);
+            emit(tasm, masm, (AMD64Arithmetic) code, result, y, null);
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Input && index == 0) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+            } else if (mode == OperandMode.Alive && index == 0) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
+            } else if (mode == OperandMode.Output && index == 0) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
+            }
+            throw Util.shouldNotReachHere();
+        }
+
+        @Override
+        public void verify() {
+            CiValue result = output(0);
+            CiValue x = input(0);
+            CiValue y = alive(0);
+
+            super.verify();
+            assert differentRegisters(result, y) || sameRegister(x, y);
+            verifyKind((AMD64Arithmetic) code, result, x, y);
+        }
+    }
+
     public static class Op2RegCommutative extends AMD64LIRInstruction {
         public Op2RegCommutative(AMD64Arithmetic opcode, CiValue result, CiValue x, CiValue y) {
             super(opcode, new CiValue[] {result}, null, new CiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
@@ -173,7 +212,6 @@ public enum AMD64Arithmetic {
             CiValue y = input(1);
 
             super.verify();
-            assert differentRegisters(result, y) || sameRegister(x, y);
             verifyKind((AMD64Arithmetic) code, result, x, y);
         }
     }
