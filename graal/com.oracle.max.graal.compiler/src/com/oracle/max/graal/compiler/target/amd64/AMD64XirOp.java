@@ -32,148 +32,134 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
+import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
+import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 
-public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
-    XIR;
-
-    public LIRInstruction create(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
-                        LIRDebugInfo info, LIRDebugInfo infoAfter, RiMethod method) {
-        return new LIRXirInstruction(this, snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, method) {
-            @Override
-            public void emitCode(TargetMethodAssembler tasm) {
-                emit(tasm, (AMD64MacroAssembler) tasm.asm, this);
-            }
-        };
+public class AMD64XirOp extends LIRXirInstruction {
+    public AMD64XirOp(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
+                        LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+        super("XIR", snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor);
     }
 
-    private static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, LIRXirInstruction op) {
-        XirSnippet snippet = op.snippet;
+    @Override
+    public void emitCode(TargetMethodAssembler tasm) {
+        AMD64MacroAssembler masm = (AMD64MacroAssembler) tasm.asm;
+
         Label endLabel = null;
         Label[] labels = new Label[snippet.template.labels.length];
         for (int i = 0; i < labels.length; i++) {
             labels[i] = new Label();
             if (snippet.template.labels[i].name == XirLabel.TrueSuccessor) {
-                if (op.trueSuccessor() == null) {
+                if (trueSuccessor == null) {
                     assert endLabel == null;
                     endLabel = new Label();
                     labels[i] = endLabel;
                 } else {
-                    labels[i] = op.trueSuccessor().label();
+                    labels[i] = trueSuccessor.label();
                 }
             } else if (snippet.template.labels[i].name == XirLabel.FalseSuccessor) {
-                if (op.falseSuccessor() == null) {
+                if (falseSuccessor == null) {
                     assert endLabel == null;
                     endLabel = new Label();
                     labels[i] = endLabel;
                 } else {
-                    labels[i] = op.falseSuccessor().label();
+                    labels[i] = falseSuccessor.label();
                 }
             }
         }
-        emitXirInstructions(tasm, masm, op, snippet.template.fastPath, labels, op.getOperands(), snippet.marks);
+        emitXirInstructions(tasm, masm, snippet.template.fastPath, labels, getOperands(), snippet.marks);
         if (endLabel != null) {
             masm.bind(endLabel);
         }
 
         if (snippet.template.slowPath != null) {
-            tasm.slowPaths.add(new SlowPath(op, labels, snippet.marks));
+            tasm.slowPaths.add(new SlowPath(labels));
         }
     }
 
-    private static class SlowPath extends AMD64SlowPath {
-        public final LIRXirInstruction instruction;
+    private class SlowPath extends AMD64SlowPath {
         public final Label[] labels;
-        public final Map<XirMark, Mark> marks;
 
-        public SlowPath(LIRXirInstruction instruction, Label[] labels, Map<XirMark, Mark> marks) {
-            this.instruction = instruction;
+        public SlowPath(Label[] labels) {
             this.labels = labels;
-            this.marks = marks;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            emitSlowPath(tasm, masm, this);
+            int start = -1;
+            if (GraalOptions.TraceAssembler) {
+                TTY.println("Emitting slow path for XIR instruction " + snippet.template.name);
+                start = masm.codeBuffer.position();
+            }
+            emitXirInstructions(tasm, masm, snippet.template.slowPath, labels, getOperands(), snippet.marks);
+            masm.nop();
+            if (GraalOptions.TraceAssembler) {
+                TTY.println("From " + start + " to " + masm.codeBuffer.position());
+            }
         }
     }
 
 
-    private static void emitSlowPath(TargetMethodAssembler tasm, AMD64MacroAssembler masm, SlowPath sp) {
-        int start = -1;
-        if (GraalOptions.TraceAssembler) {
-            TTY.println("Emitting slow path for XIR instruction " + sp.instruction.snippet.template.name);
-            start = masm.codeBuffer.position();
-        }
-        emitXirInstructions(tasm, masm, sp.instruction, sp.instruction.snippet.template.slowPath, sp.labels, sp.instruction.getOperands(), sp.marks);
-        masm.nop();
-        if (GraalOptions.TraceAssembler) {
-            TTY.println("From " + start + " to " + masm.codeBuffer.position());
-        }
-    }
-
-    protected static void emitXirInstructions(TargetMethodAssembler tasm, AMD64MacroAssembler masm, LIRXirInstruction xir, XirInstruction[] instructions, Label[] labels, CiValue[] operands, Map<XirMark, Mark> marks) {
-        LIRDebugInfo info = xir == null ? null : xir.info;
-        LIRDebugInfo infoAfter = xir == null ? null : xir.infoAfter;
-
+    protected void emitXirInstructions(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction[] instructions, Label[] labels, CiValue[] operands, Map<XirMark, Mark> marks) {
         for (XirInstruction inst : instructions) {
             switch (inst.op) {
                 case Add:
-                    emitXirViaLir(tasm, masm, AMD64ArithmeticOpcode.IADD, AMD64ArithmeticOpcode.LADD, AMD64ArithmeticOpcode.FADD, AMD64ArithmeticOpcode.DADD, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IADD, AMD64Arithmetic.LADD, AMD64Arithmetic.FADD, AMD64Arithmetic.DADD, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Sub:
-                    emitXirViaLir(tasm, masm, AMD64ArithmeticOpcode.ISUB, AMD64ArithmeticOpcode.LSUB, AMD64ArithmeticOpcode.FSUB, AMD64ArithmeticOpcode.DSUB, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.ISUB, AMD64Arithmetic.LSUB, AMD64Arithmetic.FSUB, AMD64Arithmetic.DSUB, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Div:
-                    emitXirViaLir(tasm, masm, AMD64DivOpcode.IDIV, AMD64DivOpcode.LDIV, AMD64ArithmeticOpcode.FDIV, AMD64ArithmeticOpcode.DDIV, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IDIV, AMD64Arithmetic.LDIV, AMD64Arithmetic.FDIV, AMD64Arithmetic.DDIV, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Mul:
-                    emitXirViaLir(tasm, masm, AMD64MulOpcode.IMUL, AMD64MulOpcode.LMUL, AMD64ArithmeticOpcode.FMUL, AMD64ArithmeticOpcode.DMUL, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IMUL, AMD64Arithmetic.LMUL, AMD64Arithmetic.FMUL, AMD64Arithmetic.DMUL, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Mod:
-                    emitXirViaLir(tasm, masm, AMD64DivOpcode.IREM, AMD64DivOpcode.LREM, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IREM, AMD64Arithmetic.LREM, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Shl:
-                    emitXirViaLir(tasm, masm, AMD64ShiftOpcode.ISHL, AMD64ShiftOpcode.LSHL, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.ISHL, AMD64Arithmetic.LSHL, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Sar:
-                    emitXirViaLir(tasm, masm, AMD64ShiftOpcode.ISHR, AMD64ShiftOpcode.LSHR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.ISHR, AMD64Arithmetic.LSHR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Shr:
-                    emitXirViaLir(tasm, masm, AMD64ShiftOpcode.IUSHR, AMD64ShiftOpcode.LUSHR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IUSHR, AMD64Arithmetic.LUSHR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case And:
-                    emitXirViaLir(tasm, masm, AMD64ArithmeticOpcode.IAND, AMD64ArithmeticOpcode.LAND, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IAND, AMD64Arithmetic.LAND, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Or:
-                    emitXirViaLir(tasm, masm, AMD64ArithmeticOpcode.IOR, AMD64ArithmeticOpcode.LOR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IOR, AMD64Arithmetic.LOR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Xor:
-                    emitXirViaLir(tasm, masm, AMD64ArithmeticOpcode.IXOR, AMD64ArithmeticOpcode.LXOR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
+                    emitXirViaLir(tasm, masm, AMD64Arithmetic.IXOR, AMD64Arithmetic.LXOR, null, null, operands[inst.x().index], operands[inst.y().index], operands[inst.result.index]);
                     break;
 
                 case Mov: {
                     CiValue result = operands[inst.result.index];
                     CiValue source = operands[inst.x().index];
-                    AMD64MoveOpcode.move(tasm, masm, result, source);
+                    AMD64Move.move(tasm, masm, result, source);
                     break;
                 }
 
@@ -182,7 +168,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue pointer = operands[inst.x().index];
                     CiRegisterValue register = assureInRegister(tasm, masm, pointer);
 
-                    AMD64MoveOpcode.load(tasm, masm, result, new CiAddress(inst.kind, register), (Boolean) inst.extra ? info : null);
+                    AMD64Move.load(tasm, masm, result, new CiAddress(inst.kind, register), (Boolean) inst.extra ? info : null);
                     break;
                 }
 
@@ -191,7 +177,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     CiValue pointer = operands[inst.x().index];
                     assert isRegister(pointer);
 
-                    AMD64MoveOpcode.store(tasm, masm, new CiAddress(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
+                    AMD64Move.store(tasm, masm, new CiAddress(inst.kind, pointer), value, (Boolean) inst.extra ? info : null);
                     break;
                 }
 
@@ -218,7 +204,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                         src = new CiAddress(inst.kind, pointer, index, scale, displacement);
                     }
 
-                    AMD64MoveOpcode.load(tasm, masm, result, src, canTrap ? info : null);
+                    AMD64Move.load(tasm, masm, result, src, canTrap ? info : null);
                     break;
                 }
 
@@ -262,7 +248,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                         dst = new CiAddress(inst.kind, pointer, index, scale, displacement);
                     }
 
-                    AMD64MoveOpcode.store(tasm, masm, dst, value, canTrap ? info : null);
+                    AMD64Move.store(tasm, masm, dst, value, canTrap ? info : null);
                     break;
                 }
 
@@ -306,17 +292,17 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                         CiValue argumentLocation = cc.locations[i];
                         CiValue argumentSourceLocation = operands[inst.arguments[i].index];
                         if (argumentLocation != argumentSourceLocation) {
-                            AMD64MoveOpcode.move(tasm, masm, argumentLocation, argumentSourceLocation);
+                            AMD64Move.move(tasm, masm, argumentLocation, argumentSourceLocation);
                         }
                     }
 
                     RuntimeCallInformation runtimeCallInformation = (RuntimeCallInformation) inst.extra;
-                    AMD64CallOpcode.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
+                    AMD64Call.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
 
                     if (inst.result != null && inst.result.kind != CiKind.Illegal && inst.result.kind != CiKind.Void) {
                         CiRegister returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
                         CiValue resultLocation = returnRegister.asValue(inst.result.kind.stackKind());
-                        AMD64MoveOpcode.move(tasm, masm, operands[inst.result.index], resultLocation);
+                        AMD64Move.move(tasm, masm, operands[inst.result.index], resultLocation);
                     }
                     break;
                 }
@@ -325,7 +311,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                         Label label = labels[((XirLabel) inst.extra).index];
                         masm.jmp(label);
                     } else {
-                        AMD64CallOpcode.directJmp(tasm, masm, inst.extra);
+                        AMD64Call.directJmp(tasm, masm, inst.extra);
                     }
                     break;
                 }
@@ -471,7 +457,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     } else {
                         CiRegister rscratch = tasm.frameMap.registerConfig.getScratchRegister();
                         masm.pop(rscratch);
-                        AMD64MoveOpcode.move(tasm, masm, result, rscratch.asValue());
+                        AMD64Move.move(tasm, masm, result, rscratch.asValue());
                     }
                     break;
                 }
@@ -499,7 +485,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
                     break;
                 }
                 case ShouldNotReachHere: {
-                    AMD64CallOpcode.shouldNotReachHere(tasm, masm);
+                    AMD64Call.shouldNotReachHere(tasm, masm);
                     break;
                 }
                 default:
@@ -508,8 +494,9 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
         }
     }
 
-    private static void emitXirViaLir(TargetMethodAssembler tasm, AMD64MacroAssembler masm, LIROpcode intOp, LIROpcode longOp, LIROpcode floatOp, LIROpcode doubleOp, CiValue left, CiValue right, CiValue result) {
-        LIROpcode code;
+    private static void emitXirViaLir(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic intOp, AMD64Arithmetic longOp, AMD64Arithmetic floatOp,
+                    AMD64Arithmetic doubleOp, CiValue left, CiValue right, CiValue result) {
+        AMD64Arithmetic code;
         switch (result.kind) {
             case Int: code = intOp; break;
             case Long: code = longOp; break;
@@ -517,31 +504,28 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
             case Double: code = doubleOp; break;
             default: throw Util.shouldNotReachHere();
         }
-
-        if (code instanceof AMD64ArithmeticOpcode) {
-            ((AMD64ArithmeticOpcode) code).emit(tasm, masm, result, left, right);
-        } else if (code instanceof AMD64MulOpcode) {
-            ((AMD64MulOpcode) code).emit(tasm, masm, result, left, right);
-        } else if (code instanceof AMD64DivOpcode) {
-            ((AMD64DivOpcode) code).emit(tasm, masm, result, null, left, right);
-        } else if (code instanceof AMD64ShiftOpcode) {
-            ((AMD64ShiftOpcode) code).emit(tasm, masm, result, left, right);
+        assert left == result;
+        if (isRegister(right) && right.kind != result.kind) {
+            // XIR is not strongly typed, so we can have a type mismatch that we have to fix here.
+            AMD64Arithmetic.emit(tasm, masm, code, result, asRegister(right).asValue(result.kind), null);
+        } else {
+            AMD64Arithmetic.emit(tasm, masm, code, result, right, null);
         }
     }
 
     private static void emitXirCompare(TargetMethodAssembler tasm, AMD64MacroAssembler masm, XirInstruction inst, ConditionFlag cflag, CiValue[] ops, Label label) {
         CiValue x = ops[inst.x().index];
         CiValue y = ops[inst.y().index];
-        AMD64CompareOpcode code;
+        AMD64Compare code;
         switch (x.kind) {
-            case Int: code = AMD64CompareOpcode.ICMP; break;
-            case Long: code = AMD64CompareOpcode.LCMP; break;
-            case Object: code = AMD64CompareOpcode.ACMP; break;
-            case Float: code = AMD64CompareOpcode.FCMP; break;
-            case Double: code = AMD64CompareOpcode.DCMP; break;
+            case Int: code = AMD64Compare.ICMP; break;
+            case Long: code = AMD64Compare.LCMP; break;
+            case Object: code = AMD64Compare.ACMP; break;
+            case Float: code = AMD64Compare.FCMP; break;
+            case Double: code = AMD64Compare.DCMP; break;
             default: throw Util.shouldNotReachHere();
         }
-        code.emit(tasm, masm, x, y);
+        AMD64Compare.emit(tasm, masm, code, x, y);
         masm.jcc(cflag, label);
     }
 
@@ -558,7 +542,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
     private static CiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue value) {
         if (isConstant(value) && (value.kind == CiKind.Long || value.kind == CiKind.Object)) {
             CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
-            AMD64MoveOpcode.move(tasm, masm, register, value);
+            AMD64Move.move(tasm, masm, register, value);
             return register;
         }
         return value;
@@ -567,7 +551,7 @@ public enum AMD64XirOpcode implements StandardOpcode.XirOpcode {
     private static CiRegisterValue assureInRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue pointer) {
         if (isConstant(pointer)) {
             CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(pointer.kind);
-            AMD64MoveOpcode.move(tasm, masm, register, pointer);
+            AMD64Move.move(tasm, masm, register, pointer);
             return register;
         }
 

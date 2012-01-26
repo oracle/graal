@@ -53,12 +53,12 @@ public class SpillAllAllocator {
 
         this.dataFlow = new DataFlowAnalysis(lir, frameMap.registerConfig);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
-        this.moveResolver = new MoveResolverImpl(frameMap);
+        this.moveResolver = new MoveResolverImpl(lir, frameMap);
     }
 
     private class MoveResolverImpl extends MoveResolver {
-        public MoveResolverImpl(FrameMap frameMap) {
-            super(frameMap);
+        public MoveResolverImpl(LIR lir, FrameMap frameMap) {
+            super(lir, frameMap);
         }
 
         @Override

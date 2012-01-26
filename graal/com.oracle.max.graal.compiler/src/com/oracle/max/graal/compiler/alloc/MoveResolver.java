@@ -198,7 +198,7 @@ final class MoveResolver {
         CiValue fromOpr = fromInterval.operand;
         CiValue toOpr = toInterval.operand;
 
-        insertionBuffer.append(insertIdx, StandardOpcode.SPILL_MOVE.create(toOpr, fromOpr));
+        insertionBuffer.append(insertIdx, allocator.ir.spillMoveFactory.createMove(toOpr, fromOpr));
 
         if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.println("MoveResolver: inserted move from %d (%s) to %d (%s)", fromInterval.operandNumber, fromInterval.location(), toInterval.operandNumber, toInterval.location());
@@ -210,7 +210,7 @@ final class MoveResolver {
         assert insertIdx != -1 : "must setup insert position first";
 
         CiValue toOpr = toInterval.operand;
-        insertionBuffer.append(insertIdx, StandardOpcode.SPILL_MOVE.create(toOpr, fromOpr));
+        insertionBuffer.append(insertIdx, allocator.ir.spillMoveFactory.createMove(toOpr, fromOpr));
 
         if (GraalOptions.TraceLinearScanLevel >= 4) {
             TTY.print("MoveResolver: inserted move from constant %s to %d (%s)", fromOpr, toInterval.operandNumber, toInterval.location());

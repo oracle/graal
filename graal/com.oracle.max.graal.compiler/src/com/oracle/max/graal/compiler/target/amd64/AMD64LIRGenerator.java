@@ -23,25 +23,33 @@
 
 package com.oracle.max.graal.compiler.target.amd64;
 
+import com.oracle.max.graal.compiler.target.amd64.AMD64Call.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64ArithmeticOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareOpcode.*;
+import static com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.*;
+import static com.oracle.max.graal.compiler.target.amd64.AMD64Compare.*;
 import static com.oracle.max.graal.compiler.target.amd64.AMD64CompareToIntOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64ConvertOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64DivOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64LogicFloatOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64MulOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64Op1Opcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64ShiftOpcode.*;
-import static com.oracle.max.graal.compiler.target.amd64.AMD64StandardOpcode.*;
+import static com.oracle.max.graal.compiler.target.amd64.AMD64ControlFlow.*;
+
+import java.util.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
+import com.oracle.max.cri.xir.CiXirAssembler.*;
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.DivOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op1Reg;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op1Stack;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2RegCommutative;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Stack;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.ShiftOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Compare.CompareOp;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Move.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -61,20 +69,23 @@ public class AMD64LIRGenerator extends LIRGenerator {
     private static final CiRegisterValue RDX_L = AMD64.rdx.asValue(CiKind.Long);
     private static final CiRegisterValue RCX_I = AMD64.rcx.asValue(CiKind.Int);
 
-    static {
-        StandardOpcode.SPILL_MOVE = AMD64MoveOpcode.SpillMoveOpcode.SPILL_MOVE;
-        StandardOpcode.NULL_CHECK = AMD64StandardOpcode.NULL_CHECK;
-        StandardOpcode.DIRECT_CALL = AMD64CallOpcode.DIRECT_CALL;
-        StandardOpcode.INDIRECT_CALL = AMD64CallOpcode.INDIRECT_CALL;
-        StandardOpcode.LABEL = AMD64StandardOpcode.LABEL;
-        StandardOpcode.JUMP = AMD64StandardOpcode.JUMP;
-        StandardOpcode.RETURN = AMD64StandardOpcode.RETURN;
-        StandardOpcode.XIR = AMD64XirOpcode.XIR;
+    public static class AMD64SpillMoveFactory implements LIR.SpillMoveFactory {
+        @Override
+        public LIRInstruction createMove(CiValue result, CiValue input) {
+            return new SpillMoveOp(result, input);
+        }
+
+        @Override
+        public LIRInstruction createExchange(CiValue input1, CiValue input2) {
+            // TODO implement XCHG operation for LIR
+            return null;
+        }
     }
 
     public AMD64LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
         super(graph, runtime, target, frameMap, method, lir, xir);
         lir.methodEndMarker = new AMD64MethodEndStub();
+        lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
 
     @Override
@@ -143,43 +154,47 @@ public class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitMove(CiValue input) {
         Variable result = newVariable(input.kind);
-        append(MOVE.create(result, input));
+        emitMove(input, result);
         return result;
     }
 
     @Override
     public void emitMove(CiValue src, CiValue dst) {
-        append(MOVE.create(dst, src));
+        if (isRegister(src) || isStackSlot(dst)) {
+            append(new MoveFromRegOp(dst, src));
+        } else {
+            append(new MoveToRegOp(dst, src));
+        }
     }
 
     @Override
     public Variable emitLoad(CiValue loadAddress, boolean canTrap) {
         Variable result = newVariable(loadAddress.kind);
-        append(LOAD.create(result, loadAddress, canTrap ? state() : null));
+        append(new LoadOp(result, loadAddress, canTrap ? state() : null));
         return result;
     }
 
     @Override
     public void emitStore(CiValue storeAddress, CiValue inputVal, boolean canTrap) {
         CiValue input = loadForStore(inputVal, storeAddress.kind);
-        append(STORE.create(storeAddress, input, canTrap ? state() : null));
+        append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 
     @Override
     public Variable emitLea(CiValue address) {
         Variable result = newVariable(target().wordKind);
-        append(LEA.create(result, address));
+        append(new LeaOp(result, address));
         return result;
     }
 
     @Override
     public void emitLabel(Label label, boolean align) {
-        append(LABEL.create(label, align));
+        append(new LabelOp(label, align));
     }
 
     @Override
     public void emitJump(LabelRef label, LIRDebugInfo info) {
-        append(JUMP.create(label, info));
+        append(new JumpOp(label, info));
     }
 
     @Override
@@ -189,9 +204,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Boolean:
             case Int:
             case Long:
-            case Object: append(BRANCH.create(cond, label, info)); break;
+            case Object: append(new BranchOp(cond, label, info)); break;
             case Float:
-            case Double: append(FLOAT_BRANCH.create(cond, unorderedIsTrue, label, info)); break;
+            case Double: append(new FloatBranchOp(cond, unorderedIsTrue, label, info)); break;
             default: throw Util.shouldNotReachHere("" + left.kind);
         }
     }
@@ -205,9 +220,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Boolean:
             case Int:
             case Long:
-            case Object: append(CMOVE.create(result, cond, load(trueValue), loadNonConst(falseValue))); break;
+            case Object: append(new CondMoveOp(result, cond, load(trueValue), loadNonConst(falseValue))); break;
             case Float:
-            case Double: append(FLOAT_CMOVE.create(result, cond, unorderedIsTrue, load(trueValue), load(falseValue))); break;
+            case Double: append(new FloatCondMoveOp(result, cond, unorderedIsTrue, load(trueValue), load(falseValue))); break;
 
         }
         return result;
@@ -218,11 +233,11 @@ public class AMD64LIRGenerator extends LIRGenerator {
         CiValue right = loadNonConst(b);
         switch (left.kind) {
             case Jsr:
-            case Int: append(ICMP.create(left, right)); break;
-            case Long: append(LCMP.create(left, right)); break;
-            case Object: append(ACMP.create(left, right)); break;
-            case Float: append(FCMP.create(left, right)); break;
-            case Double: append(DCMP.create(left, right)); break;
+            case Int: append(new CompareOp(ICMP, left, right)); break;
+            case Long: append(new CompareOp(LCMP, left, right)); break;
+            case Object: append(new CompareOp(ACMP, left, right)); break;
+            case Float: append(new CompareOp(FCMP, left, right)); break;
+            case Double: append(new CompareOp(DCMP, left, right)); break;
             default: throw Util.shouldNotReachHere();
         }
     }
@@ -231,10 +246,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitNegate(CiValue input) {
         Variable result = newVariable(input.kind);
         switch (input.kind) {
-            case Int:    append(INEG.create(result, input)); break;
-            case Long:   append(LNEG.create(result, input)); break;
-            case Float:  append(FXOR.create(result, input, CiConstant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
-            case Double: append(DXOR.create(result, input, CiConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
+            case Int:    append(new Op1Stack(INEG, result, input)); break;
+            case Long:   append(new Op1Stack(LNEG, result, input)); break;
+            case Float:  append(new Op2RegCommutative(FXOR, result, input, CiConstant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
+            case Double: append(new Op2RegCommutative(DXOR, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
             default: throw Util.shouldNotReachHere();
         }
         return result;
@@ -244,10 +259,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitAdd(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(IADD.create(result, a, loadNonConst(b))); break;
-            case Long:   append(LADD.create(result, a, loadNonConst(b))); break;
-            case Float:  append(FADD.create(result, a, loadNonConst(b))); break;
-            case Double: append(DADD.create(result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2Stack(IADD, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2Stack(LADD, result, a, loadNonConst(b))); break;
+            case Float:  append(new Op2Stack(FADD, result, a, loadNonConst(b))); break;
+            case Double: append(new Op2Stack(DADD, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();
         }
         return result;
@@ -257,10 +272,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitSub(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(ISUB.create(result, a, loadNonConst(b))); break;
-            case Long:   append(LSUB.create(result, a, loadNonConst(b))); break;
-            case Float:  append(FSUB.create(result, a, loadNonConst(b))); break;
-            case Double: append(DSUB.create(result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2Stack(ISUB, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2Stack(LSUB, result, a, loadNonConst(b))); break;
+            case Float:  append(new Op2Stack(FSUB, result, a, loadNonConst(b))); break;
+            case Double: append(new Op2Stack(DSUB, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();
         }
         return result;
@@ -270,10 +285,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitMul(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(IMUL.create(result, a, loadNonConst(b))); break;
-            case Long:   append(LMUL.create(result, a, loadNonConst(b))); break;
-            case Float:  append(FMUL.create(result, a, loadNonConst(b))); break;
-            case Double: append(DMUL.create(result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2RegCommutative(IMUL, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2RegCommutative(LMUL, result, a, loadNonConst(b))); break;
+            case Float:  append(new Op2Stack(FMUL, result, a, loadNonConst(b))); break;
+            case Double: append(new Op2Stack(DMUL, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();
         }
         return result;
@@ -283,21 +298,21 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitDiv(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
-                append(MOVE.create(RAX_I, a));
-                append(IDIV.create(RAX_I, state(), RAX_I, load(b)));
+                emitMove(a, RAX_I);
+                append(new DivOp(IDIV, RAX_I, RAX_I, load(b), state()));
                 return emitMove(RAX_I);
             case Long:
-                append(MOVE.create(RAX_L, a));
-                append(LDIV.create(RAX_L, state(), RAX_L, load(b)));
+                emitMove(a, RAX_L);
+                append(new DivOp(LDIV, RAX_L, RAX_L, load(b), state()));
                 return emitMove(RAX_L);
             case Float: {
                 Variable result = newVariable(a.kind);
-                append(FDIV.create(result, a, loadNonConst(b)));
+                append(new Op2Stack(FDIV, result, a, loadNonConst(b)));
                 return result;
             }
             case Double: {
                 Variable result = newVariable(a.kind);
-                append(DDIV.create(result, a, loadNonConst(b)));
+                append(new Op2Stack(DDIV, result, a, loadNonConst(b)));
                 return result;
             }
             default:
@@ -309,12 +324,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitRem(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
-                append(MOVE.create(RAX_I, a));
-                append(IREM.create(RDX_I, state(), RAX_I, load(b)));
+                emitMove(a, RAX_I);
+                append(new DivOp(IREM, RDX_I, RAX_I, load(b), state()));
                 return emitMove(RDX_I);
             case Long:
-                append(MOVE.create(RAX_L, a));
-                append(LREM.create(RDX_L, state(), RAX_L, load(b)));
+                emitMove(a, RAX_L);
+                append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             case Float:
                 return emitCallToRuntime(CiRuntimeCall.ArithmeticFrem, false, a, b);
@@ -329,12 +344,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitUDiv(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
-                append(MOVE.create(RAX_I, load(a)));
-                append(IUDIV.create(RAX_I, state(), RAX_I, load(b)));
+                emitMove(a, RAX_I);
+                append(new DivOp(IUDIV, RAX_I, RAX_I, load(b), state()));
                 return emitMove(RAX_I);
             case Long:
-                append(MOVE.create(RAX_L, load(a)));
-                append(LUDIV.create(RAX_L, state(), RAX_L, load(b)));
+                emitMove(a, RAX_L);
+                append(new DivOp(LUDIV, RAX_L, RAX_L, load(b), state()));
                 return emitMove(RAX_L);
             default:
                 throw Util.shouldNotReachHere();
@@ -345,12 +360,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitURem(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
-                append(MOVE.create(RAX_I, load(a)));
-                append(IUREM.create(RDX_I, state(), RAX_I, load(b)));
+                emitMove(a, RAX_I);
+                append(new DivOp(IUREM, RDX_I, RAX_I, load(b), state()));
                 return emitMove(RDX_I);
             case Long:
-                append(MOVE.create(RAX_L, load(a)));
-                append(LUREM.create(RDX_L, state(), RAX_L, load(b)));
+                emitMove(a, RAX_L);
+                append(new DivOp(LUREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             default:
                 throw Util.shouldNotReachHere();
@@ -362,8 +377,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitAnd(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(IAND.create(result, a, loadNonConst(b))); break;
-            case Long:   append(LAND.create(result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2Stack(IAND, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2Stack(LAND, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();
         }
         return result;
@@ -373,8 +388,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitOr(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(IOR.create(result, a, loadNonConst(b))); break;
-            case Long:   append(LOR.create(result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2Stack(IOR, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2Stack(LOR, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();
         }
         return result;
@@ -384,8 +399,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitXor(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
-            case Int:    append(IXOR.create(result, a, loadNonConst(b))); break;
-            case Long:   append(LXOR.create(result, a, loadNonConst(b))); break;
+            case Int:    append(new Op2Stack(IXOR, result, a, loadNonConst(b))); break;
+            case Long:   append(new Op2Stack(LXOR, result, a, loadNonConst(b))); break;
             default:     throw Util.shouldNotReachHere();
         }
         return result;
@@ -396,8 +411,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitShl(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
-            case Int:    append(ISHL.create(result, a, loadShiftCount(b))); break;
-            case Long:   append(LSHL.create(result, a, loadShiftCount(b))); break;
+            case Int:    append(new ShiftOp(ISHL, result, a, loadShiftCount(b))); break;
+            case Long:   append(new ShiftOp(LSHL, result, a, loadShiftCount(b))); break;
             default: Util.shouldNotReachHere();
         }
         return result;
@@ -407,8 +422,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitShr(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
-            case Int:    append(ISHR.create(result, a, loadShiftCount(b))); break;
-            case Long:   append(LSHR.create(result, a, loadShiftCount(b))); break;
+            case Int:    append(new ShiftOp(ISHR, result, a, loadShiftCount(b))); break;
+            case Long:   append(new ShiftOp(LSHR, result, a, loadShiftCount(b))); break;
             default: Util.shouldNotReachHere();
         }
         return result;
@@ -418,8 +433,8 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitUShr(CiValue a, CiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
-            case Int:    append(IUSHR.create(result, a, loadShiftCount(b))); break;
-            case Long:   append(LUSHR.create(result, a, loadShiftCount(b))); break;
+            case Int:    append(new ShiftOp(IUSHR, result, a, loadShiftCount(b))); break;
+            case Long:   append(new ShiftOp(LUSHR, result, a, loadShiftCount(b))); break;
             default: Util.shouldNotReachHere();
         }
         return result;
@@ -430,7 +445,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             return value;
         }
         // Non-constant shift count must be in RCX
-        append(MOVE.create(RCX_I, value));
+        emitMove(value, RCX_I);
         return RCX_I;
     }
 
@@ -440,25 +455,25 @@ public class AMD64LIRGenerator extends LIRGenerator {
         Variable input = load(inputVal);
         Variable result = newVariable(opcode.to);
         switch (opcode) {
-            case I2L: append(I2L.create(result, input)); break;
-            case L2I: append(L2I.create(result, input)); break;
-            case I2B: append(I2B.create(result, input)); break;
-            case I2C: append(I2C.create(result, input)); break;
-            case I2S: append(I2S.create(result, input)); break;
-            case F2D: append(F2D.create(result, input)); break;
-            case D2F: append(D2F.create(result, input)); break;
-            case I2F: append(I2F.create(result, input)); break;
-            case I2D: append(I2D.create(result, input)); break;
-            case F2I: append(F2I.create(result, input)); break;
-            case D2I: append(D2I.create(result, input)); break;
-            case L2F: append(L2F.create(result, input)); break;
-            case L2D: append(L2D.create(result, input)); break;
-            case F2L: append(F2L.create(result, input)); break;
-            case D2L: append(D2L.create(result, input)); break;
-            case MOV_I2F: append(MOV_I2F.create(result, input)); break;
-            case MOV_L2D: append(MOV_L2D.create(result, input)); break;
-            case MOV_F2I: append(MOV_F2I.create(result, input)); break;
-            case MOV_D2L: append(MOV_D2L.create(result, input)); break;
+            case I2L: append(new Op1Reg(I2L, result, input)); break;
+            case L2I: append(new Op1Stack(L2I, result, input)); break;
+            case I2B: append(new Op1Stack(I2B, result, input)); break;
+            case I2C: append(new Op1Stack(I2C, result, input)); break;
+            case I2S: append(new Op1Stack(I2S, result, input)); break;
+            case F2D: append(new Op1Reg(F2D, result, input)); break;
+            case D2F: append(new Op1Reg(D2F, result, input)); break;
+            case I2F: append(new Op1Reg(I2F, result, input)); break;
+            case I2D: append(new Op1Reg(I2D, result, input)); break;
+            case F2I: append(new Op1Reg(F2I, result, input)); break;
+            case D2I: append(new Op1Reg(D2I, result, input)); break;
+            case L2F: append(new Op1Reg(L2F, result, input)); break;
+            case L2D: append(new Op1Reg(L2D, result, input)); break;
+            case F2L: append(new Op1Reg(F2L, result, input)); break;
+            case D2L: append(new Op1Reg(D2L, result, input)); break;
+            case MOV_I2F: append(new Op1Reg(MOV_I2F, result, input)); break;
+            case MOV_L2D: append(new Op1Reg(MOV_L2D, result, input)); break;
+            case MOV_F2I: append(new Op1Reg(MOV_F2I, result, input)); break;
+            case MOV_D2L: append(new Op1Reg(MOV_D2L, result, input)); break;
             default: throw Util.shouldNotReachHere();
         }
         return result;
@@ -470,9 +485,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, info, deoptInfo);
         if (cond != null) {
-            append(BRANCH.create(cond, stubEntry, info));
+            append(new BranchOp(cond, stubEntry, info));
         } else {
-            append(JUMP.create(stubEntry, info));
+            append(new JumpOp(stubEntry, info));
         }
     }
 
@@ -480,15 +495,36 @@ public class AMD64LIRGenerator extends LIRGenerator {
     public void emitMembar(int barriers) {
         int necessaryBarriers = target.arch.requiredBarriers(barriers);
         if (target.isMP && necessaryBarriers != 0) {
-            append(MEMBAR.create(necessaryBarriers));
+            append(new MembarOp(necessaryBarriers));
         }
+    }
+
+    @Override
+    protected void emitCall(Object targetMethod, CiValue result, List<CiValue> arguments, CiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+        if (isConstant(targetAddress)) {
+            assert asConstant(targetAddress).isDefaultValue() : "destination address should be zero";
+            append(new DirectCallOp(targetMethod, result, arguments.toArray(new CiValue[arguments.size()]), info, marks));
+        } else {
+            append(new IndirectCallOp(targetMethod, result, arguments.toArray(new CiValue[arguments.size()]), targetAddress, info, marks));
+        }
+    }
+
+    @Override
+    protected void emitReturn(CiValue input) {
+        append(new ReturnOp(input));
+    }
+
+    @Override
+    protected void emitXir(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
+                    LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+        append(new AMD64XirOp(snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor));
     }
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, CiValue index) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
         Variable tmp = emitMove(index);
-        append(TABLE_SWITCH.create(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
     }
 
     @Override
@@ -497,6 +533,14 @@ public class AMD64LIRGenerator extends LIRGenerator {
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, info, deoptInfo);
         lir.deoptimizationStubs.add(stub);
         return LabelRef.forLabel(stub.label);
+    }
+
+    @Override
+    protected void emitNullCheckGuard(NullCheckNode node) {
+        assert !node.expectedNull;
+        Variable value = load(operand(node.object()));
+        LIRDebugInfo info = state();
+        append(new NullCheckOp(value, info));
     }
 
     // TODO The CompareAndSwapNode in its current form needs to be lowered to several Nodes before code generation to separate three parts:
@@ -525,14 +569,14 @@ public class AMD64LIRGenerator extends LIRGenerator {
         }
 
         CiRegisterValue rax = AMD64.rax.asValue(kind);
-        append(MOVE.create(rax, expected));
-        append(CAS.create(rax, address, rax, newValue));
+        emitMove(expected, rax);
+        append(new CompareAndSwapOp(rax, address, rax, newValue));
 
         Variable result = newVariable(node.kind());
         if (node.directResult()) {
-            append(MOVE.create(result, rax));
+            emitMove(rax, result);
         } else {
-            append(CMOVE.create(result, Condition.EQ, load(CiConstant.TRUE), CiConstant.FALSE));
+            append(new CondMoveOp(result, Condition.EQ, load(CiConstant.TRUE), CiConstant.FALSE));
         }
         setResult(node, result);
 

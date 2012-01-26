@@ -238,6 +238,31 @@ public class TargetMethodAssembler {
         return recordDataReferenceInCode((CiConstant) value, 8);
     }
 
+    public CiAddress asIntAddr(CiValue value) {
+        assert value.kind == CiKind.Int;
+        return asAddress(value);
+    }
+
+    public CiAddress asLongAddr(CiValue value) {
+        assert value.kind == CiKind.Long;
+        return asAddress(value);
+    }
+
+    public CiAddress asObjectAddr(CiValue value) {
+        assert value.kind == CiKind.Object;
+        return asAddress(value);
+    }
+
+    public CiAddress asFloatAddr(CiValue value) {
+        assert value.kind == CiKind.Float;
+        return asAddress(value);
+    }
+
+    public CiAddress asDoubleAddr(CiValue value) {
+        assert value.kind == CiKind.Double;
+        return asAddress(value);
+    }
+
     public CiAddress asAddress(CiValue value) {
         if (isStackSlot(value)) {
             CiStackSlot slot = (CiStackSlot) value;

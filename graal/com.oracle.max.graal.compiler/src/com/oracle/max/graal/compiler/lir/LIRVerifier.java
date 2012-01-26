@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.alloc.util;
+package com.oracle.max.graal.compiler.lir;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
@@ -29,7 +29,6 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
@@ -69,6 +68,8 @@ public final class LIRVerifier {
         op.forEachState(allowedProc);
         op.forEachTemp(allowedProc);
         op.forEachOutput(allowedProc);
+
+        op.verify();
         return true;
     }
 
@@ -112,6 +113,12 @@ public final class LIRVerifier {
                 assert beforeRegisterAllocation;
                 curInstruction = block.phis;
                 block.phis.forEachOutput(defProc);
+            }
+
+            assert block.lir().get(0) instanceof StandardOp.LabelOp : "block must start with label";
+            if (block.numberOfSux() > 0) {
+                LIRInstruction last = block.lir().get(block.lir().size() - 1);
+                assert last instanceof StandardOp.JumpOp || last instanceof LIRXirInstruction : "block with successor must end with unconditional jump";
             }
 
             for (LIRInstruction op : block.lir()) {

@@ -104,7 +104,7 @@ public abstract class ResolveDataFlow {
         if (fromBlock.numberOfSux() == 1) {
             List<LIRInstruction> instructions = fromBlock.lir();
             LIRInstruction instr = instructions.get(instructions.size() - 1);
-            assert instr instanceof LIRBranch && instr.code == StandardOpcode.JUMP : "block does not end with an unconditional jump";
+            assert instr instanceof StandardOp.JumpOp : "block does not end with an unconditional jump";
             moveResolver.init(instructions, instructions.size() - 1);
             assert trace("  insert at end of %s before %d", fromBlock, instructions.size() - 1);
 
