@@ -126,7 +126,6 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
-            System.out.println("Inline!");
             new InliningPhase(target, runtime, null, assumptions, plan).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new PhiStampPhase().apply(graph);
