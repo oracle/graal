@@ -81,7 +81,7 @@ public class GraalCompiler {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
-        return Debug.scope("CompileMethod", method, new Callable<CiTargetMethod>() {
+        return Debug.scope(createScopeName(method), method, new Callable<CiTargetMethod>() {
             public CiTargetMethod call() {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", graph, new Callable<LIR>() {
@@ -101,6 +101,23 @@ public class GraalCompiler {
                 });
             }
         });
+    }
+
+    private static String createScopeName(RiResolvedMethod method) {
+        if (Debug.isEnabled()) {
+            return String.format("[%s::%s]", createSimpleName(method.holder()), method.name());
+        } else {
+            return null;
+        }
+    }
+
+    private static String createSimpleName(RiResolvedType holder) {
+        String base = holder.name();
+        int slashIndex = base.lastIndexOf('/');
+        if (slashIndex == -1) {
+            slashIndex = 0;
+        }
+        return base.substring(slashIndex + 1, base.length() - 1);
     }
 
     /**

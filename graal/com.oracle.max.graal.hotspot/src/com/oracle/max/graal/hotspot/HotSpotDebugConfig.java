@@ -23,6 +23,7 @@
 package com.oracle.max.graal.hotspot;
 
 import java.util.*;
+import java.util.regex.*;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.debug.*;
@@ -65,7 +66,19 @@ public class HotSpotDebugConfig implements DebugConfig {
     }
 
     private boolean isEnabled(String filter) {
-        return filter != null && Debug.currentScope().contains(filter) && checkMethodFilter();
+        return filter != null && checkContains(Debug.currentScope(), filter) && checkMethodFilter();
+    }
+
+    private static boolean checkContains(String currentScope, String filter) {
+        if (filter.contains("*")) {
+            /*filter = filter.replace("*", ".*");
+            filter = filter.replace("[", "\\[");
+            filter = filter.replace("]", "\\]");
+            filter = filter.replace(":", "\\:");*/
+            System.out.println("regexp: " + filter + " string=" + currentScope + ", " + Pattern.matches(filter, currentScope));
+            return Pattern.matches(filter, currentScope);
+        }
+        return currentScope.contains(filter);
     }
 
     private boolean checkMethodFilter() {
@@ -107,7 +120,7 @@ public class HotSpotDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(RuntimeException e) {
-        Debug.setConfig(Debug.fixedConfix(true, true, false, false));
+        Debug.setConfig(Debug.fixedConfig(true, true, false, false));
         Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             Debug.log("Context obj %s", o);

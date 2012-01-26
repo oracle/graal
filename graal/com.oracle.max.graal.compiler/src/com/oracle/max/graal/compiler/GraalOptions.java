@@ -117,7 +117,6 @@ public final class GraalOptions {
     public static boolean TraceDeadCodeElimination           = ____;
     public static boolean TraceEscapeAnalysis                = ____;
     public static boolean TraceCanonicalizer                 = ____;
-    public static boolean TraceMemoryMaps                    = ____;
     public static boolean TraceProbability                   = ____;
     public static boolean TraceReadElimination               = ____;
     public static boolean TraceGVN                           = ____;
