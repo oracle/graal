@@ -36,7 +36,7 @@ public class BoxingEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        if (graph.getNodes(UnboxNode.class).iterator().hasNext()) {
+        if (graph.getNodes(UnboxNode.class).isNotEmpty()) {
 
             Map<PhiNode, PhiNode> phiReplacements = new HashMap<>();
             for (UnboxNode unboxNode : graph.getNodes(UnboxNode.class)) {

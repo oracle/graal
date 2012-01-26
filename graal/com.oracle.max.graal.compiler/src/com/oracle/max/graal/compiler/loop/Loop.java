@@ -134,4 +134,27 @@ public class Loop {
         }
         return loopVariant;
     }
+
+    public int depth() {
+        if (parent() == null) {
+            return 0;
+        }
+        return parent().depth() + 1;
+    }
+
+    public int directFixedNodesCount() {
+        return directCFGNodes.cardinality();
+    }
+
+    public int fixedNodesCount() {
+        int count = directFixedNodesCount();
+        for (Loop child : children()) {
+            count += child.directFixedNodesCount();
+        }
+        return count;
+    }
+
+    public int exitsCount() {
+        return exits().cardinality();
+    }
 }
