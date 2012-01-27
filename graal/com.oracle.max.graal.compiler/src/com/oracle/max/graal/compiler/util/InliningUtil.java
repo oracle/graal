@@ -122,9 +122,9 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, InliningCallback callback) {
-            StructuredGraph graph = getGraph(invoke, concrete, callback);
-            InliningUtil.inline(invoke, graph, true);
+        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+            StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
+            InliningUtil.inline(invoke, calleeGraph, true);
         }
 
         @Override
@@ -142,17 +142,19 @@ public class InliningUtil {
      * Represents an inlining opportunity for which profiling information suggests a monomorphic receiver, but for which
      * the receiver type cannot be proven. A type check guard will be generated if this inlining is performed.
      */
-    private static class TypeGuardInlineInfo extends ExactInlineInfo {
-
+    private static class TypeGuardInlineInfo extends InlineInfo {
+        public final RiResolvedMethod concrete;
         public final RiResolvedType type;
 
         public TypeGuardInlineInfo(Invoke invoke, double weight, int level, RiResolvedMethod concrete, RiResolvedType type) {
-            super(invoke, weight, level, concrete);
+            super(invoke, weight, level);
+            this.concrete = concrete;
             this.type = type;
         }
 
         @Override
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+            InliningUtil.receiverNullCheck(invoke);
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(invoke.callTarget().receiver(), type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode));
             assert invoke.predecessor() != null;
@@ -161,7 +163,9 @@ public class InliningUtil {
             if (GraalOptions.TraceInlining) {
                 TTY.println("inlining 1 method using 1 type check");
             }
-            super.inline(graph, runtime, callback);
+
+            StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
+            InliningUtil.inline(invoke, calleeGraph, false);
         }
 
         @Override
@@ -175,6 +179,10 @@ public class InliningUtil {
         }
     }
 
+    /**
+     * Polymorphic inlining of m methods with n type checks (n >= m) in case that the profiling information suggests a reasonable
+     * amounts of different receiver types and different methods.
+     */
     private static class MultiTypeGuardInlineInfo extends InlineInfo {
         public final List<RiResolvedMethod> concretes;
         public final RiResolvedType[] types;
@@ -197,6 +205,8 @@ public class InliningUtil {
             MethodCallTargetNode callTargetNode = invoke.callTarget();
             int numberOfMethods = concretes.size();
 
+            InliningUtil.receiverNullCheck(invoke);
+
             // save node after invoke so that invoke can be deleted safely
             FixedNode continuation = invoke.next();
             invoke.setNext(null);
@@ -211,8 +221,6 @@ public class InliningUtil {
                     returnValuePhi = graph.unique(new PhiNode(callTargetNode.kind(), merge, PhiType.Value));
                 }
             }
-
-            // TODO (ch) take care about the nullcheck, what about IsTypeNode and nullcheck (test it!)
 
             // create a separate block for each invoked method
             BeginNode[] successorMethods = new BeginNode[numberOfMethods];
@@ -320,6 +328,7 @@ public class InliningUtil {
                 TTY.println("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
+
             super.inline(graph, runtime, callback);
         }
 
@@ -549,11 +558,9 @@ public class InliningUtil {
         assert invoke.node().predecessor() != null;
 
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
-
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        MethodCallTargetNode callTarget = invoke.callTarget();
-        if (!callTarget.isStatic() && receiverNullCheck && parameters.get(0).kind() == CiKind.Object && !parameters.get(0).stamp().nonNull()) {
-            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(parameters.get(0), false)))));
+        if (receiverNullCheck) {
+            receiverNullCheck(invoke);
         }
         invoke.node().replaceAtPredecessors(firstCFGNodeDuplicate);
 
@@ -637,6 +644,16 @@ public class InliningUtil {
 
         if (stateAfter.usages().isEmpty()) {
             stateAfter.safeDelete();
+        }
+    }
+
+    public static void receiverNullCheck(Invoke invoke) {
+        MethodCallTargetNode callTarget = invoke.callTarget();
+        StructuredGraph graph = (StructuredGraph) invoke.graph();
+        NodeInputList<ValueNode> parameters = callTarget.arguments();
+        ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
+        if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.stamp().nonNull()) {
+            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(firstParam, false)))));
         }
     }
 }
