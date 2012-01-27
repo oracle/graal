@@ -42,28 +42,37 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
 
     private IdealGraphPrinter printer;
     private List<RiResolvedMethod> previousInlineContext = new ArrayList<>();
+    private String fileName;
+    private String host;
+    private int port;
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
      */
     public IdealGraphPrinterDumpHandler() {
-        initializeFilePrinter(DEFAULT_FILE_NAME);
-        begin();
+        this.fileName = DEFAULT_FILE_NAME;
     }
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that sends output to a remote IdealGraphVisualizer instance.
      */
     public IdealGraphPrinterDumpHandler(String host, int port) {
-        initializeNetworkPrinter(host, port);
-        begin();
+        this.host = host;
+        this.port = port;
     }
 
-    private void begin() {
+
+
+    private void ensureInitialized() {
+        if (fileName != null) {
+            initializeFilePrinter();
+        } else {
+            initializeNetworkPrinter();
+        }
         printer.begin();
     }
 
-    private void initializeFilePrinter(String fileName) {
+    private void initializeFilePrinter() {
         try {
             FileOutputStream stream = new FileOutputStream(fileName);
             printer = new IdealGraphPrinter(stream);
@@ -72,7 +81,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
         }
     }
 
-    private void initializeNetworkPrinter(String host, int port) {
+    private void initializeNetworkPrinter() {
         try  {
             Socket socket = new Socket(host, port);
             BufferedOutputStream stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
@@ -86,6 +95,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     @Override
     public void dump(Object object, final String message) {
         if (object instanceof Graph) {
+            ensureInitialized();
             final Graph graph = (Graph) object;
 
             if (printer.isValid()) {
