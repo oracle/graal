@@ -25,6 +25,8 @@ package com.oracle.max.cri.ri;
 
 /**
  * Represents profiling information for one specific method.
+ * Every accessor method returns the information that is available at the time of its invocation.
+ * If a method is invoked multiple times, it may return a significantly different results for every invocation.
  */
 public interface RiProfilingInfo {
     /**
@@ -55,7 +57,8 @@ public interface RiProfilingInfo {
     boolean getImplicitExceptionSeen(int bci);
 
     /**
-     * Returns an estimate how often the current BCI was executed.
+     * Returns an estimate how often the current BCI was executed. Avoid comparing execution counts to each other,
+     * as the returned value highly depends on the time of invocation.
      * @return the estimated execution count or -1 if not available.
      */
     int getExecutionCount(int bci);

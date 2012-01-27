@@ -24,18 +24,33 @@ package com.oracle.max.graal.hotspot.ri;
 
 import com.oracle.max.cri.ri.*;
 
+/**
+ * Interface for accessor objects that encapsulate the logic for accessing the different kinds of data in a HotSpot methodDataOop.
+ * This interface is similar to the interface {@link RiProfilingInfo}, but most methods require a MethodDataObject and the
+ * exact position within the methodData.
+ */
 public interface HotSpotMethodDataAccessor {
+    /**
+     * Returns the tag stored in the LayoutData header.
+     * @return An integer >= 0 or -1 if not supported.
+     */
     int getTag();
+
+    /**
+     * Returns the BCI stored in the LayoutData header.
+     * @return An integer >= 0 and <= Short.MAX_VALUE, or -1 if not supported.
+     */
     int getBCI(HotSpotMethodData data, int position);
+
+    /**
+     * Computes the size for the specific data at the given position.
+     * @return An integer > 0.
+     */
     int getSize(HotSpotMethodData data, int position);
 
     RiTypeProfile getTypeProfile(HotSpotMethodData data, int position);
-
     double getBranchTakenProbability(HotSpotMethodData data, int position);
-
     double[] getSwitchProbabilities(HotSpotMethodData data, int position);
-
     boolean getImplicitExceptionSeen(HotSpotMethodData data, int position);
-
     int getExecutionCount(HotSpotMethodData data, int position);
 }

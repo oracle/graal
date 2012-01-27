@@ -29,7 +29,7 @@ import com.oracle.max.graal.nodes.spi.*;
  * The {@code LookupSwitchNode} represents a lookup switch bytecode, which has a sorted
  * array of key values.
  */
-public final class LookupSwitchNode extends SwitchNode implements LIRLowerable {
+public final class LookupSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
     @Data private final int[] keys;
 
@@ -64,5 +64,33 @@ public final class LookupSwitchNode extends SwitchNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitLookupSwitch(this);
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (value() instanceof ConstantNode) {
+            ConstantNode constant = (ConstantNode) value();
+            int value = constant.value.asInt();
+
+            BeginNode remainingSux = (BeginNode) defaultSuccessor();
+            int remainingSuxIndex = blockSuccessorCount() - 1;
+            for (int i = 0; i < keys.length; i++) {
+                if (value == keys[i]) {
+                    remainingSux = blockSuccessor(i);
+                    remainingSuxIndex = i;
+                    break;
+                }
+            }
+
+            for (int i = 0; i < blockSuccessorCount(); i++) {
+                BeginNode sux = blockSuccessor(i);
+                if (sux != remainingSux) {
+                    tool.deleteBranch(sux);
+                }
+            }
+
+            tool.addToWorkList(remainingSux);
+            ((StructuredGraph) graph()).removeSplit(this, remainingSuxIndex);
+        }
     }
 }

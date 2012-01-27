@@ -44,6 +44,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoMethodData();
     private static final HotSpotVMConfig config;
+    // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
         null, new BitData(), new CounterData(), new JumpData(),
         new TypeCheckData(), new VirtualCallData(), new RetData(),
@@ -164,7 +165,6 @@ public final class HotSpotMethodData extends CompilerObject {
             this.staticSize = staticSize;
         }
 
-        @Override
         public int getTag() {
             return tag;
         }

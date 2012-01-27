@@ -719,7 +719,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         emitXir(typeCheck, node, info, method, false);
     }
 
-
     public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         if (node instanceof NullCheckNode) {
             emitNullCheckBranch((NullCheckNode) node, trueSuccessor, falseSuccessor, info);
@@ -1031,6 +1030,21 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             visitSwitchRanges(createSwitchRanges(x, null), tag, getLIRBlock(x.defaultSuccessor()));
         }
+    }
+
+    @Override
+    public void emitTypeSwitch(TypeSwitchNode x) {
+        Variable tag = load(operand(x.value()));
+        LIRDebugInfo info = state();
+
+        int len = x.typesLength();
+        for (int i = 0; i < len; i++) {
+            CiConstant type = x.typeAt(i).getEncoding(Representation.ObjectHub);
+            emitBranch(tag, type, Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
+        }
+
+        LabelRef stubEntry = createDeoptStub(DeoptAction.InvalidateReprofile, info, x);
+        emitJump(stubEntry, info);
     }
 
     @Override
