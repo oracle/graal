@@ -45,6 +45,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     public IdealGraphPrinter printer;
     private OutputStream stream;
     private Socket socket;
+    private List<RiResolvedMethod> previousInlineContext = new ArrayList<RiResolvedMethod>();
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
@@ -181,15 +182,47 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
         openPrinter(groupTitle, null);
     }
 
+
     @Override
     public void dump(Object object, String message) {
         if (object instanceof Graph) {
             Graph graph = (Graph) object;
+
+            // Get all current RiResolvedMethod instances in the context.
             List<RiResolvedMethod> inlineContext = Debug.contextSnapshot(RiResolvedMethod.class);
-            System.out.println("dumping graph");
-            for (RiResolvedMethod m : inlineContext) {
-                System.out.println("m="+m);
+
+            // Reverse list such that inner method comes after outer method.
+            Collections.reverse(inlineContext);
+
+            // Check for method scopes that must be closed since the previous dump.
+            for (int i = 0; i < previousInlineContext.size(); ++i) {
+                if (i >= inlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
+                    for (int j = previousInlineContext.size() - 1; j >= i; --j) {
+                        closeMethodScope(previousInlineContext.get(j));
+                    }
+                }
             }
+
+            // Check for method scopes that must be opened since the previous dump.
+            for (int i = 0; i < inlineContext.size(); ++i) {
+                if (i >= previousInlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
+                    for (int j = i; j < inlineContext.size(); ++j) {
+                        openMethodScope(inlineContext.get(j));
+                    }
+                }
+            }
+
+            previousInlineContext = inlineContext;
         }
+    }
+
+    private void openMethodScope(RiResolvedMethod method) {
+        System.out.println("OPEN " + method);
+
+    }
+
+    private void closeMethodScope(RiResolvedMethod method) {
+        System.out.println("CLOSE " + method);
+
     }
 }
