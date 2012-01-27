@@ -31,7 +31,7 @@ import com.oracle.max.graal.compiler.loop.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.PhiNode.*;
+import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.extended.*;
 
 public class FloatingReadPhase extends Phase {

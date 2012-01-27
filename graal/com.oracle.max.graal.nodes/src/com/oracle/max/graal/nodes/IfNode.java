@@ -25,6 +25,7 @@ package com.oracle.max.graal.nodes;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
@@ -86,7 +87,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
-    public FixedNode successor(boolean istrue) {
+    public BeginNode successor(boolean istrue) {
         return blockSuccessor(istrue ? 0 : 1);
     }
 

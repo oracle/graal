@@ -46,7 +46,9 @@ public class GlobalValueNumberingPhase extends Phase {
             if (n.getNodeClass().valueNumberable()) {
                 Node newNode = compilerGraph.findDuplicate(n);
                 if (newNode != null) {
-                    n.replaceAndDelete(newNode);
+                    assert !(n instanceof FixedNode || newNode instanceof FixedNode);
+                    n.replaceAtUsages(newNode);
+                    n.safeDelete();
                     if (GraalOptions.Meter) {
                         currentContext.metrics.GlobalValueNumberingHits++;
                     }

@@ -34,7 +34,11 @@ import com.oracle.max.graal.nodes.type.*;
  */
 public final class InstanceOfNode extends TypeCheckNode implements Canonicalizable, LIRLowerable {
 
-    @Data public final boolean negated;
+    @Data private final boolean negated;
+
+    public boolean negated() {
+        return negated;
+    }
 
     /**
      * Constructs a new InstanceOfNode.
@@ -71,8 +75,7 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
             if (constant.isNull()) {
                 return ConstantNode.forBoolean(negated, graph());
             } else {
-                // this should never happen - non-null constants are always expected to provide an exactType
-                assert false;
+                assert false : "non-null constants are always expected to provide an exactType";
             }
         }
         return this;
