@@ -49,35 +49,35 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
 
     @Override
     public RiTypeProfile getTypeProfile(int bci) {
-        findBCI(bci);
+        findBCI(bci, false);
         return dataAccessor.getTypeProfile(methodData, position);
     }
 
     @Override
     public double getBranchTakenProbability(int bci) {
-        findBCI(bci);
+        findBCI(bci, false);
         return dataAccessor.getBranchTakenProbability(methodData, position);
     }
 
     @Override
     public double[] getSwitchProbabilities(int bci) {
-        findBCI(bci);
+        findBCI(bci, false);
         return dataAccessor.getSwitchProbabilities(methodData, position);
     }
 
     @Override
     public boolean getImplicitExceptionSeen(int bci) {
-        findBCI(bci);
+        findBCI(bci, true);
         return dataAccessor.getImplicitExceptionSeen(methodData, position);
     }
 
     @Override
     public int getExecutionCount(int bci) {
-        findBCI(bci);
+        findBCI(bci, false);
         return dataAccessor.getExecutionCount(methodData, position);
     }
 
-    private void findBCI(int targetBCI) {
+    private void findBCI(int targetBCI, boolean searchExtraData) {
         assert targetBCI >= 0 : "invalid BCI";
 
         if (methodData.hasNormalData()) {
@@ -95,7 +95,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
             }
         }
 
-        if (methodData.hasExtraData()) {
+        if (searchExtraData && methodData.hasExtraData()) {
             int currentPosition = 0;
             HotSpotMethodDataAccessor currentAccessor;
             while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
