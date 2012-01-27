@@ -645,7 +645,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (writeBarrier != null) {
             emitXir(writeBarrier, null, null, false);
         }
-    }
+     }
 
     @SuppressWarnings("unused")
     protected void preGCWriteBarrier(CiValue addrOpr, boolean patch, LIRDebugInfo info) {
@@ -749,7 +749,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
-        emitXir(snippet, x, info, null, false, x.negated ? falseSuccessor : trueSuccessor, x.negated ? trueSuccessor : falseSuccessor);
+        emitXir(snippet, x, info, null, false, x.negated() ? falseSuccessor : trueSuccessor, x.negated() ? trueSuccessor : falseSuccessor);
     }
 
 
@@ -791,8 +791,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private Variable emitInstanceOfConditional(InstanceOfNode x, CiValue trueValue, CiValue falseValue) {
         XirArgument obj = toXirArgument(x.object());
-        XirArgument trueArg = toXirArgument(x.negated ? falseValue : trueValue);
-        XirArgument falseArg = toXirArgument(x.negated ? trueValue : falseValue);
+        XirArgument trueArg = toXirArgument(x.negated() ? falseValue : trueValue);
+        XirArgument falseArg = toXirArgument(x.negated() ? trueValue : falseValue);
         XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass());
         return (Variable) emitXir(snippet, null, null, false);
     }
