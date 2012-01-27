@@ -37,151 +37,41 @@ import com.oracle.max.graal.graph.*;
  */
 public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
 
-    private static final Pattern INVALID_CHAR = Pattern.compile("[^A-Za-z0-9_.-]");
+    private static final String DEFAULT_FILE_NAME = "output.igv.xml";
 
-    private final String host;
-    private final int port;
-
-    public IdealGraphPrinter printer;
-    private OutputStream stream;
-    private Socket socket;
+    private IdealGraphPrinter printer;
     private List<RiResolvedMethod> previousInlineContext = new ArrayList<RiResolvedMethod>();
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
      */
     public IdealGraphPrinterDumpHandler() {
-        this(null, -1);
+        initializeFilePrinter(DEFAULT_FILE_NAME);
     }
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that sends output to a remote IdealGraphVisualizer instance.
      */
     public IdealGraphPrinterDumpHandler(String host, int port) {
-        this.host = host;
-        this.port = port;
+        initializeNetworkPrinter(host, port);
     }
 
-    private IdealGraphPrinter printer() {
-        return printer;
-    }
-
-    private Socket socket() {
-        return socket;
-    }
-
-    private void openPrinter(RiResolvedMethod method) {
-        assert stream == null && printer() == null;
-        String name;
-        if (method != null) {
-            name = method.holder().name();
-            name = name.substring(1, name.length() - 1).replace('/', '.');
-            name = name + "." + method.name();
-        } else {
-            name = "null";
-        }
-
-        openPrinter(name, method);
-    }
-
-    private void openPrinter(String title, RiResolvedMethod method) {
-        assert stream == null && printer() == null;
-        if (host != null) {
-            openNetworkPrinter(title, method);
-        } else {
-            openFilePrinter(title, method);
-        }
-    }
-
-    private void openFilePrinter(String title, RiResolvedMethod method) {
-        String filename = title + ".igv.xml";
-        filename = INVALID_CHAR.matcher(filename).replaceAll("_");
-
-        try {
-            stream = new FileOutputStream(filename);
+    private void initializeFilePrinter(String fileName) {
+        try (FileOutputStream stream = new FileOutputStream(fileName)) {
             printer = new IdealGraphPrinter(stream);
-            printer().begin();
-            printer().beginGroup(title, title, method, -1, "Graal");
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
-    public boolean networkAvailable() {
-        try {
-            Socket s = new Socket(host, port);
-            s.setSoTimeout(10);
-            s.close();
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    private void openNetworkPrinter(String title, RiResolvedMethod method) {
-        try {
-            socket = new Socket(host, port);
-            if (socket().getInputStream().read() == 'y') {
-                stream = new BufferedOutputStream(socket().getOutputStream(), 0x4000);
-            } else {
-                // server currently does not accept any input
-                socket().close();
-                socket = null;
-                return;
-            }
-
-
+    private void initializeNetworkPrinter(String host, int port) {
+        try (Socket socket = new Socket(host, port)) {
+            BufferedOutputStream stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
             printer = new IdealGraphPrinter(stream);
-            printer().begin();
-            printer().beginGroup(title, title, method, -1, "Graal");
-            printer().flush();
-            if (socket().getInputStream().read() != 'y') {
-                // server declines input for this method
-                socket().close();
-                socket = null;
-                stream = null;
-                printer = null;
-            }
         } catch (IOException e) {
-            System.err.println("Error opening connection to " + host + ":" + port + ": " + e);
-
-            if (socket() != null) {
-                try {
-                    socket().close();
-                } catch (IOException ioe) {
-                }
-                socket = null;
-            }
-            stream = null;
-            printer = null;
+            throw new RuntimeException(e);
         }
     }
-
-    private void closePrinter() {
-        assert (printer() != null);
-
-        try {
-            printer().endGroup();
-            printer().end();
-
-            if (socket() != null) {
-                socket().close(); // also closes stream
-            } else {
-                stream.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            printer = null;
-            stream = null;
-            socket = null;
-        }
-    }
-
-    public void compilationStarted(String groupTitle) {
-        openPrinter(groupTitle, null);
-    }
-
 
     @Override
     public void dump(Object object, String message) {
@@ -212,17 +102,31 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
                 }
             }
 
+            // Save inline context for next dump.
             previousInlineContext = inlineContext;
+
+            // Finally, output the graph.
+            printer.print(graph, message);
         }
     }
 
     private void openMethodScope(RiResolvedMethod method) {
         System.out.println("OPEN " + method);
+        printer.beginGroup(getName(method), getShortName(method), method, -1);
 
+    }
+
+    private static String getShortName(RiResolvedMethod method) {
+        return method.toString();
+    }
+
+    private static String getName(RiResolvedMethod method) {
+        return method.toString();
     }
 
     private void closeMethodScope(RiResolvedMethod method) {
         System.out.println("CLOSE " + method);
+        printer.endGroup();
 
     }
 }
