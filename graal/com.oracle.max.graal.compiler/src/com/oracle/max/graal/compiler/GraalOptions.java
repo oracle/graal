@@ -129,7 +129,7 @@ public final class GraalOptions {
 
     // Code generator settings
     public static boolean UseBranchPrediction                = true;
-    public static boolean UseExceptionProbability            = ____;
+    public static boolean UseExceptionProbability            = true;
     public static boolean AllowExplicitExceptionChecks       = true;
     public static boolean OmitHotExceptionStacktrace         = ____;
     public static int     MatureInvocationCount              = 100;

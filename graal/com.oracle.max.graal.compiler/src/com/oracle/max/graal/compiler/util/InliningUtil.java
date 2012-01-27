@@ -405,7 +405,18 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                unwindDuplicate.replaceAndDelete(graph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptAction.InvalidateRecompile);
+                unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
+                // move the deopt upwards if there is a monitor exit that tries to use the "after exception" frame state
+                // (because there is no "after exception" frame state!)
+                if (deoptimizeNode.predecessor() instanceof MonitorExitNode) {
+                    MonitorExitNode monitorExit = (MonitorExitNode) deoptimizeNode.predecessor();
+                    if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_EXCEPTION_BCI) {
+                        FrameState monitorFrameState = monitorExit.stateAfter();
+                        graph.removeFixed(monitorExit);
+                        monitorFrameState.safeDelete();
+                    }
+                }
             }
         }
 
@@ -428,8 +439,12 @@ public class InliningUtil {
                 } else if (frameState.bci == FrameState.AFTER_BCI) {
                     frameState.replaceAndDelete(stateAfter);
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
-                    assert stateAtExceptionEdge != null;
-                    frameState.replaceAndDelete(stateAtExceptionEdge);
+                    if (frameState.isAlive()) {
+                        assert stateAtExceptionEdge != null;
+                        frameState.replaceAndDelete(stateAtExceptionEdge);
+                    } else {
+                        assert stateAtExceptionEdge == null;
+                    }
                 }
             }
         }
@@ -452,7 +467,15 @@ public class InliningUtil {
             returnDuplicate.clearInputs();
             Node n = invoke.next();
             invoke.setNext(null);
-            returnDuplicate.replaceAndDelete(n);
+            if (n instanceof BeginNode) {
+                BeginNode begin = (BeginNode) n;
+                FixedNode next = begin.next();
+                begin.setNext(null);
+                returnDuplicate.replaceAndDelete(next);
+                begin.safeDelete();
+            } else {
+                returnDuplicate.replaceAndDelete(n);
+            }
         }
 
         invoke.node().clearInputs();
