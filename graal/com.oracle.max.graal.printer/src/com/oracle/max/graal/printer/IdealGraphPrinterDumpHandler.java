@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.regex.*;
 
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 
@@ -40,13 +41,14 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     private static final String DEFAULT_FILE_NAME = "output.igv.xml";
 
     private IdealGraphPrinter printer;
-    private List<RiResolvedMethod> previousInlineContext = new ArrayList<RiResolvedMethod>();
+    private List<RiResolvedMethod> previousInlineContext = new ArrayList<>();
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
      */
     public IdealGraphPrinterDumpHandler() {
         initializeFilePrinter(DEFAULT_FILE_NAME);
+        begin();
     }
 
     /**
@@ -54,10 +56,16 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
      */
     public IdealGraphPrinterDumpHandler(String host, int port) {
         initializeNetworkPrinter(host, port);
+        begin();
+    }
+
+    private void begin() {
+        printer.begin();
     }
 
     private void initializeFilePrinter(String fileName) {
-        try (FileOutputStream stream = new FileOutputStream(fileName)) {
+        try {
+            FileOutputStream stream = new FileOutputStream(fileName);
             printer = new IdealGraphPrinter(stream);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -65,48 +73,62 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void initializeNetworkPrinter(String host, int port) {
-        try (Socket socket = new Socket(host, port)) {
+        try  {
+            Socket socket = new Socket(host, port);
             BufferedOutputStream stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
             printer = new IdealGraphPrinter(stream);
+            TTY.println("Connected to the IGV on port %d", port);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public void dump(Object object, String message) {
+    public void dump(Object object, final String message) {
         if (object instanceof Graph) {
-            Graph graph = (Graph) object;
+            final Graph graph = (Graph) object;
 
-            // Get all current RiResolvedMethod instances in the context.
-            List<RiResolvedMethod> inlineContext = Debug.contextSnapshot(RiResolvedMethod.class);
+            if (printer.isValid()) {
+                // Get all current RiResolvedMethod instances in the context.
+                List<RiResolvedMethod> inlineContext = Debug.contextSnapshot(RiResolvedMethod.class);
 
-            // Reverse list such that inner method comes after outer method.
-            Collections.reverse(inlineContext);
+                // Reverse list such that inner method comes after outer method.
+                Collections.reverse(inlineContext);
 
-            // Check for method scopes that must be closed since the previous dump.
-            for (int i = 0; i < previousInlineContext.size(); ++i) {
-                if (i >= inlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
-                    for (int j = previousInlineContext.size() - 1; j >= i; --j) {
-                        closeMethodScope(previousInlineContext.get(j));
+                // Check for method scopes that must be closed since the previous dump.
+                for (int i = 0; i < previousInlineContext.size(); ++i) {
+                    if (i >= inlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
+                        for (int j = previousInlineContext.size() - 1; j >= i; --j) {
+                            closeMethodScope(previousInlineContext.get(j));
+                        }
                     }
                 }
-            }
 
-            // Check for method scopes that must be opened since the previous dump.
-            for (int i = 0; i < inlineContext.size(); ++i) {
-                if (i >= previousInlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
-                    for (int j = i; j < inlineContext.size(); ++j) {
-                        openMethodScope(inlineContext.get(j));
+                // Check for method scopes that must be opened since the previous dump.
+                for (int i = 0; i < inlineContext.size(); ++i) {
+                    if (i >= previousInlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
+                        for (int j = i; j < inlineContext.size(); ++j) {
+                            openMethodScope(inlineContext.get(j));
+                        }
                     }
                 }
+
+                // Save inline context for next dump.
+                previousInlineContext = inlineContext;
+
+                Debug.sandbox("PrintingGraph", new Runnable() {
+
+                    @Override
+                    public void run() {
+                        // Finally, output the graph.
+                        printer.print(graph, message);
+
+                    }
+                });
+            } else {
+                TTY.println("Printer invalid!");
+                System.exit(-1);
             }
-
-            // Save inline context for next dump.
-            previousInlineContext = inlineContext;
-
-            // Finally, output the graph.
-            printer.print(graph, message);
         }
     }
 

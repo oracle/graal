@@ -253,6 +253,12 @@ class BasicIdealGraphPrinter {
         flush();
     }
 
+
+    public boolean isValid() {
+        return !stream.checkError();
+    }
+
+
     private static String escape(String s) {
         StringBuilder str = null;
         for (int i = 0; i < s.length(); i++) {
