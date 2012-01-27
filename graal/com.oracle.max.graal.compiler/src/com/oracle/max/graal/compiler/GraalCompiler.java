@@ -172,14 +172,6 @@ public class GraalCompiler {
         new LoweringPhase(runtime).apply(graph);
         new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
 
-        if (GraalOptions.OptLoops) {
-            graph.mark();
-            new RemoveInductionVariablesPhase().apply(graph);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
-            }
-        }
-
         if (GraalOptions.Lower) {
             new FloatingReadPhase().apply(graph);
             if (GraalOptions.OptGVN) {
