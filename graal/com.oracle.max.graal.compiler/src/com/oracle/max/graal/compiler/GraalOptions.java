@@ -42,7 +42,7 @@ public final class GraalOptions {
     public static boolean Inline                             = true;
     public static boolean Intrinsify                         = true;
     public static boolean CacheGraphs                        = ____;
-    public static boolean InlineWithTypeCheck                = ____;
+    public static boolean InlineWithTypeCheck                = true;
     public static int     MaximumInlineSize                  = 35;
     public static int     MaximumFreqInlineSize              = 300;
     public static int     FreqInlineRatio                    = 20;

@@ -33,7 +33,9 @@ import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
+import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.max.graal.nodes.util.*;
@@ -80,6 +82,20 @@ public class InliningUtil {
             return (weight < o.weight) ? -1 : (weight > o.weight) ? 1 : 0;
         }
 
+        protected static StructuredGraph getGraph(Invoke invoke, RiResolvedMethod concrete, InliningCallback callback) {
+// TODO: Solve graph caching differently! GraphBuilderPhase.cachedGraphs.get(concrete);
+//          if (graph != null) {
+//              if (GraalOptions.TraceInlining) {
+//                  TTY.println("Reusing graph for %s", methodName(concrete, invoke));
+//              }
+//          } else {
+              if (GraalOptions.TraceInlining) {
+                  TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(concrete, invoke), concrete.maxLocals(), concrete.maxStackSize());
+              }
+              return callback.buildGraph(concrete);
+//          }
+        }
+
         public abstract boolean canDeopt();
 
         /**
@@ -89,10 +105,8 @@ public class InliningUtil {
          * @param graph
          * @param runtime
          * @param callback
-         * @return The node that represents the return value, or null for void methods and methods that have no
-         *         non-exceptional exit.
          */
-        public abstract Node inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback);
+        public abstract void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback);
     }
 
     /**
@@ -108,20 +122,9 @@ public class InliningUtil {
         }
 
         @Override
-        public Node inline(StructuredGraph compilerGraph, GraalRuntime runtime, InliningCallback callback) {
-            StructuredGraph graph = null; // TODO: Solve graph caching differently! GraphBuilderPhase.cachedGraphs.get(concrete);
-//            if (graph != null) {
-//                if (GraalOptions.TraceInlining) {
-//                    TTY.println("Reusing graph for %s", methodName(concrete, invoke));
-//                }
-//            } else {
-                if (GraalOptions.TraceInlining) {
-                    TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(concrete, invoke), concrete.maxLocals(), concrete.maxStackSize());
-                }
-                graph = callback.buildGraph(concrete);
-//            }
-
-            return InliningUtil.inline(invoke, graph, true);
+        public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, InliningCallback callback) {
+            StructuredGraph graph = getGraph(invoke, concrete, callback);
+            InliningUtil.inline(invoke, graph, true);
         }
 
         @Override
@@ -142,25 +145,23 @@ public class InliningUtil {
     private static class TypeGuardInlineInfo extends ExactInlineInfo {
 
         public final RiResolvedType type;
-        public final double probability;
 
-        public TypeGuardInlineInfo(Invoke invoke, double weight, int level, RiResolvedMethod concrete, RiResolvedType type, double probability) {
+        public TypeGuardInlineInfo(Invoke invoke, double weight, int level, RiResolvedMethod concrete, RiResolvedType type) {
             super(invoke, weight, level, concrete);
             this.type = type;
-            this.probability = probability;
         }
 
         @Override
-        public Node inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
-            IsTypeNode isType = graph.unique(new IsTypeNode(invoke.callTarget().receiver(), type));
-            FixedGuardNode guard = graph.add(new FixedGuardNode(isType));
+        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(invoke.callTarget().receiver(), type));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode));
             assert invoke.predecessor() != null;
             graph.addBeforeFixed(invoke.node(), guard);
 
             if (GraalOptions.TraceInlining) {
-                TTY.println("inlining with type check, type probability: %5.3f", probability);
+                TTY.println("inlining 1 method using 1 type check");
             }
-            return super.inline(graph, runtime, callback);
+            super.inline(graph, runtime, callback);
         }
 
         @Override
@@ -173,6 +174,131 @@ public class InliningUtil {
             return true;
         }
     }
+
+    private static class MultiTypeGuardInlineInfo extends InlineInfo {
+        public final List<RiResolvedMethod> concretes;
+        public final RiResolvedType[] types;
+        public final int[] typesToConcretes;
+        public final double[] probabilities;
+
+        public MultiTypeGuardInlineInfo(Invoke invoke, double weight, int level, List<RiResolvedMethod> concretes, RiResolvedType[] types, int[] typesToConcretes, double[] probabilities) {
+            super(invoke, weight, level);
+            assert concretes.size() > 0 && concretes.size() <= types.length : "must have at least one method but no more than types methods";
+            assert types.length == typesToConcretes.length && types.length == probabilities.length : "array length must match";
+
+            this.concretes = concretes;
+            this.types = types;
+            this.typesToConcretes = typesToConcretes;
+            this.probabilities = probabilities;
+        }
+
+        @Override
+        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+            MethodCallTargetNode callTargetNode = invoke.callTarget();
+            int numberOfMethods = concretes.size();
+
+            // save node after invoke so that invoke can be deleted safely
+            FixedNode continuation = invoke.next();
+            invoke.setNext(null);
+
+            // setup a merge node and a phi node for the result
+            MergeNode merge = null;
+            PhiNode returnValuePhi = null;
+            if (numberOfMethods > 1) {
+                merge = graph.add(new MergeNode());
+                merge.setNext(continuation);
+                if (callTargetNode.kind() != CiKind.Void) {
+                    returnValuePhi = graph.unique(new PhiNode(callTargetNode.kind(), merge, PhiType.Value));
+                }
+            }
+
+            // TODO (ch) take care about the nullcheck, what about IsTypeNode and nullcheck (test it!)
+
+            // create a separate block for each invoked method
+            BeginNode[] successorMethods = new BeginNode[numberOfMethods];
+            for (int i = 0; i < numberOfMethods; i++) {
+                Invoke duplicatedInvoke = duplicateInvoke(invoke);
+                successorMethods[i] = BeginNode.begin(duplicatedInvoke.node());
+
+                if (merge != null) {
+                    EndNode endNode = graph.add(new EndNode());
+                    duplicatedInvoke.setNext(endNode);
+                    merge.addEnd(endNode);
+                    if (returnValuePhi != null) {
+                        returnValuePhi.addInput(duplicatedInvoke.node());
+                    }
+                } else {
+                    duplicatedInvoke.setNext(continuation);
+                }
+            }
+
+            // match successor method and types
+            BeginNode[] switchSuccessors = new BeginNode[types.length + 1];
+            for (int i = 0; i < typesToConcretes.length; i++) {
+                switchSuccessors[i] = successorMethods[typesToConcretes[i]];
+            }
+
+            // set default successor to deoptimization
+            DeoptimizeNode deoptNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile));
+            switchSuccessors[types.length] = BeginNode.begin(deoptNode);
+
+            // replace usage of original invocation with phi(returnValues)
+            if (returnValuePhi != null) {
+                for (Node usage: invoke.node().usages().snapshot()) {
+                    usage.replaceFirstInput(invoke.node(), returnValuePhi);
+                }
+            }
+
+            // replace the original invocation with the TypeSwitch
+            TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(callTargetNode.receiver(), switchSuccessors, types, probabilities));
+            invoke.node().replaceAndDelete(typeSwitch);
+            GraphUtil.killCFG(invoke.node());
+
+            // do the actual inlining for every invocation
+            for (int i = 0; i < successorMethods.length; i++) {
+                BeginNode node = successorMethods[i];
+                Invoke invokeForInlining = (Invoke) node.next();
+                StructuredGraph calleeGraph = getGraph(invokeForInlining, concretes.get(i), callback);
+                InliningUtil.inline(invokeForInlining, calleeGraph, false);
+            }
+
+            if (GraalOptions.TraceInlining) {
+                TTY.println("inlining %d methods with %d type checks", numberOfMethods, types.length);
+            }
+        }
+
+        private static Invoke duplicateInvoke(Invoke invoke) {
+            Invoke result = (Invoke) invoke.node().copyWithInputs();
+            if (invoke instanceof InvokeWithExceptionNode) {
+               InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
+               BeginNode exceptionEdge = invokeWithException.exceptionEdge();
+               ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
+
+               BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
+               ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
+               newExceptionEdge.setNext(newExceptionObject);
+               newExceptionObject.setNext(exceptionObject.next());
+
+               ((InvokeWithExceptionNode) result).setExceptionEdge(newExceptionEdge);
+            }
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder builder = new StringBuilder("type-checked inlining of multiple methods: ");
+            for (int i = 0; i < concretes.size(); i++) {
+                CiUtil.format("\n%H.%n(%p):%r", concretes.get(i));
+            }
+            return builder.toString();
+        }
+
+        @Override
+        public boolean canDeopt() {
+            return true;
+        }
+    }
+
 
     /**
      * Represents an inlining opportunity where the current class hierarchy leads to a monomorphic target method,
@@ -187,14 +313,14 @@ public class InliningUtil {
         }
 
         @Override
-        public Node inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
+        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             if (GraalOptions.TraceInlining) {
                 String targetName = CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
                 String concreteName = CiUtil.format("%H.%n(%p):%r", concrete);
                 TTY.println("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
-            return super.inline(graph, runtime, callback);
+            super.inline(graph, runtime, callback);
         }
 
         @Override
@@ -268,16 +394,54 @@ public class InliningUtil {
         if (typeProfile != null) {
             RiResolvedType[] types = typeProfile.getTypes();
             double[] probabilities = typeProfile.getProbabilities();
-            if (types != null && probabilities != null && types.length == 1) {
+            if (types != null && probabilities != null && types.length > 0) {
                 assert types.length == probabilities.length : "length must match";
                 if (GraalOptions.InlineWithTypeCheck) {
                     // type check and inlining...
-                    concrete = types[0].resolveMethodImpl(callTarget.targetMethod());
-                    if (concrete != null && checkTargetConditions(concrete)) {
-                        double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
-                        return new TypeGuardInlineInfo(invoke, weight, level, concrete, types[0], probabilities[0]);
+                    if (types.length == 1) {
+                        RiResolvedType type = types[0];
+                        concrete = type.resolveMethodImpl(callTarget.targetMethod());
+                        if (concrete != null && checkTargetConditions(concrete)) {
+                            double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
+                            return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
+                        }
+                        return null;
+                    } else {
+                        // TODO (ch) sort types by probability
+
+                        // determine concrete methods and map type to specific method
+                        ArrayList<RiResolvedMethod> concreteMethods = new ArrayList<>();
+                        int[] typesToConcretes = new int[types.length];
+                        for (int i = 0; i < types.length; i++) {
+                            concrete = types[i].resolveMethodImpl(callTarget.targetMethod());
+
+                            int index = concreteMethods.indexOf(concrete);
+                            if (index < 0) {
+                                index = concreteMethods.size();
+                                concreteMethods.add(concrete);
+                            }
+                            typesToConcretes[index] = index;
+                        }
+
+                        double totalWeight = 0;
+                        boolean canInline = true;
+                        for (RiResolvedMethod method: concreteMethods) {
+                            if (method == null || !checkTargetConditions(method)) {
+                                canInline = false;
+                                break;
+                            }
+                            totalWeight += callback == null ? 0 : callback.inliningWeight(parent, method, invoke);
+                        }
+
+                        if (canInline) {
+                            return new MultiTypeGuardInlineInfo(invoke, totalWeight, level, concreteMethods, types, typesToConcretes, probabilities);
+                        } else {
+                            if (GraalOptions.TraceInlining) {
+                                TTY.println("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
+                            }
+                            return null;
+                        }
                     }
-                    return null;
                 } else {
                     if (GraalOptions.TraceInlining) {
                         TTY.println("not inlining %s because GraalOptions.InlineWithTypeCheck == false", methodName(callTarget.targetMethod(), invoke));
@@ -288,11 +452,12 @@ public class InliningUtil {
             return null;
         } else {
             if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because no monomorphic receiver could be found", methodName(callTarget.targetMethod(), invoke));
+                TTY.println("not inlining %s because no type profile exists", methodName(callTarget.targetMethod(), invoke));
             }
             return null;
         }
     }
+
 
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (invoke.stateAfter() == null) {
@@ -352,7 +517,7 @@ public class InliningUtil {
      * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings, false if no such check is required
      * @return The node that represents the return value, or null for void methods and methods that have no non-exceptional exit.
      */
-    public static Node inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
+    public static void inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
         NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         StructuredGraph graph = (StructuredGraph) invoke.node().graph();
 
@@ -361,7 +526,6 @@ public class InliningUtil {
 
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
         ArrayList<Node> nodes = new ArrayList<>();
-        ArrayList<Node> frameStates = new ArrayList<>();
         ReturnNode returnNode = null;
         UnwindNode unwindNode = null;
         BeginNode entryPointNode = inlineGraph.start();
@@ -377,8 +541,6 @@ public class InliningUtil {
                     returnNode = (ReturnNode) node;
                 } else if (node instanceof UnwindNode) {
                     unwindNode = (UnwindNode) node;
-                } else if (node instanceof FrameState) {
-                    frameStates.add(node);
                 }
             }
         }
@@ -422,6 +584,7 @@ public class InliningUtil {
         }
 
         FrameState stateBefore = null;
+        FrameState outerFrameState = null;
         double invokeProbability = invoke.node().probability();
         for (Node node : duplicates.values()) {
             if (GraalOptions.ProbabilityAnalysis) {
@@ -442,6 +605,11 @@ public class InliningUtil {
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
                     assert stateAtExceptionEdge != null;
                     frameState.replaceAndDelete(stateAtExceptionEdge);
+                } else {
+                    if (outerFrameState == null) {
+                        outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
+                    }
+                    frameState.setOuterFrameState(outerFrameState);
                 }
             }
         }
@@ -454,11 +622,7 @@ public class InliningUtil {
                 returnValue = duplicates.get(returnNode.result());
             }
             for (Node usage : invoke.node().usages().snapshot()) {
-                if (returnNode.result() instanceof LocalNode) {
-                    usage.replaceFirstInput(invoke.node(), returnValue);
-                } else {
-                    usage.replaceFirstInput(invoke.node(), returnValue);
-                }
+                usage.replaceFirstInput(invoke.node(), returnValue);
             }
             Node returnDuplicate = duplicates.get(returnNode);
             returnDuplicate.clearInputs();
@@ -471,20 +635,8 @@ public class InliningUtil {
         invoke.node().replaceAtUsages(null);
         GraphUtil.killCFG(invoke.node());
 
-        // adjust all frame states that were copied
-        if (frameStates.size() > 0) {
-            FrameState outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
-            for (Node node : frameStates) {
-                FrameState frameState = (FrameState) duplicates.get(node);
-                if (!frameState.isDeleted()) {
-                    frameState.setOuterFrameState(outerFrameState);
-                }
-            }
-        }
-
         if (stateAfter.usages().isEmpty()) {
             stateAfter.safeDelete();
         }
-        return returnValue;
     }
 }
