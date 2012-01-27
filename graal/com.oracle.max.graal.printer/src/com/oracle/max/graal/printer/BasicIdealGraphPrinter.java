@@ -29,7 +29,7 @@ import java.util.Map.Entry;
 /**
  * Elementary, generic generator of Ideal Graph Visualizer input for use in printers for specific data structures.
  */
-public class BasicIdealGraphPrinter {
+class BasicIdealGraphPrinter {
 
     /**
      * Edge between two nodes.
