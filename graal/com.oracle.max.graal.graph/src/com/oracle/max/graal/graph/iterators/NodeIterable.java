@@ -39,6 +39,9 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
     public <F extends T> FilteredNodeIterable<F> filter(Class<F> clazz) {
         return new FilteredNodeIterable<>(this).and(clazz);
     }
+    public FilteredNodeIterable<T> filter(NodePredicate predicate) {
+        return new FilteredNodeIterable<>(this).and(predicate);
+    }
     public List<T> snapshot() {
         ArrayList<T> list = new ArrayList<>();
         for (T n : this) {
@@ -52,5 +55,20 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
             return iterator.next();
         }
         return null;
+    }
+    public int count() {
+        int count = 0;
+        Iterator<T> iterator = iterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
+    }
+    public boolean isEmpty() {
+        return count() == 0;
+    }
+    public boolean isNotEmpty() {
+        return iterator().hasNext();
     }
 }

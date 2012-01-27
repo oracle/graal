@@ -75,12 +75,12 @@ public class Loop {
         return parent == l || (parent != null && parent.isChildOf(l));
     }
 
-    public boolean localContainsFixed(FixedNode n) {
+    public boolean containsDirectFixed(FixedNode n) {
         return directCFGNodes.isMarked(n);
     }
 
     public boolean containsFixed(FixedNode n) {
-        if (localContainsFixed(n)) {
+        if (containsDirectFixed(n)) {
             return true;
         }
         for (Loop child : children()) {
@@ -104,7 +104,7 @@ public class Loop {
     }
 
     @SuppressWarnings("unchecked")
-    public Iterable<FixedNode> fixedNodes() {
+    public Iterable<FixedNode> directFixedNodes() {
         return (Iterable) directCFGNodes;
     }
 
@@ -113,7 +113,7 @@ public class Loop {
         loop.parent = this;
     }
 
-    NodeBitMap directCFGNode() {
+    NodeBitMap directCFGNodes() {
         return directCFGNodes;
     }
 
@@ -133,5 +133,28 @@ public class Loop {
             }
         }
         return loopVariant;
+    }
+
+    public int depth() {
+        if (parent() == null) {
+            return 0;
+        }
+        return parent().depth() + 1;
+    }
+
+    public int directFixedNodesCount() {
+        return directCFGNodes.cardinality();
+    }
+
+    public int fixedNodesCount() {
+        int count = directFixedNodesCount();
+        for (Loop child : children()) {
+            count += child.directFixedNodesCount();
+        }
+        return count;
+    }
+
+    public int exitsCount() {
+        return exits().cardinality();
     }
 }

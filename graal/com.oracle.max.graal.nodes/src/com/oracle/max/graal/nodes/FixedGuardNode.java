@@ -61,10 +61,10 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                     conditions.remove(n);
                 } else {
                     FixedNode next = this.next();
-                    setNext(graph().add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
                     if (next != null) {
                         tool.deleteBranch(next);
                     }
+                    setNext(graph().add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
                     return;
                 }
             }

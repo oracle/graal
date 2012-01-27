@@ -65,17 +65,26 @@ public class LoopInfo {
         }
     }
 
-    private void print(Loop loop) {
-        TTY.println("%s", loop.loopBegin());
-        TTY.println("-- subnodes");
-        for (Node node : loop.fixedNodes()) {
-            TTY.println("  " + node);
+    private void print(final Loop loop) {
+        TTY.out().printf("%s\n", loop.loopBegin());
+        TTY.out().println("-- exits");
+        TTY.out().adjustIndentation(+2);
+        for (Node n : loop.exits()) {
+            TTY.out().printf("%s from %s\n", n, n.predecessor());
         }
-        TTY.println("-- subloops");
+        TTY.out().adjustIndentation(-2);
+        TTY.out().println("-- directNodes");
+        TTY.out().adjustIndentation(+2);
+        for (final Node node : loop.directFixedNodes()) {
+            TTY.out().printf("%s\n", node);
+        }
+        TTY.out().adjustIndentation(-2);
+        TTY.out().println("-- subloops");
+        TTY.out().adjustIndentation(+2);
         for (Loop sub : loop.children()) {
             print(sub);
         }
-        TTY.println("-- sub");
-        TTY.println();
+        TTY.out().adjustIndentation(-2);
+        TTY.out().println("-- sub");
     }
 }

@@ -28,16 +28,13 @@ import java.util.Map.Entry;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.util.LoopUtil.Loop;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.loop.*;
-import com.oracle.max.graal.printer.BasicIdealGraphPrinter.*;
+import com.oracle.max.graal.printer.BasicIdealGraphPrinter.Edge;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a
@@ -141,22 +138,9 @@ class IdealGraphPrinter {
                 // nothing to do here...
             }
         }
-        List<Loop> loops = null;
-        try {
-            loops = LoopUtil.computeLoops((StructuredGraph) graph);
-            // loop.nodes() does some more calculations which may fail, so execute this here as well (result is cached)
-            if (loops != null) {
-                for (Loop loop : loops) {
-                    loop.nodes();
-                }
-            }
-        } catch (Throwable t) {
-            t.printStackTrace();
-            loops = null;
-        }
 
         printer.beginNodes();
-        List<Edge> edges = printNodes(graph, shortNames, schedule == null ? null : schedule.getNodeToBlock(), loops);
+        List<Edge> edges = printNodes(graph, shortNames, schedule == null ? null : schedule.getNodeToBlock());
         printer.endNodes();
 
         printer.beginEdges();
@@ -178,14 +162,8 @@ class IdealGraphPrinter {
         flush();
     }
 
-    private List<Edge> printNodes(Graph graph, boolean shortNames, NodeMap<Block> nodeToBlock, List<Loop> loops) {
+    private List<Edge> printNodes(Graph graph, boolean shortNames, NodeMap<Block> nodeToBlock) {
         ArrayList<Edge> edges = new ArrayList<>();
-        NodeBitMap loopExits = graph.createNodeBitMap();
-        if (loops != null) {
-            for (Loop loop : loops) {
-                loopExits.setUnion(loop.exits());
-            }
-        }
 
         NodeMap<Set<Entry<String, Integer>>> colors = graph.createNodeMap();
         NodeMap<Set<Entry<String, String>>> colorsToString = graph.createNodeMap();
@@ -214,29 +192,12 @@ class IdealGraphPrinter {
             Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
             if (block != null) {
                 printer.printProperty("block", Integer.toString(block.blockID()));
-                if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof LocalNode || node instanceof InductionVariableNode) && !block.getInstructions().contains(node)) {
+                if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof LocalNode) && !block.getInstructions().contains(node)) {
                     printer.printProperty("notInOwnBlock", "true");
                 }
             } else {
                 printer.printProperty("block", "noBlock");
                 noBlockNodes.add(node);
-            }
-            if (loopExits.isMarked(node)) {
-                printer.printProperty("loopExit", "true");
-            }
-            StringBuilder sb = new StringBuilder();
-            if (loops != null) {
-                for (Loop loop : loops) {
-                    if (loop.nodes().isMarked(node)) {
-                        if (sb.length() > 0) {
-                            sb.append(", ");
-                        }
-                        sb.append(loop.loopBegin().toString(Verbosity.Id));
-                    }
-                }
-            }
-            if (sb.length() > 0) {
-                printer.printProperty("loops", sb.toString());
             }
 
             Set<Entry<String, Integer>> nodeColors = colors.get(node);
@@ -339,11 +300,6 @@ class IdealGraphPrinter {
                 if (node instanceof MergeNode) {
                     for (PhiNode phi : ((MergeNode) node).phis()) {
                         nodes.add(phi);
-                    }
-                    if (node instanceof LoopBeginNode) {
-                        for (InductionVariableNode iv : ((LoopBeginNode) node).inductionVariables()) {
-                            nodes.add(iv);
-                        }
                     }
                 }
             }

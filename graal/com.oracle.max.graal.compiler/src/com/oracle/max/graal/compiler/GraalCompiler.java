@@ -155,11 +155,6 @@ public class GraalCompiler {
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
         if (GraalOptions.OptLoops) {
-            graph.mark();
-            new FindInductionVariablesPhase().apply(graph);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
-            }
             new SafepointPollingEliminationPhase().apply(graph);
         }
 

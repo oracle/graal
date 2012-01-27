@@ -711,11 +711,16 @@ public final class GraphBuilderPhase extends Phase {
     private void genInstanceOf() {
         int cpi = stream().readCPI();
         RiType type = lookupType(cpi, INSTANCEOF);
-        ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, type instanceof RiResolvedType);
         ValueNode object = frameState.apop();
-        if (typeInstruction != null) {
-            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(new InstanceOfNode(typeInstruction, (RiResolvedType) type, object, false)), currentGraph)));
+        if (type instanceof RiResolvedType) {
+            ConstantNode hub = appendConstant(((RiResolvedType) type).getEncoding(RiType.Representation.ObjectHub));
+            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(new InstanceOfNode(hub, (RiResolvedType) type, object, false)), currentGraph)));
         } else {
+            PlaceholderNode trueSucc = currentGraph.add(new PlaceholderNode());
+            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile));
+            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new NullCheckNode(object, true)), trueSucc, deopt, 1));
+            append(ifNode);
+            lastInstr = trueSucc;
             frameState.ipush(appendConstant(CiConstant.INT_0));
         }
     }

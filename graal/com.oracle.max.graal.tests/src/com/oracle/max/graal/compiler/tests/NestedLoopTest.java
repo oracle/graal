@@ -28,98 +28,93 @@ import com.oracle.max.graal.compiler.loop.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 
-/**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
- * Then canonicalization is applied and it is verified that the resulting graph is equal to the
- * graph of the method that just has a "return 1" statement in it.
- */
 public class NestedLoopTest extends GraphTest {
 
     @Test
     public void test1() {
-        test("test1Snippet");
+        test("test1Snippet", 5, 5, 4);
     }
 
     @Test
     public void test2() {
-        test("test2Snippet");
+        test("test2Snippet", 2, 5, 4);
     }
 
     @Test
     public void test3() {
-        test("test3Snippet");
+        test("test3Snippet", 1, 5, 4);
     }
 
     @Test
     public void test4() {
-        test("test4Snippet");
+        test("test4Snippet", 1, 6, 4);
     }
 
     @SuppressWarnings("all")
     public static void test1Snippet(int a) {
-        while (a()) {
-            m1: while (b()) {
-                while (c()) {
-                    if (d()) {
-                        break m1;
+        while (a()) { // a() exits root, while() exits root
+            m1: while (b()) { // b() exits nested & root, while() exits nested
+                while (c()) { // c() exits innermost & nested & root, while() exits innermost
+                    if (d()) { // d() exits innermost & nested & root
+                        break m1; // break exits innermost & nested
                     }
                 }
             }
         }
-    }
+    }// total : root = 5 exits, nested = 5, innermost = 4
 
     @SuppressWarnings("all")
     public static void test2Snippet(int a) {
-        while (a()) {
+        while (a()) { // a() exits root, while() exits root
             try {
-                m1: while (b()) {
-                    while (c()) {
-                        if (d()) {
-                            break m1;
+                m1: while (b()) { // b() exits nested, while() exits nested
+                    while (c()) { // c() exits innermost & nested, while() exits innermost
+                        if (d()) { // d() exits innermost & nested
+                            break m1; // break exits innermost & nested
                         }
                     }
                 }
             } catch (Throwable t) {
             }
         }
-    }
+    }// total : root = 2 exits, nested = 5, innermost = 4
 
     @SuppressWarnings("all")
     public static void test3Snippet(int a) {
-        while (a == 0) {
+        while (a == 0) { // while() exits root
             try {
-                m1: while (b()) {
-                    while (c()) {
-                        if (d()) {
-                            a();
-                            break m1;
+                m1: while (b()) { // b() exits nested, while() exits nested
+                    while (c()) { // c() exits innermost & nested, while() exits innermost
+                        if (d()) { // d() exits innermost & nested
+                            a(); // a() exits nothing (already outside innermost & nested)
+                            break m1; // break exits innermost & nested
                         }
                     }
                 }
             } catch (Throwable t) {
             }
         }
-    }
+    }// total : root = 1 exit, nested = 5, innermost = 4
 
     public static void test4Snippet(int a) {
-        while (a != 0) {
+        while (a != 0) { // while() exits root
             try {
-                m1: while (a != 0) {
-                    b();
-                    while (c()) {
-                        if (d()) {
-                            break m1;
+                m1: while (a != 0) { // while() exits nested
+                    b(); // b() exits nested
+                    while (c()) { // c() exits innermost & nested, while() exits innermost
+                        if (d()) { // d() exits innermost & nested
+                            break m1; // break exits innermost & nested
                         }
                     }
                     if (a != 2) {
-                        a();
-                        throw new Exception();
+                        a(); // a() exits nothing (already outside innermost & nested)
+                        throw new Exception(); // throw exits nested
                     }
                 }
             } catch (Throwable t) {
             }
         }
-    }
+    } // total : root = 1 exit, nested = 6, innermost = 4
 
     private static boolean a() {
         return false;
@@ -146,7 +141,7 @@ public class NestedLoopTest extends GraphTest {
         return null;
     }
 
-    private void test(String snippet) {
+    private void test(String snippet, int rootExits, int nestedExits, int innerExits) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         LoopInfo loopInfo = LoopUtil.computeLoopInfo(graph);
@@ -158,10 +153,15 @@ public class NestedLoopTest extends GraphTest {
         Invoke b = getInvoke("b", graph);
         Invoke c = getInvoke("c", graph);
         Invoke d = getInvoke("d", graph);
-        Assert.assertTrue(rootLoop.localContainsFixed((FixedNode) a));
-        Assert.assertTrue(nestedLoop.localContainsFixed((FixedNode) b));
-        Assert.assertTrue(innerMostLoop.localContainsFixed((FixedNode) c));
-        Assert.assertTrue(innerMostLoop.localContainsFixed((FixedNode) d));
+        Assert.assertTrue(rootLoop.containsDirectFixed((FixedNode) a));
+        Assert.assertTrue(nestedLoop.containsDirectFixed((FixedNode) b));
+        Assert.assertTrue(innerMostLoop.containsDirectFixed((FixedNode) c));
+        Assert.assertTrue(innerMostLoop.containsDirectFixed((FixedNode) d));
+        Assert.assertTrue(rootLoop.containsFixed((FixedNode) d));
+        Assert.assertTrue(nestedLoop.containsFixed((FixedNode) d));
+        Assert.assertEquals(rootExits, rootLoop.exits().cardinality());
+        Assert.assertEquals(nestedExits, nestedLoop.exits().cardinality());
+        Assert.assertEquals(innerExits, innerMostLoop.exits().cardinality());
         Debug.dump(graph, "Graph");
     }
 }

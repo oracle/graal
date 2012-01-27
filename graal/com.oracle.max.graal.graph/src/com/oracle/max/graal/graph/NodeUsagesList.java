@@ -48,8 +48,14 @@ public final class NodeUsagesList extends NodeIterable<Node> {
         return size;
     }
 
+    @Override
     public boolean isEmpty() {
         return size == 0;
+    }
+
+    @Override
+    public boolean isNotEmpty() {
+        return size > 0;
     }
 
     protected void incModCount() {

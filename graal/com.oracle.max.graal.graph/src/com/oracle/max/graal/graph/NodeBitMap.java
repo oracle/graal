@@ -160,4 +160,8 @@ public final class NodeBitMap implements Iterable<Node>{
     public Iterator<Node> iterator() {
         return new MarkedNodeIterator(NodeBitMap.this, graph().getNodes().iterator());
     }
+
+    public int cardinality() {
+        return bitMap.cardinality();
+    }
 }

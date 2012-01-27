@@ -26,7 +26,7 @@ import static com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2RegCommutative;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.nodes.*;
@@ -64,7 +64,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         Variable input = gen.load(gen.operand(x()));
         Variable result = gen.newVariable(kind());
         switch (operation()) {
-            case ABS:   gen.append(new Op2RegCommutative(DAND, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
+            case ABS:   gen.append(new Op2Reg(DAND, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
             case SQRT:  gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.SQRT, result, input)); break;
             case LOG:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.LOG, result, input)); break;
             case LOG10: gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.LOG10, result, input)); break;
