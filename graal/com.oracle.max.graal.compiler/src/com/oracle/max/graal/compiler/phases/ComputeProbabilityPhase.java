@@ -24,8 +24,6 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
@@ -58,16 +56,6 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private void computeLoopFactors() {
-        if (GraalOptions.TraceProbability) {
-            for (LoopInfo info : loopInfos) {
-                TTY.println("\nLoop " + info.loopBegin);
-                TTY.print("  requires: ");
-                for (LoopInfo r : info.requires) {
-                    TTY.print(r.loopBegin + " ");
-                }
-                TTY.println();
-            }
-        }
         for (LoopInfo info : loopInfos) {
             double frequency = info.loopFrequency();
             assert frequency != -1;

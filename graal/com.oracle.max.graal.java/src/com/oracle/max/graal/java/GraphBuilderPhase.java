@@ -605,9 +605,7 @@ public final class GraphBuilderPhase extends Phase {
         assert !x.isDeleted() && !y.isDeleted();
         double probability = method.branchProbability(bci());
         if (probability < 0) {
-            if (GraalOptions.TraceProbability) {
-                TTY.println("missing probability in " + method + " at bci " + bci());
-            }
+            Debug.log("missing probability in %s at bci %d", method, bci());
             probability = 0.5;
         }
 
@@ -1156,9 +1154,7 @@ public final class GraphBuilderPhase extends Phase {
         if (prob != null) {
             assert prob.length == numberOfCases;
         } else {
-            if (GraalOptions.TraceProbability) {
-                TTY.println("Missing probability (switch) in " + method + " at bci " + bci);
-            }
+            Debug.log("Missing probability (switch) in %s at bci %d", method, bci);
             prob = new double[numberOfCases];
             for (int i = 0; i < numberOfCases; i++) {
                 prob[i] = 1.0d / numberOfCases;
