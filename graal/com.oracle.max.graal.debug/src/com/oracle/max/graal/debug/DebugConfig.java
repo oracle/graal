@@ -29,7 +29,7 @@ public interface DebugConfig {
     boolean isLogEnabled();
     boolean isMeterEnabled();
     boolean isDumpEnabled();
-    boolean isTimerEnabled();
+    boolean isTimeEnabled();
     RuntimeException interceptException(RuntimeException e);
     Collection<? extends DebugDumpHandler> dumpHandlers();
 }

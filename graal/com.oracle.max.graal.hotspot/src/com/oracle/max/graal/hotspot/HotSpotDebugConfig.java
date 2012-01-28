@@ -62,7 +62,7 @@ public class HotSpotDebugConfig implements DebugConfig {
         return isEnabled(dumpFilter);
     }
 
-    public boolean isTimerEnabled() {
+    public boolean isTimeEnabled() {
         return isEnabled(timerFilter);
     }
 

@@ -38,14 +38,18 @@ import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 
 public final class IntervalPrinter {
 
+    @SuppressWarnings("unused")
     public static void printBeforeAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
+        // TODO(tw): Fix printing.
 //        if (context.isObserved()) {
 //            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
 //            context.observable.fireCompilationEvent(label, lir, printer.execute());
 //        }
     }
 
+    @SuppressWarnings("unused")
     public static void printAfterAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
+        // TODO(tw): Fix printing.
 //        if (context.isObserved()) {
 //            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
 //            context.observable.fireCompilationEvent(label, lir, printer.execute());
