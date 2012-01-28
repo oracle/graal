@@ -504,9 +504,7 @@ public class EscapeAnalysisPhase extends Phase {
                     }
                 } else {
                     exits.add(usage);
-                    if (!GraalOptions.TraceEscapeAnalysis) {
-                        break;
-                    }
+                    break;
                 }
             } else {
                 if (GraalOptions.ProbabilityAnalysis && usage instanceof FixedNode) {
