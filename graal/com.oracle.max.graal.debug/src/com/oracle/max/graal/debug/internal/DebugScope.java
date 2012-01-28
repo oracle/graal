@@ -35,7 +35,6 @@ public final class DebugScope {
     private static ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
     private static ThreadLocal<RuntimeException> lastExceptionThrownTL = new ThreadLocal<>();
 
-    private final String name;
     private final DebugScope parent;
 
     private Object[] context;
@@ -54,7 +53,7 @@ public final class DebugScope {
     public static DebugScope getInstance() {
         DebugScope result = instanceTL.get();
         if (result == null) {
-            instanceTL.set(new DebugScope("", "", null));
+            instanceTL.set(new DebugScope("", null));
             return instanceTL.get();
         } else {
             return result;
@@ -65,8 +64,7 @@ public final class DebugScope {
         return configTL.get();
     }
 
-    private DebugScope(String name, String qualifiedName, DebugScope parent, Object... context) {
-        this.name = name;
+    private DebugScope(String qualifiedName, DebugScope parent, Object... context) {
         this.parent = parent;
         this.context = context;
         this.qualifiedName = qualifiedName;
@@ -106,14 +104,12 @@ public final class DebugScope {
         }
     }
 
-    private static Object lock = new Object();
-
     public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, Object[] newContext) {
         DebugScope oldContext = getInstance();
         DebugConfig oldConfig = getConfig();
         DebugScope newChild = null;
         if (sandbox) {
-            newChild = new DebugScope(newName, newName, null, newContext);
+            newChild = new DebugScope(newName, null, newContext);
             setConfig(null);
         } else {
             newChild = oldContext.createChild(newName, newContext);
@@ -121,13 +117,7 @@ public final class DebugScope {
         instanceTL.set(newChild);
         newChild.updateFlags();
         try {
-            if (logEnabled || dumpEnabled) {
-                synchronized (lock) {
-                    return executeScope(runnable, callable);
-                }
-            } else {
-                return executeScope(runnable, callable);
-            }
+            return executeScope(runnable, callable);
         } finally {
             newChild.deactivate();
             instanceTL.set(oldContext);
@@ -211,7 +201,7 @@ public final class DebugScope {
         if (this.qualifiedName.length() > 0) {
             newQualifiedName = this.qualifiedName + SCOPE_SEP + newName;
         }
-        DebugScope result = new DebugScope(newName, newQualifiedName, this, newContext);
+        DebugScope result = new DebugScope(newQualifiedName, this, newContext);
         if (children == null) {
             children = new ArrayList<>(4);
         }

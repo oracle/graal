@@ -25,8 +25,7 @@ package com.oracle.max.graal.printer;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.regex.*;
-
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.debug.*;
@@ -113,7 +112,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
                 for (int i = 0; i < previousInlineContext.size(); ++i) {
                     if (i >= inlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
                         for (int j = previousInlineContext.size() - 1; j >= i; --j) {
-                            closeMethodScope(previousInlineContext.get(j));
+                            closeMethodScope();
                         }
                     }
                 }
@@ -140,28 +139,18 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
                     }
                 });
             } else {
-                TTY.println("Printer invalid!");
+                TTY.println("Fatal error: Printer invalid!");
                 System.exit(-1);
             }
         }
     }
 
     private void openMethodScope(RiResolvedMethod method) {
-        System.out.println("OPEN " + method);
-        printer.beginGroup(getName(method), getShortName(method), method, -1);
+        printer.beginGroup(CiUtil.format("%H::%n", method), CiUtil.format("%h::%n", method), method, -1);
 
     }
 
-    private static String getShortName(RiResolvedMethod method) {
-        return method.toString();
-    }
-
-    private static String getName(RiResolvedMethod method) {
-        return method.toString();
-    }
-
-    private void closeMethodScope(RiResolvedMethod method) {
-        System.out.println("CLOSE " + method);
+    private void closeMethodScope() {
         printer.endGroup();
 
     }
