@@ -22,8 +22,7 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
@@ -39,9 +38,7 @@ public class ReadEliminationPhase extends Phase {
                 if (memoryInput instanceof WriteNode) {
                     WriteNode other = (WriteNode) memoryInput;
                     if (other.object() == n.object() && other.location() == n.location()) {
-                        if (GraalOptions.TraceReadElimination) {
-                            TTY.println("Eliminated memory read " + n + "and replaced with node " + other.value());
-                        }
+                        Debug.log("Eliminated memory read %1.1s and replaced with node %s", n, other.value());
                         graph.replaceFloating(n, other.value());
                     }
                 }
