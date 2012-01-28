@@ -22,8 +22,6 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -53,9 +51,7 @@ public class GlobalValueNumberingPhase extends Phase {
                     n.replaceAtUsages(newNode);
                     n.safeDelete();
                     metricGlobalValueNumberingHits.increment();
-                    if (GraalOptions.TraceGVN) {
-                        TTY.println("GVN applied and new node is " + newNode);
-                    }
+                    Debug.log("GVN applied and new node is %1s", newNode);
                 }
             }
         }
