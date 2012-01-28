@@ -38,7 +38,6 @@ import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
@@ -95,16 +94,8 @@ public class AMD64XirOp extends LIRXirInstruction {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            int start = -1;
-            if (GraalOptions.TraceAssembler) {
-                TTY.println("Emitting slow path for XIR instruction " + snippet.template.name);
-                start = masm.codeBuffer.position();
-            }
             emitXirInstructions(tasm, masm, snippet.template.slowPath, labels, getOperands(), snippet.marks);
             masm.nop();
-            if (GraalOptions.TraceAssembler) {
-                TTY.println("From " + start + " to " + masm.codeBuffer.position());
-            }
         }
     }
 
