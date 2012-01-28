@@ -251,6 +251,7 @@ public final class HotSpotMethodData extends CompilerObject {
             super(tag, staticSize);
         }
 
+        @SuppressWarnings("unused")
         public boolean getNullSeen(HotSpotMethodData data, int position) {
             return (getFlags(data, position) & BIT_DATA_NULL_SEEN_FLAG) != 0;
         }
@@ -301,6 +302,11 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         public int getExecutionCount(HotSpotMethodData data, int position) {
             return data.readUnsignedIntAsSignedInt(position, TAKEN_COUNT_OFFSET);
+        }
+
+        @SuppressWarnings("unused")
+        public int getTakenDisplacement(HotSpotMethodData data, int position) {
+            return data.readInt(position, TAKEN_DISPLACEMENT_OFFSET);
         }
     }
 
@@ -537,6 +543,11 @@ public final class HotSpotMethodData extends CompilerObject {
 
         private static int getCountOffset(int index) {
             return MULTI_BRANCH_DATA_FIRST_COUNT_OFFSET + index * MULTI_BRANCH_DATA_ROW_SIZE;
+        }
+
+        @SuppressWarnings("unused")
+        private static int getDisplacementOffset(int index) {
+            return MULTI_BRANCH_DATA_FIRST_DISPLACEMENT_OFFSET + index * MULTI_BRANCH_DATA_ROW_SIZE;
         }
     }
 

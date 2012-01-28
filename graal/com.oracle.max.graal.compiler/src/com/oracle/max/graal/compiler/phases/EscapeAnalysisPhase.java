@@ -315,7 +315,7 @@ public class EscapeAnalysisPhase extends Phase {
                 assert ((NullCheckNode) usage).object() == node;
                 return null;
             } else if (usage instanceof IsTypeNode) {
-                assert ((IsTypeNode) usage).object() == node;
+                assert ((IsTypeNode) usage).objectClass() == node;
                 return null;
             } else if (usage instanceof AccessMonitorNode) {
                 assert ((AccessMonitorNode) usage).object() == node;

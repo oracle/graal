@@ -88,7 +88,6 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);
-    public abstract void emitTypeSwitch(TypeSwitchNode x);
 
     public abstract void emitInvoke(Invoke i);
     public abstract void emitRuntimeCall(RuntimeCallNode i);

@@ -313,6 +313,13 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (n instanceof ArrayHeaderSizeNode) {
             ArrayHeaderSizeNode arrayHeaderSize = (ArrayHeaderSizeNode) n;
             graph.replaceFloating(arrayHeaderSize, ConstantNode.forLong(config.getArrayOffset(arrayHeaderSize.elementKind()), n.graph()));
+        } else if (n instanceof ObjectClassNode) {
+            ObjectClassNode objectClassNode = (ObjectClassNode) n;
+            LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
+            FloatingReadNode memoryRead = graph.add(new FloatingReadNode(CiKind.Object, objectClassNode.object(), null, location));
+            // TODO (ch) this fails because ObjectClass is only used as an input value
+            //memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false))));
+            graph.replaceFloating(objectClassNode, memoryRead);
         }
     }
 

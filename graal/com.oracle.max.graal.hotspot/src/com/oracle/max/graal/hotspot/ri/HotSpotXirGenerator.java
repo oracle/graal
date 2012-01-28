@@ -1107,32 +1107,21 @@ public class HotSpotXirGenerator implements RiXirGenerator {
        @Override
        protected XirTemplate create(CiXirAssembler asm, long flags) {
            asm.restart();
-           XirParameter object = asm.createInputParameter("object", CiKind.Object);
+           XirParameter objHub = asm.createInputParameter("objectHub", CiKind.Object);
            XirOperand hub = asm.createConstantInputParameter("hub", CiKind.Object);
+           XirLabel falseSucc = asm.createInlineLabel(XirLabel.FalseSuccessor);
 
-           XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
            XirOperand checkHub = asm.createTemp("checkHub", CiKind.Object);
-
-           XirLabel slowPath = asm.createOutOfLineLabel("deopt");
 
            if (is(NULL_CHECK, flags)) {
                asm.mark(MARK_IMPLICIT_NULL);
            }
 
-           asm.pload(CiKind.Object, objHub, object, asm.i(config.hubOffset), false);
            asm.mov(checkHub, hub);
            // if we get an exact match: continue
-           asm.jneq(slowPath, objHub, checkHub);
+           asm.jneq(falseSucc, objHub, checkHub);
 
-           // -- out of line -------------------------------------------------------
-           asm.bindOutOfLine(slowPath);
-           XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-           asm.mov(scratch, wordConst(asm, 2));
-
-           asm.callRuntime(CiRuntimeCall.Deoptimize, null);
-           asm.shouldNotReachHere();
-
-           return asm.finishTemplate(object, "typeCheck");
+           return asm.finishTemplate(objHub, "typeCheck");
        }
     };
 
@@ -1300,9 +1289,9 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genTypeCheck(XirSite site, XirArgument object, XirArgument hub, RiType type) {
+    public XirSnippet genTypeBranch(XirSite site, XirArgument thisHub, XirArgument otherHub, RiType type) {
         assert type instanceof RiResolvedType;
-        return new XirSnippet(typeCheckTemplates.get(site), object, hub);
+        return new XirSnippet(typeCheckTemplates.get(site), thisHub, otherHub);
     }
 
     @Override
