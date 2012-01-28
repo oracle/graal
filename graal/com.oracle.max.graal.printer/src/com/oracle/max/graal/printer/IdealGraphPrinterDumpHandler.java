@@ -45,6 +45,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     private String fileName;
     private String host;
     private int port;
+    private boolean initialized;
 
     /**
      * Creates a new {@link IdealGraphPrinterDumpHandler} that writes output to a file named after the compiled method.
@@ -64,12 +65,15 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
 
 
     private void ensureInitialized() {
-        if (fileName != null) {
-            initializeFilePrinter();
-        } else {
-            initializeNetworkPrinter();
+        if (!initialized) {
+            initialized = true;
+            if (fileName != null) {
+                initializeFilePrinter();
+            } else {
+                initializeNetworkPrinter();
+            }
+            printer.begin();
         }
-        printer.begin();
     }
 
     private void initializeFilePrinter() {
