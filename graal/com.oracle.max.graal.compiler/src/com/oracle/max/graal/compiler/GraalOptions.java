@@ -110,7 +110,6 @@ public final class GraalOptions {
     public static int     TraceLinearScanLevel               = 0;
     public static boolean TraceRegisterAllocation            = false;
     public static int     TraceLIRGeneratorLevel             = 0;
-    public static boolean TraceRelocation                    = ____;
     public static boolean TraceEscapeAnalysis                = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean ExitVMOnBailout                    = ____;

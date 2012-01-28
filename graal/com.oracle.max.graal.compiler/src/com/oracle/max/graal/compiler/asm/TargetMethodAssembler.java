@@ -177,13 +177,8 @@ public class TargetMethodAssembler {
 
     public CiAddress recordDataReferenceInCode(CiConstant data, int alignment) {
         assert data != null;
-
         int pos = asm.codeBuffer.position();
-
-        if (GraalOptions.TraceRelocation) {
-            TTY.print("Data reference in code: pos = %d, data = %s", pos, data.toString());
-        }
-
+        Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
         targetMethod.recordDataReference(pos, data, alignment);
         return CiAddress.Placeholder;
     }
