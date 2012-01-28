@@ -416,15 +416,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         currentInstruction = instr;
 
-        if (GraalOptions.TraceLIRVisit) {
-            TTY.println("Visiting    " + instr);
-        }
-
+        Debug.log("Visiting %s", instr);
         emitNode(instr);
-
-        if (GraalOptions.TraceLIRVisit) {
-            TTY.println("Operand for " + instr + " = " + operand(instr));
-        }
+        Debug.log("Operand for %s = %s", instr, operand(instr));
     }
 
     protected void emitNode(ValueNode node) {
