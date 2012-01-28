@@ -25,9 +25,9 @@ package com.oracle.max.cri.ri;
 import java.io.*;
 
 /**
- * This profile object represents the type profile of one call site, cast or instanceof instruction. The precision of
- * the supplied values may vary, but a runtime that provides this information should be aware that it will be used to
- * guide performance-critical decisions like speculative inlining, etc.
+ * This profile object represents the type profile at a specific BCI. The precision of the supplied values may vary,
+ * but a runtime that provides this information should be aware that it will be used to guide performance-critical
+ * decisions like speculative inlining, etc.
  */
 public final class RiTypeProfile implements Serializable {
     /**

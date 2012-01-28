@@ -25,18 +25,18 @@ package com.oracle.max.graal.nodes.extended;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-public final class ObjectClassNode extends FloatingNode implements Lowerable {
+// TODO (ch) this should be a FloatingNode but Lowering crashes in that case
+public final class ReadClassNode extends FixedWithNextNode implements Lowerable {
     @Input private ValueNode object;
 
     public ValueNode object() {
         return object;
     }
 
-    public ObjectClassNode(ValueNode object) {
+    public ReadClassNode(ValueNode object) {
         super(StampFactory.forKind(CiKind.Object));
         this.object = object;
     }

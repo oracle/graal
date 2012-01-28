@@ -322,6 +322,8 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
+            // TODO (ch) detect polymorphic case and return null and document interface accordingly
+            // is it really the best solution to return null?
             int typeProfileWidth = config.typeProfileWidth;
 
             RiResolvedType[] sparseTypes = new RiResolvedType[typeProfileWidth];

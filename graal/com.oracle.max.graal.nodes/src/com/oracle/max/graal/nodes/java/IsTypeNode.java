@@ -71,7 +71,7 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        RiResolvedType exactType = objectClass() instanceof ObjectClassNode ? ((ObjectClassNode) objectClass()).object().exactType() : null;
+        RiResolvedType exactType = objectClass() instanceof ReadClassNode ? ((ReadClassNode) objectClass()).object().exactType() : null;
         if (exactType != null) {
             return ConstantNode.forBoolean(exactType == type(), graph());
         }

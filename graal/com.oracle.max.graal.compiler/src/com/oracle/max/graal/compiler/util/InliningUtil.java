@@ -156,10 +156,12 @@ public class InliningUtil {
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
-            ObjectClassNode objectClass = new ObjectClassNode(invoke.callTarget().receiver());
+            ReadClassNode objectClass = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode));
             assert invoke.predecessor() != null;
+
+            graph.addBeforeFixed(invoke.node(), objectClass);
             graph.addBeforeFixed(invoke.node(), guard);
 
             if (GraalOptions.TraceInlining) {
@@ -228,11 +230,15 @@ public class InliningUtil {
                 }
             }
 
+            // TODO (ch) do not create merge nodes if not necessary. Otherwise GraphVisualizer seems to loose half of the phase outputs?
+
             // create a separate block for each invoked method
-            BeginNode[] successorMethods = new BeginNode[numberOfMethods];
+            MergeNode[] successorMethods = new MergeNode[numberOfMethods];
             for (int i = 0; i < numberOfMethods; i++) {
                 Invoke duplicatedInvoke = duplicateInvoke(invoke);
-                successorMethods[i] = BeginNode.begin(duplicatedInvoke.node());
+                MergeNode calleeEntryNode = graph.add(new MergeNode());
+                calleeEntryNode.setNext(duplicatedInvoke.node());
+                successorMethods[i] = calleeEntryNode;
 
                 if (merge != null) {
                     EndNode endNode = graph.add(new EndNode());
@@ -250,19 +256,24 @@ public class InliningUtil {
             }
 
             // create a cascade of ifs with the type checks
-            ObjectClassNode objectClassNode = graph.add(new ObjectClassNode(invoke.callTarget().receiver()));
+            ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
+            graph.addBeforeFixed(invoke.node(), objectClassNode);
 
             int lastIndex = types.length - 1;
-            BeginNode tsux = successorMethods[typesToConcretes[lastIndex]];
-            IsTypeNode isTypeNode = graph.add(new IsTypeNode(objectClassNode, types[lastIndex]));
+            MergeNode tsux = successorMethods[typesToConcretes[lastIndex]];
+            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[lastIndex]));
+            EndNode endNode = graph.add(new EndNode());
             FixedGuardNode guardNode = graph.add(new FixedGuardNode(isTypeNode));
-            guardNode.setNext(tsux);
+            guardNode.setNext(endNode);
+            tsux.addEnd(endNode);
 
             FixedNode nextNode = guardNode;
             for (int i = lastIndex - 1; i >= 0; i--) {
                 tsux = successorMethods[typesToConcretes[i]];
-                isTypeNode = graph.add(new IsTypeNode(objectClassNode, types[i]));
-                nextNode = graph.add(new IfNode(isTypeNode, tsux, nextNode, probabilities[i]));
+                isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[i]));
+                endNode = graph.add(new EndNode());
+                nextNode = graph.add(new IfNode(isTypeNode, endNode, nextNode, probabilities[i]));
+                tsux.addEnd(endNode);
             }
 
             // replace the original invocation with a cascade of if nodes and replace the usages of invoke with the return value (phi or duplicatedInvoke)
@@ -272,7 +283,7 @@ public class InliningUtil {
 
             // do the actual inlining for every invocation
             for (int i = 0; i < successorMethods.length; i++) {
-                BeginNode node = successorMethods[i];
+                MergeNode node = successorMethods[i];
                 Invoke invokeForInlining = (Invoke) node.next();
                 StructuredGraph calleeGraph = getGraph(invokeForInlining, concretes.get(i), callback);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
@@ -425,7 +436,6 @@ public class InliningUtil {
                         return null;
                     } else {
                         // TODO (ch) sort types by probability
-
                         // determine concrete methods and map type to specific method
                         ArrayList<RiResolvedMethod> concreteMethods = new ArrayList<>();
                         int[] typesToConcretes = new int[types.length];
