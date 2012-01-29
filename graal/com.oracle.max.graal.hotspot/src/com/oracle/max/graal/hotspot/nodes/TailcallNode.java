@@ -30,6 +30,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.target.amd64.*;
+import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
@@ -62,10 +63,10 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
 
         CiKind[] signature = CiUtil.signatureToKinds(method.signature(), isStatic ? null : method.holder().kind(true));
         CiCallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(CiCallingConvention.Type.JavaCall, signature, gen.target(), false);
-        gen.frameMap().callsMethod(cc, CiCallingConvention.Type.JavaCall);
+        gen.frameMap().callsMethod(cc, CiCallingConvention.Type.JavaCall); // TODO (aw): I think this is unnecessary for a tail call.
         List<ValueNode> parameters = new ArrayList<>();
-        for (int i = 0; i < cc.locations.length; i++) {
-            parameters.add(frameState.localAt(i));
+        for (int i = 0, slot = 0; i < cc.locations.length; i++, slot += FrameStateBuilder.stackSlots(frameState.localAt(slot).kind())) {
+            parameters.add(frameState.localAt(slot));
         }
         List<CiValue> argList = gen.visitInvokeArguments(cc, parameters, null);
 
