@@ -82,21 +82,24 @@ public final class GraalOptions {
     public static boolean PrintLIR                           = ____;
     public static boolean PrintCFGToFile                     = ____;
 
+    // Debug settings:
+    public static boolean Debug                              = true;
+    public static String Dump                                = null;
+    public static String Meter                               = null;
+    public static String Time                                = null;
+    public static String Log                                 = null;
+    public static String MethodFilter                        = null;
+
     // Ideal graph visualizer output settings
-    public static boolean Plot                               = ____;
-    public static boolean PlotVerbose                        = ____;
     public static boolean PlotOnError                        = ____;
     public static int     PlotLevel                          = 3;
     public static boolean PlotSnippets                       = ____;
-    public static boolean PrintIdealGraphBytecodes           = true;
     public static int     PrintIdealGraphLevel               = 0;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
     public static int     PrintIdealGraphPort                = 4444;
 
     // Other printing settings
-    public static boolean Meter                              = ____;
-    public static boolean Time                               = ____;
     public static boolean PrintQueue                         = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintXirTemplates                  = ____;
@@ -107,17 +110,7 @@ public final class GraalOptions {
     public static int     TraceLinearScanLevel               = 0;
     public static boolean TraceRegisterAllocation            = false;
     public static int     TraceLIRGeneratorLevel             = 0;
-    public static boolean TraceRelocation                    = ____;
-    public static boolean TraceLIRVisit                      = ____;
-    public static boolean TraceAssembler                     = ____;
-    public static boolean TraceInlining                      = ____;
-    public static boolean TraceDeadCodeElimination           = ____;
     public static boolean TraceEscapeAnalysis                = ____;
-    public static boolean TraceCanonicalizer                 = ____;
-    public static boolean TraceMemoryMaps                    = ____;
-    public static boolean TraceProbability                   = ____;
-    public static boolean TraceReadElimination               = ____;
-    public static boolean TraceGVN                           = ____;
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean ExitVMOnBailout                    = ____;
     public static boolean ExitVMOnException                  = true;
@@ -126,8 +119,6 @@ public final class GraalOptions {
     public static boolean AssumeVerifiedBytecode             = true;
 
     // Code generator settings
-    public static boolean GenLIR                             = true;
-    public static boolean GenCode                            = true;
     public static boolean UseBranchPrediction                = true;
     public static boolean UseExceptionProbability            = true;
     public static boolean AllowExplicitExceptionChecks       = true;

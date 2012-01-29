@@ -22,8 +22,7 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -81,9 +80,7 @@ public class DeadCodeEliminationPhase extends Phase {
             if (!flood.isMarked(node)) {
                 LoopBeginNode loop = node.loopBegin();
                 if (flood.isMarked(loop)) {
-                    if (GraalOptions.TraceDeadCodeElimination) {
-                        TTY.println("Removing loop with unreachable end: " + loop);
-                    }
+                    Debug.log("Removing loop with unreachable end: %s", loop);
                     node.setLoopBegin(null);
                     EndNode endNode = loop.endAt(0);
                     assert endNode.predecessor() != null;

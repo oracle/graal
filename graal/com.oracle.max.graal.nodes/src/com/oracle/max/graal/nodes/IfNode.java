@@ -25,7 +25,6 @@ package com.oracle.max.graal.nodes;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 

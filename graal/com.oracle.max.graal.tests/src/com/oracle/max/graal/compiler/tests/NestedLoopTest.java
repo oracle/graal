@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.tests;
 import org.junit.*;
 
 import com.oracle.max.graal.compiler.loop.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 
 public class NestedLoopTest extends GraphTest {
@@ -142,7 +143,7 @@ public class NestedLoopTest extends GraphTest {
 
     private void test(String snippet, int rootExits, int nestedExits, int innerExits) {
         StructuredGraph graph = parse(snippet);
-        print(graph);
+        Debug.dump(graph, "Graph");
         LoopInfo loopInfo = LoopUtil.computeLoopInfo(graph);
         loopInfo.print();
         Loop rootLoop = loopInfo.rootLoops().get(0);
@@ -161,6 +162,6 @@ public class NestedLoopTest extends GraphTest {
         Assert.assertEquals(rootExits, rootLoop.exits().cardinality());
         Assert.assertEquals(nestedExits, nestedLoop.exits().cardinality());
         Assert.assertEquals(innerExits, innerMostLoop.exits().cardinality());
-        print(graph);
+        Debug.dump(graph, "Graph");
     }
 }

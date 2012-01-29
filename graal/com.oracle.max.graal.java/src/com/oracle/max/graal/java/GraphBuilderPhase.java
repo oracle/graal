@@ -36,6 +36,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.BlockMap.Block;
 import com.oracle.max.graal.java.BlockMap.DeoptBlock;
@@ -138,12 +139,12 @@ public final class GraphBuilderPhase extends Phase {
     private BlockMap createBlockMap() {
         BlockMap map = new BlockMap(method, config.useBranchPrediction());
         map.build();
-        currentContext.metrics.bytecodeCount += method.code().length;
 
-        if (currentContext.isObserved()) {
-            String label = CiUtil.format("BlockListBuilder %f %R %H.%n(%P)", method);
-            currentContext.observable.fireCompilationEvent(label, map);
-        }
+//        if (currentContext.isObserved()) {
+//            String label = CiUtil.format("BlockListBuilder %f %R %H.%n(%P)", method);
+//            currentContext.observable.fireCompilationEvent(label, map);
+//        }
+        // TODO(tw): Reinstall this logging code when debug framework is finished.
         return map;
     }
 
@@ -158,7 +159,6 @@ public final class GraphBuilderPhase extends Phase {
         this.canTrapBitSet = blockMap.canTrap;
 
         exceptionHandlers = blockMap.exceptionHandlers();
-        currentContext.metrics.blockCount += blockMap.blocks.size();
 
         nextBlockNumber = blockMap.blocks.size();
 
@@ -200,7 +200,6 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private int nextBlockNumber() {
-        currentContext.metrics.blockCount++;
         return nextBlockNumber++;
     }
 
@@ -606,9 +605,7 @@ public final class GraphBuilderPhase extends Phase {
         assert !x.isDeleted() && !y.isDeleted();
         double probability = method.branchProbability(bci());
         if (probability < 0) {
-            if (GraalOptions.TraceProbability) {
-                TTY.println("missing probability in " + method + " at bci " + bci());
-            }
+            Debug.log("missing probability in %s at bci %d", method, bci());
             probability = 0.5;
         }
 
@@ -892,9 +889,7 @@ public final class GraphBuilderPhase extends Phase {
             } else {
                 exception.exceptionEdge.setNext(createTarget(unwindBlock(bci()), frameState.duplicateWithException(bci(), exception.exception)));
             }
-            if (GraalOptions.Meter) {
-                currentContext.metrics.ExplicitExceptions++;
-            }
+            Debug.metric("ExplicitExceptions").increment();
         }
     }
 
@@ -1159,9 +1154,7 @@ public final class GraphBuilderPhase extends Phase {
         if (prob != null) {
             assert prob.length == numberOfCases;
         } else {
-            if (GraalOptions.TraceProbability) {
-                TTY.println("Missing probability (switch) in " + method + " at bci " + bci);
-            }
+            Debug.log("Missing probability (switch) in %s at bci %d", method, bci);
             prob = new double[numberOfCases];
             for (int i = 0; i < numberOfCases; i++) {
                 prob[i] = 1.0d / numberOfCases;

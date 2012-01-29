@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.tests;
 import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -143,7 +144,7 @@ public class IfCanonicalizerTest extends GraphTest {
                 n.replaceFirstInput(local, constant);
             }
         }
-        print(graph);
+        Debug.dump(graph, "Graph");
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);

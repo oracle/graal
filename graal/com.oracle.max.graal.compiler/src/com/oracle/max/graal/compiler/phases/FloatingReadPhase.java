@@ -25,10 +25,9 @@ package com.oracle.max.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.loop.*;
 import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
@@ -74,9 +73,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         public void mergeWith(MemoryMap otherMemoryMap, Block b) {
-            if (GraalOptions.TraceMemoryMaps) {
-                TTY.println("merging block " + otherMemoryMap.block + " into block " + block);
-            }
+            Debug.log("Merging block %s into block %s.", otherMemoryMap.block, block);
             IdentityHashMap<Object, Node> otherMap = otherMemoryMap.map;
 
             for (Map.Entry<Object, Node> entry : map.entrySet()) {
@@ -109,19 +106,14 @@ public class FloatingReadPhase extends Phase {
 
         private void mergeNodes(Object location, Node original, Node newValue, Block mergeBlock) {
             if (original == newValue) {
-                // Nothing to merge.
-                if (GraalOptions.TraceMemoryMaps) {
-                    TTY.println("Nothing to merge both nodes are " + original);
-                }
+                Debug.log("Nothing to merge both nodes are %s.", original);
                 return;
             }
             MergeNode m = (MergeNode) mergeBlock.firstNode();
             if (m.isPhiAtMerge(original)) {
                 PhiNode phi = (PhiNode) original;
                 phi.addInput((ValueNode) newValue);
-                if (GraalOptions.TraceMemoryMaps) {
-                    TTY.println("Add new input to " + original + ": " + newValue);
-                }
+                Debug.log("Add new input to %s: %s.", original, newValue);
                 assert phi.valueCount() <= phi.merge().endCount() : phi.merge();
             } else {
                 PhiNode phi = m.graph().unique(new PhiNode(CiKind.Illegal, m, PhiType.Memory));
@@ -129,9 +121,7 @@ public class FloatingReadPhase extends Phase {
                     phi.addInput((ValueNode) original);
                 }
                 phi.addInput((ValueNode) newValue);
-                if (GraalOptions.TraceMemoryMaps) {
-                    TTY.println("Creating new " + phi + " merge=" + phi.merge() + ", mergeOperationCount=" + mergeOperationCount + ", newValue=" + newValue + ", location=" + location);
-                }
+                Debug.log("Creating new %s merge=%s newValue=%s location=%s.", phi, phi.merge(), newValue, location);
                 assert phi.valueCount() <= phi.merge().endCount() + ((phi.merge() instanceof LoopBeginNode) ? 1 : 0) : phi.merge() + "/" + phi.valueCount() + "/" + phi.merge().endCount() + "/" + mergeOperationCount;
                 assert m.usages().contains(phi);
                 assert phi.merge().usages().contains(phi);
@@ -155,10 +145,7 @@ public class FloatingReadPhase extends Phase {
             StructuredGraph graph = (StructuredGraph) readNode.graph();
             assert readNode.getNullCheck() == false;
 
-            if (GraalOptions.TraceMemoryMaps) {
-                TTY.println("Register read to node " + readNode);
-            }
-
+            Debug.log("Register read to node %s.", readNode);
             FloatingReadNode floatingRead;
             if (readNode.location().locationIdentity() == LocationNode.FINAL_LOCATION) {
                 floatingRead = graph.unique(new FloatingReadNode(readNode.kind(), readNode.object(), readNode.guard(), readNode.location()));
@@ -245,13 +232,11 @@ public class FloatingReadPhase extends Phase {
             propagateFromChildren(loop, modifiedValues);
         }
 
-        if (GraalOptions.TraceMemoryMaps) {
-            print(loopInfo, modifiedValues);
-        }
+        Debug.log("Modified values: %s.", modifiedValues);
 
         // Identify blocks.
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
-        s.apply(graph, currentContext);
+        s.apply(graph);
         List<Block> blocks = s.getBlocks();
 
         // Process blocks (predecessors first).
@@ -341,15 +326,6 @@ public class FloatingReadPhase extends Phase {
 
     private static void traceWrite(Loop loop, Object locationIdentity, HashMap<Loop, Set<Object>> modifiedValues) {
         modifiedValues.get(loop).add(locationIdentity);
-    }
-
-    private static void print(LoopInfo loopInfo, HashMap<Loop, Set<Object>> modifiedValues) {
-        TTY.println();
-        TTY.println("Loops:");
-        for (Loop loop : loopInfo.loops()) {
-            TTY.print(loop + " modified values: " + modifiedValues.get(loop));
-            TTY.println();
-        }
     }
 
     private void mark(LoopBeginNode begin, LoopBeginNode outer, NodeMap<LoopBeginNode> nodeToLoop) {

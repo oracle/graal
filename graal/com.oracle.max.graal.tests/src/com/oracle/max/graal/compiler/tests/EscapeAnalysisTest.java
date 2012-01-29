@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.java.*;
 
@@ -122,9 +123,9 @@ public class EscapeAnalysisTest extends GraphTest {
 
         new InliningPhase(null, runtime(), null, null, getDefaultPhasePlan()).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
-        print(graph);
+        Debug.dump(graph, "Graph");
         new EscapeAnalysisPhase(null, runtime(), null, getDefaultPhasePlan()).apply(graph);
-        print(graph);
+        Debug.dump(graph, "Graph");
         int retCount = 0;
         for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
             Assert.assertTrue(ret.result().isConstant());
