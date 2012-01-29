@@ -26,20 +26,29 @@ import com.oracle.max.graal.debug.*;
 
 public final class TimerImpl extends DebugValue implements DebugTimer {
 
-    private long startTime = -1;
+    public static final TimerCloseable VOID_CLOSEABLE = new TimerCloseable() {
+        @Override
+        public void close() {
+        }
+    };
 
     public TimerImpl(String name) {
         super(name);
     }
 
     @Override
-    public void start() {
-        startTime = System.currentTimeMillis();
-    }
-
-    @Override
-    public void stop() {
-        long timeSpan = System.currentTimeMillis() - startTime;
-        super.addToCurrentValue(timeSpan);
+    public TimerCloseable start() {
+        if (Debug.isTimeEnabled()) {
+            final long startTime = System.currentTimeMillis();
+            return new TimerCloseable() {
+                @Override
+                public void close() {
+                    long timeSpan = System.currentTimeMillis() - startTime;
+                    TimerImpl.this.addToCurrentValue(timeSpan);
+                }
+            };
+        } else {
+            return VOID_CLOSEABLE;
+        }
     }
 }

@@ -22,11 +22,19 @@
  */
 package com.oracle.max.graal.debug.internal;
 
-import java.util.Arrays;
+import java.util.*;
 
 public class DebugValueMap {
 
+    private static List<DebugValueMap> topLevelMaps = new ArrayList<>();
+
     private long[] values;
+    private List<DebugValueMap> children;
+    private String name;
+
+    public DebugValueMap(String name) {
+        this.name = name;
+    }
 
     public void setCurrentValue(int index, long l) {
         ensureSize(index);
@@ -44,6 +52,98 @@ public class DebugValueMap {
         }
         if (values.length <= index) {
             values = Arrays.copyOf(values, index + 1);
+        }
+    }
+
+    private int capacity() {
+        return (values == null) ? 0 : values.length;
+    }
+
+    public void addChild(DebugValueMap map) {
+        if (children == null) {
+            children = new ArrayList<>(4);
+        }
+        children.add(map);
+    }
+
+    public List<DebugValueMap> getChildren() {
+        if (children == null) {
+            return Collections.emptyList();
+        } else {
+            return Collections.unmodifiableList(children);
+        }
+    }
+
+    public boolean hasChildren() {
+        return children != null && !children.isEmpty();
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    @Override
+    public String toString() {
+        return "DebugValueMap<" + getName() + ">";
+    }
+
+    public static synchronized void registerTopLevel(DebugValueMap map) {
+        topLevelMaps.add(map);
+    }
+
+    public static synchronized List<DebugValueMap> getTopLevelMaps() {
+        return topLevelMaps;
+    }
+
+    public void normalize() {
+        if (this.hasChildren()) {
+            Map<String, DebugValueMap> occurred = new HashMap<>();
+            for (DebugValueMap map : this.children) {
+                String mapName = map.getName();
+                if (!occurred.containsKey(mapName)) {
+                    occurred.put(mapName, map);
+                    map.normalize();
+                } else {
+                    occurred.get(mapName).mergeWith(map);
+                    occurred.get(mapName).normalize();
+                }
+            }
+
+            if (occurred.values().size() < children.size()) {
+                // At least one duplicate was found.
+                children.clear();
+                for (DebugValueMap map : occurred.values()) {
+                    children.add(map);
+                    map.normalize();
+                }
+            }
+        }
+    }
+
+    private void mergeWith(DebugValueMap map) {
+        if (map.hasChildren()) {
+            if (hasChildren()) {
+                children.addAll(map.children);
+            } else {
+                children = map.children;
+            }
+            map.children = null;
+        }
+
+        int size = Math.max(this.capacity(), map.capacity());
+        ensureSize(size);
+        for (int i = 0; i < size; ++i) {
+            long curValue = getCurrentValue(i);
+            long otherValue = map.getCurrentValue(i);
+            setCurrentValue(i, curValue + otherValue);
+        }
+    }
+
+    public void group() {
+        List<DebugValueMap> oldChildren = new ArrayList<>(this.children);
+        this.children.clear();
+        for (DebugValueMap map : oldChildren) {
+            mergeWith(map);
         }
     }
 }

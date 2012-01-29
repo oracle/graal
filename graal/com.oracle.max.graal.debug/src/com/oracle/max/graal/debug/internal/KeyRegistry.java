@@ -22,19 +22,22 @@
  */
 package com.oracle.max.graal.debug.internal;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class KeyRegistry {
-
     private static int keyCount;
     private static Map<String, Integer> keyMap = new HashMap<>();
+    private static List<DebugValue> debugValues = new ArrayList<>();
 
-    public static synchronized int register(String name) {
+    public static synchronized int register(String name, DebugValue value) {
         if (!keyMap.containsKey(name)) {
             keyMap.put(name, keyCount++);
+            debugValues.add(value);
         }
         return keyMap.get(name);
     }
 
+    public static synchronized List<DebugValue> getDebugValues() {
+        return Collections.unmodifiableList(debugValues);
+    }
 }

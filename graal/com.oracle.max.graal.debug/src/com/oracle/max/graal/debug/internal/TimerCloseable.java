@@ -22,21 +22,6 @@
  */
 package com.oracle.max.graal.debug.internal;
 
-import com.oracle.max.graal.debug.*;
-
-public final class MetricImpl extends DebugValue implements DebugMetric {
-
-    public MetricImpl(String name) {
-        super(name);
-    }
-
-    public void increment() {
-        add(1);
-    }
-
-    public void add(int value) {
-        if (Debug.isMeterEnabled()) {
-            super.addToCurrentValue(value);
-        }
-    }
+public interface TimerCloseable extends AutoCloseable {
+    void close();
 }

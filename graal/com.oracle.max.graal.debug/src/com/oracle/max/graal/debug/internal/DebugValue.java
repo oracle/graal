@@ -44,11 +44,19 @@ public class DebugValue {
 
     private void ensureInitialized() {
         if (index == -1) {
-            index = KeyRegistry.register(name);
+            index = KeyRegistry.register(name, this);
         }
     }
 
     protected void addToCurrentValue(long timeSpan) {
         setCurrentValue(getCurrentValue() + timeSpan);
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public String getName() {
+        return name;
     }
 }

@@ -24,6 +24,7 @@
 package com.oracle.max.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
@@ -33,6 +34,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.debug.internal.*;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
@@ -59,12 +61,15 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     public final HotSpotTypePrimitive typeVoid;
 
     ThreadFactory compilerThreadFactory = new ThreadFactory() {
+
         @Override
         public Thread newThread(Runnable r) {
             return new CompilerThread(r);
         }
     };
+
     private final class CompilerThread extends Thread {
+
         public CompilerThread(Runnable r) {
             super(r);
             this.setName("GraalCompilerThread-" + this.getId());
@@ -81,6 +86,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             super.run();
         }
     }
+
     private ThreadPoolExecutor compileQueue;
 
     public VMToCompilerImpl(Compiler compiler) {
@@ -115,6 +121,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         // Create queue status printing thread.
         if (GraalOptions.PrintQueue) {
             Thread t = new Thread() {
+
                 @Override
                 public void run() {
                     while (true) {
@@ -132,9 +139,9 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     /**
-     * This method is the first method compiled during bootstrapping. Put any code in there that
-     * warms up compiler paths that are otherwise no exercised during bootstrapping and lead to later
-     * deoptimization when application code is compiled.
+     * This method is the first method compiled during bootstrapping. Put any code in there that warms up compiler paths
+     * that are otherwise no exercised during bootstrapping and lead to later deoptimization when application code is
+     * compiled.
      */
     @SuppressWarnings("unused")
     @Deprecated
@@ -175,9 +182,46 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     public void shutdownCompiler() throws Throwable {
-//        compiler.getCompiler().context.print();
+// compiler.getCompiler().context.print();
         // TODO(tw): Print context results.
         compileQueue.shutdown();
+
+        if (Debug.isEnabled()) {
+            List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
+            List<DebugValue> debugValues = KeyRegistry.getDebugValues();
+            if (debugValues.size() > 0) {
+                for (DebugValueMap map : topLevelMaps) {
+                    TTY.println("Showing the results for thread: " + map.getName());
+                    map.group();
+                    map.normalize();
+                    printMap(map, debugValues, 0);
+                }
+            }
+        }
+    }
+
+    private void printMap(DebugValueMap map, List<DebugValue> debugValues, int level) {
+
+        printIndent(level);
+        TTY.println(map.getName());
+        for (DebugValue value : debugValues) {
+            long l = map.getCurrentValue(value.getIndex());
+            if (l != 0) {
+                printIndent(level + 1);
+                TTY.println(value.getName() + "=" + l);
+            }
+        }
+
+        for (DebugValueMap child : map.getChildren()) {
+            printMap(child, debugValues, level + 1);
+        }
+    }
+
+    private static void printIndent(int level) {
+        for (int i = 0; i < level; ++i) {
+            TTY.print("    ");
+        }
+        TTY.print("|-> ");
     }
 
     @Override
@@ -188,6 +232,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             }
 
             Runnable runnable = new Runnable() {
+
                 public void run() {
                     try {
                         PhasePlan plan = new PhasePlan();
@@ -197,11 +242,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         int index = compiledMethodCount++;
                         final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
                         if (printCompilation) {
-                            TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...",
-                                            index,
-                                            method.holder().name(),
-                                            method.name(),
-                                            method.signature().asString()));
+                            TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...", index, method.holder().name(), method.name(), method.signature().asString()));
                             startTime = System.nanoTime();
                         }
 
@@ -213,15 +254,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                             filter.remove();
                             if (printCompilation) {
                                 long time = (System.nanoTime() - startTime) / 100000;
-                                TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB",
-                                                index,
-                                                "",
-                                                "",
-                                                "",
-                                                time / 10,
-                                                time % 10,
-                                                0,
-                                                (result != null ? result.targetCodeSize() : -1)));
+                                TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB", index, "", "", "", time / 10, time % 10, 0, (result != null ? result.targetCodeSize()
+                                                : -1)));
                             }
                         }
                         compiler.getRuntime().installMethod(method, result);

@@ -22,7 +22,8 @@
  */
 package com.oracle.max.graal.debug;
 
+import com.oracle.max.graal.debug.internal.*;
+
 public interface DebugTimer {
-    void start();
-    void stop();
+    TimerCloseable start();
 }
