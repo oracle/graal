@@ -154,6 +154,29 @@ public class ArrayCopySnippets implements SnippetsInterface{
     }
 
     @Snippet
+    public static void arraycopy(float[] src, int srcPos, float[] dest, int destPos, int length) {
+        if (src == null || dest == null) {
+            throw new NullPointerException();
+        }
+        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (src == dest && srcPos < destPos) { // bad aliased case
+            if ((length & 0x01) == 0) {
+                copyLongsDown(src, srcPos * 4L, dest, destPos * 4L, length >> 1);
+            } else {
+                copyIntsDown(src, srcPos * 4L, dest, destPos * 4L, length);
+            }
+        } else {
+            if ((length & 0x01) == 0) {
+                copyLongsUp(src, srcPos * 4L, dest, destPos * 4L, length >> 1);
+            } else {
+                copyIntsUp(src, srcPos * 4L, dest, destPos * 4L, length);
+            }
+        }
+    }
+
+    @Snippet
     public static void arraycopy(long[] src, int srcPos, long[] dest, int destPos, int length) {
         if (src == null || dest == null) {
             throw new NullPointerException();
@@ -165,6 +188,37 @@ public class ArrayCopySnippets implements SnippetsInterface{
             copyLongsDown(src, srcPos * 8L, dest, destPos * 8L, length);
         } else {
             copyLongsUp(src, srcPos * 8L, dest, destPos * 8L, length);
+        }
+    }
+
+    @Snippet
+    public static void arraycopy(double[] src, int srcPos, double[] dest, int destPos, int length) {
+        if (src == null || dest == null) {
+            throw new NullPointerException();
+        }
+        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (src == dest && srcPos < destPos) { // bad aliased case
+            copyLongsDown(src, srcPos * 8L, dest, destPos * 8L, length);
+        } else {
+            copyLongsUp(src, srcPos * 8L, dest, destPos * 8L, length);
+        }
+    }
+
+    // Does NOT perform store checks
+    @Snippet
+    public static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
+        if (src == null || dest == null) {
+            throw new NullPointerException();
+        }
+        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (src == dest && srcPos < destPos) { // bad aliased case
+            copyObjectsDown(src, srcPos * 8L, dest, destPos * 8L, length);
+        } else {
+            copyObjectsUp(src, srcPos * 8L, dest, destPos * 8L, length);
         }
     }
 
@@ -201,6 +255,16 @@ public class ArrayCopySnippets implements SnippetsInterface{
         for (long i = (length - 1) * 8; i >= 0; i -= 8) {
             Long a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Long);
             UnsafeStoreNode.store(dest, i + (destOffset + header), a.longValue(), CiKind.Long);
+        }
+    }
+
+    // Does NOT perform store checks
+    @Snippet
+    public static void copyObjectsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
+        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
+        for (long i = (length - 1) * 8; i >= 0; i -= 8) {
+            Object a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Object);
+            UnsafeStoreNode.store(dest, i + (destOffset + header), a, CiKind.Object);
         }
     }
 
@@ -253,6 +317,16 @@ public class ArrayCopySnippets implements SnippetsInterface{
         for (long i = 0; i < length * 8L; i += 8) {
             Long a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Long);
             UnsafeStoreNode.store(dest, i + (destOffset + header), a.longValue(), CiKind.Long);
+        }
+    }
+
+    // Does NOT perform store checks
+    @Snippet
+    public static void copyObjectsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
+        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
+        for (long i = 0; i < length * 8L; i += 8) {
+            Object a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Object);
+            UnsafeStoreNode.store(dest, i + (destOffset + header), a, CiKind.Object);
         }
     }
 }
