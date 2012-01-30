@@ -392,7 +392,7 @@ public class InliningUtil {
             InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
             if (unwindNode != null) {
                 assert unwindNode.predecessor() != null;
-                assert invokeWithException.exceptionEdge().successors().explicitCount() == 1;
+                assert invokeWithException.exceptionEdge().successors().count() == 1;
                 ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge().next();
                 stateAtExceptionEdge = obj.stateAfter();
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);

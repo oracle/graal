@@ -45,12 +45,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     public LoopEndNode loopEnd() {
-        for (LoopEndNode end : usages().filter(LoopEndNode.class)) {
-            if (end.loopBegin() == this) {
-                return end;
-            }
-        }
-        return null;
+        return usages().filter(LoopEndNode.class).first();
     }
 
     @Override
@@ -83,11 +78,6 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         throw ValueUtil.shouldNotReachHere();
     }
 
-    @Override
-    public Iterable<? extends Node> phiPredecessors() {
-        return Arrays.asList(new Node[]{this.forwardEdge(), this.loopEnd()});
-    }
-
     public EndNode forwardEdge() {
         return this.endAt(0);
     }
@@ -96,7 +86,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     public boolean verify() {
         assertTrue(loopEnd() != null, "missing loopEnd");
         assertTrue(forwardEdge() != null, "missing forwardEdge");
-        assertTrue(usages().filter(LoopEndNode.class).snapshot().size() == 1, "multiple loop ends");
+        assertTrue(usages().filter(LoopEndNode.class).count() == 1, "multiple loop ends");
         return super.verify();
     }
 

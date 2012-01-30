@@ -28,20 +28,10 @@ import com.oracle.max.graal.graph.*;
 
 public class FilteredNodeIterable<T extends Node> extends NodeIterable<T> {
     private final NodeIterable<T> nodeIterable;
-    private NodePredicate predicate = NodePredicate.TAUTOLOGY;
+    private NodePredicate predicate = NodePredicates.alwaysTrue();
+    private NodePredicate until = NodePredicates.isNull();
     public FilteredNodeIterable(NodeIterable<T> nodeIterable) {
         this.nodeIterable = nodeIterable;
-        this.until = nodeIterable.until;
-    }
-    @SuppressWarnings("unchecked")
-    public <F extends T> FilteredNodeIterable<F> and(Class<F> clazz) {
-        this.predicate = predicate.and(new TypePredicate(clazz));
-        return (FilteredNodeIterable<F>) this;
-    }
-    @SuppressWarnings("unchecked")
-    public FilteredNodeIterable<Node> or(Class<? extends Node> clazz) {
-        this.predicate = predicate.or(new TypePredicate(clazz));
-        return (FilteredNodeIterable<Node>) this;
     }
     public FilteredNodeIterable<T> and(NodePredicate nodePredicate) {
         this.predicate = this.predicate.and(nodePredicate);
@@ -52,8 +42,34 @@ public class FilteredNodeIterable<T extends Node> extends NodeIterable<T> {
         return this;
     }
     @Override
+    public NodeIterable<T> until(final T u) {
+        until = until.or(NodePredicates.equals(u));
+        return this;
+    }
+    @Override
+    public NodeIterable<T> until(final Class<? extends T> clazz) {
+        until = until.or(NodePredicates.isA(clazz));
+        return this;
+    }
+    @Override
     public Iterator<T> iterator() {
         final Iterator<T> iterator = nodeIterable.iterator();
         return new PredicatedProxyNodeIterator<>(until, iterator, predicate);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <F extends T> FilteredNodeIterable<F> filter(Class<F> clazz) {
+        return (FilteredNodeIterable<F>) this.and(NodePredicates.isA(clazz));
+    }
+
+    @Override
+    public FilteredNodeIterable<T> filter(NodePredicate p) {
+        return this.and(p);
+    }
+
+    @Override
+    public FilteredNodeIterable<T> filterInterface(Class< ? > iface) {
+        return this.and(NodePredicates.isAInterface(iface));
     }
 }

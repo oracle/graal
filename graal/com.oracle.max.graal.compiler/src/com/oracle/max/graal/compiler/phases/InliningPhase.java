@@ -133,11 +133,8 @@ public class InliningPhase extends Phase implements InliningCallback {
                     Invoke invoke = (Invoke) node;
                     scanInvoke(invoke, level);
                 }
-                for (Node usage : node.usages().snapshot()) {
-                    if (usage instanceof Invoke) {
-                        Invoke invoke = (Invoke) usage;
-                        scanInvoke(invoke, level);
-                    }
+                for (Node usage : node.usages().filterInterface(Invoke.class).snapshot()) {
+                    scanInvoke((Invoke) usage, level);
                 }
             }
         }
@@ -149,7 +146,6 @@ public class InliningPhase extends Phase implements InliningCallback {
             if (GraalOptions.Meter) {
                 currentContext.metrics.InlineConsidered++;
             }
-
             inlineCandidates.add(info);
         }
     }

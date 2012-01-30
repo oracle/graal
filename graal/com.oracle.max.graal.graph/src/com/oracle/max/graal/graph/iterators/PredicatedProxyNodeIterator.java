@@ -29,8 +29,9 @@ import com.oracle.max.graal.graph.*;
 public final class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T> {
     private final Iterator<T> iterator;
     private final NodePredicate predicate;
+    private final NodePredicate until;
     public PredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {
-        super(until);
+        this.until = until;
         this.iterator = iterator;
         this.predicate = predicate;
     }
@@ -39,7 +40,7 @@ public final class PredicatedProxyNodeIterator<T extends Node> extends NodeItera
         while ((current == null || !current.isAlive() || !predicate.apply(current)) && iterator.hasNext()) {
             current = iterator.next();
         }
-        if (current != null && (!current.isAlive() || !predicate.apply(current))) {
+        if (current != null && (!current.isAlive() || !predicate.apply(current) || until.apply(current))) {
             current = null;
         }
     }

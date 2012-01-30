@@ -297,7 +297,7 @@ class IdealGraphPrinter {
                 Position position = inputIter.nextPosition();
                 Node input = node.getNodeClass().get(node, position);
                 if (input != null && !omittedClasses.contains(input.getClass())) {
-                    edges.add(new Edge(input.toString(Verbosity.Id), input.successors().explicitCount(), node.toString(Verbosity.Id), toIndex, node.getNodeClass().getName(position)));
+                    edges.add(new Edge(input.toString(Verbosity.Id), input.successors().count(), node.toString(Verbosity.Id), toIndex, node.getNodeClass().getName(position)));
                 }
                 toIndex++;
             }

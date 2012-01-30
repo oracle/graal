@@ -305,7 +305,7 @@ public class EscapeAnalysisPhase extends Phase {
     private static Node escape(EscapeRecord record, Node usage) {
         final Node node = record.node;
         if (usage instanceof FrameState) {
-            assert ((FrameState) usage).inputs().contains(node);
+            assert usage.inputs().contains(node);
             return null;
         } else {
             if (usage instanceof FixedNode) {

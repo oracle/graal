@@ -22,9 +22,10 @@
  */
 package com.oracle.max.graal.compiler.tests;
 
-import junit.framework.AssertionFailedError;
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+import junit.framework.*;
 
-import org.junit.*;
+import org.junit.Test;
 
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.graph.*;
@@ -83,12 +84,8 @@ public class DegeneratedLoopsTest extends GraphTest {
         print(graph);
         LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : local.usages().snapshot()) {
-            if (n instanceof FrameState) {
-                // Do not replace.
-            } else {
-                n.replaceFirstInput(local, constant);
-            }
+        for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
+            n.replaceFirstInput(local, constant);
         }
         for (Invoke invoke : graph.getInvokes()) {
             invoke.intrinsify(null);

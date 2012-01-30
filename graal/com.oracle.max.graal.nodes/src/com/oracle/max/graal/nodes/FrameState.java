@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.virtual.*;
@@ -455,9 +456,8 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
     public void deleteRedundantPhi(PhiNode redundantPhi, ValueNode phiValue) {
         Collection<PhiNode> phiUsages = redundantPhi.usages().filter(PhiNode.class).snapshot();
         ((StructuredGraph) graph()).replaceFloating(redundantPhi, phiValue);
-        for (Node n : phiUsages) {
-            PhiNode phiNode = (PhiNode) n;
-            checkRedundantPhi(phiNode);
+        for (PhiNode phi : phiUsages) {
+            checkRedundantPhi(phi);
         }
     }
 
@@ -488,48 +488,11 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
     }
 
     public StateSplit stateSplit() {
-        for (Node n : usages()) {
-            if (n instanceof StateSplit) {
-                return (StateSplit) n;
-            }
-        }
-        return null;
+        return (StateSplit) usages().filterInterface(StateSplit.class).first();
     }
 
-    public Iterable<FrameState> innerFrameStates() {
-        final Iterator<Node> iterator = usages().iterator();
-        return new Iterable<FrameState>() {
-            @Override
-            public Iterator<FrameState> iterator() {
-                return new Iterator<FrameState>() {
-                    private Node next;
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                    @Override
-                    public FrameState next() {
-                        forward();
-                        if (!hasNext()) {
-                            throw new NoSuchElementException();
-                        }
-                        FrameState res = (FrameState) next;
-                        next = null;
-                        return res;
-                    }
-                    @Override
-                    public boolean hasNext() {
-                        forward();
-                        return next != null;
-                    }
-                    private void forward() {
-                        while (!(next instanceof FrameState) && iterator.hasNext()) {
-                            next = iterator.next();
-                        }
-                    }
-                };
-            }
-        };
+    public NodeIterable<FrameState> innerFrameStates() {
+        return usages().filter(FrameState.class);
     }
 
     /**

@@ -179,10 +179,8 @@ public class IdentifyBlocksPhase extends Phase {
         }
 
         if (n instanceof MergeNode) {
-            for (Node usage : n.usages()) {
-                if (usage instanceof PhiNode) {
-                    nodeToBlock.set(usage, b);
-                }
+            for (PhiNode phi : ((MergeNode) n).phis()) {
+                nodeToBlock.set(phi, b);
             }
         }
         if (n instanceof EndNode) {

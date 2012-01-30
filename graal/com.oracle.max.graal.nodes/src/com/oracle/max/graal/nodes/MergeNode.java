@@ -59,12 +59,8 @@ public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLo
         return ends.get(index);
     }
 
-    public Iterable<? extends Node> phiPredecessors() {
-        return ends;
-    }
-
     @Override
-    public Iterable<EndNode> cfgPredecessors() {
+    public NodeIterable<EndNode> cfgPredecessors() {
         return ends;
     }
 

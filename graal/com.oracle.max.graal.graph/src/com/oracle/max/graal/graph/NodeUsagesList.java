@@ -58,6 +58,11 @@ public final class NodeUsagesList extends NodeIterable<Node> {
         return size > 0;
     }
 
+    @Override
+    public int count() {
+        return size;
+    }
+
     protected void incModCount() {
         modCount++;
     }
@@ -140,6 +145,7 @@ public final class NodeUsagesList extends NodeIterable<Node> {
         };
     }
 
+    @Override
     public boolean contains(Node other) {
         for (int i = 0; i < size; i++) {
             if (nodes[i] == other) {

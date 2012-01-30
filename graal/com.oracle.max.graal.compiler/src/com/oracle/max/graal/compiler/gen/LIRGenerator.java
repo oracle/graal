@@ -394,7 +394,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         if (block.numberOfSux() >= 1 && !block.endsWithJump()) {
             NodeSuccessorsIterable successors = block.lastNode().successors();
-            assert successors.explicitCount() >= 1 : "should have at least one successor : " + block.lastNode();
+            assert successors.count() >= 1 : "should have at least one successor : " + block.lastNode();
 
             emitJump(getLIRBlock((FixedNode) successors.first()), null);
         }

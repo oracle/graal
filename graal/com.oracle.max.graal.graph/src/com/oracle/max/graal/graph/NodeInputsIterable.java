@@ -26,9 +26,6 @@ import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.iterators.*;
 
 public abstract class NodeInputsIterable extends NodeIterable<Node> {
-
-    public abstract boolean contains(Node node);
-
     @Override
     public abstract NodeClassIterator iterator();
 }

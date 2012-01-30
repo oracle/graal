@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
@@ -235,8 +237,8 @@ public class CanonicalizerPhase extends Phase {
             if (node instanceof PhiNode) {
                 node.replaceFirstInput(input, null);
             } else {
-                for (Node usage : node.usages().snapshot()) {
-                    if ((usage instanceof FloatingNode || usage instanceof CallTargetNode) && !usage.isDeleted()) {
+                for (Node usage : node.usages().filter(isA(FloatingNode.class).or(CallTargetNode.class)).snapshot()) {
+                    if (!usage.isDeleted()) {
                         killNonCFG(usage, node);
                     }
                 }

@@ -106,10 +106,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     public Invoke invoke() {
-        if (this.usages().size() == 0) {
-            return null;
-        }
-        return (Invoke) this.usages().iterator().next();
+        return (Invoke) this.usages().first();
     }
 
 

@@ -44,7 +44,7 @@ public abstract class EscapeOp {
             assert ((IsTypeNode) usage).object() == node;
             return false;
         } else if (usage instanceof FrameState) {
-            assert ((FrameState) usage).inputs().contains(node);
+            assert usage.inputs().contains(node);
             return true;
         } else if (usage instanceof AccessMonitorNode) {
             assert ((AccessMonitorNode) usage).object() == node;

@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.tests;
 
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import org.junit.*;
@@ -96,12 +98,8 @@ public class BoxingEliminationTest extends GraphTest {
         identifyBoxingPhase.apply(graph);
         LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : local.usages().snapshot()) {
-            if (n instanceof FrameState) {
-                // Do not replace.
-            } else {
-                n.replaceFirstInput(local, constant);
-            }
+        for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
+            n.replaceFirstInput(local, constant);
         }
         Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {

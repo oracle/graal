@@ -22,11 +22,14 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.*;
 import com.oracle.max.graal.nodes.extended.*;
@@ -106,11 +109,9 @@ public class BoxingEliminationPhase extends Phase {
 
         virtualizeUsages(boxNode, boxNode.source(), boxNode.exactType());
 
-        for (Node n : boxNode.usages()) {
-            if (!(n instanceof FrameState) && !(n instanceof VirtualObjectFieldNode)) {
-                // Elimination failed, because boxing object escapes.
-                return;
-            }
+        if (boxNode.usages().filter(isNotA(FrameState.class).nor(VirtualObjectFieldNode.class)).isNotEmpty()) {
+            // Elimination failed, because boxing object escapes.
+            return;
         }
 
         // TODO(ls) this seems weird: there might still be references to boxNode, yet it is deleted...
@@ -125,7 +126,7 @@ public class BoxingEliminationPhase extends Phase {
     private static void virtualizeUsages(ValueNode boxNode, ValueNode replacement, RiResolvedType exactType) {
         ValueNode virtualValueNode = null;
         VirtualObjectNode virtualObjectNode = null;
-        for (Node n : boxNode.usages().filter(FrameState.class).or(VirtualObjectFieldNode.class).snapshot()) {
+        for (Node n : boxNode.usages().filter(NodePredicates.isA(FrameState.class).or(VirtualObjectFieldNode.class)).snapshot()) {
             if (virtualValueNode == null) {
                 virtualObjectNode = n.graph().unique(new BoxedVirtualObjectNode(exactType, replacement));
             }
