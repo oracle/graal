@@ -37,9 +37,15 @@ import com.oracle.max.graal.compiler.util.*;
  * Performs a hard-coded tail call to the specified target, which normally should be an RiCompiledCode instance.
  */
 public class AMD64TailcallOp extends AMD64LIRInstruction {
+
     public AMD64TailcallOp(List<CiValue> parameters, CiValue target, CiValue[] callingConvention) {
         super("TAILCALL", LIRInstruction.NO_OPERANDS, null, toArray(parameters, target), LIRInstruction.NO_OPERANDS, callingConvention.clone());
         assert inputs.length == temps.length + 1;
+
+        for (int i = 0; i < temps.length; i++) {
+            assert isRegister(temps[i]) : "too many parameters for tail call";
+            assert sameRegister(temps[i], inputs[i]) : "inputs do not match calling convention";
+        }
     }
 
     private static CiValue[] toArray(List<CiValue> parameters, CiValue target) {
@@ -51,19 +57,6 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // move all parameters to the correct positions, according to the calling convention
-        // TODO: These moves should not be part of the TAILCALL opcode, but emitted as separate MOVE instructions before.
-        for (int i = 0; i < inputs.length - 1; i++) {
-            assert inputs[i].kind == CiKind.Object || inputs[i].kind == CiKind.Int || inputs[i].kind == CiKind.Long : "only Object, int and long supported for now";
-            assert isRegister(temps[i]) : "too many parameters";
-            if (isRegister(inputs[i])) {
-                if (inputs[i] != temps[i]) {
-                    masm.movq(asRegister(temps[i]), asRegister(inputs[i]));
-                }
-            } else {
-                masm.movq(asRegister(temps[i]), tasm.asAddress(inputs[i]));
-            }
-        }
         // destroy the current frame (now the return address is the top of stack)
         masm.leave();
 
@@ -74,10 +67,10 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
 
     @Override
     protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-        if (mode == OperandMode.Input && index == 0) {
-            return EnumSet.of(OperandFlag.Register, OperandFlag.Constant, OperandFlag.Stack);
-        } else if (mode == OperandMode.Temp && index == 0) {
-            return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+        if (mode == OperandMode.Input) {
+            return EnumSet.of(OperandFlag.Register);
+        } else if (mode == OperandMode.Temp) {
+            return EnumSet.of(OperandFlag.Register);
         }
         throw Util.shouldNotReachHere();
     }

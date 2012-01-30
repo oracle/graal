@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.alloc.simple.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
@@ -39,18 +38,22 @@ import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 
 public final class IntervalPrinter {
 
-    public static void printBeforeAllocation(String label, GraalContext context, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
-        if (context.isObserved()) {
-            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
-            context.observable.fireCompilationEvent(label, lir, printer.execute());
-        }
+    @SuppressWarnings("unused")
+    public static void printBeforeAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
+        // TODO(tw): Fix printing.
+//        if (context.isObserved()) {
+//            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
+//            context.observable.fireCompilationEvent(label, lir, printer.execute());
+//        }
     }
 
-    public static void printAfterAllocation(String label, GraalContext context, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
-        if (context.isObserved()) {
-            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
-            context.observable.fireCompilationEvent(label, lir, printer.execute());
-        }
+    @SuppressWarnings("unused")
+    public static void printAfterAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
+        // TODO(tw): Fix printing.
+//        if (context.isObserved()) {
+//            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
+//            context.observable.fireCompilationEvent(label, lir, printer.execute());
+//        }
     }
 
 

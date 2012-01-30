@@ -657,12 +657,9 @@ public final class Interval {
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final Interval EndMarker = new Interval(null, CiValue.IllegalValue, -1);
+    static final Interval EndMarker = new Interval(CiValue.IllegalValue, -1);
 
-    Interval(GraalContext context, CiValue operand, int operandNumber) {
-        if (GraalOptions.Meter && context != null) {
-            context.metrics.LSRAIntervalsCreated++;
-        }
+    Interval(CiValue operand, int operandNumber) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;

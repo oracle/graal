@@ -28,6 +28,7 @@ import junit.framework.*;
 import org.junit.Test;
 
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -81,7 +82,7 @@ public class DegeneratedLoopsTest extends GraphTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        print(graph);
+        Debug.dump(graph, "Graph");
         LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
         for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
@@ -91,7 +92,7 @@ public class DegeneratedLoopsTest extends GraphTest {
             invoke.intrinsify(null);
         }
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET); print(referenceGraph);
+        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET); Debug.dump(referenceGraph, "Graph");
         assertEquals(referenceGraph, graph);
     }
 }

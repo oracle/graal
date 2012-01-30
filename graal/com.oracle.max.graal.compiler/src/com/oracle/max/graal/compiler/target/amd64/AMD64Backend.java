@@ -27,7 +27,6 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.*;
@@ -47,8 +46,8 @@ public class AMD64Backend extends Backend {
      * @return an appropriate LIR generator instance
      */
     @Override
-    public LIRGenerator newLIRGenerator(GraalContext context, Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
-        return new AMD64LIRGenerator(context, graph, runtime, target, frameMap, method, lir, xir);
+    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
+        return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir);
     }
 
     @Override

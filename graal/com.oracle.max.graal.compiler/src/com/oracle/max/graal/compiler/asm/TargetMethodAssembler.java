@@ -34,6 +34,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIR.SlowPath;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 
 public class TargetMethodAssembler {
 
@@ -46,10 +47,7 @@ public class TargetMethodAssembler {
 
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
-    private final GraalContext context;
-
-    public TargetMethodAssembler(GraalContext context, CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
-        this.context = context;
+    public TargetMethodAssembler(CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
         this.target = target;
         this.runtime = runtime;
         this.frameMap = frameMap;
@@ -84,13 +82,11 @@ public class TargetMethodAssembler {
             }
         }
 
-        if (GraalOptions.Meter) {
-            context.metrics.TargetMethods++;
-            context.metrics.CodeBytesEmitted += targetMethod.targetCodeSize();
-            context.metrics.SafepointsEmitted += targetMethod.safepoints.size();
-            context.metrics.DataPatches += targetMethod.dataReferences.size();
-            context.metrics.ExceptionHandlersEmitted += targetMethod.exceptionHandlers.size();
-        }
+        Debug.metric("TargetMethods").increment();
+        Debug.metric("CodeBytesEmitted").add(targetMethod.targetCodeSize());
+        Debug.metric("SafepointsEmitted").add(targetMethod.safepoints.size());
+        Debug.metric("DataPatches").add(targetMethod.dataReferences.size());
+        Debug.metric("ExceptionHandlersEmitted").add(targetMethod.exceptionHandlers.size());
 
         if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
             Util.printSection("Target Method", Util.SECTION_CHARACTER);
@@ -181,13 +177,8 @@ public class TargetMethodAssembler {
 
     public CiAddress recordDataReferenceInCode(CiConstant data, int alignment) {
         assert data != null;
-
         int pos = asm.codeBuffer.position();
-
-        if (GraalOptions.TraceRelocation) {
-            TTY.print("Data reference in code: pos = %d, data = %s", pos, data.toString());
-        }
-
+        Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
         targetMethod.recordDataReference(pos, data, alignment);
         return CiAddress.Placeholder;
     }

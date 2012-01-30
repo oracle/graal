@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.tests;
 
 import org.junit.*;
 
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 
 /**
@@ -66,7 +67,7 @@ public class PhiCreationTests extends GraphTest {
     @Test
     public void test3() {
         StructuredGraph graph = parse("test3Snippet");
-        print(graph);
+        Debug.dump(graph, "Graph");
         Assert.assertFalse(graph.getNodes(PhiNode.class).iterator().hasNext());
     }
 
@@ -82,7 +83,7 @@ public class PhiCreationTests extends GraphTest {
     @Test
     public void test4() {
         StructuredGraph graph = parse("test4Snippet");
-        print(graph);
+        Debug.dump(graph, "Graph");
         Assert.assertFalse(graph.getNodes(PhiNode.class).iterator().hasNext());
     }
 

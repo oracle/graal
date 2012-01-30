@@ -65,8 +65,7 @@ public class LIR {
     public SlowPath methodEndMarker;
 
     private int numVariables;
-
-    private final int loopCount;
+    private final int numLoops;
 
     public SpillMoveFactory spillMoveFactory;
 
@@ -81,15 +80,15 @@ public class LIR {
 
     /**
      * Creates a new LIR instance for the specified compilation.
-     * @param loopCount number of loops
+     * @param numLoops number of loops
      * @param compilation the compilation
      */
-    public LIR(LIRBlock startBlock, List<LIRBlock> linearScanOrder, List<LIRBlock> codeEmittingOrder, NodeMap<LIRBlock> valueToBlock, int loopCount) {
+    public LIR(LIRBlock startBlock, List<LIRBlock> linearScanOrder, List<LIRBlock> codeEmittingOrder, NodeMap<LIRBlock> valueToBlock, int numLoops) {
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.startBlock = startBlock;
         this.valueToBlock = valueToBlock;
-        this.loopCount = loopCount;
+        this.numLoops = numLoops;
 
         slowPaths = new ArrayList<>();
         deoptimizationStubs = new ArrayList<>();
@@ -113,10 +112,6 @@ public class LIR {
 
     public NodeMap<LIRBlock> valueToBlock() {
         return valueToBlock;
-    }
-
-    public int loopCount() {
-        return loopCount;
     }
 
     public int numVariables() {
@@ -262,5 +257,9 @@ public class LIR {
             }
             TTY.println();
         }
+    }
+
+    public int numLoops() {
+        return numLoops;
     }
 }

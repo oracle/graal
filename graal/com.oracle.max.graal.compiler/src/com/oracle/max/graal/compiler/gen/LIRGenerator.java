@@ -50,6 +50,7 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.StandardOp.ParametersOp;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -64,8 +65,6 @@ import com.oracle.max.graal.nodes.virtual.*;
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
 public abstract class LIRGenerator extends LIRGeneratorTool {
-    public final GraalContext context;
-
     protected final Graph graph;
     protected final RiRuntime runtime;
     protected final CiTarget target;
@@ -139,8 +138,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private LockScope curLocks;
 
 
-    public LIRGenerator(GraalContext context, Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
-        this.context = context;
+    public LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
         this.graph = graph;
         this.runtime = runtime;
         this.target = target;
@@ -418,15 +416,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         currentInstruction = instr;
 
-        if (GraalOptions.TraceLIRVisit) {
-            TTY.println("Visiting    " + instr);
-        }
-
+        Debug.log("Visiting %s", instr);
         emitNode(instr);
-
-        if (GraalOptions.TraceLIRVisit) {
-            TTY.println("Operand for " + instr + " = " + operand(instr));
-        }
+        Debug.log("Operand for %s = %s", instr, operand(instr));
     }
 
     protected void emitNode(ValueNode node) {
@@ -645,7 +637,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (writeBarrier != null) {
             emitXir(writeBarrier, null, null, false);
         }
-    }
+     }
 
     @SuppressWarnings("unused")
     protected void preGCWriteBarrier(CiValue addrOpr, boolean patch, LIRDebugInfo info) {
@@ -749,7 +741,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         XirArgument obj = toXirArgument(x.object());
         XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass());
-        emitXir(snippet, x, info, null, false, x.negated ? falseSuccessor : trueSuccessor, x.negated ? trueSuccessor : falseSuccessor);
+        emitXir(snippet, x, info, null, false, x.negated() ? falseSuccessor : trueSuccessor, x.negated() ? trueSuccessor : falseSuccessor);
     }
 
 
@@ -791,8 +783,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private Variable emitInstanceOfConditional(InstanceOfNode x, CiValue trueValue, CiValue falseValue) {
         XirArgument obj = toXirArgument(x.object());
-        XirArgument trueArg = toXirArgument(x.negated ? falseValue : trueValue);
-        XirArgument falseArg = toXirArgument(x.negated ? trueValue : falseValue);
+        XirArgument trueArg = toXirArgument(x.negated() ? falseValue : trueValue);
+        XirArgument falseArg = toXirArgument(x.negated() ? trueValue : falseValue);
         XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass());
         return (Variable) emitXir(snippet, null, null, false);
     }
@@ -1304,9 +1296,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                     inputOperandArray, tempOperandArray, inputOperandIndicesArray, tempOperandIndicesArray,
                     (allocatedResultOperand == IllegalValue) ? -1 : resultOperand.index,
                     info, infoAfter, trueSuccessor, falseSuccessor);
-            if (GraalOptions.Meter) {
-                context.metrics.LIRXIRInstructions++;
-            }
+            Debug.metric("LIRXIRInstructions").increment();
         }
 
         return operandsArray[resultOperand.index];

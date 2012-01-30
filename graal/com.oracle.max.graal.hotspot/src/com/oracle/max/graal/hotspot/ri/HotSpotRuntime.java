@@ -52,14 +52,12 @@ import com.oracle.max.graal.snippets.nodes.*;
  * CRI runtime implementation for the HotSpot VM.
  */
 public class HotSpotRuntime implements GraalRuntime {
-    final GraalContext context;
     final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
 
-    public HotSpotRuntime(GraalContext context, HotSpotVMConfig config, Compiler compiler) {
-        this.context = context;
+    public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
         this.config = config;
         this.compiler = compiler;
         regConfig = new HotSpotRegisterConfig(config, false);

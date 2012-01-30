@@ -30,6 +30,7 @@ import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
@@ -107,9 +108,9 @@ public class BoxingEliminationTest extends GraphTest {
         }
         new InliningPhase(null, runtime(), hints, null, phasePlan).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        print(graph);
+        Debug.dump(graph, "Graph");
         new BoxingEliminationPhase().apply(graph);
-        print(graph);
+        Debug.dump(graph, "Graph");
         new ExpandBoxingNodesPhase(pool).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
