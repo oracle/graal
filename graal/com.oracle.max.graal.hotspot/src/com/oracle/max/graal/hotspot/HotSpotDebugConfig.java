@@ -25,6 +25,7 @@ package com.oracle.max.graal.hotspot;
 import java.util.*;
 import java.util.regex.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.debug.*;
@@ -121,7 +122,11 @@ public class HotSpotDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(RuntimeException e) {
+        if (e instanceof CiBailout) {
+            return e;
+        }
         Debug.setConfig(Debug.fixedConfig(true, true, false, false));
+        // sync "Exception occured in scope: " with mx/sanitycheck.py::Test.__init__
         Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             Debug.log("Context obj %s", o);
