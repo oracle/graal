@@ -39,7 +39,6 @@ public class GraalIntrinsics {
             Snippets.install(runtime, target, new FloatSnippets(), plan);
             Snippets.install(runtime, target, new NodeClassSnippets(), plan);
             Snippets.install(runtime, target, new ArrayCopySnippets(), plan);
-            plan.addPhase(PhasePosition.HIGH_LEVEL, new IntrinsifyArrayCopyPhase(runtime));
         }
     }
 }
