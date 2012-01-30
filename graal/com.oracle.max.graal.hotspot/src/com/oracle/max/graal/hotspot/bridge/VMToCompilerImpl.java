@@ -228,6 +228,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     public void compileMethod(final HotSpotMethodResolved method, final int entryBCI, boolean blocking) throws Throwable {
         try {
             if (Thread.currentThread() instanceof CompilerThread && method.holder().name().contains("java/util/concurrent")) {
+                // This is required to avoid deadlocking a compiler thread. The issue is that a
+                // java.util.concurrent.BlockingQueue is used to implement the compilation worker
+                // queues. If a compiler thread triggers a compilation, then it may be blocked trying
+                // to add something to its own queue.
                 return;
             }
 

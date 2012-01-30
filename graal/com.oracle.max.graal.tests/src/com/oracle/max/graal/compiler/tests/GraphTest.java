@@ -48,7 +48,7 @@ import com.oracle.max.graal.nodes.*;
  * <p>
  * The tests can be run in Eclipse with the "Compiler Unit Test" Eclipse
  * launch configuration found in the top level of this project or by
- * running {@code mx gcut} on the command line.
+ * running {@code mx unittest} on the command line.
  */
 public abstract class GraphTest {
 
