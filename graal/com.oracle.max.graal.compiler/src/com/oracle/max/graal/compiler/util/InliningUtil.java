@@ -223,6 +223,7 @@ public class InliningUtil {
             Node returnValue = null;
             if (numberOfMethods > 1) {
                 merge = graph.add(new MergeNode());
+                merge.setStateAfter(invoke.stateAfter());
                 merge.setNext(continuation);
                 if (hasReturnValue) {
                     returnValuePhi = graph.unique(new PhiNode(callTargetNode.kind(), merge, PhiType.Value));
@@ -230,13 +231,16 @@ public class InliningUtil {
                 }
             }
 
-            // TODO (ch) do not create merge nodes if not necessary. Otherwise GraphVisualizer seems to loose half of the phase outputs?
-
             // create a separate block for each invoked method
-            MergeNode[] successorMethods = new MergeNode[numberOfMethods];
+            BeginNode[] successorMethods = new BeginNode[numberOfMethods];
             for (int i = 0; i < numberOfMethods; i++) {
                 Invoke duplicatedInvoke = duplicateInvoke(invoke);
-                MergeNode calleeEntryNode = graph.add(new MergeNode());
+                BeginNode calleeEntryNode;
+                if (getPredecessorCount(i) > 1) {
+                    calleeEntryNode = graph.add(new MergeNode());
+                } else {
+                    calleeEntryNode = graph.add(new BeginNode());
+                }
                 calleeEntryNode.setNext(duplicatedInvoke.node());
                 successorMethods[i] = calleeEntryNode;
 
@@ -260,20 +264,28 @@ public class InliningUtil {
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
             int lastIndex = types.length - 1;
-            MergeNode tsux = successorMethods[typesToConcretes[lastIndex]];
+            BeginNode tsux = successorMethods[typesToConcretes[lastIndex]];
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[lastIndex]));
-            EndNode endNode = graph.add(new EndNode());
             FixedGuardNode guardNode = graph.add(new FixedGuardNode(isTypeNode));
-            guardNode.setNext(endNode);
-            tsux.addEnd(endNode);
+            if (tsux instanceof MergeNode) {
+                EndNode endNode = graph.add(new EndNode());
+                guardNode.setNext(endNode);
+                ((MergeNode) tsux).addEnd(endNode);
+            } else {
+                guardNode.setNext(tsux);
+            }
 
             FixedNode nextNode = guardNode;
             for (int i = lastIndex - 1; i >= 0; i--) {
                 tsux = successorMethods[typesToConcretes[i]];
                 isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[i]));
-                endNode = graph.add(new EndNode());
-                nextNode = graph.add(new IfNode(isTypeNode, endNode, nextNode, probabilities[i]));
-                tsux.addEnd(endNode);
+                if (tsux instanceof MergeNode) {
+                    EndNode endNode = graph.add(new EndNode());
+                    nextNode = graph.add(new IfNode(isTypeNode, endNode, nextNode, probabilities[i]));
+                    ((MergeNode) tsux).addEnd(endNode);
+                } else {
+                    nextNode = graph.add(new IfNode(isTypeNode, tsux, nextNode, probabilities[i]));
+                }
             }
 
             // replace the original invocation with a cascade of if nodes and replace the usages of invoke with the return value (phi or duplicatedInvoke)
@@ -283,7 +295,7 @@ public class InliningUtil {
 
             // do the actual inlining for every invocation
             for (int i = 0; i < successorMethods.length; i++) {
-                MergeNode node = successorMethods[i];
+                BeginNode node = successorMethods[i];
                 Invoke invokeForInlining = (Invoke) node.next();
                 StructuredGraph calleeGraph = getGraph(invokeForInlining, concretes.get(i), callback);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
@@ -291,6 +303,20 @@ public class InliningUtil {
 
             if (GraalOptions.TraceInlining) {
                 TTY.println("inlining %d methods with %d type checks", numberOfMethods, types.length);
+            }
+        }
+
+        private int getPredecessorCount(int concreteMethodIndex) {
+            if (concretes.size() == types.length) {
+                return 1;
+            } else {
+                int count = 0;
+                for (int i = 0; i < typesToConcretes.length; i++) {
+                    if (typesToConcretes[i] == concreteMethodIndex) {
+                        count++;
+                    }
+                }
+                return count;
             }
         }
 
