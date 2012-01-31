@@ -65,7 +65,7 @@ public class CanonicalizerPhase extends Phase {
         Tool tool = new Tool(nodeWorkList, runtime, target, assumptions);
         for (Node node : nodeWorkList) {
             if (node instanceof Canonicalizable) {
-                Debug.log("Canonicalizer: work on %1s");
+                Debug.log("Canonicalizer: work on %s", node);
                 graph.mark();
                 ValueNode canonical = ((Canonicalizable) node).canonical(tool);
 //     cases:                                           original node:
