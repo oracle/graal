@@ -173,6 +173,7 @@ public class StructuredGraph extends Graph {
 
     public void replaceFixedWithFixed(FixedWithNextNode node, FixedWithNextNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        replacement.setProbability(node.probability());
         FixedNode next = node.next();
         node.setNext(null);
         replacement.setNext(next);
@@ -268,6 +269,7 @@ public class StructuredGraph extends Graph {
     public void addAfterFixed(FixedWithNextNode node, FixedWithNextNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " after " + node;
         assert newNode.next() == null;
+        newNode.setProbability(node.probability());
         FixedNode next = node.next();
         node.setNext(newNode);
         newNode.setNext(next);
@@ -277,6 +279,7 @@ public class StructuredGraph extends Graph {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
         assert newNode.next() == null;
+        newNode.setProbability(node.probability());
         FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
         pred.setNext(newNode);
         newNode.setNext(node);
