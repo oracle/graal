@@ -255,7 +255,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
                     for (int j = 0; j < types.length; j++) {
                         TTY.print(" %s (%f)", types[j], probabilities[j]);
                     }
-                    TTY.println();
+                    TTY.println(" not recorded (%f)", typeProfile.getNotRecordedProbability());
                 }
             }
         }

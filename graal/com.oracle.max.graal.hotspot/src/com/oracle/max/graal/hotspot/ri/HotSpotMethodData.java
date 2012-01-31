@@ -316,7 +316,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
     }
 
-    private static class AbstractTypeData extends CounterData {
+    private abstract static class AbstractTypeData extends CounterData {
         private static final int RECEIVER_TYPE_DATA_ROW_SIZE = cellsToBytes(2);
         private static final int RECEIVER_TYPE_DATA_SIZE = cellIndexToOffset(1) + RECEIVER_TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
         private static final int RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET = cellIndexToOffset(1);
@@ -328,8 +328,6 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
-            // TODO (ch) detect polymorphic case and return null and document interface accordingly
-            // is it really the best solution to return null?
             int typeProfileWidth = config.typeProfileWidth;
 
             RiResolvedType[] sparseTypes = new RiResolvedType[typeProfileWidth];
@@ -356,8 +354,11 @@ public final class HotSpotMethodData extends CompilerObject {
                 }
             }
 
+            totalCount += getTypesNotRecordedExecutionCount(data, position);
             return createRiTypeProfile(sparseTypes, counts, totalCount, entries);
         }
+
+        protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
 
         private static RiTypeProfile createRiTypeProfile(RiResolvedType[] sparseTypes, double[] counts, long totalCount, int entries) {
             RiResolvedType[] types;
@@ -375,10 +376,15 @@ public final class HotSpotMethodData extends CompilerObject {
                 probabilities = counts;
             }
 
+            double totalProbability = 0.0;
             for (int i = 0; i < entries; i++) {
-                probabilities[i] = counts[i] / totalCount;
+                double p = counts[i] / totalCount;
+                probabilities[i] = p;
+                totalProbability += p;
             }
-            return new RiTypeProfile(types, probabilities);
+
+            double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
+            return new RiTypeProfile(types, notRecordedTypeProbability, probabilities);
         }
 
         private static int getReceiverOffset(int row) {
@@ -401,6 +407,12 @@ public final class HotSpotMethodData extends CompilerObject {
         public int getExecutionCount(HotSpotMethodData data, int position) {
             return -1;
         }
+
+        @Override
+        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
+            // TODO (ch) if types do not fit, profiling is skipped for typechecks
+            return 0;
+        }
     }
 
     private static class VirtualCallData extends AbstractTypeData {
@@ -421,6 +433,11 @@ public final class HotSpotMethodData extends CompilerObject {
 
             total += getCounterValue(data, position);
             return truncateLongToInt(total);
+        }
+
+        @Override
+        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
+            return getCounterValue(data, position);
         }
     }
 

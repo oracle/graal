@@ -208,7 +208,7 @@ public class InliningUtil {
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             MethodCallTargetNode callTargetNode = invoke.callTarget();
             int numberOfMethods = concretes.size();
-            boolean hasReturnValue = callTargetNode.kind() != CiKind.Void;
+            boolean hasReturnValue = invoke.node().kind() != CiKind.Void;
 
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
@@ -230,14 +230,14 @@ public class InliningUtil {
             FixedNode continuation = invoke.next();
             invoke.setNext(null);
 
-            // setup a merge and a phi nodes for results and exceptions
+            // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
             returnMerge.setStateAfter(invoke.stateAfter());
             returnMerge.setNext(continuation);
 
             PhiNode returnValuePhi = null;
             if (hasReturnValue) {
-                returnValuePhi = graph.unique(new PhiNode(callTargetNode.kind(), returnMerge, PhiType.Value));
+                returnValuePhi = graph.unique(new PhiNode(invoke.node().kind(), returnMerge, PhiType.Value));
             }
 
             MergeNode exceptionMerge = null;
@@ -255,7 +255,7 @@ public class InliningUtil {
                 exceptionObjectPhi = graph.unique(new PhiNode(CiKind.Object, exceptionMerge, PhiType.Value));
             }
 
-            // create a separate block for each invoked method
+            // create one separate block for each invoked method
             BeginNode[] calleeEntryNodes = new BeginNode[numberOfMethods];
             for (int i = 0; i < numberOfMethods; i++) {
                 Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi);
@@ -285,7 +285,6 @@ public class InliningUtil {
             FixedNode dispatchOnType = createDispatchOnType(graph, calleeEntryNodes);
             invoke.node().replaceAtUsages(returnValuePhi);
             invoke.node().replaceAndDelete(dispatchOnType);
-            GraphUtil.killCFG(invoke.node());
 
             // do the actual inlining for every invoke
             for (int i = 0; i < calleeEntryNodes.length; i++) {
@@ -299,7 +298,8 @@ public class InliningUtil {
         private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback) {
             assert concretes.size() == 1;
 
-            BeginNode calleeEntryNode = graph.add(new MergeNode());
+            MergeNode calleeEntryNode = graph.add(new MergeNode());
+            calleeEntryNode.setStateAfter(invoke.stateAfter());
             FixedNode dispatchOnType = createDispatchOnType(graph, new BeginNode[] {calleeEntryNode});
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
@@ -491,6 +491,7 @@ public class InliningUtil {
         if (typeProfile != null) {
             RiResolvedType[] types = typeProfile.getTypes();
             double[] probabilities = typeProfile.getProbabilities();
+            double notRecordedProbability = typeProfile.getNotRecordedProbability();
             if (types != null && probabilities != null && types.length > 0) {
                 assert types.length == probabilities.length : "length must match";
                 if (GraalOptions.InlineWithTypeCheck) {
@@ -503,10 +504,11 @@ public class InliningUtil {
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
                         return null;
-                    } else {
+                    } else if (GraalOptions.InlineMultipleMethods) {
                         // TODO (ch) allow inlining only the most frequent calls (e.g. 8 different methods, inline only 2 and invoke others)
                         // may affect peak performance negatively if immature profiling information is used
                         // TODO (ch) sort types by probability
+
                         // determine concrete methods and map type to specific method
                         ArrayList<RiResolvedMethod> concreteMethods = new ArrayList<>();
                         int[] typesToConcretes = new int[types.length];
@@ -538,6 +540,10 @@ public class InliningUtil {
                                 TTY.println("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
                             }
                             return null;
+                        }
+                    } else {
+                        if (GraalOptions.TraceInlining) {
+                            TTY.println("not inlining %s because GraalOptions.InlineMultipleMethods == false", methodName(callTarget.targetMethod(), invoke));
                         }
                     }
                 } else {

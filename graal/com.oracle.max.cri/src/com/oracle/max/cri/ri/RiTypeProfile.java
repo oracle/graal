@@ -35,20 +35,30 @@ public final class RiTypeProfile implements Serializable {
      */
     private static final long serialVersionUID = -6877016333706838441L;
 
-    private RiResolvedType[] types;
-    private double[] probabilities;
+    private final RiResolvedType[] types;
+    private final double notRecordedProbability;
+    private final double[] probabilities;
 
-    public RiTypeProfile(RiResolvedType[] types, double[] probabilites) {
+    public RiTypeProfile(RiResolvedType[] types, double notRecordedProbability, double[] probabilites) {
         this.types = types;
+        this.notRecordedProbability = notRecordedProbability;
         this.probabilities = probabilites;
     }
 
     /**
-     * The estimated probabilities of the different receivers. This array needs to have the same length as
+     * The estimated probabilities of the different receivers. This array needs to have the same length as the array returned by
      * {@link RiTypeProfile#types}.
      */
     public double[] getProbabilities() {
         return probabilities;
+    }
+
+    /**
+     * Returns the estimated probability of all types that could not be recorded due to profiling limitations.
+     * @return double value >= 0.0 and <= 1.0
+     */
+    public double getNotRecordedProbability() {
+        return notRecordedProbability;
     }
 
     /**
