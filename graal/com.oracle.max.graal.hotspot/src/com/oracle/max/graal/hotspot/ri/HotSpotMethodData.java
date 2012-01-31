@@ -70,6 +70,12 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     public boolean isMature() {
+        // TODO (ch) maturity of profiling information is an issue in general. Not all optimizations require mature data as long as the code
+        // does deoptimize/recompile on violations (might decrease startup and increase peak performance).
+        // Maturity is currently used on several levels:
+        // 1) whole method data
+        // 2) individual branch/switch profiling data
+        // 3) MatureInvocationCount for eliminating exception edges
         if (!mature) {
             mature = compiler.getVMEntries().HotSpotMethodData_isMature(this);
         }
