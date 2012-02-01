@@ -334,14 +334,14 @@ public class ArrayCopySnippets implements SnippetsInterface{
             UnsafeStoreNode.store(dest, i + (destOffset + header), a, CiKind.Object);
         }
         if (length > 0) {
-            long cardShift = CardTableShiftNode.get();
+            int cardShift = CardTableShiftNode.get();
             long cardStart = CardTableStartNode.get();
             long dstAddr = GetObjectAddressNode.get(dest);
-            long count = (8 * (length - 1)) >>> cardShift;
-            long start = ((dstAddr + header + destOffset) >>> cardShift) + cardStart;
-
-            while (count-- > 0) {
-                DirectStoreNode.store(start + count, false);
+            long start = (dstAddr + header + destOffset) >>> cardShift;
+            long end = (dstAddr + header + destOffset + 8L * (length - 1)) >>> cardShift;
+            long count = end - start;
+            while (count-- >= 0) {
+                DirectStoreNode.store((start + cardStart) + count, false);
             }
         }
 
