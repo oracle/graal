@@ -241,7 +241,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
                 TTY.println();
             }
 
-            if (profilingInfo.getImplicitExceptionSeen(i)) {
+            if (profilingInfo.getExceptionSeen(i)) {
                 TTY.println("  implicitExceptionSeen@%d: true", i);
             }
 

@@ -54,8 +54,8 @@ public final class HotSpotNoProfilingInfo extends CompilerObject implements RiPr
     }
 
     @Override
-    public boolean getImplicitExceptionSeen(int bci) {
-        return noData.getImplicitExceptionSeen(null, -1);
+    public boolean getExceptionSeen(int bci) {
+        return noData.getExceptionSeen(null, -1);
     }
 
     @Override

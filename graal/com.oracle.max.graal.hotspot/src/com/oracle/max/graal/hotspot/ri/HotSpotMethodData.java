@@ -161,7 +161,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
-        private static final int IMPLICIT_EXCEPTIONS_MASK = 0x0E;
+        private static final int EXCEPTIONS_MASK = 0x08;
 
         private final int tag;
         private final int staticSize;
@@ -190,9 +190,8 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public boolean getImplicitExceptionSeen(HotSpotMethodData data, int position) {
-            // TODO (ch) might return true too often because flags are also used for deoptimization reasons
-            return (getFlags(data, position) & IMPLICIT_EXCEPTIONS_MASK) != 0;
+        public boolean getExceptionSeen(HotSpotMethodData data, int position) {
+            return (getFlags(data, position) & EXCEPTIONS_MASK) != 0;
         }
 
         @Override
@@ -239,7 +238,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
 
         @Override
-        public boolean getImplicitExceptionSeen(HotSpotMethodData data, int position) {
+        public boolean getExceptionSeen(HotSpotMethodData data, int position) {
             return false;
         }
     }

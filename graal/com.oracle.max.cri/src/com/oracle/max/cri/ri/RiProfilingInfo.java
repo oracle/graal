@@ -50,11 +50,10 @@ public interface RiProfilingInfo {
     RiTypeProfile getTypeProfile(int bci);
 
     /**
-     * Returns true if the given BCI did throw an implicit exception (NullPointerException, ClassCastException,
-     * ArrayStoreException, or ArithmeticException) during profiling.
-     * @return true if any of the exceptions was encountered during profiling, false otherwise.
+     * Returns true if the instruction at least once an exception was thrown at the given BCI.
+     * @return true if an exception was encountered during profiling, false otherwise.
      */
-    boolean getImplicitExceptionSeen(int bci);
+    boolean getExceptionSeen(int bci);
 
     /**
      * Returns an estimate how often the current BCI was executed. Avoid comparing execution counts to each other,

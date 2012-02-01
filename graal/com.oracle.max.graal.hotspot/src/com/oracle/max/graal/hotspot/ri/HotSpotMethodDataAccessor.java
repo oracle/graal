@@ -51,6 +51,6 @@ public interface HotSpotMethodDataAccessor {
     RiTypeProfile getTypeProfile(HotSpotMethodData data, int position);
     double getBranchTakenProbability(HotSpotMethodData data, int position);
     double[] getSwitchProbabilities(HotSpotMethodData data, int position);
-    boolean getImplicitExceptionSeen(HotSpotMethodData data, int position);
+    boolean getExceptionSeen(HotSpotMethodData data, int position);
     int getExecutionCount(HotSpotMethodData data, int position);
 }

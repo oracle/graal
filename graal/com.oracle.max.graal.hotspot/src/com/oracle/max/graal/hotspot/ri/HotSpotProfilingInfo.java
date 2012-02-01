@@ -66,9 +66,9 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public boolean getImplicitExceptionSeen(int bci) {
+    public boolean getExceptionSeen(int bci) {
         findBCI(bci, true);
-        return dataAccessor.getImplicitExceptionSeen(methodData, position);
+        return dataAccessor.getExceptionSeen(methodData, position);
     }
 
     @Override

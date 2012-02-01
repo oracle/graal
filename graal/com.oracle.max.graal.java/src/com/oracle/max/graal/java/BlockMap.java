@@ -388,7 +388,7 @@ public final class BlockMap {
             case PUTFIELD:
             case GETFIELD: {
                 if (GraalOptions.AllowExplicitExceptionChecks) {
-                    return profilingInfo.getImplicitExceptionSeen(bci);
+                    return profilingInfo.getExceptionSeen(bci);
                 }
             }
         }

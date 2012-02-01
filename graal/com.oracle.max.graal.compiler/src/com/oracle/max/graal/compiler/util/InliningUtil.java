@@ -206,14 +206,13 @@ public class InliningUtil {
 
         @Override
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
-            MethodCallTargetNode callTargetNode = invoke.callTarget();
             int numberOfMethods = concretes.size();
             boolean hasReturnValue = invoke.node().kind() != CiKind.Void;
 
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (numberOfMethods > 1) {
-                inlineMultipleMethods(graph, callback, callTargetNode, numberOfMethods, hasReturnValue);
+                inlineMultipleMethods(graph, callback, numberOfMethods, hasReturnValue);
             } else {
                 inlineSingleMethod(graph, callback);
             }
@@ -223,7 +222,7 @@ public class InliningUtil {
             }
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, MethodCallTargetNode callTargetNode, int numberOfMethods, boolean hasReturnValue) {
+        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             assert concretes.size() > 1;
 
             // save continuation so that invoke can be deleted safely
@@ -299,7 +298,6 @@ public class InliningUtil {
             assert concretes.size() == 1;
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
-            calleeEntryNode.setStateAfter(invoke.stateAfter());
             FixedNode dispatchOnType = createDispatchOnType(graph, new BeginNode[] {calleeEntryNode});
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
@@ -384,7 +382,7 @@ public class InliningUtil {
         public String toString() {
             StringBuilder builder = new StringBuilder(String.format("type-checked inlining of %d methods with %d type checks: ", concretes.size(), types.length));
             for (int i = 0; i < concretes.size(); i++) {
-                builder.append(CiUtil.format("\n%H.%n(%p):%r", concretes.get(i)));
+                builder.append(CiUtil.format("\n        %H.%n(%p):%r", concretes.get(i)));
             }
             return builder.toString();
         }
@@ -474,16 +472,15 @@ public class InliningUtil {
             }
         }
         // TODO (tw) fix this
-        if (assumptions == null) {
-            return null;
-        }
-        RiResolvedMethod concrete = holder.uniqueConcreteMethod(callTarget.targetMethod());
-        if (concrete != null) {
-            if (checkTargetConditions(concrete)) {
-                double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
-                return new AssumptionInlineInfo(invoke, weight, level, holder, concrete);
+        if (assumptions != null) {
+            RiResolvedMethod concrete = holder.uniqueConcreteMethod(callTarget.targetMethod());
+            if (concrete != null) {
+                if (checkTargetConditions(concrete)) {
+                    double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
+                    return new AssumptionInlineInfo(invoke, weight, level, holder, concrete);
+                }
+                return null;
             }
-            return null;
         }
 
         RiProfilingInfo profilingInfo = parent.profilingInfo();
@@ -494,17 +491,17 @@ public class InliningUtil {
             double notRecordedProbability = typeProfile.getNotRecordedProbability();
             if (types != null && probabilities != null && types.length > 0) {
                 assert types.length == probabilities.length : "length must match";
-                if (GraalOptions.InlineWithTypeCheck) {
+                if (GraalOptions.InlineMonomorphicCalls) {
                     // type check and inlining...
                     if (types.length == 1) {
                         RiResolvedType type = types[0];
-                        concrete = type.resolveMethodImpl(callTarget.targetMethod());
+                        RiResolvedMethod concrete = type.resolveMethodImpl(callTarget.targetMethod());
                         if (concrete != null && checkTargetConditions(concrete)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
                         return null;
-                    } else if (GraalOptions.InlineMultipleMethods) {
+                    } else if (GraalOptions.InlinePolymorphicCalls) {
                         // TODO (ch) allow inlining only the most frequent calls (e.g. 8 different methods, inline only 2 and invoke others)
                         // may affect peak performance negatively if immature profiling information is used
                         // TODO (ch) sort types by probability
@@ -513,7 +510,7 @@ public class InliningUtil {
                         ArrayList<RiResolvedMethod> concreteMethods = new ArrayList<>();
                         int[] typesToConcretes = new int[types.length];
                         for (int i = 0; i < types.length; i++) {
-                            concrete = types[i].resolveMethodImpl(callTarget.targetMethod());
+                            RiResolvedMethod concrete = types[i].resolveMethodImpl(callTarget.targetMethod());
 
                             int index = concreteMethods.indexOf(concrete);
                             if (index < 0) {
