@@ -75,27 +75,6 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
 
     @Input private final NodeInputList<Node> virtualObjectMappings;
 
-    public FrameState outerFrameState() {
-        return outerFrameState;
-    }
-
-    public void setOuterFrameState(FrameState x) {
-        updateUsages(this.outerFrameState, x);
-        this.outerFrameState = x;
-    }
-
-    public FrameState outermostFrameState() {
-        FrameState fs = this;
-        while (fs.outerFrameState() != null) {
-            fs = fs.outerFrameState();
-        }
-        return fs;
-    }
-
-    public void setValueAt(int i, ValueNode x) {
-        values.set(i, x);
-    }
-
     /**
      * The bytecode index to which this frame state applies. This will be {@code -1}
      * iff this state is mutable.
@@ -141,6 +120,27 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         this.virtualObjectMappings = new NodeInputList<>(this);
         this.rethrowException = rethrowException;
         assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
+    }
+
+    public FrameState outerFrameState() {
+        return outerFrameState;
+    }
+
+    public void setOuterFrameState(FrameState x) {
+        updateUsages(this.outerFrameState, x);
+        this.outerFrameState = x;
+    }
+
+    public FrameState outermostFrameState() {
+        FrameState fs = this;
+        while (fs.outerFrameState() != null) {
+            fs = fs.outerFrameState();
+        }
+        return fs;
+    }
+
+    public void setValueAt(int i, ValueNode x) {
+        values.set(i, x);
     }
 
     public boolean rethrowException() {

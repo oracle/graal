@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,15 @@ package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.graal.nodes.*;
 
-public class RemovePlaceholderPhase extends Phase {
+public class InsertStateAfterPlaceholderPhase extends Phase {
+
     @Override
     protected void run(StructuredGraph graph) {
-        for (PlaceholderNode n : graph.getNodes(PlaceholderNode.class)) {
-            graph.removeFixed(n);
+        for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
+            PlaceholderNode p = graph.add(new PlaceholderNode());
+            p.setStateAfter(graph.add(new FrameState(null, FrameState.AFTER_BCI, 0, 0, false)));
+            graph.addBeforeFixed(ret, p);
         }
     }
+
 }

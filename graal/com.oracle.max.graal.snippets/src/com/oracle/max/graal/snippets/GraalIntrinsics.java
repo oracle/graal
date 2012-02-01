@@ -25,7 +25,6 @@ package com.oracle.max.graal.snippets;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.cri.*;
 
 /**
