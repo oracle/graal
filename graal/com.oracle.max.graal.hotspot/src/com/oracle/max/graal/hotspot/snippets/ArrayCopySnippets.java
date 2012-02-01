@@ -225,6 +225,18 @@ public class ArrayCopySnippets implements SnippetsInterface{
         } else {
             copyObjectsUp(src, srcPos * 8L, dest, destPos * 8L, length);
         }
+        if (length > 0) {
+            long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
+            int cardShift = CardTableShiftNode.get();
+            long cardStart = CardTableStartNode.get();
+            long dstAddr = GetObjectAddressNode.get(dest);
+            long start = (dstAddr + header + destPos * 8L) >>> cardShift;
+            long end = (dstAddr + header + (destPos + length - 1) * 8L) >>> cardShift;
+            long count = end - start;
+            while (count-- >= 0) {
+                DirectStoreNode.store((start + cardStart) + count, false);
+            }
+        }
     }
 
     @Snippet
@@ -333,18 +345,6 @@ public class ArrayCopySnippets implements SnippetsInterface{
             Object a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Object);
             UnsafeStoreNode.store(dest, i + (destOffset + header), a, CiKind.Object);
         }
-        if (length > 0) {
-            int cardShift = CardTableShiftNode.get();
-            long cardStart = CardTableStartNode.get();
-            long dstAddr = GetObjectAddressNode.get(dest);
-            long start = (dstAddr + header + destOffset) >>> cardShift;
-            long end = (dstAddr + header + destOffset + 8L * (length - 1)) >>> cardShift;
-            long count = end - start;
-            while (count-- >= 0) {
-                DirectStoreNode.store((start + cardStart) + count, false);
-            }
-        }
-
     }
 
     private static class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
