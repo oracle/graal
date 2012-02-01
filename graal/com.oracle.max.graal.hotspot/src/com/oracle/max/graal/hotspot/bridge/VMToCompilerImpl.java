@@ -39,6 +39,7 @@ import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.max.graal.hotspot.snippets.*;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.snippets.*;
 
@@ -115,6 +116,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
             Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
             Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
+            Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
         }
 
         // Create compilation queue.

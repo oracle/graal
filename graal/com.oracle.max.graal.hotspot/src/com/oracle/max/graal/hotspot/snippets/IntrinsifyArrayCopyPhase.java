@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.max.graal.hotspot.snippets;
 
 import java.lang.reflect.*;
 
@@ -118,7 +118,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                 StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.compilerStorage().get(Graph.class);
                 assert snippetGraph != null : "ArrayCopySnippets should be installed";
                 hits = true;
-                Debug.log("  >  Intinsify (%s)", snippetMethod.signature().argumentTypeAt(0, snippetMethod.holder()).componentType());
+                Debug.log("%s > Intinsify (%s)", Debug.currentScope(), snippetMethod.signature().argumentTypeAt(0, snippetMethod.holder()).componentType());
                 InliningUtil.inline(methodCallTarget.invoke(), snippetGraph, false);
             }
         }

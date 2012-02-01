@@ -20,10 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.max.graal.hotspot.snippets;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
+import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.type.*;
+import com.oracle.max.graal.snippets.*;
 import com.oracle.max.graal.snippets.nodes.*;
 
 
@@ -327,6 +332,91 @@ public class ArrayCopySnippets implements SnippetsInterface{
         for (long i = 0; i < length * 8L; i += 8) {
             Object a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Object);
             UnsafeStoreNode.store(dest, i + (destOffset + header), a, CiKind.Object);
+        }
+        if (length > 0) {
+            long cardShift = CardTableShiftNode.get();
+            long cardStart = CardTableStartNode.get();
+            long dstAddr = GetObjectAddressNode.get(dest);
+            long count = (8 * (length - 1)) >>> cardShift;
+            long start = ((dstAddr + header + destOffset) >>> cardShift) + cardStart;
+
+            while (count-- > 0) {
+                DirectStoreNode.store(start + count, false);
+            }
+        }
+
+    }
+
+    private static class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
+        @Input private ValueNode object;
+
+        public GetObjectAddressNode(ValueNode obj) {
+            super(StampFactory.forKind(CiKind.Long));
+            this.object = obj;
+        }
+
+        @SuppressWarnings("unused")
+        @NodeIntrinsic
+        public static long get(Object array) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void generate(LIRGeneratorTool gen) {
+            CiValue obj = gen.newVariable(gen.target().wordKind);
+            gen.emitMove(gen.operand(object), obj);
+            gen.setResult(this, obj);
+        }
+    }
+
+    private static class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
+        @Input private ValueNode address;
+        @Input private ValueNode value;
+
+        public DirectStoreNode(ValueNode address, ValueNode value) {
+            super(StampFactory.illegal());
+            this.address = address;
+            this.value = value;
+        }
+
+        @SuppressWarnings("unused")
+        @NodeIntrinsic
+        public static void store(long address, long value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @NodeIntrinsic
+        public static void store(long address, boolean value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void generate(LIRGeneratorTool gen) {
+            CiValue v = gen.operand(value);
+            gen.emitStore(new CiAddress(v.kind, gen.operand(address)), v, false);
+        }
+    }
+
+    private static class CardTableShiftNode extends ConstantNode {
+        public CardTableShiftNode() {
+            super(CiConstant.forInt(CompilerImpl.getInstance().getConfig().cardtableShift));
+        }
+
+        @NodeIntrinsic
+        public static int get() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    private static class CardTableStartNode extends ConstantNode {
+        public CardTableStartNode() {
+            super(CiConstant.forLong(CompilerImpl.getInstance().getConfig().cardtableStartAddress));
+        }
+
+        @NodeIntrinsic
+        public static long get() {
+            throw new UnsupportedOperationException();
         }
     }
 }
