@@ -103,6 +103,7 @@ public class Debug {
 
     public static void dump(Object object, String msg, Object... args) {
         if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
+            System.out.println("dumping");
             DebugScope.getInstance().dump(object, msg, args);
         }
     }
@@ -144,7 +145,7 @@ public class Debug {
         }
     }
 
-    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled) {
+    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final List<DebugDumpHandler> dumpHandlers) {
         return new DebugConfig() {
 
             @Override
@@ -174,7 +175,7 @@ public class Debug {
 
             @Override
             public Collection< ? extends DebugDumpHandler> dumpHandlers() {
-                return Collections.emptyList();
+                return dumpHandlers;
             }
         };
     }

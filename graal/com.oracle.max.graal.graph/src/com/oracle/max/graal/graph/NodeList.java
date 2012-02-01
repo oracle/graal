@@ -64,6 +64,21 @@ public abstract class NodeList<T extends Node> extends NodeIterable<T> implement
         }
     }
 
+    protected NodeList(List<T> elements) {
+        if (elements == null || elements.isEmpty()) {
+            this.size = 0;
+            this.nodes = EMPTY_NODE_ARRAY;
+            this.initialSize = 0;
+        } else {
+            this.size = elements.size();
+            this.initialSize = elements.size();
+            this.nodes = new Node[elements.size()];
+            for (int i = 0; i < elements.size(); i++) {
+                this.nodes[i] = elements.get(i);
+            }
+        }
+    }
+
     protected abstract void update(T oldNode, T newNode);
 
     @Override
