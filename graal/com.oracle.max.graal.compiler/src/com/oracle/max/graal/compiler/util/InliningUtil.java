@@ -582,7 +582,7 @@ public class InliningUtil {
 
     private static void convertTypeToBranchProbabilities(double[] typeProbabilities, double notRecordedTypeProbability) {
         // avoid branches with 0.0/1.0 probability
-        double total = Math.max(Double.MIN_NORMAL, notRecordedTypeProbability);
+        double total = Math.max(1E-10, notRecordedTypeProbability);
 
         for (int i = typeProbabilities.length - 1; i >= 0; i--) {
             total += typeProbabilities[i];
