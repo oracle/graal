@@ -225,14 +225,12 @@ public class InliningUtil {
         private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             assert concretes.size() > 1;
 
-            // save continuation so that invoke can be deleted safely
             FixedNode continuation = invoke.next();
-            invoke.setNext(null);
 
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
+            returnMerge.setProbability(invoke.probability());
             returnMerge.setStateAfter(invoke.stateAfter());
-            returnMerge.setNext(continuation);
 
             PhiNode returnValuePhi = null;
             if (hasReturnValue) {
@@ -247,6 +245,7 @@ public class InliningUtil {
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
 
                 exceptionMerge = graph.add(new MergeNode());
+                exceptionMerge.setProbability(exceptionEdge.probability());
                 exceptionMerge.setStateAfter(exceptionEdge.stateAfter());
 
                 FixedNode exceptionSux = exceptionObject.next();
@@ -258,11 +257,14 @@ public class InliningUtil {
             BeginNode[] calleeEntryNodes = new BeginNode[numberOfMethods];
             for (int i = 0; i < numberOfMethods; i++) {
                 Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi);
-                BeginNode calleeEntryNode = graph.add(getPredecessorCount(i) > 1 ? new MergeNode() : new BeginNode());
+                int predecessors = getPredecessorCount(i);
+                // TODO (ch) set probabilities
+                BeginNode calleeEntryNode = graph.add(predecessors > 1 ? new MergeNode() : new BeginNode());
                 calleeEntryNode.setNext(duplicatedInvoke.node());
                 calleeEntryNodes[i] = calleeEntryNode;
 
                 EndNode endNode = graph.add(new EndNode());
+                // TODO (ch) set probability
                 duplicatedInvoke.setNext(endNode);
                 returnMerge.addEnd(endNode);
                 if (returnValuePhi != null) {
@@ -281,7 +283,13 @@ public class InliningUtil {
             }
 
             // replace the invoke with a cascade of if nodes
-            FixedNode dispatchOnType = createDispatchOnType(graph, calleeEntryNodes);
+            ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
+            graph.addBeforeFixed(invoke.node(), objectClassNode);
+            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, calleeEntryNodes);
+
+            assert invoke.next() == continuation;
+            invoke.setNext(null);
+            returnMerge.setNext(continuation);
             invoke.node().replaceAtUsages(returnValuePhi);
             invoke.node().replaceAndDelete(dispatchOnType);
 
@@ -295,10 +303,13 @@ public class InliningUtil {
         }
 
         private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback) {
-            assert concretes.size() == 1;
+            assert concretes.size() == 1 && types.length > 1;
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
-            FixedNode dispatchOnType = createDispatchOnType(graph, new BeginNode[] {calleeEntryNode});
+            calleeEntryNode.setProbability(invoke.probability());
+            ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
+            graph.addBeforeFixed(invoke.node(), objectClassNode);
+            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode});
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
             pred.setNext(dispatchOnType);
@@ -308,11 +319,8 @@ public class InliningUtil {
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
-        private FixedNode createDispatchOnType(StructuredGraph graph, BeginNode[] calleeEntryNodes) {
-            // create a cascade of ifs with the type checks
-            ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
-            graph.addBeforeFixed(invoke.node(), objectClassNode);
-
+        private FixedNode createDispatchOnType(StructuredGraph graph, ReadClassNode objectClassNode, BeginNode[] calleeEntryNodes) {
+            // TODO (ch) set probabilities for all fixed nodes...
             int lastIndex = types.length - 1;
             BeginNode tsux = calleeEntryNodes[typesToConcretes[lastIndex]];
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[lastIndex]));
@@ -358,22 +366,22 @@ public class InliningUtil {
         private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi) {
             Invoke result = (Invoke) invoke.node().copyWithInputs();
             if (invoke instanceof InvokeWithExceptionNode) {
-               assert exceptionMerge != null && exceptionObjectPhi != null;
+                assert exceptionMerge != null && exceptionObjectPhi != null;
 
-               InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-               BeginNode exceptionEdge = invokeWithException.exceptionEdge();
-               ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
+                InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
+                BeginNode exceptionEdge = invokeWithException.exceptionEdge();
+                ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
 
-               BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
-               ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
-               newExceptionEdge.setNext(newExceptionObject);
+                BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
+                ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
+                newExceptionEdge.setNext(newExceptionObject);
 
-               EndNode endNode = graph.add(new EndNode());
-               newExceptionObject.setNext(endNode);
-               exceptionMerge.addEnd(endNode);
-               exceptionObjectPhi.addInput(newExceptionObject);
+                EndNode endNode = graph.add(new EndNode());
+                newExceptionObject.setNext(endNode);
+                exceptionMerge.addEnd(endNode);
+                exceptionObjectPhi.addInput(newExceptionObject);
 
-               ((InvokeWithExceptionNode) result).setExceptionEdge(newExceptionEdge);
+                ((InvokeWithExceptionNode) result).setExceptionEdge(newExceptionEdge);
             }
             return result;
         }
@@ -517,7 +525,7 @@ public class InliningUtil {
                                 index = concreteMethods.size();
                                 concreteMethods.add(concrete);
                             }
-                            typesToConcretes[index] = index;
+                            typesToConcretes[i] = index;
                         }
 
                         double totalWeight = 0;
@@ -540,12 +548,12 @@ public class InliningUtil {
                         }
                     } else {
                         if (GraalOptions.TraceInlining) {
-                            TTY.println("not inlining %s because GraalOptions.InlineMultipleMethods == false", methodName(callTarget.targetMethod(), invoke));
+                            TTY.println("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
                         }
                     }
                 } else {
                     if (GraalOptions.TraceInlining) {
-                        TTY.println("not inlining %s because GraalOptions.InlineWithTypeCheck == false", methodName(callTarget.targetMethod(), invoke));
+                        TTY.println("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
                     }
                     return null;
                 }
