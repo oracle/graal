@@ -191,17 +191,17 @@ public class InliningUtil {
         public final List<RiResolvedMethod> concretes;
         public final RiResolvedType[] types;
         public final int[] typesToConcretes;
-        public final double[] probabilities;
+        public final double[] branchProbabilities;
 
-        public MultiTypeGuardInlineInfo(Invoke invoke, double weight, int level, List<RiResolvedMethod> concretes, RiResolvedType[] types, int[] typesToConcretes, double[] probabilities) {
+        public MultiTypeGuardInlineInfo(Invoke invoke, double weight, int level, List<RiResolvedMethod> concretes, RiResolvedType[] types, int[] typesToConcretes, double[] branchProbabilities) {
             super(invoke, weight, level);
             assert concretes.size() > 0 && concretes.size() <= types.length : "must have at least one method but no more than types methods";
-            assert types.length == typesToConcretes.length && types.length == probabilities.length : "array length must match";
+            assert types.length == typesToConcretes.length && types.length == branchProbabilities.length : "array length must match";
 
             this.concretes = concretes;
             this.types = types;
             this.typesToConcretes = typesToConcretes;
-            this.probabilities = probabilities;
+            this.branchProbabilities = branchProbabilities;
         }
 
         @Override
@@ -285,7 +285,9 @@ public class InliningUtil {
             // replace the invoke with a cascade of if nodes
             ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
-            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, calleeEntryNodes);
+
+            FixedNode deoptNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, calleeEntryNodes, deoptNode);
 
             assert invoke.next() == continuation;
             invoke.setNext(null);
@@ -309,7 +311,9 @@ public class InliningUtil {
             calleeEntryNode.setProbability(invoke.probability());
             ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
-            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode});
+
+            FixedNode deoptNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+            FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode}, deoptNode);
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
             pred.setNext(dispatchOnType);
@@ -319,34 +323,30 @@ public class InliningUtil {
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
-        private FixedNode createDispatchOnType(StructuredGraph graph, ReadClassNode objectClassNode, BeginNode[] calleeEntryNodes) {
+        private FixedNode createDispatchOnType(StructuredGraph graph, ReadClassNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
+            assert types.length > 1;
+
             // TODO (ch) set probabilities for all fixed nodes...
             int lastIndex = types.length - 1;
-            BeginNode tsux = calleeEntryNodes[typesToConcretes[lastIndex]];
-            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[lastIndex]));
-            FixedGuardNode guardNode = graph.add(new FixedGuardNode(isTypeNode));
-            if (tsux instanceof MergeNode) {
-                EndNode endNode = graph.add(new EndNode());
-                guardNode.setNext(endNode);
-                ((MergeNode) tsux).addEnd(endNode);
-            } else {
-                guardNode.setNext(tsux);
-            }
-
-            FixedNode nextNode = guardNode;
+            FixedNode nextNode = createTypeCheck(graph, objectClassNode, types[lastIndex], calleeEntryNodes[typesToConcretes[lastIndex]], unknownTypeSux, branchProbabilities[lastIndex]);
             for (int i = lastIndex - 1; i >= 0; i--) {
-                tsux = calleeEntryNodes[typesToConcretes[i]];
-                isTypeNode = graph.unique(new IsTypeNode(objectClassNode, types[i]));
-                if (tsux instanceof MergeNode) {
-                    EndNode endNode = graph.add(new EndNode());
-                    nextNode = graph.add(new IfNode(isTypeNode, endNode, nextNode, probabilities[i]));
-                    ((MergeNode) tsux).addEnd(endNode);
-                } else {
-                    nextNode = graph.add(new IfNode(isTypeNode, tsux, nextNode, probabilities[i]));
-                }
+                nextNode = createTypeCheck(graph, objectClassNode, types[i], calleeEntryNodes[typesToConcretes[i]], nextNode, branchProbabilities[i]);
             }
 
             return nextNode;
+        }
+
+        private static FixedNode createTypeCheck(StructuredGraph graph, ReadClassNode objectClassNode, RiResolvedType type, BeginNode tsux, FixedNode nextNode, double tsuxProbability) {
+            IfNode result;
+            IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, type));
+            if (tsux instanceof MergeNode) {
+                EndNode endNode = graph.add(new EndNode());
+                result = graph.add(new IfNode(isTypeNode, endNode, nextNode, tsuxProbability));
+                ((MergeNode) tsux).addEnd(endNode);
+            } else {
+                result = graph.add(new IfNode(isTypeNode, tsux, nextNode, tsuxProbability));
+            }
+            return result;
         }
 
         private int getPredecessorCount(int concreteMethodIndex) {
@@ -491,25 +491,37 @@ public class InliningUtil {
             }
         }
 
+        // type check based inlining
         RiProfilingInfo profilingInfo = parent.profilingInfo();
         RiTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
         if (typeProfile != null) {
             RiResolvedType[] types = typeProfile.getTypes();
             double[] probabilities = typeProfile.getProbabilities();
-            double notRecordedProbability = typeProfile.getNotRecordedProbability();
+
             if (types != null && probabilities != null && types.length > 0) {
                 assert types.length == probabilities.length : "length must match";
-                if (GraalOptions.InlineMonomorphicCalls) {
-                    // type check and inlining...
-                    if (types.length == 1) {
+                double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
+                if (types.length == 1 && notRecordedTypeProbability == 0) {
+                    if (GraalOptions.InlineMonomorphicCalls) {
                         RiResolvedType type = types[0];
                         RiResolvedMethod concrete = type.resolveMethodImpl(callTarget.targetMethod());
                         if (concrete != null && checkTargetConditions(concrete)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
+
+                        if (GraalOptions.TraceInlining) {
+                            TTY.println("not inlining %s because method can't be inlined", methodName(callTarget.targetMethod(), invoke));
+                        }
                         return null;
-                    } else if (GraalOptions.InlinePolymorphicCalls) {
+                    } else {
+                        if (GraalOptions.TraceInlining) {
+                            TTY.println("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
+                        }
+                        return null;
+                    }
+                } else {
+                    if (GraalOptions.InlinePolymorphicCalls) {
                         // TODO (ch) allow inlining only the most frequent calls (e.g. 8 different methods, inline only 2 and invoke others)
                         // may affect peak performance negatively if immature profiling information is used
                         // TODO (ch) sort types by probability
@@ -539,6 +551,7 @@ public class InliningUtil {
                         }
 
                         if (canInline) {
+                            convertTypeToBranchProbabilities(probabilities, notRecordedTypeProbability);
                             return new MultiTypeGuardInlineInfo(invoke, totalWeight, level, concreteMethods, types, typesToConcretes, probabilities);
                         } else {
                             if (GraalOptions.TraceInlining) {
@@ -548,15 +561,15 @@ public class InliningUtil {
                         }
                     } else {
                         if (GraalOptions.TraceInlining) {
-                            TTY.println("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
+                            TTY.println("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
                         }
+                        return null;
                     }
-                } else {
-                    if (GraalOptions.TraceInlining) {
-                        TTY.println("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
-                    }
-                    return null;
                 }
+            }
+
+            if (GraalOptions.TraceInlining) {
+                TTY.println("not inlining %s because no types/probabilities were recorded", methodName(callTarget.targetMethod(), invoke));
             }
             return null;
         } else {
@@ -567,6 +580,16 @@ public class InliningUtil {
         }
     }
 
+    private static void convertTypeToBranchProbabilities(double[] typeProbabilities, double notRecordedTypeProbability) {
+        // avoid branches with 0.0/1.0 probability
+        double total = Math.max(Double.MIN_NORMAL, notRecordedTypeProbability);
+
+        for (int i = typeProbabilities.length - 1; i >= 0; i--) {
+            total += typeProbabilities[i];
+            typeProbabilities[i] = typeProbabilities[i] / total;
+        }
+        assert total > 0.99 && total < 1.01;
+    }
 
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (invoke.stateAfter() == null) {
