@@ -20,18 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.max.graal.hotspot.snippets;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.extended.*;
+import com.oracle.max.graal.snippets.*;
 
 /**
  * Snippets for {@link java.lang.System} methods.
  */
 @ClassSubstitution(java.lang.System.class)
 public class SystemSnippets implements SnippetsInterface {
-
-    // TODO: public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length) { }
 
     public static long currentTimeMillis() {
         return RuntimeCallNode.performCall(CiRuntimeCall.JavaTimeMillis);

@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.phases;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -58,6 +59,7 @@ public class IntrinsificationPhase extends Phase {
             intrinsicGraph = runtime.intrinsicGraph(invoke.stateAfter().method(), invoke.bci(), target, invoke.callTarget().arguments());
         }
         if (intrinsicGraph != null) {
+            Debug.log(" > Intrinsify %s", target);
             InliningUtil.inline(invoke, intrinsicGraph, true);
         }
     }

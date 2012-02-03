@@ -39,6 +39,7 @@ import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 import com.oracle.max.graal.hotspot.ri.*;
 import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.max.graal.hotspot.snippets.*;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.snippets.*;
 
@@ -49,6 +50,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
     private int compiledMethodCount;
+    private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotTypePrimitive typeBoolean;
     public final HotSpotTypePrimitive typeChar;
@@ -110,9 +112,11 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         // Install intrinsics.
         HotSpotRuntime runtime = (HotSpotRuntime) compiler.getCompiler().runtime;
         if (GraalOptions.Intrinsify) {
+            this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
             GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
             Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
             Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
+            Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
         }
 
         // Create compilation queue.
@@ -247,7 +251,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
                 public void run() {
                     try {
-                        PhasePlan plan = new PhasePlan();
+                        PhasePlan plan = getDefaultPhasePlan();
                         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                         long startTime = 0;
@@ -383,5 +387,11 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     @Override
     public CiConstant createCiConstantObject(Object object) {
         return CiConstant.forObject(object);
+    }
+
+    private PhasePlan getDefaultPhasePlan() {
+        PhasePlan phasePlan = new PhasePlan();
+        phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
+        return phasePlan;
     }
 }

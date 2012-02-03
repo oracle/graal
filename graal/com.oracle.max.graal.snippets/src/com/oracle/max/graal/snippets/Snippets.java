@@ -121,6 +121,7 @@ public class Snippets {
         for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
             end.setSafepointPolling(false);
         }
+        new InsertStateAfterPlaceholderPhase().apply(graph);
 
         Debug.dump(graph, "%s: Final", snippetRiMethod.name());
 
@@ -128,5 +129,4 @@ public class Snippets {
 
         return graph;
     }
-
 }

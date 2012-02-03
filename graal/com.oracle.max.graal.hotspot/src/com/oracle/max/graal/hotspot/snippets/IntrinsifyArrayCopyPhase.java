@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.max.graal.hotspot.snippets;
 
 import java.lang.reflect.*;
 
@@ -29,6 +29,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.java.*;
@@ -71,6 +72,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        boolean hits = false;
         for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
             RiResolvedMethod targetMethod = methodCallTarget.targetMethod();
             RiResolvedMethod snippetMethod = null;
@@ -115,10 +117,13 @@ public class IntrinsifyArrayCopyPhase extends Phase {
             if (snippetMethod != null) {
                 StructuredGraph snippetGraph = (StructuredGraph) snippetMethod.compilerStorage().get(Graph.class);
                 assert snippetGraph != null : "ArrayCopySnippets should be installed";
-                //TTY.println("  >  Intinsify");
+                hits = true;
+                Debug.log("%s > Intinsify (%s)", Debug.currentScope(), snippetMethod.signature().argumentTypeAt(0, snippetMethod.holder()).componentType());
                 InliningUtil.inline(methodCallTarget.invoke(), snippetGraph, false);
             }
         }
-        new CanonicalizerPhase(null, runtime, null).apply(graph);
+        if (hits) {
+            new CanonicalizerPhase(null, runtime, null).apply(graph);
+        }
     }
 }
