@@ -64,7 +64,7 @@ public abstract class NodeList<T extends Node> extends NodeIterable<T> implement
         }
     }
 
-    protected NodeList(List<T> elements) {
+    protected NodeList(List<? extends T> elements) {
         if (elements == null || elements.isEmpty()) {
             this.size = 0;
             this.nodes = EMPTY_NODE_ARRAY;
