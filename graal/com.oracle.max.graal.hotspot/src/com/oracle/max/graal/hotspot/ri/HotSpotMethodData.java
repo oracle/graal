@@ -161,7 +161,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
-        private static final int EXCEPTIONS_MASK = 0x08;
+        private static final int EXCEPTIONS_MASK = 0x80;
 
         private final int tag;
         private final int staticSize;

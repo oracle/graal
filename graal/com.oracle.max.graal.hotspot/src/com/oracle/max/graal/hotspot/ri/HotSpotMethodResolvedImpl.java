@@ -243,7 +243,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             }
 
             if (profilingInfo.getExceptionSeen(i)) {
-                TTY.println("  implicitExceptionSeen@%d: true", i);
+                TTY.println("  exceptionSeen@%d: true", i);
             }
 
             RiTypeProfile typeProfile = profilingInfo.getTypeProfile(i);

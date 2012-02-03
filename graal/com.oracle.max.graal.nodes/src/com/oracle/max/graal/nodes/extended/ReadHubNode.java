@@ -29,14 +29,14 @@ import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
 // TODO (ch) this should be a FloatingNode but Lowering crashes in that case
-public final class ReadClassNode extends FixedWithNextNode implements Lowerable {
+public final class ReadHubNode extends FixedWithNextNode implements Lowerable {
     @Input private ValueNode object;
 
     public ValueNode object() {
         return object;
     }
 
-    public ReadClassNode(ValueNode object) {
+    public ReadHubNode(ValueNode object) {
         super(StampFactory.forKind(CiKind.Object));
         this.object = object;
     }

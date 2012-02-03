@@ -156,7 +156,7 @@ public class InliningUtil {
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
-            ReadClassNode objectClass = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
+            ReadHubNode objectClass = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode));
             assert invoke.predecessor() != null;
@@ -279,7 +279,7 @@ public class InliningUtil {
             }
 
             // replace the invoke with a cascade of if nodes
-            ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
+            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
             FixedNode deoptNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
@@ -305,7 +305,7 @@ public class InliningUtil {
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
             calleeEntryNode.setProbability(invoke.probability());
-            ReadClassNode objectClassNode = graph.add(new ReadClassNode(invoke.callTarget().receiver()));
+            ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
             FixedNode deoptNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
@@ -319,7 +319,7 @@ public class InliningUtil {
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
-        private FixedNode createDispatchOnType(StructuredGraph graph, ReadClassNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
+        private FixedNode createDispatchOnType(StructuredGraph graph, ReadHubNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
             assert types.length > 1;
 
             // TODO (ch) set probabilities for all fixed nodes...
@@ -332,7 +332,7 @@ public class InliningUtil {
             return nextNode;
         }
 
-        private static FixedNode createTypeCheck(StructuredGraph graph, ReadClassNode objectClassNode, RiResolvedType type, BeginNode tsux, FixedNode nextNode, double tsuxProbability) {
+        private static FixedNode createTypeCheck(StructuredGraph graph, ReadHubNode objectClassNode, RiResolvedType type, BeginNode tsux, FixedNode nextNode, double tsuxProbability) {
             IfNode result;
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, type));
             if (tsux instanceof MergeNode) {
