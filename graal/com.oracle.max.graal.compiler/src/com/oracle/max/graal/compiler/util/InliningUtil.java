@@ -87,18 +87,13 @@ public class InliningUtil {
             return (weight < o.weight) ? -1 : (weight > o.weight) ? 1 : 0;
         }
 
-        protected static StructuredGraph getGraph(Invoke invoke, RiResolvedMethod concrete, InliningCallback callback) {
-// TODO: Solve graph caching differently! GraphBuilderPhase.cachedGraphs.get(concrete);
-//          if (graph != null) {
-//              if (GraalOptions.TraceInlining) {
-//                  TTY.println("Reusing graph for %s", methodName(concrete, invoke));
-//              }
-//          } else {
-              if (GraalOptions.TraceInlining) {
-                  TTY.println("Building graph for %s, locals: %d, stack: %d", methodName(concrete, invoke), concrete.maxLocals(), concrete.maxStackSize());
-              }
-              return callback.buildGraph(concrete);
-//          }
+        protected static StructuredGraph getGraph(final RiResolvedMethod concrete, final InliningCallback callback) {
+            return Debug.scope("Inlining", concrete, new Callable<StructuredGraph>() {
+                @Override
+                public StructuredGraph call() throws Exception {
+                    return callback.buildGraph(concrete);
+                }
+            });
         }
 
         public abstract boolean canDeopt();
@@ -128,11 +123,7 @@ public class InliningUtil {
 
         @Override
         public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, final InliningCallback callback) {
-            StructuredGraph graph = Debug.scope("Inlining", concrete, new Callable<StructuredGraph>() {
-                @Override
-                public StructuredGraph call() throws Exception {
-                    return callback.buildGraph(concrete);
-            });
+            StructuredGraph graph = getGraph(concrete, callback);
             InliningUtil.inline(invoke, graph, true);
         }
 
@@ -173,9 +164,9 @@ public class InliningUtil {
             graph.addBeforeFixed(invoke.node(), objectClass);
             graph.addBeforeFixed(invoke.node(), guard);
 
-            Debug.log("inlining 1 method using 1 type check);
+            Debug.log("inlining 1 method using 1 type check");
 
-            StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
+            StructuredGraph calleeGraph = getGraph(concrete, callback);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
@@ -224,9 +215,7 @@ public class InliningUtil {
                 inlineSingleMethod(graph, callback);
             }
 
-            if (GraalOptions.TraceInlining) {
-                TTY.println("inlining %d methods with %d type checks", numberOfMethods, types.length);
-            }
+            Debug.log("inlining %d methods with %d type checks", numberOfMethods, types.length);
         }
 
         private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
@@ -306,7 +295,7 @@ public class InliningUtil {
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
                 Invoke invokeForInlining = (Invoke) node.next();
-                StructuredGraph calleeGraph = getGraph(invokeForInlining, concretes.get(i), callback);
+                StructuredGraph calleeGraph = getGraph(concretes.get(i), callback);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
             }
         }
@@ -326,7 +315,7 @@ public class InliningUtil {
             pred.setNext(dispatchOnType);
             calleeEntryNode.setNext(invoke.node());
 
-            StructuredGraph calleeGraph = getGraph(invoke, concretes.get(0), callback);
+            StructuredGraph calleeGraph = getGraph(concretes.get(0), callback);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
@@ -517,9 +506,7 @@ public class InliningUtil {
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
 
-                        if (GraalOptions.TraceInlining) {
-                            TTY.println("not inlining %s because method can't be inlined", methodName(callTarget.targetMethod(), invoke));
-                        }
+                        Debug.log("not inlining %s because method can't be inlined", methodName(callTarget.targetMethod(), invoke));
                         return null;
                     } else {
                         Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
@@ -559,9 +546,7 @@ public class InliningUtil {
                             convertTypeToBranchProbabilities(probabilities, notRecordedTypeProbability);
                             return new MultiTypeGuardInlineInfo(invoke, totalWeight, level, concreteMethods, types, typesToConcretes, probabilities);
                         } else {
-                            if (GraalOptions.TraceInlining) {
-                                Debug.log("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
-                            }
+                            Debug.log("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
                             return null;
                         }
                     } else {
@@ -571,14 +556,10 @@ public class InliningUtil {
                 }
             }
 
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because no types/probabilities were recorded", methodName(callTarget.targetMethod(), invoke));
-            }
+            Debug.log("not inlining %s because no types/probabilities were recorded", methodName(callTarget.targetMethod(), invoke));
             return null;
         } else {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because no type profile exists", methodName(callTarget.targetMethod(), invoke));
-            }
+            Debug.log("not inlining %s because no type profile exists", methodName(callTarget.targetMethod(), invoke));
             return null;
         }
     }
