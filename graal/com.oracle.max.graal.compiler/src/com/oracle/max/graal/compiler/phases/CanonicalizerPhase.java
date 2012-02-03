@@ -219,7 +219,7 @@ public class CanonicalizerPhase extends Phase {
                         pred.replaceFirstSuccessor(replacedSux, next);
                         FrameState stateAfter = merge.stateAfter();
                         merge.setStateAfter(null);
-                        if (stateAfter.usages().isEmpty()) {
+                        if (stateAfter != null && stateAfter.usages().isEmpty()) {
                             stateAfter.safeDelete();
                         }
                         merge.safeDelete();
