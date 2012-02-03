@@ -77,7 +77,7 @@ public class HotSpotDebugConfig implements DebugConfig {
             filter = filter.replace("[", "\\[");
             filter = filter.replace("]", "\\]");
             filter = filter.replace(":", "\\:");*/
-            System.out.println("regexp: " + filter + " string=" + currentScope + ", " + Pattern.matches(filter, currentScope));
+            //System.out.println("regexp: " + filter + " string=" + currentScope + ", " + Pattern.matches(filter, currentScope));
             return Pattern.matches(filter, currentScope);
         }
         return currentScope.contains(filter);
