@@ -311,6 +311,7 @@ public enum CiKind {
     }
 
     public CiConstant readUnsafeConstant(Object value, long displacement) {
+        assert value != null;
         Unsafe u = Unsafe.getUnsafe();
         switch(this) {
             case Boolean:

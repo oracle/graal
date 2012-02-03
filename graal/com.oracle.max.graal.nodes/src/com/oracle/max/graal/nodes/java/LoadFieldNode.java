@@ -69,7 +69,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         CiConstant constant = null;
         if (isStatic()) {
             constant = field().constantValue(null);
-        } else if (object().isConstant()) {
+        } else if (object().isConstant() && !object().isNullConstant()) {
             constant = field().constantValue(object().asConstant());
         }
         if (constant != null) {

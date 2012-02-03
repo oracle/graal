@@ -268,6 +268,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         }
                         compiler.getRuntime().installMethod(method, result);
                     } catch (CiBailout bailout) {
+                        Debug.metric("Bailouts").increment();
                         if (GraalOptions.ExitVMOnBailout) {
                             bailout.printStackTrace(TTY.cachedOut);
                             System.exit(-1);

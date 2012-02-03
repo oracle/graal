@@ -53,6 +53,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private CiAssumptions assumptions;
 
     private final PhasePlan plan;
+    private final InliningPolicy inliningPolicy;
 
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
@@ -64,6 +65,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         this.hints = hints;
         this.assumptions = assumptions;
         this.plan = plan;
+        this.inliningPolicy = createInliningPolicy();
     }
 
     @SuppressWarnings("unchecked")
@@ -80,39 +82,36 @@ public class InliningPhase extends Phase implements InliningCallback {
 
         while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
             InlineInfo info = inlineCandidates.remove();
-            double penalty = Math.pow(GraalOptions.InliningSizePenaltyExp, graph.getNodeCount() / (double) GraalOptions.MaximumDesiredSize) / GraalOptions.InliningSizePenaltyExp;
-            if (info.weight > GraalOptions.MaximumInlineWeight / (1 + penalty * GraalOptions.InliningSizePenalty)) {
-                Debug.log("not inlining (cut off by weight): %e", info.weight);
-                return;
-            }
-            Iterable<Node> newNodes = null;
-            if (info.invoke.node().isAlive()) {
-                try {
-                    info.inline(graph, runtime, this);
-                    Debug.log("inlining %f: %s", info.weight, info);
-                    Debug.dump(graph, "after inlining %s", info);
-                    // get the new nodes here, the canonicalizer phase will reset the mark
-                    newNodes = graph.getNewNodes();
-                    if (GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
+            if (inliningPolicy.isWorthInlining(graph, info)) {
+                Iterable<Node> newNodes = null;
+                if (info.invoke.node().isAlive()) {
+                    try {
+                        info.inline(graph, runtime, this);
+                        Debug.log("inlining %f: %s", info.weight, info);
+                        Debug.dump(graph, "after inlining %s", info);
+                        // get the new nodes here, the canonicalizer phase will reset the mark
+                        newNodes = graph.getNewNodes();
+                        if (GraalOptions.OptCanonicalizer) {
+                            new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
+                        }
+                        if (GraalOptions.Intrinsify) {
+                            new IntrinsificationPhase(runtime).apply(graph);
+                        }
+                        metricInliningPerformed.increment();
+                    } catch (CiBailout bailout) {
+                        // TODO determine if we should really bail out of the whole compilation.
+                        throw bailout;
+                    } catch (AssertionError e) {
+                        throw new GraalInternalError(e).addContext(info.toString());
+                    } catch (RuntimeException e) {
+                        throw new GraalInternalError(e).addContext(info.toString());
+                    } catch (GraalInternalError e) {
+                        throw e.addContext(info.toString());
                     }
-                    if (GraalOptions.Intrinsify) {
-                        new IntrinsificationPhase(runtime).apply(graph);
-                    }
-                    metricInliningPerformed.increment();
-                } catch (CiBailout bailout) {
-                    // TODO determine if we should really bail out of the whole compilation.
-                    throw bailout;
-                } catch (AssertionError e) {
-                    throw new GraalInternalError(e).addContext(info.toString());
-                } catch (RuntimeException e) {
-                    throw new GraalInternalError(e).addContext(info.toString());
-                } catch (GraalInternalError e) {
-                    throw e.addContext(info.toString());
                 }
-            }
-            if (newNodes != null && info.level <= GraalOptions.MaximumInlineLevel) {
-                scanInvokes(newNodes, info.level + 1, graph);
+                if (newNodes != null && info.level <= GraalOptions.MaximumInlineLevel) {
+                    scanInvokes(newNodes, info.level + 1, graph);
+                }
             }
         }
     }
@@ -160,61 +159,9 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     public double inliningWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke) {
-        double ratio;
-        if (hints != null && hints.contains(invoke)) {
-            ratio = 1000000;
-        } else {
-            if (GraalOptions.ProbabilityAnalysis) {
-                ratio = invoke.node().probability();
-            } else {
-                RiProfilingInfo profilingInfo = method.profilingInfo();
-                int executionCount = profilingInfo.getExecutionCount(invoke.bci());
-                if (executionCount > 0) {
-                    RiResolvedMethod parent = invoke.stateAfter().method();
-                    ratio = executionCount / (float) parent.invocationCount();
-                } else {
-                    ratio = 1;
-                }
-            }
-        }
-
-        final double normalSize;
-        // TODO(ls) get rid of this magic, it's here to emulate the old behavior for the time being
-        if (ratio < 0.01) {
-            ratio = 0.01;
-        }
-        if (ratio < 0.5) {
-            normalSize = 10 * ratio / 0.5;
-        } else if (ratio < 2) {
-            normalSize = 10 + (35 - 10) * (ratio - 0.5) / 1.5;
-        } else if (ratio < 20) {
-            normalSize = 35;
-        } else if (ratio < 40) {
-            normalSize = 35 + (350 - 35) * (ratio - 20) / 20;
-        } else {
-            normalSize = 350;
-        }
-
-        int count;
-        if (GraalOptions.ParseBeforeInlining) {
-            if (!parsedMethods.containsKey(method)) {
-                StructuredGraph newGraph = new StructuredGraph(method);
-                if (plan != null) {
-                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
-                }
-                new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
-                count = graphComplexity(newGraph);
-                parsedMethods.put(method, count);
-            } else {
-                count = parsedMethods.get(method);
-            }
-        } else {
-            count = method.codeSize();
-        }
-
-        return count / normalSize;
+        boolean preferred = hints != null && hints.contains(invoke);
+        return inliningPolicy.computeWeight(caller, method, invoke, preferred);
     }
-
 
     public static int graphComplexity(StructuredGraph graph) {
         int result = 0;
@@ -240,4 +187,105 @@ public class InliningPhase extends Phase implements InliningCallback {
         assumptions.recordConcreteMethod(method, context, impl);
     }
 
+    private InliningPolicy createInliningPolicy() {
+        if (GraalOptions.InliningPolicy == 0) {
+            return new WeightBasedInliningPolicy();
+        } else if (GraalOptions.InliningPolicy == 1) {
+            return new SizeBasedInliningPolicy();
+        } else {
+            Util.shouldNotReachHere();
+            return null;
+        }
+    }
+
+    private interface InliningPolicy {
+        double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke);
+        boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info);
+    }
+
+    private class WeightBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+            double ratio;
+            if (preferredInvoke) {
+                ratio = 1000000;
+            } else {
+                if (GraalOptions.ProbabilityAnalysis) {
+                    ratio = invoke.node().probability();
+                } else {
+                    RiProfilingInfo profilingInfo = method.profilingInfo();
+                    int executionCount = profilingInfo.getExecutionCount(invoke.bci());
+                    if (executionCount > 0) {
+                        RiResolvedMethod parent = invoke.stateAfter().method();
+                        ratio = executionCount / (float) parent.invocationCount();
+                    } else {
+                        ratio = 1;
+                    }
+                }
+            }
+
+            final double normalSize;
+            // TODO(ls) get rid of this magic, it's here to emulate the old behavior for the time being
+            if (ratio < 0.01) {
+                ratio = 0.01;
+            }
+            if (ratio < 0.5) {
+                normalSize = 10 * ratio / 0.5;
+            } else if (ratio < 2) {
+                normalSize = 10 + (35 - 10) * (ratio - 0.5) / 1.5;
+            } else if (ratio < 20) {
+                normalSize = 35;
+            } else if (ratio < 40) {
+                normalSize = 35 + (350 - 35) * (ratio - 20) / 20;
+            } else {
+                normalSize = 350;
+            }
+
+            int count;
+            if (GraalOptions.ParseBeforeInlining) {
+                if (!parsedMethods.containsKey(method)) {
+                    StructuredGraph newGraph = new StructuredGraph(method);
+                    if (plan != null) {
+                        plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
+                    }
+                    new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+                    count = graphComplexity(newGraph);
+                    parsedMethods.put(method, count);
+                } else {
+                    count = parsedMethods.get(method);
+                }
+            } else {
+                count = method.codeSize();
+            }
+
+            return count / normalSize;
+        }
+
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            double penalty = Math.pow(GraalOptions.InliningSizePenaltyExp, callerGraph.getNodeCount() / (double) GraalOptions.MaximumDesiredSize) / GraalOptions.InliningSizePenaltyExp;
+            if (info.weight > GraalOptions.MaximumInlineWeight / (1 + penalty * GraalOptions.InliningSizePenalty)) {
+                Debug.log("not inlining (cut off by weight): %e", info.weight);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private class SizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+            if (preferredInvoke) {
+                return method.codeSize() / 2;
+            } else {
+                return method.codeSize();
+            }
+        }
+
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            double maxSize = Math.max(GraalOptions.MaximumTrivialSize, Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize);
+            return info.weight <= maxSize;
+        }
+    }
 }
