@@ -142,13 +142,13 @@ public abstract class NodePredicates {
     private static final class AndPredicate extends NodePredicate {
         private final NodePredicate a;
         private final NodePredicate b;
-        private AndPredicate(NodePredicate pa, NodePredicate pb) {
-            this.a = pa;
-            this.b = pb;
+        private AndPredicate(NodePredicate a, NodePredicate b) {
+            this.a = a;
+            this.b = b;
         }
         @Override
         public boolean apply(Node n) {
-            return b.apply(n) && a.apply(n);
+            return a.apply(n) && b.apply(n);
         }
     }
 
@@ -166,13 +166,13 @@ public abstract class NodePredicates {
     private static final class OrPredicate extends NodePredicate {
         private final NodePredicate a;
         private final NodePredicate b;
-        private OrPredicate(NodePredicate np, NodePredicate thiz) {
-            this.a = np;
-            this.b = thiz;
+        private OrPredicate(NodePredicate a, NodePredicate b) {
+            this.a = a;
+            this.b = b;
         }
         @Override
         public boolean apply(Node n) {
-            return b.apply(n) || a.apply(n);
+            return a.apply(n) || b.apply(n);
         }
     }
 

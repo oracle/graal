@@ -434,6 +434,45 @@ public class ArrayCopySnippets implements SnippetsInterface{
         }
     }
 
+    private static class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
+        @Input private ValueNode object;
+        @Input private ValueNode value;
+        @Input private ValueNode offset;
+
+        public DirectObjectStoreNode(ValueNode object, ValueNode offset, ValueNode value) {
+            super(StampFactory.illegal());
+            this.object = object;
+            this.value = value;
+            this.offset = offset;
+        }
+
+        @SuppressWarnings("unused")
+        @NodeIntrinsic
+        public static void store(Object obj, long offset, long value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @NodeIntrinsic
+        public static void store(Object obj, long offset, boolean value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @NodeIntrinsic
+        public static void store(Object obj, long offset, Object value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void lower(CiLoweringTool tool) {
+            StructuredGraph graph = (StructuredGraph) this.graph();
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, value.kind(), 0, offset, graph, false);
+            WriteNode write = graph.add(new WriteNode(object, value, location));
+            graph.replaceFixedWithFixed(this, write);
+        }
+    }
+
     private static class CardTableShiftNode extends ConstantNode {
         public CardTableShiftNode() {
             super(CiConstant.forInt(CompilerImpl.getInstance().getConfig().cardtableShift));
