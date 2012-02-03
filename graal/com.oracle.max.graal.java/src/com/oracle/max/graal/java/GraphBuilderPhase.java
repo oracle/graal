@@ -687,6 +687,32 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
+    private static final RiResolvedType[] EMPTY_TYPE_ARRAY = new RiResolvedType[0];
+
+    private RiResolvedType[] getTypeCheckHints(RiResolvedType type, int maxHints) {
+        if (!GraalOptions.UseInstanceOfHints || Util.isFinalClass(type)) {
+            return new RiResolvedType[] {type};
+        } else {
+            RiResolvedType uniqueSubtype = type.uniqueConcreteSubtype();
+            if (uniqueSubtype != null) {
+                return new RiResolvedType[] {uniqueSubtype};
+            } else {
+                RiTypeProfile typeProfile = method.typeProfile(bci());
+                if (typeProfile != null && typeProfile.types != null && typeProfile.types.length > 0 && typeProfile.morphism <= maxHints) {
+                    RiResolvedType[] hints = new RiResolvedType[typeProfile.types.length];
+                    int hintCount = 0;
+                    for (RiResolvedType hint : typeProfile.types) {
+                        if (hint.isSubtypeOf(type)) {
+                            hints[hintCount++] = hint;
+                        }
+                    }
+                    return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
+                }
+                return EMPTY_TYPE_ARRAY;
+            }
+        }
+    }
+
     private void genCheckCast() {
         int cpi = stream().readCPI();
         RiType type = lookupType(cpi, CHECKCAST);
@@ -696,7 +722,13 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode object = frameState.apop();
             AnchorNode anchor = currentGraph.add(new AnchorNode());
             append(anchor);
-            CheckCastNode checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object));
+            CheckCastNode checkCast;
+            if (type instanceof RiResolvedType) {
+                RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, 2);
+                checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
+            } else {
+                checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object));
+            }
             append(currentGraph.add(new ValueAnchorNode(checkCast)));
             frameState.apush(checkCast);
         } else {
@@ -714,34 +746,8 @@ public final class GraphBuilderPhase extends Phase {
             RiResolvedType resolvedType = (RiResolvedType) type;
             ConstantNode hub = appendConstant(resolvedType.getEncoding(RiType.Representation.ObjectHub));
 
-            final InstanceOfNode instanceOfNode;
-            if (!GraalOptions.UseInstanceOfHints) {
-                instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, false);
-            } else {
-                if (Modifier.isFinal(resolvedType.accessFlags()) || resolvedType.isArrayClass()) {
-                    instanceOfNode = new InstanceOfNode(hub, resolvedType, object, new RiResolvedType[] {resolvedType}, true, false);
-                } else {
-                    RiResolvedType uniqueSubtype = resolvedType.uniqueConcreteSubtype();
-                    if (uniqueSubtype != null) {
-                        instanceOfNode = new InstanceOfNode(hub, resolvedType, object, new RiResolvedType[] {uniqueSubtype}, false, false);
-                    } else {
-                        RiTypeProfile typeProfile = method.typeProfile(bci());
-                        if (typeProfile != null && typeProfile.types != null && typeProfile.types.length > 0) {
-                            RiResolvedType[] hints = new RiResolvedType[typeProfile.types.length];
-                            int hintCount = 0;
-                            int i  = 0;
-                            for (RiResolvedType hint : typeProfile.types) {
-                                if (hint.isSubtypeOf(resolvedType)) {
-                                    hints[hintCount++] = hint;
-                                }
-                            }
-                            instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, Arrays.copyOf(hints, hintCount), false, false);
-                        } else {
-                            instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, false);
-                        }
-                    }
-                }
-            }
+            RiResolvedType[] hints = getTypeCheckHints(resolvedType, 1);
+            InstanceOfNode instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, hints, Util.isFinalClass(resolvedType), false);
             frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode), currentGraph)));
         } else {
             PlaceholderNode trueSucc = currentGraph.add(new PlaceholderNode());

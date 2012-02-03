@@ -82,6 +82,13 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
                 return object();
             }
         }
+
+        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
+            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
+                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
+                return graph().unique(new CheckCastNode(anchor, targetClassInstruction(), targetClass(), object(), hints(), true));
+            }
+        }
         return this;
     }
 

@@ -643,8 +643,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         protected XirTemplate create(CiXirAssembler asm, long flags, int hintCount) {
             asm.restart(CiKind.Void);
             XirParameter object = asm.createInputParameter("object", CiKind.Object);
-            final XirOperand hub;
-            hub = asm.createConstantInputParameter("hub", CiKind.Object);
+            final XirOperand hub = is(EXACT_HINTS, flags) ? null : asm.createConstantInputParameter("hub", CiKind.Object);
 
             XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
 
@@ -703,8 +702,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         protected XirTemplate create(CiXirAssembler asm, long flags, int hintCount) {
             asm.restart(CiKind.Void);
             XirParameter object = asm.createInputParameter("object", CiKind.Object);
-            final XirOperand hub;
-            hub = asm.createConstantInputParameter("hub", CiKind.Object);
+            final XirOperand hub = is(EXACT_HINTS, flags) ? null : asm.createConstantInputParameter("hub", CiKind.Object);
 
             XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
 
@@ -763,8 +761,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         protected XirTemplate create(CiXirAssembler asm, long flags, int hintCount) {
             XirOperand result = asm.restart(CiKind.Int);
             XirParameter object = asm.createInputParameter("object", CiKind.Object);
-            final XirOperand hub;
-            hub = asm.createConstantInputParameter("hub", CiKind.Object);
+            final XirOperand hub = is(EXACT_HINTS, flags) ? null : asm.createConstantInputParameter("hub", CiKind.Object);
             XirOperand trueValue = asm.createConstantInputParameter("trueValue", CiKind.Int);
             XirOperand falseValue = asm.createConstantInputParameter("falseValue", CiKind.Int);
 
@@ -1327,11 +1324,14 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         if (hints == null || hints.length == 0) {
             return new XirSnippet(checkCastTemplates.get(site, 0), receiver, hub);
         } else {
-            XirArgument[] params = new XirArgument[hints.length + 2];
-            params[0] = receiver;
-            params[1] = hub;
-            for (int i = 0; i < hints.length; i++) {
-                params[i + 2] = XirArgument.forObject(hints[i]);
+            XirArgument[] params = new XirArgument[hints.length + (hintsExact ? 1 : 2)];
+            int i = 0;
+            params[i++] = receiver;
+            if (!hintsExact) {
+                params[i++] = hub;
+            }
+            for (RiResolvedType hint : hints) {
+                params[i++] = XirArgument.forObject(hint);
             }
             XirTemplate template = hintsExact ? checkCastTemplates.get(site, hints.length, EXACT_HINTS) : checkCastTemplates.get(site, hints.length);
             return new XirSnippet(template, params);
@@ -1343,11 +1343,14 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         if (hints == null || hints.length == 0) {
             return new XirSnippet(instanceOfTemplates.get(site, 0), object, hub);
         } else {
-            XirArgument[] params = new XirArgument[hints.length + 2];
-            params[0] = object;
-            params[1] = hub;
-            for (int i = 0; i < hints.length; i++) {
-                params[i + 2] = XirArgument.forObject(hints[i]);
+            XirArgument[] params = new XirArgument[hints.length + (hintsExact ? 1 : 2)];
+            int i = 0;
+            params[i++] = object;
+            if (!hintsExact) {
+                params[i++] = hub;
+            }
+            for (RiResolvedType hint : hints) {
+                params[i++] = XirArgument.forObject(hint);
             }
             XirTemplate template = hintsExact ? instanceOfTemplates.get(site, hints.length, EXACT_HINTS) : instanceOfTemplates.get(site, hints.length);
             return new XirSnippet(template, params);
@@ -1359,13 +1362,16 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         if (hints == null || hints.length == 0) {
             return new XirSnippet(materializeInstanceOfTemplates.get(site, 0), object, hub, trueValue, falseValue);
         } else {
-            XirArgument[] params = new XirArgument[hints.length + 4];
-            params[0] = object;
-            params[1] = hub;
-            params[2] = trueValue;
-            params[3] = falseValue;
-            for (int i = 0; i < hints.length; i++) {
-                params[i + 4] = XirArgument.forObject(hints[i]);
+            XirArgument[] params = new XirArgument[hints.length + (hintsExact ? 3 : 4)];
+            int i = 0;
+            params[i++] = object;
+            if (!hintsExact) {
+                params[i++] = hub;
+            }
+            params[i++] = trueValue;
+            params[i++] = falseValue;
+            for (RiResolvedType hint : hints) {
+                params[i++] = XirArgument.forObject(hint);
             }
             XirTemplate template = hintsExact ? materializeInstanceOfTemplates.get(site, hints.length, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hints.length);
             return new XirSnippet(template, params);

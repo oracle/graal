@@ -22,9 +22,11 @@
  */
 package com.oracle.max.graal.compiler.util;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -370,5 +372,9 @@ public class Util {
 
     public static boolean isFloating(Node n) {
         return n instanceof FloatingNode;
+    }
+
+    public static boolean isFinalClass(RiResolvedType type) {
+        return Modifier.isFinal(type.accessFlags()) || (type.isArrayClass() && Modifier.isFinal(type.componentType().accessFlags()));
     }
 }

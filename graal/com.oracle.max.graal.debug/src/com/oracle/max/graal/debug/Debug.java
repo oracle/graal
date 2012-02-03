@@ -103,7 +103,6 @@ public class Debug {
 
     public static void dump(Object object, String msg, Object... args) {
         if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
-            System.out.println("dumping");
             DebugScope.getInstance().dump(object, msg, args);
         }
     }
