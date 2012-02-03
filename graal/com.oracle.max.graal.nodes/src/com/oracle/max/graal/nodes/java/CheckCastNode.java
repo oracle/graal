@@ -34,6 +34,8 @@ import com.oracle.max.graal.nodes.type.*;
 
 /**
  * The {@code CheckCastNode} represents a {@link Bytecodes#CHECKCAST}.
+ *
+ * The {@link #targetClass()} of a CheckCastNode can be null for array store checks!
  */
 public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
@@ -51,12 +53,11 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
      * @param object the instruction producing the object
      */
     public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
-        this(anchor, targetClassInstruction, targetClass, object, null, EMPTY_HINTS, false);
+        this(anchor, targetClassInstruction, targetClass, object, EMPTY_HINTS, false);
     }
 
-    public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, List<? extends ValueNode> hintInstructions, RiResolvedType[] hints, boolean hintsExact) {
-        super(targetClassInstruction, targetClass, object, hintInstructions, hints, hintsExact, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
-        assert targetClass != null;
+    public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact) {
+        super(targetClassInstruction, targetClass, object, hints, hintsExact, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
         this.anchor = anchor;
     }
 

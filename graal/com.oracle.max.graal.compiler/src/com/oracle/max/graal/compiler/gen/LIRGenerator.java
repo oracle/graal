@@ -480,25 +480,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitCheckCast(CheckCastNode x) {
-        XirArgument[] hints = getTypeCheckHints(x);
-        XirSnippet snippet = xir.genCheckCast(site(x), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), hints, x.hintsExact());
+        XirSnippet snippet = xir.genCheckCast(site(x), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
         emitXir(snippet, x, state(), true);
         // The result of a checkcast is the unmodified object, so no need to allocate a new variable for it.
         setResult(x, operand(x.object()));
-    }
-
-    private XirArgument[] getTypeCheckHints(TypeCheckNode x) {
-        XirArgument[] hints;
-        if (!GraalOptions.UseInstanceOfHints || x.hints() == null || x.hints().length == 0) {
-            hints = new XirArgument[0];
-        } else {
-            assert x.hints().length == x.hintInstructions().size();
-            hints = new XirArgument[x.hints().length];
-            for (int i = 0; i < x.hints().length; i++) {
-                hints[i] = toXirArgument(x.hintInstructions().get(i));
-            }
-        }
-        return hints;
     }
 
     @Override
@@ -754,9 +739,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
-        XirArgument[] hints = getTypeCheckHints(x);
         XirArgument obj = toXirArgument(x.object());
-        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), hints, x.hintsExact());
+        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
         emitXir(snippet, x, info, null, false, x.negated() ? falseSuccessor : trueSuccessor, x.negated() ? trueSuccessor : falseSuccessor);
     }
 
@@ -798,11 +782,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private Variable emitInstanceOfConditional(InstanceOfNode x, CiValue trueValue, CiValue falseValue) {
-        XirArgument[] hints = getTypeCheckHints(x);
         XirArgument obj = toXirArgument(x.object());
         XirArgument trueArg = toXirArgument(x.negated() ? falseValue : trueValue);
         XirArgument falseArg = toXirArgument(x.negated() ? trueValue : falseValue);
-        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass(), hints, x.hintsExact());
+        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass(), x.hints(), x.hintsExact());
         return (Variable) emitXir(snippet, null, null, false);
     }
 

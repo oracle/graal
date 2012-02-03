@@ -719,28 +719,23 @@ public final class GraphBuilderPhase extends Phase {
                 instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, false);
             } else {
                 if (Modifier.isFinal(resolvedType.accessFlags()) || resolvedType.isArrayClass()) {
-                    instanceOfNode = new InstanceOfNode(hub, resolvedType, object, Collections.singletonList(hub), new RiResolvedType[] {resolvedType}, true, false);
+                    instanceOfNode = new InstanceOfNode(hub, resolvedType, object, new RiResolvedType[] {resolvedType}, true, false);
                 } else {
                     RiResolvedType uniqueSubtype = resolvedType.uniqueConcreteSubtype();
                     if (uniqueSubtype != null) {
-//                        TTY.println("unique concrete subtype: " + uniqueSubtype);
-                        ConstantNode subTypeHub = appendConstant(uniqueSubtype.getEncoding(RiType.Representation.ObjectHub));
-                        instanceOfNode = new InstanceOfNode(hub, resolvedType, object, Collections.singletonList(subTypeHub), new RiResolvedType[] {uniqueSubtype}, false, false);
+                        instanceOfNode = new InstanceOfNode(hub, resolvedType, object, new RiResolvedType[] {uniqueSubtype}, false, false);
                     } else {
                         RiTypeProfile typeProfile = method.typeProfile(bci());
                         if (typeProfile != null && typeProfile.types != null && typeProfile.types.length > 0) {
-                            ArrayList<ValueNode> hintInstructions = new ArrayList<>(typeProfile.types.length);
                             RiResolvedType[] hints = new RiResolvedType[typeProfile.types.length];
                             int hintCount = 0;
-
+                            int i  = 0;
                             for (RiResolvedType hint : typeProfile.types) {
-//                                TTY.println("profiled type: " + hint);
                                 if (hint.isSubtypeOf(resolvedType)) {
-                                    hintInstructions.add(appendConstant(hint.getEncoding(RiType.Representation.ObjectHub)));
                                     hints[hintCount++] = hint;
                                 }
                             }
-                            instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, hintInstructions, Arrays.copyOf(hints, hintCount), false, false);
+                            instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, Arrays.copyOf(hints, hintCount), false, false);
                         } else {
                             instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, false);
                         }

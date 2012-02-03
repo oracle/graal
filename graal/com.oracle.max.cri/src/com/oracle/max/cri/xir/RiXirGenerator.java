@@ -77,11 +77,11 @@ public interface RiXirGenerator {
 
     XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type);
 
-    XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiType type, XirArgument[] hintHubs, boolean hintsExact);
+    XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiType type, RiResolvedType[] hints, boolean hintsExact);
 
-    XirSnippet genInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, RiType type, XirArgument[] hintHubs, boolean hintsExact);
+    XirSnippet genInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, RiType type, RiResolvedType[] hints, boolean hintsExact);
 
-    XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiType type, XirArgument[] hintHubs, boolean hintsExact);
+    XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiType type, RiResolvedType[] hints, boolean hintsExact);
 
     XirSnippet genArrayLoad(XirSite site, XirArgument array, XirArgument index, CiKind elementKind, RiType elementType);
 
