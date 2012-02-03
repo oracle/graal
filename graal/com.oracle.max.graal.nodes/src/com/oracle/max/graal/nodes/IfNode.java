@@ -86,7 +86,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
-    public FixedNode successor(boolean istrue) {
+    public BeginNode successor(boolean istrue) {
         return blockSuccessor(istrue ? 0 : 1);
     }
 

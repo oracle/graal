@@ -25,78 +25,18 @@ package com.oracle.max.graal.graph.iterators;
 import com.oracle.max.graal.graph.*;
 
 public abstract class NodePredicate {
-    public static final TautologyPredicate TAUTOLOGY = new TautologyPredicate();
-
-    public static final IsNullPredicate IS_NULL = new IsNullPredicate();
-
-    public static final class TautologyPredicate extends NodePredicate {
-        @Override
-        public boolean apply(Node n) {
-            return true;
-        }
-    }
-
-    public static final class AndPredicate extends NodePredicate {
-        private final NodePredicate a;
-        private final NodePredicate b;
-        private AndPredicate(NodePredicate np, NodePredicate thiz) {
-            this.a = np;
-            this.b = thiz;
-        }
-        @Override
-        public boolean apply(Node n) {
-            return b.apply(n) && a.apply(n);
-        }
-    }
-
-    public static final class OrPredicate extends NodePredicate {
-        private final NodePredicate a;
-        private final NodePredicate b;
-        private OrPredicate(NodePredicate np, NodePredicate thiz) {
-            this.a = np;
-            this.b = thiz;
-        }
-        @Override
-        public boolean apply(Node n) {
-            return b.apply(n) || a.apply(n);
-        }
-    }
-
-    public static final class IsNullPredicate extends NodePredicate {
-        @Override
-        public boolean apply(Node n) {
-            return n == null;
-        }
-    }
-
-    public static final class EqualsPredicate<T extends Node> extends NodePredicate {
-        private final T u;
-        public EqualsPredicate(T u) {
-            this.u = u;
-        }
-        @Override
-        public boolean apply(Node n) {
-            return u == n;
-        }
-    }
 
     public abstract boolean apply(Node n);
 
-    public NodePredicate and(final NodePredicate np) {
-        if (this instanceof TautologyPredicate) {
-            return np;
-        }
-        return new AndPredicate(this, np);
+    public NodePredicate and(NodePredicate np) {
+        return NodePredicates.and(this, np);
     }
 
-    public NodePredicate or(final NodePredicate np) {
-        if (this instanceof TautologyPredicate) {
-            return this;
-        }
-        return new OrPredicate(this, np);
+    public NodePredicate or(NodePredicate np) {
+        return NodePredicates.or(this, np);
     }
 
-    public static <T extends Node> EqualsPredicate<T> equals(T u) {
-        return new EqualsPredicate<>(u);
+    public NodePredicate negate() {
+        return NodePredicates.not(this);
     }
 }

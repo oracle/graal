@@ -40,7 +40,7 @@ public class LoweringPhase extends Phase {
     @Override
     protected void run(final StructuredGraph graph) {
         final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
-        s.apply(graph, currentContext);
+        s.apply(graph);
         s.calculateAlwaysReachedBlock();
 
         NodeBitMap processed = graph.createNodeBitMap();

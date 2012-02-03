@@ -28,7 +28,6 @@ import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
@@ -57,7 +56,7 @@ public abstract class Backend {
     }
 
     public abstract FrameMap newFrameMap(RiRegisterConfig registerConfig);
-    public abstract LIRGenerator newLIRGenerator(GraalContext context, Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir);
+    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir);
     public abstract AbstractAssembler newAssembler(RiRegisterConfig registerConfig);
     public abstract CiXirAssembler newXirAssembler();
 

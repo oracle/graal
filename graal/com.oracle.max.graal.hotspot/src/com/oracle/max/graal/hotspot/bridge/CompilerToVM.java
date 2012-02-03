@@ -31,7 +31,7 @@ import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.ri.*;
 
 /**
- * Entries into the HotSpot VM from Java code.
+ * Calls from Java into HotSpot.
  */
 public interface CompilerToVM {
 

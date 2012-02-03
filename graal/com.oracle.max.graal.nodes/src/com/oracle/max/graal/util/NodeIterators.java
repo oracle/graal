@@ -33,7 +33,7 @@ public class NodeIterators {
         return new NodeIterable<FixedNode>() {
             @Override
             public Iterator<FixedNode> iterator() {
-                return new NodeIterator<FixedNode>(until){
+                return new NodeIterator<FixedNode>(){
                     FixedNode p = n;
                     @Override
                     protected void forward() {

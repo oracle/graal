@@ -33,11 +33,11 @@ import com.oracle.max.graal.nodes.type.*;
  * long, float, object reference, address, etc.
  */
 @NodeInfo(shortName = "Const")
-public final class ConstantNode extends BooleanNode implements LIRLowerable {
+public class ConstantNode extends BooleanNode implements LIRLowerable {
 
     @Data public final CiConstant value;
 
-    private ConstantNode(CiConstant value) {
+    protected ConstantNode(CiConstant value) {
         this(value, null);
     }
 
@@ -45,7 +45,7 @@ public final class ConstantNode extends BooleanNode implements LIRLowerable {
      * Constructs a new ConstantNode representing the specified constant.
      * @param value the constant
      */
-    private ConstantNode(CiConstant value, RiRuntime runtime) {
+    protected ConstantNode(CiConstant value, RiRuntime runtime) {
         super(StampFactory.forConstant(value, runtime));
         this.value = value;
     }

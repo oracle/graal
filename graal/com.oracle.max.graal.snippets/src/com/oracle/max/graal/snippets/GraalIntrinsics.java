@@ -25,7 +25,6 @@ package com.oracle.max.graal.snippets;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.cri.*;
 
 /**
@@ -34,12 +33,10 @@ import com.oracle.max.graal.cri.*;
 public class GraalIntrinsics {
     public static void installIntrinsics(GraalRuntime runtime, CiTarget target, PhasePlan plan) {
         if (GraalOptions.Intrinsify) {
-            Snippets.install(runtime, target, new MathSnippetsX86(), GraalOptions.PlotSnippets, plan);
-            Snippets.install(runtime, target, new DoubleSnippets(), GraalOptions.PlotSnippets, plan);
-            Snippets.install(runtime, target, new FloatSnippets(), GraalOptions.PlotSnippets, plan);
-            Snippets.install(runtime, target, new NodeClassSnippets(), GraalOptions.PlotSnippets, plan);
-            Snippets.install(runtime, target, new ArrayCopySnippets(), GraalOptions.PlotSnippets, plan);
-            plan.addPhase(PhasePosition.HIGH_LEVEL, new IntrinsifyArrayCopyPhase(runtime));
+            Snippets.install(runtime, target, new MathSnippetsX86(), plan);
+            Snippets.install(runtime, target, new DoubleSnippets(), plan);
+            Snippets.install(runtime, target, new FloatSnippets(), plan);
+            Snippets.install(runtime, target, new NodeClassSnippets(), plan);
         }
     }
 }

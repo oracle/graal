@@ -27,6 +27,7 @@ import junit.framework.AssertionFailedError;
 import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 
 public class StraighteningTest extends GraphTest {
@@ -87,7 +88,7 @@ public class StraighteningTest extends GraphTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        print(graph);
+        Debug.dump(graph, "Graph");
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);

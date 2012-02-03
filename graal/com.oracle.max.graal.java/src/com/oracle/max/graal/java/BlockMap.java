@@ -582,7 +582,7 @@ public final class BlockMap {
                 throw new CiBailout("Loop formed by an exception handler");
             }
             if (nextLoop >= Long.SIZE) {
-                // This restriction can be removed by using a fall-back to a BitSet in case we have more than 32 loops
+                // This restriction can be removed by using a fall-back to a BitSet in case we have more than 64 loops
                 // Don't compile such methods for now, until we see a concrete case that allows checking for correctness.
                 throw new CiBailout("Too many loops in method");
             }

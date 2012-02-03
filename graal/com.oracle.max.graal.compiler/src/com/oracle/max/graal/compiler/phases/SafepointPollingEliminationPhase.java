@@ -22,9 +22,9 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.util.*;
 
 public class SafepointPollingEliminationPhase extends Phase {
 

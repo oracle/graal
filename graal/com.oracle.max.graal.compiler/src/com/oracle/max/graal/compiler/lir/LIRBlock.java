@@ -205,9 +205,9 @@ public final class LIRBlock extends Block {
         LIRInstruction lirInstruction = lir.get(lir.size() - 1);
         if (lirInstruction instanceof LIRXirInstruction) {
             LIRXirInstruction lirXirInstruction = (LIRXirInstruction) lirInstruction;
-            return (lirXirInstruction.falseSuccessor() != null) && (lirXirInstruction.trueSuccessor() != null);
+            return (lirXirInstruction.falseSuccessor != null) && (lirXirInstruction.trueSuccessor != null);
         }
-        return lirInstruction instanceof LIRBranch;
+        return lirInstruction instanceof StandardOp.JumpOp;
     }
 
     public boolean isExceptionEntry() {

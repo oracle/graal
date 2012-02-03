@@ -22,7 +22,7 @@
  */
 package com.oracle.max.graal.alloc.simple;
 
-import static com.oracle.max.graal.compiler.lir.LIRPhiMapping.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.alloc.util.ValueUtil.*;
 
 import java.util.*;
@@ -34,6 +34,7 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
+import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
 
 public class DataFlowAnalysis {

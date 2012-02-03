@@ -27,6 +27,7 @@ import junit.framework.AssertionFailedError;
 import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.nodes.*;
 
 /**
@@ -162,7 +163,7 @@ public class ScalarTypeSystemTest extends GraphTest {
 
     private void test(String snippet, String referenceSnippet) {
         StructuredGraph graph = parse(snippet);
-        print(graph);
+        Debug.dump(graph, "Graph");
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         StructuredGraph referenceGraph = parse(referenceSnippet);
         assertEquals(referenceGraph, graph);

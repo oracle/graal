@@ -40,12 +40,7 @@ public final class EndNode extends FixedNode implements Node.IterableNodeType, L
     }
 
     public MergeNode merge() {
-        if (usages().size() == 0) {
-            return null;
-        } else {
-            assert usages().size() == 1;
-            return (MergeNode) usages().iterator().next();
-        }
+        return (MergeNode) usages().first();
     }
 
     @Override

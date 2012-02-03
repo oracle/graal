@@ -265,9 +265,9 @@ public class Graph {
      * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#mark() mark}.
      * @return an {@link Iterable} providing the new nodes
      */
-    public Iterable<Node> getNewNodes() {
+    public NodeIterable<Node> getNewNodes() {
         final int index = this.mark;
-        return new Iterable<Node>() {
+        return new NodeIterable<Node>() {
             @Override
             public Iterator<Node> iterator() {
                 return new NodeIterator(index);

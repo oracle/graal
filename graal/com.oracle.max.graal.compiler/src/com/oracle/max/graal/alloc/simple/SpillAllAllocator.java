@@ -39,27 +39,26 @@ import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 
 public class SpillAllAllocator {
-    private final GraalContext context;
     private final LIR lir;
     private final FrameMap frameMap;
 
     private final DataFlowAnalysis dataFlow;
 
-    public SpillAllAllocator(GraalContext context, LIR lir, FrameMap frameMap) {
-        this.context = context;
+    public SpillAllAllocator(LIR lir, FrameMap frameMap) {
         this.lir = lir;
         this.frameMap = frameMap;
 
         this.dataFlow = new DataFlowAnalysis(lir, frameMap.registerConfig);
         this.blockLocations = new LocationMap[lir.linearScanOrder().size()];
-        this.moveResolver = new MoveResolverImpl(frameMap);
+        this.moveResolver = new MoveResolverImpl(lir, frameMap);
     }
 
     private class MoveResolverImpl extends MoveResolver {
-        public MoveResolverImpl(FrameMap frameMap) {
-            super(frameMap);
+        public MoveResolverImpl(LIR lir, FrameMap frameMap) {
+            super(lir, frameMap);
         }
 
         @Override
@@ -134,23 +133,23 @@ public class SpillAllAllocator {
         assert LIRVerifier.verify(true, lir, frameMap);
 
         dataFlow.execute();
-        IntervalPrinter.printBeforeAllocation("Before register allocation", context, lir, frameMap.registerConfig, dataFlow);
+        IntervalPrinter.printBeforeAllocation("Before register allocation", lir, frameMap.registerConfig, dataFlow);
 
         allocate();
 
-        IntervalPrinter.printAfterAllocation("After spill all allocation", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
+        IntervalPrinter.printAfterAllocation("After spill all allocation", lir, frameMap.registerConfig, dataFlow, blockLocations);
 
         ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
         resolveDataFlow.execute();
         frameMap.finish();
 
-        IntervalPrinter.printAfterAllocation("After resolve data flow", context, lir, frameMap.registerConfig, dataFlow, blockLocations);
+        IntervalPrinter.printAfterAllocation("After resolve data flow", lir, frameMap.registerConfig, dataFlow, blockLocations);
         assert RegisterVerifier.verify(lir, frameMap);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);
         assignRegisters.execute();
 
-        context.observable.fireCompilationEvent("After register asignment", lir);
+        Debug.dump(lir, "After register asignment");
         assert LIRVerifier.verify(false, lir, frameMap);
     }
 

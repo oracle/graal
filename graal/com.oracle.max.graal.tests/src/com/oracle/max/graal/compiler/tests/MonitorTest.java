@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.compiler.tests;
 
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import junit.framework.AssertionFailedError;
@@ -30,6 +32,7 @@ import org.junit.*;
 
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.java.*;
 
@@ -64,10 +67,9 @@ public class MonitorTest extends GraphTest {
     @Test
     public void test2() {
         StructuredGraph graph = parseAndProcess("test2Snippet");
-        Collection<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.class).snapshot();
-        Assert.assertEquals(1, monitors.size());
-        MonitorExitNode monitor = monitors.iterator().next();
-        Assert.assertEquals(monitor.stateAfter().bci, 3);
+        NodeIterable<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.class);
+        Assert.assertEquals(1, monitors.count());
+        Assert.assertEquals(monitors.first().stateAfter().bci, 3);
     }
 
     @SuppressWarnings("all")
@@ -81,14 +83,10 @@ public class MonitorTest extends GraphTest {
 
     private StructuredGraph parseAndProcess(String snippet) {
         StructuredGraph graph = parse(snippet);
-        LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
+        LocalNode local = graph.getNodes(LocalNode.class).first();
         ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : local.usages().snapshot()) {
-            if (n instanceof FrameState) {
-                // Do not replace.
-            } else {
-                n.replaceFirstInput(local, constant);
-            }
+        for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
+            n.replaceFirstInput(local, constant);
         }
         Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {

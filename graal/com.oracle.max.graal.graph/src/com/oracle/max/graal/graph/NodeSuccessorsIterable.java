@@ -26,17 +26,6 @@ import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.iterators.*;
 
 public abstract class NodeSuccessorsIterable extends NodeIterable<Node> {
-
-    public int explicitCount() {
-        int count = 0;
-        for (@SuppressWarnings("unused") Node node : this) {
-            count++;
-        }
-        return count;
-    }
-
-    public abstract boolean contains(Node node);
-
     @Override
     public abstract NodeClassIterator iterator();
 }

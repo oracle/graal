@@ -28,21 +28,17 @@ import com.oracle.max.graal.graph.*;
 
 public abstract class NodeIterator<T extends Node> implements Iterator<T>{
     protected T current;
-    protected final NodePredicate until;
-    public NodeIterator(NodePredicate until) {
-        this.until = until;
-    }
     protected abstract void forward();
     @Override
     public boolean hasNext() {
         forward();
-        return current != null && !until.apply(current);
+        return current != null;
     }
     @Override
     public T next() {
         forward();
         T ret = current;
-        if (current == null || until.apply(current)) {
+        if (current == null) {
             throw new NoSuchElementException();
         }
         current = null;

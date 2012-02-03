@@ -22,8 +22,11 @@
  */
 package com.oracle.max.graal.snippets.nodes;
 
+import static com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.*;
+
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.nodes.*;
@@ -61,13 +64,13 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         Variable input = gen.load(gen.operand(x()));
         Variable result = gen.newVariable(kind());
         switch (operation()) {
-            case ABS:   gen.append(AMD64LogicFloatOpcode.DAND.create(result, input, CiConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
-            case SQRT:  gen.append(AMD64MathIntrinsicOpcode.SQRT.create(result, input)); break;
-            case LOG:   gen.append(AMD64MathIntrinsicOpcode.LOG.create(result, input)); break;
-            case LOG10: gen.append(AMD64MathIntrinsicOpcode.LOG10.create(result, input)); break;
-            case SIN:   gen.append(AMD64MathIntrinsicOpcode.SIN.create(result, input)); break;
-            case COS:   gen.append(AMD64MathIntrinsicOpcode.COS.create(result, input)); break;
-            case TAN:   gen.append(AMD64MathIntrinsicOpcode.TAN.create(result, input)); break;
+            case ABS:   gen.append(new Op2Reg(DAND, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)))); break;
+            case SQRT:  gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.SQRT, result, input)); break;
+            case LOG:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.LOG, result, input)); break;
+            case LOG10: gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.LOG10, result, input)); break;
+            case SIN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.SIN, result, input)); break;
+            case COS:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.COS, result, input)); break;
+            case TAN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.TAN, result, input)); break;
             default:    throw Util.shouldNotReachHere();
         }
         gen.setResult(this, result);

@@ -58,6 +58,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private HotSpotMethodData methodData;
     private byte[] code;
     private boolean canBeInlined;
+    private CiGenericCallback callback;
 
     private HotSpotMethodResolvedImpl() {
         super(null);
@@ -320,10 +321,16 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public boolean canBeInlined() {
-        return canBeInlined;
+        return canBeInlined && callback == null;
+    }
+    public void neverInline() {
+        this.canBeInlined = false;
     }
 
-    public void setCanBeInlined(boolean canBeInlined) {
-        this.canBeInlined = canBeInlined;
+    public CiGenericCallback callback() {
+        return callback;
+    }
+    public void setCallback(CiGenericCallback callback) {
+        this.callback = callback;
     }
 }

@@ -107,7 +107,7 @@ public class CFGPrinterObserver implements CompilationObserver {
             if (schedule == null) {
                 try {
                     schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
-                    schedule.apply((StructuredGraph) graph, false);
+                    schedule.apply((StructuredGraph) graph);
                     blocks = schedule.getBlocks();
 
                     ComputeLinearScanOrder clso = new ComputeLinearScanOrder(schedule.getBlocks().size(), schedule.loopCount(), (LIRBlock) schedule.getStartBlock());

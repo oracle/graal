@@ -24,12 +24,13 @@ package com.oracle.max.graal.compiler.util;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -53,11 +54,15 @@ public class InliningUtil {
     }
 
     private static String methodName(RiResolvedMethod method, Invoke invoke) {
-        if (invoke != null && invoke.stateAfter() != null) {
-            RiMethod parent = invoke.stateAfter().method();
-            return parent.name() + "@" + invoke.bci() + ": " + CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+        if (Debug.isLogEnabled()) {
+            if (invoke != null && invoke.stateAfter() != null) {
+                RiMethod parent = invoke.stateAfter().method();
+                return parent.name() + "@" + invoke.bci() + ": " + CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            } else {
+                return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            }
         } else {
-            return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+            return null;
         }
     }
 
@@ -122,9 +127,13 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
-            StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
-            InliningUtil.inline(invoke, calleeGraph, true);
+        public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, final InliningCallback callback) {
+            StructuredGraph graph = Debug.scope("Inlining", concrete, new Callable<StructuredGraph>() {
+                @Override
+                public StructuredGraph call() throws Exception {
+                    return callback.buildGraph(concrete);
+            });
+            InliningUtil.inline(invoke, graph, true);
         }
 
         @Override
@@ -164,9 +173,7 @@ public class InliningUtil {
             graph.addBeforeFixed(invoke.node(), objectClass);
             graph.addBeforeFixed(invoke.node(), guard);
 
-            if (GraalOptions.TraceInlining) {
-                TTY.println("inlining 1 method using 1 type check");
-            }
+            Debug.log("inlining 1 method using 1 type check);
 
             StructuredGraph calleeGraph = getGraph(invoke, concrete, callback);
             InliningUtil.inline(invoke, calleeGraph, false);
@@ -416,10 +423,10 @@ public class InliningUtil {
 
         @Override
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
-            if (GraalOptions.TraceInlining) {
+            if (Debug.isLogEnabled()) {
                 String targetName = CiUtil.format("%H.%n(%p):%r", invoke.callTarget().targetMethod());
                 String concreteName = CiUtil.format("%H.%n(%p):%r", concrete);
-                TTY.println("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
+                Debug.log("recording concrete method assumption: %s on receiver type %s -> %s", targetName, context, concreteName);
             }
             callback.recordConcreteMethodAssumption(invoke.callTarget().targetMethod(), context, concrete);
 
@@ -515,9 +522,7 @@ public class InliningUtil {
                         }
                         return null;
                     } else {
-                        if (GraalOptions.TraceInlining) {
-                            TTY.println("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
-                        }
+                        Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
                         return null;
                     }
                 } else {
@@ -555,14 +560,12 @@ public class InliningUtil {
                             return new MultiTypeGuardInlineInfo(invoke, totalWeight, level, concreteMethods, types, typesToConcretes, probabilities);
                         } else {
                             if (GraalOptions.TraceInlining) {
-                                TTY.println("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
+                                Debug.log("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
                             }
                             return null;
                         }
                     } else {
-                        if (GraalOptions.TraceInlining) {
-                            TTY.println("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
-                        }
+                        Debug.log("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
                         return null;
                     }
                 }
@@ -593,15 +596,11 @@ public class InliningUtil {
 
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (invoke.stateAfter() == null) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because the invoke has no after state", methodName(invoke.callTarget().targetMethod(), invoke));
-            }
+            Debug.log("not inlining %s because the invoke has no after state", methodName(invoke.callTarget().targetMethod(), invoke));
             return false;
         }
         if (invoke.predecessor() == null) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because the invoke is dead code", methodName(invoke.callTarget().targetMethod(), invoke));
-            }
+            Debug.log("not inlining %s because the invoke is dead code", methodName(invoke.callTarget().targetMethod(), invoke));
             return false;
         }
         return true;
@@ -609,34 +608,24 @@ public class InliningUtil {
 
     private static boolean checkTargetConditions(RiMethod method) {
         if (!(method instanceof RiResolvedMethod)) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because it is unresolved", method.toString());
-            }
+            Debug.log("not inlining %s because it is unresolved", method.toString());
             return false;
         }
         RiResolvedMethod resolvedMethod = (RiResolvedMethod) method;
         if (Modifier.isNative(resolvedMethod.accessFlags())) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because it is a native method", methodName(resolvedMethod));
-            }
+            Debug.log("not inlining %s because it is a native method", methodName(resolvedMethod));
             return false;
         }
         if (Modifier.isAbstract(resolvedMethod.accessFlags())) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because it is an abstract method", methodName(resolvedMethod));
-            }
+            Debug.log("not inlining %s because it is an abstract method", methodName(resolvedMethod));
             return false;
         }
         if (!resolvedMethod.holder().isInitialized()) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because of non-initialized class", methodName(resolvedMethod));
-            }
+            Debug.log("not inlining %s because of non-initialized class", methodName(resolvedMethod));
             return false;
         }
         if (!resolvedMethod.canBeInlined()) {
-            if (GraalOptions.TraceInlining) {
-                TTY.println("not inlining %s because it is marked non-inlinable", methodName(resolvedMethod));
-            }
+            Debug.log("not inlining %s because it is marked non-inlinable", methodName(resolvedMethod));
             return false;
         }
         return true;
@@ -692,7 +681,7 @@ public class InliningUtil {
             InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
             if (unwindNode != null) {
                 assert unwindNode.predecessor() != null;
-                assert invokeWithException.exceptionEdge().successors().explicitCount() == 1;
+                assert invokeWithException.exceptionEdge().successors().count() == 1;
                 ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge().next();
                 stateAtExceptionEdge = obj.stateAfter();
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
@@ -707,7 +696,18 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                unwindDuplicate.replaceAndDelete(graph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptAction.InvalidateRecompile);
+                unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
+                // move the deopt upwards if there is a monitor exit that tries to use the "after exception" frame state
+                // (because there is no "after exception" frame state!)
+                if (deoptimizeNode.predecessor() instanceof MonitorExitNode) {
+                    MonitorExitNode monitorExit = (MonitorExitNode) deoptimizeNode.predecessor();
+                    if (monitorExit.stateAfter() != null && monitorExit.stateAfter().bci == FrameState.AFTER_EXCEPTION_BCI) {
+                        FrameState monitorFrameState = monitorExit.stateAfter();
+                        graph.removeFixed(monitorExit);
+                        monitorFrameState.safeDelete();
+                    }
+                }
             }
         }
 
@@ -731,8 +731,12 @@ public class InliningUtil {
                 } else if (frameState.bci == FrameState.AFTER_BCI) {
                     frameState.replaceAndDelete(stateAfter);
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
-                    assert stateAtExceptionEdge != null;
-                    frameState.replaceAndDelete(stateAtExceptionEdge);
+                    if (frameState.isAlive()) {
+                        assert stateAtExceptionEdge != null;
+                        frameState.replaceAndDelete(stateAtExceptionEdge);
+                    } else {
+                        assert stateAtExceptionEdge == null;
+                    }
                 } else {
                     if (outerFrameState == null) {
                         outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
@@ -754,7 +758,15 @@ public class InliningUtil {
             returnDuplicate.clearInputs();
             Node n = invoke.next();
             invoke.setNext(null);
-            returnDuplicate.replaceAndDelete(n);
+            if (n instanceof BeginNode) {
+                BeginNode begin = (BeginNode) n;
+                FixedNode next = begin.next();
+                begin.setNext(null);
+                returnDuplicate.replaceAndDelete(next);
+                begin.safeDelete();
+            } else {
+                returnDuplicate.replaceAndDelete(n);
+            }
         }
 
         invoke.node().clearInputs();

@@ -28,6 +28,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.java.*;
+import com.oracle.max.graal.nodes.util.*;
 
 
 /**
@@ -172,6 +173,7 @@ public class StructuredGraph extends Graph {
 
     public void replaceFixedWithFixed(FixedWithNextNode node, FixedWithNextNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        replacement.setProbability(node.probability());
         FixedNode next = node.next();
         node.setNext(null);
         replacement.setNext(next);
@@ -191,12 +193,38 @@ public class StructuredGraph extends Graph {
         assert node != null;
         assert node.usages().isEmpty();
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
-        FixedNode next = node.blockSuccessor(survivingSuccessor);
+        BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        FixedNode next = begin.next();
+        begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
             node.setBlockSuccessor(i, null);
         }
         node.replaceAtPredecessors(next);
         node.safeDelete();
+        begin.safeDelete();
+    }
+
+    public void removeSplitPropagate(ControlSplitNode node, int survivingSuccessor) {
+        assert node != null;
+        assert node.usages().isEmpty();
+        assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
+        BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        FixedNode next = begin.next();
+        begin.setNext(null);
+        for (int i = 0; i < node.blockSuccessorCount(); i++) {
+            BeginNode successor = node.blockSuccessor(i);
+            node.setBlockSuccessor(i, null);
+            if (successor != begin && successor.isAlive()) {
+                GraphUtil.killCFG(successor);
+            }
+        }
+        if (next.isAlive()) {
+            node.replaceAtPredecessors(next);
+            node.safeDelete();
+            begin.safeDelete();
+        } else {
+            assert node.isDeleted();
+        }
     }
 
     public void replaceSplit(ControlSplitNode node, Node replacement, int survivingSuccessor) {
@@ -212,29 +240,36 @@ public class StructuredGraph extends Graph {
     public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, int survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
-        FixedNode next = node.blockSuccessor(survivingSuccessor);
+        BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        FixedNode next = begin.next();
+        begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
             node.setBlockSuccessor(i, null);
         }
         replacement.setNext(next);
         node.replaceAndDelete(replacement);
+        begin.safeDelete();
     }
 
     public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, int survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
-        FixedNode next = node.blockSuccessor(survivingSuccessor);
+        BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        FixedNode next = begin.next();
+        begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
             node.setBlockSuccessor(i, null);
         }
         node.replaceAtPredecessors(next);
         node.replaceAtUsages(replacement);
         node.safeDelete();
+        begin.safeDelete();
     }
 
     public void addAfterFixed(FixedWithNextNode node, FixedWithNextNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " after " + node;
         assert newNode.next() == null;
+        newNode.setProbability(node.probability());
         FixedNode next = node.next();
         node.setNext(newNode);
         newNode.setNext(next);
@@ -244,6 +279,7 @@ public class StructuredGraph extends Graph {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
         assert newNode.next() == null;
+        newNode.setProbability(node.probability());
         FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
         pred.setNext(newNode);
         newNode.setNext(node);

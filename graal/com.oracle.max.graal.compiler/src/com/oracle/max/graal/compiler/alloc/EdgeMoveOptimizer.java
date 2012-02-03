@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.alloc;
 import java.util.*;
 
 import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.lir.StandardOp.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.
@@ -88,10 +89,10 @@ final class EdgeMoveOptimizer {
         assert op1 != null;
         assert op2 != null;
 
-        if (op1 instanceof MoveInstruction && op2 instanceof MoveInstruction) {
-            MoveInstruction move1 = (MoveInstruction) op1;
-            MoveInstruction move2 = (MoveInstruction) op2;
-            if (move1.getSource() == move2.getSource() && move1.getDest() == move2.getDest()) {
+        if (op1 instanceof MoveOp && op2 instanceof MoveOp) {
+            MoveOp move1 = (MoveOp) op1;
+            MoveOp move2 = (MoveOp) op2;
+            if (move1.getInput() == move2.getInput() && move1.getResult() == move2.getResult()) {
                 // these moves are exactly equal and can be optimized
                 return true;
             }
@@ -128,12 +129,12 @@ final class EdgeMoveOptimizer {
                 return;
             }
 
-            if (predInstructions.get(predInstructions.size() - 1).code == StandardOpcode.XIR) {
+            if (predInstructions.get(predInstructions.size() - 1) instanceof LIRXirInstruction) {
                 return;
             }
 
             assert pred.suxAt(0) == block : "invalid control flow";
-            assert predInstructions.get(predInstructions.size() - 1).code == StandardOpcode.JUMP : "block must end with unconditional jump";
+            assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
             if (predInstructions.get(predInstructions.size() - 1).info != null) {
                 // can not optimize instructions that have debug info
@@ -185,12 +186,12 @@ final class EdgeMoveOptimizer {
 
         assert numSux == 2 : "method should not be called otherwise";
 
-        if (instructions.get(instructions.size() - 1).code == StandardOpcode.XIR) {
+        if (instructions.get(instructions.size() - 1) instanceof LIRXirInstruction) {
             // cannot optimize when last instruction is Xir.
             return;
         }
 
-        assert instructions.get(instructions.size() - 1).code == StandardOpcode.JUMP : "block must end with unconditional jump";
+        assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
         if (instructions.get(instructions.size() - 1).info != null) {
             // cannot optimize instructions when debug info is needed
@@ -198,7 +199,7 @@ final class EdgeMoveOptimizer {
         }
 
         LIRInstruction branch = instructions.get(instructions.size() - 2);
-        if (!(branch instanceof LIRBranch) || branch.info != null) {
+        if (!(branch instanceof StandardOp.BranchOp) || branch.info != null) {
             // not a valid case for optimization
             // currently, only blocks that end with two branches (conditional branch followed
             // by unconditional branch) are optimized
@@ -214,7 +215,7 @@ final class EdgeMoveOptimizer {
             LIRBlock sux = block.suxAt(i);
             List<LIRInstruction> suxInstructions = sux.lir();
 
-            assert suxInstructions.get(0).code == StandardOpcode.LABEL : "block must start with label";
+            assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
             if (sux.numberOfPreds() != 1) {
                 // this can happen with switch-statements where multiple edges are between

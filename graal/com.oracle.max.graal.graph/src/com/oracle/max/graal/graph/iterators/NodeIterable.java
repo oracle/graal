@@ -27,17 +27,21 @@ import java.util.*;
 import com.oracle.max.graal.graph.*;
 
 public abstract class NodeIterable<T extends Node> implements Iterable<T> {
-    protected NodePredicate until = NodePredicate.IS_NULL;
     public NodeIterable<T> until(final T u) {
-        until = until.or(NodePredicate.equals(u));
-        return this;
+        return new FilteredNodeIterable<>(this).until(u);
     }
     public NodeIterable<T> until(final Class<? extends T> clazz) {
-        until = until.or(new TypePredicate(clazz));
-        return this;
+        return new FilteredNodeIterable<>(this).until(clazz);
     }
+    @SuppressWarnings("unchecked")
     public <F extends T> FilteredNodeIterable<F> filter(Class<F> clazz) {
-        return new FilteredNodeIterable<>(this).and(clazz);
+        return (FilteredNodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
+    }
+    public FilteredNodeIterable<T> filterInterface(Class<?> iface) {
+        return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
+    }
+    public FilteredNodeIterable<T> filter(NodePredicate predicate) {
+        return new FilteredNodeIterable<>(this).and(predicate);
     }
     public List<T> snapshot() {
         ArrayList<T> list = new ArrayList<>();
@@ -52,5 +56,23 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
             return iterator.next();
         }
         return null;
+    }
+    public int count() {
+        int count = 0;
+        Iterator<T> iterator = iterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
+    }
+    public boolean isEmpty() {
+        return count() == 0;
+    }
+    public boolean isNotEmpty() {
+        return iterator().hasNext();
+    }
+    public boolean contains(T node) {
+        return this.filter(NodePredicates.equals(node)).isNotEmpty();
     }
 }

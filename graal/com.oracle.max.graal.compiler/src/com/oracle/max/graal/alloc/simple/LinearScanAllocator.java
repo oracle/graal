@@ -39,30 +39,29 @@ import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 
 public class LinearScanAllocator {
-    private final GraalContext context;
     private final LIR lir;
     private final FrameMap frameMap;
 
     private final DataFlowAnalysis dataFlow;
 
-    public LinearScanAllocator(GraalContext context, LIR lir, FrameMap frameMap) {
-        this.context = context;
+    public LinearScanAllocator(LIR lir, FrameMap frameMap) {
         this.lir = lir;
         this.frameMap = frameMap;
 
         this.dataFlow = new DataFlowAnalysis(lir, frameMap.registerConfig);
         this.blockBeginLocations = new LocationMap[lir.linearScanOrder().size()];
         this.blockEndLocations = new LocationMap[lir.linearScanOrder().size()];
-        this.moveResolver = new MoveResolverImpl(frameMap);
+        this.moveResolver = new MoveResolverImpl(lir, frameMap);
 
         this.variableLastUse = new int[lir.numVariables()];
     }
 
     private class MoveResolverImpl extends MoveResolver {
-        public MoveResolverImpl(FrameMap frameMap) {
-            super(frameMap);
+        public MoveResolverImpl(LIR lir, FrameMap frameMap) {
+            super(lir, frameMap);
         }
 
         @Override
@@ -159,23 +158,23 @@ public class LinearScanAllocator {
         assert LIRVerifier.verify(true, lir, frameMap);
 
         dataFlow.execute();
-        IntervalPrinter.printBeforeAllocation("Before register allocation", context, lir, frameMap.registerConfig, dataFlow);
+        IntervalPrinter.printBeforeAllocation("Before register allocation", lir, frameMap.registerConfig, dataFlow);
 
         allocate();
 
-        IntervalPrinter.printAfterAllocation("After linear scan allocation", context, lir, frameMap.registerConfig, dataFlow, blockEndLocations);
+        IntervalPrinter.printAfterAllocation("After linear scan allocation", lir, frameMap.registerConfig, dataFlow, blockEndLocations);
 
         ResolveDataFlow resolveDataFlow = new ResolveDataFlowImpl(lir, moveResolver, dataFlow);
         resolveDataFlow.execute();
         frameMap.finish();
 
-        IntervalPrinter.printAfterAllocation("After resolve data flow", context, lir, frameMap.registerConfig, dataFlow, blockEndLocations);
+        IntervalPrinter.printAfterAllocation("After resolve data flow", lir, frameMap.registerConfig, dataFlow, blockEndLocations);
         assert RegisterVerifier.verify(lir, frameMap);
 
         AssignRegisters assignRegisters = new AssignRegistersImpl(lir, frameMap);
         assignRegisters.execute();
 
-        context.observable.fireCompilationEvent("After register asignment", lir);
+        Debug.dump(lir, "After register asignment");
         assert LIRVerifier.verify(false, lir, frameMap);
     }
 

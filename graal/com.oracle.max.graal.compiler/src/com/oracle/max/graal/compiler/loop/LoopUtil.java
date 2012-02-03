@@ -53,11 +53,13 @@ public class LoopUtil {
 
         //Find exits
         for (Loop loop : info.loops()) {
-            for (FixedNode n : loop.fixedNodes()) {
+            for (FixedNode n : loop.directFixedNodes()) {
                 if (n instanceof ControlSplitNode) {
                     for (BeginNode sux : ((ControlSplitNode) n).blockSuccessors()) {
-                        if (!loop.containsFixed(sux)) {
-                            loop.exits().mark(sux);
+                        Loop l = loop;
+                        while (l != null && !l.containsFixed(sux)) {
+                            l.exits().mark(sux);
+                            l = l.parent();
                         }
                     }
                 }
@@ -103,10 +105,10 @@ public class LoopUtil {
                 mark((LoopBeginNode) n, nodeToLoop);
             } else {
                 if (oldMark != null) {
-                    oldMark.directCFGNode().clear(n);
+                    oldMark.directCFGNodes().clear(n);
                 }
                 nodeToLoop.set(n, loop);
-                loop.directCFGNode().mark(n);
+                loop.directCFGNodes().mark(n);
             }
         }
     }
