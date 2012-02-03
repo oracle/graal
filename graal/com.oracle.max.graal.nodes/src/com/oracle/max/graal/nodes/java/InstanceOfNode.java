@@ -22,6 +22,9 @@
  */
 package com.oracle.max.graal.nodes.java;
 
+import java.lang.reflect.*;
+import java.util.*;
+
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.nodes.*;
@@ -48,7 +51,11 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
      * @param object the instruction producing the object input to this instruction
      */
     public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, boolean negated) {
-        super(targetClassInstruction, targetClass, object, StampFactory.illegal());
+        this(targetClassInstruction, targetClass, object, null, EMPTY_HINTS, false, negated);
+    }
+
+    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, List<? extends ValueNode> hintInstructions, RiResolvedType[] hints, boolean hintsExact, boolean negated) {
+        super(targetClassInstruction, targetClass, object, hintInstructions, hints, hintsExact, StampFactory.illegal());
         this.negated = negated;
         assert targetClass != null;
     }
@@ -59,8 +66,23 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object().exactType() != null) {
-            boolean result = object().exactType().isSubtypeOf(targetClass());
+        RiResolvedType exact = object().exactType();
+
+        if (exact == null) {
+            if (object().declaredType() != null) {
+                if (Modifier.isFinal(object().declaredType().accessFlags()) || object().declaredType().isArrayClass()) {
+                    exact = object().declaredType();
+                } else if (tool.assumptions() != null) {
+                    exact = object().declaredType().uniqueConcreteSubtype();
+                    if (exact != null) {
+                        tool.assumptions().recordConcreteSubtype(object().declaredType(), exact);
+                    }
+                }
+            }
+        }
+
+        if (exact != null) {
+            boolean result = exact.isSubtypeOf(targetClass());
             if (result != negated) {
                 // The instanceof check reduces to a null check.
                 return graph().unique(new NullCheckNode(object(), false));
@@ -78,11 +100,17 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
                 assert false : "non-null constants are always expected to provide an exactType";
             }
         }
+        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
+            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
+                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
+                return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), hintInstructions(), hints(), true, negated));
+            }
+        }
         return this;
     }
 
     @Override
     public BooleanNode negate() {
-        return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), !negated));
+        return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), hintInstructions(), hints(), hintsExact(), !negated));
     }
 }

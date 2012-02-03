@@ -126,6 +126,7 @@ public final class GraalOptions {
     public static int     MatureInvocationCount              = 100;
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
+    public static boolean UseInstanceOfHints                 = true;
 
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;
