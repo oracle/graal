@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.alloc;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.StandardOp.*;
 
@@ -54,12 +55,12 @@ final class EdgeMoveOptimizer {
      *
      * @param blockList a list of blocks whose moves should be optimized
      */
-    public static void optimize(List<LIRBlock> blockList) {
+    public static void optimize(List<Block> blockList) {
         EdgeMoveOptimizer optimizer = new EdgeMoveOptimizer();
 
         // ignore the first block in the list (index 0 is not processed)
         for (int i = blockList.size() - 1; i >= 1; i--) {
-            LIRBlock block = blockList.get(i);
+            Block block = blockList.get(i);
 
             if (block.numberOfPreds() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);
@@ -104,10 +105,12 @@ final class EdgeMoveOptimizer {
      * Moves the longest {@linkplain #same common} subsequence at the end all
      * predecessors of {@code block} to the start of {@code block}.
      */
-    private void optimizeMovesAtBlockEnd(LIRBlock block) {
-        if (block.isPredecessor(block)) {
-            // currently we can't handle this correctly.
-            return;
+    private void optimizeMovesAtBlockEnd(Block block) {
+        for (Block pred : block.getPredecessors()) {
+            if (pred == block) {
+                // currently we can't handle this correctly.
+                return;
+            }
         }
 
         // clear all internal data structures
@@ -117,11 +120,10 @@ final class EdgeMoveOptimizer {
         assert numPreds > 1 : "do not call otherwise";
 
         // setup a list with the LIR instructions of all predecessors
-        for (int i = 0; i < numPreds; i++) {
-            LIRBlock pred = block.predAt(i);
+        for (Block pred : block.getPredecessors()) {
             assert pred != null;
-            assert pred.lir() != null;
-            List<LIRInstruction> predInstructions = pred.lir();
+            assert pred.lir != null;
+            List<LIRInstruction> predInstructions = pred.lir;
 
             if (pred.numberOfSux() != 1) {
                 // this can happen with switch-statements where multiple edges are between
@@ -162,7 +164,7 @@ final class EdgeMoveOptimizer {
             }
 
             // insert the instruction at the beginning of the current block
-            block.lir().add(1, op);
+            block.lir.add(1, op);
 
             // delete the instruction at the end of all predecessors
             for (int i = 0; i < numPreds; i++) {
@@ -177,12 +179,12 @@ final class EdgeMoveOptimizer {
      * successors of {@code block} to the end of {@code block} just prior to the
      * branch instruction ending {@code block}.
      */
-    private void optimizeMovesAtBlockBegin(LIRBlock block) {
+    private void optimizeMovesAtBlockBegin(Block block) {
 
         edgeInstructionSeqences.clear();
         int numSux = block.numberOfSux();
 
-        List<LIRInstruction> instructions = block.lir();
+        List<LIRInstruction> instructions = block.lir;
 
         assert numSux == 2 : "method should not be called otherwise";
 
@@ -212,8 +214,8 @@ final class EdgeMoveOptimizer {
 
         // setup a list with the lir-instructions of all successors
         for (int i = 0; i < numSux; i++) {
-            LIRBlock sux = block.suxAt(i);
-            List<LIRInstruction> suxInstructions = sux.lir();
+            Block sux = block.suxAt(i);
+            List<LIRInstruction> suxInstructions = sux.lir;
 
             assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
 
@@ -247,7 +249,7 @@ final class EdgeMoveOptimizer {
             }
 
             // insert instruction at end of current block
-            block.lir().add(insertIdx, op);
+            block.lir.add(insertIdx, op);
             insertIdx++;
 
             // delete the instructions at the beginning of all successors

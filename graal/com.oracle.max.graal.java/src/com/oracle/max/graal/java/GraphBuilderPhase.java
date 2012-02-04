@@ -34,13 +34,12 @@ import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.BlockMap.Block;
-import com.oracle.max.graal.java.BlockMap.DeoptBlock;
-import com.oracle.max.graal.java.BlockMap.ExceptionBlock;
+import com.oracle.max.graal.java.BciBlockMapping.Block;
+import com.oracle.max.graal.java.BciBlockMapping.DeoptBlock;
+import com.oracle.max.graal.java.BciBlockMapping.ExceptionBlock;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
@@ -136,8 +135,8 @@ public final class GraphBuilderPhase extends Phase {
         return getName() + " " + CiUtil.format("%H.%n(%p):%r", method);
     }
 
-    private BlockMap createBlockMap() {
-        BlockMap map = new BlockMap(method, config.useBranchPrediction());
+    private BciBlockMapping createBlockMap() {
+        BciBlockMapping map = new BciBlockMapping(method, config.useBranchPrediction());
         map.build();
 
 //        if (currentContext.isObserved()) {
@@ -155,7 +154,7 @@ public final class GraphBuilderPhase extends Phase {
         }
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
-        BlockMap blockMap = createBlockMap();
+        BciBlockMapping blockMap = createBlockMap();
         this.canTrapBitSet = blockMap.canTrap;
 
         exceptionHandlers = blockMap.exceptionHandlers();
@@ -1455,6 +1454,23 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
+    private static boolean isBlockEnd(Node n) {
+        return trueSuccessorCount(n) > 1 || n instanceof ReturnNode || n instanceof UnwindNode || n instanceof DeoptimizeNode;
+    }
+
+    private static int trueSuccessorCount(Node n) {
+        if (n == null) {
+            return 0;
+        }
+        int i = 0;
+        for (Node s : n.successors()) {
+            if (Util.isFixed(s)) {
+                i++;
+            }
+        }
+        return i;
+    }
+
     private void iterateBytecodesForBlock(Block block) {
         assert frameState != null;
 
@@ -1471,7 +1487,7 @@ public final class GraphBuilderPhase extends Phase {
             traceInstruction(bci, opcode, bci == block.startBci);
             processBytecode(bci, opcode);
 
-            if (lastInstr == null || IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
+            if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {
                 break;
             }
 

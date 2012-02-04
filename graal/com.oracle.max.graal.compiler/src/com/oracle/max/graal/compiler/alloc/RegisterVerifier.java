@@ -29,6 +29,7 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -38,7 +39,7 @@ import com.oracle.max.graal.compiler.util.*;
 final class RegisterVerifier {
 
     LinearScan allocator;
-    List<LIRBlock> workList; // all blocks that must be processed
+    List<Block> workList; // all blocks that must be processed
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
@@ -52,15 +53,15 @@ final class RegisterVerifier {
     }
 
     // accessors
-    Interval[] stateForBlock(LIRBlock block) {
-        return savedStates.get(block.blockID());
+    Interval[] stateForBlock(Block block) {
+        return savedStates.get(block.getId());
     }
 
-    void setStateForBlock(LIRBlock block, Interval[] savedState) {
-        savedStates.put(block.blockID(), savedState);
+    void setStateForBlock(Block block, Interval[] savedState) {
+        savedStates.put(block.getId(), savedState);
     }
 
-    void addToWorkList(LIRBlock block) {
+    void addToWorkList(Block block) {
         if (!workList.contains(block)) {
             workList.add(block);
         }
@@ -73,7 +74,7 @@ final class RegisterVerifier {
 
     }
 
-    void verify(LIRBlock start) {
+    void verify(Block start) {
         // setup input registers (method arguments) for first block
         Interval[] inputState = new Interval[stateSize()];
         setStateForBlock(start, inputState);
@@ -81,17 +82,17 @@ final class RegisterVerifier {
 
         // main loop for verification
         do {
-            LIRBlock block = workList.get(0);
+            Block block = workList.get(0);
             workList.remove(0);
 
             processBlock(block);
         } while (!workList.isEmpty());
     }
 
-    private void processBlock(LIRBlock block) {
+    private void processBlock(Block block) {
         if (GraalOptions.TraceLinearScanLevel >= 2) {
             TTY.println();
-            TTY.println("processBlock B%d", block.blockID());
+            TTY.println("processBlock B%d", block.getId());
         }
 
         // must copy state because it is modified
@@ -112,16 +113,16 @@ final class RegisterVerifier {
         }
 
         // process all operations of the block
-        processOperations(block.lir(), inputState);
+        processOperations(block.lir, inputState);
 
         // iterate all successors
         for (int i = 0; i < block.numberOfSux(); i++) {
-            LIRBlock succ = block.suxAt(i);
+            Block succ = block.suxAt(i);
             processSuccessor(succ, inputState);
         }
     }
 
-    private void processSuccessor(LIRBlock block, Interval[] inputState) {
+    private void processSuccessor(Block block, Interval[] inputState) {
         Interval[] savedState = stateForBlock(block);
 
         if (savedState != null) {
@@ -141,7 +142,7 @@ final class RegisterVerifier {
                         savedState[i] = null;
 
                         if (GraalOptions.TraceLinearScanLevel >= 4) {
-                            TTY.println("processSuccessor B%d: invalidating slot %d", block.blockID(), i);
+                            TTY.println("processSuccessor B%d: invalidating slot %d", block.getId(), i);
                         }
                     }
                 }
@@ -150,12 +151,12 @@ final class RegisterVerifier {
             if (savedStateCorrect) {
                 // already processed block with correct inputState
                 if (GraalOptions.TraceLinearScanLevel >= 2) {
-                    TTY.println("processSuccessor B%d: previous visit already correct", block.blockID());
+                    TTY.println("processSuccessor B%d: previous visit already correct", block.getId());
                 }
             } else {
                 // must re-visit this block
                 if (GraalOptions.TraceLinearScanLevel >= 2) {
-                    TTY.println("processSuccessor B%d: must re-visit because input state changed", block.blockID());
+                    TTY.println("processSuccessor B%d: must re-visit because input state changed", block.getId());
                 }
                 addToWorkList(block);
             }
@@ -163,7 +164,7 @@ final class RegisterVerifier {
         } else {
             // block was not processed before, so set initial inputState
             if (GraalOptions.TraceLinearScanLevel >= 2) {
-                TTY.println("processSuccessor B%d: initial visit", block.blockID());
+                TTY.println("processSuccessor B%d: initial visit", block.getId());
             }
 
             setStateForBlock(block, copy(inputState));

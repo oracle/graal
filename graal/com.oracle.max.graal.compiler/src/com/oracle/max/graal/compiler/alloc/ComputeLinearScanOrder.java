@@ -27,22 +27,22 @@ import java.util.*;
 
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.graph.*;
 
 public final class ComputeLinearScanOrder {
 
     private int numBlocks; // total number of blocks (smaller than maxBlockId)
 
-    List<LIRBlock> linearScanOrder; // the resulting list of blocks in correct order
-    List<LIRBlock> codeEmittingOrder;
+    List<Block> linearScanOrder; // the resulting list of blocks in correct order
+    List<Block> codeEmittingOrder;
 
     final BitMap visitedBlocks; // used for recursive processing of blocks
     final BitMap activeBlocks; // used for recursive processing of blocks
     final BitMap dominatorBlocks; // temporary BitMap used for computation of dominator
     final int[] forwardBranches; // number of incoming forward branches for each block
-    final List<LIRBlock> workList; // temporary list (used in markLoops and computeOrder)
-    final LIRBlock[] loopHeaders;
+    final List<Block> workList; // temporary list (used in markLoops and computeOrder)
+    final Block[] loopHeaders;
 
     // accessors for visitedBlocks and activeBlocks
     void initVisited() {
@@ -50,45 +50,45 @@ public final class ComputeLinearScanOrder {
         visitedBlocks.clearAll();
     }
 
-    boolean isVisited(LIRBlock b) {
-        return visitedBlocks.get(b.blockID());
+    boolean isVisited(Block b) {
+        return visitedBlocks.get(b.getId());
     }
 
-    boolean isActive(LIRBlock b) {
-        return activeBlocks.get(b.blockID());
+    boolean isActive(Block b) {
+        return activeBlocks.get(b.getId());
     }
 
-    void setVisited(LIRBlock b) {
+    void setVisited(Block b) {
         assert !isVisited(b) : "already set";
-        visitedBlocks.set(b.blockID());
+        visitedBlocks.set(b.getId());
     }
 
-    void setActive(LIRBlock b) {
+    void setActive(Block b) {
         assert !isActive(b) : "already set";
-        activeBlocks.set(b.blockID());
+        activeBlocks.set(b.getId());
     }
 
-    void clearActive(LIRBlock b) {
+    void clearActive(Block b) {
         assert isActive(b) : "not already";
-        activeBlocks.clear(b.blockID());
+        activeBlocks.clear(b.getId());
     }
 
     // accessors for forwardBranches
-    void incForwardBranches(LIRBlock b) {
-        forwardBranches[b.blockID()]++;
+    void incForwardBranches(Block b) {
+        forwardBranches[b.getId()]++;
     }
 
-    int decForwardBranches(LIRBlock b) {
-        return --forwardBranches[b.blockID()];
+    int decForwardBranches(Block b) {
+        return --forwardBranches[b.getId()];
     }
 
     // accessors for final result
-    public List<LIRBlock> linearScanOrder() {
+    public List<Block> linearScanOrder() {
         return linearScanOrder;
     }
 
-    public ComputeLinearScanOrder(int maxBlockId, int loopCount, LIRBlock startBlock) {
-        loopHeaders = new LIRBlock[loopCount];
+    public ComputeLinearScanOrder(int maxBlockId, int loopCount, Block startBlock) {
+        loopHeaders = new Block[loopCount];
 
         visitedBlocks = new BitMap(maxBlockId);
         activeBlocks = new BitMap(maxBlockId);
@@ -98,7 +98,6 @@ public final class ComputeLinearScanOrder {
 
         countEdges(startBlock, null);
         computeOrder(startBlock);
-        printBlocks();
     }
 
     /**
@@ -109,9 +108,9 @@ public final class ComputeLinearScanOrder {
      * 3. Number loop header blocks.
      * 4. Create a list with all loop end blocks.
      */
-    void countEdges(LIRBlock cur, LIRBlock parent) {
+    void countEdges(Block cur, Block parent) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
-            TTY.println("Counting edges for block B%d%s", cur.blockID(), parent == null ? "" : " coming from B" + parent.blockID());
+            TTY.println("Counting edges for block B%d%s", cur.getId(), parent == null ? "" : " coming from B" + parent.getId());
         }
 
         if (isActive(cur)) {
@@ -141,14 +140,14 @@ public final class ComputeLinearScanOrder {
         clearActive(cur);
 
         if (GraalOptions.TraceLinearScanLevel >= 3) {
-            TTY.println("Finished counting edges for block B%d", cur.blockID());
+            TTY.println("Finished counting edges for block B%d", cur.getId());
         }
     }
 
-    static int computeWeight(LIRBlock cur) {
+    static int computeWeight(Block cur) {
 
         // limit loop-depth to 15 bit (only for security reason, it will never be so big)
-        int weight = (cur.loopDepth() & 0x7FFF) << 16;
+        int weight = (cur.getLoopDepth() & 0x7FFF) << 16;
 
         int curBit = 15;
 
@@ -200,7 +199,7 @@ public final class ComputeLinearScanOrder {
         return weight;
     }
 
-    private boolean readyForProcessing(LIRBlock cur) {
+    private boolean readyForProcessing(Block cur) {
         // Discount the edge just traveled.
         // When the number drops to zero, all forward branches were processed
         if (decForwardBranches(cur) != 0) {
@@ -212,13 +211,13 @@ public final class ComputeLinearScanOrder {
         return true;
     }
 
-    private void sortIntoWorkList(LIRBlock cur) {
+    private void sortIntoWorkList(Block cur) {
         assert !workList.contains(cur) : "block already in work list";
 
         int curWeight = computeWeight(cur);
 
         // the linearScanNumber is used to cache the weight of a block
-        cur.setLinearScanNumber(curWeight);
+        cur.linearScanNumber = curWeight;
 
         if (GraalOptions.StressLinearScan) {
             workList.add(0, cur);
@@ -228,35 +227,35 @@ public final class ComputeLinearScanOrder {
         workList.add(null); // provide space for new element
 
         int insertIdx = workList.size() - 1;
-        while (insertIdx > 0 && workList.get(insertIdx - 1).linearScanNumber() > curWeight) {
+        while (insertIdx > 0 && workList.get(insertIdx - 1).linearScanNumber > curWeight) {
             workList.set(insertIdx, workList.get(insertIdx - 1));
             insertIdx--;
         }
         workList.set(insertIdx, cur);
 
         if (GraalOptions.TraceLinearScanLevel >= 3) {
-            TTY.println("Sorted B%d into worklist. new worklist:", cur.blockID());
+            TTY.println("Sorted B%d into worklist. new worklist:", cur.getId());
             for (int i = 0; i < workList.size(); i++) {
-                TTY.println(String.format("%8d B%02d  weight:%6x", i, workList.get(i).blockID(), workList.get(i).linearScanNumber()));
+                TTY.println(String.format("%8d B%02d  weight:%6x", i, workList.get(i).getId(), workList.get(i).linearScanNumber));
             }
         }
 
         for (int i = 0; i < workList.size(); i++) {
-            assert workList.get(i).linearScanNumber() > 0 : "weight not set";
-            assert i == 0 || workList.get(i - 1).linearScanNumber() <= workList.get(i).linearScanNumber() : "incorrect order in worklist";
+            assert workList.get(i).linearScanNumber > 0 : "weight not set";
+            assert i == 0 || workList.get(i - 1).linearScanNumber <= workList.get(i).linearScanNumber : "incorrect order in worklist";
         }
     }
 
-    private void appendBlock(LIRBlock cur) {
+    private void appendBlock(Block cur) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
-            TTY.println("appending block B%d (weight 0x%06x) to linear-scan order", cur.blockID(), cur.linearScanNumber());
+            TTY.println("appending block B%d (weight 0x%06x) to linear-scan order", cur.getId(), cur.linearScanNumber);
         }
         assert !linearScanOrder.contains(cur) : "cannot add the same block twice";
 
         // currently, the linear scan order and code emit order are equal.
         // therefore the linearScanNumber and the weight of a block must also
         // be equal.
-        cur.setLinearScanNumber(linearScanOrder.size());
+        cur.linearScanNumber = linearScanOrder.size();
         linearScanOrder.add(cur);
 
         if (cur.isLoopEnd() && cur.isLoopHeader()) {
@@ -266,24 +265,24 @@ public final class ComputeLinearScanOrder {
                 codeEmittingOrder.add(cur);
 
                 if (cur.isLoopEnd() && GraalOptions.OptReorderLoops) {
-                    LIRBlock loopHeader = loopHeaders[cur.loopIndex()];
+                    Block loopHeader = loopHeaders[cur.getLoop().index];
                     assert loopHeader != null;
                     codeEmittingOrder.add(loopHeader);
 
                     for (int i = 0; i < loopHeader.numberOfSux(); i++) {
-                        LIRBlock succ = loopHeader.suxAt(i);
-                        if (succ.loopDepth() == loopHeader.loopDepth()) {
-                            succ.setAlign(true);
+                        Block succ = loopHeader.suxAt(i);
+                        if (succ.getLoopDepth() == loopHeader.getLoopDepth()) {
+                            succ.align = true;
                         }
                     }
                 }
             } else {
-                loopHeaders[cur.loopIndex()] = cur;
+                loopHeaders[cur.getLoop().index] = cur;
             }
         }
     }
 
-    private void computeOrder(LIRBlock startBlock) {
+    private void computeOrder(Block startBlock) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("----- computing final block order");
         }
@@ -300,14 +299,14 @@ public final class ComputeLinearScanOrder {
         sortIntoWorkList(startBlock);
 
         do {
-            LIRBlock cur = workList.remove(workList.size() - 1);
+            Block cur = workList.remove(workList.size() - 1);
             appendBlock(cur);
 
             int i;
             int numSux = cur.numberOfSux();
             // changed loop order to get "intuitive" order of if- and else-blocks
             for (i = 0; i < numSux; i++) {
-                LIRBlock sux = cur.suxAt(i);
+                Block sux = cur.suxAt(i);
                 if (readyForProcessing(sux)) {
                     sortIntoWorkList(sux);
                 }
@@ -315,46 +314,7 @@ public final class ComputeLinearScanOrder {
         } while (workList.size() > 0);
     }
 
-    public void printBlocks() {
-        if (GraalOptions.TraceLinearScanLevel >= 2) {
-            TTY.println("----- loop information:");
-            for (LIRBlock cur : linearScanOrder) {
-                TTY.print(String.format("%4d: B%02d: ", cur.linearScanNumber(), cur.blockID()));
-                TTY.println(String.format(" . loopIndex: %2d, loopDepth: %2d", cur.loopIndex(), cur.loopDepth()));
-            }
-        }
-
-        if (GraalOptions.TraceLinearScanLevel >= 1) {
-            TTY.println("----- linear-scan block order:");
-            for (LIRBlock cur : linearScanOrder) {
-                TTY.print(String.format("%4d: B%02d    loop: %2d  depth: %2d", cur.linearScanNumber(), cur.blockID(), cur.loopIndex(), cur.loopDepth()));
-
-                TTY.print(cur.isLoopHeader() ? " lh" : "   ");
-                TTY.print(cur.isLoopEnd() ? " le" : "   ");
-
-                TTY.print("    dom: null ");
-
-
-                if (cur.numberOfPreds() > 0) {
-                    TTY.print("    preds: ");
-                    for (int j = 0; j < cur.numberOfPreds(); j++) {
-                        LIRBlock pred = cur.predAt(j);
-                        TTY.print("B%d ", pred.blockID());
-                    }
-                }
-                if (cur.numberOfSux() > 0) {
-                    TTY.print("    sux: ");
-                    for (int j = 0; j < cur.numberOfSux(); j++) {
-                        LIRBlock sux = cur.suxAt(j);
-                        TTY.print("B%d ", sux.blockID());
-                    }
-                }
-                TTY.println();
-            }
-        }
-    }
-
-    public List<LIRBlock> codeEmittingOrder() {
+    public List<Block> codeEmittingOrder() {
         return codeEmittingOrder;
     }
 }

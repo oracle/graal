@@ -22,9 +22,6 @@
  */
 package com.oracle.max.graal.nodes.java;
 
-import java.lang.reflect.*;
-import java.util.*;
-
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.nodes.*;

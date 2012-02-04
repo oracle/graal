@@ -29,11 +29,11 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
-import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 
 public final class LIRVerifier {
@@ -46,10 +46,10 @@ public final class LIRVerifier {
     private final Object[] variableDefinitions;
 
     private BitSet liveOutFor(Block block) {
-        return blockLiveOut[block.blockID()];
+        return blockLiveOut[block.getId()];
     }
     private void setLiveOutFor(Block block, BitSet liveOut) {
-        blockLiveOut[block.blockID()] = liveOut;
+        blockLiveOut[block.getId()] = liveOut;
     }
 
     private int maxRegisterNum() {
@@ -91,7 +91,7 @@ public final class LIRVerifier {
     private BitSet curVariablesLive;
     private CiValue[] curRegistersLive;
 
-    private LIRBlock curBlock;
+    private Block curBlock;
     private Object curInstruction;
     private BitSet curRegistersDefined;
 
@@ -100,13 +100,13 @@ public final class LIRVerifier {
         ValueProcedure defProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
         curRegistersDefined = new BitSet();
-        for (LIRBlock block : lir.linearScanOrder()) {
+        for (Block block : lir.linearScanOrder()) {
             curBlock = block;
             curVariablesLive = new BitSet();
             curRegistersLive = new CiValue[maxRegisterNum()];
 
-            if (block.dominator() != null) {
-                curVariablesLive.or(liveOutFor(block.dominator()));
+            if (block.getDominator() != null) {
+                curVariablesLive.or(liveOutFor(block.getDominator()));
             }
 
             if (block.phis != null) {
@@ -115,13 +115,13 @@ public final class LIRVerifier {
                 block.phis.forEachOutput(defProc);
             }
 
-            assert block.lir().get(0) instanceof StandardOp.LabelOp : "block must start with label";
+            assert block.lir.get(0) instanceof StandardOp.LabelOp : "block must start with label";
             if (block.numberOfSux() > 0) {
-                LIRInstruction last = block.lir().get(block.lir().size() - 1);
+                LIRInstruction last = block.lir.get(block.lir.size() - 1);
                 assert last instanceof StandardOp.JumpOp || last instanceof LIRXirInstruction : "block with successor must end with unconditional jump";
             }
 
-            for (LIRInstruction op : block.lir()) {
+            for (LIRInstruction op : block.lir) {
                 curInstruction = op;
 
                 op.forEachInput(useProc);
@@ -139,7 +139,7 @@ public final class LIRVerifier {
                 curInstruction = null;
             }
 
-            for (LIRBlock sux : block.getLIRSuccessors()) {
+            for (Block sux : block.getSuccessors()) {
                 if (sux.phis != null) {
                     assert beforeRegisterAllocation;
                     curInstruction = sux.phis;

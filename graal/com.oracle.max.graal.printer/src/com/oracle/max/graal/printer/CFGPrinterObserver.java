@@ -85,9 +85,9 @@ public class CFGPrinterObserver implements CompilationObserver {
             cfgPrinter.lirGenerator = event.debugObject(LIRGenerator.class);
         }
 
-        BlockMap blockMap = event.debugObject(BlockMap.class);
+        BciBlockMapping blockMap = event.debugObject(BciBlockMapping.class);
         Graph graph = event.debugObject(Graph.class);
-        IdentifyBlocksPhase schedule = event.debugObject(IdentifyBlocksPhase.class);
+        SchedulePhase schedule = event.debugObject(SchedulePhase.class);
         LinearScan allocator = event.debugObject(LinearScan.class);
         Interval[] intervals = event.debugObject(Interval[].class);
         IntervalPrinter.Interval[] printIntervals = event.debugObject(IntervalPrinter.Interval[].class);
@@ -98,27 +98,20 @@ public class CFGPrinterObserver implements CompilationObserver {
             cfgPrinter.printBytecodes(runtime.disassemble(blockMap.method));
         }
         if (cfgPrinter.lir != null) {
-            cfgPrinter.printCFG(event.label, cfgPrinter.lir.codeEmittingOrder());
+            cfgPrinter.printCFG(event.label, cfgPrinter.lir.codeEmittingOrder(), schedule);
             if (targetMethod != null) {
                 cfgPrinter.printMachineCode(runtime.disassemble(targetMethod), null);
             }
         } else if (graph != null) {
-            List<? extends Block> blocks = null;
             if (schedule == null) {
                 try {
-                    schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
+                    schedule = new SchedulePhase();
                     schedule.apply((StructuredGraph) graph);
-                    blocks = schedule.getBlocks();
-
-                    ComputeLinearScanOrder clso = new ComputeLinearScanOrder(schedule.getBlocks().size(), schedule.loopCount(), (LIRBlock) schedule.getStartBlock());
-                    blocks = clso.codeEmittingOrder();
                 } catch (Throwable t) {
                     // nothing to do here...
                 }
             }
-            if (blocks != null) {
-                cfgPrinter.printCFG(event.label, blocks);
-            }
+            cfgPrinter.printCFG(event.label, Arrays.asList(schedule.getCFG().getBlocks()), schedule);
         }
         if (allocator != null && intervals != null) {
             cfgPrinter.printIntervals(event.label, intervals);

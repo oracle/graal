@@ -66,6 +66,11 @@ public class AMD64ControlFlow {
         protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
             throw Util.shouldNotReachHere();
         }
+
+        @Override
+        public Label getLabel() {
+            return label;
+        }
     }
 
 

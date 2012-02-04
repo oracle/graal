@@ -23,9 +23,10 @@
 package com.oracle.max.graal.compiler.lir;
 
 import com.oracle.max.asm.*;
+import com.oracle.max.graal.compiler.cfg.*;
 
 /**
- * LIR instructions such as JUMP and BRANCH need to reference their target {@link LIRBlock}. However,
+ * LIR instructions such as JUMP and BRANCH need to reference their target {@link Block}. However,
  * direct references are not possible since the control flow graph (and therefore successors lists) can
  * be changed by optimizations - and fixing the instructions is error prone.
  * Therefore, we only reference of block B from block A only via the tuple (A, successor-index-of-B), i.e.,
@@ -66,11 +67,11 @@ public abstract class LabelRef {
      * @param suxIndex The index of the successor.
      * @return The newly created label reference.
      */
-    public static LabelRef forSuccessor(final LIRBlock block, final int suxIndex) {
+    public static LabelRef forSuccessor(final Block block, final int suxIndex) {
         return new LabelRef() {
             @Override
             public Label label() {
-                return block.suxAt(suxIndex).label();
+                return ((StandardOp.LabelOp) block.suxAt(suxIndex).lir.get(0)).getLabel();
             }
 
             @Override

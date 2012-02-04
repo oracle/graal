@@ -25,6 +25,7 @@ package com.oracle.max.graal.compiler.lir;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
@@ -33,16 +34,16 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.*;
 
 public class LIRPhiMapping {
-    private final LIRBlock block;
+    private final Block block;
 
     private CiValue[][] inputs;
     private CiValue[] results;
 
-    public LIRPhiMapping(LIRBlock block, LIRGenerator gen) {
+    public LIRPhiMapping(Block block, LIRGenerator gen) {
         this.block = block;
 
-        assert block.firstNode() instanceof MergeNode : "phi functions are only present at control flow merges";
-        MergeNode mergeNode = (MergeNode) block.firstNode();
+        assert block.getBeginNode() instanceof MergeNode : "phi functions are only present at control flow merges";
+        MergeNode mergeNode = (MergeNode) block.getBeginNode();
         List<PhiNode> phis = mergeNode.phis().snapshot();
 
         for (int i = 0; i < phis.size(); i++) {
@@ -54,8 +55,8 @@ public class LIRPhiMapping {
     }
 
     public void fillInputs(LIRGenerator gen) {
-        assert block.firstNode() instanceof MergeNode : "phi functions are only present at control flow merges";
-        MergeNode mergeNode = (MergeNode) block.firstNode();
+        assert block.getBeginNode() instanceof MergeNode : "phi functions are only present at control flow merges";
+        MergeNode mergeNode = (MergeNode) block.getBeginNode();
         List<PhiNode> phis = mergeNode.phis().snapshot();
 
         int numPhis = 0;
@@ -75,7 +76,7 @@ public class LIRPhiMapping {
             if (phi.type() == PhiType.Value) {
                 results[phiIdx] = gen.operand(phi);
                 for (int j = 0; j < numPreds; j++) {
-                    assert j == mergeNode.phiPredecessorIndex((FixedNode) block.predAt(j).lastNode()) : "block predecessors and node predecessors must have same order";
+                    assert j == mergeNode.phiPredecessorIndex((FixedNode) block.predAt(j).getEndNode()) : "block predecessors and node predecessors must have same order";
                     inputs[j][phiIdx] = gen.operand(phi.valueAt(j));
                 }
                 phiIdx++;
@@ -88,7 +89,7 @@ public class LIRPhiMapping {
         return results;
     }
 
-    public CiValue[] inputs(LIRBlock pred) {
+    public CiValue[] inputs(Block pred) {
         assert pred.numberOfSux() == 1 && pred.suxAt(0) == block;
         return inputs[block.getPredecessors().indexOf(pred)];
     }
@@ -96,7 +97,7 @@ public class LIRPhiMapping {
     private static final EnumSet<OperandFlag> INPUT_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
     private static final EnumSet<OperandFlag> OUTPUT_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
 
-    public void forEachInput(LIRBlock pred, PhiValueProcedure proc) {
+    public void forEachInput(Block pred, PhiValueProcedure proc) {
         CiValue[] predInputs = inputs(pred);
         for (int i = 0; i < predInputs.length; i++) {
             predInputs[i] = proc.doValue(predInputs[i], results[i]);

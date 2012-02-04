@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.lir;
 
 import java.util.*;
 
+import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -39,6 +40,7 @@ public class StandardOp {
      * The first operation of every block must implement this interface.
      */
     public interface LabelOp {
+        Label getLabel();
     }
 
     /**

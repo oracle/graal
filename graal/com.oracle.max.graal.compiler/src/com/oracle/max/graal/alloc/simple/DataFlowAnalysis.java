@@ -32,10 +32,10 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
-import com.oracle.max.graal.compiler.schedule.*;
 
 public class DataFlowAnalysis {
     private final LIR lir;
@@ -52,7 +52,7 @@ public class DataFlowAnalysis {
     }
 
 
-    private List<LIRBlock> blocks() {
+    private List<Block> blocks() {
         return lir.linearScanOrder();
     }
 
@@ -67,21 +67,21 @@ public class DataFlowAnalysis {
 
     private int[] definitions;
     private BitSet[] blockLiveIn;
-    private LIRBlock[] opIdBlock;
+    private Block[] opIdBlock;
     private Object[] opIdKilledValues;
 
 
     public BitSet liveIn(Block block) {
-        return blockLiveIn[block.blockID()];
+        return blockLiveIn[block.getId()];
     }
     private void setLiveIn(Block block, BitSet liveIn) {
-        blockLiveIn[block.blockID()] = liveIn;
+        blockLiveIn[block.getId()] = liveIn;
     }
 
-    private LIRBlock blockOf(int opId) {
+    private Block blockOf(int opId) {
         return opIdBlock[opId >> 1];
     }
-    private void setBlockOf(int opId, LIRBlock block) {
+    private void setBlockOf(int opId, Block block) {
         opIdBlock[opId >> 1] = block;
     }
 
@@ -121,22 +121,20 @@ public class DataFlowAnalysis {
         ValueProcedure defProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return setDef(value); } };
 
         int numInstructions = 0;
-        for (LIRBlock block : blocks()) {
-            numInstructions += block.lir().size();
+        for (Block block : blocks()) {
+            numInstructions += block.lir.size();
         }
-        opIdBlock = new LIRBlock[numInstructions];
+        opIdBlock = new Block[numInstructions];
         opIdKilledValues = new Object[numInstructions << 1];
         definitions = new int[numVariables()];
 
         curOpId = 0;
-        for (LIRBlock block : blocks()) {
-            block.setFirstLirInstructionId(curOpId);
-
+        for (Block block : blocks()) {
             if (block.phis != null) {
                 block.phis.forEachOutput(defProc);
             }
 
-            for (LIRInstruction op : block.lir()) {
+            for (LIRInstruction op : block.lir) {
                 op.setId(curOpId);
                 setBlockOf(curOpId, block);
 
@@ -145,7 +143,6 @@ public class DataFlowAnalysis {
 
                 curOpId += 2; // numbering of lirOps by two
             }
-            block.setLastLirInstructionId(curOpId - 2);
         }
         assert curOpId == numInstructions << 1;
     }
@@ -175,11 +172,11 @@ public class DataFlowAnalysis {
 
         assert trace("==== start backward data flow analysis ====");
         for (int i = blocks().size() - 1; i >= 0; i--) {
-            LIRBlock block = blocks().get(i);
-            assert trace("start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
+            Block block = blocks().get(i);
+            assert trace("start block %s  loop %s", block, block.getLoop());
 
             variableLive = new BitSet();
-            for (LIRBlock sux : block.getLIRSuccessors()) {
+            for (Block sux : block.getSuccessors()) {
                 BitSet suxLive = liveIn(sux);
                 if (suxLive != null) {
                     assert trace("  sux %s  suxLive: %s", sux, suxLive);
@@ -187,7 +184,7 @@ public class DataFlowAnalysis {
                 }
 
                 if (sux.phis != null) {
-                    curOpId = block.lastLirInstructionId();
+                    curOpId = block.getLastLirInstructionId();
                     assert trace("  phis %d  variableLive: %s", curOpId, variableLive);
                     sux.phis.forEachInput(block, phiInputProc);
                 }
@@ -195,8 +192,8 @@ public class DataFlowAnalysis {
 
             assert registerLive.isEmpty() : "no fixed register must be alive before processing a block";
 
-            for (int j = block.lir().size() - 1; j >= 0; j--) {
-                LIRInstruction op = block.lir().get(j);
+            for (int j = block.lir.size() - 1; j >= 0; j--) {
+                LIRInstruction op = block.lir.get(j);
                 curOpId = op.id();
                 assert trace("  op %d %s  variableLive: %s  registerLive: %s", curOpId, op, variableLive, registerLive);
 
@@ -208,7 +205,7 @@ public class DataFlowAnalysis {
             }
 
             if (block.phis != null) {
-                curOpId = block.firstLirInstructionId();
+                curOpId = block.getFirstLirInstructionId();
                 assert trace("  phis %d  variableLive: %s  registerLive: %s", curOpId, variableLive, registerLive);
                 block.phis.forEachOutput(outputProc);
             }
@@ -221,7 +218,7 @@ public class DataFlowAnalysis {
                 assert trace("  loop header, propagating live set to loop blocks  variableLive: %s", variableLive);
                 // All variables that are live at the beginning of a loop are also live the whole loop.
                 // This is guaranteed by the SSA form.
-                for (Block loop : block.loopBlocks) {
+                for (Block loop : block.getLoop().blocks) {
                     BitSet loopLiveIn = liveIn(loop);
                     assert loopLiveIn != null : "All loop blocks must have been processed before the loop header";
                     loopLiveIn.or(variableLive);
@@ -292,13 +289,13 @@ public class DataFlowAnalysis {
             int defOpId = definitions[asVariable(value).index];
             assert defOpId > 0 && defOpId <= opId;
 
-            LIRBlock defBlock = blockOf(defOpId);
-            LIRBlock useBlock = blockOf(opId);
+            Block defBlock = blockOf(defOpId);
+            Block useBlock = blockOf(opId);
 
-            if (useBlock.loopDepth() > 0 && useBlock.loopIndex() != defBlock.loopIndex()) {
+            if (useBlock.getLoop() != null && useBlock.getLoop() != defBlock.getLoop()) {
                 // This is a value defined outside of the loop it is currently used in.  Therefore, it is live the whole loop
                 // and is not killed by the current instruction.
-                assert trace("      no kill because use in loop %d, definition in loop %d", useBlock.loopIndex(), defBlock.loopIndex());
+                assert trace("      no kill because use in %s, definition in %s", useBlock.getLoop(), defBlock.getLoop());
                 return;
             }
         }
