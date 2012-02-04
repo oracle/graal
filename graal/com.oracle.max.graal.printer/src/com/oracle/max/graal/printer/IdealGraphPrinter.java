@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
@@ -84,13 +85,13 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for nodes.
      */
-    public void print(Graph graph, String title, IdentifyBlocksPhase predefinedSchedule) {
+    public void print(Graph graph, String title, SchedulePhase predefinedSchedule) {
         beginGraph(title);
         Set<Node> noBlockNodes = new HashSet<>();
-        IdentifyBlocksPhase schedule = predefinedSchedule;
+        SchedulePhase schedule = predefinedSchedule;
         if (schedule == null) {
             try {
-                schedule = new IdentifyBlocksPhase(true);
+                schedule = new SchedulePhase();
                 schedule.apply((StructuredGraph) graph);
             } catch (Throwable t) {
                 // nothing to do here...
@@ -98,7 +99,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
         }
 
         beginNodes();
-        List<Edge> edges = printNodes(graph, schedule == null ? null : schedule.getNodeToBlock(), noBlockNodes);
+        List<Edge> edges = printNodes(graph, schedule == null ? null : schedule.getCFG().getNodeToBlock(), noBlockNodes);
         endNodes();
 
         beginEdges();
@@ -109,8 +110,8 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
 
         if (schedule != null) {
             beginControlFlow();
-            for (Block block : schedule.getBlocks()) {
-                printBlock(graph, block, schedule.getNodeToBlock());
+            for (Block block : schedule.getCFG().getBlocks()) {
+                printBlock(graph, block, schedule.getCFG().getNodeToBlock());
             }
             printNoBlock(noBlockNodes);
             endControlFlow();
@@ -141,10 +142,10 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
             printProperty("class", node.getClass().getSimpleName());
             Block block = nodeToBlock == null ? null : nodeToBlock.get(node);
             if (block != null) {
-                printProperty("block", Integer.toString(block.blockID()));
-                if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof LocalNode) && !block.getInstructions().contains(node)) {
-                    printProperty("notInOwnBlock", "true");
-                }
+                printProperty("block", Integer.toString(block.getId()));
+//                if (!(node instanceof PhiNode || node instanceof FrameState || node instanceof LocalNode) && !block.nodes().contains(node)) {
+//                    printProperty("notInOwnBlock", "true");
+//                }
             } else {
                 printProperty("block", "noBlock");
                 noBlockNodes.add(node);
@@ -211,17 +212,17 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
     }
 
     private void printBlock(Graph graph, Block block, NodeMap<Block> nodeToBlock) {
-        beginBlock(Integer.toString(block.blockID()));
+        beginBlock(Integer.toString(block.getId()));
         beginSuccessors();
         for (Block sux : block.getSuccessors()) {
             if (sux != null) {
-                printSuccessor(Integer.toString(sux.blockID()));
+                printSuccessor(Integer.toString(sux.getId()));
             }
         }
         endSuccessors();
         beginBlockNodes();
 
-        Set<Node> nodes = new HashSet<>(block.getInstructions());
+        Set<Node> nodes = new HashSet<>();
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
@@ -234,7 +235,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
 
         if (nodes.size() > 0) {
             // if this is the first block: add all locals to this block
-            if (block.getInstructions().size() > 0 && block.getInstructions().get(0) == ((StructuredGraph) graph).start()) {
+            if (block.getBeginNode() == ((StructuredGraph) graph).start()) {
                 for (Node node : graph.getNodes()) {
                     if (node instanceof LocalNode) {
                         nodes.add(node);
@@ -242,8 +243,9 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
                 }
             }
 
+            Set<Node> snapshot = new HashSet<>(nodes);
             // add all framestates and phis to their blocks
-            for (Node node : block.getInstructions()) {
+            for (Node node : snapshot) {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
                     nodes.add(((StateSplit) node).stateAfter());
                 }

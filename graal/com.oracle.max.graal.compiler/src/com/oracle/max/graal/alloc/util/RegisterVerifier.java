@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
 import com.oracle.max.graal.compiler.util.*;
@@ -40,7 +41,7 @@ public final class RegisterVerifier {
     /**
      * All blocks that must be processed.
      */
-    private final List<LIRBlock> workList;
+    private final List<Block> workList;
 
     /**
      * Saved information of previous check.
@@ -51,18 +52,18 @@ public final class RegisterVerifier {
      */
     private final Map<Object, CiValue>[] blockStates;
 
-    private void addToWorkList(LIRBlock block) {
+    private void addToWorkList(Block block) {
         if (!workList.contains(block)) {
             workList.add(block);
         }
     }
 
-    private Map<Object, CiValue> stateFor(LIRBlock block) {
-        return blockStates[block.blockID()];
+    private Map<Object, CiValue> stateFor(Block block) {
+        return blockStates[block.getId()];
     }
 
-    private void setStateFor(LIRBlock block, Map<Object, CiValue> savedState) {
-        blockStates[block.blockID()] = savedState;
+    private void setStateFor(Block block, Map<Object, CiValue> savedState) {
+        blockStates[block.getId()] = savedState;
     }
 
     private static Map<Object, CiValue> copy(Map<Object, CiValue> inputState) {
@@ -71,7 +72,7 @@ public final class RegisterVerifier {
 
     public static boolean verify(LIR lir, FrameMap frameMap) {
         RegisterVerifier verifier = new RegisterVerifier(lir, frameMap);
-        verifier.verify(lir.startBlock());
+        verifier.verify(lir.cfg.getStartBlock());
         return true;
     }
 
@@ -84,7 +85,7 @@ public final class RegisterVerifier {
 
     private Map<Object, CiValue> curInputState;
 
-    private void verify(LIRBlock startBlock) {
+    private void verify(Block startBlock) {
         ValueProcedure useProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, flags); } };
         ValueProcedure tempProc =   new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return temp(value); } };
         ValueProcedure outputProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return output(value); } };
@@ -95,15 +96,15 @@ public final class RegisterVerifier {
 
         assert trace("==== start verify register allocation ====");
         do {
-            LIRBlock block = workList.remove(0);
+            Block block = workList.remove(0);
             assert block.phis == null : "phi functions must have been resolved with moves";
 
             // Must copy state because it is modified.
             curInputState = copy(stateFor(block));
-            assert trace("start block %s  loop %d depth %d", block, block.loopIndex(), block.loopDepth());
+            assert trace("start block %s %s", block, block.getLoop());
             assert traceState();
 
-            for (LIRInstruction op : block.lir()) {
+            for (LIRInstruction op : block.lir) {
                 assert trace("  op %d %s", op.id(), op);
 
                 op.forEachInput(useProc);
@@ -116,7 +117,7 @@ public final class RegisterVerifier {
                 op.forEachOutput(outputProc);
             }
 
-            for (LIRBlock succ : block.getLIRSuccessors()) {
+            for (Block succ : block.getSuccessors()) {
                 processSuccessor(succ);
             }
 
@@ -125,7 +126,7 @@ public final class RegisterVerifier {
         assert trace("==== end verify register allocation ====");
     }
 
-    private void processSuccessor(LIRBlock succ) {
+    private void processSuccessor(Block succ) {
         Map<Object, CiValue> savedState = stateFor(succ);
         if (savedState == null) {
             // Block was not processed before, so set initial inputState.

@@ -25,8 +25,7 @@ package com.oracle.max.graal.compiler.phases;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.loop.*;
-import com.oracle.max.graal.compiler.schedule.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -90,7 +89,7 @@ public class FloatingReadPhase extends Phase {
                     Node current = anyLocationNode;
                     if (anyLocationNode instanceof PhiNode) {
                         PhiNode phiNode = (PhiNode) anyLocationNode;
-                        if (phiNode.merge() == block.firstNode()) {
+                        if (phiNode.merge() == block.getBeginNode()) {
                             PhiNode phiCopy = (PhiNode) phiNode.copyWithInputs();
                             phiCopy.removeInput(phiCopy.valueCount() - 1);
                             current = phiCopy;
@@ -109,7 +108,7 @@ public class FloatingReadPhase extends Phase {
                 Debug.log("Nothing to merge both nodes are %s.", original);
                 return;
             }
-            MergeNode m = (MergeNode) mergeBlock.firstNode();
+            MergeNode m = (MergeNode) mergeBlock.getBeginNode();
             if (m.isPhiAtMerge(original)) {
                 PhiNode phi = (PhiNode) original;
                 phi.addInput((ValueNode) newValue);
@@ -188,7 +187,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         private void createLoopEntryPhi(Object modifiedLocation, Node other, Loop loop) {
-            PhiNode phi = other.graph().unique(new PhiNode(CiKind.Illegal, loop.loopBegin(), PhiType.Memory));
+            PhiNode phi = other.graph().unique(new PhiNode(CiKind.Illegal, (MergeNode) loop.header.getBeginNode(), PhiType.Memory));
             phi.addInput((ValueNode) other);
             map.put(modifiedLocation, phi);
             loopEntryMap.put(modifiedLocation, phi);
@@ -206,43 +205,43 @@ public class FloatingReadPhase extends Phase {
         // Add start node write checkpoint.
         addStartCheckpoint(graph);
 
-        LoopInfo loopInfo = LoopUtil.computeLoopInfo(graph);
+        // Identify blocks.
+        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+        Block[] blocks = cfg.getBlocks();
 
         HashMap<Loop, Set<Object>> modifiedValues = new HashMap<>();
         // Initialize modified values to empty hash set.
-        for (Loop loop : loopInfo.loops()) {
+        for (Loop loop : cfg.getLoops()) {
             modifiedValues.put(loop, new HashSet<>());
         }
 
         // Get modified values in loops.
         for (Node n : graph.getNodes()) {
-            Loop loop = loopInfo.loop(n);
-            if (loop != null) {
+            Block block = cfg.blockFor(n);
+            if (block != null && block.getLoop() != null) {
                 if (n instanceof WriteNode) {
                     WriteNode writeNode = (WriteNode) n;
-                    traceWrite(loop, writeNode.location().locationIdentity(), modifiedValues);
+                    traceWrite(block.getLoop(), writeNode.location().locationIdentity(), modifiedValues);
                 } else if (n instanceof MemoryCheckpoint) {
-                    traceMemoryCheckpoint(loop, modifiedValues);
+                    traceMemoryCheckpoint(block.getLoop(), modifiedValues);
                 }
             }
         }
 
         // Propagate values to parent loops.
-        for (Loop loop : loopInfo.rootLoops()) {
-            propagateFromChildren(loop, modifiedValues);
+        for (Loop loop : cfg.getLoops()) {
+            if (loop.depth == 1) {
+                propagateFromChildren(loop, modifiedValues);
+            }
         }
 
         Debug.log("Modified values: %s.", modifiedValues);
 
-        // Identify blocks.
-        final IdentifyBlocksPhase s = new IdentifyBlocksPhase(false);
-        s.apply(graph);
-        List<Block> blocks = s.getBlocks();
 
         // Process blocks (predecessors first).
-        MemoryMap[] memoryMaps = new MemoryMap[blocks.size()];
+        MemoryMap[] memoryMaps = new MemoryMap[blocks.length];
         for (final Block b : blocks) {
-            processBlock(b, memoryMaps, s.getNodeToBlock(), modifiedValues, loopInfo);
+            processBlock(b, memoryMaps, cfg.getNodeToBlock(), modifiedValues);
         }
     }
 
@@ -254,41 +253,28 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    private void processBlock(Block b, MemoryMap[] memoryMaps, NodeMap<Block> nodeToBlock, HashMap<Loop, Set<Object>> modifiedValues, LoopInfo loopInfo) {
-
-        // Visit every block at most once.
-        if (memoryMaps[b.blockID()] != null) {
-            return;
-        }
-
-        // Process predecessors before this block.
-        for (Block pred : b.getPredecessors()) {
-            processBlock(pred, memoryMaps, nodeToBlock, modifiedValues, loopInfo);
-        }
-
-
+    private static void processBlock(Block b, MemoryMap[] memoryMaps, NodeMap<Block> nodeToBlock, HashMap<Loop, Set<Object>> modifiedValues) {
         // Create initial memory map for the block.
         MemoryMap map = null;
         if (b.getPredecessors().size() == 0) {
             map = new MemoryMap(b);
         } else {
-            map = new MemoryMap(b, memoryMaps[b.getPredecessors().get(0).blockID()]);
+            map = new MemoryMap(b, memoryMaps[b.getPredecessors().get(0).getId()]);
             if (b.isLoopHeader()) {
-                assert b.getPredecessors().size() == 1;
-                Loop loop = loopInfo.loop(b.firstNode());
+                Loop loop = b.getLoop();
                 map.createLoopEntryMemoryMap(modifiedValues.get(loop), loop);
             } else {
                 for (int i = 1; i < b.getPredecessors().size(); ++i) {
-                    assert b.firstNode() instanceof MergeNode : b.firstNode();
+                    assert b.getBeginNode() instanceof MergeNode : b.getBeginNode();
                     Block block = b.getPredecessors().get(i);
-                    map.mergeWith(memoryMaps[block.blockID()], b);
+                    map.mergeWith(memoryMaps[block.getId()], b);
                 }
             }
         }
-        memoryMaps[b.blockID()] = map;
+        memoryMaps[b.getId()] = map;
 
         // Process instructions of this block.
-        for (Node n : b.getInstructions()) {
+        for (Node n : b.getNodes()) {
             if (n instanceof ReadNode) {
                 ReadNode readNode = (ReadNode) n;
                 map.processRead(readNode);
@@ -302,12 +288,12 @@ public class FloatingReadPhase extends Phase {
         }
 
 
-        if (b.lastNode() instanceof LoopEndNode) {
-            LoopEndNode end = (LoopEndNode) b.lastNode();
+        if (b.getEndNode() instanceof LoopEndNode) {
+            LoopEndNode end = (LoopEndNode) b.getEndNode();
             LoopBeginNode begin = end.loopBegin();
             Block beginBlock = nodeToBlock.get(begin);
-            MemoryMap memoryMap = memoryMaps[beginBlock.blockID()];
-            assert memoryMap != null : beginBlock.name();
+            MemoryMap memoryMap = memoryMaps[beginBlock.getId()];
+            assert memoryMap != null;
             assert memoryMap.getLoopEntryMap() != null;
             memoryMap.mergeLoopEntryWith(map, begin);
         }
@@ -318,7 +304,7 @@ public class FloatingReadPhase extends Phase {
     }
 
     private void propagateFromChildren(Loop loop, HashMap<Loop, Set<Object>> modifiedValues) {
-        for (Loop child : loop.children()) {
+        for (Loop child : loop.children) {
             propagateFromChildren(child, modifiedValues);
             modifiedValues.get(loop).addAll(modifiedValues.get(child));
         }
