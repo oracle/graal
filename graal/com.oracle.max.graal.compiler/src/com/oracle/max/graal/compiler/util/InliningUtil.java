@@ -607,6 +607,7 @@ public class InliningUtil {
         }
         if (!invoke.useForInlining()) {
             Debug.log("not inlining %s because invoke is marked to be not used for inlining", methodName(invoke.callTarget().targetMethod(), invoke));
+            return false;
         }
         return true;
     }
