@@ -41,7 +41,7 @@ import com.oracle.max.graal.nodes.*;
  * Note that the CFG built by this class is <i>not</i> connected to the actual {@code BlockBegin} instances; this class
  * does, however, compute and assign the reverse postorder number of the blocks. This comment needs refinement. (MJJ)
  *
- * <H2>More Details on {@link BlockMap#build}</H2>
+ * <H2>More Details on {@link BciBlockMapping#build}</H2>
  *
  * If the method has any exception handlers the {@linkplain #exceptionMap exception map} will be created (TBD).
  *
@@ -111,7 +111,7 @@ import com.oracle.max.graal.nodes.*;
  * If the {@code computeStoresInLoops} argument to {@code build} is true, the {@code loopBlocks} list is processed to
  * mark all local variables that are stored in the blocks in the list.
  */
-public final class BlockMap {
+public final class BciBlockMapping {
 
     public static class Block implements Cloneable {
         public int startBci;
@@ -181,7 +181,7 @@ public final class BlockMap {
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BlockMap(RiResolvedMethod method, boolean useBranchPrediction) {
+    public BciBlockMapping(RiResolvedMethod method, boolean useBranchPrediction) {
         this.method = method;
         exceptionHandlers = method.exceptionHandlers();
         this.blockMap = new Block[method.codeSize()];

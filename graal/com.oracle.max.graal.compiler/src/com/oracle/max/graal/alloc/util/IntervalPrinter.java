@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.alloc.simple.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
@@ -126,11 +127,11 @@ public final class IntervalPrinter {
     public Interval[] execute() {
         ValueProcedure varProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return var(value); } };
 
-        for (LIRBlock block : lir.linearScanOrder()) {
+        for (Block block : lir.linearScanOrder()) {
             if (block.phis != null) {
                 block.phis.forEachOutput(varProc);
             }
-            for (LIRInstruction op : block.lir()) {
+            for (LIRInstruction op : block.lir) {
                 op.forEachOutput(varProc);
             }
         }
@@ -142,29 +143,29 @@ public final class IntervalPrinter {
         intervals.put("st", new Interval(-1, "st", "", "st", "hasState"));
 
         for (int i = lir.linearScanOrder().size() - 1; i >= 0; i--) {
-            LIRBlock block = lir.linearScanOrder().get(i);
+            Block block = lir.linearScanOrder().get(i);
 
-            curOpId = block.lastLirInstructionId() + 2;
-            for (LIRBlock sux : block.getLIRSuccessors()) {
+            curOpId = block.getLastLirInstructionId() + 2;
+            for (Block sux : block.getSuccessors()) {
                 BitSet suxIn = dataFlow.liveIn(sux);
                 for (int idx = suxIn.nextSetBit(0); idx >= 0; idx = suxIn.nextSetBit(idx + 1)) {
                     if (blockEndLocations != null) {
-                        out(blockEndLocations[block.blockID()].get(variables[idx]));
+                        out(blockEndLocations[block.getId()].get(variables[idx]));
                     } else {
                         out(variables[idx]);
                     }
                 }
             }
 
-            curOpId = block.lastLirInstructionId() + 1;
-            for (LIRBlock sux : block.getLIRSuccessors()) {
+            curOpId = block.getLastLirInstructionId() + 1;
+            for (Block sux : block.getSuccessors()) {
                 if (sux.phis != null) {
                     sux.phis.forEachInput(block, useProc);
                 }
             }
 
-            for (int j = block.lir().size() - 1; j >= 0; j--) {
-                LIRInstruction op = block.lir().get(j);
+            for (int j = block.lir.size() - 1; j >= 0; j--) {
+                LIRInstruction op = block.lir.get(j);
                 if (op.id() >= 0) {
                     curOpId = op.id();
                 } else {
@@ -188,13 +189,13 @@ public final class IntervalPrinter {
             }
 
             if (block.phis != null) {
-                curOpId = block.firstLirInstructionId() + 1;
+                curOpId = block.getFirstLirInstructionId() + 1;
                 block.phis.forEachOutput(defProc);
             }
 
             for (Interval interval : intervals.values()) {
                 if (interval.lastTo != 0) {
-                    interval.ranges.add(new Range(block.firstLirInstructionId(), interval.lastTo));
+                    interval.ranges.add(new Range(block.getFirstLirInstructionId(), interval.lastTo));
                     interval.lastTo = 0;
                 }
             }

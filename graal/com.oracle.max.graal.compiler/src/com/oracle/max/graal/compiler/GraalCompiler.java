@@ -33,6 +33,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.simple.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.asm.*;
+import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.gen.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.phases.*;
@@ -41,7 +42,6 @@ import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
 public class GraalCompiler {
@@ -187,17 +187,11 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        final IdentifyBlocksPhase schedule = new IdentifyBlocksPhase(true, LIRBlock.FACTORY);
+        final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
 
-        final List<Block> blocks = schedule.getBlocks();
-        final NodeMap<LIRBlock> valueToBlock = new NodeMap<>(graph);
-        for (Block b : blocks) {
-            for (Node i : b.getInstructions()) {
-                valueToBlock.set(i, (LIRBlock) b);
-            }
-        }
-        final LIRBlock startBlock = valueToBlock.get(graph.start());
+        final Block[] blocks = schedule.getCFG().getBlocks();
+        final Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
         assert startBlock.numberOfPreds() == 0;
 
@@ -205,16 +199,16 @@ public class GraalCompiler {
 
             @Override
             public LIR call() {
-                ComputeLinearScanOrder clso = new ComputeLinearScanOrder(blocks.size(), schedule.loopCount(), startBlock);
-                List<LIRBlock> linearScanOrder = clso.linearScanOrder();
-                List<LIRBlock> codeEmittingOrder = clso.codeEmittingOrder();
+                ComputeLinearScanOrder clso = new ComputeLinearScanOrder(blocks.length, schedule.getCFG().getLoops().length, startBlock);
+                List<Block> linearScanOrder = clso.linearScanOrder();
+                List<Block> codeEmittingOrder = clso.codeEmittingOrder();
 
                 int z = 0;
-                for (LIRBlock b : linearScanOrder) {
-                    b.setLinearScanNumber(z++);
+                for (Block b : linearScanOrder) {
+                    b.linearScanNumber = z++;
                 }
 
-                LIR lir = new LIR(startBlock, linearScanOrder, codeEmittingOrder, valueToBlock, schedule.loopCount());
+                LIR lir = new LIR(schedule.getCFG(), schedule.getNodesFor(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");
                 return lir;
 
@@ -228,11 +222,11 @@ public class GraalCompiler {
 
         Debug.scope("LIRGen", new Runnable() {
             public void run() {
-                for (LIRBlock b : lir.linearScanOrder()) {
+                for (Block b : lir.linearScanOrder()) {
                     lirGenerator.doBlock(b);
                 }
 
-                for (LIRBlock b : lir.linearScanOrder()) {
+                for (Block b : lir.linearScanOrder()) {
                     if (b.phis != null) {
                         b.phis.fillInputs(lirGenerator);
                     }

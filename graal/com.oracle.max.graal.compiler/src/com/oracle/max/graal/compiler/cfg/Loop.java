@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.max.graal.compiler.cfg;
 
-enum TemplateFlag {
-    NULL_CHECK, READ_BARRIER, WRITE_BARRIER, STORE_CHECK, BOUNDS_CHECK, GIVEN_LENGTH, INPUTS_DIFFERENT, INPUTS_SAME, STATIC_METHOD, SYNCHRONIZED, EXACT_HINTS;
+import java.util.*;
 
-    private static final long FIRST_FLAG = 0x0000000100000000L;
-    public static final long FLAGS_MASK = 0x0000FFFF00000000L;
-    public static final long INDEX_MASK = 0x00000000FFFFFFFFL;
+public class Loop {
+    public final Loop parent;
+    public final List<Loop> children;
 
-    public long bits() {
-        assert ((FIRST_FLAG << ordinal()) & FLAGS_MASK) != 0;
-        return FIRST_FLAG << ordinal();
+    public final int depth;
+    public final int index;
+    public final Block header;
+    public final List<Block> blocks;
+    public final List<Block> exits;
+
+    protected Loop(Loop parent, int index, Block header) {
+        this.parent = parent;
+        if (parent != null) {
+            this.depth = parent.depth + 1;
+            parent.children.add(this);
+        } else {
+            this.depth = 1;
+        }
+        this.index = index;
+        this.header = header;
+        this.blocks = new ArrayList<>();
+        this.children = new ArrayList<>();
+        this.exits = new ArrayList<>();
+    }
+
+    @Override
+    public String toString() {
+        return "loop " + index + " depth " + depth + (parent != null ? " outer " + parent.index : "");
     }
 }

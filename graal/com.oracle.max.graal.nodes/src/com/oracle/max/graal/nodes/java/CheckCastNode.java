@@ -24,6 +24,7 @@ package com.oracle.max.graal.nodes.java;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -31,10 +32,16 @@ import com.oracle.max.graal.nodes.type.*;
 
 /**
  * The {@code CheckCastNode} represents a {@link Bytecodes#CHECKCAST}.
+ *
+ * The {@link #targetClass()} of a CheckCastNode can be null for array store checks!
  */
-public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable {
+public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
     @Input protected final AnchorNode anchor;
+
+    public AnchorNode anchor() {
+        return anchor;
+    }
 
     /**
      * Creates a new CheckCast instruction.
@@ -44,7 +51,11 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
      * @param object the instruction producing the object
      */
     public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
-        super(targetClassInstruction, targetClass, object, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
+        this(anchor, targetClassInstruction, targetClass, object, EMPTY_HINTS, false);
+    }
+
+    public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact) {
+        super(targetClassInstruction, targetClass, object, hints, hintsExact, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
         this.anchor = anchor;
     }
 
@@ -67,6 +78,13 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
             if (constant.isNull()) {
                 freeAnchor();
                 return object();
+            }
+        }
+
+        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
+            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
+                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
+                return graph().unique(new CheckCastNode(anchor, targetClassInstruction(), targetClass(), object(), hints(), true));
             }
         }
         return this;

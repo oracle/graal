@@ -77,7 +77,6 @@ public class HotSpotDebugConfig implements DebugConfig {
             filter = filter.replace("[", "\\[");
             filter = filter.replace("]", "\\]");
             filter = filter.replace(":", "\\:");*/
-            //System.out.println("regexp: " + filter + " string=" + currentScope + ", " + Pattern.matches(filter, currentScope));
             return Pattern.matches(filter, currentScope);
         }
         return currentScope.contains(filter);
@@ -90,7 +89,7 @@ public class HotSpotDebugConfig implements DebugConfig {
             for (Object o : Debug.context()) {
                 if (o instanceof RiMethod) {
                     RiMethod riMethod = (RiMethod) o;
-                    if (riMethod.toString().contains(methodFilter)) {
+                    if (CiUtil.format("%H.%n", riMethod).contains(methodFilter)) {
                         return true;
                     }
                 }
@@ -125,7 +124,7 @@ public class HotSpotDebugConfig implements DebugConfig {
         if (e instanceof CiBailout) {
             return e;
         }
-        Debug.setConfig(Debug.fixedConfig(true, true, false, false));
+        Debug.setConfig(Debug.fixedConfig(true, true, false, false, dumpHandlers));
         // sync "Exception occured in scope: " with mx/sanitycheck.py::Test.__init__
         Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {

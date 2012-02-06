@@ -34,13 +34,12 @@ import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.BlockMap.Block;
-import com.oracle.max.graal.java.BlockMap.DeoptBlock;
-import com.oracle.max.graal.java.BlockMap.ExceptionBlock;
+import com.oracle.max.graal.java.BciBlockMapping.Block;
+import com.oracle.max.graal.java.BciBlockMapping.DeoptBlock;
+import com.oracle.max.graal.java.BciBlockMapping.ExceptionBlock;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
@@ -138,8 +137,8 @@ public final class GraphBuilderPhase extends Phase {
         return getName() + " " + CiUtil.format("%H.%n(%p):%r", method);
     }
 
-    private BlockMap createBlockMap() {
-        BlockMap map = new BlockMap(method, config.useBranchPrediction());
+    private BciBlockMapping createBlockMap() {
+        BciBlockMapping map = new BciBlockMapping(method, config.useBranchPrediction());
         map.build();
 
 //        if (currentContext.isObserved()) {
@@ -157,7 +156,7 @@ public final class GraphBuilderPhase extends Phase {
         }
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
-        BlockMap blockMap = createBlockMap();
+        BciBlockMapping blockMap = createBlockMap();
         this.canTrapBitSet = blockMap.canTrap;
 
         exceptionHandlers = blockMap.exceptionHandlers();
@@ -689,6 +688,32 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
+    private static final RiResolvedType[] EMPTY_TYPE_ARRAY = new RiResolvedType[0];
+
+    private RiResolvedType[] getTypeCheckHints(RiResolvedType type, int maxHints) {
+        if (!GraalOptions.UseInstanceOfHints || Util.isFinalClass(type)) {
+            return new RiResolvedType[] {type};
+        } else {
+            RiResolvedType uniqueSubtype = type.uniqueConcreteSubtype();
+            if (uniqueSubtype != null) {
+                return new RiResolvedType[] {uniqueSubtype};
+            } else {
+                RiTypeProfile typeProfile = method.typeProfile(bci());
+                if (typeProfile != null && typeProfile.types != null && typeProfile.types.length > 0 && typeProfile.morphism <= maxHints) {
+                    RiResolvedType[] hints = new RiResolvedType[typeProfile.types.length];
+                    int hintCount = 0;
+                    for (RiResolvedType hint : typeProfile.types) {
+                        if (hint.isSubtypeOf(type)) {
+                            hints[hintCount++] = hint;
+                        }
+                    }
+                    return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
+                }
+                return EMPTY_TYPE_ARRAY;
+            }
+        }
+    }
+
     private void genCheckCast() {
         int cpi = stream().readCPI();
         RiType type = lookupType(cpi, CHECKCAST);
@@ -698,7 +723,13 @@ public final class GraphBuilderPhase extends Phase {
             ValueNode object = frameState.apop();
             AnchorNode anchor = currentGraph.add(new AnchorNode());
             append(anchor);
-            CheckCastNode checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object));
+            CheckCastNode checkCast;
+            if (type instanceof RiResolvedType) {
+                RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, 2);
+                checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
+            } else {
+                checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object));
+            }
             append(currentGraph.add(new ValueAnchorNode(checkCast)));
             frameState.apush(checkCast);
         } else {
@@ -713,8 +744,12 @@ public final class GraphBuilderPhase extends Phase {
         RiType type = lookupType(cpi, INSTANCEOF);
         ValueNode object = frameState.apop();
         if (type instanceof RiResolvedType) {
-            ConstantNode hub = appendConstant(((RiResolvedType) type).getEncoding(RiType.Representation.ObjectHub));
-            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(new InstanceOfNode(hub, (RiResolvedType) type, object, false)), currentGraph)));
+            RiResolvedType resolvedType = (RiResolvedType) type;
+            ConstantNode hub = appendConstant(resolvedType.getEncoding(RiType.Representation.ObjectHub));
+
+            RiResolvedType[] hints = getTypeCheckHints(resolvedType, 1);
+            InstanceOfNode instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, hints, Util.isFinalClass(resolvedType), false);
+            frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode), currentGraph)));
         } else {
             PlaceholderNode trueSucc = currentGraph.add(new PlaceholderNode());
             DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile));
@@ -1421,6 +1456,23 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
+    private static boolean isBlockEnd(Node n) {
+        return trueSuccessorCount(n) > 1 || n instanceof ReturnNode || n instanceof UnwindNode || n instanceof DeoptimizeNode;
+    }
+
+    private static int trueSuccessorCount(Node n) {
+        if (n == null) {
+            return 0;
+        }
+        int i = 0;
+        for (Node s : n.successors()) {
+            if (Util.isFixed(s)) {
+                i++;
+            }
+        }
+        return i;
+    }
+
     private void iterateBytecodesForBlock(Block block) {
         assert frameState != null;
 
@@ -1437,7 +1489,7 @@ public final class GraphBuilderPhase extends Phase {
             traceInstruction(bci, opcode, bci == block.startBci);
             processBytecode(bci, opcode);
 
-            if (lastInstr == null || IdentifyBlocksPhase.isBlockEnd(lastInstr) || lastInstr.next() != null) {
+            if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {
                 break;
             }
 

@@ -81,7 +81,11 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
 
     @Override
     public RiResolvedType uniqueConcreteSubtype() {
-        return (RiResolvedType) compiler.getVMEntries().RiType_uniqueConcreteSubtype(this);
+        if (isArrayClass()) {
+            return Modifier.isFinal(componentType().accessFlags()) ? this : null;
+        } else {
+            return (RiResolvedType) compiler.getVMEntries().RiType_uniqueConcreteSubtype(this);
+        }
     }
 
     @Override

@@ -144,7 +144,7 @@ public class Debug {
         }
     }
 
-    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled) {
+    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final List<DebugDumpHandler> dumpHandlers) {
         return new DebugConfig() {
 
             @Override
@@ -174,7 +174,7 @@ public class Debug {
 
             @Override
             public Collection< ? extends DebugDumpHandler> dumpHandlers() {
-                return Collections.emptyList();
+                return dumpHandlers;
             }
         };
     }

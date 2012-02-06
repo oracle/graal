@@ -48,7 +48,11 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
      * @param object the instruction producing the object input to this instruction
      */
     public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, boolean negated) {
-        super(targetClassInstruction, targetClass, object, StampFactory.illegal());
+        this(targetClassInstruction, targetClass, object, EMPTY_HINTS, false, negated);
+    }
+
+    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact, boolean negated) {
+        super(targetClassInstruction, targetClass, object, hints, hintsExact, StampFactory.illegal());
         this.negated = negated;
         assert targetClass != null;
     }
@@ -59,8 +63,9 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object().exactType() != null) {
-            boolean result = object().exactType().isSubtypeOf(targetClass());
+        RiResolvedType exact = object().exactType();
+        if (exact != null) {
+            boolean result = exact.isSubtypeOf(targetClass());
             if (result != negated) {
                 // The instanceof check reduces to a null check.
                 return graph().unique(new NullCheckNode(object(), false));
@@ -78,11 +83,17 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
                 assert false : "non-null constants are always expected to provide an exactType";
             }
         }
+        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
+            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
+                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
+                return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), hints(), true, negated));
+            }
+        }
         return this;
     }
 
     @Override
     public BooleanNode negate() {
-        return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), !negated));
+        return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), hints(), hintsExact(), !negated));
     }
 }

@@ -136,7 +136,6 @@ public final class DebugScope {
 
     private <T> T executeScope(Runnable runnable, Callable<T> callable) {
         try {
-            instanceTL.get().log("Starting scope %s", instanceTL.get().getQualifiedName());
             if (runnable != null) {
                 runnable.run();
             }
