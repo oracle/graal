@@ -698,16 +698,21 @@ public final class GraphBuilderPhase extends Phase {
             if (uniqueSubtype != null) {
                 return new RiResolvedType[] {uniqueSubtype};
             } else {
-                RiTypeProfile typeProfile = method.typeProfile(bci());
-                if (typeProfile != null && typeProfile.types != null && typeProfile.types.length > 0 && typeProfile.morphism <= maxHints) {
-                    RiResolvedType[] hints = new RiResolvedType[typeProfile.types.length];
-                    int hintCount = 0;
-                    for (RiResolvedType hint : typeProfile.types) {
-                        if (hint.isSubtypeOf(type)) {
-                            hints[hintCount++] = hint;
+                RiTypeProfile typeProfile = profilingInfo.getTypeProfile(bci());
+                if (typeProfile != null) {
+                    double notRecordedTypes = typeProfile.getNotRecordedProbability();
+                    RiResolvedType[] types = typeProfile.getTypes();
+
+                    if (notRecordedTypes == 0 && types != null && types.length > 0 && types.length <= maxHints) {
+                        RiResolvedType[] hints = new RiResolvedType[types.length];
+                        int hintCount = 0;
+                        for (RiResolvedType hint : types) {
+                            if (hint.isSubtypeOf(type)) {
+                                hints[hintCount++] = hint;
+                            }
                         }
+                        return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
                     }
-                    return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
                 }
                 return EMPTY_TYPE_ARRAY;
             }

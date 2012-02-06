@@ -22,6 +22,8 @@
  */
 package com.oracle.max.graal.hotspot.ri;
 
+import java.util.*;
+
 import sun.misc.*;
 
 import com.oracle.max.cri.ri.*;
@@ -366,9 +368,7 @@ public final class HotSpotMethodData extends CompilerObject {
             if (entries <= 0) {
                 return null;
             } else if (entries < sparseTypes.length) {
-                RiResolvedType[] compactedTypes = new RiResolvedType[entries];
-                System.arraycopy(sparseTypes, 0, compactedTypes, 0, entries);
-                types = compactedTypes;
+                types = Arrays.copyOf(sparseTypes, entries);
                 probabilities = new double[entries];
             } else {
                 types = sparseTypes;
