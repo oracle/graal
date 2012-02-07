@@ -691,7 +691,7 @@ public final class GraphBuilderPhase extends Phase {
     private static final RiResolvedType[] EMPTY_TYPE_ARRAY = new RiResolvedType[0];
 
     private RiResolvedType[] getTypeCheckHints(RiResolvedType type, int maxHints) {
-        if (!GraalOptions.UseInstanceOfHints || Util.isFinalClass(type)) {
+        if (!GraalOptions.UseTypeCheckHints || Util.isFinalClass(type)) {
             return new RiResolvedType[] {type};
         } else {
             RiResolvedType uniqueSubtype = type.uniqueConcreteSubtype();
