@@ -314,6 +314,12 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (n instanceof ArrayHeaderSizeNode) {
             ArrayHeaderSizeNode arrayHeaderSize = (ArrayHeaderSizeNode) n;
             graph.replaceFloating(arrayHeaderSize, ConstantNode.forLong(config.getArrayOffset(arrayHeaderSize.elementKind()), n.graph()));
+        } else if (n instanceof ReadHubNode) {
+            ReadHubNode objectClassNode = (ReadHubNode) n;
+            LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
+            ReadNode memoryRead = graph.add(new ReadNode(CiKind.Object, objectClassNode.object(), location));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false))));
+            graph.replaceFixed(objectClassNode, memoryRead);
         }
     }
 

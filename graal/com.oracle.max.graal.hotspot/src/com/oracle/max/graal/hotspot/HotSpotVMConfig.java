@@ -30,7 +30,7 @@ import com.oracle.max.cri.ci.*;
 public final class HotSpotVMConfig extends CompilerObject {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = -4744897993263044184L;
 
@@ -70,7 +70,19 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int runtimeCallStackSize;
     public int klassModifierFlagsOffset;
     public int klassOopOffset;
+    public int graalMirrorKlassOffset;
     public int nmethodEntryOffset;
+
+    // methodData information
+    public int methodDataOopDataOffset;
+    public int dataLayoutHeaderSize;
+    public int dataLayoutTagOffset;
+    public int dataLayoutFlagsOffset;
+    public int dataLayoutBCIOffset;
+    public int dataLayoutCellsOffset;
+    public int dataLayoutCellSize;
+    public int bciProfileWidth;
+    public int typeProfileWidth;
 
     // runtime stubs
     public long debugStub;

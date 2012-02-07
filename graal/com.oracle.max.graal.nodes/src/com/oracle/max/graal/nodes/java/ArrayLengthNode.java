@@ -58,7 +58,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             return length;
         }
         CiConstant constantValue = null;
-        if (array().isConstant()) {
+        if (array().isConstant() && !array().isNullConstant()) {
             constantValue = array().asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
                 RiRuntime runtime = tool.runtime();

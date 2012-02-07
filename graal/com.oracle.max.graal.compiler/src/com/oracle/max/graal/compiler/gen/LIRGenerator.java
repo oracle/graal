@@ -701,9 +701,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitGuardCheck(BooleanNode comp) {
-        if (comp instanceof IsTypeNode) {
-            emitTypeGuard((IsTypeNode) comp);
-        } else if (comp instanceof NullCheckNode && !((NullCheckNode) comp).expectedNull) {
+        if (comp instanceof NullCheckNode && !((NullCheckNode) comp).expectedNull) {
             emitNullCheckGuard((NullCheckNode) comp);
         } else if (comp instanceof ConstantNode && comp.asConstant().asBoolean()) {
             // True constant, nothing to emit.
@@ -717,15 +715,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitNullCheckGuard(NullCheckNode node);
 
-    private void emitTypeGuard(IsTypeNode node) {
-        load(operand(node.object()));
-        LIRDebugInfo info = state();
-        XirArgument clazz = toXirArgument(node.type().getEncoding(Representation.ObjectHub));
-        XirSnippet typeCheck = xir.genTypeCheck(site(node), toXirArgument(node.object()), clazz, node.type());
-        emitXir(typeCheck, node, info, false);
-    }
-
-
     public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         if (node instanceof NullCheckNode) {
             emitNullCheckBranch((NullCheckNode) node, trueSuccessor, falseSuccessor, info);
@@ -735,6 +724,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitInstanceOfBranch((InstanceOfNode) node, trueSuccessor, falseSuccessor, info);
         } else if (node instanceof ConstantNode) {
             emitConstantBranch(((ConstantNode) node).asConstant().asBoolean(), trueSuccessor, falseSuccessor, info);
+        } else if (node instanceof IsTypeNode) {
+            emitTypeBranch((IsTypeNode) node, trueSuccessor, falseSuccessor, info);
         } else {
             throw Util.unimplemented(node.toString());
         }
@@ -761,11 +752,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         emitXir(snippet, x, info, null, false, x.negated() ? falseSuccessor : trueSuccessor, x.negated() ? trueSuccessor : falseSuccessor);
     }
 
-
     public void emitConstantBranch(boolean value, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRDebugInfo info) {
         LabelRef block = value ? trueSuccessorBlock : falseSuccessorBlock;
         if (block != null) {
             emitJump(block, info);
+        }
+    }
+
+    public void emitTypeBranch(IsTypeNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
+        XirArgument thisClass = toXirArgument(x.objectClass());
+        XirArgument otherClass = toXirArgument(x.type().getEncoding(Representation.ObjectHub));
+        XirSnippet snippet = xir.genTypeBranch(site(x), thisClass, otherClass, x.type());
+        emitXir(snippet, x, info, null, false, trueSuccessor, falseSuccessor);
+        if (trueSuccessor != null) {
+            emitJump(trueSuccessor, null);
         }
     }
 

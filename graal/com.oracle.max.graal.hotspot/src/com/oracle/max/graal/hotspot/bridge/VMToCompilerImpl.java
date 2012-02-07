@@ -275,6 +275,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         }
                         compiler.getRuntime().installMethod(method, result);
                     } catch (CiBailout bailout) {
+                        Debug.metric("Bailouts").increment();
                         if (GraalOptions.ExitVMOnBailout) {
                             bailout.printStackTrace(TTY.cachedOut);
                             System.exit(-1);
@@ -390,7 +391,9 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private PhasePlan getDefaultPhasePlan() {
         PhasePlan phasePlan = new PhasePlan();
-        phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
+        if (GraalOptions.Intrinsify) {
+            phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
+        }
         return phasePlan;
     }
 }

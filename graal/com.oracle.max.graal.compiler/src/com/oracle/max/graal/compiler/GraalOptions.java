@@ -42,9 +42,12 @@ public final class GraalOptions {
     public static boolean Inline                             = true;
     public static boolean Intrinsify                         = true;
     public static boolean CacheGraphs                        = ____;
-    public static boolean InlineWithTypeCheck                = ____;
+    public static boolean InlineMonomorphicCalls             = true;
+    public static boolean InlinePolymorphicCalls             = true;
+    public static int     InliningPolicy                     = 0;
     public static int     MaximumInlineSize                  = 35;
     public static int     MaximumFreqInlineSize              = 300;
+    public static float   NestedInliningSizeRatio            = 0.9f;
     public static int     FreqInlineRatio                    = 20;
     public static int     MaximumTrivialSize                 = 6;
     public static int     MaximumInlineLevel                 = 30;

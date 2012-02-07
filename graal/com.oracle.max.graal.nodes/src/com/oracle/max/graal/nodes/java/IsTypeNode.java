@@ -27,18 +27,18 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
 public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
-    @Input private ValueNode object;
+    @Input private ValueNode objectClass;
+    @Data private final RiResolvedType type;
 
-    public ValueNode object() {
-        return object;
+    public ValueNode objectClass() {
+        return objectClass;
     }
-
-    private final RiResolvedType type;
 
     /**
      * Constructs a new IsTypeNode.
@@ -46,11 +46,11 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
      * @param object the instruction producing the object to check against the given type
      * @param type the type for this check
      */
-    public IsTypeNode(ValueNode object, RiResolvedType type) {
+    public IsTypeNode(ValueNode objectClass, RiResolvedType type) {
         super(StampFactory.illegal());
-        assert object == null || object.kind() == CiKind.Object;
+        assert objectClass == null || objectClass.kind() == CiKind.Object;
         this.type = type;
-        this.object = object;
+        this.objectClass = objectClass;
     }
 
     public RiResolvedType type() {
@@ -71,8 +71,9 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object().exactType() != null) {
-            return ConstantNode.forBoolean(object().exactType() == type(), graph());
+        RiResolvedType exactType = objectClass() instanceof ReadHubNode ? ((ReadHubNode) objectClass()).object().exactType() : null;
+        if (exactType != null) {
+            return ConstantNode.forBoolean(exactType == type(), graph());
         }
         // constants return the correct exactType, so they are handled by the code above
         return this;

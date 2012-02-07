@@ -20,36 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.max.graal.nodes.extended;
 
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.graal.cri.*;
+import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.type.*;
 
-public interface Invoke extends StateSplit {
+// TODO (ch) this should be a FloatingNode but Lowering crashes in that case
+public final class ReadHubNode extends FixedWithNextNode implements Lowerable {
+    @Input private ValueNode object;
 
-    FixedNode next();
+    public ValueNode object() {
+        return object;
+    }
 
-    void setNext(FixedNode x);
+    public ReadHubNode(ValueNode object) {
+        super(StampFactory.forKind(CiKind.Object));
+        this.object = object;
+    }
 
-    MethodCallTargetNode callTarget();
-
-    int bci();
-
-    FixedNode node();
-
-    FrameState stateDuring();
-
-    FrameState stateAfter();
-
-    Node predecessor();
-
-    void intrinsify(Node node);
-
-    Graph graph();
-
-    double probability();
-
-    boolean useForInlining();
-
-    void setUseForInlining(boolean value);
+    @Override
+    public void lower(CiLoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
+    }
 }

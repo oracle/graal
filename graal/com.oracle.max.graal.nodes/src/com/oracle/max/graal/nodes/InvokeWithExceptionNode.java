@@ -38,6 +38,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Input private final MethodCallTargetNode callTarget;
     @Input private FrameState stateAfter;
     private final int bci;
+    private boolean useForInlining;
 
     /**
      * @param kind
@@ -48,6 +49,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         super(callTarget.returnStamp(), new BeginNode[]{null, exceptionEdge}, new double[]{1.0, 0.0});
         this.bci = bci;
         this.callTarget = callTarget;
+        this.useForInlining = true;
     }
 
     public BeginNode exceptionEdge() {
@@ -68,6 +70,16 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     public MethodCallTargetNode callTarget() {
         return callTarget;
+    }
+
+    @Override
+    public boolean useForInlining() {
+        return useForInlining;
+    }
+
+    @Override
+    public void setUseForInlining(boolean value) {
+        this.useForInlining = value;
     }
 
     @Override

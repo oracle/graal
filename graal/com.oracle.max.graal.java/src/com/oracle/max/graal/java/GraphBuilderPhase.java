@@ -72,6 +72,7 @@ public final class GraphBuilderPhase extends Phase {
     private RiConstantPool constantPool;
     private RiExceptionHandler[] exceptionHandlers;
     private RiResolvedMethod method;
+    private RiProfilingInfo profilingInfo;
 
     private BytecodeStream stream;           // the bytecode stream
     private final LogStream log;
@@ -116,6 +117,7 @@ public final class GraphBuilderPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         method = graph.method();
+        profilingInfo = method.profilingInfo();
         assert method.code() != null : "method must contain bytecodes: " + method;
         this.stream = new BytecodeStream(method.code());
         this.constantPool = method.getConstantPool();
@@ -321,7 +323,7 @@ public final class GraphBuilderPhase extends Phase {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
 
         if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && method.exceptionProbability(bci) == 0) {
+            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && !profilingInfo.getExceptionSeen(bci)) {
                 return null;
             }
         }
@@ -602,7 +604,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
-        double probability = method.branchProbability(bci());
+        double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
             Debug.log("missing probability in %s at bci %d", method, bci());
             probability = 0.5;
@@ -696,16 +698,21 @@ public final class GraphBuilderPhase extends Phase {
             if (uniqueSubtype != null) {
                 return new RiResolvedType[] {uniqueSubtype};
             } else {
-                RiTypeProfile typeProfile = method.typeProfile(bci());
-                if (typeProfile != null && typeProfile.types != null && typeProfile.types.length > 0 && typeProfile.morphism <= maxHints) {
-                    RiResolvedType[] hints = new RiResolvedType[typeProfile.types.length];
-                    int hintCount = 0;
-                    for (RiResolvedType hint : typeProfile.types) {
-                        if (hint.isSubtypeOf(type)) {
-                            hints[hintCount++] = hint;
+                RiTypeProfile typeProfile = profilingInfo.getTypeProfile(bci());
+                if (typeProfile != null) {
+                    double notRecordedTypes = typeProfile.getNotRecordedProbability();
+                    RiResolvedType[] types = typeProfile.getTypes();
+
+                    if (notRecordedTypes == 0 && types != null && types.length > 0 && types.length <= maxHints) {
+                        RiResolvedType[] hints = new RiResolvedType[types.length];
+                        int hintCount = 0;
+                        for (RiResolvedType hint : types) {
+                            if (hint.isSubtypeOf(type)) {
+                                hints[hintCount++] = hint;
+                            }
                         }
+                        return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
                     }
-                    return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
                 }
                 return EMPTY_TYPE_ARRAY;
             }
@@ -1185,7 +1192,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private double[] switchProbability(int numberOfCases, int bci) {
-        double[] prob = method.switchProbability(bci);
+        double[] prob = profilingInfo.getSwitchProbabilities(bci);
         if (prob != null) {
             assert prob.length == numberOfCases;
         } else {

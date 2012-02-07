@@ -21,7 +21,6 @@
  * questions.
  */
 package com.oracle.max.graal.hotspot.snippets;
-
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.hotspot.*;
@@ -285,7 +284,6 @@ public class ArrayCopySnippets implements SnippetsInterface{
             DirectObjectStoreNode.store(dest, i + (destOffset + header), a);
         }
     }
-
     /**
      * Copies {@code length} bytes from {@code src} starting at {@code srcPos} to {@code dest} starting at {@code destPos}.
      * @param src source object
@@ -347,7 +345,6 @@ public class ArrayCopySnippets implements SnippetsInterface{
             DirectObjectStoreNode.store(dest, i + (destOffset + header), a);
         }
     }
-
     private static class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
         @Input private ValueNode object;
 
@@ -369,7 +366,6 @@ public class ArrayCopySnippets implements SnippetsInterface{
             gen.setResult(this, obj);
         }
     }
-
     private static class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
         @Input private ValueNode address;
         @Input private ValueNode value;

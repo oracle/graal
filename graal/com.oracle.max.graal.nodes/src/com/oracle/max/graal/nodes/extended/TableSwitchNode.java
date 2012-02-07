@@ -28,7 +28,7 @@ import com.oracle.max.graal.nodes.spi.*;
 /**
  * The {@code TableSwitchNode} represents a table switch.
  */
-public final class TableSwitchNode extends SwitchNode implements LIRLowerable {
+public final class TableSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
     @Data private final int lowKey;
 
@@ -66,5 +66,31 @@ public final class TableSwitchNode extends SwitchNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitTableSwitch(this);
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (value() instanceof ConstantNode) {
+            ConstantNode constant = (ConstantNode) value();
+            int value = constant.value.asInt();
+
+            int remainingSuxIndex;
+            if (value >= lowKey() && value <= highKey()) {
+                remainingSuxIndex = value - lowKey();
+            } else {
+                remainingSuxIndex = blockSuccessorCount() - 1;
+            }
+
+            BeginNode remainingSux = blockSuccessor(remainingSuxIndex);
+            for (int i = 0; i < blockSuccessorCount(); i++) {
+                BeginNode sux = blockSuccessor(i);
+                if (sux != remainingSux) {
+                    tool.deleteBranch(sux);
+                }
+            }
+
+            tool.addToWorkList(remainingSux);
+            ((StructuredGraph) graph()).removeSplit(this, remainingSuxIndex);
+        }
     }
 }
