@@ -87,7 +87,7 @@ public class CanonicalizerPhase extends Phase {
                             graph.removeFloating((FloatingNode) node);
                         } else {
                             // case 2
-                            assert canonical instanceof FloatingNode || (canonical instanceof FixedNode && canonical.predecessor() != null) : node + " -> " + canonical +
+                            assert !(canonical instanceof FixedNode) || canonical.predecessor() != null : node + " -> " + canonical +
                                             " : replacement should be floating or fixed and connected";
                             graph.replaceFloating((FloatingNode) node, canonical);
                         }
