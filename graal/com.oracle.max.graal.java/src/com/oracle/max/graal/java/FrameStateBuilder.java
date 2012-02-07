@@ -47,7 +47,7 @@ public class FrameStateBuilder implements FrameStateAccess {
 
     private final RiResolvedMethod method;
 
-    public FrameStateBuilder(RiResolvedMethod method, int maxLocals, int maxStackSize, StructuredGraph graph) {
+    public FrameStateBuilder(RiResolvedMethod method, int maxLocals, int maxStackSize, StructuredGraph graph, boolean eagerResolve) {
         assert graph != null;
         this.method = method;
         this.graph = graph;
@@ -67,9 +67,12 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
         RiSignature sig = method.signature();
         int max = sig.argumentCount(false);
-        RiType accessingClass = method.holder();
+        RiResolvedType accessingClass = method.holder();
         for (int i = 0; i < max; i++) {
             RiType type = sig.argumentTypeAt(i, accessingClass);
+            if (eagerResolve) {
+                type = type.resolve(accessingClass);
+            }
             CiKind kind = type.kind(false).stackKind();
             Stamp stamp;
             if (kind == CiKind.Object && type instanceof RiResolvedType) {

@@ -31,9 +31,6 @@ import com.oracle.max.graal.hotspot.Compiler;
  */
 public class HotSpotTypeUnresolved extends HotSpotType {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = -2320936267633521314L;
     public final String simpleName;
     public final int dimensions;
@@ -46,13 +43,14 @@ public class HotSpotTypeUnresolved extends HotSpotType {
         assert name.length() > 0 : "name cannot be empty";
 
         int dims = 0;
+        int startIndex = 0;
+        while (name.charAt(startIndex) == '[') {
+            startIndex++;
+            dims++;
+        }
+
         // Decode name if necessary.
         if (name.charAt(name.length() - 1) == ';') {
-            int startIndex = 0;
-            while (name.charAt(startIndex) == '[') {
-                startIndex++;
-                dims++;
-            }
             assert name.charAt(startIndex) == 'L';
             this.simpleName = name.substring(startIndex + 1, name.length() - 1);
             this.name = name;
@@ -115,5 +113,10 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     @Override
     public CiKind getRepresentationKind(RiType.Representation r) {
         return CiKind.Object;
+    }
+
+    @Override
+    public RiResolvedType resolve(RiResolvedType accessingClass) {
+        return (RiResolvedType) compiler.lookupType(name, (HotSpotTypeResolved) accessingClass, true);
     }
 }

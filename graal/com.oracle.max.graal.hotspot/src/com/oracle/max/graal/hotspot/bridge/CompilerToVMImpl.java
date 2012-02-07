@@ -60,7 +60,7 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native int RiMethod_invocationCount(HotSpotMethodResolved method);
 
     @Override
-    public native RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass);
+    public native RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
 
     @Override
     public native Object RiConstantPool_lookupConstant(HotSpotTypeResolved pool, int cpi);

@@ -97,4 +97,6 @@ public interface RiType {
      * @return the kind of constants for the specified part of the type
      */
     CiKind getRepresentationKind(Representation r);
+
+    RiResolvedType resolve(RiResolvedType accessingClass);
 }

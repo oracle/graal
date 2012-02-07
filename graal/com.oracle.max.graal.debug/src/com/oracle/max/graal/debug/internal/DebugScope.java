@@ -73,6 +73,7 @@ public final class DebugScope {
         this.parent = parent;
         this.context = context;
         this.qualifiedName = qualifiedName;
+        assert context != null;
     }
 
     public boolean isDumpEnabled() {
@@ -128,7 +129,7 @@ public final class DebugScope {
             if (!sandbox && newChild.hasValueMap()) {
                 getValueMap().addChild(newChild.getValueMap());
             }
-            newChild.deactivate();
+            newChild.context = null;
             instanceTL.set(oldContext);
             setConfig(oldConfig);
         }
@@ -172,10 +173,6 @@ public final class DebugScope {
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
         }
-    }
-
-    private void deactivate() {
-        context = null;
     }
 
     private RuntimeException interceptException(final Throwable e) {

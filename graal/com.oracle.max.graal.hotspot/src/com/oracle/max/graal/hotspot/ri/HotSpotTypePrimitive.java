@@ -166,4 +166,9 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     public Class< ? > toJava() {
         return kind.toJavaClass();
     }
+
+    @Override
+    public RiResolvedType resolve(RiResolvedType accessingClass) {
+        return this;
+    }
 }

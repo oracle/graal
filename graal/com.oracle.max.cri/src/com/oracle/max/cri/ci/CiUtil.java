@@ -728,11 +728,11 @@ public class CiUtil {
         return result;
     }
 
-    public static Class<?>[] signatureToTypes(RiSignature signature, RiType accessingClass) {
+    public static Class<?>[] signatureToTypes(RiSignature signature, RiResolvedType accessingClass) {
         int count = signature.argumentCount(false);
         Class<?>[] result = new Class<?>[count];
         for (int i = 0; i < result.length; ++i) {
-            result[i] = ((RiResolvedType) signature.argumentTypeAt(i, accessingClass)).toJava();
+            result[i] = signature.argumentTypeAt(i, accessingClass).resolve(accessingClass).toJava();
         }
         return result;
     }
