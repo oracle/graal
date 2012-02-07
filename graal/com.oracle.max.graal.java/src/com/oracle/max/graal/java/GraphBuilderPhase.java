@@ -323,7 +323,8 @@ public final class GraphBuilderPhase extends Phase {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
 
         if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && !profilingInfo.getExceptionSeen(bci)) {
+            // be conservative if information was not recorded (could result in endless recompiles otherwise)
+            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.FALSE) {
                 return null;
             }
         }

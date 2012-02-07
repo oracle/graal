@@ -50,10 +50,12 @@ public interface RiProfilingInfo {
     RiTypeProfile getTypeProfile(int bci);
 
     /**
-     * Returns true if the instruction at least once an exception was thrown at the given BCI.
-     * @return true if an exception was encountered during profiling, false otherwise.
+     * Returns information if the given BCI did ever throw an exception.
+     * @return @link{RiExceptionSeen.TRUE} if the instruction has thrown an exception at least once,
+     * @link{RiExceptionSeen.FALSE} if it never threw an exception, and @link{RiExceptionSeen.UNKNOWN}
+     * if this information was not recorded.
      */
-    boolean getExceptionSeen(int bci);
+    RiExceptionSeen getExceptionSeen(int bci);
 
     /**
      * Returns an estimate how often the current BCI was executed. Avoid comparing execution counts to each other,

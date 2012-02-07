@@ -32,7 +32,7 @@ public final class HotSpotNoProfilingInfo extends CompilerObject implements RiPr
      *
      */
     private static final long serialVersionUID = 4357945025049704109L;
-    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoMethodData();
+    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoDataExceptionPossibleAccessor();
 
     public HotSpotNoProfilingInfo(Compiler compiler) {
         super(compiler);
@@ -54,7 +54,7 @@ public final class HotSpotNoProfilingInfo extends CompilerObject implements RiPr
     }
 
     @Override
-    public boolean getExceptionSeen(int bci) {
+    public RiExceptionSeen getExceptionSeen(int bci) {
         return noData.getExceptionSeen(null, -1);
     }
 

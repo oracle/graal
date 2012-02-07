@@ -44,7 +44,8 @@ public final class HotSpotMethodData extends CompilerObject {
 
     // TODO (ch) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
-    private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoMethodData();
+    private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(RiExceptionSeen.FALSE);
+    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLE_ACCESSOR = new NoMethodData(RiExceptionSeen.UNKNOWN);
     private static final HotSpotVMConfig config;
     // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
@@ -109,8 +110,12 @@ public final class HotSpotMethodData extends CompilerObject {
         return getData(position);
     }
 
-    public static HotSpotMethodDataAccessor getNoMethodData() {
-        return NO_DATA_ACCESSOR;
+    public static HotSpotMethodDataAccessor getNoDataNoExceptionAccessor() {
+        return NO_DATA_NO_EXCEPTION_ACCESSOR;
+    }
+
+    public static HotSpotMethodDataAccessor getNoDataExceptionPossibleAccessor() {
+        return NO_DATA_EXCEPTION_POSSIBLE_ACCESSOR;
     }
 
     private HotSpotMethodDataAccessor getData(int position) {
@@ -196,8 +201,8 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public boolean getExceptionSeen(HotSpotMethodData data, int position) {
-            return (getFlags(data, position) & EXCEPTIONS_MASK) != 0;
+        public RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+            return RiExceptionSeen.get((getFlags(data, position) & EXCEPTIONS_MASK) != 0);
         }
 
         @Override
@@ -233,8 +238,11 @@ public final class HotSpotMethodData extends CompilerObject {
         private static final int NO_DATA_TAG = 0;
         private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
-        protected NoMethodData() {
+        private final RiExceptionSeen exceptionSeen;
+
+        protected NoMethodData(RiExceptionSeen exceptionSeen) {
             super(NO_DATA_TAG, NO_DATA_SIZE);
+            this.exceptionSeen = exceptionSeen;
         }
 
         @Override
@@ -244,8 +252,8 @@ public final class HotSpotMethodData extends CompilerObject {
 
 
         @Override
-        public boolean getExceptionSeen(HotSpotMethodData data, int position) {
-            return false;
+        public RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+            return exceptionSeen;
         }
     }
 

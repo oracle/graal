@@ -66,7 +66,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public boolean getExceptionSeen(int bci) {
+    public RiExceptionSeen getExceptionSeen(int bci) {
         findBCI(bci, true);
         return dataAccessor.getExceptionSeen(methodData, position);
     }
@@ -95,6 +95,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
             }
         }
 
+        boolean exceptionPossiblyNotRecorded = false;
         if (searchExtraData && methodData.hasExtraData()) {
             int currentPosition = methodData.getExtraDataBeginOffset();
             HotSpotMethodDataAccessor currentAccessor;
@@ -106,11 +107,11 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
                 }
                 currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
             }
+
+            exceptionPossiblyNotRecorded = !methodData.isWithin(currentPosition);
         }
 
-        // TODO (ch) getExceptionSeen() should return UNKNOWN if not enough extra data
-
-        noDataFound();
+        noDataFound(exceptionPossiblyNotRecorded);
     }
 
     private void normalDataFound(HotSpotMethodDataAccessor data, int pos, int bci) {
@@ -123,8 +124,9 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
         setCurrentData(data, pos);
     }
 
-    private void noDataFound() {
-        setCurrentData(HotSpotMethodData.getNoMethodData(), -1);
+    private void noDataFound(boolean exceptionPossible) {
+        HotSpotMethodDataAccessor accessor = exceptionPossible ? HotSpotMethodData.getNoDataNoExceptionAccessor() : HotSpotMethodData.getNoDataNoExceptionAccessor();
+        setCurrentData(accessor, -1);
     }
 
     private void setCurrentData(HotSpotMethodDataAccessor dataAccessor, int position) {
