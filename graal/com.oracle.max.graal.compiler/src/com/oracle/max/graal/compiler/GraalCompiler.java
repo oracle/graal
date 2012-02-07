@@ -81,7 +81,7 @@ public class GraalCompiler {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
-        return Debug.scope(createScopeName(method), method, new Callable<CiTargetMethod>() {
+        return Debug.scope(createScopeName(method), new Callable<CiTargetMethod>() {
             public CiTargetMethod call() {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", graph, new Callable<LIR>() {

@@ -26,8 +26,8 @@ import com.oracle.max.graal.debug.internal.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-
 public class Debug {
+
     private static boolean ENABLED = false;
 
     public static void enable() {
@@ -73,7 +73,7 @@ public class Debug {
 
     public static void scope(String name, Object context, Runnable runnable) {
         if (ENABLED) {
-            DebugScope.getInstance().scope(name, runnable, null, false, new Object[]{context});
+            DebugScope.getInstance().scope(name, runnable, null, false, new Object[] {context});
         } else {
             runnable.run();
         }
@@ -89,7 +89,7 @@ public class Debug {
 
     public static <T> T scope(String name, Object context, Callable<T> callable) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, null, callable, false, new Object[]{context});
+            return DebugScope.getInstance().scope(name, null, callable, false, new Object[] {context});
         } else {
             return DebugScope.call(callable);
         }
@@ -130,6 +130,18 @@ public class Debug {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T contextLookup(Class<T> clazz) {
+        if (ENABLED) {
+            for (Object o : context()) {
+                if (clazz.isInstance(o)) {
+                    return ((T) o);
+                }
+            }
+        }
+        return null;
+    }
+
     public static DebugMetric metric(String name) {
         if (ENABLED) {
             return new MetricImpl(name);
@@ -168,8 +180,8 @@ public class Debug {
             }
 
             @Override
-            public RuntimeException interceptException(RuntimeException e) {
-                return e;
+            public RuntimeException interceptException(Throwable e) {
+                return null;
             }
 
             @Override
@@ -180,8 +192,12 @@ public class Debug {
     }
 
     private static final DebugMetric VOID_METRIC = new DebugMetric() {
-        public void increment() { }
-        public void add(int value) { }
+
+        public void increment() {
+        }
+
+        public void add(int value) {
+        }
     };
 
     public static DebugTimer timer(String name) {
@@ -193,6 +209,9 @@ public class Debug {
     }
 
     private static final DebugTimer VOID_TIMER = new DebugTimer() {
-        public TimerCloseable start() { return TimerImpl.VOID_CLOSEABLE; }
+
+        public TimerCloseable start() {
+            return TimerImpl.VOID_CLOSEABLE;
+        }
     };
 }

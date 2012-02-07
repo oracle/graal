@@ -22,14 +22,15 @@
  */
 package com.oracle.max.graal.debug;
 
-import java.util.*;
+public final class DebugDumpScope {
 
+    private final String name;
 
-public interface DebugConfig {
-    boolean isLogEnabled();
-    boolean isMeterEnabled();
-    boolean isDumpEnabled();
-    boolean isTimeEnabled();
-    RuntimeException interceptException(Throwable e);
-    Collection<? extends DebugDumpHandler> dumpHandlers();
+    public DebugDumpScope(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
 }

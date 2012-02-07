@@ -25,6 +25,7 @@ package com.oracle.max.graal.printer;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
@@ -40,7 +41,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     private static final String DEFAULT_FILE_NAME = "output.igv.xml";
 
     private IdealGraphPrinter printer;
-    private List<RiResolvedMethod> previousInlineContext = new ArrayList<>();
+    private List<String> previousInlineContext = new ArrayList<>();
     private String fileName;
     private String host;
     private int port;
@@ -60,8 +61,6 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
         this.host = host;
         this.port = port;
     }
-
-
 
     private void ensureInitialized() {
         if (!initialized) {
@@ -85,7 +84,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void initializeNetworkPrinter() {
-        try  {
+        try {
             Socket socket = new Socket(host, port);
             BufferedOutputStream stream = new BufferedOutputStream(socket.getOutputStream(), 0x4000);
             printer = new IdealGraphPrinter(stream);
@@ -103,26 +102,29 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
 
             if (printer.isValid()) {
                 // Get all current RiResolvedMethod instances in the context.
-                List<RiResolvedMethod> inlineContext = Debug.contextSnapshot(RiResolvedMethod.class);
+                List<String> inlineContext = getInlineContext();
+                Debug.contextSnapshot(RiResolvedMethod.class);
 
                 // Reverse list such that inner method comes after outer method.
                 Collections.reverse(inlineContext);
 
                 // Check for method scopes that must be closed since the previous dump.
                 for (int i = 0; i < previousInlineContext.size(); ++i) {
-                    if (i >= inlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
+                    if (i >= inlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
                         for (int j = previousInlineContext.size() - 1; j >= i; --j) {
-                            closeMethodScope();
+                            closeScope();
                         }
+                        break;
                     }
                 }
 
                 // Check for method scopes that must be opened since the previous dump.
                 for (int i = 0; i < inlineContext.size(); ++i) {
-                    if (i >= previousInlineContext.size() || inlineContext.get(i) != previousInlineContext.get(i)) {
+                    if (i >= previousInlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
                         for (int j = i; j < inlineContext.size(); ++j) {
-                            openMethodScope(inlineContext.get(j));
+                            openScope(inlineContext.get(j));
                         }
+                        break;
                     }
                 }
 
@@ -145,13 +147,25 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
         }
     }
 
-    private void openMethodScope(RiResolvedMethod method) {
-        printer.beginGroup(CiUtil.format("%H::%n", method), CiUtil.format("%h::%n", method), method, -1);
-
+    private static List<String> getInlineContext() {
+        List<String> result = new ArrayList<>();
+        for (Object o : Debug.context()) {
+            if (o instanceof RiResolvedMethod) {
+                RiResolvedMethod method = (RiResolvedMethod) o;
+                result.add(CiUtil.format("%H::%n", method));
+            } else if (o instanceof DebugDumpScope) {
+                DebugDumpScope debugDumpScope = (DebugDumpScope) o;
+                result.add(debugDumpScope.getName());
+            }
+        }
+        return result;
     }
 
-    private void closeMethodScope() {
-        printer.endGroup();
+    private void openScope(String name) {
+        printer.beginGroup(name, name, Debug.contextLookup(RiResolvedMethod.class), -1);
+    }
 
+    private void closeScope() {
+        printer.endGroup();
     }
 }

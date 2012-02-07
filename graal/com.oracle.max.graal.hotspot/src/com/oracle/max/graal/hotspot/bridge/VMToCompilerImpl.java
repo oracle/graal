@@ -239,19 +239,13 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                     // to add something to its own queue.
                     return;
                 }
-            } else {
-                if (GraalOptions.Debug) {
-                    Debug.enable();
-                    HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
-                    Debug.setConfig(hotspotDebugConfig);
-                }
             }
 
             Runnable runnable = new Runnable() {
 
                 public void run() {
                     try {
-                        PhasePlan plan = getDefaultPhasePlan();
+                        final PhasePlan plan = getDefaultPhasePlan();
                         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                         long startTime = 0;
@@ -265,7 +259,12 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         CiTargetMethod result = null;
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
                         try {
-                            result = compiler.getCompiler().compileMethod(method, -1, plan);
+                            result = Debug.scope("Compiling", method, new Callable<CiTargetMethod>() {
+                                @Override
+                                public CiTargetMethod call() throws Exception {
+                                    return compiler.getCompiler().compileMethod(method, -1, plan);
+                                }
+                            });
                         } finally {
                             filter.remove();
                             if (printCompilation) {
