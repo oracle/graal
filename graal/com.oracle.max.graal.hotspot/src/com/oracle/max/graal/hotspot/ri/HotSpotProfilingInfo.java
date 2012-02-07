@@ -96,7 +96,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
         }
 
         if (searchExtraData && methodData.hasExtraData()) {
-            int currentPosition = 0;
+            int currentPosition = methodData.getExtraDataBeginOffset();
             HotSpotMethodDataAccessor currentAccessor;
             while ((currentAccessor = methodData.getExtraData(currentPosition)) != null) {
                 int currentBCI = currentAccessor.getBCI(methodData, currentPosition);
@@ -107,6 +107,8 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
                 currentPosition = currentPosition + currentAccessor.getSize(methodData, currentPosition);
             }
         }
+
+        // TODO (ch) getExceptionSeen() should return UNKNOWN if not enough extra data
 
         noDataFound();
     }

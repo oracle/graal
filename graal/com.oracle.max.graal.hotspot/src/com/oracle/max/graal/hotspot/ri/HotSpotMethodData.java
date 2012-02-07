@@ -71,6 +71,10 @@ public final class HotSpotMethodData extends CompilerObject {
         return extraDataSize > 0;
     }
 
+    public int getExtraDataBeginOffset() {
+        return normalDataSize;
+    }
+
     public boolean isMature() {
         // TODO (ch) maturity of profiling information is an issue in general. Not all optimizations require mature data as long as the code
         // does deoptimize/recompile on violations (might decrease startup and increase peak performance).
@@ -93,7 +97,7 @@ public final class HotSpotMethodData extends CompilerObject {
             return null;
         }
 
-        HotSpotMethodDataAccessor result = getData(position, 0);
+        HotSpotMethodDataAccessor result = getData(position);
         assert result != null : "NO_DATA tag is not allowed";
         return result;
     }
@@ -102,16 +106,16 @@ public final class HotSpotMethodData extends CompilerObject {
         if (position >= extraDataSize) {
             return null;
         }
-        return getData(position, normalDataSize);
+        return getData(position);
     }
 
     public static HotSpotMethodDataAccessor getNoMethodData() {
         return NO_DATA_ACCESSOR;
     }
 
-    private HotSpotMethodDataAccessor getData(int position, int displacement) {
+    private HotSpotMethodDataAccessor getData(int position) {
         assert position >= 0 : "out of bounds";
-        int tag = AbstractMethodData.readTag(this, displacement + position);
+        int tag = AbstractMethodData.readTag(this, position);
         assert tag >= 0 && tag < PROFILE_DATA_ACCESSORS.length : "illegal tag";
         return PROFILE_DATA_ACCESSORS[tag];
     }
