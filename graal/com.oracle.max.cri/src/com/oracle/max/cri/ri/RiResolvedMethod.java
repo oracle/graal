@@ -49,6 +49,12 @@ public interface RiResolvedMethod extends RiMethod {
     int codeSize();
 
     /**
+     * Gets the size of the compiled machine code.
+     * @return the size of the compiled machine code in bytes, or 0 if no compiled code exists.
+     */
+    int compiledCodeSize();
+
+    /**
      * Gets the symbol used to link this method if it is native, otherwise {@code null}.
      */
     String jniSymbol();

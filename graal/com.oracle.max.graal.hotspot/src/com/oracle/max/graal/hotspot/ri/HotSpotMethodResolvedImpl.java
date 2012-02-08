@@ -178,6 +178,10 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         return compiler.getVMEntries().RiMethod_hasCompiledCode(this);
     }
 
+    public int compiledCodeSize() {
+        return compiler.getVMEntries().RiMethod_getCompiledCodeSize(this);
+    }
+
     @Override
     public RiResolvedType accessor() {
         return null;

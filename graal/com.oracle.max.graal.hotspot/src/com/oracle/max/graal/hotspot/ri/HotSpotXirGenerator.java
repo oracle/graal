@@ -1185,7 +1185,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
            }
 
            asm.mov(checkHub, hub);
-           // if we get an exact match: continue
+           // if we get an exact match: continue.
            asm.jneq(falseSucc, objHub, checkHub);
 
            return asm.finishTemplate(objHub, "typeCheck");
