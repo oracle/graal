@@ -37,7 +37,6 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 
@@ -154,15 +153,14 @@ public class SpillAllAllocator {
     }
 
     private void allocate() {
-        ValueProcedure killNonLiveProc =  new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return killNonLive(value); } };
-        ValueProcedure killBeginProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return kill(value, false); } };
-        ValueProcedure killEndProc =      new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return kill(value, true); } };
-        ValueProcedure killLocationProc = new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return killLocation(value); } };
-        ValueProcedure blockProc =        new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return block(value); } };
-        ValueProcedure loadProc =         new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return load(value, mode, flags); } };
-        ValueProcedure spillProc =        new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return spill(value, mode, flags); } };
-        PhiValueProcedure useSlotProc =   new PhiValueProcedure() { @Override public CiValue doValue(CiValue value) { return useSlot(value); } };
-        ValueProcedure defSlotProc =      new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return defSlot(value); } };
+        ValueProcedure killNonLiveProc =  new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return killNonLive(value); } };
+        ValueProcedure killBeginProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return kill(value, false); } };
+        ValueProcedure killEndProc =      new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return kill(value, true); } };
+        ValueProcedure killLocationProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return killLocation(value); } };
+        ValueProcedure blockProc =        new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return block(value); } };
+        ValueProcedure loadProc =         new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return load(value, mode, flags); } };
+        ValueProcedure spillProc =        new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return spill(value, mode, flags); } };
+        ValueProcedure useSlotProc =      new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return useSlot(value); } };
 
         assert trace("==== start spill all allocation ====");
         curInRegisterState = new Object[maxRegisterNum()];
@@ -183,11 +181,6 @@ public class SpillAllAllocator {
                 curStackLocations = new LocationMap(lir.numVariables());
             }
             assert traceState();
-
-            if (block.phis != null) {
-                assert trace("  phis");
-                block.phis.forEachOutput(defSlotProc);
-            }
 
             for (int opIdx = 0; opIdx < block.lir.size(); opIdx++) {
                 LIRInstruction op = block.lir.get(opIdx);
@@ -223,15 +216,6 @@ public class SpillAllAllocator {
                 assert curRegisterLocations.checkEmpty();
                 curInstruction = null;
             }
-            assert checkEmpty(curOutRegisterState);
-
-            for (Block sux : block.getSuccessors()) {
-                if (sux.phis != null) {
-                    assert trace("  phis of successor %s", sux);
-                    sux.phis.forEachInput(block, useSlotProc);
-                }
-            }
-
             assert checkEmpty(curOutRegisterState);
             assert locationsFor(block) == null;
             setLocationsFor(block, curStackLocations);

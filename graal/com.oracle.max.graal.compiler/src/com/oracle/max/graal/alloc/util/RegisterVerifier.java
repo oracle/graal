@@ -97,7 +97,6 @@ public final class RegisterVerifier {
         assert trace("==== start verify register allocation ====");
         do {
             Block block = workList.remove(0);
-            assert block.phis == null : "phi functions must have been resolved with moves";
 
             // Must copy state because it is modified.
             curInputState = copy(stateFor(block));

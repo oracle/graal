@@ -35,7 +35,6 @@ import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 
 public class DataFlowAnalysis {
     private final LIR lir;
@@ -130,10 +129,6 @@ public class DataFlowAnalysis {
 
         curOpId = 0;
         for (Block block : blocks()) {
-            if (block.phis != null) {
-                block.phis.forEachOutput(defProc);
-            }
-
             for (LIRInstruction op : block.lir) {
                 op.setId(curOpId);
                 setBlockOf(curOpId, block);
@@ -161,11 +156,10 @@ public class DataFlowAnalysis {
     private int curOpId;
 
     private void backwardDataFlow() {
-        ValueProcedure inputProc =       new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return use(value, curOpId); } };
-        ValueProcedure aliveProc =       new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return use(value, curOpId + 1); } };
-        PhiValueProcedure phiInputProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, -1); } };
-        ValueProcedure tempProc =        new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return def(value, true); } };
-        ValueProcedure outputProc =      new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return def(value, false); } };
+        ValueProcedure inputProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, curOpId); } };
+        ValueProcedure aliveProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return use(value, curOpId + 1); } };
+        ValueProcedure tempProc =     new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value, true); } };
+        ValueProcedure outputProc =   new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value, false); } };
 
         blockLiveIn = new BitSet[blocks().size()];
         registerLive = new BitSet();
@@ -182,12 +176,6 @@ public class DataFlowAnalysis {
                     assert trace("  sux %s  suxLive: %s", sux, suxLive);
                     variableLive.or(suxLive);
                 }
-
-                if (sux.phis != null) {
-                    curOpId = block.getLastLirInstructionId();
-                    assert trace("  phis %d  variableLive: %s", curOpId, variableLive);
-                    sux.phis.forEachInput(block, phiInputProc);
-                }
             }
 
             assert registerLive.isEmpty() : "no fixed register must be alive before processing a block";
@@ -202,12 +190,6 @@ public class DataFlowAnalysis {
                 op.forEachState(aliveProc);
                 op.forEachAlive(aliveProc);
                 op.forEachInput(inputProc);
-            }
-
-            if (block.phis != null) {
-                curOpId = block.getFirstLirInstructionId();
-                assert trace("  phis %d  variableLive: %s  registerLive: %s", curOpId, variableLive, registerLive);
-                block.phis.forEachOutput(outputProc);
             }
 
             assert registerLive.isEmpty() : "no fixed register must be alive after processing a block";

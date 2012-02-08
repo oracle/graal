@@ -37,7 +37,6 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 
@@ -150,7 +149,7 @@ public class LinearScanAllocator {
     private CiValue[] curOutRegisterState;
     private BitSet curLiveIn;
     private int curOpId;
-    private Block curPhiBlock;
+    private boolean curPhiDefs;
 
     private LocationMap canonicalSpillLocations;
 
@@ -179,13 +178,13 @@ public class LinearScanAllocator {
     }
 
     private void allocate() {
-        ValueProcedure recordUseProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return recordUse(value, mode); } };
-        ValueProcedure killNonLiveProc =  new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return killNonLive(value); } };
-        ValueProcedure unblockProc =      new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return unblock(value); } };
-        ValueProcedure killProc =      new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return kill(value); } };
-        ValueProcedure blockProc =        new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return block(value); } };
-        PhiValueProcedure useProc =          new PhiValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc =          new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
+        ValueProcedure recordUseProc =    new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return recordUse(value); } };
+        ValueProcedure killNonLiveProc =  new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return killNonLive(value); } };
+        ValueProcedure unblockProc =      new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return unblock(value); } };
+        ValueProcedure killProc =         new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return kill(value); } };
+        ValueProcedure blockProc =        new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return block(value); } };
+        ValueProcedure useProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
         assert trace("==== start linear scan allocation ====");
         canonicalSpillLocations = new LocationMap(lir.numVariables());
@@ -207,20 +206,11 @@ public class LinearScanAllocator {
             }
             assert traceState();
 
-            if (block.phis != null) {
-                assert trace("  phis");
-                curPhiBlock = block;
-                curOpId = block.getFirstLirInstructionId();
-                block.phis.forEachOutput(defProc);
-                curOpId = -1;
-                curPhiBlock = null;
-            }
-
-            setBeginLocationsFor(block, new LocationMap(curLocations));
-
             for (int opIdx = 0; opIdx < block.lir.size(); opIdx++) {
                 LIRInstruction op = block.lir.get(opIdx);
                 curOpId = op.id();
+                curPhiDefs = opIdx == 0;
+
                 assert trace("  op %d %s", op.id(), op);
 
                 System.arraycopy(curOutRegisterState, 0, curInRegisterState, 0, curOutRegisterState.length);
@@ -253,24 +243,16 @@ public class LinearScanAllocator {
                 // State values are the least critical and can get the leftover registers (or stack slots if no more register available).
                 op.forEachState(useProc);
 
-
+                if (opIdx == 0) {
+                    assert !moveResolver.hasMappings() : "cannot insert spill moves before label";
+                    setBeginLocationsFor(block, new LocationMap(curLocations));
+                }
                 moveResolver.resolve();
 
                 dataFlow.forEachKilled(op, true, unblockProc);
                 dataFlow.forEachKilled(op, true, killProc);
 
-//                curInstruction = null;
                 curOpId = -1;
-            }
-
-            for (Block sux : block.getSuccessors()) {
-                if (sux.phis != null) {
-                    assert trace("  phis of successor %s", sux);
-                    System.arraycopy(curOutRegisterState, 0, curInRegisterState, 0, curOutRegisterState.length);
-                    curOpId = block.getLastLirInstructionId() + 1;
-                    sux.phis.forEachInput(block, useProc);
-                    curOpId = -1;
-                }
             }
 
             assert endLocationsFor(block) == null;
@@ -343,11 +325,10 @@ public class LinearScanAllocator {
         }
     }
 
-    private CiValue recordUse(CiValue value, OperandMode mode) {
+    private CiValue recordUse(CiValue value) {
         if (isVariable(value)) {
-            int id = mode == OperandMode.Input ? curOpId : curOpId + 1;
-            assert lastUseFor(asVariable(value)) <= id;
-            setLastUseFor(asVariable(value), id);
+            assert lastUseFor(asVariable(value)) <= curOpId;
+            setLastUseFor(asVariable(value), curOpId);
 
         }
         return value;
@@ -357,7 +338,7 @@ public class LinearScanAllocator {
         assert mode == OperandMode.Input || mode == OperandMode.Alive;
         if (isVariable(value)) {
             // State values are not recorded beforehand because it does not matter if they are spilled. Still, it is necessary to record them as used now.
-            recordUse(value, mode);
+            recordUse(value);
 
             Location curLoc = curLocations.get(asVariable(value));
             if (isStackSlot(curLoc.location) && flags.contains(OperandFlag.Stack)) {
@@ -459,13 +440,14 @@ public class LinearScanAllocator {
         }
 
         if (flags.contains(OperandFlag.Stack) && betterSpillCandidate(curLocations.get(variable), bestSpillCandidate)) {
-            return selectSpillSlot(variable, mode);
+            return selectSpillSlot(variable);
         }
 
         if (bestSpillCandidate == null) {
-            if (curPhiBlock != null) {
-                return selectSpillSlot(variable, mode);
+            if (curPhiDefs) {
+                return selectSpillSlot(variable);
             }
+
             // This should not happen as long as all LIR instructions have fulfillable register constraints. But be safe in product mode and bail out.
             assert false;
             throw new CiBailout("No register available");
@@ -479,7 +461,7 @@ public class LinearScanAllocator {
     private void spill(Location value) {
         Location newLoc = spillLocation(value.variable);
         assert trace("      spill %s to %s", value, newLoc);
-        if (curPhiBlock == null) {
+        if (!curPhiDefs) {
             moveResolver.add(value, newLoc);
         }
         curLocations.put(newLoc);
@@ -542,16 +524,16 @@ public class LinearScanAllocator {
         }
         curOutRegisterState[reg.number] = loc;
         curLocations.put(loc);
-        recordUse(variable, mode);
+        recordUse(variable);
 
         assert trace("      selected register %s", loc);
         return loc;
     }
 
-    private Location selectSpillSlot(Variable variable, OperandMode mode) {
+    private Location selectSpillSlot(Variable variable) {
         Location loc = spillLocation(variable);
         curLocations.put(loc);
-        recordUse(variable, mode);
+        recordUse(variable);
 
         assert trace("      selected spill slot %s", loc);
         return loc;

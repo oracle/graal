@@ -35,26 +35,24 @@ import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
+import com.oracle.max.graal.debug.*;
 
 public final class IntervalPrinter {
 
-    @SuppressWarnings("unused")
     public static void printBeforeAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow) {
-        // TODO(tw): Fix printing.
-//        if (context.isObserved()) {
-//            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
-//            context.observable.fireCompilationEvent(label, lir, printer.execute());
-//        }
+        if (Debug.isDumpEnabled()) {
+            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, null);
+            Debug.dump(lir, label);
+            Debug.dump(printer.execute(), label);
+        }
     }
 
-    @SuppressWarnings("unused")
     public static void printAfterAllocation(String label, LIR lir, RiRegisterConfig registerConfig, DataFlowAnalysis dataFlow, LocationMap[] blockEndLocations) {
-        // TODO(tw): Fix printing.
-//        if (context.isObserved()) {
-//            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
-//            context.observable.fireCompilationEvent(label, lir, printer.execute());
-//        }
+        if (Debug.isDumpEnabled()) {
+            IntervalPrinter printer = new IntervalPrinter(lir, registerConfig, dataFlow, blockEndLocations);
+            Debug.dump(lir, label);
+            Debug.dump(printer.execute(), label);
+        }
     }
 
 
@@ -128,16 +126,13 @@ public final class IntervalPrinter {
         ValueProcedure varProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return var(value); } };
 
         for (Block block : lir.linearScanOrder()) {
-            if (block.phis != null) {
-                block.phis.forEachOutput(varProc);
-            }
             for (LIRInstruction op : block.lir) {
                 op.forEachOutput(varProc);
             }
         }
 
-        PhiValueProcedure useProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure    defProc = new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
+        ValueProcedure useProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
 
         intervals.put("call", new Interval(-2, "call", "", "call", "hasCall"));
         intervals.put("st", new Interval(-1, "st", "", "st", "hasState"));
@@ -154,13 +149,6 @@ public final class IntervalPrinter {
                     } else {
                         out(variables[idx]);
                     }
-                }
-            }
-
-            curOpId = block.getLastLirInstructionId() + 1;
-            for (Block sux : block.getSuccessors()) {
-                if (sux.phis != null) {
-                    sux.phis.forEachInput(block, useProc);
                 }
             }
 
@@ -186,11 +174,6 @@ public final class IntervalPrinter {
                 if (op.info != null) {
                     intervals.get("st").ranges.add(new Range(curOpId, curOpId + 1));
                 }
-            }
-
-            if (block.phis != null) {
-                curOpId = block.getFirstLirInstructionId() + 1;
-                block.phis.forEachOutput(defProc);
             }
 
             for (Interval interval : intervals.values()) {

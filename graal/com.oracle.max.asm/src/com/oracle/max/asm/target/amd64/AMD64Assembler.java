@@ -759,6 +759,7 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
+    @Override
     public final void jmp(Label l) {
         if (l.isBound()) {
             jmp(l.position(), false);
@@ -2876,6 +2877,7 @@ public class AMD64Assembler extends AbstractAssembler {
         testl(AMD64.rax, new CiAddress(Word, r.asValue(Word), 0));
     }
 
+    @Override
     public void align(int modulus) {
         if (codeBuffer.position() % modulus != 0) {
             nop(modulus - (codeBuffer.position() % modulus));

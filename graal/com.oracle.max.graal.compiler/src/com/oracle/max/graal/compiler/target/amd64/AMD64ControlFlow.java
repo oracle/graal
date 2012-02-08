@@ -39,41 +39,6 @@ import com.oracle.max.graal.nodes.calc.*;
 
 public class AMD64ControlFlow {
 
-    public static class LabelOp extends AMD64LIRInstruction implements StandardOp.LabelOp {
-        private final Label label;
-        private final boolean align;
-
-        public LabelOp(Label label, boolean align) {
-            super("LABEL", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
-            this.label = label;
-            this.align = align;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (align) {
-                masm.align(tasm.target.wordSize);
-            }
-            masm.bind(label);
-        }
-
-        @Override
-        public String operationString() {
-            return label.toString();
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw Util.shouldNotReachHere();
-        }
-
-        @Override
-        public Label getLabel() {
-            return label;
-        }
-    }
-
-
     public static class ReturnOp extends AMD64LIRInstruction {
         public ReturnOp(CiValue input) {
             super("RETURN", LIRInstruction.NO_OPERANDS, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
@@ -89,36 +54,6 @@ public class AMD64ControlFlow {
             if (mode == OperandMode.Input && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
             }
-            throw Util.shouldNotReachHere();
-        }
-    }
-
-
-    public static class JumpOp extends AMD64LIRInstruction implements StandardOp.JumpOp {
-        private final LabelRef destination;
-
-        public JumpOp(LabelRef destination, LIRDebugInfo info) {
-            super("JUMP", LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
-            this.destination = destination;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.jmp(destination.label());
-        }
-
-        @Override
-        public LabelRef destination() {
-            return destination;
-        }
-
-        @Override
-        public String operationString() {
-            return  "[" + destination + "]";
-        }
-
-        @Override
-        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
             throw Util.shouldNotReachHere();
         }
     }

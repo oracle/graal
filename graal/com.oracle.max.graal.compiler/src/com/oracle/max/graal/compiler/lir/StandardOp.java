@@ -35,23 +35,130 @@ import com.oracle.max.graal.compiler.util.*;
  */
 public class StandardOp {
 
+    private static CiValue[] EMPTY = new CiValue[0];
+
     /**
-     * Marker interface for a LIR operation that defines the position of a label.
+     * LIR operation that defines the position of a label.
      * The first operation of every block must implement this interface.
      */
-    public interface LabelOp {
-        Label getLabel();
+    public static class LabelOp extends LIRInstruction {
+        private final Label label;
+        private final boolean align;
+
+        protected LabelOp(Object opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps, Label label, boolean align) {
+            super(opcode, outputs, info, inputs, alives, temps);
+            this.label = label;
+            this.align = align;
+        }
+
+        public LabelOp(Label label, boolean align) {
+            this("LABEL", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, label, align);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm) {
+            if (align) {
+                tasm.asm.align(tasm.target.wordSize);
+            }
+            tasm.asm.bind(label);
+        }
+
+        @Override
+        public String operationString() {
+            return label.toString() + " " + super.operationString();
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            throw Util.shouldNotReachHere();
+        }
+
+        public Label getLabel() {
+            return label;
+        }
+    }
+
+    public static class PhiLabelOp extends LabelOp {
+        public PhiLabelOp(Label label, boolean align, CiValue[] phiDefinitions) {
+            super("PHI_LABEL", phiDefinitions, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, label, align);
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Output) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
+            }
+            throw Util.shouldNotReachHere();
+        }
+
+        public void markResolved() {
+            outputs = EMPTY;
+        }
+
+        public CiValue[] getPhiDefinitions() {
+            return outputs;
+        }
     }
 
     /**
-     * Marker interface for a LIR operation that is an unconditional jump to {@link #destination()}.
+     * LIR operation that is an unconditional jump to {@link #destination()}.
      * When the LIR is constructed, the last operation of every block must implement this interface. After
      * register allocation, unnecessary jumps can be deleted.
      *
      * TODO Currently, a block can also end with an XIR operation.
      */
-    public interface JumpOp {
-        LabelRef destination();
+    public static class JumpOp extends LIRInstruction {
+        private final LabelRef destination;
+
+        protected JumpOp(Object opcode, CiValue[] outputs, LIRDebugInfo info, CiValue[] inputs, CiValue[] alives, CiValue[] temps, LabelRef destination) {
+            super(opcode, outputs, info, inputs, alives, temps);
+            this.destination = destination;
+        }
+
+        public JumpOp(LabelRef destination, LIRDebugInfo info) {
+            this("JUMP", LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, destination);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm) {
+            tasm.asm.jmp(destination.label());
+        }
+
+        @Override
+        public String operationString() {
+            return  destination + " " + super.operationString();
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            throw Util.shouldNotReachHere();
+        }
+
+        public LabelRef destination() {
+            return destination;
+        }
+    }
+
+    public static class PhiJumpOp extends JumpOp {
+        public PhiJumpOp(LabelRef destination, CiValue[] phiInputs) {
+            super("PHI_JUMP", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, phiInputs, LIRInstruction.NO_OPERANDS, destination);
+        }
+
+        @Override
+        protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
+            if (mode == OperandMode.Alive) {
+                return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
+            }
+            throw Util.shouldNotReachHere();
+        }
+
+        public void markResolved() {
+            alives = EMPTY;
+        }
+
+        public CiValue[] getPhiInputs() {
+            return alives;
+        }
     }
 
     /**

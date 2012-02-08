@@ -33,7 +33,8 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
+import com.oracle.max.graal.compiler.lir.StandardOp.PhiJumpOp;
+import com.oracle.max.graal.compiler.lir.StandardOp.PhiLabelOp;
 import com.oracle.max.graal.compiler.util.*;
 
 public abstract class ResolveDataFlow {
@@ -47,16 +48,17 @@ public abstract class ResolveDataFlow {
         this.dataFlow = dataFlow;
     }
 
-    private Block curToBlock;
     private LocationMap curFromLocations;
 
     public void execute() {
-        ValueProcedure locMappingProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value) { return locMapping(value); } };
-        PhiValueProcedure phiMappingProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue input, CiValue output) { return phiMapping(input, output); } };
+        ValueProcedure locMappingProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return locMapping(value); } };
 
         assert trace("==== start resolve data flow ====");
         for (Block toBlock : lir.linearScanOrder()) {
-            curToBlock = toBlock;
+            PhiLabelOp phiDefs = null;
+            if (toBlock.lir.get(0) instanceof PhiLabelOp) {
+                phiDefs = (PhiLabelOp) toBlock.lir.get(0);
+            }
 
             for (Block fromBlock : toBlock.getPredecessors()) {
                 assert trace("start edge %s -> %s", fromBlock, toBlock);
@@ -68,16 +70,20 @@ public abstract class ResolveDataFlow {
                     toLocations.forEachLocation(locMappingProc);
                 }
 
-                if (toBlock.phis != null) {
-                    toBlock.phis.forEachInput(fromBlock, phiMappingProc);
+                if (phiDefs != null) {
+                    PhiJumpOp phiInputs = (PhiJumpOp) fromBlock.lir.get(fromBlock.lir.size() - 1);
+                    phiMapping(phiInputs.getPhiInputs(), phiDefs.getPhiDefinitions());
+                    phiInputs.markResolved();
                 }
 
                 moveResolver.resolve();
                 assert trace("end edge %s -> %s", fromBlock, toBlock);
             }
 
-            // Phi functions are resolved with moves now, so delete them.
-            toBlock.phis = null;
+            if (phiDefs != null) {
+                // Phi functions are resolved with moves now, so delete them.
+                phiDefs.markResolved();
+            }
         }
         moveResolver.finish();
         assert trace("==== end resolve data flow ====");
@@ -86,17 +92,19 @@ public abstract class ResolveDataFlow {
     private CiValue locMapping(CiValue value) {
         Location to = asLocation(value);
         Location from = curFromLocations.get(to.variable);
-        if (value != from && dataFlow.liveIn(curToBlock).get(to.variable.index)) {
+        if (value != from && from != null) {
             moveResolver.add(from, to);
         }
         return value;
     }
 
-    private CiValue phiMapping(CiValue input, CiValue output) {
-        if (input != output) {
-            moveResolver.add(input, asLocation(output));
+    private void phiMapping(CiValue[] inputs, CiValue[] outputs) {
+        assert inputs.length != outputs.length;
+        for (int i = 0; i < inputs.length; i++) {
+            if (inputs[i] != outputs[i]) {
+                moveResolver.add(inputs[i], asLocation(outputs[i]));
+            }
         }
-        return input;
     }
 
     private void findInsertPos(Block fromBlock, Block toBlock) {

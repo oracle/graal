@@ -162,22 +162,22 @@ public abstract class LIRInstruction {
     /**
      * The output operands for this instruction (modified by the register allocator).
      */
-    protected final CiValue[] outputs;
+    protected CiValue[] outputs;
 
     /**
      * The input operands for this instruction (modified by the register allocator).
      */
-    protected final CiValue[] inputs;
+    protected CiValue[] inputs;
 
     /**
      * The alive operands for this instruction (modified by the register allocator).
      */
-    protected final CiValue[] alives;
+    protected CiValue[] alives;
 
     /**
      * The temp operands for this instruction (modified by the register allocator).
      */
-    protected final CiValue[] temps;
+    protected CiValue[] temps;
 
     /**
      * Used to emit debug information.

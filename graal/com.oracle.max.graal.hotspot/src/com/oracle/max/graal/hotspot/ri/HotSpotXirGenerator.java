@@ -1173,7 +1173,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private SimpleTemplates typeCheckTemplates = new SimpleTemplates(NULL_CHECK) {
        @Override
        protected XirTemplate create(CiXirAssembler asm, long flags) {
-           asm.restart();
+           asm.restart(CiKind.Void);
            XirParameter objHub = asm.createInputParameter("objectHub", CiKind.Object);
            XirOperand hub = asm.createConstantInputParameter("hub", CiKind.Object);
            XirLabel falseSucc = asm.createInlineLabel(XirLabel.FalseSuccessor);
@@ -1188,7 +1188,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
            // if we get an exact match: continue
            asm.jneq(falseSucc, objHub, checkHub);
 
-           return asm.finishTemplate(objHub, "typeCheck");
+           return asm.finishTemplate("typeCheck");
        }
     };
 

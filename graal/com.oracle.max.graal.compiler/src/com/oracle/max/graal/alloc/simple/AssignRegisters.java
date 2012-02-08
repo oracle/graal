@@ -53,7 +53,6 @@ public abstract class AssignRegisters {
         for (int i = lir.linearScanOrder().size() - 1; i >= 0; i--) {
             Block block = lir.linearScanOrder().get(i);
             assert trace("start block %s", block);
-            assert block.phis == null : "Register assignment must run after phi functions have been replaced by moves";
 
             curRegisterRefMap = frameMap.initRegisterRefMap();
             curFrameRefMap = frameMap.initFrameRefMap();

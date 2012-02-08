@@ -48,6 +48,10 @@ public abstract class AbstractAssembler {
         l.patchInstructions(this);
     }
 
+    public abstract void align(int modulus);
+
+    public abstract void jmp(Label l);
+
     protected abstract void patchJumpTarget(int branch, int jumpTarget);
 
     protected final void emitByte(int x) {

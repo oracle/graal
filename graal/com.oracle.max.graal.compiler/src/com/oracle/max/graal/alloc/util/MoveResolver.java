@@ -83,6 +83,10 @@ public abstract class MoveResolver {
         assert checkValid();
     }
 
+    public boolean hasMappings() {
+        return mappingFrom.size() > 0;
+    }
+
     public void resolve() {
         assert checkValid();
 

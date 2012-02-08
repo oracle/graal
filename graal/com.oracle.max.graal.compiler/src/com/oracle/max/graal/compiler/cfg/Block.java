@@ -45,14 +45,12 @@ public class Block {
     protected Block postdominator;
 
     // Fields that still need to be worked on, try to remove them later.
-    public FrameState lastState;
     public List<LIRInstruction> lir;
     public boolean align;
     public int linearScanNumber;
-    public LIRPhiMapping phis;
 
     public Block() {
-        id = -1;
+        id = ControlFlowGraph.BLOCK_ID_INITIAL;
     }
 
     public int getId() {

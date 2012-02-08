@@ -33,7 +33,6 @@ import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.LIRPhiMapping.PhiValueProcedure;
 import com.oracle.max.graal.compiler.util.*;
 
 public final class LIRVerifier {
@@ -96,8 +95,8 @@ public final class LIRVerifier {
     private BitSet curRegistersDefined;
 
     private void verify() {
-        PhiValueProcedure useProc = new PhiValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc =    new ValueProcedure() {    @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
+        ValueProcedure useProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
         curRegistersDefined = new BitSet();
         for (Block block : lir.linearScanOrder()) {
@@ -109,13 +108,24 @@ public final class LIRVerifier {
                 curVariablesLive.or(liveOutFor(block.getDominator()));
             }
 
-            if (block.phis != null) {
-                assert beforeRegisterAllocation;
-                curInstruction = block.phis;
-                block.phis.forEachOutput(defProc);
+            assert block.lir.get(0) instanceof StandardOp.LabelOp : "block must start with label";
+            if (block.numberOfPreds() > 1) {
+                assert block.lir.get(0) instanceof StandardOp.PhiLabelOp : "phi mapping required for multiple predecessors";
+                CiValue[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
+                if (!beforeRegisterAllocation) {
+                    assert phiDefinitions.length == 0;
+                }
+                for (Block pred : block.getPredecessors()) {
+                    assert pred.numberOfSux() == 1;
+                    LIRInstruction last = pred.lir.get(pred.lir.size() - 1);
+                    assert last instanceof StandardOp.PhiJumpOp : "phi mapping required for multiple successors";
+                    CiValue[] phiUses = ((StandardOp.PhiJumpOp) last).getPhiInputs();
+                    if (!beforeRegisterAllocation) {
+                        assert phiUses.length == 0;
+                    }
+                }
             }
 
-            assert block.lir.get(0) instanceof StandardOp.LabelOp : "block must start with label";
             if (block.numberOfSux() > 0) {
                 LIRInstruction last = block.lir.get(block.lir.size() - 1);
                 assert last instanceof StandardOp.JumpOp || last instanceof LIRXirInstruction : "block with successor must end with unconditional jump";
@@ -137,14 +147,6 @@ public final class LIRVerifier {
                 op.forEachOutput(defProc);
 
                 curInstruction = null;
-            }
-
-            for (Block sux : block.getSuccessors()) {
-                if (sux.phis != null) {
-                    assert beforeRegisterAllocation;
-                    curInstruction = sux.phis;
-                    sux.phis.forEachInput(block, useProc);
-                }
             }
 
             setLiveOutFor(block, curVariablesLive);

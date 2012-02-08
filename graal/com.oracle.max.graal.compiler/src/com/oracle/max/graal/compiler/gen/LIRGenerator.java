@@ -48,7 +48,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.StandardOp.ParametersOp;
+import com.oracle.max.graal.compiler.lir.StandardOp.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
@@ -130,7 +130,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     /**
      * Mapping from blocks to the lock state at the end of the block, indexed by the id number of the block.
      */
-    private LockScope[] blockLocks;
+    private BlockMap<LockScope> blockLocks;
+
+    private BlockMap<FrameState> blockLastState;
 
     /**
      * The list of currently locked monitors.
@@ -149,20 +151,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.xir = xir;
         this.xirSupport = new XirSupport();
         this.debugInfoBuilder = new DebugInfoBuilder(nodeOperands);
-        this.blockLocks = new LockScope[lir.linearScanOrder().size()];
+        this.blockLocks = new BlockMap<>(lir.cfg);
+        this.blockLastState = new BlockMap<>(lir.cfg);
     }
 
     @Override
     public CiTarget target() {
         return target;
-    }
-
-    private LockScope locksFor(Block block) {
-        return blockLocks[block.getId()];
-    }
-
-    private void setLocksFor(Block block, LockScope locks) {
-        blockLocks[block.getId()] = locks;
     }
 
     /**
@@ -300,7 +295,21 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         assert block.lir == null : "LIR list already computed for this block";
         block.lir = new ArrayList<>();
 
-        emitLabel(new Label(), block.align);
+        if (GraalOptions.AllocSSA && block.getBeginNode() instanceof MergeNode) {
+            assert phiValues.isEmpty();
+            MergeNode merge = (MergeNode) block.getBeginNode();
+            for (PhiNode phi : merge.phis()) {
+                if (phi.type() == PhiType.Value) {
+                    CiValue phiValue = newVariable(phi.kind());
+                    setResult(phi, phiValue);
+                    phiValues.add(phiValue);
+                }
+            }
+            append(new PhiLabelOp(new Label(), block.align, phiValues.toArray(new CiValue[phiValues.size()])));
+            phiValues.clear();
+        } else {
+            append(new LabelOp(new Label(), block.align));
+        }
 
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
@@ -308,7 +317,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         curLocks = null;
         for (Block pred : block.getPredecessors()) {
-            LockScope predLocks = locksFor(pred);
+            LockScope predLocks = blockLocks.get(pred);
             if (curLocks == null) {
                 curLocks = predLocks;
             } else if (curLocks != predLocks && (!pred.isLoopEnd() || predLocks != null)) {
@@ -326,8 +335,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
             for (Block pred : block.getPredecessors()) {
                 if (fs == null) {
-                    fs = pred.lastState;
-                } else if (fs != pred.lastState) {
+                    fs = blockLastState.get(pred);
+                } else if (fs != blockLastState.get(pred)) {
                     fs = null;
                     break;
                 }
@@ -343,10 +352,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 }
             }
             lastState = fs;
-        }
-
-        if (GraalOptions.AllocSSA && block.getBeginNode() instanceof MergeNode) {
-            block.phis = new LIRPhiMapping(block, this);
         }
 
         List<Node> nodes = lir.nodesFor(block);
@@ -406,8 +411,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             TTY.println("END Generating LIR for block B" + block.getId());
         }
 
-        setLocksFor(currentBlock, curLocks);
-        block.lastState = lastState;
+        blockLocks.put(currentBlock, curLocks);
+        blockLastState.put(block, lastState);
         currentBlock = null;
 
         if (GraalOptions.PrintIRWithLIR) {
@@ -665,26 +670,64 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitMerge(MergeNode x) {
-        if (x.next() instanceof LoopBeginNode) {
-            moveToPhi((LoopBeginNode) x.next(), x);
-        }
     }
 
     @Override
     public void visitEndNode(EndNode end) {
-        assert end.merge() != null;
         moveToPhi(end.merge(), end);
-        emitJump(getLIRBlock(end.merge()), null);
     }
 
     @Override
     public void visitLoopEnd(LoopEndNode x) {
-        moveToPhi(x.loopBegin(), x);
         if (GraalOptions.GenLoopSafepoints && x.hasSafepointPolling()) {
             emitSafepointPoll(x);
         }
-        emitJump(getLIRBlock(x.loopBegin()), null);
+        moveToPhi(x.loopBegin(), x);
     }
+
+    private ArrayList<CiValue> phiValues = new ArrayList<>();
+
+    private void moveToPhi(MergeNode merge, FixedNode pred) {
+        if (GraalOptions.AllocSSA) {
+            assert phiValues.isEmpty();
+            for (PhiNode phi : merge.phis()) {
+                if (phi.type() == PhiType.Value) {
+                    phiValues.add(operand(phi.valueAt(pred)));
+                }
+            }
+            append(new PhiJumpOp(getLIRBlock(merge), phiValues.toArray(new CiValue[phiValues.size()])));
+            phiValues.clear();
+            return;
+        }
+
+        if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
+            TTY.println("MOVE TO PHI from " + pred + " to " + merge);
+        }
+        PhiResolver resolver = new PhiResolver(this);
+        for (PhiNode phi : merge.phis()) {
+            if (phi.type() == PhiType.Value) {
+                ValueNode curVal = phi.valueAt(pred);
+                resolver.move(operand(curVal), operandForPhi(phi));
+            }
+        }
+        resolver.dispose();
+
+        append(new JumpOp(getLIRBlock(merge), null));
+    }
+
+    private CiValue operandForPhi(PhiNode phi) {
+        assert phi.type() == PhiType.Value : "wrong phi type: " + phi;
+        CiValue result = operand(phi);
+        if (result == null) {
+            // allocate a variable for this phi
+            Variable newOperand = newVariable(phi.kind());
+            setResult(phi, newOperand);
+            return newOperand;
+        } else {
+            return result;
+        }
+    }
+
 
     public void emitSafepointPoll(FixedNode x) {
         if (!lastState.method().noSafepointPolls()) {
@@ -1125,40 +1168,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         emitJump(defaultSux, null);
     }
-
-
-
-    private void moveToPhi(MergeNode merge, FixedNode pred) {
-        if (GraalOptions.AllocSSA) {
-            return;
-        }
-
-        if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
-            TTY.println("MOVE TO PHI from " + pred + " to " + merge);
-        }
-        PhiResolver resolver = new PhiResolver(this);
-        for (PhiNode phi : merge.phis()) {
-            if (phi.type() == PhiType.Value) {
-                ValueNode curVal = phi.valueAt(pred);
-                resolver.move(operand(curVal), operandForPhi(phi));
-            }
-        }
-        resolver.dispose();
-    }
-
-    private CiValue operandForPhi(PhiNode phi) {
-        assert phi.type() == PhiType.Value : "wrong phi type: " + phi;
-        CiValue result = operand(phi);
-        if (result == null) {
-            // allocate a variable for this phi
-            Variable newOperand = newVariable(phi.kind());
-            setResult(phi, newOperand);
-            return newOperand;
-        } else {
-            return result;
-        }
-    }
-
 
 
     protected XirArgument toXirArgument(CiValue v) {

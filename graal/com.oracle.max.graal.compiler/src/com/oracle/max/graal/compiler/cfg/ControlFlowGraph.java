@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.cfg;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -79,6 +80,9 @@ public class ControlFlowGraph {
         return loops;
     }
 
+    protected static final int BLOCK_ID_INITIAL = -1;
+    protected static final int BLOCK_ID_VISITED = -2;
+
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
@@ -129,22 +133,24 @@ public class ControlFlowGraph {
 
         do {
             Block block = stack.get(stack.size() - 1);
-            if (block.id == -1) {
+            if (block.id == BLOCK_ID_INITIAL) {
                 // First time we see this block: push all successors.
                 for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                     Block suxBlock = blockFor(suxNode);
-                    if (suxBlock.id < 0) {
+                    assert suxBlock.id != BLOCK_ID_VISITED;
+                    if (suxBlock.id == BLOCK_ID_INITIAL) {
                         stack.add(suxBlock);
                     }
                 }
-                block.id = -2;
-            } else {
+                block.id = BLOCK_ID_VISITED;
+            } else if (block.id == BLOCK_ID_VISITED) {
                 // Second time we see this block: All successors haved been processed, so insert block into reverse postorder list.
-                assert block.id == -2;
                 stack.remove(stack.size() - 1);
-                block.id = reversePostOrderId;
                 reversePostOrder[reversePostOrderId] = block;
+                block.id = reversePostOrderId;
                 reversePostOrderId--;
+            } else {
+                throw Util.shouldNotReachHere();
             }
         } while (!stack.isEmpty());
         assert reversePostOrderId == -1;

@@ -49,6 +49,7 @@ public class HotSpotDebugConfig implements DebugConfig {
         this.dumpFilter = dumpFilter;
         this.methodFilter = methodFilter;
         dumpHandlers.add(new IdealGraphPrinterDumpHandler(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort));
+        dumpHandlers.add(new CFGPrinterObserver());
     }
 
     public boolean isLogEnabled() {
