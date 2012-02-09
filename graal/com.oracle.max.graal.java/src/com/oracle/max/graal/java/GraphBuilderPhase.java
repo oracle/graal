@@ -322,10 +322,12 @@ public final class GraphBuilderPhase extends Phase {
     private BeginNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
 
-        if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
+        if (GraalOptions.UseExceptionProbability) {
             // be conservative if information was not recorded (could result in endless recompiles otherwise)
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.FALSE) {
+            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.TRUE) {
                 return null;
+            } else {
+                Debug.log("Creating exception edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
             }
         }
 

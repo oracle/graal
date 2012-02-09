@@ -131,7 +131,6 @@ public final class GraalOptions {
     public static boolean UseExceptionProbability            = true;
     public static boolean AllowExplicitExceptionChecks       = true;
     public static boolean OmitHotExceptionStacktrace         = ____;
-    public static int     MatureInvocationCount              = 100;
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
     public static boolean UseTypeCheckHints                  = true;
