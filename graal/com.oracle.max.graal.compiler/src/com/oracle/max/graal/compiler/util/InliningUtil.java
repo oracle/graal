@@ -399,18 +399,27 @@ public class InliningUtil {
         private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
             Invoke result = (Invoke) invoke.node().copyWithInputs();
             result.setUseForInlining(useForInlining);
+
+            CiKind kind = invoke.node().kind();
+            if (!kind.isVoid()) {
+                FrameState stateAfter = invoke.stateAfter();
+                stateAfter = stateAfter.duplicate(stateAfter.bci);
+                stateAfter.replaceFirstInput(invoke.node(), result.node());
+                result.setStateAfter(stateAfter);
+            }
+
             if (invoke instanceof InvokeWithExceptionNode) {
                 assert exceptionMerge != null && exceptionObjectPhi != null;
 
                 InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
                 BeginNode exceptionEdge = invokeWithException.exceptionEdge();
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
-                FrameState stateAfter = exceptionObject.stateAfter();
+                FrameState stateAfterException = exceptionObject.stateAfter();
 
                 BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
                 ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
                 // set new state (pop old exception object, push new one)
-                newExceptionObject.setStateAfter(stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), CiKind.Object, newExceptionObject));
+                newExceptionObject.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), CiKind.Object, newExceptionObject));
                 newExceptionEdge.setNext(newExceptionObject);
 
                 EndNode endNode = graph.add(new EndNode());
