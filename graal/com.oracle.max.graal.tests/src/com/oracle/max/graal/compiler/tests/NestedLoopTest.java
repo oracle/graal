@@ -33,22 +33,22 @@ public class NestedLoopTest extends GraphTest {
 
     @Test
     public void test1() {
-        test("test1Snippet", 5, 5, 4);
+        test("test1Snippet", 1, 2, 2);
     }
 
     @Test
     public void test2() {
-        test("test2Snippet", 2, 5, 4);
+        test("test2Snippet", 1, 2, 2);
     }
 
     @Test
     public void test3() {
-        test("test3Snippet", 1, 5, 4);
+        test("test3Snippet", 1, 2, 2);
     }
 
     @Test
     public void test4() {
-        test("test4Snippet", 1, 6, 4);
+        test("test4Snippet", 1, 3, 2);
     }
 
     @SuppressWarnings("all")
