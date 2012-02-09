@@ -122,8 +122,8 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
             argumentTypes = new RiType[arguments.size()];
         }
         RiType type = argumentTypes[index];
-        if (type == null) {
-            type = compiler.lookupType(arguments.get(index), (HotSpotTypeResolved) accessingClass, false);
+        if (type == null || !(type instanceof RiResolvedType)) {
+            type = compiler.lookupType(arguments.get(index), (HotSpotTypeResolved) accessingClass, true);
             argumentTypes[index] = type;
         }
         return type;
