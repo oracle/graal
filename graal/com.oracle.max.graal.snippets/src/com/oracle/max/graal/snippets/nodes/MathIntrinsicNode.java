@@ -28,7 +28,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.max.graal.compiler.target.amd64.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -71,7 +71,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
             case SIN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.SIN, result, input)); break;
             case COS:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.COS, result, input)); break;
             case TAN:   gen.append(new AMD64MathIntrinsicOp(AMD64MathIntrinsicOp.Opcode.TAN, result, input)); break;
-            default:    throw Util.shouldNotReachHere();
+            default:    throw GraalInternalError.shouldNotReachHere();
         }
         gen.setResult(this, result);
     }

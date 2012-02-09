@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.alloc;
 
 import static com.oracle.max.cri.ci.CiUtil.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
@@ -1589,7 +1589,7 @@ public final class LinearScan {
                 }
 
                 default: {
-                    throw Util.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere();
                 }
             }
         }
@@ -1902,14 +1902,6 @@ public final class LinearScan {
     }
 
     void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
-        // TODO(tw): Fix printing.
-        if (GraalOptions.TraceLinearScanLevel >= 1 && !TTY.isSuppressed()) {
-            TTY.println();
-            TTY.println(label);
-            LIR.printLIR(ir.linearScanOrder());
-            TTY.println();
-        }
-
         Debug.dump(ir, label);
     }
 

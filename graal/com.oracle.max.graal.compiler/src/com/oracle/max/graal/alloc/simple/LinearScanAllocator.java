@@ -23,22 +23,20 @@
 package com.oracle.max.graal.alloc.simple;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 
 public class LinearScanAllocator {
     private final LIR lir;
@@ -65,7 +63,7 @@ public class LinearScanAllocator {
 
         @Override
         protected CiValue scratchRegister(Variable spilled) {
-            Util.shouldNotReachHere("needs working implementation");
+            GraalInternalError.shouldNotReachHere("needs working implementation");
 
             EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
             CiRegister[] availableRegs = categorizedRegs.get(spilled.flag);
@@ -186,12 +184,12 @@ public class LinearScanAllocator {
         ValueProcedure useProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
         ValueProcedure defProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
-        assert trace("==== start linear scan allocation ====");
+        Debug.log("==== start linear scan allocation ====");
         canonicalSpillLocations = new LocationMap(lir.numVariables());
         curInRegisterState = new CiValue[maxRegisterNum()];
         curOutRegisterState = new CiValue[maxRegisterNum()];
         for (Block block : lir.linearScanOrder()) {
-            assert trace("start block %s %s", block, block.getLoop());
+            Debug.log("start block %s %s", block, block.getLoop());
 
             Arrays.fill(curOutRegisterState, null);
             if (block.getDominator() != null) {
@@ -204,14 +202,14 @@ public class LinearScanAllocator {
             } else {
                 curLocations = new LocationMap(lir.numVariables());
             }
-            assert traceState();
+            Debug.log(logCurrentState());
 
             for (int opIdx = 0; opIdx < block.lir.size(); opIdx++) {
                 LIRInstruction op = block.lir.get(opIdx);
                 curOpId = op.id();
                 curPhiDefs = opIdx == 0;
 
-                assert trace("  op %d %s", op.id(), op);
+                Debug.log("  op %d %s", op.id(), op);
 
                 System.arraycopy(curOutRegisterState, 0, curInRegisterState, 0, curOutRegisterState.length);
 
@@ -258,12 +256,12 @@ public class LinearScanAllocator {
             assert endLocationsFor(block) == null;
             setEndLocationsFor(block, curLocations);
 
-            traceState();
-            assert trace("end block %s", block);
+            logCurrentState();
+            Debug.log("end block %s", block);
         }
 
         moveResolver.finish();
-        assert trace("==== end linear scan allocation ====");
+        Debug.log("==== end linear scan allocation ====");
     }
 
     private CiValue killNonLive(CiValue value) {
@@ -281,7 +279,7 @@ public class LinearScanAllocator {
 
     private CiValue unblock(CiValue value) {
         if (isAllocatableRegister(value)) {
-            assert trace("    unblock register %s", value);
+            Debug.log("    unblock register %s", value);
             int regNum = asRegister(value).number;
             assert curOutRegisterState[regNum] == value;
             curOutRegisterState[regNum] = null;
@@ -292,7 +290,7 @@ public class LinearScanAllocator {
     private CiValue kill(CiValue value) {
         if (isVariable(value)) {
             Location location = curLocations.get(asVariable(value));
-            assert trace("    kill location %s", location);
+            Debug.log("    kill location %s", location);
             if (isRegister(location.location)) {
                 int regNum = asRegister(location.location).number;
                 if (curOutRegisterState[regNum] == location) {
@@ -307,7 +305,7 @@ public class LinearScanAllocator {
 
     private CiValue block(CiValue value) {
         if (isAllocatableRegister(value)) {
-            assert trace("    block %s", value);
+            Debug.log("    block %s", value);
             int regNum = asRegister(value).number;
             assert curOutRegisterState[regNum] == null || curOutRegisterState[regNum] instanceof Location;
             curOutRegisterState[regNum] = value;
@@ -316,7 +314,7 @@ public class LinearScanAllocator {
     }
 
     private void spillCallerSaveRegisters() {
-        assert trace("    spill caller save registers in curInRegisterState %s", Arrays.toString(curInRegisterState));
+        Debug.log("    spill caller save registers in curInRegisterState %s", Arrays.toString(curInRegisterState));
         for (CiRegister reg : frameMap.registerConfig.getCallerSaveRegisters()) {
             CiValue in = curInRegisterState[reg.number];
             if (in != null && isLocation(in)) {
@@ -342,19 +340,19 @@ public class LinearScanAllocator {
 
             Location curLoc = curLocations.get(asVariable(value));
             if (isStackSlot(curLoc.location) && flags.contains(OperandFlag.Stack)) {
-                assert trace("    use %s %s: use current stack slot %s", mode, value, curLoc.location);
+                Debug.log("    use %s %s: use current stack slot %s", mode, value, curLoc.location);
                 return curLoc;
             }
             if (isRegister(curLoc.location)) {
                 int regNum = asRegister(curLoc.location).number;
                 assert curInRegisterState[regNum] == curLoc;
                 if (mode == OperandMode.Input || curOutRegisterState[regNum] == curLoc) {
-                    assert trace("    use %s %s: use current register %s", mode, value, curLoc.location);
+                    Debug.log("    use %s %s: use current register %s", mode, value, curLoc.location);
                     return curLoc;
                 }
             }
 
-            assert trace("    use %s %s", mode, value);
+            Debug.log("    use %s %s", mode, value);
 
             Location newLoc = allocateRegister(asVariable(value), mode, flags);
             if (newLoc != curLoc) {
@@ -372,7 +370,7 @@ public class LinearScanAllocator {
     private CiValue def(CiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
         assert mode == OperandMode.Temp || mode == OperandMode.Output;
         if (isVariable(value)) {
-            assert trace("    def %s %s", mode, value);
+            Debug.log("    def %s %s", mode, value);
             assert curLocations.get(asVariable(value)) == null;
 
             Location newLoc = allocateRegister(asVariable(value), mode, flags);
@@ -388,7 +386,7 @@ public class LinearScanAllocator {
             CiValue out = curOutRegisterState[i];
 
             if (in != null && in != out && isLocation(in) && curLocations.get(asLocation(in).variable) == in) {
-                assert trace("    %s was evicted by %s, need to allocate new location", in, out);
+                Debug.log("    %s was evicted by %s, need to allocate new location", in, out);
                 Location oldLoc = asLocation(in);
                 Location newLoc = allocateRegister(oldLoc.variable, OperandMode.Alive, SPILL_FLAGS);
                 assert oldLoc != newLoc;
@@ -405,7 +403,7 @@ public class LinearScanAllocator {
 //            CiValue result = curInstruction.forEachRegisterHint(variable, mode, new ValueProcedure() {
 //                @Override
 //                public CiValue doValue(CiValue registerHint) {
-//                    assert trace("      registerHint %s", registerHint);
+//                    Debug.log("      registerHint %s", registerHint);
 //                    CiRegister hint = null;
 //                    if (isRegister(registerHint)) {
 //                        hint = asRegister(registerHint);
@@ -460,7 +458,7 @@ public class LinearScanAllocator {
 
     private void spill(Location value) {
         Location newLoc = spillLocation(value.variable);
-        assert trace("      spill %s to %s", value, newLoc);
+        Debug.log("      spill %s to %s", value, newLoc);
         if (!curPhiDefs) {
             moveResolver.add(value, newLoc);
         }
@@ -480,7 +478,7 @@ public class LinearScanAllocator {
             case Alive:  return curInRegisterState[reg.number] == null && curOutRegisterState[reg.number] == null;
             case Temp:   return curOutRegisterState[reg.number] == null;
             case Output: return curOutRegisterState[reg.number] == null;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -526,7 +524,7 @@ public class LinearScanAllocator {
         curLocations.put(loc);
         recordUse(variable);
 
-        assert trace("      selected register %s", loc);
+        Debug.log("      selected register %s", loc);
         return loc;
     }
 
@@ -535,7 +533,7 @@ public class LinearScanAllocator {
         curLocations.put(loc);
         recordUse(variable);
 
-        assert trace("      selected spill slot %s", loc);
+        Debug.log("      selected spill slot %s", loc);
         return loc;
     }
 
@@ -562,25 +560,16 @@ public class LinearScanAllocator {
     }
 
 
-    private boolean traceState() {
-        if (GraalOptions.TraceRegisterAllocation) {
-            TTY.print("  current lcoations: ");
-            curLocations.forEachLocation(new ValueProcedure() {
-                @Override
-                public CiValue doValue(CiValue value) {
-                    TTY.print("%s ", value);
-                    return value;
-                }
-            });
-            TTY.println();
-        }
-        return true;
-    }
-
-    private static boolean trace(String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocation) {
-            TTY.println(format, args);
-        }
-        return true;
+    private String logCurrentState() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("  current lcoations: ");
+        curLocations.forEachLocation(new ValueProcedure() {
+            @Override
+            public CiValue doValue(CiValue value) {
+                sb.append(value).append(" ");
+                return value;
+            }
+        });
+        return sb.toString();
     }
 }

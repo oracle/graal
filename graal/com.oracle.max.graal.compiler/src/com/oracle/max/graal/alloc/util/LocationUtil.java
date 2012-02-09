@@ -25,18 +25,7 @@ package com.oracle.max.graal.alloc.util;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.lir.*;
 
-public class ValueUtil extends CiValueUtil {
-
-    public static boolean isVariable(CiValue value) {
-        assert value != null;
-        return value instanceof Variable;
-    }
-
-    public static Variable asVariable(CiValue value) {
-        assert value != null;
-        return (Variable) value;
-    }
-
+public class LocationUtil extends ValueUtil {
 
     public static boolean isLocation(CiValue value) {
         assert value != null;

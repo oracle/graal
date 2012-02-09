@@ -41,7 +41,7 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public class AMD64XirOp extends LIRXirInstruction {
     public AMD64XirOp(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
@@ -480,7 +480,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
                 }
                 default:
-                    throw Util.shouldNotReachHere("Unknown XIR operation " + inst.op);
+                    throw GraalInternalError.shouldNotReachHere("Unknown XIR operation " + inst.op);
             }
         }
     }
@@ -493,7 +493,7 @@ public class AMD64XirOp extends LIRXirInstruction {
             case Long: code = longOp; break;
             case Float: code = floatOp; break;
             case Double: code = doubleOp; break;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
         assert left == result;
         if (isRegister(right) && right.kind != result.kind) {
@@ -514,7 +514,7 @@ public class AMD64XirOp extends LIRXirInstruction {
             case Object: code = AMD64Compare.ACMP; break;
             case Float: code = AMD64Compare.FCMP; break;
             case Double: code = AMD64Compare.DCMP; break;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
         AMD64Compare.emit(tasm, masm, code, x, y);
         masm.jcc(cflag, label);

@@ -23,7 +23,7 @@
 package com.oracle.max.graal.compiler.lir;
 
 import static com.oracle.max.graal.compiler.lir.LIRInstruction.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.compiler.lir.ValueUtil.*;
 
 import java.util.*;
 

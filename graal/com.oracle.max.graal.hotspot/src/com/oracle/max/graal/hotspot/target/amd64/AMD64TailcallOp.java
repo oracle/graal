@@ -31,7 +31,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * Performs a hard-coded tail call to the specified target, which normally should be an RiCompiledCode instance.
@@ -72,6 +72,6 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
         } else if (mode == OperandMode.Temp) {
             return EnumSet.of(OperandFlag.Register);
         }
-        throw Util.shouldNotReachHere();
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiCallingConvention.Type;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.util.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.
@@ -224,6 +223,10 @@ public final class FrameMap {
         return CiStackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
+    private static int roundUp(int number, int mod) {
+        return ((number + mod - 1) / mod) * mod;
+    }
+
     /**
      * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned on its natural alignment,
      * i.e., an 8-byte spill slot is aligned at an 8-byte boundary.
@@ -233,7 +236,7 @@ public final class FrameMap {
     public CiStackSlot allocateSpillSlot(CiKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = target.sizeInBytes(kind);
-        spillSize = Util.roundUp(spillSize + size, size);
+        spillSize = roundUp(spillSize + size, size);
         return getSlot(kind, 0);
     }
 
@@ -251,7 +254,7 @@ public final class FrameMap {
         if (size == 0) {
             return null;
         }
-        spillSize = Util.roundUp(spillSize + size, target.wordSize);
+        spillSize = roundUp(spillSize + size, target.wordSize);
 
         if (refs) {
             assert size % target.wordSize == 0;

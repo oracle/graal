@@ -22,15 +22,14 @@
  */
 package com.oracle.max.graal.alloc.simple;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
+import com.oracle.max.graal.debug.*;
 
 public abstract class AssignRegisters {
     public final LIR lir;
@@ -49,10 +48,10 @@ public abstract class AssignRegisters {
         ValueProcedure defProc =          new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return def(value); } };
         ValueProcedure setReferenceProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return setReference(value); } };
 
-        assert trace("==== start assign registers ====");
+        Debug.log("==== start assign registers ====");
         for (int i = lir.linearScanOrder().size() - 1; i >= 0; i--) {
             Block block = lir.linearScanOrder().get(i);
-            assert trace("start block %s", block);
+            Debug.log("start block %s", block);
 
             curRegisterRefMap = frameMap.initRegisterRefMap();
             curFrameRefMap = frameMap.initFrameRefMap();
@@ -62,7 +61,7 @@ public abstract class AssignRegisters {
 
             for (int j = block.lir.size() - 1; j >= 0; j--) {
                 LIRInstruction op = block.lir.get(j);
-                assert trace("  op %d %s", op.id(), op);
+                Debug.log("  op %d %s", op.id(), op);
 
                 op.forEachOutput(defProc);
                 op.forEachTemp(defProc);
@@ -70,7 +69,7 @@ public abstract class AssignRegisters {
                 op.forEachAlive(useProc);
 
                 if (op.info != null) {
-                    assert trace("    registerRefMap: %s  frameRefMap: %s", curRegisterRefMap, curFrameRefMap);
+                    Debug.log("    registerRefMap: %s  frameRefMap: %s", curRegisterRefMap, curFrameRefMap);
                     op.info.finish(new CiBitMap(curRegisterRefMap), new CiBitMap(curFrameRefMap), frameMap);
 
                     if (op instanceof LIRXirInstruction) {
@@ -85,13 +84,13 @@ public abstract class AssignRegisters {
                 // for the last time at this instruction are not part of the reference map.
                 op.forEachInput(useProc);
             }
-            assert trace("end block %s", block);
+            Debug.log("end block %s", block);
         }
-        assert trace("==== end assign registers ====");
+        Debug.log("==== end assign registers ====");
     }
 
     private CiValue use(CiValue value) {
-        assert trace("    use %s", value);
+        Debug.log("    use %s", value);
         if (isLocation(value)) {
             CiValue location = asLocation(value).location;
             frameMap.setReference(location, curRegisterRefMap, curFrameRefMap);
@@ -103,7 +102,7 @@ public abstract class AssignRegisters {
     }
 
     private CiValue def(CiValue value) {
-        assert trace("    def %s", value);
+        Debug.log("    def %s", value);
         if (isLocation(value)) {
             CiValue location = asLocation(value).location;
             frameMap.clearReference(location, curRegisterRefMap, curFrameRefMap);
@@ -115,17 +114,10 @@ public abstract class AssignRegisters {
     }
 
     private CiValue setReference(CiValue value) {
-        assert trace("    setReference %s", value);
+        Debug.log("    setReference %s", value);
         frameMap.setReference(asLocation(value).location, curRegisterRefMap, curFrameRefMap);
         return value;
     }
 
     protected abstract LocationMap locationsForBlockEnd(Block block);
-
-    private static boolean trace(String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocation) {
-            TTY.println(format, args);
-        }
-        return true;
-    }
 }

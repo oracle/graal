@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.cfg;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 
@@ -150,7 +149,7 @@ public class ControlFlowGraph {
                 block.id = reversePostOrderId;
                 reversePostOrderId--;
             } else {
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
             }
         } while (!stack.isEmpty());
         assert reversePostOrderId == -1;

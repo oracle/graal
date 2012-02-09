@@ -32,7 +32,7 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * Implementation of the Java bytecodes that compare a long, float, or double value and produce the
@@ -56,7 +56,7 @@ public enum AMD64CompareToIntOpcode {
                 if (mode == OperandMode.Output && index == 0) {
                     return EnumSet.of(OperandFlag.Register);
                 }
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
             }
         };
     }
@@ -84,7 +84,7 @@ public enum AMD64CompareToIntOpcode {
                 masm.jcc(ConditionFlag.below, low);
                 break;
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
 
         // equal -> 0

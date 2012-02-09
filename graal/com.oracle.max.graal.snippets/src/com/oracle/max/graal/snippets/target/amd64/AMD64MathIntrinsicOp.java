@@ -31,7 +31,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.target.amd64.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     public enum Opcode  {
@@ -57,7 +57,7 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             case SIN:   masm.fsin(asDoubleReg(result), asDoubleReg(input)); break;
             case COS:   masm.fcos(asDoubleReg(result), asDoubleReg(input)); break;
             case TAN:   masm.ftan(asDoubleReg(result), asDoubleReg(input)); break;
-            default:    throw Util.shouldNotReachHere();
+            default:    throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -68,6 +68,6 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         } else if (mode == OperandMode.Output && index == 0) {
             return EnumSet.of(OperandFlag.Register);
         }
-        throw Util.shouldNotReachHere();
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

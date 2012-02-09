@@ -32,7 +32,7 @@ import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public enum AMD64Arithmetic {
     IADD, ISUB, IMUL, IDIV, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
@@ -67,7 +67,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -92,7 +92,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -120,7 +120,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -159,7 +159,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -202,7 +202,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -240,7 +240,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -281,7 +281,7 @@ public enum AMD64Arithmetic {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -309,7 +309,7 @@ public enum AMD64Arithmetic {
             case I2B:  masm.signExtendByte(asIntReg(result)); break;
             case I2C:  masm.andl(asIntReg(result), 0xFFFF); break;
             case I2S:  masm.signExtendShort(asIntReg(result)); break;
-            default:   throw Util.shouldNotReachHere();
+            default:   throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -424,7 +424,7 @@ public enum AMD64Arithmetic {
                     masm.divq(asRegister(src));
                     break;
                 default:
-                    throw Util.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(src)) {
             switch (opcode) {
@@ -463,7 +463,7 @@ public enum AMD64Arithmetic {
                 case DAND: masm.andpd(asDoubleReg(dst), tasm.asDoubleConstRef(src, 16)); break;
                 case DOR:  masm.orpd(asDoubleReg(dst),  tasm.asDoubleConstRef(src, 16)); break;
                 case DXOR: masm.xorpd(asDoubleReg(dst), tasm.asDoubleConstRef(src, 16)); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             switch (opcode) {
@@ -488,7 +488,7 @@ public enum AMD64Arithmetic {
                 case DSUB: masm.subsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
                 case DMUL: masm.mulsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
                 case DDIV: masm.divsd(asDoubleReg(dst), tasm.asDoubleAddr(src)); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
         }
 
@@ -504,7 +504,7 @@ public enum AMD64Arithmetic {
         switch (result.kind) {
             case Int:  masm.cmpl(asIntReg(result),  Integer.MIN_VALUE); break;
             case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(CiConstant.forLong(java.lang.Long.MIN_VALUE))); break;
-            default:   throw Util.shouldNotReachHere();
+            default:   throw GraalInternalError.shouldNotReachHere();
         }
         masm.jcc(ConditionFlag.equal, slowPath.start);
         masm.bind(slowPath.continuation);
@@ -527,7 +527,7 @@ public enum AMD64Arithmetic {
             switch (x.kind) {
                 case Float:  masm.ucomiss(asFloatReg(x),  tasm.asFloatConstRef(CiConstant.FLOAT_0)); break;
                 case Double: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(CiConstant.DOUBLE_0)); break;
-                default:     throw Util.shouldNotReachHere();
+                default:     throw GraalInternalError.shouldNotReachHere();
             }
             Label nan = new Label();
             masm.jcc(ConditionFlag.parity, nan);
@@ -538,7 +538,7 @@ public enum AMD64Arithmetic {
             switch (result.kind) {
                 case Int:  masm.decrementl(asIntReg(result),  1); break;
                 case Long: masm.decrementq(asLongReg(result), 1); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
             masm.jmp(continuation);
 

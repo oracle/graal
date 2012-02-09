@@ -29,7 +29,6 @@ import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.simple.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.asm.*;
@@ -232,9 +231,6 @@ public class GraalCompiler {
                 }
 
                 Debug.dump(lir, "After LIR generation");
-                if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
-                    LIR.printLIR(lir.linearScanOrder());
-                }
             }
         });
 

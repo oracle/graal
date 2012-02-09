@@ -26,7 +26,7 @@ import java.lang.annotation.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.hotspot.Compiler;
 
 /**
@@ -74,7 +74,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
 
     @Override
     public CiConstant getEncoding(Representation r) {
-        throw Util.unimplemented("HotSpotTypePrimitive.getEncoding");
+        throw GraalInternalError.unimplemented("HotSpotTypePrimitive.getEncoding");
     }
 
     @Override

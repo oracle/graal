@@ -34,6 +34,7 @@ import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.StandardOp.MoveOp;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public class AMD64Move {
 
@@ -63,7 +64,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -94,7 +95,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -125,7 +126,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -147,7 +148,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -169,7 +170,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Input && index == 1) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Constant);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -191,7 +192,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -211,7 +212,7 @@ public class AMD64Move {
 
         @Override
         protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -232,7 +233,7 @@ public class AMD64Move {
             if (mode == OperandMode.Input && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -258,7 +259,7 @@ public class AMD64Move {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -270,13 +271,13 @@ public class AMD64Move {
             } else if (isStackSlot(result)) {
                 reg2stack(tasm, masm, result, input);
             } else {
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
                 stack2reg(tasm, masm, result, input);
             } else {
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
@@ -284,10 +285,10 @@ public class AMD64Move {
             } else if (isStackSlot(result)) {
                 const2stack(tasm, masm, result, (CiConstant) input);
             } else {
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
             }
         } else {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -302,7 +303,7 @@ public class AMD64Move {
             case Float:  masm.movflt(asFloatReg(result),  asFloatReg(input)); break;
             case Double: masm.movdbl(asDoubleReg(result), asDoubleReg(input)); break;
             case Object: masm.movq(asRegister(result),    asRegister(input)); break;
-            default:     throw Util.shouldNotReachHere("kind=" + result.kind);
+            default:     throw GraalInternalError.shouldNotReachHere("kind=" + result.kind);
         }
     }
 
@@ -314,7 +315,7 @@ public class AMD64Move {
             case Float:  masm.movflt(tasm.asAddress(result), asFloatReg(input)); break;
             case Double: masm.movsd(tasm.asAddress(result),  asDoubleReg(input)); break;
             case Object: masm.movq(tasm.asAddress(result),   asRegister(input)); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -326,7 +327,7 @@ public class AMD64Move {
             case Float:  masm.movflt(asFloatReg(result),  tasm.asAddress(input)); break;
             case Double: masm.movdbl(asDoubleReg(result), tasm.asAddress(input)); break;
             case Object: masm.movq(asRegister(result),    tasm.asAddress(input)); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -375,7 +376,7 @@ public class AMD64Move {
                 }
                 break;
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -390,11 +391,11 @@ public class AMD64Move {
                 if (c.isNull()) {
                     masm.movlong(tasm.asAddress(result), 0L);
                 } else {
-                    throw Util.shouldNotReachHere("Non-null object constants must be in register");
+                    throw GraalInternalError.shouldNotReachHere("Non-null object constants must be in register");
                 }
                 break;
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -413,7 +414,7 @@ public class AMD64Move {
             case Float:  masm.movflt(asFloatReg(result),  loadAddr); break;
             case Double: masm.movdbl(asDoubleReg(result), loadAddr); break;
             case Object: masm.movq(asRegister(result),    loadAddr); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -433,7 +434,7 @@ public class AMD64Move {
                 case Float:  masm.movflt(storeAddr, asFloatReg(input)); break;
                 case Double: masm.movsd(storeAddr,  asDoubleReg(input)); break;
                 case Object: masm.movq(storeAddr,   asRegister(input)); break;
-                default:     throw Util.shouldNotReachHere();
+                default:     throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
             CiConstant c = (CiConstant) input;
@@ -448,24 +449,24 @@ public class AMD64Move {
                     if (Util.isInt(c.asLong())) {
                         masm.movslq(storeAddr, (int) c.asLong());
                     } else {
-                        throw Util.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
                     break;
                 case Float:  masm.movl(storeAddr, floatToRawIntBits(c.asFloat())); break;
-                case Double: throw Util.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                case Double: throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                 case Object:
                     if (c.isNull()) {
                         masm.movptr(storeAddr, 0);
                     } else {
-                        throw Util.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
                     break;
                 default:
-                    throw Util.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere();
             }
 
         } else {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -479,7 +480,7 @@ public class AMD64Move {
             case Int:    masm.cmpxchgl(asRegister(newValue), address); break;
             case Long:
             case Object: masm.cmpxchgq(asRegister(newValue), address); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

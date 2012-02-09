@@ -25,11 +25,9 @@ package com.oracle.max.graal.compiler.lir;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.cfg.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 
 /**
@@ -119,10 +117,6 @@ public class LIR {
     }
 
     public void emitCode(TargetMethodAssembler tasm) {
-        if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
-            printLIR(codeEmittingOrder());
-        }
-
         for (Block b : codeEmittingOrder()) {
             emitBlock(tasm, b);
         }
@@ -139,30 +133,17 @@ public class LIR {
         emitSlowPath(tasm, methodEndMarker);
     }
 
-    private void emitBlock(TargetMethodAssembler tasm, Block block) {
-        if (GraalOptions.PrintLIRWithAssembly) {
-            TTY.println(block.toString());
-        }
-
-        if (GraalOptions.CommentedAssembly) {
+    private static void emitBlock(TargetMethodAssembler tasm, Block block) {
+        if (Debug.isDumpEnabled()) {
             tasm.blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : block.lir) {
-            if (GraalOptions.CommentedAssembly) {
+            if (Debug.isDumpEnabled()) {
                 tasm.blockComment(String.format("%d %s", op.id(), op));
-            }
-            if (GraalOptions.PrintLIRWithAssembly && !TTY.isSuppressed()) {
-                // print out the LIR operation followed by the resulting assembly
-                TTY.println(op.toStringWithIdPrefix());
-                TTY.println();
             }
 
             emitOp(tasm, op);
-
-            if (GraalOptions.PrintLIRWithAssembly) {
-                printAssembly(tasm);
-            }
         }
     }
 
@@ -181,12 +162,13 @@ public class LIR {
     }
 
     private static void emitSlowPath(TargetMethodAssembler tasm, SlowPath sp) {
-        if (GraalOptions.CommentedAssembly) {
+        if (Debug.isDumpEnabled()) {
             tasm.blockComment(String.format("slow case %s", sp.getClass().getName()));
         }
         sp.emitCode(tasm);
     }
 
+/*
     private int lastDecodeStart;
 
     private void printAssembly(TargetMethodAssembler tasm) {
@@ -254,4 +236,5 @@ public class LIR {
             TTY.println();
         }
     }
+*/
 }

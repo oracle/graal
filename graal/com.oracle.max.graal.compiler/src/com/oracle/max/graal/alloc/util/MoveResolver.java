@@ -22,16 +22,16 @@
  */
 package com.oracle.max.graal.alloc.util;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 
 public abstract class MoveResolver {
     private final LIR lir;
@@ -76,7 +76,7 @@ public abstract class MoveResolver {
         assert isLocation(from) || isConstant(from);
         assert from != to;
 
-        assert trace("mr    add mapping from %s to %s", from, to);
+        Debug.log("mr    add mapping from %s to %s", from, to);
         mappingFrom.add(from);
         mappingTo.add(to);
 
@@ -92,12 +92,12 @@ public abstract class MoveResolver {
 
         if (mappingFrom.size() == 1) {
             // If there is only one mapping, it is trivial that this mapping is safe to resolve.
-            assert trace("mr    resolve  mappings: %d", mappingFrom.size());
+            Debug.log("mr    resolve  mappings: %d", mappingFrom.size());
             insertMove(mappingFrom.get(0), mappingTo.get(0));
             mappingFrom.remove(0);
             mappingTo.remove(0);
         } else if (mappingFrom.size() > 1) {
-            assert trace("mr    resolve  mappings: %d", mappingFrom.size());
+            Debug.log("mr    resolve  mappings: %d", mappingFrom.size());
             doResolve();
         }
         insertPos = -1;
@@ -264,10 +264,10 @@ public abstract class MoveResolver {
     }
 
     private void insertExchange(Location from, Location to) {
-        assert trace("mr      XCHG %s, %s", from, to);
+        Debug.log("mr      XCHG %s, %s", from, to);
         // TODO create XCHG instruction and use it here
         insertionBuffer.append(insertPos, null);
-        throw Util.unimplemented();
+        throw GraalInternalError.unimplemented();
     }
 
     private void insertMove(CiValue src, Location dst) {
@@ -297,7 +297,7 @@ public abstract class MoveResolver {
             }
 
         } else {
-            assert trace("mr      MOV %s -> %s", src, dst);
+            Debug.log("mr      MOV %s -> %s", src, dst);
             insertionBuffer.append(insertPos, lir.spillMoveFactory.createMove(dst,  src));
         }
     }
@@ -337,14 +337,6 @@ public abstract class MoveResolver {
                 Location otherTo = mappingTo.get(j);
                 assert to != otherTo && to.variable != otherTo.variable && to.location != otherTo.location : "Cannot write to same location twice";
             }
-        }
-        return true;
-    }
-
-
-    private static boolean trace(String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocation) {
-            TTY.println(format, args);
         }
         return true;
     }

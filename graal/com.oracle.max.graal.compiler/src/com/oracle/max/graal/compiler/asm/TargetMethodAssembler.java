@@ -29,14 +29,22 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIR.SlowPath;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 
 public class TargetMethodAssembler {
+
+    private static class ExceptionInfo {
+        public final int codeOffset;
+        public final LabelRef exceptionEdge;
+
+        public ExceptionInfo(int pcOffset, LabelRef exceptionEdge) {
+            this.codeOffset = pcOffset;
+            this.exceptionEdge = exceptionEdge;
+        }
+    }
 
     public final AbstractAssembler asm;
     public final CiTargetMethod targetMethod;
@@ -47,6 +55,7 @@ public class TargetMethodAssembler {
 
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
+
     public TargetMethodAssembler(CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
         this.target = target;
         this.runtime = runtime;
@@ -88,6 +97,8 @@ public class TargetMethodAssembler {
         Debug.metric("DataPatches").add(targetMethod.dataReferences.size());
         Debug.metric("ExceptionHandlersEmitted").add(targetMethod.exceptionHandlers.size());
 
+        Debug.log("Finished target method %s, isStub %d", name, isStub);
+/*
         if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
             Util.printSection("Target Method", Util.SECTION_CHARACTER);
             TTY.println("Name: " + name);
@@ -128,6 +139,7 @@ public class TargetMethodAssembler {
                 TTY.println(x.toString());
             }
         }
+*/
 
         return targetMethod;
     }
@@ -138,7 +150,7 @@ public class TargetMethodAssembler {
                 if (exceptionInfoList == null) {
                     exceptionInfoList = new ArrayList<>(4);
                 }
-                exceptionInfoList.add(new ExceptionInfo(pcOffset, info.exceptionEdge, info.topFrame.bci));
+                exceptionInfoList.add(new ExceptionInfo(pcOffset, info.exceptionEdge));
             }
         }
     }
@@ -196,7 +208,7 @@ public class TargetMethodAssembler {
         assert (value.kind.stackKind() == CiKind.Int || value.kind == CiKind.Jsr || value.kind == CiKind.Long) && isConstant(value);
         long c = ((CiConstant) value).asLong();
         if (!(NumUtil.isInt(c))) {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
         return (int) c;
     }

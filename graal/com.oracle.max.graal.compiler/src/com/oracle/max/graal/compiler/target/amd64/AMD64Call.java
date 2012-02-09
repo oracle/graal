@@ -33,7 +33,7 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public class AMD64Call {
 
@@ -63,7 +63,7 @@ public class AMD64Call {
             } else if (mode == OperandMode.Output) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -103,7 +103,7 @@ public class AMD64Call {
             } else if (mode == OperandMode.Output) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

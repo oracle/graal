@@ -28,7 +28,7 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public abstract class LIRXirInstruction extends LIRInstruction {
 
@@ -73,7 +73,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         } else if (mode == OperandMode.Output && index == 0) {
             return EnumSet.of(OperandFlag.Register);
         }
-        throw Util.shouldNotReachHere();
+        throw GraalInternalError.shouldNotReachHere();
     }
 
     public CiValue[] getOperands() {

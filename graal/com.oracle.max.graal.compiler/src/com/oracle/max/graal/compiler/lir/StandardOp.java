@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for specific kinds or LIR
@@ -70,7 +70,7 @@ public class StandardOp {
 
         @Override
         protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         public Label getLabel() {
@@ -88,7 +88,7 @@ public class StandardOp {
             if (mode == OperandMode.Output) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         public void markResolved() {
@@ -131,7 +131,7 @@ public class StandardOp {
 
         @Override
         protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         public LabelRef destination() {
@@ -149,7 +149,7 @@ public class StandardOp {
             if (mode == OperandMode.Alive) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         public void markResolved() {
@@ -205,7 +205,7 @@ public class StandardOp {
             if (mode == OperandMode.Output) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

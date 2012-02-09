@@ -30,7 +30,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 
 public class AMD64DeoptimizationStub extends AMD64SlowPath {
@@ -79,7 +79,7 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
                 code = 4;
                 break;
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
         masm.movq(scratch, code);
         // TODO Why use scratch register here? Is it an implicit calling convention that the runtime function reads this register?

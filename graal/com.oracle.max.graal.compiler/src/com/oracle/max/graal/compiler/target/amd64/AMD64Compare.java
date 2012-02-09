@@ -30,7 +30,7 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
@@ -54,7 +54,7 @@ public enum AMD64Compare {
             } else if (mode == OperandMode.Input && index == 1) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Stack, OperandFlag.Constant);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -80,7 +80,7 @@ public enum AMD64Compare {
                 case ACMP: masm.cmpptr(asObjectReg(x), asObjectReg(y)); break;
                 case FCMP: masm.ucomiss(asFloatReg(x), asFloatReg(y)); break;
                 case DCMP: masm.ucomisd(asDoubleReg(x), asDoubleReg(y)); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(y)) {
             switch (opcode) {
@@ -90,11 +90,11 @@ public enum AMD64Compare {
                     if (((CiConstant) y).isNull()) {
                         masm.cmpq(asObjectReg(x), 0); break;
                     } else {
-                        throw Util.shouldNotReachHere("Only null object constants are allowed in comparisons");
+                        throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
                 case FCMP: masm.ucomiss(asFloatReg(x), tasm.asFloatConstRef(y)); break;
                 case DCMP: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(y)); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             switch (opcode) {
@@ -103,7 +103,7 @@ public enum AMD64Compare {
                 case ACMP: masm.cmpptr(asObjectReg(x), tasm.asObjectAddr(y)); break;
                 case FCMP: masm.ucomiss(asFloatReg(x), tasm.asFloatAddr(y)); break;
                 case DCMP: masm.ucomisd(asDoubleReg(x), tasm.asDoubleAddr(y)); break;
-                default:  throw Util.shouldNotReachHere();
+                default:  throw GraalInternalError.shouldNotReachHere();
             }
         }
     }

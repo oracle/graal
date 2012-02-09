@@ -22,20 +22,19 @@
  */
 package com.oracle.max.graal.alloc.simple;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
 import com.oracle.max.graal.compiler.lir.StandardOp.PhiJumpOp;
 import com.oracle.max.graal.compiler.lir.StandardOp.PhiLabelOp;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 
 public abstract class ResolveDataFlow {
     public final LIR lir;
@@ -53,7 +52,7 @@ public abstract class ResolveDataFlow {
     public void execute() {
         ValueProcedure locMappingProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return locMapping(value); } };
 
-        assert trace("==== start resolve data flow ====");
+        Debug.log("==== start resolve data flow ====");
         for (Block toBlock : lir.linearScanOrder()) {
             PhiLabelOp phiDefs = null;
             if (toBlock.lir.get(0) instanceof PhiLabelOp) {
@@ -61,7 +60,7 @@ public abstract class ResolveDataFlow {
             }
 
             for (Block fromBlock : toBlock.getPredecessors()) {
-                assert trace("start edge %s -> %s", fromBlock, toBlock);
+                Debug.log("start edge %s -> %s", fromBlock, toBlock);
                 findInsertPos(fromBlock, toBlock);
 
                 LocationMap toLocations = locationsForBlockBegin(toBlock);
@@ -77,7 +76,7 @@ public abstract class ResolveDataFlow {
                 }
 
                 moveResolver.resolve();
-                assert trace("end edge %s -> %s", fromBlock, toBlock);
+                Debug.log("end edge %s -> %s", fromBlock, toBlock);
             }
 
             if (phiDefs != null) {
@@ -86,7 +85,7 @@ public abstract class ResolveDataFlow {
             }
         }
         moveResolver.finish();
-        assert trace("==== end resolve data flow ====");
+        Debug.log("==== end resolve data flow ====");
     }
 
     private CiValue locMapping(CiValue value) {
@@ -115,25 +114,17 @@ public abstract class ResolveDataFlow {
             LIRInstruction instr = instructions.get(instructions.size() - 1);
             assert instr instanceof StandardOp.JumpOp : "block does not end with an unconditional jump";
             moveResolver.init(instructions, instructions.size() - 1);
-            assert trace("  insert at end of %s before %d", fromBlock, instructions.size() - 1);
+            Debug.log("  insert at end of %s before %d", fromBlock, instructions.size() - 1);
 
         } else if (toBlock.numberOfPreds() == 1) {
             moveResolver.init(toBlock.lir, 1);
-            assert trace("  insert at beginning of %s before %d", toBlock, 1);
+            Debug.log("  insert at beginning of %s before %d", toBlock, 1);
 
         } else {
-            Util.shouldNotReachHere("Critical edge not split");
+            GraalInternalError.shouldNotReachHere("Critical edge not split");
         }
     }
 
     protected abstract LocationMap locationsForBlockBegin(Block block);
     protected abstract LocationMap locationsForBlockEnd(Block block);
-
-
-    private static boolean trace(String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocation) {
-            TTY.println(format, args);
-        }
-        return true;
-    }
 }

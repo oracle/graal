@@ -222,7 +222,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Object: append(new BranchOp(cond, label, info)); break;
             case Float:
             case Double: append(new FloatBranchOp(cond, unorderedIsTrue, label, info)); break;
-            default: throw Util.shouldNotReachHere("" + left.kind);
+            default: throw GraalInternalError.shouldNotReachHere("" + left.kind);
         }
     }
 
@@ -253,7 +253,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Object: append(new CompareOp(ACMP, left, right)); break;
             case Float: append(new CompareOp(FCMP, left, right)); break;
             case Double: append(new CompareOp(DCMP, left, right)); break;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -265,7 +265,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Long:   append(new Op1Stack(LNEG, result, input)); break;
             case Float:  append(new Op2Reg(FXOR, result, input, CiConstant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
             case Double: append(new Op2Reg(DXOR, result, input, CiConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -278,7 +278,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Long:   append(new Op2Stack(LADD, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FADD, result, a, loadNonConst(b))); break;
             case Double: append(new Op2Stack(DADD, result, a, loadNonConst(b))); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -291,7 +291,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Long:   append(new Op2Stack(LSUB, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FSUB, result, a, loadNonConst(b))); break;
             case Double: append(new Op2Stack(DSUB, result, a, loadNonConst(b))); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -304,7 +304,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Long:   append(new Op2Reg(LMUL, result, a, loadNonConst(b))); break;
             case Float:  append(new Op2Stack(FMUL, result, a, loadNonConst(b))); break;
             case Double: append(new Op2Stack(DMUL, result, a, loadNonConst(b))); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -331,7 +331,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
                 return result;
             }
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -351,7 +351,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case Double:
                 return emitCallToRuntime(CiRuntimeCall.ArithmeticDrem, false, a, b);
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -367,7 +367,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LUDIV, RAX_L, RAX_L, load(b), state()));
                 return emitMove(RAX_L);
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -383,7 +383,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LUREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -394,7 +394,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch(a.kind) {
             case Int:    append(new Op2Stack(IAND, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LAND, result, a, loadNonConst(b))); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -405,7 +405,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch(a.kind) {
             case Int:    append(new Op2Stack(IOR, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LOR, result, a, loadNonConst(b))); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -416,7 +416,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch(a.kind) {
             case Int:    append(new Op2Stack(IXOR, result, a, loadNonConst(b))); break;
             case Long:   append(new Op2Stack(LXOR, result, a, loadNonConst(b))); break;
-            default:     throw Util.shouldNotReachHere();
+            default:     throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -428,7 +428,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch (a.kind) {
             case Int:    append(new ShiftOp(ISHL, result, a, loadShiftCount(b))); break;
             case Long:   append(new ShiftOp(LSHL, result, a, loadShiftCount(b))); break;
-            default: Util.shouldNotReachHere();
+            default: GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -439,7 +439,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch (a.kind) {
             case Int:    append(new ShiftOp(ISHR, result, a, loadShiftCount(b))); break;
             case Long:   append(new ShiftOp(LSHR, result, a, loadShiftCount(b))); break;
-            default: Util.shouldNotReachHere();
+            default: GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -450,7 +450,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         switch (a.kind) {
             case Int:    append(new ShiftOp(IUSHR, result, a, loadShiftCount(b))); break;
             case Long:   append(new ShiftOp(LUSHR, result, a, loadShiftCount(b))); break;
-            default: Util.shouldNotReachHere();
+            default: GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -489,7 +489,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
             case MOV_L2D: append(new Op1Reg(MOV_L2D, result, input)); break;
             case MOV_F2I: append(new Op1Reg(MOV_F2I, result, input)); break;
             case MOV_D2L: append(new Op1Reg(MOV_D2L, result, input)); break;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
         return result;
     }
@@ -618,7 +618,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
                 append(CMP2INT.create(result));
                 break;
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
         setResult(x, result);
     }

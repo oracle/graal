@@ -499,7 +499,7 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
 
     }

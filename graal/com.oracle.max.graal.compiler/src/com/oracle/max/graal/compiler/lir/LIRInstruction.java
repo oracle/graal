@@ -22,12 +22,13 @@
  */
 package com.oracle.max.graal.compiler.lir;
 
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.cri.ci.CiValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.asm.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 
 /**
  * The {@code LIRInstruction} class definition.
@@ -49,7 +50,7 @@ public abstract class LIRInstruction {
          * @return The new value to replace the value that was passed in.
          */
         protected CiValue doValue(CiValue value) {
-            throw Util.shouldNotReachHere("One of the doValue() methods must be overwritten");
+            throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
         }
 
         /**

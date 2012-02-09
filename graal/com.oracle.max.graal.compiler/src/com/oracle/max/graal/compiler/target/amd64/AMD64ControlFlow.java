@@ -34,7 +34,7 @@ import com.oracle.max.cri.ci.CiAddress.Scale;
 import com.oracle.max.cri.ci.CiTargetMethod.JumpTable;
 import com.oracle.max.graal.compiler.asm.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.calc.*;
 
 public class AMD64ControlFlow {
@@ -54,7 +54,7 @@ public class AMD64ControlFlow {
             if (mode == OperandMode.Input && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -92,7 +92,7 @@ public class AMD64ControlFlow {
 
         @Override
         protected EnumSet<OperandFlag> flagsFor(OperandMode mode, int index) {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -159,7 +159,7 @@ public class AMD64ControlFlow {
             } else if (mode == OperandMode.Temp && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -186,7 +186,7 @@ public class AMD64ControlFlow {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register, OperandFlag.RegisterHint);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
 
         @Override
@@ -225,7 +225,7 @@ public class AMD64ControlFlow {
             } else if (mode == OperandMode.Output && index == 0) {
                 return EnumSet.of(OperandFlag.Register);
             }
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -321,13 +321,13 @@ public class AMD64ControlFlow {
             switch (other.kind) {
                 case Int:  masm.cmovl(cond, asRegister(result), asRegister(other)); break;
                 case Long: masm.cmovq(cond, asRegister(result), asRegister(other)); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             switch (other.kind) {
                 case Int:  masm.cmovl(cond, asRegister(result), tasm.asAddress(other)); break;
                 case Long: masm.cmovq(cond, asRegister(result), tasm.asAddress(other)); break;
-                default:   throw Util.shouldNotReachHere();
+                default:   throw GraalInternalError.shouldNotReachHere();
             }
         }
     }
@@ -346,7 +346,7 @@ public class AMD64ControlFlow {
             case BT: return ConditionFlag.below;
             case OF: return ConditionFlag.overflow;
             case NOF: return ConditionFlag.noOverflow;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -358,7 +358,7 @@ public class AMD64ControlFlow {
             case BE: return ConditionFlag.belowEqual;
             case AE: return ConditionFlag.aboveEqual;
             case AT: return ConditionFlag.above;
-            default: throw Util.shouldNotReachHere();
+            default: throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -377,7 +377,7 @@ public class AMD64ControlFlow {
             case noOverflow:
                 return true;
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

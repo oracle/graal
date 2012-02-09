@@ -26,7 +26,7 @@ import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.compiler.lir.ValueUtil.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -191,7 +191,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             case Double:
                 return new Variable(stackKind, lir.nextVariable(), CiRegister.RegisterFlag.FPU);
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -770,7 +770,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else if (node instanceof IsTypeNode) {
             emitTypeBranch((IsTypeNode) node, trueSuccessor, falseSuccessor, info);
         } else {
-            throw Util.unimplemented(node.toString());
+            throw GraalInternalError.unimplemented(node.toString());
         }
     }
 
@@ -832,7 +832,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else if (node instanceof ConstantNode) {
             return emitConstantConditional(((ConstantNode) node).asConstant().asBoolean(), trueValue, falseValue);
         } else {
-            throw Util.unimplemented(node.toString());
+            throw GraalInternalError.unimplemented(node.toString());
         }
     }
 
@@ -964,7 +964,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             } else if (isStackSlot(value)) {
                 return CiStackSlot.get(value.kind.stackKind(), asStackSlot(value).rawOffset(), asStackSlot(value).rawAddFrameSize());
             } else {
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
             }
         }
         return value;
@@ -988,7 +988,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 argList.add(operand);
 
             } else {
-                throw Util.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
+                throw GraalInternalError.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
             }
         }
         return argList;
@@ -1194,7 +1194,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else if (op instanceof XirTemp) {
             return newVariable(op.kind);
         } else {
-            Util.shouldNotReachHere();
+            GraalInternalError.shouldNotReachHere();
             return null;
         }
     }

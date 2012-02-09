@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.asm;
+package com.oracle.max.graal.compiler.lir;
 
-import com.oracle.max.graal.compiler.lir.*;
+import com.oracle.max.cri.ci.*;
 
-public class ExceptionInfo {
+public class ValueUtil extends CiValueUtil {
 
-    public final int codeOffset;
-    public final LabelRef exceptionEdge;
-    public final int bci;
+    public static boolean isVariable(CiValue value) {
+        assert value != null;
+        return value instanceof Variable;
+    }
 
-    public ExceptionInfo(int pcOffset, LabelRef exceptionEdge, int bci) {
-        this.codeOffset = pcOffset;
-        this.exceptionEdge = exceptionEdge;
-        this.bci = bci;
+    public static Variable asVariable(CiValue value) {
+        assert value != null;
+        return (Variable) value;
     }
 }

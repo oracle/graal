@@ -23,17 +23,18 @@
 package com.oracle.max.graal.alloc.util;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
+import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
+import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 
 public final class RegisterVerifier {
     private final FrameMap frameMap;
@@ -94,17 +95,17 @@ public final class RegisterVerifier {
         setStateFor(startBlock, curInputState);
         addToWorkList(startBlock);
 
-        assert trace("==== start verify register allocation ====");
+        Debug.log("==== start verify register allocation ====");
         do {
             Block block = workList.remove(0);
 
             // Must copy state because it is modified.
             curInputState = copy(stateFor(block));
-            assert trace("start block %s %s", block, block.getLoop());
-            assert traceState();
+            Debug.log("start block %s %s", block, block.getLoop());
+            Debug.log(logCurrentState());
 
             for (LIRInstruction op : block.lir) {
-                assert trace("  op %d %s", op.id(), op);
+                Debug.log("  op %d %s", op.id(), op);
 
                 op.forEachInput(useProc);
                 if (op.hasCall()) {
@@ -120,23 +121,23 @@ public final class RegisterVerifier {
                 processSuccessor(succ);
             }
 
-            assert trace("end block %s", block);
+            Debug.log("end block %s", block);
         } while (!workList.isEmpty());
-        assert trace("==== end verify register allocation ====");
+        Debug.log("==== end verify register allocation ====");
     }
 
     private void processSuccessor(Block succ) {
         Map<Object, CiValue> savedState = stateFor(succ);
         if (savedState == null) {
             // Block was not processed before, so set initial inputState.
-            assert trace("  successor %s: initial visit", succ);
+            Debug.log("  successor %s: initial visit", succ);
             setStateFor(succ, copy(curInputState));
             addToWorkList(succ);
 
         } else {
             // This block was already processed before.
             // Check if new inputState is consistent with savedState.
-            assert trace("  successor %s: state present", succ);
+            Debug.log("  successor %s: state present", succ);
             Iterator<Map.Entry<Object, CiValue>> iter = savedState.entrySet().iterator();
             while (iter.hasNext()) {
                 Map.Entry<Object, CiValue> entry = iter.next();
@@ -146,7 +147,7 @@ public final class RegisterVerifier {
                 if (savedValue != inputValue) {
                     // Current inputState and previous savedState assume a different value in this register.
                     // Assume that this register is invalid and remove it from the saved state.
-                    assert trace("    invalididating %s because it is inconsistent with %s", savedValue, inputValue);
+                    Debug.log("    invalididating %s because it is inconsistent with %s", savedValue, inputValue);
                     iter.remove();
                     // Must re-visit this block.
                     addToWorkList(succ);
@@ -161,7 +162,7 @@ public final class RegisterVerifier {
         while (iter.hasNext()) {
             Object value1 = iter.next();
             if (value1 instanceof CiRegister && frameMap.registerConfig.getAttributesMap()[((CiRegister) value1).number].isCallerSave) {
-                assert trace("    remove caller save register %s", value1);
+                Debug.log("    remove caller save register %s", value1);
                 iter.remove();
             }
         }
@@ -180,7 +181,7 @@ public final class RegisterVerifier {
         } else if (isStackSlot(value)) {
             return Integer.valueOf(frameMap.offsetForStackSlot(asStackSlot(value)));
         } else {
-            throw Util.shouldNotReachHere();
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -194,9 +195,9 @@ public final class RegisterVerifier {
             if (actual == null && flags.contains(OperandFlag.Uninitialized)) {
                 // OK, since uninitialized values are allowed explicitly.
             } else if (value != actual) {
-                TTY.println("!! Error in register allocation: %s != %s for key %s", value, actual, key(value));
-                traceState();
-                throw Util.shouldNotReachHere();
+                Debug.log("Error in register allocation: %s != %s for key %s", value, actual, key(value));
+                Debug.log(logCurrentState());
+                throw GraalInternalError.shouldNotReachHere();
             }
         }
         return value;
@@ -204,7 +205,7 @@ public final class RegisterVerifier {
 
     private CiValue temp(CiValue value) {
         if (!isConstant(value) && value != CiValue.IllegalValue && !isIgnoredRegister(value)) {
-            assert trace("    temp %s -> remove key %s", value, key(value));
+            Debug.log("    temp %s -> remove key %s", value, key(value));
             curInputState.remove(key(value));
         }
         return value;
@@ -212,48 +213,38 @@ public final class RegisterVerifier {
 
     private CiValue output(CiValue value) {
         if (value != CiValue.IllegalValue && !isIgnoredRegister(value)) {
-            assert trace("    output %s -> set key %s", value, key(value));
+            Debug.log("    output %s -> set key %s", value, key(value));
             curInputState.put(key(value), value);
         }
         return value;
     }
 
 
-    private boolean traceState() {
-        if (GraalOptions.TraceRegisterAllocation) {
-            ArrayList<Object> keys = new ArrayList<>(curInputState.keySet());
-            Collections.sort(keys, new Comparator<Object>() {
-                @Override
-                public int compare(Object o1, Object o2) {
-                    if (o1 instanceof CiRegister) {
-                        if (o2 instanceof CiRegister) {
-                            return ((CiRegister) o1).number - ((CiRegister) o2).number;
-                        } else {
-                            return -1;
-                        }
+    private String logCurrentState() {
+        ArrayList<Object> keys = new ArrayList<>(curInputState.keySet());
+        Collections.sort(keys, new Comparator<Object>() {
+            @Override
+            public int compare(Object o1, Object o2) {
+                if (o1 instanceof CiRegister) {
+                    if (o2 instanceof CiRegister) {
+                        return ((CiRegister) o1).number - ((CiRegister) o2).number;
                     } else {
-                        if (o2 instanceof CiRegister) {
-                            return 1;
-                        } else {
-                            return ((Integer) o1).intValue() - ((Integer) o2).intValue();
-                        }
+                        return -1;
+                    }
+                } else {
+                    if (o2 instanceof CiRegister) {
+                        return 1;
+                    } else {
+                        return ((Integer) o1).intValue() - ((Integer) o2).intValue();
                     }
                 }
-            });
-
-            TTY.print("    state: ");
-            for (Object key : keys) {
-                TTY.print("%s=%s  ", key, curInputState.get(key));
             }
-            TTY.println();
-        }
-        return true;
-    }
+        });
 
-    private static boolean trace(String format, Object...args) {
-        if (GraalOptions.TraceRegisterAllocation) {
-            TTY.println(format, args);
+        StringBuilder sb = new StringBuilder("    state: ");
+        for (Object key : keys) {
+            sb.append(key).append("=").append(curInputState.get(key)).append(" ");
         }
-        return true;
+        return sb.toString();
     }
 }
