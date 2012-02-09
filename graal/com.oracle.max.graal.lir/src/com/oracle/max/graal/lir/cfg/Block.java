@@ -98,6 +98,19 @@ public class Block {
         return dominator;
     }
 
+    public Block getEarliestPostDominated() {
+        Block b = this;
+        while (true) {
+            Block dom = b.getDominator();
+            if (dom != null && dom.getPostdominator() == b) {
+                b = dom;
+            } else {
+                break;
+            }
+        }
+        return b;
+    }
+
     public List<Block> getDominated() {
         if (dominated == null) {
             return Collections.emptyList();
