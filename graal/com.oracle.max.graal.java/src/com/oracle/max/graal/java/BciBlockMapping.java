@@ -388,7 +388,7 @@ public final class BciBlockMapping {
             case PUTFIELD:
             case GETFIELD: {
                 if (GraalOptions.AllowExplicitExceptionChecks) {
-                    return profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE;
+                    return profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.TRUE;
                 }
             }
         }
