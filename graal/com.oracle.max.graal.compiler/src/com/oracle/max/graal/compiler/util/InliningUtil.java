@@ -542,7 +542,7 @@ public class InliningUtil {
                     if (GraalOptions.InlineMonomorphicCalls) {
                         RiResolvedType type = types[0];
                         RiResolvedMethod concrete = type.resolveMethodImpl(callTarget.targetMethod());
-                        if (concrete != null && checkTargetConditions(concrete)) {
+                        if (checkTargetConditions(concrete)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
@@ -580,7 +580,7 @@ public class InliningUtil {
                         double totalWeight = 0;
                         boolean canInline = true;
                         for (RiResolvedMethod concrete: concreteMethods) {
-                            if (concrete == null || !checkTargetConditions(concrete)) {
+                            if (!checkTargetConditions(concrete)) {
                                 canInline = false;
                                 break;
                             }
@@ -637,6 +637,10 @@ public class InliningUtil {
     }
 
     private static boolean checkTargetConditions(RiMethod method) {
+        if (method == null) {
+            Debug.log("method not resolved");
+            return false;
+        }
         if (!(method instanceof RiResolvedMethod)) {
             Debug.log("not inlining %s because it is unresolved", method.toString());
             return false;
