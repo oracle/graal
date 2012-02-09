@@ -405,9 +405,12 @@ public class InliningUtil {
                 InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
                 BeginNode exceptionEdge = invokeWithException.exceptionEdge();
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
+                FrameState stateAfter = exceptionObject.stateAfter();
 
                 BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
                 ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
+                // set new state (pop old exception object, push new one)
+                newExceptionObject.setStateAfter(stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), CiKind.Object, newExceptionObject));
                 newExceptionEdge.setNext(newExceptionObject);
 
                 EndNode endNode = graph.add(new EndNode());
@@ -759,6 +762,7 @@ public class InliningUtil {
                     frameState.replaceAndDelete(stateAfter);
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
                     if (frameState.isAlive()) {
+                        // TODO (ch) it happens sometimes that we have a FrameState.AFTER_EXCEPTION_BCI but no stateAtExceptionEdge
                         assert stateAtExceptionEdge != null;
                         frameState.replaceAndDelete(stateAtExceptionEdge);
                     } else {
