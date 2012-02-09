@@ -24,9 +24,9 @@ package com.oracle.max.graal.compiler.tests;
 
 import org.junit.*;
 
-import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 
 public class NestedLoopTest extends GraphTest {

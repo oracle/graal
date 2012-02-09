@@ -99,6 +99,8 @@ public interface CompilerToVM {
 
     boolean RiMethod_hasCompiledCode(HotSpotMethodResolved method);
 
+    int RiMethod_getCompiledCodeSize(HotSpotMethodResolved method);
+
     RiMethod getRiMethod(Method reflectionMethod);
 
     long getMaxCallTargetOffset(CiRuntimeCall rtcall);

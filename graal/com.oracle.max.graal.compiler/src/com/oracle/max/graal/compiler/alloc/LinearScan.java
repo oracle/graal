@@ -24,7 +24,7 @@ package com.oracle.max.graal.compiler.alloc;
 
 import static com.oracle.max.cri.ci.CiUtil.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
@@ -35,16 +35,14 @@ import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
-import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandFlag;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.OperandMode;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.ValueProcedure;
-import com.oracle.max.graal.compiler.lir.StandardOp.MoveOp;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.LIRInstruction.*;
+import com.oracle.max.graal.lir.StandardOp.*;
+import com.oracle.max.graal.lir.cfg.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described
@@ -1589,7 +1587,7 @@ public final class LinearScan {
                 }
 
                 default: {
-                    throw Util.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere();
                 }
             }
         }
@@ -1902,14 +1900,6 @@ public final class LinearScan {
     }
 
     void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
-        // TODO(tw): Fix printing.
-        if (GraalOptions.TraceLinearScanLevel >= 1 && !TTY.isSuppressed()) {
-            TTY.println();
-            TTY.println(label);
-            LIR.printLIR(ir.linearScanOrder());
-            TTY.println();
-        }
-
         Debug.dump(ir, label);
     }
 

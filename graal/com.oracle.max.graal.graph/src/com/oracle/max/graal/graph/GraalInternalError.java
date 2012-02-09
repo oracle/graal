@@ -30,12 +30,29 @@ import java.util.*;
 public class GraalInternalError extends Error {
 
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 8776065085829593278L;
     private Node node;
     private Graph graph;
     private final ArrayList<String> context = new ArrayList<>();
+
+    public static RuntimeException unimplemented() {
+        throw new GraalInternalError("unimplemented");
+    }
+
+    public static RuntimeException unimplemented(String msg) {
+        throw new GraalInternalError("unimplemented: %s", msg);
+    }
+
+    public static RuntimeException shouldNotReachHere() {
+        throw new GraalInternalError("should not reach here");
+    }
+
+    public static RuntimeException shouldNotReachHere(String msg) {
+        throw new GraalInternalError("should not reach here: %s", msg);
+    }
+
 
     /**
      * This constructor creates a {@link GraalInternalError} with a message assembled via {@link String#format(String, Object...)}.

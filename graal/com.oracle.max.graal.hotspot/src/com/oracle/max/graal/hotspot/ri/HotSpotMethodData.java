@@ -44,7 +44,8 @@ public final class HotSpotMethodData extends CompilerObject {
 
     // TODO (ch) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
-    private static final HotSpotMethodDataAccessor NO_DATA_ACCESSOR = new NoMethodData();
+    private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(RiExceptionSeen.FALSE);
+    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLE_ACCESSOR = new NoMethodData(RiExceptionSeen.UNKNOWN);
     private static final HotSpotVMConfig config;
     // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
@@ -109,8 +110,12 @@ public final class HotSpotMethodData extends CompilerObject {
         return getData(position);
     }
 
-    public static HotSpotMethodDataAccessor getNoMethodData() {
-        return NO_DATA_ACCESSOR;
+    public static HotSpotMethodDataAccessor getNoDataNoExceptionAccessor() {
+        return NO_DATA_NO_EXCEPTION_ACCESSOR;
+    }
+
+    public static HotSpotMethodDataAccessor getNoDataExceptionPossibleAccessor() {
+        return NO_DATA_EXCEPTION_POSSIBLE_ACCESSOR;
     }
 
     private HotSpotMethodDataAccessor getData(int position) {
@@ -196,8 +201,8 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
-        public boolean getExceptionSeen(HotSpotMethodData data, int position) {
-            return (getFlags(data, position) & EXCEPTIONS_MASK) != 0;
+        public RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+            return RiExceptionSeen.get((getFlags(data, position) & EXCEPTIONS_MASK) != 0);
         }
 
         @Override
@@ -233,8 +238,11 @@ public final class HotSpotMethodData extends CompilerObject {
         private static final int NO_DATA_TAG = 0;
         private static final int NO_DATA_SIZE = cellIndexToOffset(0);
 
-        protected NoMethodData() {
+        private final RiExceptionSeen exceptionSeen;
+
+        protected NoMethodData(RiExceptionSeen exceptionSeen) {
             super(NO_DATA_TAG, NO_DATA_SIZE);
+            this.exceptionSeen = exceptionSeen;
         }
 
         @Override
@@ -244,8 +252,8 @@ public final class HotSpotMethodData extends CompilerObject {
 
 
         @Override
-        public boolean getExceptionSeen(HotSpotMethodData data, int position) {
-            return false;
+        public RiExceptionSeen getExceptionSeen(HotSpotMethodData data, int position) {
+            return exceptionSeen;
         }
     }
 
@@ -363,7 +371,11 @@ public final class HotSpotMethodData extends CompilerObject {
             return createRiTypeProfile(sparseTypes, counts, totalCount, entries);
         }
 
-        protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
+        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
+            // checkcast/aastore/instanceof profiling in the HotSpot template-based interpreter was adjusted so that the counter
+            // is incremented to indicate the polymorphic case instead of decrementing it for failed type checks
+            return getCounterValue(data, position);
+        }
 
         private static RiTypeProfile createRiTypeProfile(RiResolvedType[] sparseTypes, double[] counts, long totalCount, int entries) {
             RiResolvedType[] types;
@@ -410,12 +422,6 @@ public final class HotSpotMethodData extends CompilerObject {
         public int getExecutionCount(HotSpotMethodData data, int position) {
             return -1;
         }
-
-        @Override
-        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
-            // TODO (ch) if types do not fit, profiling is skipped for typechecks
-            return 0;
-        }
     }
 
     private static class VirtualCallData extends AbstractTypeData {
@@ -436,11 +442,6 @@ public final class HotSpotMethodData extends CompilerObject {
 
             total += getCounterValue(data, position);
             return truncateLongToInt(total);
-        }
-
-        @Override
-        protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
-            return getCounterValue(data, position);
         }
     }
 

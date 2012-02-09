@@ -29,19 +29,18 @@ import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.simple.*;
 import com.oracle.max.graal.compiler.alloc.*;
-import com.oracle.max.graal.compiler.asm.*;
-import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.target.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.asm.*;
+import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 
 public class GraalCompiler {
@@ -81,6 +80,9 @@ public class GraalCompiler {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
+        Debug.dump(this, "compiler");
+        Debug.dump(method, "method");
+
         return Debug.scope(createScopeName(method), new Callable<CiTargetMethod>() {
             public CiTargetMethod call() {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
@@ -189,6 +191,7 @@ public class GraalCompiler {
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
+        Debug.dump(schedule, "final schedule");
 
         final Block[] blocks = schedule.getCFG().getBlocks();
         final Block startBlock = schedule.getCFG().getStartBlock();
@@ -219,6 +222,7 @@ public class GraalCompiler {
     public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final RiResolvedMethod method) {
         final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir);
+        Debug.dump(lirGenerator, "LIRGenerator");
 
         Debug.scope("LIRGen", new Runnable() {
             public void run() {
@@ -226,16 +230,7 @@ public class GraalCompiler {
                     lirGenerator.doBlock(b);
                 }
 
-                for (Block b : lir.linearScanOrder()) {
-                    if (b.phis != null) {
-                        b.phis.fillInputs(lirGenerator);
-                    }
-                }
-
-                Debug.dump(lirGenerator, "After LIR generation");
-                if (GraalOptions.PrintLIR && !TTY.isSuppressed()) {
-                    LIR.printLIR(lir.linearScanOrder());
-                }
+                Debug.dump(lir, "After LIR generation");
             }
         });
 
@@ -269,6 +264,7 @@ public class GraalCompiler {
             targetMethod.setAssumptions(assumptions);
         }
 
+        Debug.dump(lir, "After code generation");
         Debug.dump(targetMethod, "After code generation");
         return targetMethod;
     }

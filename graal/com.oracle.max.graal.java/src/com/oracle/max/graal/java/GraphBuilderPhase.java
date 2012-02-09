@@ -323,7 +323,8 @@ public final class GraphBuilderPhase extends Phase {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
 
         if (GraalOptions.UseExceptionProbability && method.invocationCount() > GraalOptions.MatureInvocationCount) {
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && !profilingInfo.getExceptionSeen(bci)) {
+            // be conservative if information was not recorded (could result in endless recompiles otherwise)
+            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.FALSE) {
                 return null;
             }
         }
@@ -499,7 +500,7 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
 
     }
@@ -691,7 +692,7 @@ public final class GraphBuilderPhase extends Phase {
     private static final RiResolvedType[] EMPTY_TYPE_ARRAY = new RiResolvedType[0];
 
     private RiResolvedType[] getTypeCheckHints(RiResolvedType type, int maxHints) {
-        if (!GraalOptions.UseInstanceOfHints || Util.isFinalClass(type)) {
+        if (!GraalOptions.UseTypeCheckHints || Util.isFinalClass(type)) {
             return new RiResolvedType[] {type};
         } else {
             RiResolvedType uniqueSubtype = type.uniqueConcreteSubtype();

@@ -24,10 +24,10 @@ package com.oracle.max.graal.compiler.alloc;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.cfg.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.cfg.*;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.

@@ -28,10 +28,10 @@ import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.*;
-import com.oracle.max.cri.ci.CiRegister.*;
+import com.oracle.max.cri.ci.CiCallingConvention.Type;
+import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.hotspot.*;
 
 public class HotSpotRegisterConfig implements RiRegisterConfig {
@@ -146,7 +146,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
                     }
                     break;
                 default:
-                    throw Util.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere();
             }
 
             if (locations[i] == null) {

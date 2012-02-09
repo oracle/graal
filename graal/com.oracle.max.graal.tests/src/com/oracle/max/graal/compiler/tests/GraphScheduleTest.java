@@ -26,9 +26,9 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 
 public class GraphScheduleTest extends GraphTest {

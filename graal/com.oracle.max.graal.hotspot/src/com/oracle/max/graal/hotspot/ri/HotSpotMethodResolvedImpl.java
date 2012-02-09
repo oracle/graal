@@ -178,6 +178,10 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         return compiler.getVMEntries().RiMethod_hasCompiledCode(this);
     }
 
+    public int compiledCodeSize() {
+        return compiler.getVMEntries().RiMethod_getCompiledCodeSize(this);
+    }
+
     @Override
     public RiResolvedType accessor() {
         return null;
@@ -242,8 +246,8 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
                 TTY.println();
             }
 
-            if (profilingInfo.getExceptionSeen(i)) {
-                TTY.println("  exceptionSeen@%d: true", i);
+            if (profilingInfo.getExceptionSeen(i) != RiExceptionSeen.FALSE) {
+                TTY.println("  exceptionSeen@%d: %s", i, profilingInfo.getExceptionSeen(i).name());
             }
 
             RiTypeProfile typeProfile = profilingInfo.getTypeProfile(i);

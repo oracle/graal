@@ -145,6 +145,9 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native boolean RiMethod_hasCompiledCode(HotSpotMethodResolved method);
 
     @Override
+    public native int RiMethod_getCompiledCodeSize(HotSpotMethodResolved method);
+
+    @Override
     public native long getMaxCallTargetOffset(CiRuntimeCall rtcall);
 
     @Override

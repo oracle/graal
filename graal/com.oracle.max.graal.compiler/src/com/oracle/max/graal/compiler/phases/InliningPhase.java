@@ -191,9 +191,13 @@ public class InliningPhase extends Phase implements InliningCallback {
         if (GraalOptions.InliningPolicy == 0) {
             return new WeightBasedInliningPolicy();
         } else if (GraalOptions.InliningPolicy == 1) {
-            return new SizeBasedInliningPolicy();
+            return new StaticSizeBasedInliningPolicy();
+        } else if (GraalOptions.InliningPolicy == 2) {
+            return new DynamicSizeBasedInliningPolicy();
+        } else if (GraalOptions.InliningPolicy == 3) {
+            return new GreedySizeBasedInliningPolicy();
         } else {
-            Util.shouldNotReachHere();
+            GraalInternalError.shouldNotReachHere();
             return null;
         }
     }
@@ -272,20 +276,67 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private class SizeBasedInliningPolicy implements InliningPolicy {
+    private class StaticSizeBasedInliningPolicy implements InliningPolicy {
         @Override
         public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+            double codeSize = method.codeSize();
             if (preferredInvoke) {
-                return method.codeSize() / 2;
-            } else {
-                return method.codeSize();
+                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
             }
+            return codeSize;
         }
 
         @Override
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             double maxSize = Math.max(GraalOptions.MaximumTrivialSize, Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize);
             return info.weight <= maxSize;
+        }
+    }
+
+    private class DynamicSizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+            double codeSize = method.codeSize();
+            if (preferredInvoke) {
+                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
+            }
+            return codeSize;
+        }
+
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+            if (info.compiledCodeSize() <= GraalOptions.SmallCompiledCodeSize) {
+                double inlineBoost = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
+                double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize;
+                maxSize = maxSize + maxSize * inlineBoost;
+                maxSize = Math.max(GraalOptions.MaximumTrivialSize, maxSize);
+                return info.weight <= maxSize;
+            }
+            return false;
+        }
+    }
+
+    private class GreedySizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+            double codeSize = method.codeSize();
+            if (preferredInvoke) {
+                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
+            }
+            return codeSize;
+        }
+
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+            if (info.compiledCodeSize() <= GraalOptions.SmallCompiledCodeSize) {
+                double inlineRatio = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
+                double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumGreedyInlineSize * inlineRatio;
+                maxSize = Math.max(maxSize, GraalOptions.MaximumInlineSize);
+                return info.weight <= maxSize;
+            }
+            return false;
         }
     }
 }
