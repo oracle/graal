@@ -24,7 +24,8 @@ package com.oracle.max.graal.compiler.target.amd64;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.asm.*;
+import com.oracle.max.graal.lir.amd64.*;
+import com.oracle.max.graal.lir.asm.*;
 
 public class AMD64MethodEndStub extends AMD64SlowPath {
     @Override

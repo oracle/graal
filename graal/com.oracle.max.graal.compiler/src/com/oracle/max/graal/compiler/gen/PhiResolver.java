@@ -23,7 +23,7 @@
 package com.oracle.max.graal.compiler.gen;
 
 import static com.oracle.max.cri.ci.CiValue.*;
-import static com.oracle.max.graal.alloc.util.ValueUtil.*;
+import static com.oracle.max.graal.lir.ValueUtil.*;
 
 import java.util.*;
 

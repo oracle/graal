@@ -49,7 +49,7 @@ public interface RiSignature {
      *        not care for a resolved type.
      * @return the {@code index}'th argument type
      */
-    RiType argumentTypeAt(int index, RiType accessingClass);
+    RiType argumentTypeAt(int index, RiResolvedType accessingClass);
 
     /**
      * Gets the argument kind at the specified position.

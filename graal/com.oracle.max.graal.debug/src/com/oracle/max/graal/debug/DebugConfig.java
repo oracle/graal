@@ -30,6 +30,6 @@ public interface DebugConfig {
     boolean isMeterEnabled();
     boolean isDumpEnabled();
     boolean isTimeEnabled();
-    RuntimeException interceptException(RuntimeException e);
+    RuntimeException interceptException(Throwable e);
     Collection<? extends DebugDumpHandler> dumpHandlers();
 }

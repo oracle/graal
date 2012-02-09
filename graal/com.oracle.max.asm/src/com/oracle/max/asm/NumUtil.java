@@ -98,4 +98,8 @@ public class NumUtil {
         assert isShort(v);
         return (short) v;
     }
+
+    public static int roundUp(int number, int mod) {
+        return ((number + mod - 1) / mod) * mod;
+    }
 }

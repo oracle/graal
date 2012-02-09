@@ -52,9 +52,6 @@ public class DegeneratedLoopsTest extends GraphTest {
     }
 
     private static class UnresolvedException extends RuntimeException {
-        /**
-         *
-         */
         private static final long serialVersionUID = 5215434338750728440L;
 
         static {

@@ -42,22 +42,6 @@ public class Util {
     public static final char SUB_SECTION_CHARACTER = '=';
     public static final char SEPERATOR_CHARACTER = '-';
 
-    public static RuntimeException unimplemented() {
-        throw new GraalInternalError("unimplemented");
-    }
-
-    public static RuntimeException unimplemented(String msg, Object... args) {
-        throw new GraalInternalError("unimplemented: " + msg, args);
-    }
-
-    public static RuntimeException shouldNotReachHere() {
-        throw new GraalInternalError("should not reach here");
-    }
-
-    public static RuntimeException shouldNotReachHere(String msg, Object... args) {
-        throw new GraalInternalError("should not reach here: " + msg, args);
-    }
-
     public static <T> boolean replaceInList(T a, T b, List<T> list) {
         final int max = list.size();
         for (int i = 0; i < max; i++) {

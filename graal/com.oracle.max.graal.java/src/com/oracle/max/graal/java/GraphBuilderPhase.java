@@ -128,7 +128,7 @@ public final class GraphBuilderPhase extends Phase {
         methodSynchronizedObject = null;
         exceptionHandlers = null;
         this.currentGraph = graph;
-        this.frameState = new FrameStateBuilder(method, method.maxLocals(), method.maxStackSize(), graph);
+        this.frameState = new FrameStateBuilder(method, method.maxLocals(), method.maxStackSize(), graph, config.eagerResolving());
         build();
     }
 
@@ -500,7 +500,7 @@ public final class GraphBuilderPhase extends Phase {
                 break;
             }
             default:
-                throw Util.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere();
         }
 
     }

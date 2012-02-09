@@ -197,7 +197,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         } else if (GraalOptions.InliningPolicy == 3) {
             return new GreedySizeBasedInliningPolicy();
         } else {
-            Util.shouldNotReachHere();
+            GraalInternalError.shouldNotReachHere();
             return null;
         }
     }

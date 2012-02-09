@@ -33,15 +33,15 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
-import com.oracle.max.graal.compiler.cfg.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
 import com.oracle.max.graal.java.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 
@@ -50,7 +50,6 @@ import com.oracle.max.graal.nodes.calc.*;
  */
 class CFGPrinter extends CompilationPrinter {
 
-    public final ByteArrayOutputStream buffer;
     public final CiTarget target;
     public final RiRuntime runtime;
     public LIR lir;
@@ -61,9 +60,8 @@ class CFGPrinter extends CompilationPrinter {
      *
      * @param buffer where the output generated via this printer shown be written
      */
-    public CFGPrinter(ByteArrayOutputStream buffer, CiTarget target, RiRuntime runtime) {
-        super(buffer);
-        this.buffer = buffer;
+    public CFGPrinter(OutputStream out, CiTarget target, RiRuntime runtime) {
+        super(out);
         this.target = target;
         this.runtime = runtime;
     }
@@ -346,22 +344,6 @@ class CFGPrinter extends CompilationPrinter {
 
         begin("IR");
         out.println("LIR");
-
-        if (block.phis != null) {
-            CiValue[] results = block.phis.results();
-            for (int i = 0; i < results.length; i++) {
-                if (i == 0) {
-                    out.printf("nr %4d ", block.getFirstLirInstructionId()).print(COLUMN_END);
-                }
-                out.print("instruction PHI ").print(results[i].toString()).print(" = (");
-                String sep = "";
-                for (Block pred : block.getPredecessors()) {
-                    out.print(sep).print(block.phis.inputs(pred)[i].toString());
-                    sep = ", ";
-                }
-                out.print(")").print(COLUMN_END).println(COLUMN_END);
-            }
-        }
 
         for (int i = 0; i < lirInstructions.size(); i++) {
             LIRInstruction inst = lirInstructions.get(i);
