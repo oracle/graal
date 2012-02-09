@@ -39,9 +39,10 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.asm.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.amd64.*;
+import com.oracle.max.graal.lir.asm.*;
 
 public class AMD64XirOp extends LIRXirInstruction {
     public AMD64XirOp(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,

@@ -31,10 +31,10 @@ import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.java.*;
+import com.oracle.max.graal.lir.*;
 import com.oracle.max.graal.nodes.*;
 
 /**

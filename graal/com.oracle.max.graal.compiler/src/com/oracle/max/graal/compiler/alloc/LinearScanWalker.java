@@ -35,10 +35,10 @@ import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.max.graal.compiler.alloc.Interval.State;
-import com.oracle.max.graal.compiler.cfg.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.compiler.lir.StandardOp.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.StandardOp.*;
+import com.oracle.max.graal.lir.cfg.*;
 
 /**
  */

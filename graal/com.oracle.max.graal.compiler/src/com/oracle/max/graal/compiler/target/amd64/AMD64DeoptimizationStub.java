@@ -28,9 +28,10 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.asm.*;
-import com.oracle.max.graal.compiler.lir.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.amd64.*;
+import com.oracle.max.graal.lir.asm.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 
 public class AMD64DeoptimizationStub extends AMD64SlowPath {

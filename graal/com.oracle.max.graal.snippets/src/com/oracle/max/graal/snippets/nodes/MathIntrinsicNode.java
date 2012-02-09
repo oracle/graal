@@ -22,13 +22,13 @@
  */
 package com.oracle.max.graal.snippets.nodes;
 
-import static com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.*;
+import static com.oracle.max.graal.lir.amd64.AMD64Arithmetic.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.target.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.max.graal.compiler.target.amd64.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.spi.*;

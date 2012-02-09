@@ -29,10 +29,10 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.cfg.*;
-import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.LIRInstruction.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.LIRInstruction.*;
+import com.oracle.max.graal.lir.cfg.*;
 
 /**
  */

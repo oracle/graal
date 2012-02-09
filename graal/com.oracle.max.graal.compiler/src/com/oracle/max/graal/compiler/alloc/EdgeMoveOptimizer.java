@@ -24,9 +24,9 @@ package com.oracle.max.graal.compiler.alloc;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.cfg.*;
-import com.oracle.max.graal.compiler.lir.*;
-import com.oracle.max.graal.compiler.lir.StandardOp.*;
+import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.StandardOp.*;
+import com.oracle.max.graal.lir.cfg.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.
