@@ -23,7 +23,6 @@
 package com.oracle.max.graal.compiler.tests;
 
 import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
-import junit.framework.*;
 
 import org.junit.Test;
 
