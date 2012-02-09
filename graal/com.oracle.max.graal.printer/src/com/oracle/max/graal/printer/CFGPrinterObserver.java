@@ -71,6 +71,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             return;
         }
 
+        if (compiler == null) {
+            return;
+        }
+
         if (cfgPrinter == null) {
             File file = new File("compilations-" + System.currentTimeMillis() + ".cfg");
             try {
