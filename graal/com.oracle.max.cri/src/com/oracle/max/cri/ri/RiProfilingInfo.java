@@ -24,9 +24,10 @@ package com.oracle.max.cri.ri;
 
 
 /**
- * Represents profiling information for one specific method.
- * Every accessor method returns the information that is available at the time of its invocation.
- * If a method is invoked multiple times, it may return a significantly different results for every invocation.
+ * Provides access to the profiling information of one specific method.
+ * Every accessor method returns the information that is available at the time of invocation.
+ * If a method is invoked multiple times, it may return significantly different results for every invocation
+ * as the profiling information may be changed by other Java threads at any time.
  */
 public interface RiProfilingInfo {
     /**

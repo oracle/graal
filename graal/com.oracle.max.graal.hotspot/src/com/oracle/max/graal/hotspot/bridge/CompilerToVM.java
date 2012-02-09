@@ -51,8 +51,6 @@ public interface CompilerToVM {
 
     HotSpotMethodData RiMethod_methodData(HotSpotMethodResolved method);
 
-    boolean HotSpotMethodData_isMature(HotSpotMethodData methodData);
-
     RiType RiSignature_lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
 
     Object RiConstantPool_lookupConstant(HotSpotTypeResolved pool, int cpi);

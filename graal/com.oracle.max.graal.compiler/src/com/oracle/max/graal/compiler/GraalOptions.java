@@ -70,6 +70,11 @@ public final class GraalOptions {
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
 
+    // profiling information
+    public static int     MatureExecutionsBranch             = 50;
+    public static int     MatureExecutionsPerSwitchCase      = 15;
+    public static int     MatureExecutionsTypeProfile        = 100;
+
     //rematerialize settings
     public static float   MinimumUsageProbability            = 0.95f;
 

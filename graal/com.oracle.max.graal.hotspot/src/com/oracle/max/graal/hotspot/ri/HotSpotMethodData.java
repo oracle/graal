@@ -27,6 +27,7 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.hotspot.*;
 import com.oracle.max.graal.hotspot.Compiler;
 
@@ -57,7 +58,6 @@ public final class HotSpotMethodData extends CompilerObject {
     private Object hotspotMirror;
     private int normalDataSize;
     private int extraDataSize;
-    private boolean mature;
 
     private HotSpotMethodData(Compiler compiler) {
         super(compiler);
@@ -74,19 +74,6 @@ public final class HotSpotMethodData extends CompilerObject {
 
     public int getExtraDataBeginOffset() {
         return normalDataSize;
-    }
-
-    public boolean isMature() {
-        // TODO (ch) maturity of profiling information is an issue in general. Not all optimizations require mature data as long as the code
-        // does deoptimize/recompile on violations (might decrease startup and increase peak performance).
-        // Maturity is currently used on several levels:
-        // 1) whole method data
-        // 2) individual branch/switch profiling data
-        // 3) MatureInvocationCount for eliminating exception edges
-        if (!mature) {
-            mature = compiler.getVMEntries().HotSpotMethodData_isMature(this);
-        }
-        return mature;
     }
 
     public boolean isWithin(int position) {
@@ -381,7 +368,7 @@ public final class HotSpotMethodData extends CompilerObject {
             RiResolvedType[] types;
             double[] probabilities;
 
-            if (entries <= 0) {
+            if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
                 return null;
             } else if (entries < sparseTypes.length) {
                 types = Arrays.copyOf(sparseTypes, entries);
@@ -459,7 +446,6 @@ public final class HotSpotMethodData extends CompilerObject {
         private static final int BRANCH_DATA_TAG = 7;
         private static final int BRANCH_DATA_SIZE = cellIndexToOffset(3);
         private static final int NOT_TAKEN_COUNT_OFFSET = cellIndexToOffset(2);
-        private static final int BRANCH_DATA_MATURE_COUNT = 40;
 
         public BranchData() {
             super(BRANCH_DATA_TAG, BRANCH_DATA_SIZE);
@@ -471,7 +457,7 @@ public final class HotSpotMethodData extends CompilerObject {
             long notTakenCount = data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
             long total = takenCount + notTakenCount;
 
-            if (total < BRANCH_DATA_MATURE_COUNT) {
+            if (total < GraalOptions.MatureExecutionsBranch) {
                 return -1;
             } else {
                 return takenCount / (double) total;
@@ -536,7 +522,7 @@ public final class HotSpotMethodData extends CompilerObject {
                 result[i - 1] = count;
             }
 
-            if (totalCount < 10 * (length + 2)) {
+            if (totalCount < GraalOptions.MatureExecutionsPerSwitchCase * length) {
                 return null;
             } else {
                 for (int i = 0; i < length; i++) {

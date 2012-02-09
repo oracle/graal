@@ -324,7 +324,7 @@ public final class GraphBuilderPhase extends Phase {
 
         if (GraalOptions.UseExceptionProbability) {
             // be conservative if information was not recorded (could result in endless recompiles otherwise)
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.TRUE) {
+            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.FALSE) {
                 return null;
             } else {
                 Debug.log("Creating exception edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
