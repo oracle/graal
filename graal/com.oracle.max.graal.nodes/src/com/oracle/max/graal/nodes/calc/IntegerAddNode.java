@@ -28,7 +28,7 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "+")
-public final class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
+public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
     public IntegerAddNode(CiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);

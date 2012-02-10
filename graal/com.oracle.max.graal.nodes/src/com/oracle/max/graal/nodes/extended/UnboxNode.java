@@ -62,25 +62,27 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
         if (source.isConstant()) {
             CiConstant constant = source.asConstant();
             Object o = constant.asObject();
-            switch (kind()) {
-                case Boolean:
-                    return ConstantNode.forBoolean((Boolean) o, graph());
-                case Byte:
-                    return ConstantNode.forByte((Byte) o, graph());
-                case Char:
-                    return ConstantNode.forChar((Character) o, graph());
-                case Short:
-                    return ConstantNode.forShort((Short) o, graph());
-                case Int:
-                    return ConstantNode.forInt((Integer) o, graph());
-                case Long:
-                    return ConstantNode.forLong((Long) o, graph());
-                case Float:
-                    return ConstantNode.forFloat((Long) o, graph());
-                case Double:
-                    return ConstantNode.forDouble((Long) o, graph());
-                default:
-                    assert false;
+            if (o != null) {
+                switch (kind()) {
+                    case Boolean:
+                        return ConstantNode.forBoolean((Boolean) o, graph());
+                    case Byte:
+                        return ConstantNode.forByte((Byte) o, graph());
+                    case Char:
+                        return ConstantNode.forChar((Character) o, graph());
+                    case Short:
+                        return ConstantNode.forShort((Short) o, graph());
+                    case Int:
+                        return ConstantNode.forInt((Integer) o, graph());
+                    case Long:
+                        return ConstantNode.forLong((Long) o, graph());
+                    case Float:
+                        return ConstantNode.forFloat((Long) o, graph());
+                    case Double:
+                        return ConstantNode.forDouble((Long) o, graph());
+                    default:
+                        assert false;
+                }
             }
         }
         return this;

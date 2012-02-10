@@ -45,10 +45,16 @@ public abstract class Phase {
     }
 
     public final void apply(final StructuredGraph graph) {
+        apply(graph, true);
+    }
+
+    public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
         Debug.scope(name, this, new Runnable() {
             public void run() {
                 Phase.this.run(graph);
-                Debug.dump(graph, "After phase %s", name);
+                if (dumpGraph) {
+                    Debug.dump(graph, "After phase %s", name);
+                }
             }
         });
     }

@@ -227,13 +227,9 @@ public enum Condition {
                 switch (this) {
                     case EQ: return x == y;
                     case NE: return x != y;
-                    case BT:
                     case LT: return x < y;
-                    case BE:
                     case LE: return x <= y;
-                    case AT:
                     case GT: return x > y;
-                    case AE:
                     case GE: return x >= y;
                 }
             }
@@ -246,13 +242,9 @@ public enum Condition {
                 switch (this) {
                     case EQ: return x == y;
                     case NE: return x != y;
-                    case BT:
                     case LT: return x < y;
-                    case BE:
                     case LE: return x <= y;
-                    case AT:
                     case GT: return x > y;
-                    case AE:
                     case GE: return x >= y;
                 }
             }

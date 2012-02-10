@@ -205,17 +205,48 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {
-                for (DebugValueMap map : topLevelMaps) {
-                    TTY.println("Showing the results for thread: " + map.getName());
-                    map.group();
-                    map.normalize();
-                    printMap(map, debugValues, 0);
+                if (GraalOptions.SummarizeDebugValues) {
+                    printSummary(topLevelMaps, debugValues);
+                } else {
+                    for (DebugValueMap map : topLevelMaps) {
+                        TTY.println("Showing the results for thread: " + map.getName());
+                        map.group();
+                        map.normalize();
+                        printMap(map, debugValues, 0);
+                    }
                 }
             }
         }
     }
 
-    private void printMap(DebugValueMap map, List<DebugValue> debugValues, int level) {
+    private static void printSummary(List<DebugValueMap> topLevelMaps, List<DebugValue> debugValues) {
+        DebugValueMap result = new DebugValueMap("Summary");
+        for (int i = debugValues.size() - 1; i >= 0; i--) {
+            DebugValue debugValue = debugValues.get(i);
+            int index = debugValue.getIndex();
+            long total = collectTotal(topLevelMaps, index);
+            result.setCurrentValue(index, total);
+        }
+        printMap(result, debugValues, 0);
+    }
+
+    private static long collectTotal(List<DebugValueMap> maps, int index) {
+        long total = 0;
+        for (int i = 0; i < maps.size(); i++) {
+            DebugValueMap map = maps.get(i);
+            // the top level accumulates some counters -> do not process the children if we find a value
+            long value = map.getCurrentValue(index);
+            if (value == 0) {
+                total += collectTotal(map.getChildren(), index);
+            } else {
+                total += value;
+            }
+        }
+        return total;
+    }
+
+
+    private static void printMap(DebugValueMap map, List<DebugValue> debugValues, int level) {
 
         printIndent(level);
         TTY.println(map.getName());

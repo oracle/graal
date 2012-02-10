@@ -63,6 +63,7 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        assert object() != null : this;
         RiResolvedType exact = object().exactType();
         if (exact != null) {
             boolean result = exact.isSubtypeOf(targetClass());

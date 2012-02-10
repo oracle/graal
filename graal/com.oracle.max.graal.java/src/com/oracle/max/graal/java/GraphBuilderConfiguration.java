@@ -22,6 +22,7 @@
  */
 package com.oracle.max.graal.java;
 
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 
@@ -34,6 +35,7 @@ public class GraphBuilderConfiguration {
     private final boolean useBranchPrediction;
     private final ResolvePolicy resolving;
     private final PhasePlan plan;
+    private RiResolvedType[] skippedExceptionTypes;
 
     public GraphBuilderConfiguration(boolean useBranchPrediction, ResolvePolicy resolving, PhasePlan plan) {
         this.useBranchPrediction = useBranchPrediction;
@@ -43,6 +45,15 @@ public class GraphBuilderConfiguration {
 
     public boolean useBranchPrediction() {
         return useBranchPrediction;
+    }
+
+
+    public void setSkippedExceptionTypes(RiResolvedType[] skippedExceptionTypes) {
+        this.skippedExceptionTypes = skippedExceptionTypes;
+    }
+
+    public RiResolvedType[] getSkippedExceptionTypes() {
+        return skippedExceptionTypes;
     }
 
     public boolean eagerResolvingForSnippets() {

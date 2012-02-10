@@ -40,6 +40,10 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
     @Data private String message;
     @Data private final DeoptAction action;
 
+    public DeoptimizeNode() {
+        this(DeoptAction.InvalidateReprofile);
+    }
+
     public DeoptimizeNode(DeoptAction action) {
         super(StampFactory.illegal());
         this.action = action;
@@ -60,5 +64,10 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitDeoptimizeOn(null, action, message);
+    }
+
+    @NodeIntrinsic
+    public static void deopt() {
+        throw new UnsupportedOperationException();
     }
 }

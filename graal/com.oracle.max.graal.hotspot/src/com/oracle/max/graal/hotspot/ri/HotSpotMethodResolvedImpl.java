@@ -203,7 +203,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             methodData = compiler.getVMEntries().RiMethod_methodData(this);
         }
 
-        if (methodData == null || !methodData.isMature()) {
+        if (methodData == null) {
             return new HotSpotNoProfilingInfo(compiler);
         } else {
             return new HotSpotProfilingInfo(compiler, methodData);

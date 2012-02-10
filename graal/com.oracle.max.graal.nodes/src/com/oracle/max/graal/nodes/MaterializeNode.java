@@ -31,7 +31,7 @@ public final class MaterializeNode extends ConditionalNode {
         super(condition, trueValue, falseValue);
     }
 
-    public static MaterializeNode create(BooleanNode condition, Graph graph, ConstantNode trueValue, ConstantNode falseValue) {
+    public static MaterializeNode create(BooleanNode condition, Graph graph, ValueNode trueValue, ValueNode falseValue) {
         MaterializeNode result = new MaterializeNode(condition, trueValue, falseValue);
         return graph.unique(result);
 

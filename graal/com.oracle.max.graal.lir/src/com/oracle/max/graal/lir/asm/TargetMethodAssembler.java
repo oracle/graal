@@ -97,7 +97,7 @@ public class TargetMethodAssembler {
         Debug.metric("DataPatches").add(targetMethod.dataReferences.size());
         Debug.metric("ExceptionHandlersEmitted").add(targetMethod.exceptionHandlers.size());
 
-        Debug.log("Finished target method %s, isStub %d", name, isStub);
+        Debug.log("Finished target method %s, isStub %b", name, isStub);
 /*
         if (GraalOptions.PrintAssembly && !TTY.isSuppressed() && !isStub) {
             Util.printSection("Target Method", Util.SECTION_CHARACTER);

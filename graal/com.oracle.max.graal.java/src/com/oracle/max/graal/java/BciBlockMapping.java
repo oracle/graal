@@ -363,12 +363,6 @@ public final class BciBlockMapping {
 
     private static boolean canTrap(int opcode, int bci, RiProfilingInfo profilingInfo) {
         switch (opcode) {
-            case INVOKESTATIC:
-            case INVOKESPECIAL:
-            case INVOKEVIRTUAL:
-            case INVOKEINTERFACE: {
-                return true;
-            }
             case IASTORE:
             case LASTORE:
             case FASTORE:
@@ -388,7 +382,7 @@ public final class BciBlockMapping {
             case PUTFIELD:
             case GETFIELD: {
                 if (GraalOptions.AllowExplicitExceptionChecks) {
-                    return profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.TRUE;
+                    return profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE;
                 }
             }
         }
