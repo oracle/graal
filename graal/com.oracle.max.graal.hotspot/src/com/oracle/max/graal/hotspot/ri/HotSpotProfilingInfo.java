@@ -129,8 +129,8 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
         setCurrentData(data, pos);
     }
 
-    private void noDataFound(boolean exceptionPossible) {
-        HotSpotMethodDataAccessor accessor = exceptionPossible ? HotSpotMethodData.getNoDataNoExceptionAccessor() : HotSpotMethodData.getNoDataNoExceptionAccessor();
+    private void noDataFound(boolean exceptionPossiblyNotRecorded) {
+        HotSpotMethodDataAccessor accessor = HotSpotMethodData.getNoDataAccessor(exceptionPossiblyNotRecorded);
         setCurrentData(accessor, -1);
     }
 

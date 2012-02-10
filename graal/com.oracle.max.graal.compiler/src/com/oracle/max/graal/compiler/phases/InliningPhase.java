@@ -74,7 +74,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         graph.createNodeMap();
 
         if (hints != null) {
-            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints), 0, graph);
+            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints), -1, graph);
         } else {
             scanInvokes(graph.getNodes(InvokeNode.class), 0, graph);
             scanInvokes(graph.getNodes(InvokeWithExceptionNode.class), 0, graph);
@@ -109,7 +109,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                         throw e.addContext(info.toString());
                     }
                 }
-                if (newNodes != null && info.level <= GraalOptions.MaximumInlineLevel) {
+                if (newNodes != null && info.level < GraalOptions.MaximumInlineLevel) {
                     scanInvokes(newNodes, info.level + 1, graph);
                 }
             }
@@ -132,8 +132,9 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private void scanInvoke(Invoke invoke, int level) {
-        InlineInfo info = InliningUtil.getInlineInfo(invoke, level, runtime, assumptions, this);
+        InlineInfo info = InliningUtil.getInlineInfo(invoke, level >= 0 ? level : computeInliningLevel(invoke), runtime, assumptions, this);
         if (info != null) {
+            assert level == -1 || computeInliningLevel(invoke) == level : "outer FramesStates must match inlining level";
             metricInliningConsidered.increment();
             inlineCandidates.add(info);
         }
@@ -185,6 +186,16 @@ public class InliningPhase extends Phase implements InliningCallback {
     @Override
     public void recordConcreteMethodAssumption(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl) {
         assumptions.recordConcreteMethod(method, context, impl);
+    }
+
+    private static int computeInliningLevel(Invoke invoke) {
+        int count = 0;
+        FrameState curState = invoke.stateAfter();
+        while (curState != null) {
+            count++;
+            curState = curState.outerFrameState();
+        }
+        return count - 1;
     }
 
     private InliningPolicy createInliningPolicy() {

@@ -49,6 +49,7 @@ public final class GraalOptions {
     public static int     MaximumTrivialSize                 = 6;
     public static int     MaximumInlineLevel                 = 30;
     public static int     MaximumDesiredSize                 = 6000;
+    public static int     MaximumRecursiveInlining           = 1;
     // WeightBasedInliningPolicy (0)
     public static boolean ParseBeforeInlining                = ____;
     public static float   InliningSizePenaltyExp             = 20;

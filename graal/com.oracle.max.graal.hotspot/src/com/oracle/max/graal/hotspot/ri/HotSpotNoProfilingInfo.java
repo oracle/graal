@@ -36,7 +36,7 @@ public final class HotSpotNoProfilingInfo extends CompilerObject implements RiPr
      */
     private static final long serialVersionUID = 4357945025049704109L;
     // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in case of a deoptimization.
-    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoDataNoExceptionAccessor();
+    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoDataAccessor(false);
 
     public HotSpotNoProfilingInfo(Compiler compiler) {
         super(compiler);

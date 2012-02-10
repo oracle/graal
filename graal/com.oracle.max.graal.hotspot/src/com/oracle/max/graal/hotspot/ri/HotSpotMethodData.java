@@ -46,7 +46,7 @@ public final class HotSpotMethodData extends CompilerObject {
     // TODO (ch) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(RiExceptionSeen.FALSE);
-    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLE_ACCESSOR = new NoMethodData(RiExceptionSeen.UNKNOWN);
+    private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(RiExceptionSeen.NOT_SUPPORTED);
     private static final HotSpotVMConfig config;
     // sorted by tag
     private static final HotSpotMethodDataAccessor[] PROFILE_DATA_ACCESSORS = {
@@ -97,12 +97,12 @@ public final class HotSpotMethodData extends CompilerObject {
         return getData(position);
     }
 
-    public static HotSpotMethodDataAccessor getNoDataNoExceptionAccessor() {
-        return NO_DATA_NO_EXCEPTION_ACCESSOR;
-    }
-
-    public static HotSpotMethodDataAccessor getNoDataExceptionPossibleAccessor() {
-        return NO_DATA_EXCEPTION_POSSIBLE_ACCESSOR;
+    public static HotSpotMethodDataAccessor getNoDataAccessor(boolean exceptionPossiblyNotRecorded) {
+        if (exceptionPossiblyNotRecorded) {
+            return NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR;
+        } else {
+            return NO_DATA_NO_EXCEPTION_ACCESSOR;
+        }
     }
 
     private HotSpotMethodDataAccessor getData(int position) {

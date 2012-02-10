@@ -499,7 +499,7 @@ public class InliningUtil {
         MethodCallTargetNode callTarget = invoke.callTarget();
 
         if (callTarget.invokeKind() == InvokeKind.Special || callTarget.targetMethod().canBeStaticallyBound()) {
-            if (checkTargetConditions(callTarget.targetMethod())) {
+            if (checkTargetConditions(invoke, callTarget.targetMethod())) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, callTarget.targetMethod(), invoke);
                 return new ExactInlineInfo(invoke, weight, level, callTarget.targetMethod());
             }
@@ -509,7 +509,7 @@ public class InliningUtil {
             RiResolvedType exact = callTarget.receiver().exactType();
             assert exact.isSubtypeOf(callTarget.targetMethod().holder()) : exact + " subtype of " + callTarget.targetMethod().holder();
             RiResolvedMethod resolved = exact.resolveMethodImpl(callTarget.targetMethod());
-            if (checkTargetConditions(resolved)) {
+            if (checkTargetConditions(invoke, resolved)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
                 return new ExactInlineInfo(invoke, weight, level, resolved);
             }
@@ -529,7 +529,7 @@ public class InliningUtil {
         if (assumptions != null) {
             RiResolvedMethod concrete = holder.uniqueConcreteMethod(callTarget.targetMethod());
             if (concrete != null) {
-                if (checkTargetConditions(concrete)) {
+                if (checkTargetConditions(invoke, concrete)) {
                     double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                     return new AssumptionInlineInfo(invoke, weight, level, holder, concrete);
                 }
@@ -551,7 +551,7 @@ public class InliningUtil {
                     if (GraalOptions.InlineMonomorphicCalls) {
                         RiResolvedType type = types[0];
                         RiResolvedMethod concrete = type.resolveMethodImpl(callTarget.targetMethod());
-                        if (checkTargetConditions(concrete)) {
+                        if (checkTargetConditions(invoke, concrete)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
@@ -589,7 +589,7 @@ public class InliningUtil {
                         double totalWeight = 0;
                         boolean canInline = true;
                         for (RiResolvedMethod concrete: concreteMethods) {
-                            if (!checkTargetConditions(concrete)) {
+                            if (!checkTargetConditions(invoke, concrete)) {
                                 canInline = false;
                                 break;
                             }
@@ -645,9 +645,9 @@ public class InliningUtil {
         return true;
     }
 
-    private static boolean checkTargetConditions(RiMethod method) {
+    private static boolean checkTargetConditions(Invoke invoke, RiMethod method) {
         if (method == null) {
-            Debug.log("method not resolved");
+            Debug.log("not inlining because method is not resolved");
             return false;
         }
         if (!(method instanceof RiResolvedMethod)) {
@@ -671,7 +671,26 @@ public class InliningUtil {
             Debug.log("not inlining %s because it is marked non-inlinable", methodName(resolvedMethod));
             return false;
         }
+        if (computeRecursiveInliningLevel(invoke.stateAfter(), (RiResolvedMethod) method) > GraalOptions.MaximumRecursiveInlining) {
+            Debug.log("not inlining %s because it exceeds the maximum recursive inlining depth", methodName(resolvedMethod));
+            return false;
+        }
+
         return true;
+    }
+
+    private static int computeRecursiveInliningLevel(FrameState state, RiResolvedMethod method) {
+        assert state != null;
+
+        int count = 0;
+        FrameState curState = state;
+        while (curState != null) {
+            if (curState.method() == method) {
+                count++;
+            }
+            curState = curState.outerFrameState();
+        }
+        return count;
     }
 
     /**
