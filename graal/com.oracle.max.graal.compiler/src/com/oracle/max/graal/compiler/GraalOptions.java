@@ -95,6 +95,9 @@ public final class GraalOptions {
     public static boolean PrintLIR                           = ____;
     public static boolean PrintCFGToFile                     = ____;
 
+    // statistics independent from debug mode
+    public static boolean PrintCompilationStatistics         = ____;
+
     // Debug settings:
     public static boolean Debug                              = true;
     public static boolean SummarizeDebugValues               = ____;

@@ -50,6 +50,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
     private int compiledMethodCount;
+    private long totalCompilationTime;
     private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotTypePrimitive typeBoolean;
@@ -217,6 +218,16 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 }
             }
         }
+
+        if (GraalOptions.PrintCompilationStatistics) {
+            printCompilationStatistics();
+        }
+    }
+
+    private void printCompilationStatistics() {
+        TTY.println("Accumulated compilation statistics");
+        TTY.println("  Compiled methods         : %d", compiledMethodCount);
+        TTY.println("  Total compilation time   : %6.3f s", totalCompilationTime / Math.pow(10, 9));
     }
 
     private static void printSummary(List<DebugValueMap> topLevelMaps, List<DebugValue> debugValues) {
@@ -290,16 +301,16 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         final PhasePlan plan = getDefaultPhasePlan();
                         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                        long startTime = 0;
+                        long startTime = System.nanoTime();
                         int index = compiledMethodCount++;
                         final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
                         if (printCompilation) {
                             TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...", index, method.holder().name(), method.name(), method.signature().asString()));
-                            startTime = System.nanoTime();
                         }
 
                         CiTargetMethod result = null;
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+                        long nanoTime;
                         try {
                             result = Debug.scope("Compiling", method, new Callable<CiTargetMethod>() {
                                 @Override
@@ -309,9 +320,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                             });
                         } finally {
                             filter.remove();
+                            nanoTime = System.nanoTime() - startTime;
+                            totalCompilationTime += nanoTime;
                             if (printCompilation) {
-                                long time = (System.nanoTime() - startTime) / 100000;
-                                TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB", index, "", "", "", time / 10, time % 10, 0, (result != null ? result.targetCodeSize()
+                                TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB", index, "", "", "", nanoTime / 1000000, nanoTime % 1000000, 0, (result != null ? result.targetCodeSize()
                                                 : -1)));
                             }
                         }
