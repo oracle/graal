@@ -103,9 +103,6 @@ public abstract class LIRGeneratorTool {
     // * The actual compare-and-swap
     public abstract void visitCompareAndSwap(CompareAndSwapNode i);
 
-    // The class NormalizeCompareNode should be lowered away in the front end, since the code generated is long and uses branches anyway.
-    public abstract void visitNormalizeCompare(NormalizeCompareNode i);
-
     // Functionality that is currently implemented in XIR.
     // These methods will go away eventually when lowering is done via snippets in the front end.
     public abstract void visitArrayLength(ArrayLengthNode i);

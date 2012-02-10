@@ -29,6 +29,7 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.util.*;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
@@ -117,7 +118,15 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
             assert kind() == CiKind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeFixed(this);
         } else {
-            ((StructuredGraph) graph()).replaceFixed(this, node);
+            if (node instanceof FixedWithNextNode) {
+                ((StructuredGraph) graph()).replaceFixedWithFixed(this, (FixedWithNextNode) node);
+            } else if (node instanceof DeoptimizeNode) {
+                this.replaceAtPredecessors(node);
+                this.replaceAtUsages(null);
+                GraphUtil.killCFG(this);
+            } else {
+                ((StructuredGraph) graph()).replaceFixed(this, node);
+            }
         }
         call.safeDelete();
         if (stateAfter.usages().isEmpty()) {

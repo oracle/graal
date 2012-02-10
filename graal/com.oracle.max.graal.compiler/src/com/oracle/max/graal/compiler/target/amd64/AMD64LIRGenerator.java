@@ -26,7 +26,6 @@ package com.oracle.max.graal.compiler.target.amd64;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.max.graal.lir.amd64.AMD64Compare.*;
-import static com.oracle.max.graal.lir.amd64.AMD64CompareToIntOpcode.*;
 
 import java.util.*;
 
@@ -598,28 +597,5 @@ public class AMD64LIRGenerator extends LIRGenerator {
         if (kind == CiKind.Object) {
             postGCWriteBarrier(address.base, newValue);
         }
-    }
-
-    // TODO The class NormalizeCompareNode should be lowered away in the front end, since the code generated is long and uses branches anyway.
-    @Override
-    public void visitNormalizeCompare(NormalizeCompareNode x) {
-        emitCompare(operand(x.x()), operand(x.y()));
-        Variable result = newVariable(x.kind());
-        switch (x.x().kind()){
-            case Float:
-            case Double:
-                if (x.isUnorderedLess) {
-                    append(CMP2INT_UL.create(result));
-                } else {
-                    append(CMP2INT_UG.create(result));
-                }
-                break;
-            case Long:
-                append(CMP2INT.create(result));
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-        setResult(x, result);
     }
 }

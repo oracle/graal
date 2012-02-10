@@ -1446,7 +1446,18 @@ public final class GraphBuilderPhase extends Phase {
             if (config.eagerResolving()) {
                 catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
             }
-            ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, catchType, (catchType instanceof RiResolvedType) && ((RiResolvedType) catchType).isInitialized());
+            boolean initialized = (catchType instanceof RiResolvedType) && ((RiResolvedType) catchType).isInitialized();
+            if (initialized && config.getSkippedExceptionTypes() != null) {
+                RiResolvedType resolvedCatchType = (RiResolvedType) catchType;
+                for (RiResolvedType skippedType : config.getSkippedExceptionTypes()) {
+                    initialized &= !resolvedCatchType.isSubtypeOf(skippedType);
+                    if (!initialized) {
+                        break;
+                    }
+                }
+            }
+
+            ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, catchType, initialized);
             if (typeInstruction != null) {
                 Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
                 FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
