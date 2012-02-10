@@ -91,7 +91,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     public HotSpotMethodDataAccessor getExtraData(int position) {
-        if (position >= extraDataSize) {
+        if (position >= normalDataSize + extraDataSize) {
             return null;
         }
         return getData(position);

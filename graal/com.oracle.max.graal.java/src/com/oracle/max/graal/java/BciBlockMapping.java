@@ -363,12 +363,6 @@ public final class BciBlockMapping {
 
     private static boolean canTrap(int opcode, int bci, RiProfilingInfo profilingInfo) {
         switch (opcode) {
-            case INVOKESTATIC:
-            case INVOKESPECIAL:
-            case INVOKEVIRTUAL:
-            case INVOKEINTERFACE: {
-                return true;
-            }
             case IASTORE:
             case LASTORE:
             case FASTORE:
