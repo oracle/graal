@@ -567,11 +567,15 @@ public class CiUtil {
      * @return
      */
     public static StringBuilder appendLocation(StringBuilder sb, RiResolvedMethod method, int bci) {
-        StackTraceElement ste = method.toStackTraceElement(bci);
-        if (ste.getFileName() != null && ste.getLineNumber() > 0) {
-            sb.append(ste);
+        if (method != null) {
+            StackTraceElement ste = method.toStackTraceElement(bci);
+            if (ste.getFileName() != null && ste.getLineNumber() > 0) {
+                sb.append(ste);
+            } else {
+                sb.append(CiUtil.format("%H.%n(%p)", method));
+            }
         } else {
-            sb.append(CiUtil.format("%H.%n(%p)", method));
+            sb.append("Null method");
         }
         return sb.append(" [bci: ").append(bci).append(']');
     }

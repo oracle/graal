@@ -590,7 +590,11 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
         properties.put("bci", bci);
-        properties.put("method", CiUtil.format("%H.%n(%p):%r", method));
+        if (method != null) {
+            properties.put("method", CiUtil.format("%H.%n(%p):%r", method));
+        } else {
+            properties.put("method", "None");
+        }
         StringBuilder str = new StringBuilder();
         for (int i = 0; i < localsSize(); i++) {
             str.append(i == 0 ? "" : ", ").append(localAt(i) == null ? "_" : localAt(i).toString(Verbosity.Id));

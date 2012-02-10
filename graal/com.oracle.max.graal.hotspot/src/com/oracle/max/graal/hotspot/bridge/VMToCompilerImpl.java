@@ -108,15 +108,26 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     public void startCompiler() throws Throwable {
         // Make sure TTY is initialized here such that the correct System.out is used for TTY.
         TTY.initialize();
+        if (GraalOptions.Debug) {
+            Debug.enable();
+            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
+            Debug.setConfig(hotspotDebugConfig);
+        }
 
         // Install intrinsics.
-        HotSpotRuntime runtime = (HotSpotRuntime) compiler.getCompiler().runtime;
+        final HotSpotRuntime runtime = (HotSpotRuntime) compiler.getCompiler().runtime;
         if (GraalOptions.Intrinsify) {
-            this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-            GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
-            Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
-            Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
-            Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
+            Debug.scope("InstallSnippets", new DebugDumpScope("InstallSnippets"), new Runnable() {
+                @Override
+                public void run() {
+                    VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
+                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
+                }
+            });
+
         }
 
         // Create compilation queue.
