@@ -146,17 +146,6 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
     private ValueNode optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode) {
         if (constant.kind == CiKind.Int && constant.asInt() == 0) {
             Condition cond = condition();
-            if (normalizeNode.x().kind().isFloatOrDouble()) {
-                switch (cond) {
-                    case LT: cond = Condition.BT; break;
-                    case LE: cond = Condition.BE; break;
-                    case GE: cond = Condition.AE; break;
-                    case GT: cond = Condition.AT; break;
-                }
-            }
-            if (normalizeNode == y()) {
-                cond = cond.mirror();
-            }
             boolean isLess = cond == Condition.LE || cond == Condition.LT || cond == Condition.BE || cond == Condition.BT;
             boolean canonUnorderedIsTrue = cond != Condition.EQ && (cond == Condition.NE || !(isLess ^ normalizeNode.isUnorderedLess));
             CompareNode result = graph().unique(new CompareNode(normalizeNode.x(), cond, canonUnorderedIsTrue, normalizeNode.y()));

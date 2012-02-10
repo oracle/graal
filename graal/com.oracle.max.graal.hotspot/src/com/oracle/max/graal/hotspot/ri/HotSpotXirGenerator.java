@@ -762,8 +762,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             XirOperand result = asm.restart(CiKind.Int);
             XirParameter object = asm.createInputParameter("object", CiKind.Object);
             final XirOperand hub = is(EXACT_HINTS, flags) ? null : asm.createConstantInputParameter("hub", CiKind.Object);
-            XirOperand trueValue = asm.createConstantInputParameter("trueValue", CiKind.Int);
-            XirOperand falseValue = asm.createConstantInputParameter("falseValue", CiKind.Int);
+            XirOperand trueValue = asm.createInputParameter("trueValue", CiKind.Int);
+            XirOperand falseValue = asm.createInputParameter("falseValue", CiKind.Int);
 
             XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
 

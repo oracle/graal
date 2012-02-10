@@ -354,10 +354,10 @@ public class AMD64ControlFlow {
         switch (cond) {
             case EQ: return ConditionFlag.equal;
             case NE: return ConditionFlag.notEqual;
-            case BT: return ConditionFlag.below;
-            case BE: return ConditionFlag.belowEqual;
-            case AE: return ConditionFlag.aboveEqual;
-            case AT: return ConditionFlag.above;
+            case LT: return ConditionFlag.below;
+            case LE: return ConditionFlag.belowEqual;
+            case GE: return ConditionFlag.aboveEqual;
+            case GT: return ConditionFlag.above;
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }
