@@ -94,7 +94,7 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter {
                 schedule = new SchedulePhase();
                 schedule.apply((StructuredGraph) graph);
             } catch (Throwable t) {
-                // nothing to do here...
+                schedule = null;
             }
         }
 

@@ -592,6 +592,8 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         properties.put("bci", bci);
         if (method != null) {
             properties.put("method", CiUtil.format("%H.%n(%p):%r", method));
+        } else {
+            properties.put("method", "None");
         }
         StringBuilder str = new StringBuilder();
         for (int i = 0; i < localsSize(); i++) {

@@ -23,6 +23,7 @@
 package com.oracle.max.graal.snippets;
 
 import java.lang.reflect.*;
+import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -86,47 +87,53 @@ public class Snippets {
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(RiResolvedMethod snippetRiMethod, GraalRuntime runtime, CiTarget target, BoxingMethodPool pool, PhasePlan plan) {
+    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final BoxingMethodPool pool, final PhasePlan plan) {
+        return Debug.scope("BuildSnippetGraph", snippetRiMethod, new Callable<StructuredGraph>() {
 
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-        GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config);
-        StructuredGraph graph = new StructuredGraph(snippetRiMethod);
-        graphBuilder.apply(graph);
+            @Override
+            public StructuredGraph call() throws Exception {
+                GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
+                GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config);
+                StructuredGraph graph = new StructuredGraph(snippetRiMethod);
+                graphBuilder.apply(graph);
 
-        Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
+                Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
 
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+                new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
 
-        for (Invoke invoke : graph.getInvokes()) {
-            MethodCallTargetNode callTarget = invoke.callTarget();
-            RiResolvedMethod targetMethod = callTarget.targetMethod();
-            RiResolvedType holder = targetMethod.holder();
-            if (holder.isSubtypeOf(runtime.getType(SnippetsInterface.class))) {
-                StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
-                if (targetGraph == null) {
-                    targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool, plan);
+                for (Invoke invoke : graph.getInvokes()) {
+                    MethodCallTargetNode callTarget = invoke.callTarget();
+                    RiResolvedMethod targetMethod = callTarget.targetMethod();
+                    RiResolvedType holder = targetMethod.holder();
+                    if (holder.isSubtypeOf(runtime.getType(SnippetsInterface.class))) {
+                        StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
+                        if (targetGraph == null) {
+                            targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool, plan);
+                        }
+                        InliningUtil.inline(invoke, targetGraph, true);
+                        new CanonicalizerPhase(target, runtime, null).apply(graph);
+                    }
                 }
-                InliningUtil.inline(invoke, targetGraph, true);
+
+                new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
+
+                Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
+                new DeadCodeEliminationPhase().apply(graph);
                 new CanonicalizerPhase(target, runtime, null).apply(graph);
+
+                // TODO (gd) remove when we have safepoint polling elimination
+                for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
+                    end.setSafepointPolling(false);
+                }
+                new InsertStateAfterPlaceholderPhase().apply(graph);
+
+                Debug.dump(graph, "%s: Final", snippetRiMethod.name());
+
+                snippetRiMethod.compilerStorage().put(Graph.class, graph);
+
+                return graph;
             }
-        }
+        });
 
-        new SnippetIntrinsificationPhase(runtime, pool).apply(graph);
-
-        Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
-        new DeadCodeEliminationPhase().apply(graph);
-        new CanonicalizerPhase(target, runtime, null).apply(graph);
-
-        // TODO (gd) remove when we have safepoint polling elimination
-        for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
-            end.setSafepointPolling(false);
-        }
-        new InsertStateAfterPlaceholderPhase().apply(graph);
-
-        Debug.dump(graph, "%s: Final", snippetRiMethod.name());
-
-        snippetRiMethod.compilerStorage().put(Graph.class, graph);
-
-        return graph;
     }
 }

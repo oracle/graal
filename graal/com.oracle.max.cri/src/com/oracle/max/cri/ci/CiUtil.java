@@ -577,6 +577,8 @@ public class CiUtil {
             } else {
                 sb.append(CiUtil.format("%H.%n(%p)", method));
             }
+        } else {
+            sb.append("Null method");
         }
         return sb.append(" [bci: ").append(bci).append(']');
     }
