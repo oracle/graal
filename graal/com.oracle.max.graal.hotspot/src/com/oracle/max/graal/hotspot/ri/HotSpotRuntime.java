@@ -361,7 +361,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 LocalNode receiver = graph.unique(new LocalNode(CiKind.Object, 0));
                 SafeReadNode klassOop = safeRead(graph, CiKind.Object, receiver, config.klassOopOffset);
                 graph.start().setNext(klassOop);
-                // TODO(tw): Care about primitive classes!
+                // TODO(tw): Care about primitive classes! Crashes for primitive classes at the moment (klassOop == null)
                 ReadNode result = graph.add(new ReadNode(CiKind.Int, klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph)));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 klassOop.setNext(ret);

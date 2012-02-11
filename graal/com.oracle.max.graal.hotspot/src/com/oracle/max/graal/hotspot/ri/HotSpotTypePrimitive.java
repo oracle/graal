@@ -23,6 +23,7 @@
 package com.oracle.max.graal.hotspot.ri;
 
 import java.lang.annotation.*;
+import java.lang.reflect.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -49,7 +50,8 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
 
     @Override
     public int accessFlags() {
-        return kind.toJavaClass().getModifiers();
+        assert kind != null && kind.toJavaClass() != null;
+        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
     }
 
     @Override
