@@ -497,25 +497,29 @@ public class InliningUtil {
         }
         RiResolvedMethod parent = invoke.stateAfter().method();
         MethodCallTargetNode callTarget = invoke.callTarget();
+        RiResolvedMethod targetMethod = callTarget.targetMethod();
 
-        if (callTarget.invokeKind() == InvokeKind.Special || callTarget.targetMethod().canBeStaticallyBound()) {
-            if (checkTargetConditions(invoke, callTarget.targetMethod())) {
-                double weight = callback == null ? 0 : callback.inliningWeight(parent, callTarget.targetMethod(), invoke);
-                return new ExactInlineInfo(invoke, weight, level, callTarget.targetMethod());
+        if (targetMethod == null) {
+            return null;
+        }
+        if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
+            if (checkTargetConditions(invoke, targetMethod)) {
+                double weight = callback == null ? 0 : callback.inliningWeight(parent, targetMethod, invoke);
+                return new ExactInlineInfo(invoke, weight, level, targetMethod);
             }
             return null;
         }
         if (callTarget.receiver().exactType() != null) {
             RiResolvedType exact = callTarget.receiver().exactType();
-            assert exact.isSubtypeOf(callTarget.targetMethod().holder()) : exact + " subtype of " + callTarget.targetMethod().holder();
-            RiResolvedMethod resolved = exact.resolveMethodImpl(callTarget.targetMethod());
+            assert exact.isSubtypeOf(targetMethod.holder()) : exact + " subtype of " + targetMethod.holder();
+            RiResolvedMethod resolved = exact.resolveMethodImpl(targetMethod);
             if (checkTargetConditions(invoke, resolved)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
                 return new ExactInlineInfo(invoke, weight, level, resolved);
             }
             return null;
         }
-        RiResolvedType holder = callTarget.targetMethod().holder();
+        RiResolvedType holder = targetMethod.holder();
 
         if (callTarget.receiver().declaredType() != null) {
             RiResolvedType declared = callTarget.receiver().declaredType();
@@ -527,7 +531,7 @@ public class InliningUtil {
         }
         // TODO (tw) fix this
         if (assumptions != null) {
-            RiResolvedMethod concrete = holder.uniqueConcreteMethod(callTarget.targetMethod());
+            RiResolvedMethod concrete = holder.uniqueConcreteMethod(targetMethod);
             if (concrete != null) {
                 if (checkTargetConditions(invoke, concrete)) {
                     double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
@@ -550,16 +554,16 @@ public class InliningUtil {
                 if (types.length == 1 && notRecordedTypeProbability == 0) {
                     if (GraalOptions.InlineMonomorphicCalls) {
                         RiResolvedType type = types[0];
-                        RiResolvedMethod concrete = type.resolveMethodImpl(callTarget.targetMethod());
+                        RiResolvedMethod concrete = type.resolveMethodImpl(targetMethod);
                         if (checkTargetConditions(invoke, concrete)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
 
-                        Debug.log("not inlining %s because method can't be inlined", methodName(callTarget.targetMethod(), invoke));
+                        Debug.log("not inlining %s because method can't be inlined", methodName(targetMethod, invoke));
                         return null;
                     } else {
-                        Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
+                        Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(targetMethod, invoke));
                         return null;
                     }
                 } else {
@@ -576,7 +580,7 @@ public class InliningUtil {
                         ArrayList<RiResolvedMethod> concreteMethods = new ArrayList<>();
                         int[] typesToConcretes = new int[types.length];
                         for (int i = 0; i < types.length; i++) {
-                            RiResolvedMethod concrete = types[i].resolveMethodImpl(callTarget.targetMethod());
+                            RiResolvedMethod concrete = types[i].resolveMethodImpl(targetMethod);
 
                             int index = concreteMethods.indexOf(concrete);
                             if (index < 0) {
@@ -600,20 +604,20 @@ public class InliningUtil {
                             convertTypeToBranchProbabilities(probabilities, notRecordedTypeProbability);
                             return new MultiTypeGuardInlineInfo(invoke, totalWeight, level, concreteMethods, types, typesToConcretes, probabilities, notRecordedTypeProbability);
                         } else {
-                            Debug.log("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(callTarget.targetMethod(), invoke));
+                            Debug.log("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(targetMethod, invoke));
                             return null;
                         }
                     } else {
-                        Debug.log("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(callTarget.targetMethod(), invoke));
+                        Debug.log("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(targetMethod, invoke));
                         return null;
                     }
                 }
             }
 
-            Debug.log("not inlining %s because no types/probabilities were recorded", methodName(callTarget.targetMethod(), invoke));
+            Debug.log("not inlining %s because no types/probabilities were recorded", methodName(targetMethod, invoke));
             return null;
         } else {
-            Debug.log("not inlining %s because no type profile exists", methodName(callTarget.targetMethod(), invoke));
+            Debug.log("not inlining %s because no type profile exists", methodName(targetMethod, invoke));
             return null;
         }
     }
