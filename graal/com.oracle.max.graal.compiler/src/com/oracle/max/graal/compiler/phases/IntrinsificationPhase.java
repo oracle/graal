@@ -49,7 +49,9 @@ public class IntrinsificationPhase extends Phase {
 
     public static void tryIntrinsify(Invoke invoke, GraalRuntime runtime) {
         RiResolvedMethod target = invoke.callTarget().targetMethod();
-        tryIntrinsify(invoke, target, runtime);
+        if (target != null) {
+            tryIntrinsify(invoke, target, runtime);
+        }
     }
 
     public static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
