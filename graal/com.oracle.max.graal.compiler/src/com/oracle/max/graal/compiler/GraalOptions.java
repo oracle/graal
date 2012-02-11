@@ -70,6 +70,7 @@ public final class GraalOptions {
 
     // absolute probability analysis
     public static boolean ProbabilityAnalysis                = true;
+    public static boolean PropagateLoopFrequency             = true;
 
     // profiling information
     public static int     MatureExecutionsBranch             = 50;

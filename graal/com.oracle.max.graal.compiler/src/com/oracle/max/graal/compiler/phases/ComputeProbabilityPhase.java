@@ -24,6 +24,7 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
@@ -52,7 +53,9 @@ public class ComputeProbabilityPhase extends Phase {
         Debug.dump(graph, "After PropagateProbability");
         computeLoopFactors();
         Debug.dump(graph, "After computeLoopFactors");
-        new PropagateLoopFrequency(graph.start()).apply();
+        if (GraalOptions.PropagateLoopFrequency) {
+            new PropagateLoopFrequency(graph.start()).apply();
+        }
     }
 
     private void computeLoopFactors() {

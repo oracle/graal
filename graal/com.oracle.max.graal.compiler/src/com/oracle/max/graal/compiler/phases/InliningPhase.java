@@ -199,17 +199,15 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private InliningPolicy createInliningPolicy() {
-        if (GraalOptions.InliningPolicy == 0) {
-            return new WeightBasedInliningPolicy();
-        } else if (GraalOptions.InliningPolicy == 1) {
-            return new StaticSizeBasedInliningPolicy();
-        } else if (GraalOptions.InliningPolicy == 2) {
-            return new DynamicSizeBasedInliningPolicy();
-        } else if (GraalOptions.InliningPolicy == 3) {
-            return new GreedySizeBasedInliningPolicy();
-        } else {
-            GraalInternalError.shouldNotReachHere();
-            return null;
+        switch(GraalOptions.InliningPolicy) {
+            case 0: return new WeightBasedInliningPolicy();
+            case 1: return new C1StaticSizeBasedInliningPolicy();
+            case 2: return new MinimumCodeSizeBasedInliningPolicy();
+            case 3: return new DynamicSizeBasedInliningPolicy();
+            case 4: return new GreedySizeBasedInliningPolicy();
+            default:
+                GraalInternalError.shouldNotReachHere();
+                return null;
         }
     }
 
@@ -287,7 +285,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private class StaticSizeBasedInliningPolicy implements InliningPolicy {
+    private class C1StaticSizeBasedInliningPolicy implements InliningPolicy {
         @Override
         public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
             double codeSize = method.codeSize();
@@ -301,6 +299,29 @@ public class InliningPhase extends Phase implements InliningCallback {
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             double maxSize = Math.max(GraalOptions.MaximumTrivialSize, Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize);
             return info.weight <= maxSize;
+        }
+    }
+
+    private class MinimumCodeSizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
+            double codeSize = method.codeSize();
+            if (preferredInvoke) {
+                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
+            }
+            return codeSize;
+        }
+
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+            if (info.compiledCodeSize() <= GraalOptions.SmallCompiledCodeSize) {
+                double inlineWeight = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
+                double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize * inlineWeight;
+                maxSize = Math.max(GraalOptions.MaximumTrivialSize, maxSize);
+                return info.weight <= maxSize;
+            }
+            return false;
         }
     }
 
