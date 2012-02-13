@@ -120,7 +120,7 @@ public abstract class Node implements Cloneable, Formattable {
         nodeClass = NodeClass.get(getClass());
     }
 
-    int id() {
+    protected int id() {
         return id;
     }
 

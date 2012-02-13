@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
@@ -122,7 +123,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                 InliningUtil.inline(methodCallTarget.invoke(), snippetGraph, false);
             }
         }
-        if (hits) {
+        if (GraalOptions.OptCanonicalizer && hits) {
             new CanonicalizerPhase(null, runtime, null).apply(graph);
         }
     }

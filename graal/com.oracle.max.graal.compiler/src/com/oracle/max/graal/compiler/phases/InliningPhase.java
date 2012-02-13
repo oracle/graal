@@ -154,7 +154,9 @@ public class InliningPhase extends Phase implements InliningCallback {
             new DeadCodeEliminationPhase().apply(newGraph);
             new ComputeProbabilityPhase().apply(newGraph);
         }
-        new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+        }
         return newGraph;
     }
 
@@ -261,7 +263,9 @@ public class InliningPhase extends Phase implements InliningCallback {
                     if (plan != null) {
                         plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
                     }
-                    new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+                    if (GraalOptions.OptCanonicalizer) {
+                        new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+                    }
                     count = graphComplexity(newGraph);
                     parsedMethods.put(method, count);
                 } else {

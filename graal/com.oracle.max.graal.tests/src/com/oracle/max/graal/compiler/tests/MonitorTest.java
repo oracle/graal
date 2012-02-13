@@ -26,9 +26,10 @@ import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
-import junit.framework.AssertionFailedError;
+import junit.framework.*;
 
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.graph.*;

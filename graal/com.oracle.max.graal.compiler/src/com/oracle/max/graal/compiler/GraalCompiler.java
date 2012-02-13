@@ -163,7 +163,9 @@ public class GraalCompiler {
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
             new EscapeAnalysisPhase(target, runtime, assumptions, plan).apply(graph);
             new PhiStampPhase().apply(graph);
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
         }
 
         if (GraalOptions.OptGVN) {
