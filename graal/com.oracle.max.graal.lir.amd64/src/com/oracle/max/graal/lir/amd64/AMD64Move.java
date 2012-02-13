@@ -296,7 +296,7 @@ public class AMD64Move {
         if (input.equals(result)) {
             return;
         }
-        switch (result.kind) {
+        switch (input.kind) {
             case Jsr:
             case Int:    masm.movl(asRegister(result),    asRegister(input)); break;
             case Long:   masm.movq(asRegister(result),    asRegister(input)); break;
@@ -308,7 +308,7 @@ public class AMD64Move {
     }
 
     private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
-        switch (result.kind) {
+        switch (input.kind) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result),   asRegister(input)); break;
             case Long:   masm.movq(tasm.asAddress(result),   asRegister(input)); break;
@@ -320,7 +320,7 @@ public class AMD64Move {
     }
 
     private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue input) {
-        switch (result.kind) {
+        switch (input.kind) {
             case Jsr:
             case Int:    masm.movl(asRegister(result),    tasm.asAddress(input)); break;
             case Long:   masm.movq(asRegister(result),    tasm.asAddress(input)); break;
@@ -331,48 +331,51 @@ public class AMD64Move {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant c) {
-        switch (result.kind) {
+    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant input) {
+        // Note: we use the kind of the input operand (and not the kind of the result operand) because they don't match
+        // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
+        // for a write barrier where arithmetic operations are then performed on the pointer).
+        switch (input.kind.stackKind()) {
             case Jsr:
             case Int:
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                masm.movl(asRegister(result), tasm.asIntConst(c));
+                masm.movl(asRegister(result), tasm.asIntConst(input));
                 break;
             case Long:
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                masm.movq(asRegister(result), c.asLong());
+                masm.movq(asRegister(result), input.asLong());
                 break;
             case Float:
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
-                if (Float.floatToRawIntBits(c.asFloat()) == Float.floatToRawIntBits(0.0f)) {
+                if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
                     masm.xorps(asFloatReg(result), asFloatReg(result));
                 } else {
-                    masm.movflt(asFloatReg(result), tasm.asFloatConstRef(c));
+                    masm.movflt(asFloatReg(result), tasm.asFloatConstRef(input));
                 }
                 break;
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
-                if (Double.doubleToRawLongBits(c.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
+                if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
                     masm.xorpd(asDoubleReg(result), asDoubleReg(result));
                 } else {
-                    masm.movdbl(asDoubleReg(result), tasm.asDoubleConstRef(c));
+                    masm.movdbl(asDoubleReg(result), tasm.asDoubleConstRef(input));
                 }
                 break;
             case Object:
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                if (c.isNull()) {
+                if (input.isNull()) {
                     masm.movq(asRegister(result), 0x0L);
                 } else if (tasm.target.inlineObjects) {
-                    tasm.recordDataReferenceInCode(c, 0);
+                    tasm.recordDataReferenceInCode(input, 0);
                     masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                 } else {
-                    masm.movq(asRegister(result), tasm.recordDataReferenceInCode(c, 0));
+                    masm.movq(asRegister(result), tasm.recordDataReferenceInCode(input, 0));
                 }
                 break;
             default:
@@ -380,15 +383,15 @@ public class AMD64Move {
         }
     }
 
-    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant c) {
-        switch (result.kind) {
+    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant input) {
+        switch (input.kind.stackKind()) {
             case Jsr:
-            case Int:    masm.movl(tasm.asAddress(result), c.asInt()); break;
-            case Long:   masm.movlong(tasm.asAddress(result), c.asLong()); break;
-            case Float:  masm.movl(tasm.asAddress(result), floatToRawIntBits(c.asFloat())); break;
-            case Double: masm.movlong(tasm.asAddress(result), doubleToRawLongBits(c.asDouble())); break;
+            case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
+            case Long:   masm.movlong(tasm.asAddress(result), input.asLong()); break;
+            case Float:  masm.movl(tasm.asAddress(result), floatToRawIntBits(input.asFloat())); break;
+            case Double: masm.movlong(tasm.asAddress(result), doubleToRawLongBits(input.asDouble())); break;
             case Object:
-                if (c.isNull()) {
+                if (input.isNull()) {
                     masm.movlong(tasm.asAddress(result), 0L);
                 } else {
                     throw GraalInternalError.shouldNotReachHere("Non-null object constants must be in register");
