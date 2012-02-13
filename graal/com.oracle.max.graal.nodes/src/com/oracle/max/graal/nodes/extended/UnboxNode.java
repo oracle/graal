@@ -34,10 +34,12 @@ import com.oracle.max.graal.nodes.type.*;
 public final class UnboxNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;
+    @Data private CiKind destinationKind;
 
     public UnboxNode(CiKind kind, ValueNode source) {
         super(StampFactory.forKind(kind));
         this.source = source;
+        this.destinationKind = kind;
         assert kind != CiKind.Object : "can only unbox to primitive";
         assert source.kind() == CiKind.Object : "can only unbox objects";
     }
@@ -47,7 +49,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
     }
 
     public CiKind destinationKind() {
-        return this.kind();
+        return destinationKind;
     }
 
     public void expand(BoxingMethodPool pool) {
@@ -63,7 +65,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
             CiConstant constant = source.asConstant();
             Object o = constant.asObject();
             if (o != null) {
-                switch (kind()) {
+                switch (destinationKind) {
                     case Boolean:
                         return ConstantNode.forBoolean((Boolean) o, graph());
                     case Byte:
@@ -81,7 +83,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
                     case Double:
                         return ConstantNode.forDouble((Long) o, graph());
                     default:
-                        assert false;
+                        ValueUtil.shouldNotReachHere();
                 }
             }
         }

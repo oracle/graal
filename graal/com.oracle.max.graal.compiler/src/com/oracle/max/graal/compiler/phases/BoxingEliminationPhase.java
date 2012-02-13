@@ -57,7 +57,7 @@ public class BoxingEliminationPhase extends Phase {
     private void tryEliminate(StructuredGraph graph, UnboxNode unboxNode, Map<PhiNode, PhiNode> phiReplacements) {
         ValueNode unboxedValue = unboxedValue(unboxNode.source(), unboxNode.destinationKind(), phiReplacements);
         if (unboxedValue != null) {
-            assert unboxedValue.kind() == unboxNode.destinationKind();
+            assert unboxedValue.kind() == unboxNode.kind();
             unboxNode.replaceAtUsages(unboxedValue);
             graph.removeFixed(unboxNode);
         }

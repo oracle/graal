@@ -88,7 +88,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                     try {
                         info.inline(graph, runtime, this);
                         Debug.log("inlining %f: %s", info.weight, info);
-                        Debug.dump(graph, "after inlining %s", info);
+                        Debug.dump(graph, "after %s", info);
                         // get the new nodes here, the canonicalizer phase will reset the mark
                         newNodes = graph.getNewNodes();
                         if (GraalOptions.OptCanonicalizer) {
