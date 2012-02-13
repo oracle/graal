@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
@@ -80,6 +81,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             } catch (FileNotFoundException e) {
                 throw new InternalError("Could not open " + file.getAbsolutePath());
             }
+            TTY.println("CFGPrinter: Output to file %s", file);
         }
 
         RiRuntime runtime = cfgPrinter.runtime;
@@ -92,6 +94,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.lir = null;
             cfgPrinter.lirGenerator = null;
             schedule = null;
+            TTY.println("CFGPrinter: Dumping method %s", method);
 
         } else if (object instanceof BciBlockMapping) {
             BciBlockMapping blockMap = (BciBlockMapping) object;
