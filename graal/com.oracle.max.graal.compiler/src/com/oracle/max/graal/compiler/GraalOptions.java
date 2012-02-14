@@ -46,10 +46,12 @@ public final class GraalOptions {
     public static boolean InlinePolymorphicCalls             = true;
     public static boolean InlineMegamorphicCalls             = true;
     public static int     InliningPolicy                     = 0;
+    public static int     WeightComputationPolicy            = 0;
     public static int     MaximumTrivialSize                 = 6;
     public static int     MaximumInlineLevel                 = 30;
     public static int     MaximumDesiredSize                 = 6000;
     public static int     MaximumRecursiveInlining           = 1;
+    public static int     SmallCompiledCodeSize              = 1500;
     // WeightBasedInliningPolicy (0)
     public static boolean ParseBeforeInlining                = ____;
     public static float   InliningSizePenaltyExp             = 20;
@@ -62,7 +64,6 @@ public final class GraalOptions {
     public static float   BoostInliningForEscapeAnalysis     = 2f;
     public static int     MaximumGreedyInlineSize            = 250;
     public static float   ProbabilityCapForInlining          = 1f;
-    public static int     SmallCompiledCodeSize              = 1500;
 
     // escape analysis settings
     public static boolean EscapeAnalysis                     = true;

@@ -53,6 +53,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private CiAssumptions assumptions;
 
     private final PhasePlan plan;
+    private final WeightComputationPolicy weightComputationPolicy;
     private final InliningPolicy inliningPolicy;
 
     // Metrics
@@ -65,6 +66,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         this.hints = hints;
         this.assumptions = assumptions;
         this.plan = plan;
+        this.weightComputationPolicy = createWeightComputationPolicy();
         this.inliningPolicy = createInliningPolicy();
     }
 
@@ -163,7 +165,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     @Override
     public double inliningWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke) {
         boolean preferred = hints != null && hints.contains(invoke);
-        return inliningPolicy.computeWeight(caller, method, invoke, preferred);
+        return weightComputationPolicy.computeWeight(caller, method, invoke, preferred);
     }
 
     public static int graphComplexity(StructuredGraph graph) {
@@ -200,7 +202,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         return count - 1;
     }
 
-    private InliningPolicy createInliningPolicy() {
+    private static InliningPolicy createInliningPolicy() {
         switch(GraalOptions.InliningPolicy) {
             case 0: return new WeightBasedInliningPolicy();
             case 1: return new C1StaticSizeBasedInliningPolicy();
@@ -213,12 +215,96 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
+    private WeightComputationPolicy createWeightComputationPolicy() {
+        switch(GraalOptions.WeightComputationPolicy) {
+            case 0: return new ExecutionCountBasedWeightComputationPolicy();
+            case 1: return new BytecodeSizeBasedWeightComputationPolicy();
+            case 2: return new ComplexityBasedWeightComputationPolicy();
+            default:
+                GraalInternalError.shouldNotReachHere();
+                return null;
+        }
+    }
+
     private interface InliningPolicy {
-        double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke);
         boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info);
     }
 
-    private class WeightBasedInliningPolicy implements InliningPolicy {
+    private static class WeightBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                return false;
+            }
+
+            double penalty = Math.pow(GraalOptions.InliningSizePenaltyExp, callerGraph.getNodeCount() / (double) GraalOptions.MaximumDesiredSize) / GraalOptions.InliningSizePenaltyExp;
+            if (info.weight > GraalOptions.MaximumInlineWeight / (1 + penalty * GraalOptions.InliningSizePenalty)) {
+                Debug.log("not inlining (cut off by weight): %e", info.weight);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private static class C1StaticSizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            double maxSize = Math.max(GraalOptions.MaximumTrivialSize, Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize);
+            return info.weight <= maxSize;
+        }
+    }
+
+    private static class MinimumCodeSizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                return false;
+            }
+
+            double inlineWeight = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
+            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize * inlineWeight;
+            maxSize = Math.max(GraalOptions.MaximumTrivialSize, maxSize);
+            return info.weight <= maxSize;
+        }
+    }
+
+    private static class DynamicSizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                return false;
+            }
+
+            double inlineBoost = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability()) + Math.log(Math.max(1, info.invoke.probability() - GraalOptions.ProbabilityCapForInlining + 1));
+            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize;
+            maxSize = maxSize + maxSize * inlineBoost;
+            maxSize = Math.min(GraalOptions.MaximumGreedyInlineSize, Math.max(GraalOptions.MaximumTrivialSize, maxSize));
+            return info.weight <= maxSize;
+        }
+    }
+
+    private static class GreedySizeBasedInliningPolicy implements InliningPolicy {
+        @Override
+        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
+            assert GraalOptions.ProbabilityAnalysis;
+            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                return false;
+            }
+
+            double inlineRatio = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
+            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumGreedyInlineSize * inlineRatio;
+            maxSize = Math.max(maxSize, GraalOptions.MaximumInlineSize);
+            return info.weight <= maxSize;
+        }
+    }
+
+    private interface WeightComputationPolicy {
+        double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke);
+    }
+
+    private class ExecutionCountBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
             double ratio;
@@ -277,23 +363,9 @@ public class InliningPhase extends Phase implements InliningCallback {
 
             return count / normalSize;
         }
-
-        @Override
-        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
-            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
-                return false;
-            }
-
-            double penalty = Math.pow(GraalOptions.InliningSizePenaltyExp, callerGraph.getNodeCount() / (double) GraalOptions.MaximumDesiredSize) / GraalOptions.InliningSizePenaltyExp;
-            if (info.weight > GraalOptions.MaximumInlineWeight / (1 + penalty * GraalOptions.InliningSizePenalty)) {
-                Debug.log("not inlining (cut off by weight): %e", info.weight);
-                return false;
-            }
-            return true;
-        }
     }
 
-    private class C1StaticSizeBasedInliningPolicy implements InliningPolicy {
+    private static class BytecodeSizeBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
             double codeSize = method.codeSize();
@@ -302,84 +374,16 @@ public class InliningPhase extends Phase implements InliningCallback {
             }
             return codeSize;
         }
-
-        @Override
-        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
-            double maxSize = Math.max(GraalOptions.MaximumTrivialSize, Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize);
-            return info.weight <= maxSize;
-        }
     }
 
-    private class MinimumCodeSizeBasedInliningPolicy implements InliningPolicy {
+    private static class ComplexityBasedWeightComputationPolicy implements WeightComputationPolicy {
         @Override
         public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
-            double codeSize = method.codeSize();
+            double complexity = method.compilationComplexity();
             if (preferredInvoke) {
-                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
+                complexity = complexity / GraalOptions.BoostInliningForEscapeAnalysis;
             }
-            return codeSize;
-        }
-
-        @Override
-        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
-            assert GraalOptions.ProbabilityAnalysis;
-            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
-                return false;
-            }
-
-            double inlineWeight = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
-            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize * inlineWeight;
-            maxSize = Math.max(GraalOptions.MaximumTrivialSize, maxSize);
-            return info.weight <= maxSize;
-        }
-    }
-
-    private class DynamicSizeBasedInliningPolicy implements InliningPolicy {
-        @Override
-        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
-            double codeSize = method.codeSize();
-            if (preferredInvoke) {
-                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
-            }
-            return codeSize;
-        }
-
-        @Override
-        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
-            assert GraalOptions.ProbabilityAnalysis;
-            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
-                return false;
-            }
-
-            double inlineBoost = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability()) + Math.log(Math.max(1, info.invoke.probability() - GraalOptions.ProbabilityCapForInlining + 1));
-            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize;
-            maxSize = maxSize + maxSize * inlineBoost;
-            maxSize = Math.min(GraalOptions.MaximumGreedyInlineSize, Math.max(GraalOptions.MaximumTrivialSize, maxSize));
-            return info.weight <= maxSize;
-        }
-    }
-
-    private class GreedySizeBasedInliningPolicy implements InliningPolicy {
-        @Override
-        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
-            double codeSize = method.codeSize();
-            if (preferredInvoke) {
-                codeSize = codeSize / GraalOptions.BoostInliningForEscapeAnalysis;
-            }
-            return codeSize;
-        }
-
-        @Override
-        public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
-            assert GraalOptions.ProbabilityAnalysis;
-            if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
-                return false;
-            }
-
-            double inlineRatio = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
-            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumGreedyInlineSize * inlineRatio;
-            maxSize = Math.max(maxSize, GraalOptions.MaximumInlineSize);
-            return info.weight <= maxSize;
+            return complexity;
         }
     }
 }

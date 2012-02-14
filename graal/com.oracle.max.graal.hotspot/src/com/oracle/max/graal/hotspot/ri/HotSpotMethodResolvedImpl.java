@@ -30,6 +30,7 @@ import java.util.concurrent.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
+import com.oracle.max.graal.java.*;
 
 /**
  * Implementation of RiMethod for resolved HotSpot methods.
@@ -59,6 +60,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     private byte[] code;
     private boolean canBeInlined;
     private CiGenericCallback callback;
+    private int compilationComplexity;
 
     private HotSpotMethodResolvedImpl() {
         super(null);
@@ -198,6 +200,20 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     @Override
+    public int compilationComplexity() {
+        if (compilationComplexity < 0) {
+            BytecodeStream s = new BytecodeStream(code());
+            int result = 0;
+            int currentBC;
+            while ((currentBC = s.currentBC()) != Bytecodes.END) {
+                result += Bytecodes.compilationComplexity(currentBC);
+            }
+            compilationComplexity = result;
+        }
+        return compilationComplexity;
+    }
+
+    @Override
     public RiProfilingInfo profilingInfo() {
         if (methodData == null) {
             methodData = compiler.getVMEntries().RiMethod_methodData(this);
@@ -265,8 +281,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             }
         }
     }
-
-
 
     @Override
     public Annotation[][] getParameterAnnotations() {

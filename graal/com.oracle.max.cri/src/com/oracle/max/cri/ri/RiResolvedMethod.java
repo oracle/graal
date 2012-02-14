@@ -55,6 +55,12 @@ public interface RiResolvedMethod extends RiMethod {
     int compiledCodeSize();
 
     /**
+     * Gets an estimate how complex it is to compile this method.
+     * @return A value >= 0, where higher means more complex.
+     */
+    int compilationComplexity();
+
+    /**
      * Gets the symbol used to link this method if it is native, otherwise {@code null}.
      */
     String jniSymbol();
