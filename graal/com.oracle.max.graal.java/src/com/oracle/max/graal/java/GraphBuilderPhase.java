@@ -1446,7 +1446,7 @@ public final class GraphBuilderPhase extends Phase {
             if (config.eagerResolving()) {
                 catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
             }
-            boolean initialized = (catchType instanceof RiResolvedType) && ((RiResolvedType) catchType).isInitialized();
+            boolean initialized = (catchType instanceof RiResolvedType);
             if (initialized && config.getSkippedExceptionTypes() != null) {
                 RiResolvedType resolvedCatchType = (RiResolvedType) catchType;
                 for (RiResolvedType skippedType : config.getSkippedExceptionTypes()) {
