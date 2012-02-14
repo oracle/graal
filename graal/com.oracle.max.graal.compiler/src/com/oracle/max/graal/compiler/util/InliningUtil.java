@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
+import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
@@ -126,6 +127,7 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, final InliningCallback callback) {
             StructuredGraph graph = getGraph(concrete, callback);
+            assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             InliningUtil.inline(invoke, graph, true);
         }
 
@@ -179,6 +181,7 @@ public class InliningUtil {
             Debug.log("inlining 1 method using 1 type check");
 
             StructuredGraph calleeGraph = getGraph(concrete, callback);
+            assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
@@ -234,9 +237,9 @@ public class InliningUtil {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (numberOfMethods > 1 || shouldFallbackToInvoke()) {
-                inlineMultipleMethods(graph, callback, numberOfMethods, hasReturnValue);
+                inlineMultipleMethods(graph, runtime, callback, numberOfMethods, hasReturnValue);
             } else {
-                inlineSingleMethod(graph, callback);
+                inlineSingleMethod(graph, runtime, callback);
             }
 
             Debug.log("inlining %d methods with %d type checks and falling back to %s if violated", numberOfMethods, types.length, shouldFallbackToInvoke() ? "invocation" : "deoptimization");
@@ -246,7 +249,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
+        private void inlineMultipleMethods(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback, int numberOfMethods, boolean hasReturnValue) {
             FixedNode continuation = invoke.next();
 
             // setup merge and phi nodes for results and exceptions
@@ -315,12 +318,14 @@ public class InliningUtil {
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
                 Invoke invokeForInlining = (Invoke) node.next();
-                StructuredGraph calleeGraph = getGraph(concretes.get(i), callback);
+                RiResolvedMethod concrete = concretes.get(i);
+                StructuredGraph calleeGraph = getGraph(concrete, callback);
+                assert !IntrinsificationPhase.canIntrinsify(invokeForInlining, concrete, runtime);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
             }
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback) {
+        private void inlineSingleMethod(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             assert concretes.size() == 1 && types.length > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             MergeNode calleeEntryNode = graph.add(new MergeNode());
@@ -335,7 +340,9 @@ public class InliningUtil {
             pred.setNext(dispatchOnType);
             calleeEntryNode.setNext(invoke.node());
 
-            StructuredGraph calleeGraph = getGraph(concretes.get(0), callback);
+            RiResolvedMethod concrete = concretes.get(0);
+            StructuredGraph calleeGraph = getGraph(concrete, callback);
+            assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
