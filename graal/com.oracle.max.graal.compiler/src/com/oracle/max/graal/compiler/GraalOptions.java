@@ -55,12 +55,13 @@ public final class GraalOptions {
     public static float   InliningSizePenaltyExp             = 20;
     public static float   MaximumInlineWeight                = 1.25f;
     public static float   InliningSizePenalty                = 1;
-    // StaticSizeBasedInliningPolicy (1), DynamicSizeBasedInliningPolicy (2), GreedySizeBasedInlining (3)
+    // StaticSizeBasedInliningPolicy (1), MinimumCodeSizeBasedInlining (2),
+    // DynamicSizeBasedInliningPolicy (3), GreedySizeBasedInlining (3)
     public static int     MaximumInlineSize                  = 35;
     public static float   NestedInliningSizeRatio            = 0.9f;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
-    public static float   ProbabilityCapForInlining          = 1f;
     public static int     MaximumGreedyInlineSize            = 250;
+    public static float   ProbabilityCapForInlining          = 1f;
     public static int     SmallCompiledCodeSize              = 1500;
 
     // escape analysis settings
