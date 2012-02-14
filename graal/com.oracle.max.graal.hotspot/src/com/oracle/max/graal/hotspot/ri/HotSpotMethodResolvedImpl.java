@@ -201,13 +201,15 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public int compilationComplexity() {
-        if (compilationComplexity < 0) {
+        if (compilationComplexity <= 0 && codeSize() > 0) {
             BytecodeStream s = new BytecodeStream(code());
             int result = 0;
             int currentBC;
             while ((currentBC = s.currentBC()) != Bytecodes.END) {
                 result += Bytecodes.compilationComplexity(currentBC);
+                s.next();
             }
+            assert result > 0;
             compilationComplexity = result;
         }
         return compilationComplexity;
