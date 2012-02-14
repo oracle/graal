@@ -136,7 +136,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
                 if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
                     RiResolvedMethod method = receiver.exactType().resolveMethodImpl(targetMethod);
                     if (method != null) {
-
                         invokeKind = InvokeKind.Special;
                         targetMethod = method;
                     }
