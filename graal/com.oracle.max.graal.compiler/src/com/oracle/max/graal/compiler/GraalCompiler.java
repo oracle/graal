@@ -83,10 +83,10 @@ public class GraalCompiler {
         Debug.dump(this, "compiler");
         Debug.dump(method, "method");
 
-        return Debug.scope(createScopeName(method), new Callable<CiTargetMethod>() {
+        return Debug.scope(createScopeName(method), graph, new Callable<CiTargetMethod>() {
             public CiTargetMethod call() {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
-                final LIR lir = Debug.scope("FrontEnd", graph, new Callable<LIR>() {
+                final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
                     public LIR call() {
                         return emitHIR(graph, assumptions, plan);
                     }
