@@ -185,7 +185,7 @@ public final class DebugScope {
                     try {
                         return config.interceptException(e);
                     } catch (Throwable t) {
-                        return new RuntimeException("Exception while intercepting exception", e);
+                        return new RuntimeException("Exception while intercepting exception", t);
                     }
                 }
             }, false, new Object[] {e});

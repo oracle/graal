@@ -151,7 +151,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
         for (Object o : Debug.context()) {
             if (o instanceof RiResolvedMethod) {
                 RiResolvedMethod method = (RiResolvedMethod) o;
-                result.add(CiUtil.format("%H::%n", method));
+                result.add(CiUtil.format("%H::%n(%p)", method));
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
                 result.add(debugDumpScope.getName());
