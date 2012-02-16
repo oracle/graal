@@ -194,6 +194,7 @@ public class StructuredGraph extends Graph {
         assert node.usages().isEmpty();
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
         BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        begin.evacuateGuards();
         FixedNode next = begin.next();
         begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
@@ -209,6 +210,7 @@ public class StructuredGraph extends Graph {
         assert node.usages().isEmpty();
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
         BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        begin.evacuateGuards();
         FixedNode next = begin.next();
         begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
@@ -241,6 +243,7 @@ public class StructuredGraph extends Graph {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
         BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        begin.evacuateGuards();
         FixedNode next = begin.next();
         begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
@@ -255,6 +258,7 @@ public class StructuredGraph extends Graph {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor >= 0 && survivingSuccessor < node.blockSuccessorCount() : "invalid surviving successor " + survivingSuccessor + " for " + node;
         BeginNode begin = node.blockSuccessor(survivingSuccessor);
+        begin.evacuateGuards();
         FixedNode next = begin.next();
         begin.setNext(null);
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
