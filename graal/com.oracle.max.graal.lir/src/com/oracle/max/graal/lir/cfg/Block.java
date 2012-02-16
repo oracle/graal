@@ -24,7 +24,6 @@ package com.oracle.max.graal.lir.cfg;
 
 import java.util.*;
 
-import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.*;
 import com.oracle.max.graal.nodes.*;

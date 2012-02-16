@@ -202,6 +202,7 @@ public class StructuredGraph extends Graph {
         }
         node.replaceAtPredecessors(next);
         node.safeDelete();
+        begin.safeDelete();
     }
 
     public void removeSplitPropagate(ControlSplitNode node, int survivingSuccessor) {
