@@ -25,10 +25,11 @@ package com.oracle.max.graal.nodes;
 import java.util.*;
 
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simplifiable {
+public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simplifiable, Node.IterableNodeType {
     public BeginNode() {
         super(StampFactory.illegal());
     }
@@ -58,15 +59,28 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
             // This begin node is necessary.
         } else {
             // This begin node can be removed and all guards moved up to the preceding begin node.
-            Node prevBegin = prev;
+            if (!usages().isEmpty()) {
+                Node prevBegin = prev;
+                while (!(prevBegin instanceof BeginNode)) {
+                    prevBegin = prevBegin.predecessor();
+                }
+                for (Node usage : usages()) {
+                    tool.addToWorkList(usage);
+                }
+                replaceAtUsages(prevBegin);
+            }
+            ((StructuredGraph) graph()).removeFixed(this);
+        }
+    }
+
+    public void evacuateGuards() {
+        if (!usages().isEmpty()) {
+            Node prevBegin = predecessor();
+            assert prevBegin != null;
             while (!(prevBegin instanceof BeginNode)) {
                 prevBegin = prevBegin.predecessor();
             }
-            for (Node usage : usages()) {
-                tool.addToWorkList(usage);
-            }
             replaceAtUsages(prevBegin);
-            ((StructuredGraph) graph()).removeFixed(this);
         }
     }
 
@@ -79,5 +93,9 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
     @Override
     public void generate(LIRGeneratorTool gen) {
         // nop
+    }
+
+    public NodeIterable<GuardNode> guards() {
+        return usages().filter(GuardNode.class);
     }
 }
