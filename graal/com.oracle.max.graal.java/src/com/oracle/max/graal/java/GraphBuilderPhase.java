@@ -534,7 +534,7 @@ public final class GraphBuilderPhase extends Phase {
             case FREM:
             case DREM: v = new FloatRemNode(result, x, y, isStrictFP); break;
             default:
-                throw new CiBailout("should not reach");
+                throw new GraalInternalError("should not reach");
         }
         ValueNode result1 = append(currentGraph.unique(v));
         if (canTrap) {
@@ -559,7 +559,7 @@ public final class GraphBuilderPhase extends Phase {
             case IUSHR:
             case LUSHR: v = new UnsignedRightShiftNode(kind, x, s); break;
             default:
-                throw new CiBailout("should not reach");
+                throw new GraalInternalError("should not reach");
         }
         frameState.push(kind, append(currentGraph.unique(v)));
     }
@@ -576,7 +576,7 @@ public final class GraphBuilderPhase extends Phase {
             case IXOR:
             case LXOR: v = new XorNode(kind, x, y); break;
             default:
-                throw new CiBailout("should not reach");
+                throw new GraalInternalError("should not reach");
         }
         frameState.push(kind, append(currentGraph.unique(v)));
     }

@@ -30,6 +30,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.util.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.*;
 
 /**
@@ -790,7 +791,7 @@ public final class Interval {
                 Interval lastChild = splitChildren.get(splitChildren.size() - 1);
                 msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
             }
-            throw new CiBailout("Linear Scan Error: " + msg);
+            throw new GraalInternalError("Linear Scan Error: %s", msg);
         }
 
         if (!splitChildren.isEmpty()) {

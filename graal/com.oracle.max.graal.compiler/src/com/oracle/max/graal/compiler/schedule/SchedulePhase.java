@@ -275,7 +275,7 @@ public class SchedulePhase extends Phase {
                 // scheduler is used for debug printing in early compiler phases. This was annoying during debugging
                 // when an excpetion breakpoint is set for assertion errors, so I changed it to a bailout.
                 if (b.getEndNode() instanceof ControlSplitNode) {
-                    throw new CiBailout("");
+                    throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block whcih can not be move");
                 }
                 //assert !(b.lastNode() instanceof ControlSplitNode);
 

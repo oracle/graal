@@ -446,7 +446,7 @@ public class LinearScanAllocator {
 
             // This should not happen as long as all LIR instructions have fulfillable register constraints. But be safe in product mode and bail out.
             assert false;
-            throw new CiBailout("No register available");
+            throw new GraalInternalError("No register available");
         }
 
         spill(bestSpillCandidate);

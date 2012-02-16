@@ -1951,38 +1951,38 @@ public final class LinearScan {
             if (i1.operandNumber != i) {
                 TTY.println("Interval %d is on position %d in list", i1.operandNumber, i);
                 TTY.println(i1.logString(this));
-                throw new CiBailout("");
+                throw new GraalInternalError("");
             }
 
             if (isVariable(i1.operand) && i1.kind()  == CiKind.Illegal) {
                 TTY.println("Interval %d has no type assigned", i1.operandNumber);
                 TTY.println(i1.logString(this));
-                throw new CiBailout("");
+                throw new GraalInternalError("");
             }
 
             if (i1.location() == null) {
                 TTY.println("Interval %d has no register assigned", i1.operandNumber);
                 TTY.println(i1.logString(this));
-                throw new CiBailout("");
+                throw new GraalInternalError("");
             }
 
             if (!isProcessed(i1.location())) {
                 TTY.println("Can not have an Interval for an ignored register " + i1.location());
                 TTY.println(i1.logString(this));
-                throw new CiBailout("");
+                throw new GraalInternalError("");
             }
 
             if (i1.first() == Range.EndMarker) {
                 TTY.println("Interval %d has no Range", i1.operandNumber);
                 TTY.println(i1.logString(this));
-                throw new CiBailout("");
+                throw new GraalInternalError("");
             }
 
             for (Range r = i1.first(); r != Range.EndMarker; r = r.next) {
                 if (r.from >= r.to) {
                     TTY.println("Interval %d has zero length range", i1.operandNumber);
                     TTY.println(i1.logString(this));
-                    throw new CiBailout("");
+                    throw new GraalInternalError("");
                 }
             }
 
