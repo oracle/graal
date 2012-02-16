@@ -534,7 +534,7 @@ public class InliningUtil {
         }
         if (callTarget.receiver().exactType() != null) {
             RiResolvedType exact = callTarget.receiver().exactType();
-            assert exact.isSubtypeOf(targetMethod.holder()) : exact + " subtype of " + targetMethod.holder();
+            assert exact.isSubtypeOf(targetMethod.holder()) : exact + " subtype of " + targetMethod.holder() + " for " + targetMethod;
             RiResolvedMethod resolved = exact.resolveMethodImpl(targetMethod);
             if (checkTargetConditions(invoke, resolved)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
