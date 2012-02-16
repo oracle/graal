@@ -43,9 +43,9 @@ public class DeadCodeEliminationPhase extends Phase {
 
         // remove chained Merges
         for (MergeNode merge : graph.getNodes(MergeNode.class)) {
-            if (merge.endCount() == 1 && !(merge instanceof LoopBeginNode)) {
+            if (merge.forwardEndCount() == 1 && !(merge instanceof LoopBeginNode)) {
                 replacePhis(merge);
-                EndNode endNode = merge.endAt(0);
+                EndNode endNode = merge.forwardEndAt(0);
                 FixedNode next = merge.next();
                 merge.safeDelete();
                 endNode.replaceAndDelete(next);
@@ -76,21 +76,21 @@ public class DeadCodeEliminationPhase extends Phase {
                 }
             }
         }
-        for (LoopEndNode node : graph.getNodes(LoopEndNode.class)) {
-            if (!flood.isMarked(node)) {
-                LoopBeginNode loop = node.loopBegin();
-                if (flood.isMarked(loop)) {
+        for (LoopBeginNode loop : graph.getNodes(LoopBeginNode.class)) {
+            if (flood.isMarked(loop)) {
+                boolean reachable = false;
+                for (LoopEndNode end : loop.loopEnds()) {
+                    if (flood.isMarked(end)) {
+                        reachable = true;
+                        break;
+                    }
+                }
+                if (!reachable) {
                     Debug.log("Removing loop with unreachable end: %s", loop);
-                    node.setLoopBegin(null);
-                    EndNode endNode = loop.endAt(0);
-                    assert endNode.predecessor() != null;
-                    replacePhis(loop);
-                    loop.removeEnd(endNode);
-
-                    FixedNode next = loop.next();
-                    loop.setNext(null);
-                    endNode.replaceAndDelete(next);
-                    loop.safeDelete();
+                    for (LoopEndNode end : loop.loopEnds().snapshot()) {
+                        loop.removeEnd(end);
+                    }
+                    graph.reduceDegenerateLoopBegin(loop);
                 }
             }
         }

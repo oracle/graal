@@ -189,15 +189,15 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public void loopEnd(LoopEndNode x, BlockExitState loopEndState) {
+        public void loopEnds(LoopBeginNode loopBegin, Collection<BlockExitState> loopEndStates) {
             while (!(virtualObjectField instanceof PhiNode)) {
                 virtualObjectField = ((VirtualObjectFieldNode) virtualObjectField).lastState();
             }
-            ((PhiNode) virtualObjectField).addInput(loopEndState.virtualObjectField);
-            assert ((PhiNode) virtualObjectField).valueCount() == 2;
-            for (int i2 = 0; i2 < fieldState.length; i2++) {
-                ((PhiNode) fieldState[i2]).addInput(loopEndState.fieldState[i2]);
-                assert ((PhiNode) fieldState[i2]).valueCount() == 2;
+            for (BlockExitState loopEndState : loopEndStates) {
+                ((PhiNode) virtualObjectField).addInput(loopEndState.virtualObjectField);
+                for (int i2 = 0; i2 < fieldState.length; i2++) {
+                    ((PhiNode) fieldState[i2]).addInput(loopEndState.fieldState[i2]);
+                }
             }
         }
 

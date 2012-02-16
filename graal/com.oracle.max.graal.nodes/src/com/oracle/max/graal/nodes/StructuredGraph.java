@@ -285,4 +285,37 @@ public class StructuredGraph extends Graph {
         newNode.setNext(node);
     }
 
+    public void reduceDegenerateLoopBegin(LoopBeginNode begin) {
+        assert begin.loopEnds().count() == 0 : "Loop begin still has backedges";
+        if (begin.forwardEndCount() == 1) { // bypass merge and remove
+            reduceTrivialMerge(begin);
+        } else { // convert to merge
+            MergeNode merge = this.add(new MergeNode());
+            this.replaceFixedWithFixed(begin, merge);
+        }
+    }
+
+    public void reduceTrivialMerge(MergeNode merge) {
+        assert merge.forwardEndCount() == 1;
+        assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().count() == 0;
+        for (PhiNode phi : merge.phis().snapshot()) {
+            assert phi.valueCount() == 1;
+            ValueNode singleValue = phi.valueAt(0);
+            phi.replaceAtUsages(singleValue);
+            phi.safeDelete();
+        }
+        EndNode singleEnd = merge.forwardEndAt(0);
+        FixedNode sux = merge.next();
+        FrameState stateAfter = merge.stateAfter();
+        merge.safeDelete();
+        if (stateAfter != null && stateAfter.usages().count() == 0) {
+            stateAfter.safeDelete();
+        }
+        if (sux == null) {
+            singleEnd.replaceAtPredecessors(null);
+            singleEnd.safeDelete();
+        } else {
+            singleEnd.replaceAndDelete(sux);
+        }
+    }
 }

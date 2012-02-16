@@ -358,7 +358,7 @@ public class InliningUtil {
             if (tsux instanceof MergeNode) {
                 EndNode endNode = graph.add(new EndNode());
                 result = graph.add(new IfNode(isTypeNode, endNode, nextNode, tsuxProbability));
-                ((MergeNode) tsux).addEnd(endNode);
+                ((MergeNode) tsux).addForwardEnd(endNode);
             } else {
                 result = graph.add(new IfNode(isTypeNode, tsux, nextNode, tsuxProbability));
             }
@@ -389,7 +389,7 @@ public class InliningUtil {
             EndNode endNode = graph.add(new EndNode());
             // TODO (ch) set probability
             duplicatedInvoke.setNext(endNode);
-            returnMerge.addEnd(endNode);
+            returnMerge.addForwardEnd(endNode);
             if (returnValuePhi != null) {
                 returnValuePhi.addInput(duplicatedInvoke.node());
             }
@@ -424,7 +424,7 @@ public class InliningUtil {
 
                 EndNode endNode = graph.add(new EndNode());
                 newExceptionObject.setNext(endNode);
-                exceptionMerge.addEnd(endNode);
+                exceptionMerge.addForwardEnd(endNode);
                 exceptionObjectPhi.addInput(newExceptionObject);
 
                 ((InvokeWithExceptionNode) result).setExceptionEdge(newExceptionEdge);

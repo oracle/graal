@@ -204,10 +204,11 @@ public class SchedulePhase extends Phase {
                         TTY.println(merge.toString());
                         TTY.println(phi.toString());
                         TTY.println(merge.cfgPredecessors().toString());
+                        TTY.println(mergeBlock.getPredecessors().toString());
                         TTY.println(phi.inputs().toString());
                         TTY.println("value count: " + phi.valueCount());
                     }
-                closure.apply(mergeBlock.getPredecessors().get(i));
+                    closure.apply(mergeBlock.getPredecessors().get(i));
                 }
             }
         } else if (usage instanceof FrameState && ((FrameState) usage).block() != null) {

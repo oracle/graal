@@ -22,10 +22,13 @@
  */
 package com.oracle.max.graal.nodes.util;
 
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.calc.*;
 
 public class GraphUtil {
 
@@ -35,9 +38,6 @@ public class GraphUtil {
             // We reached a control flow end.
             EndNode end = (EndNode) node;
             killEnd(end);
-        } else if (node instanceof LoopEndNode) {
-            // We reached a loop end.
-            killLoopEnd(node);
         } else {
             // Normal control flow node.
             for (Node successor : node.successors().snapshot()) {
@@ -47,59 +47,33 @@ public class GraphUtil {
         propagateKill(node);
     }
 
-    private static void killLoopEnd(FixedNode node) {
-        LoopEndNode loopEndNode = (LoopEndNode) node;
-        LoopBeginNode loop = loopEndNode.loopBegin();
-        loopEndNode.setLoopBegin(null);
-        EndNode endNode = loop.endAt(0);
-        assert endNode.predecessor() != null;
-        replaceLoopPhis(loop);
-        loop.removeEnd(endNode);
-
-        FixedNode next = loop.next();
-        loop.setNext(null);
-        endNode.replaceAndDelete(next);
-        loop.safeDelete();
-    }
-
-    private static void replaceLoopPhis(MergeNode merge) {
-        for (Node usage : merge.usages().snapshot()) {
-            assert usage instanceof PhiNode;
-            ((StructuredGraph) merge.graph()).replaceFloating((PhiNode) usage, ((PhiNode) usage).valueAt(0));
-        }
-    }
-
     private static void killEnd(EndNode end) {
         MergeNode merge = end.merge();
-        if (merge instanceof LoopBeginNode) {
+        merge.removeEnd(end);
+        if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { //dead loop
             for (PhiNode phi : merge.phis().snapshot()) {
-                ValueNode value = phi.valueAt(0);
-                phi.replaceAndDelete(value);
+                propagateKill(phi);
             }
-            killCFG(merge);
-        } else {
-            merge.removeEnd(end);
-            if (merge.phiPredecessorCount() == 1) {
-                for (PhiNode phi : merge.phis().snapshot()) {
-                    ValueNode value = phi.valueAt(0);
-                    phi.replaceAndDelete(value);
-                }
-                Node replacedSux = merge.phiPredecessorAt(0);
-                Node pred = replacedSux.predecessor();
-                assert replacedSux instanceof EndNode;
-                FixedNode next = merge.next();
-                merge.setNext(null);
-                pred.replaceFirstSuccessor(replacedSux, next);
-                merge.safeDelete();
-                replacedSux.safeDelete();
+            LoopBeginNode begin = (LoopBeginNode) merge;
+            // disconnect and delete loop ends
+            for (LoopEndNode loopend : begin.loopEnds().snapshot()) {
+                loopend.predecessor().replaceFirstSuccessor(loopend, null);
+                loopend.safeDelete();
             }
+            FixedNode next = begin.next();
+            begin.safeDelete();
+            killCFG(next);
+        } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().count() == 0) { // not a loop anymore
+            ((StructuredGraph) end.graph()).reduceDegenerateLoopBegin((LoopBeginNode) merge);
+        } else if (merge.phiPredecessorCount() == 1) { // not a merge anymore
+            ((StructuredGraph) end.graph()).reduceTrivialMerge(merge);
         }
     }
 
     // TODO(tw): Factor this code with other branch deletion code.
     public static void propagateKill(Node node) {
         if (node != null && node.isAlive()) {
-            List<Node> usagesSnapshot = node.usages().snapshot();
+            List<Node> usagesSnapshot = node.usages().filter(isA(FloatingNode.class).or(CallTargetNode.class)).snapshot();
 
             // null out remaining usages
             node.replaceAtUsages(null);
@@ -108,7 +82,11 @@ public class GraphUtil {
 
             for (Node usage : usagesSnapshot) {
                 if (!usage.isDeleted()) {
-                    propagateKill(usage);
+                    if (usage instanceof PhiNode) {
+                        usage.replaceFirstInput(node, null);
+                    } else {
+                        propagateKill(usage);
+                    }
                 }
             }
         }

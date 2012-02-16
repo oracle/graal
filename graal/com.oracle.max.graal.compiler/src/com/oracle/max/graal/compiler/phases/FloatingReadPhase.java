@@ -57,10 +57,8 @@ public class FloatingReadPhase extends Phase {
 
             for (Map.Entry<Object, Node> entry : loopEntryMap.entrySet()) {
                 PhiNode phiNode = (PhiNode) entry.getValue();
-                assert phiNode.valueCount() == 1;
-
-                Node other;
                 Object key = entry.getKey();
+                Node other;
                 if (otherMemoryMap.map.containsKey(key)) {
                     other = otherMemoryMap.map.get(key);
                 } else {
@@ -113,7 +111,7 @@ public class FloatingReadPhase extends Phase {
                 PhiNode phi = (PhiNode) original;
                 phi.addInput((ValueNode) newValue);
                 Debug.log("Add new input to %s: %s.", original, newValue);
-                assert phi.valueCount() <= phi.merge().endCount() : phi.merge();
+                assert phi.valueCount() <= phi.merge().forwardEndCount() : phi.merge();
             } else {
                 PhiNode phi = m.graph().unique(new PhiNode(CiKind.Illegal, m, PhiType.Memory));
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
@@ -121,7 +119,7 @@ public class FloatingReadPhase extends Phase {
                 }
                 phi.addInput((ValueNode) newValue);
                 Debug.log("Creating new %s merge=%s newValue=%s location=%s.", phi, phi.merge(), newValue, location);
-                assert phi.valueCount() <= phi.merge().endCount() + ((phi.merge() instanceof LoopBeginNode) ? 1 : 0) : phi.merge() + "/" + phi.valueCount() + "/" + phi.merge().endCount() + "/" + mergeOperationCount;
+                assert phi.valueCount() <= phi.merge().forwardEndCount() + ((phi.merge() instanceof LoopBeginNode) ? 1 : 0) : phi.merge() + "/" + phi.valueCount() + "/" + phi.merge().forwardEndCount() + "/" + mergeOperationCount;
                 assert m.usages().contains(phi);
                 assert phi.merge().usages().contains(phi);
                 for (Node input : phi.inputs()) {
@@ -263,10 +261,10 @@ public class FloatingReadPhase extends Phase {
             if (b.isLoopHeader()) {
                 Loop loop = b.getLoop();
                 map.createLoopEntryMemoryMap(modifiedValues.get(loop), loop);
-            } else {
-                for (int i = 1; i < b.getPredecessors().size(); ++i) {
-                    assert b.getBeginNode() instanceof MergeNode : b.getBeginNode();
-                    Block block = b.getPredecessors().get(i);
+            }
+            for (int i = 1; i < b.getPredecessors().size(); ++i) {
+                Block block = b.getPredecessors().get(i);
+                if (!block.isLoopEnd()) {
                     map.mergeWith(memoryMaps[block.getId()], b);
                 }
             }
@@ -312,41 +310,5 @@ public class FloatingReadPhase extends Phase {
 
     private static void traceWrite(Loop loop, Object locationIdentity, HashMap<Loop, Set<Object>> modifiedValues) {
         modifiedValues.get(loop).add(locationIdentity);
-    }
-
-    private void mark(LoopBeginNode begin, LoopBeginNode outer, NodeMap<LoopBeginNode> nodeToLoop) {
-
-        if (nodeToLoop.get(begin) != null) {
-            // Loop already processed.
-            return;
-        }
-        nodeToLoop.set(begin, begin);
-
-        NodeFlood workCFG = begin.graph().createNodeFlood();
-        workCFG.add(begin.loopEnd());
-        for (Node n : workCFG) {
-            if (n == begin) {
-                // Stop at loop begin.
-                continue;
-            }
-            markNode(n, begin, outer, nodeToLoop);
-
-            for (Node pred : n.cfgPredecessors()) {
-                workCFG.add(pred);
-            }
-        }
-    }
-
-    private void markNode(Node n, LoopBeginNode begin, LoopBeginNode outer, NodeMap<LoopBeginNode> nodeToLoop) {
-        LoopBeginNode oldMark = nodeToLoop.get(n);
-        if (oldMark == null || oldMark == outer) {
-
-            // We have an inner loop, start marking it.
-            if (n instanceof LoopBeginNode) {
-                mark((LoopBeginNode) n, begin, nodeToLoop);
-            }
-
-            nodeToLoop.set(n, begin);
-        }
     }
 }

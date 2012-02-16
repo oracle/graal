@@ -28,7 +28,7 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-public final class EndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
+public class EndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
     public EndNode() {
         super(StampFactory.illegal());

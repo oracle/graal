@@ -49,6 +49,7 @@ public class Graph {
     private GraphEventLog eventLog;
 
     ArrayList<Node> usagesDropped = new ArrayList<>();
+    NodeWorkList inputChanged;
     private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
 
     private static final class CacheEntry {
@@ -157,6 +158,14 @@ public class Graph {
         ArrayList<Node> result = usagesDropped;
         usagesDropped = new ArrayList<>();
         return result;
+    }
+
+    public void trackInputChange(NodeWorkList worklist) {
+        this.inputChanged = worklist;
+    }
+
+    public void stopTrackingInputChange() {
+        inputChanged = null;
     }
 
     /**

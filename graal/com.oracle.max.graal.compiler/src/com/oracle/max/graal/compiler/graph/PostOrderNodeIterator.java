@@ -60,11 +60,8 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
                 current = ((LoopBeginNode) current).next();
                 assert current != null;
             } else if (current instanceof LoopEndNode) {
-                T loopBeginState = nodeStates.get(((LoopEndNode) current).loopBegin());
-                if (loopBeginState != null) {
-                    loopBeginState.loopEnd((LoopEndNode) current, state);
-                }
                 loopEnd((LoopEndNode) current);
+                finishLoopEnds((LoopEndNode) current);
                 current = nextQueuedNode();
             } else if (current instanceof MergeNode) {
                 merge((MergeNode) current);
@@ -122,10 +119,10 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
             FixedNode node = nodeQueue.removeFirst();
             if (node instanceof MergeNode) {
                 MergeNode merge = (MergeNode) node;
-                state = nodeStates.get(merge.endAt(0)).clone();
-                ArrayList<T> states = new ArrayList<>(merge.endCount() - 1);
-                for (int i = 1; i < merge.endCount(); i++) {
-                    T other = nodeStates.get(merge.endAt(i));
+                state = nodeStates.get(merge.forwardEndAt(0)).clone();
+                ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
+                for (int i = 1; i < merge.forwardEndCount(); i++) {
+                    T other = nodeStates.get(merge.forwardEndAt(i));
                     assert other != null;
                     states.add(other);
                 }
@@ -145,6 +142,31 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         return null;
     }
 
+    private void finishLoopEnds(LoopEndNode end) {
+        assert !visitedEnds.isMarked(end);
+        assert !nodeStates.containsKey(end);
+        nodeStates.put(end, state);
+        visitedEnds.mark(end);
+        LoopBeginNode begin = end.loopBegin();
+        boolean endsVisited = true;
+        for (LoopEndNode le : begin.loopEnds()) {
+            if (!visitedEnds.isMarked(le)) {
+                endsVisited = false;
+                break;
+            }
+        }
+        if (endsVisited) {
+            ArrayList<T> states = new ArrayList<>(begin.loopEnds().count());
+            for (LoopEndNode le : begin.orderedLoopEnds()) {
+                states.add(nodeStates.get(le));
+            }
+            T loopBeginState = nodeStates.get(begin);
+            if (loopBeginState != null) {
+                loopBeginState.loopEnds(begin, states);
+            }
+        }
+    }
+
     private void queueMerge(EndNode end) {
         assert !visitedEnds.isMarked(end);
         assert !nodeStates.containsKey(end);
@@ -152,8 +174,8 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         visitedEnds.mark(end);
         MergeNode merge = end.merge();
         boolean endsVisited = true;
-        for (int i = 0; i < merge.endCount(); i++) {
-            if (!visitedEnds.isMarked(merge.endAt(i))) {
+        for (int i = 0; i < merge.forwardEndCount(); i++) {
+            if (!visitedEnds.isMarked(merge.forwardEndAt(i))) {
                 endsVisited = false;
                 break;
             }

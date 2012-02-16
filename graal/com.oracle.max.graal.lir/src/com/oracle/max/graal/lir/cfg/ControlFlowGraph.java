@@ -136,7 +136,7 @@ public class ControlFlowGraph {
                 // First time we see this block: push all successors.
                 for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                     Block suxBlock = blockFor(suxNode);
-                    assert suxBlock.id != BLOCK_ID_VISITED;
+                    assert suxBlock.id != BLOCK_ID_VISITED : "Sux already visited?? from " + block.getEndNode() + " to " + suxNode;
                     if (suxBlock.id == BLOCK_ID_INITIAL) {
                         stack.add(suxBlock);
                     }
@@ -163,7 +163,9 @@ public class ControlFlowGraph {
                 predecessors.add(nodeToBlock.get(predNode));
             }
             if (block.getBeginNode() instanceof LoopBeginNode) {
-                predecessors.add(nodeToBlock.get(((LoopBeginNode) block.getBeginNode()).loopEnd()));
+                for (LoopEndNode predNode : ((LoopBeginNode) block.getBeginNode()).orderedLoopEnds()) {
+                    predecessors.add(nodeToBlock.get(predNode));
+                }
             }
             block.predecessors = predecessors;
 
@@ -186,9 +188,10 @@ public class ControlFlowGraph {
                 Loop loop = new Loop(block.getLoop(), loopsList.size(), block);
                 loopsList.add(loop);
 
-                LoopEndNode end = ((LoopBeginNode) beginNode).loopEnd();
-                Block endBlock = nodeToBlock.get(end);
-                computeLoopBlocks(endBlock, loop);
+                for (LoopEndNode end : ((LoopBeginNode) beginNode).loopEnds()) {
+                    Block endBlock = nodeToBlock.get(end);
+                    computeLoopBlocks(endBlock, loop);
+                }
             }
         }
         loops = loopsList.toArray(new Loop[loopsList.size()]);
@@ -228,16 +231,12 @@ public class ControlFlowGraph {
             List<Block> predecessors = block.getPredecessors();
             assert predecessors.size() > 0;
 
-            if (block.isLoopHeader()) {
-                // Loop headers have exactly one non-loop predecessor, and that is the dominator.
-                setDominator(block, predecessors.get(0));
-                continue;
-            }
-
             Block dominator = predecessors.get(0);
             for (int j = 1; j < predecessors.size(); j++) {
                 Block pred = predecessors.get(j);
-                dominator = commonDominator(dominator, pred);
+                if (!pred.isLoopEnd()) {
+                    dominator = commonDominator(dominator, pred);
+                }
             }
             setDominator(block, dominator);
         }

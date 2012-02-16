@@ -29,6 +29,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.max.graal.nodes.*;
 
 public final class ComputeLinearScanOrder {
 
@@ -261,18 +262,19 @@ public final class ComputeLinearScanOrder {
         if (cur.isLoopEnd() && cur.isLoopHeader()) {
             codeEmittingOrder.add(cur);
         } else {
-            if (!cur.isLoopHeader() || !GraalOptions.OptReorderLoops) {
+            if (!cur.isLoopHeader() || ((LoopBeginNode) cur.getBeginNode()).loopEnds().count() > 1 || !GraalOptions.OptReorderLoops) {
                 codeEmittingOrder.add(cur);
 
                 if (cur.isLoopEnd() && GraalOptions.OptReorderLoops) {
                     Block loopHeader = loopHeaders[cur.getLoop().index];
-                    assert loopHeader != null;
-                    codeEmittingOrder.add(loopHeader);
+                    if (loopHeader != null) {
+                        codeEmittingOrder.add(loopHeader);
 
-                    for (int i = 0; i < loopHeader.numberOfSux(); i++) {
-                        Block succ = loopHeader.suxAt(i);
-                        if (succ.getLoopDepth() == loopHeader.getLoopDepth()) {
-                            succ.align = true;
+                        for (int i = 0; i < loopHeader.numberOfSux(); i++) {
+                            Block succ = loopHeader.suxAt(i);
+                            if (succ.getLoopDepth() == loopHeader.getLoopDepth()) {
+                                succ.align = true;
+                            }
                         }
                     }
                 }

@@ -145,6 +145,23 @@ public final class BciBlockMapping {
                 throw new RuntimeException(e);
             }
         }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("B").append(blockID);
+            sb.append('[').append(startBci).append("->").append(endBci);
+            if (isLoopHeader || isExceptionEntry) {
+                sb.append(' ');
+                if (isLoopHeader) {
+                    sb.append('L');
+                }
+                if (isExceptionEntry) {
+                    sb.append('!');
+                }
+            }
+            sb.append(']');
+            return sb.toString();
+        }
     }
 
     public static class ExceptionBlock extends Block {

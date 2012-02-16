@@ -329,7 +329,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
      * @param block the block begin for which we are creating the phi
      * @param i the index into the stack for which to create a phi
      */
-    public PhiNode setupPhiForStack(MergeNode block, int i) {
+    public PhiNode setupLoopPhiForStack(MergeNode block, int i) {
         ValueNode p = stackAt(i);
         if (p != null) {
             if (p instanceof PhiNode) {
@@ -339,6 +339,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
                 }
             }
             PhiNode phi = graph().unique(new PhiNode(p.kind(), block, PhiType.Value));
+            phi.addInput(p);
             setValueAt(localsSize + i, phi);
             return phi;
         }
@@ -350,7 +351,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
      * @param block the block begin for which we are creating the phi
      * @param i the index of the local variable for which to create the phi
      */
-    public PhiNode setupPhiForLocal(MergeNode block, int i) {
+    public PhiNode setupLoopPhiForLocal(MergeNode block, int i) {
         ValueNode p = localAt(i);
         if (p instanceof PhiNode) {
             PhiNode phi = (PhiNode) p;
@@ -359,6 +360,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
             }
         }
         PhiNode phi = graph().unique(new PhiNode(p.kind(), block, PhiType.Value));
+        phi.addInput(p);
         storeLocal(i, phi);
         return phi;
     }
@@ -401,9 +403,9 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         for (int i = 0; i < valuesSize(); i++) {
             ValueNode currentValue = valueAt(i);
             ValueNode otherValue = other.valueAt(i);
-            if (currentValue != otherValue) {
+            if (currentValue != otherValue || block instanceof LoopBeginNode) {
                 if (block.isPhiAtMerge(currentValue)) {
-                    addToPhi((PhiNode) currentValue, otherValue);
+                    addToPhi((PhiNode) currentValue, otherValue, block instanceof LoopBeginNode);
                 } else {
                     setValueAt(i, combineValues(currentValue, otherValue, block));
                 }
@@ -411,12 +413,18 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         }
     }
 
-    private ValueNode combineValues(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
+    public void simplifyLoopState() {
+        for (PhiNode phi : values.filter(PhiNode.class).snapshot()) {
+            checkRedundantPhi(phi);
+        }
+    }
+
+    private static ValueNode combineValues(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
         if (currentValue == null || otherValue == null || currentValue.kind() != otherValue.kind()) {
             return null;
         }
 
-        PhiNode phi = graph().unique(new PhiNode(currentValue.kind(), block, PhiType.Value));
+        PhiNode phi = currentValue.graph().add(new PhiNode(currentValue.kind(), block, PhiType.Value));
         for (int j = 0; j < block.phiPredecessorCount(); ++j) {
             phi.addInput(currentValue);
         }
@@ -425,43 +433,28 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         return phi;
     }
 
-    private static void addToPhi(PhiNode phiNode, ValueNode otherValue) {
+    private static void addToPhi(PhiNode phiNode, ValueNode otherValue, boolean recursiveInvalidCheck) {
         if (otherValue == null || otherValue.kind() != phiNode.kind()) {
-            phiNode.replaceAtUsages(null);
-            phiNode.safeDelete();
+            if (recursiveInvalidCheck) {
+                deleteInvalidPhi(phiNode);
+            } else {
+                phiNode.replaceAtUsages(null);
+                phiNode.safeDelete();
+            }
         } else {
             phiNode.addInput(otherValue);
         }
     }
 
-    public void mergeLoop(LoopBeginNode block, FrameStateAccess other) {
-        assert checkSize(other);
-        for (int i = 0; i < valuesSize(); i++) {
-            PhiNode currentValue = (PhiNode) valueAt(i);
-            if (currentValue != null) {
-                assert currentValue.merge() == block;
-                assert currentValue.valueCount() == 1;
-                ValueNode otherValue = other.valueAt(i);
-                if (otherValue == currentValue) {
-                    deleteRedundantPhi(currentValue, currentValue.firstValue());
-                } else if (otherValue == null || otherValue.kind() != currentValue.kind()) {
-                    deleteInvalidPhi(currentValue);
-                } else {
-                    currentValue.addInput(otherValue);
-                }
-            }
-        }
-    }
-
-    public void deleteRedundantPhi(PhiNode redundantPhi, ValueNode phiValue) {
+    public static void deleteRedundantPhi(PhiNode redundantPhi, ValueNode phiValue) {
         Collection<PhiNode> phiUsages = redundantPhi.usages().filter(PhiNode.class).snapshot();
-        ((StructuredGraph) graph()).replaceFloating(redundantPhi, phiValue);
+        ((StructuredGraph) redundantPhi.graph()).replaceFloating(redundantPhi, phiValue);
         for (PhiNode phi : phiUsages) {
             checkRedundantPhi(phi);
         }
     }
 
-    private void checkRedundantPhi(PhiNode phiNode) {
+    private static void checkRedundantPhi(PhiNode phiNode) {
         if (phiNode.isDeleted() || phiNode.valueCount() == 1) {
             return;
         }
@@ -472,7 +465,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         }
     }
 
-    private void deleteInvalidPhi(PhiNode phiNode) {
+    private static void deleteInvalidPhi(PhiNode phiNode) {
         if (!phiNode.isDeleted()) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             phiNode.replaceAtUsages(null);
@@ -575,13 +568,13 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
             // always insert phis for the stack
             ValueNode x = stackAt(i);
             if (x != null) {
-                setupPhiForStack(loopBegin, i).addInput(x);
+                setupLoopPhiForStack(loopBegin, i);
             }
         }
         for (int i = 0; i < localsSize(); i++) {
             ValueNode x = localAt(i);
             if (x != null) {
-                setupPhiForLocal(loopBegin, i).addInput(x);
+                setupLoopPhiForLocal(loopBegin, i);
             }
         }
     }

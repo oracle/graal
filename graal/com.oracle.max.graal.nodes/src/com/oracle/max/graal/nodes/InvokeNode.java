@@ -71,7 +71,9 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
     @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> debugProperties = super.getDebugProperties();
-        debugProperties.put("targetMethod", CiUtil.format("%h.%n(%p)", callTarget.targetMethod()));
+        if (callTarget != null && callTarget.targetMethod() != null) {
+            debugProperties.put("targetMethod", CiUtil.format("%h.%n(%p)", callTarget.targetMethod()));
+        }
         return debugProperties;
     }
 
@@ -85,6 +87,9 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
         if (verbosity == Verbosity.Long) {
             return super.toString(Verbosity.Short) + "(bci=" + bci() + ")";
         } else if (verbosity == Verbosity.Name) {
+            if (callTarget == null || callTarget.targetMethod() == null) {
+                return "Invoke#??Invalid!";
+            }
             return "Invoke#" + callTarget.targetMethod().name();
         } else {
             return super.toString(verbosity);

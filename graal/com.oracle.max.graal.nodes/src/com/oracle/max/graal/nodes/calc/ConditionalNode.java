@@ -81,8 +81,8 @@ public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRL
         ifNode.setTrueSuccessor(BeginNode.begin(trueEnd));
         ifNode.setFalseSuccessor(BeginNode.begin(falseEnd));
         MergeNode merge = graph.add(new MergeNode());
-        merge.addEnd(trueEnd);
-        merge.addEnd(falseEnd);
+        merge.addForwardEnd(trueEnd);
+        merge.addForwardEnd(falseEnd);
         PhiNode phi = graph.unique(new PhiNode(kind, merge, PhiType.Value));
         phi.addInput(trueValue);
         phi.addInput(falseValue);

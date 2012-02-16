@@ -682,12 +682,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (GraalOptions.GenLoopSafepoints && x.hasSafepointPolling()) {
             emitSafepointPoll(x);
         }
-        moveToPhi(x.loopBegin(), x);
     }
 
     private ArrayList<CiValue> phiValues = new ArrayList<>();
 
-    private void moveToPhi(MergeNode merge, FixedNode pred) {
+    private void moveToPhi(MergeNode merge, EndNode pred) {
         if (GraalOptions.AllocSSA) {
             assert phiValues.isEmpty();
             for (PhiNode phi : merge.phis()) {
