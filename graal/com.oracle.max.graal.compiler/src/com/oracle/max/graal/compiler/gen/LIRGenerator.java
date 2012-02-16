@@ -387,7 +387,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr instanceof ValueNode) {
-                doRoot((ValueNode) instr);
+                try {
+                    doRoot((ValueNode) instr);
+                } catch (Throwable e) {
+                    throw new GraalInternalError(e).addContext(instr);
+                }
             }
             if (stateAfter != null) {
                 lastState = stateAfter;
@@ -402,7 +406,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         if (block.numberOfSux() >= 1 && !endsWithJump(block)) {
             NodeSuccessorsIterable successors = block.getEndNode().successors();
-            assert successors.count() >= 1 : "should have at least one successor : " + block.getEndNode();
+            assert successors.isNotEmpty() : "should have at least one successor : " + block.getEndNode();
 
             emitJump(getLIRBlock((FixedNode) successors.first()), null);
         }

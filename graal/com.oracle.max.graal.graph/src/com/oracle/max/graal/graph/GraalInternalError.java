@@ -77,7 +77,7 @@ public class GraalInternalError extends Error {
         StringBuilder str = new StringBuilder();
         str.append(super.toString());
         for (String s : context) {
-            str.append("\n\t\tat ").append(s);
+            str.append("\n\tat ").append(s);
         }
         return str.toString();
     }

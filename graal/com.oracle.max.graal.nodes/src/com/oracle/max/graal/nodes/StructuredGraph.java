@@ -201,7 +201,6 @@ public class StructuredGraph extends Graph {
         }
         node.replaceAtPredecessors(next);
         node.safeDelete();
-        begin.safeDelete();
     }
 
     public void removeSplitPropagate(ControlSplitNode node, int survivingSuccessor) {
@@ -286,7 +285,7 @@ public class StructuredGraph extends Graph {
     }
 
     public void reduceDegenerateLoopBegin(LoopBeginNode begin) {
-        assert begin.loopEnds().count() == 0 : "Loop begin still has backedges";
+        assert begin.loopEnds().isEmpty() : "Loop begin still has backedges";
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
             reduceTrivialMerge(begin);
         } else { // convert to merge
@@ -297,7 +296,7 @@ public class StructuredGraph extends Graph {
 
     public void reduceTrivialMerge(MergeNode merge) {
         assert merge.forwardEndCount() == 1;
-        assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().count() == 0;
+        assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
             assert phi.valueCount() == 1;
             ValueNode singleValue = phi.valueAt(0);
@@ -308,7 +307,7 @@ public class StructuredGraph extends Graph {
         FixedNode sux = merge.next();
         FrameState stateAfter = merge.stateAfter();
         merge.safeDelete();
-        if (stateAfter != null && stateAfter.usages().count() == 0) {
+        if (stateAfter != null && stateAfter.usages().isEmpty()) {
             stateAfter.safeDelete();
         }
         if (sux == null) {

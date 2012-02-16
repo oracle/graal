@@ -125,7 +125,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
 
     @Override
     public boolean verify() {
-        assertTrue(loopEnds().count() > 0, "missing loopEnd");
+        assertTrue(loopEnds().isNotEmpty(), "missing loopEnd");
         assertTrue(forwardEndCount() == 1, "LoopBegin should only have one forward edge");
         return super.verify();
     }

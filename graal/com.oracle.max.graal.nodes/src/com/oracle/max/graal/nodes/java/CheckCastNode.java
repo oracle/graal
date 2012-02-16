@@ -37,9 +37,9 @@ import com.oracle.max.graal.nodes.type.*;
  */
 public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
-    @Input protected final AnchorNode anchor;
+    @Input protected final FixedNode anchor;
 
-    public AnchorNode anchor() {
+    public FixedNode anchor() {
         return anchor;
     }
 
@@ -50,11 +50,11 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
      * @param targetClass the class being cast to
      * @param object the instruction producing the object
      */
-    public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
+    public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
         this(anchor, targetClassInstruction, targetClass, object, EMPTY_HINTS, false);
     }
 
-    public CheckCastNode(AnchorNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact) {
+    public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact) {
         super(targetClassInstruction, targetClass, object, hints, hintsExact, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
         this.anchor = anchor;
     }

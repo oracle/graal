@@ -24,6 +24,7 @@ package com.oracle.max.graal.lir.cfg;
 
 import java.util.*;
 
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.*;
 import com.oracle.max.graal.nodes.*;
@@ -196,4 +197,18 @@ public class Block {
         return getSuccessors().get(i);
     }
 // end to be inlined later on
+
+    public boolean dominates(Block block) {
+        return block.isDominatedBy(this);
+    }
+
+    public boolean isDominatedBy(Block block) {
+        if (block == this) {
+            return true;
+        }
+        if (dominator == null) {
+            return false;
+        }
+        return dominator.isDominatedBy(block);
+    }
 }
