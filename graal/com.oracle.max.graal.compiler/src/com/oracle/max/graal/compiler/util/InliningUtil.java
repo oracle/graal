@@ -28,6 +28,7 @@ import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.cri.*;
@@ -170,13 +171,20 @@ public class InliningUtil {
         public void inline(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
             // receiver null check must be before the type check
             InliningUtil.receiverNullCheck(invoke);
-            ReadHubNode objectClass = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
+            ValueNode receiver = invoke.callTarget().receiver();
+            ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
             FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode));
+            AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
+
+            ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(type.getEncoding(Representation.ObjectHub), runtime, graph));
+            CheckCastNode checkCast = graph.unique(new CheckCastNode(anchor, typeConst, type, receiver));
+            invoke.callTarget().replaceFirstInput(receiver, checkCast);
 
             graph.addBeforeFixed(invoke.node(), objectClass);
             graph.addBeforeFixed(invoke.node(), guard);
+            graph.addBeforeFixed(invoke.node(), anchor);
 
             Debug.log("inlining 1 method using 1 type check");
 
@@ -255,7 +263,7 @@ public class InliningUtil {
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
             returnMerge.setProbability(invoke.probability());
-            returnMerge.setStateAfter(invoke.stateAfter());
+            returnMerge.setStateAfter(invoke.stateAfter().duplicate(invoke.stateAfter().bci));
 
             PhiNode returnValuePhi = null;
             if (hasReturnValue) {
@@ -271,7 +279,7 @@ public class InliningUtil {
 
                 exceptionMerge = graph.add(new MergeNode());
                 exceptionMerge.setProbability(exceptionEdge.probability());
-                exceptionMerge.setStateAfter(exceptionEdge.stateAfter());
+                exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicate(invoke.stateAfter().bci));
 
                 FixedNode exceptionSux = exceptionObject.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
@@ -318,6 +326,12 @@ public class InliningUtil {
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
                 Invoke invokeForInlining = (Invoke) node.next();
+
+                ValueNode receiver = invokeForInlining.callTarget().receiver();
+                ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(types[i].getEncoding(Representation.ObjectHub), runtime, graph));
+                CheckCastNode checkCast = graph.unique(new CheckCastNode(node, typeConst, types[i], receiver));
+                invokeForInlining.callTarget().replaceFirstInput(receiver, checkCast);
+
                 RiResolvedMethod concrete = concretes.get(i);
                 StructuredGraph calleeGraph = getGraph(concrete, callback);
                 assert !IntrinsificationPhase.canIntrinsify(invokeForInlining, concrete, runtime);
@@ -405,6 +419,8 @@ public class InliningUtil {
 
         private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
             Invoke result = (Invoke) invoke.node().copyWithInputs();
+            Node callTarget = result.callTarget().copyWithInputs();
+            result.node().replaceFirstInput(result.callTarget(), callTarget);
             result.setUseForInlining(useForInlining);
 
             CiKind kind = invoke.node().kind();

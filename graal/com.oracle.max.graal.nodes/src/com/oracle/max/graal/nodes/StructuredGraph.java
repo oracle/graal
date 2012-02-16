@@ -311,6 +311,14 @@ public class StructuredGraph extends Graph {
         EndNode singleEnd = merge.forwardEndAt(0);
         FixedNode sux = merge.next();
         FrameState stateAfter = merge.stateAfter();
+        // evacuateGuards
+        Node prevBegin = singleEnd.predecessor();
+        assert prevBegin != null;
+        while (!(prevBegin instanceof BeginNode)) {
+            prevBegin = prevBegin.predecessor();
+        }
+        merge.replaceAtUsages(prevBegin);
+
         merge.safeDelete();
         if (stateAfter != null && stateAfter.usages().isEmpty()) {
             stateAfter.safeDelete();
