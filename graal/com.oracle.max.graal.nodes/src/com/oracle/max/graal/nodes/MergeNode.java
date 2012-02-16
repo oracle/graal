@@ -22,6 +22,9 @@
  */
 package com.oracle.max.graal.nodes;
 
+import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -113,5 +116,44 @@ public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLo
 
     public NodeIterable<PhiNode> phis() {
         return this.usages().filter(PhiNode.class);
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        FixedNode next = next();
+        if (next instanceof LoopEndNode) {
+            LoopEndNode origLoopEnd = (LoopEndNode) next;
+            LoopBeginNode begin = origLoopEnd.loopBegin();
+            for (PhiNode phi : phis()) {
+                for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
+                    if (!begin.isPhiAtMerge(usage)) {
+                        return;
+                    }
+                }
+            }
+            Debug.log("Split %s into loop ends for %s", this, begin);
+            int numEnds = this.forwardEndCount();
+            StructuredGraph graph = (StructuredGraph) graph();
+            for (int i = 0; i < numEnds - 1; i++) {
+                EndNode end = forwardEndAt(numEnds - 1 - i);
+                LoopEndNode loopEnd = graph.add(new LoopEndNode(begin));
+                for (PhiNode phi : begin.phis()) {
+                    ValueNode v = phi.valueAt(origLoopEnd);
+                    ValueNode newInput;
+                    if (isPhiAtMerge(v)) {
+                        PhiNode endPhi = (PhiNode) v;
+                        newInput = endPhi.valueAt(end);
+                    } else {
+                        newInput = v;
+                    }
+                    phi.addInput(newInput);
+                }
+                this.removeEnd(end);
+                end.replaceAtPredecessors(loopEnd);
+                end.safeDelete();
+                tool.addToWorkList(loopEnd.predecessor());
+            }
+            graph.reduceTrivialMerge(this);
+        }
     }
 }
