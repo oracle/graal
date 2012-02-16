@@ -325,7 +325,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     private Method toJava() {
         try {
-            return holder.toJava().getDeclaredMethod(name, CiUtil.signatureToTypes(signature, holder));
+            return holder.toJava().getDeclaredMethod(name, CiUtil.signatureToTypes(signature(), holder));
         } catch (NoSuchMethodException e) {
             return null;
         }
@@ -333,7 +333,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     private Constructor toJavaConstructor() {
         try {
-            return holder.toJava().getDeclaredConstructor(CiUtil.signatureToTypes(signature, holder));
+            return holder.toJava().getDeclaredConstructor(CiUtil.signatureToTypes(signature(), holder));
         } catch (NoSuchMethodException e) {
             return null;
         }
