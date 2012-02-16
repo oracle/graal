@@ -27,6 +27,7 @@ import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
@@ -111,7 +112,9 @@ public class Snippets {
                             targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool, plan);
                         }
                         InliningUtil.inline(invoke, targetGraph, true);
-                        new CanonicalizerPhase(target, runtime, null).apply(graph);
+                        if (GraalOptions.OptCanonicalizer) {
+                            new CanonicalizerPhase(target, runtime, null).apply(graph);
+                        }
                     }
                 }
 
@@ -119,7 +122,9 @@ public class Snippets {
 
                 Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
                 new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(target, runtime, null).apply(graph);
+                if (GraalOptions.OptCanonicalizer) {
+                    new CanonicalizerPhase(target, runtime, null).apply(graph);
+                }
 
                 // TODO (gd) remove when we have safepoint polling elimination
                 for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {

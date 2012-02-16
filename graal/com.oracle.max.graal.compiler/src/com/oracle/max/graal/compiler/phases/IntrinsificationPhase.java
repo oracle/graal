@@ -47,22 +47,31 @@ public class IntrinsificationPhase extends Phase {
         }
     }
 
-    public static void tryIntrinsify(Invoke invoke, GraalRuntime runtime) {
+    public static boolean canIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
+        return getIntrinsicGraph(invoke, target, runtime) != null;
+    }
+
+    private static void tryIntrinsify(Invoke invoke, GraalRuntime runtime) {
         RiResolvedMethod target = invoke.callTarget().targetMethod();
         if (target != null) {
             tryIntrinsify(invoke, target, runtime);
         }
     }
 
-    public static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
+    private static void tryIntrinsify(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
+        StructuredGraph intrinsicGraph = getIntrinsicGraph(invoke, target, runtime);
+        if (intrinsicGraph != null) {
+            Debug.log(" > Intrinsify %s", target);
+            InliningUtil.inline(invoke, intrinsicGraph, true);
+        }
+    }
+
+    private static StructuredGraph getIntrinsicGraph(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
         StructuredGraph intrinsicGraph = (StructuredGraph) target.compilerStorage().get(Graph.class);
         if (intrinsicGraph == null) {
             // TODO (ph) remove once all intrinsics are available via RiMethod
             intrinsicGraph = runtime.intrinsicGraph(invoke.stateAfter().method(), invoke.bci(), target, invoke.callTarget().arguments());
         }
-        if (intrinsicGraph != null) {
-            Debug.log(" > Intrinsify %s", target);
-            InliningUtil.inline(invoke, intrinsicGraph, true);
-        }
+        return intrinsicGraph;
     }
 }

@@ -176,7 +176,9 @@ public class StampFactory {
                 assert current.kind() == first.kind() : values + " first=" + first + " current=" + current + " first kind=" + first.kind() + " current kind=" + current.kind();
                 nonNull &= current.nonNull();
                 declaredType = orTypes(declaredType, current.declaredType());
-                exactType = orTypes(exactType, current.exactType());
+                if (exactType != current.exactType()) {
+                    exactType = null;
+                }
             }
 
             if (nonNull != first.nonNull() || declaredType != first.declaredType() || exactType != first.exactType()) {
