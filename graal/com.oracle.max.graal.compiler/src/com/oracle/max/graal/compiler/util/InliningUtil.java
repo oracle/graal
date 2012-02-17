@@ -815,7 +815,11 @@ public class InliningUtil {
             if (GraalOptions.ProbabilityAnalysis) {
                 if (node instanceof FixedNode) {
                     FixedNode fixed = (FixedNode) node;
-                    fixed.setProbability(fixed.probability() * invokeProbability);
+                    double newProbability = fixed.probability() * invokeProbability;
+                    if (GraalOptions.LimitInlinedProbability) {
+                        newProbability = Math.min(newProbability, invokeProbability);
+                    }
+                    fixed.setProbability(newProbability);
                 }
             }
             if (node instanceof FrameState) {
@@ -829,7 +833,6 @@ public class InliningUtil {
                     frameState.replaceAndDelete(stateAfter);
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
                     if (frameState.isAlive()) {
-                        // TODO (ch) it happens sometimes that we have a FrameState.AFTER_EXCEPTION_BCI but no stateAtExceptionEdge
                         assert stateAtExceptionEdge != null;
                         frameState.replaceAndDelete(stateAtExceptionEdge);
                     } else {
