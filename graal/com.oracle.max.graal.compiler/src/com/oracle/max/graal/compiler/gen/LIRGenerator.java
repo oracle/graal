@@ -396,7 +396,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if (stateAfter != null) {
                 lastState = stateAfter;
                 assert checkStartOperands(instr, lastState);
-                checkStateReady(lastState);
+                assert checkStateReady(lastState);
                 if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
                     TTY.println("STATE CHANGE");
                     if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
@@ -425,13 +425,18 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private void checkStateReady(FrameState state) {
-        for (int i = 0; i < state.valuesSize(); i++) {
-            ValueNode v = state.valueAt(i);
-            if (v != null && !(v instanceof VirtualObjectNode)) {
-                assert operand(v) != null : "Value " + v + " in " + state + " is not ready!";
+    private boolean checkStateReady(FrameState state) {
+        FrameState fs = state;
+        while (fs != null) {
+            for (int i = 0; i < fs.valuesSize(); i++) {
+                ValueNode v = fs.valueAt(i);
+                if (v != null && !(v instanceof VirtualObjectNode)) {
+                    assert operand(v) != null : "Value " + v + " in " + fs + " is not ready!";
+                }
             }
+            fs =  fs.outerFrameState();
         }
+        return true;
     }
 
     private static boolean endsWithJump(Block block) {
