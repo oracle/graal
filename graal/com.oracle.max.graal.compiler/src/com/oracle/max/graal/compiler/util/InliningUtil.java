@@ -326,10 +326,18 @@ public class InliningUtil {
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
                 Invoke invokeForInlining = (Invoke) node.next();
+                int typeIdx = -1;
+                for (int j = 0; j < typesToConcretes.length; j++) {
+                    if (typesToConcretes[j] == i) {
+                        typeIdx = j;
+                        break;
+                    }
+                }
+                assert typeIdx >= 0;
 
                 ValueNode receiver = invokeForInlining.callTarget().receiver();
-                ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(types[i].getEncoding(Representation.ObjectHub), runtime, graph));
-                CheckCastNode checkCast = graph.unique(new CheckCastNode(node, typeConst, types[i], receiver));
+                ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(types[typeIdx].getEncoding(Representation.ObjectHub), runtime, graph));
+                CheckCastNode checkCast = graph.unique(new CheckCastNode(node, typeConst, types[typeIdx], receiver));
                 invokeForInlining.callTarget().replaceFirstInput(receiver, checkCast);
 
                 RiResolvedMethod concrete = concretes.get(i);
