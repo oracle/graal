@@ -98,6 +98,15 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
+    public RiResolvedType leastCommonAncestor(RiResolvedType otherType) {
+        if (otherType instanceof HotSpotTypePrimitive) {
+            return null;
+        } else {
+            return (RiResolvedType) compiler.getVMEntries().RiType_leastCommonAncestor(this, (HotSpotTypeResolved) otherType);
+        }
+    }
+
+    @Override
     public RiResolvedType exactType() {
         if (Modifier.isFinal(accessFlags)) {
             return this;

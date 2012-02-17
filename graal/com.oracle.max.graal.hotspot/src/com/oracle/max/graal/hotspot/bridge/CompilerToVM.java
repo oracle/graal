@@ -73,6 +73,8 @@ public interface CompilerToVM {
 
     boolean RiType_isSubtypeOf(HotSpotTypeResolved klass, RiType other);
 
+    RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
+
     RiType getPrimitiveArrayType(CiKind kind);
 
     RiType RiType_arrayOf(HotSpotTypeResolved klass);

@@ -122,6 +122,13 @@ public interface RiResolvedType extends RiType {
     RiResolvedType superType();
 
     /**
+     * Walks the class hierarchy upwards and returns the least common type that is a super type of both
+     * the current and the given type.
+     * @return the least common type that is a super type of both the current and the given type, or null if primitive types are involved.
+     */
+    RiResolvedType leastCommonAncestor(RiResolvedType otherType);
+
+    /**
      * Attempts to get the unique concrete subtype of this type.
      * @return the exact type of this type, if it exists; {@code null} otherwise
      */

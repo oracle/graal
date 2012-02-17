@@ -326,18 +326,11 @@ public class InliningUtil {
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
                 Invoke invokeForInlining = (Invoke) node.next();
-                int typeIdx = -1;
-                for (int j = 0; j < typesToConcretes.length; j++) {
-                    if (typesToConcretes[j] == i) {
-                        typeIdx = j;
-                        break;
-                    }
-                }
-                assert typeIdx >= 0;
+                RiResolvedType commonType = getLeastCommonType(i);
 
                 ValueNode receiver = invokeForInlining.callTarget().receiver();
-                ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(types[typeIdx].getEncoding(Representation.ObjectHub), runtime, graph));
-                CheckCastNode checkCast = graph.unique(new CheckCastNode(node, typeConst, types[typeIdx], receiver));
+                ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(commonType.getEncoding(Representation.ObjectHub), runtime, graph));
+                CheckCastNode checkCast = graph.unique(new CheckCastNode(node, typeConst, commonType, receiver));
                 invokeForInlining.callTarget().replaceFirstInput(receiver, checkCast);
 
                 RiResolvedMethod concrete = concretes.get(i);
@@ -345,6 +338,21 @@ public class InliningUtil {
                 assert !IntrinsificationPhase.canIntrinsify(invokeForInlining, concrete, runtime);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
             }
+        }
+
+        private RiResolvedType getLeastCommonType(int concreteMethodIndex) {
+            RiResolvedType commonType = null;
+            for (int i = 0; i < typesToConcretes.length; i++) {
+                if (typesToConcretes[i] == concreteMethodIndex) {
+                    if (commonType == null) {
+                        commonType = types[i];
+                    } else {
+                        commonType = commonType.leastCommonAncestor(types[i]);
+                    }
+                }
+            }
+            assert commonType != null;
+            return commonType;
         }
 
         private void inlineSingleMethod(StructuredGraph graph, GraalRuntime runtime, InliningCallback callback) {
