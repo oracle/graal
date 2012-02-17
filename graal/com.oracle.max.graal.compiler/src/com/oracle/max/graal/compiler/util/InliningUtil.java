@@ -178,8 +178,7 @@ public class InliningUtil {
             AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
 
-            ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(type.getEncoding(Representation.ObjectHub), runtime, graph));
-            CheckCastNode checkCast = graph.unique(new CheckCastNode(anchor, typeConst, type, receiver));
+            CheckCastNode checkCast = createAnchoredReceiver(graph, runtime, anchor, type, receiver);
             invoke.callTarget().replaceFirstInput(receiver, checkCast);
 
             graph.addBeforeFixed(invoke.node(), objectClass);
@@ -326,11 +325,10 @@ public class InliningUtil {
             for (int i = 0; i < calleeEntryNodes.length; i++) {
                 BeginNode node = calleeEntryNodes[i];
                 Invoke invokeForInlining = (Invoke) node.next();
-                RiResolvedType commonType = getLeastCommonType(i);
 
+                RiResolvedType commonType = getLeastCommonType(i);
                 ValueNode receiver = invokeForInlining.callTarget().receiver();
-                ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(commonType.getEncoding(Representation.ObjectHub), runtime, graph));
-                CheckCastNode checkCast = graph.unique(new CheckCastNode(node, typeConst, commonType, receiver));
+                CheckCastNode checkCast = createAnchoredReceiver(graph, runtime, node, commonType, receiver);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, checkCast);
 
                 RiResolvedMethod concrete = concretes.get(i);
@@ -659,6 +657,13 @@ public class InliningUtil {
             Debug.log("not inlining %s because no type profile exists", methodName(targetMethod, invoke));
             return null;
         }
+    }
+
+    private static CheckCastNode createAnchoredReceiver(StructuredGraph graph, GraalRuntime runtime, FixedNode anchor, RiResolvedType commonType, ValueNode receiver) {
+        // to avoid that floating reads on receiver fields float above the type check
+        ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(commonType.getEncoding(Representation.ObjectHub), runtime, graph));
+        CheckCastNode checkCast = graph.unique(new CheckCastNode(anchor, typeConst, commonType, receiver, false));
+        return checkCast;
     }
 
     private static void convertTypeToBranchProbabilities(double[] typeProbabilities, double notRecordedTypeProbability) {
