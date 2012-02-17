@@ -24,13 +24,14 @@ package com.oracle.max.graal.nodes.java;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
 /**
  * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
  */
-public final class ExceptionObjectNode extends AbstractStateSplit implements LIRLowerable {
+public final class ExceptionObjectNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
 
     /**
      * Constructs a new ExceptionObject instruction.
