@@ -396,6 +396,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             if (stateAfter != null) {
                 lastState = stateAfter;
                 assert checkStartOperands(instr, lastState);
+                checkStateReady(lastState);
                 if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
                     TTY.println("STATE CHANGE");
                     if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
@@ -421,6 +422,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         if (GraalOptions.PrintIRWithLIR) {
             TTY.println();
+        }
+    }
+
+    private void checkStateReady(FrameState state) {
+        for (int i = 0; i < state.valuesSize(); i++) {
+            ValueNode v = state.valueAt(i);
+            if (v != null && !(v instanceof VirtualObjectNode)) {
+                assert operand(v) != null : "Value " + v + " in " + state + " is not ready!";
+            }
         }
     }
 
