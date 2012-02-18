@@ -53,9 +53,7 @@ public class ComputeProbabilityPhase extends Phase {
         Debug.dump(graph, "After PropagateProbability");
         computeLoopFactors();
         Debug.dump(graph, "After computeLoopFactors");
-        if (GraalOptions.PropagateLoopFrequency) {
-            new PropagateLoopFrequency(graph.start()).apply();
-        }
+        new PropagateLoopFrequency(graph.start()).apply();
     }
 
     private void computeLoopFactors() {
@@ -275,14 +273,51 @@ public class ComputeProbabilityPhase extends Phase {
     }
 
     private class PropagateLoopFrequency extends PostOrderNodeIterator<LoopCount> {
+        private final FrequencyPropagationPolicy policy;
 
         public PropagateLoopFrequency(FixedNode start) {
             super(start, new LoopCount(1d));
+            this.policy = createFrequencyPropagationPolicy();
         }
 
         @Override
         protected void node(FixedNode node) {
-            node.setProbability(node.probability() * state.count);
+            node.setProbability(policy.compute(node.probability(), state.count));
+        }
+
+        private FrequencyPropagationPolicy createFrequencyPropagationPolicy() {
+            switch (GraalOptions.LoopFrequencyPropagationPolicy) {
+                case 0: return new FullFrequencyPropagation();
+                case 1: return new NoFrequencyPropagation();
+                case 2: return new LogarithmicFrequencyPropagation();
+                default: throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
+    private interface FrequencyPropagationPolicy {
+        double compute(double probability, double frequency);
+    }
+
+    private static class FullFrequencyPropagation implements FrequencyPropagationPolicy {
+        @Override
+        public double compute(double probability, double frequency) {
+            return probability * frequency;
+        }
+    }
+
+    private static class NoFrequencyPropagation implements FrequencyPropagationPolicy {
+        @Override
+        public double compute(double probability, double frequency) {
+            return probability;
+        }
+    }
+
+    private static class LogarithmicFrequencyPropagation implements FrequencyPropagationPolicy {
+        @Override
+        public double compute(double probability, double frequency) {
+            double result = Math.pow(probability, 1.5) * Math.log(frequency);
+            return Math.max(probability, result);
         }
     }
 }
