@@ -140,10 +140,12 @@ public class DebugValueMap {
     }
 
     public void group() {
-        List<DebugValueMap> oldChildren = new ArrayList<>(this.children);
-        this.children.clear();
-        for (DebugValueMap map : oldChildren) {
-            mergeWith(map);
+        if (this.hasChildren()) {
+            List<DebugValueMap> oldChildren = new ArrayList<>(this.children);
+            this.children.clear();
+            for (DebugValueMap map : oldChildren) {
+                mergeWith(map);
+            }
         }
     }
 }
