@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,18 @@
  */
 package com.oracle.max.graal.nodes;
 
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.max.graal.graph.*;
 
-/**
- * Base class of all nodes that are fixed within the control flow graph and have an immediate successor.
- */
-public abstract class FixedWithNextNode extends FixedNode {
+public class ScheduledNode extends Node {
 
-    public FixedNode next() {
-        assert scheduledNext() == null || scheduledNext() instanceof FixedNode : "next() cannot be used while the graph is scheduled";
-        return (FixedNode) scheduledNext();
+    @Successor private ScheduledNode scheduledNext; // the immediate successor of the current node
+
+    public ScheduledNode scheduledNext() {
+        return scheduledNext;
     }
 
-    public void setNext(FixedNode x) {
-        setScheduledNext(x);
-    }
-
-    public FixedWithNextNode(Stamp stamp) {
-        super(stamp);
+    public void setScheduledNext(ScheduledNode x) {
+        updatePredecessors(scheduledNext, x);
+        scheduledNext = x;
     }
 }

@@ -24,14 +24,13 @@ package com.oracle.max.graal.nodes;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.type.*;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and
  * all other instructions.
  */
-public abstract class ValueNode extends Node implements StampProvider {
+public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     /**
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.

@@ -176,21 +176,24 @@ public class Graph {
     @SuppressWarnings("unchecked")
     public <T extends Node & ValueNumberable> T unique(T node) {
         assert checkValueNumberable(node);
-        if (!node.getNodeClass().hasOutgoingEdges()) {
-            Node cachedNode = cachedNodes.get(new CacheEntry(node));
-            if (cachedNode != null && cachedNode.isAlive()) {
-                return (T) cachedNode;
-            } else {
-                Node result = add(node);
-                cachedNodes.put(new CacheEntry(node), result);
-                return (T) result;
+
+        for (Node input : node.inputs()) {
+            if (input != null) {
+                for (Node usage : input.usages()) {
+                    if (usage != node && node.getNodeClass().valueEqual(node, usage) && node.getNodeClass().edgesEqual(node, usage)) {
+                        return (T) usage;
+                    }
+                }
+                return add(node);
             }
+        }
+        Node cachedNode = cachedNodes.get(new CacheEntry(node));
+        if (cachedNode != null && cachedNode.isAlive()) {
+            return (T) cachedNode;
         } else {
-            Node duplicate = findDuplicate(node);
-            if (duplicate != null) {
-                return (T) duplicate;
-            }
-            return add(node);
+            Node result = add(node);
+            cachedNodes.put(new CacheEntry(node), result);
+            return (T) result;
         }
     }
 
