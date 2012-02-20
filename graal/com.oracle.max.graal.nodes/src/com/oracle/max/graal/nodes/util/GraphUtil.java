@@ -72,7 +72,7 @@ public class GraphUtil {
 
     public static void propagateKill(Node node) {
         if (node != null && node.isAlive()) {
-            List<Node> usagesSnapshot = node.usages().filter(isA(FloatingNode.class).or(CallTargetNode.class)).snapshot();
+            List<Node> usagesSnapshot = node.usages().filter(isA(FloatingNode.class).or(CallTargetNode.class).or(FrameState.class)).snapshot();
 
             // null out remaining usages
             node.replaceAtUsages(null);
@@ -92,10 +92,10 @@ public class GraphUtil {
     }
 
     public static void killUnusedFloatingInputs(Node node) {
-        List<FloatingNode> floatingInputs = node.inputs().filter(FloatingNode.class).snapshot();
+        List<Node> floatingInputs = node.inputs().filter(isA(FloatingNode.class).or(CallTargetNode.class).or(FrameState.class)).snapshot();
         node.safeDelete();
 
-        for (FloatingNode in : floatingInputs) {
+        for (Node in : floatingInputs) {
             if (in.isAlive() && in.usages().isEmpty()) {
                 killUnusedFloatingInputs(in);
             }
