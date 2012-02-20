@@ -28,6 +28,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
+import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
@@ -40,67 +41,6 @@ import com.oracle.max.graal.nodes.virtual.*;
 
 
 public class EscapeAnalysisPhase extends Phase {
-    public static class GraphOrder implements Iterable<Node> {
-
-        private final ArrayList<Node> nodes = new ArrayList<>();
-
-        public GraphOrder(Graph graph) {
-            NodeBitMap visited = graph.createNodeBitMap();
-
-            for (ReturnNode node : graph.getNodes(ReturnNode.class)) {
-                visit(visited, node);
-            }
-            for (UnwindNode node : graph.getNodes(UnwindNode.class)) {
-                visit(visited, node);
-            }
-            for (DeoptimizeNode node : graph.getNodes(DeoptimizeNode.class)) {
-                visit(visited, node);
-            }
-        }
-
-        private void visit(NodeBitMap visited, Node node) {
-            if (node != null && !visited.isMarked(node)) {
-                visited.mark(node);
-                for (Node input : node.inputs()) {
-                    visit(visited, input);
-                }
-                if (node.predecessor() != null) {
-                    visit(visited, node.predecessor());
-                }
-                nodes.add(node);
-            }
-        }
-
-        @Override
-        public Iterator<Node> iterator() {
-            return new Iterator<Node>() {
-
-                private int pos = 0;
-
-                private void removeDeleted() {
-                    while (pos < nodes.size() && nodes.get(pos).isDeleted()) {
-                        pos++;
-                    }
-                }
-
-                @Override
-                public boolean hasNext() {
-                    removeDeleted();
-                    return pos < nodes.size();
-                }
-
-                @Override
-                public Node next() {
-                    return nodes.get(pos++);
-                }
-
-                @Override
-                public void remove() {
-                    throw new UnsupportedOperationException();
-                }
-            };
-        }
-    }
 
     public static class BlockExitState implements MergeableState<BlockExitState> {
         public final ValueNode[] fieldState;
