@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.phases;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -53,11 +52,9 @@ public class CanonicalizerPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        NodeWorkList nodeWorkList = graph.createNodeWorkList(false, MAX_ITERATION_PER_NODE);
+        NodeWorkList nodeWorkList = graph.createNodeWorkList(!newNodes, MAX_ITERATION_PER_NODE);
         if (newNodes) {
             nodeWorkList.addAll(graph.getNewNodes());
-        } else {
-            nodeWorkList.addAll(new GraphOrder(graph));
         }
 
         canonicalize(graph, nodeWorkList, runtime, target, assumptions);
