@@ -54,6 +54,21 @@ public class SchedulePhase extends Phase {
         sortNodesWithinBlocks(graph);
     }
 
+    public void scheduleGraph() {
+        for (Block block : cfg.getBlocks()) {
+            List<Node> nodeList = nodesFor.get(block);
+            ScheduledNode last = null;
+            for (Node node : nodeList) {
+                if (!(node instanceof FrameState)) {
+                    if (last != null) {
+                        last.setScheduledNext((ScheduledNode) node);
+                    }
+                    last = (ScheduledNode) node;
+                }
+            }
+        }
+    }
+
     public ControlFlowGraph getCFG() {
         return cfg;
     }
@@ -273,9 +288,9 @@ public class SchedulePhase extends Phase {
             if (canNotMove) {
                 // (cwi) this was the assertion commented out below.  However, it is failing frequently when the
                 // scheduler is used for debug printing in early compiler phases. This was annoying during debugging
-                // when an excpetion breakpoint is set for assertion errors, so I changed it to a bailout.
+                // when an exception breakpoint is set for assertion errors, so I changed it to a bailout.
                 if (b.getEndNode() instanceof ControlSplitNode) {
-                    throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block whcih can not be move").
+                    throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").
                     addContext(lastSorted).
                     addContext(b.getEndNode());
                 }
