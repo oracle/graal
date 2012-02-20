@@ -36,6 +36,7 @@ import com.oracle.max.graal.compiler.phases.*;
 import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.compiler.target.*;
+import com.oracle.max.graal.compiler.types.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.lir.*;
@@ -144,6 +145,14 @@ public class GraalCompiler {
             new IntrinsificationPhase(runtime).apply(graph);
         }
 
+        if (GraalOptions.PropagateTypes) {
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
+
+            new PropagateTypesPhase(target, runtime, assumptions).apply(graph);
+        }
+
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, plan).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
@@ -152,6 +161,10 @@ public class GraalCompiler {
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+        }
+
+        if (GraalOptions.PropagateTypes) {
+            new PropagateTypesPhase(target, runtime, assumptions).apply(graph);
         }
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
