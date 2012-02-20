@@ -269,7 +269,7 @@ public class HotSpotRuntime implements GraalRuntime {
                     if (elementType.superType() != null) {
                         AnchorNode anchor = graph.add(new AnchorNode());
                         graph.addBeforeFixed(storeIndexed, anchor);
-                        ConstantNode type = graph.unique(ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph));
+                        ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
                         value = graph.unique(new CheckCastNode(anchor, type, elementType, value));
                     } else {
                         assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
