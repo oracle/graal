@@ -101,7 +101,7 @@ public class StampFactory {
                 return false;
             } else if (other.nonNull() || nonNull()) {
                 // One of the two values cannot be null.
-                return !other.declaredType().isSubtypeOf(declaredType()) && !declaredType().isSubtypeOf(other.declaredType());
+                return !other.declaredType().isInterface() && !declaredType().isInterface() && !other.declaredType().isSubtypeOf(declaredType()) && !declaredType().isSubtypeOf(other.declaredType());
             } else {
                 // Both values may be null.
                 return false;
