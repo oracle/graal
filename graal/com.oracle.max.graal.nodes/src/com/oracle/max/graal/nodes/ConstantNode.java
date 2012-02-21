@@ -25,6 +25,7 @@ package com.oracle.max.graal.nodes;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
@@ -52,11 +53,15 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        if (gen.canInlineConstant(value)) {
+        if (gen.canInlineConstant(value) || onlyUsedInFrameState()) {
             gen.setResult(this, value);
         } else {
             gen.setResult(this, gen.emitMove(value));
         }
+    }
+
+    private boolean onlyUsedInFrameState() {
+        return usages().filter(NodePredicates.isNotA(FrameState.class)).isEmpty();
     }
 
     public static ConstantNode forCiConstant(CiConstant constant, RiRuntime runtime, Graph graph) {
