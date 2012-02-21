@@ -95,7 +95,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
          * The frame state of the caller of the method performing the lock, or null if the outermost method
          * performs the lock. This information is used to compute the {@link CiFrame} that this lock belongs to.
          * We cannot use the actual frame state of the locking method, because it is now unique for a method. The
-         * caller frame states are unique, i.e., all frame states of an inlined methods refer to the same caller frame state.
+         * caller frame states are unique, i.e., all frame states of inlined methods refer to the same caller frame state.
          */
         public final FrameState callerState;
 

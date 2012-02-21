@@ -108,7 +108,7 @@ public abstract class EscapeOp {
             assert x.type() == ((ValueNode) node).exactType();
             ((StructuredGraph) x.graph()).replaceFloating(x, ConstantNode.forBoolean(true, node.graph()));
         } else if (usage instanceof AccessMonitorNode) {
-            ((AccessMonitorNode) usage).makeEliminated();
+            ((AccessMonitorNode) usage).eliminate();
         }
     }
 

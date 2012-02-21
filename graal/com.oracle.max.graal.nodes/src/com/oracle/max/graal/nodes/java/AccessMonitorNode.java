@@ -56,7 +56,7 @@ public abstract class AccessMonitorNode extends AbstractStateSplit implements Me
         return eliminated;
     }
 
-    public void makeEliminated() {
+    public void eliminate() {
         eliminated = true;
     }
 
