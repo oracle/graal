@@ -199,7 +199,9 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     public void recordMethodContentsAssumption(RiResolvedMethod method) {
-        assumptions.recordMethodContents(method);
+        if (assumptions != null) {
+            assumptions.recordMethodContents(method);
+        }
     }
 
     private static int computeInliningLevel(Invoke invoke) {
