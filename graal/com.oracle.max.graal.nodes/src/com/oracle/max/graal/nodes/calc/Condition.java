@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -272,5 +272,181 @@ public enum Condition {
         }
         assert false : "missed folding of constant operands: " + lt + " " + this + " " + rt;
         return null;
+    }
+
+    public Condition join(Condition other) {
+        if (other == this) {
+            return this;
+        }
+        if (this == OF || this == NOF || other == OF || other == NOF) {
+            return null;
+        }
+        switch (this) {
+            case EQ:
+                if (other == LE || other == GE || other == BE || other == AE) {
+                    return EQ;
+                } else {
+                    return null;
+                }
+            case NE:
+                if (other == LT || other == GT || other == BT || other == AT) {
+                    return other;
+                } else if (other == LE) {
+                    return LT;
+                } else if (other == GE) {
+                    return GT;
+                } else if (other == BE) {
+                    return BT;
+                } else if (other == AE) {
+                    return AT;
+                } else {
+                    return null;
+                }
+            case LE:
+                if (other == GE || other == EQ) {
+                    return EQ;
+                } else if (other == NE || other == LT) {
+                    return LT;
+                } else {
+                    return null;
+                }
+            case LT:
+                if (other == NE || other == LE) {
+                    return LT;
+                } else {
+                    return null;
+                }
+            case GE:
+                if (other == LE || other == EQ) {
+                    return EQ;
+                } else if (other == NE || other == GT) {
+                    return GT;
+                } else {
+                    return null;
+                }
+            case GT:
+                if (other == NE || other == GE) {
+                    return GT;
+                } else {
+                    return null;
+                }
+            case BE:
+                if (other == AE || other == EQ) {
+                    return EQ;
+                } else if (other == NE || other == BT) {
+                    return BT;
+                } else {
+                    return null;
+                }
+            case BT:
+                if (other == NE || other == BE) {
+                    return BT;
+                } else {
+                    return null;
+                }
+            case AE:
+                if (other == BE || other == EQ) {
+                    return EQ;
+                } else if (other == NE || other == AT) {
+                    return AT;
+                } else {
+                    return null;
+                }
+            case AT:
+                if (other == NE || other == AE) {
+                    return AT;
+                } else {
+                    return null;
+                }
+        }
+        throw new IllegalArgumentException(this.toString());
+    }
+
+    public Condition meet(Condition other) {
+        if (other == this) {
+            return this;
+        }
+        if (this == OF || this == NOF || other == OF || other == NOF) {
+            return null;
+        }
+        switch (this) {
+            case EQ:
+                if (other == LE || other == GE || other == BE || other == AE) {
+                    return other;
+                } else if (other == LT) {
+                    return LE;
+                } else if (other == GT) {
+                    return GE;
+                } else if (other == BT) {
+                    return BE;
+                } else if (other == AT) {
+                    return AE;
+                } else {
+                    return null;
+                }
+            case NE:
+                if (other == LT || other == GT || other == BT || other == AT) {
+                    return NE;
+                } else {
+                    return null;
+                }
+            case LE:
+                if (other == EQ || other == LT) {
+                    return LE;
+                } else {
+                    return null;
+                }
+            case LT:
+                if (other == EQ || other == LE) {
+                    return LE;
+                } else if (other == NE || other == GT) {
+                    return NE;
+                } else {
+                    return null;
+                }
+            case GE:
+                if (other == EQ || other == GT) {
+                    return GE;
+                } else {
+                    return null;
+                }
+            case GT:
+                if (other == EQ || other == GE) {
+                    return GE;
+                } else if (other == NE || other == LT) {
+                    return NE;
+                } else {
+                    return null;
+                }
+            case BE:
+                if (other == EQ || other == BT) {
+                    return BE;
+                } else {
+                    return null;
+                }
+            case BT:
+                if (other == EQ || other == BE) {
+                    return BE;
+                } else if (other == NE || other == AT) {
+                    return NE;
+                } else {
+                    return null;
+                }
+            case AE:
+                if (other == EQ || other == AT) {
+                    return AE;
+                } else {
+                    return null;
+                }
+            case AT:
+                if (other == EQ || other == AE) {
+                    return AE;
+                } else if (other == NE || other == BT) {
+                    return NE;
+                } else {
+                    return null;
+                }
+        }
+        throw new IllegalArgumentException(this.toString());
     }
 }
