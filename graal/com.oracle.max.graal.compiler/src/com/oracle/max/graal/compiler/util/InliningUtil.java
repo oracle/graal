@@ -48,6 +48,7 @@ public class InliningUtil {
     public interface InliningCallback {
         StructuredGraph buildGraph(RiResolvedMethod method);
         double inliningWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke);
+        void recordMethodContentsAssumption(RiResolvedMethod method);
         void recordConcreteMethodAssumption(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl);
     }
 
@@ -129,6 +130,7 @@ public class InliningUtil {
         public void inline(StructuredGraph compilerGraph, GraalRuntime runtime, final InliningCallback callback) {
             StructuredGraph graph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
+            callback.recordMethodContentsAssumption(concrete);
             InliningUtil.inline(invoke, graph, true);
         }
 
@@ -189,6 +191,7 @@ public class InliningUtil {
 
             StructuredGraph calleeGraph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
+            callback.recordMethodContentsAssumption(concrete);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 
@@ -333,6 +336,7 @@ public class InliningUtil {
 
                 RiResolvedMethod concrete = concretes.get(i);
                 StructuredGraph calleeGraph = getGraph(concrete, callback);
+                callback.recordMethodContentsAssumption(concrete);
                 assert !IntrinsificationPhase.canIntrinsify(invokeForInlining, concrete, runtime);
                 InliningUtil.inline(invokeForInlining, calleeGraph, false);
             }
@@ -371,6 +375,7 @@ public class InliningUtil {
             RiResolvedMethod concrete = concretes.get(0);
             StructuredGraph calleeGraph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
+            callback.recordMethodContentsAssumption(concrete);
             InliningUtil.inline(invoke, calleeGraph, false);
         }
 

@@ -34,16 +34,10 @@ import com.oracle.max.cri.ri.*;
  */
 public final class CiAssumptions implements Serializable, Iterable<CiAssumptions.Assumption> {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 5152062717588239131L;
 
     public abstract static class Assumption implements Serializable {
 
-        /**
-         *
-         */
         private static final long serialVersionUID = -1936652569665112915L;
     }
 
@@ -51,9 +45,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      * An assumption about a unique subtype of a given type.
      */
     public static final class ConcreteSubtype extends Assumption {
-        /**
-         *
-         */
+
         private static final long serialVersionUID = -1457173265437676252L;
 
         /**
@@ -95,9 +87,6 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      */
     public static final class ConcreteMethod extends Assumption {
 
-        /**
-         *
-         */
         private static final long serialVersionUID = -7636746737947390059L;
 
         /**
@@ -137,6 +126,37 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
             if (obj instanceof ConcreteMethod) {
                 ConcreteMethod other = (ConcreteMethod) obj;
                 return other.method == method && other.context == context && other.impl == impl;
+            }
+            return false;
+        }
+    }
+
+    /**
+     * An assumption that specified that a method was used during the compilation.
+     */
+    public static final class MethodContents extends Assumption {
+
+        private static final long serialVersionUID = -4821594103928571659L;
+
+        public final RiResolvedMethod method;
+
+        public MethodContents(RiResolvedMethod method) {
+            this.method = method;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + method.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof ConcreteMethod) {
+                ConcreteMethod other = (ConcreteMethod) obj;
+                return other.method == method;
             }
             return false;
         }
@@ -207,6 +227,15 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      */
     public void recordConcreteMethod(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl) {
         record(new ConcreteMethod(method, context, impl));
+    }
+
+    /**
+     * Records that {@code method} was used during the compilation.
+     *
+     * @param method a method whose contents were used
+     */
+    public void recordMethodContents(RiResolvedMethod method) {
+        record(new MethodContents(method));
     }
 
     private void record(Assumption assumption) {
