@@ -859,6 +859,7 @@ public class InliningUtil {
                 } else {
                     if (outerFrameState == null) {
                         outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.node().kind());
+                        outerFrameState.setDuringCall(true);
                     }
                     frameState.setOuterFrameState(outerFrameState);
                 }

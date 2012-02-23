@@ -67,6 +67,8 @@ public class CiFrame extends CiCodePos implements Serializable {
 
     public final boolean rethrowException;
 
+    public final boolean duringCall;
+
     /**
      * Creates a new frame object.
      *
@@ -79,7 +81,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, CiValue[] values, int numLocals, int numStack, int numLocks) {
+    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, boolean duringCall, CiValue[] values, int numLocals, int numStack, int numLocks) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -87,6 +89,7 @@ public class CiFrame extends CiCodePos implements Serializable {
         this.numLocks = numLocks;
         this.numLocals = numLocals;
         this.numStack = numStack;
+        this.duringCall = duringCall;
         assert !rethrowException || numStack == 1 : "must have exception on top of the stack";
     }
 

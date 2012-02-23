@@ -108,7 +108,9 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
     @Override
     public FrameState stateDuring() {
         FrameState stateAfter = stateAfter();
-        return stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), this.callTarget.targetMethod().signature().returnKind(false));
+        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), this.callTarget.targetMethod().signature().returnKind(false));
+        stateDuring.setDuringCall(true);
+        return stateDuring;
     }
 
     @Override

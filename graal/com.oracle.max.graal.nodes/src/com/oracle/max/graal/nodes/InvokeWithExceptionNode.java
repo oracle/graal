@@ -126,7 +126,10 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     public FrameState stateDuring() {
-        return stateAfter().duplicateModified(bci(), stateAfter().rethrowException(), this.callTarget.targetMethod().signature().returnKind(false));
+        FrameState stateAfter = stateAfter();
+        FrameState stateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), this.callTarget.targetMethod().signature().returnKind(false));
+        stateDuring.setDuringCall(true);
+        return stateDuring;
     }
 
     @Override

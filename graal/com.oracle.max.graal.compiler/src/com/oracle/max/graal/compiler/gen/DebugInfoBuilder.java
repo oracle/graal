@@ -135,7 +135,7 @@ public class DebugInfoBuilder {
                 throw new CiBailout("unbalanced monitors: found monitor for unknown frame");
             }
         }
-        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), values, state.localsSize(), state.stackSize(), numLocks);
+        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, state.localsSize(), state.stackSize(), numLocks);
         return frame;
     }
 
