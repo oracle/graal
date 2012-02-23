@@ -953,16 +953,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind(true));
         CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         frameMap.callsMethod(cc, JavaCall);
-        List<CiStackSlot> pointerSlots = new ArrayList<>(2);
-        List<CiValue> argList = visitInvokeArguments(cc, callTarget.arguments(), pointerSlots);
+        List<CiValue> argList = visitInvokeArguments(cc, callTarget.arguments());
 
         if (target().invokeSnippetAfterArguments) {
             // TODO This is the version currently active for HotSpot.
-            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), pointerSlots, null);
+            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), null, null);
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
-        LIRDebugInfo callInfo = stateFor(x.stateDuring(), pointerSlots, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
+        LIRDebugInfo callInfo = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
         emitCall(targetMethod, resultOperand, argList, destinationAddress, callInfo, snippet.marks);
 
         if (isLegal(resultOperand)) {
@@ -987,20 +986,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return value;
     }
 
-    public List<CiValue> visitInvokeArguments(CiCallingConvention cc, Iterable<ValueNode> arguments, List<CiStackSlot> pointerSlots) {
+    public List<CiValue> visitInvokeArguments(CiCallingConvention cc, Iterable<ValueNode> arguments) {
         // for each argument, load it into the correct location
         List<CiValue> argList = new ArrayList<>();
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
                 CiValue operand = toStackKind(cc.locations[j++]);
-
-                if (isStackSlot(operand) && operand.kind == CiKind.Object && pointerSlots != null) {
-                    assert !asStackSlot(operand).inCallerFrame();
-                    // This slot must be marked explicitly in the pointer map.
-                    pointerSlots.add(asStackSlot(operand));
-                }
-
                 emitMove(operand(arg), operand);
                 argList.add(operand);
 
@@ -1056,8 +1048,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiValue resultOperand = resultOperandFor(x.kind());
         CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
         frameMap.callsMethod(cc, RuntimeCall);
-        List<CiStackSlot> pointerSlots = new ArrayList<>(2);
-        List<CiValue> argList = visitInvokeArguments(cc, x.arguments(), pointerSlots);
+        List<CiValue> argList = visitInvokeArguments(cc, x.arguments());
 
         LIRDebugInfo info = null;
         FrameState stateAfter = x.stateAfter();
