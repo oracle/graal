@@ -826,7 +826,6 @@ public class InliningUtil {
             }
         }
 
-        FrameState stateBefore = null;
         FrameState outerFrameState = null;
         double invokeProbability = invoke.node().probability();
         for (Node node : duplicates.values()) {
@@ -842,12 +841,8 @@ public class InliningUtil {
             }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
-                if (frameState.bci == FrameState.BEFORE_BCI) {
-                    if (stateBefore == null) {
-                        stateBefore = stateAfter.duplicateModified(invoke.bci(), false, invoke.node().kind(), parameters.toArray(new ValueNode[parameters.size()]));
-                    }
-                    frameState.replaceAndDelete(stateBefore);
-                } else if (frameState.bci == FrameState.AFTER_BCI) {
+                assert frameState.bci != FrameState.BEFORE_BCI;
+                if (frameState.bci == FrameState.AFTER_BCI) {
                     frameState.replaceAndDelete(stateAfter);
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
                     if (frameState.isAlive()) {
