@@ -359,6 +359,7 @@ public final class GraphBuilderPhase extends Phase {
             }
         }
 
+        // TODO(tw): Merge BeginNode with ExceptionObject node to get a correct and uniform FrameState.
         BeginNode p = currentGraph.add(new BeginNode());
         p.setStateAfter(frameState.duplicateWithoutStack(bci));
 
