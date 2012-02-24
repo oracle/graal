@@ -36,18 +36,13 @@ public enum CiRuntimeCall {
     SetDeoptInfo(Void, Object),
     CreateNullPointerException(Object),
     CreateOutOfBoundsException(Object, Int),
-    OSRMigrationEnd(Void),
     JavaTimeMillis(Long),
     JavaTimeNanos(Long),
     Debug(Void),
-    ArithmethicLrem(Long, Long, Long),
-    ArithmeticLdiv(Long, Long, Long),
     ArithmeticFrem(Float, Float, Float),
     ArithmeticDrem(Double, Double, Double),
     ArithmeticCos(Double, Double),
     ArithmeticTan(Double, Double),
-    ArithmeticLog(Double, Double),
-    ArithmeticLog10(Double, Double),
     ArithmeticSin(Double, Double),
     GenericCallback(Object, Object, Object);
 

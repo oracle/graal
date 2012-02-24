@@ -116,7 +116,6 @@ public class HotSpotRuntime implements GraalRuntime {
                 buf.append("    ").
                     append(e.pcOffset).append(" -> ").
                     append(e.handlerPos).
-                    append("  ").append(e.exceptionType == null ? "<any>" : e.exceptionType).
                     append(nl);
             }
             hcf.addComment(0, buf.toString());
