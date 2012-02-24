@@ -732,12 +732,8 @@ public final class GraphBuilderPhase extends Phase {
             AnchorNode anchor = currentGraph.add(new AnchorNode());
             append(anchor);
             CheckCastNode checkCast;
-            if (type instanceof RiResolvedType) {
-                RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, 2);
-                checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
-            } else {
-                checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object));
-            }
+            RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, 2);
+            checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
             append(currentGraph.add(new ValueAnchorNode(checkCast)));
             frameState.apush(checkCast);
         } else {
