@@ -24,8 +24,10 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.util.*;
 
 public class ConvertDeoptimizeToGuardPhase extends Phase {
 
@@ -42,32 +44,48 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
 
     @Override
     protected void run(final StructuredGraph graph) {
-        List<DeoptimizeNode> nodes = graph.getNodes(DeoptimizeNode.class).snapshot();
-        if (nodes.size() == 0) {
+        if (graph.getNodes(DeoptimizeNode.class).isEmpty()) {
             return;
         }
 
-        for (DeoptimizeNode d : nodes) {
-            BeginNode myBeginNode = findBeginNode(d);
-            Node controlSplit = myBeginNode.predecessor();
-
-            if (controlSplit instanceof IfNode) {
-                IfNode ifNode = (IfNode) controlSplit;
-                BeginNode otherBegin = ifNode.trueSuccessor();
-                BooleanNode conditionNode = ifNode.compare();
-                if (myBeginNode == ifNode.trueSuccessor()) {
-                    conditionNode = conditionNode.negate();
-                    otherBegin = ifNode.falseSuccessor();
-                }
-                BeginNode ifBlockBegin = findBeginNode(ifNode);
-                graph.unique(new GuardNode(conditionNode, ifBlockBegin));
-                otherBegin.replaceAtUsages(ifBlockBegin);
-                FixedNode next = otherBegin.next();
-                otherBegin.setNext(null);
-                ifNode.replaceAtPredecessors(next);
-            }
+        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
+            visitDeoptBranch(findBeginNode(d), d, graph);
         }
 
         new DeadCodeEliminationPhase().apply(graph);
+    }
+
+    private void visitDeoptBranch(BeginNode deoptBegin, DeoptimizeNode deopt, StructuredGraph graph) {
+        if (deoptBegin instanceof MergeNode) {
+            MergeNode mergeNode = (MergeNode) deoptBegin;
+            Debug.log("Eliminating %s followed by %s", mergeNode, deopt);
+            List<EndNode> ends = mergeNode.forwardEnds().snapshot();
+            for (EndNode end : ends) {
+                if (!end.isDeleted()) {
+                    BeginNode beginNode = findBeginNode(end);
+                    visitDeoptBranch(beginNode, deopt, graph);
+                }
+            }
+            if (!deopt.isDeleted()) {
+                visitDeoptBranch(findBeginNode(deopt), deopt, graph);
+            }
+        } else if (deoptBegin.predecessor() instanceof IfNode) {
+            IfNode ifNode = (IfNode) deoptBegin.predecessor();
+            BeginNode otherBegin = ifNode.trueSuccessor();
+            BooleanNode conditionNode = ifNode.compare();
+            if (deoptBegin == ifNode.trueSuccessor()) {
+                conditionNode = conditionNode.negate();
+                otherBegin = ifNode.falseSuccessor();
+            }
+            BeginNode ifBlockBegin = findBeginNode(ifNode);
+            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s. IfBegin=%s", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin, ifBlockBegin);
+            FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode));
+            otherBegin.replaceAtUsages(ifBlockBegin);
+            FixedNode next = otherBegin.next();
+            otherBegin.setNext(null);
+            guard.setNext(next);
+            ifNode.replaceAtPredecessors(guard);
+            GraphUtil.killCFG(ifNode);
+        }
     }
 }

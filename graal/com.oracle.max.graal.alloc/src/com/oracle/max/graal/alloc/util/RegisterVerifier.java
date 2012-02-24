@@ -145,7 +145,7 @@ public final class RegisterVerifier {
                 if (savedValue != inputValue) {
                     // Current inputState and previous savedState assume a different value in this register.
                     // Assume that this register is invalid and remove it from the saved state.
-                    Debug.log("    invalididating %s because it is inconsistent with %s", savedValue, inputValue);
+                    Debug.log("    invalidating %s because it is inconsistent with %s", savedValue, inputValue);
                     iter.remove();
                     // Must re-visit this block.
                     addToWorkList(succ);
