@@ -328,8 +328,8 @@ public class Bytecodes {
         try {
             for (Field field : Flags.class.getDeclaredFields()) {
                 int flagsFilter = Modifier.FINAL | Modifier.STATIC;
-                if ((field.getModifiers() & flagsFilter) == flagsFilter) {
-                    assert field.getType() == int.class : "Only " + field;
+                if ((field.getModifiers() & flagsFilter) == flagsFilter && !field.isSynthetic()) {
+                    assert field.getType() == int.class : "Field is not int : " + field;
                     final int flag = field.getInt(null);
                     assert flag != 0;
                     assert (flag & allFlags) == 0 : field.getName() + " has a value conflicting with another flag";
