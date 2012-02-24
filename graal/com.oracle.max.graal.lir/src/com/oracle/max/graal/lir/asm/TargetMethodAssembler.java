@@ -87,7 +87,7 @@ public class TargetMethodAssembler {
         if (exceptionInfoList != null) {
             for (ExceptionInfo ei : exceptionInfoList) {
                 int codeOffset = ei.codeOffset;
-                targetMethod.recordExceptionHandler(codeOffset, -1, 0, ei.exceptionEdge.label().position(), -1, null);
+                targetMethod.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
             }
         }
 

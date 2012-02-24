@@ -309,24 +309,16 @@ public class CiTargetMethod implements Serializable {
          *
          */
         private static final long serialVersionUID = 4897339464722665281L;
-        public final int bci;
-        public final int scopeLevel;
         public final int handlerPos;
-        public final int handlerBci;
-        public final RiType exceptionType;
 
-        ExceptionHandler(int pcOffset, int bci, int scopeLevel, int handlerPos, int handlerBci, RiType exceptionType) {
+        ExceptionHandler(int pcOffset, int handlerPos) {
             super(pcOffset);
-            this.bci = bci;
-            this.scopeLevel = scopeLevel;
             this.handlerPos = handlerPos;
-            this.handlerBci = handlerBci;
-            this.exceptionType = exceptionType;
         }
 
         @Override
         public String toString() {
-            return String.format("%d[<exception edge to %d with type %s>]", pcOffset, handlerPos, (exceptionType == null) ? "null" : exceptionType);
+            return String.format("%d[<exception edge to %d>]", pcOffset, handlerPos);
         }
     }
 
@@ -461,8 +453,8 @@ public class CiTargetMethod implements Serializable {
      * @param handlerPos    the position of the handler
      * @param throwableType the type of exceptions handled by the handler
      */
-    public void recordExceptionHandler(int codePos, int bci, int scopeLevel, int handlerPos, int handlerBci, RiType throwableType) {
-        exceptionHandlers.add(new ExceptionHandler(codePos, bci, scopeLevel, handlerPos, handlerBci, throwableType));
+    public void recordExceptionHandler(int codePos, int handlerPos) {
+        exceptionHandlers.add(new ExceptionHandler(codePos, handlerPos));
     }
 
     /**
