@@ -49,7 +49,7 @@ public final class GraalOptions {
     public static int     WeightComputationPolicy            = 2;
     public static int     MaximumTrivialSize                 = 10;
     public static int     MaximumInlineLevel                 = 30;
-    public static int     MaximumDesiredSize                 = 6000;
+    public static int     MaximumDesiredSize                 = 3000;
     public static int     MaximumRecursiveInlining           = 1;
     public static int     SmallCompiledCodeSize              = 2000;
     public static boolean LimitInlinedProbability            = ____;
