@@ -47,7 +47,7 @@ public final class GraalOptions {
     public static boolean InlineMegamorphicCalls             = ____;
     public static int     InliningPolicy                     = 4;
     public static int     WeightComputationPolicy            = 2;
-    public static int     MaximumTrivialSize                 = 6;
+    public static int     MaximumTrivialSize                 = 10;
     public static int     MaximumInlineLevel                 = 30;
     public static int     MaximumDesiredSize                 = 6000;
     public static int     MaximumRecursiveInlining           = 1;
@@ -59,11 +59,13 @@ public final class GraalOptions {
     public static float   MaximumInlineWeight                = 1.25f;
     public static float   InliningSizePenalty                = 1;
     // StaticSizeBasedInliningPolicy (1), MinimumCodeSizeBasedInlining (2),
-    // DynamicSizeBasedInliningPolicy (3), GreedySizeBasedInlining (4)
+    // DynamicSizeBasedInliningPolicy (3)
     public static int     MaximumInlineSize                  = 35;
+    // GreedySizeBasedInlining (4)
+    public static int     MaximumGreedyInlineSize            = 200;
+    // Common options for inlining policies 1 to 4
     public static float   NestedInliningSizeRatio            = 1f;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
-    public static int     MaximumGreedyInlineSize            = 200;
     public static float   ProbabilityCapForInlining          = 1f;
 
     // escape analysis settings
