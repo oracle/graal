@@ -43,7 +43,7 @@ public final class GraalOptions {
     public static boolean Intrinsify                         = true;
     public static boolean CacheGraphs                        = ____;
     public static boolean InlineMonomorphicCalls             = true;
-    public static boolean InlinePolymorphicCalls             = false;
+    public static boolean InlinePolymorphicCalls             = true;
     public static boolean InlineMegamorphicCalls             = ____;
     public static int     InliningPolicy                     = 4;
     public static int     WeightComputationPolicy            = 2;
