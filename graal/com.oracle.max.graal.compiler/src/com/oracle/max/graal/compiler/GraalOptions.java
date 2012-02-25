@@ -63,7 +63,7 @@ public final class GraalOptions {
     public static int     MaximumInlineSize                  = 35;
     public static float   NestedInliningSizeRatio            = 1f;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
-    public static int     MaximumGreedyInlineSize            = 250;
+    public static int     MaximumGreedyInlineSize            = 200;
     public static float   ProbabilityCapForInlining          = 1f;
 
     // escape analysis settings
