@@ -377,7 +377,7 @@ public class EscapeAnalysisPhase extends Phase {
             }
             if (weight < minimumWeight) {
                 if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
-                    TTY.println("%n####### possibly escaping object: %s (insufficient weight for inlining)", node);
+                    TTY.println("####### possibly escaping object: %s (insufficient weight for inlining: %f)", node, weight);
                 }
                 break;
             }
@@ -391,7 +391,7 @@ public class EscapeAnalysisPhase extends Phase {
             new DeadCodeEliminationPhase().apply(graph);
             if (node.isDeleted()) {
                 if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
-                    TTY.println("%n!!!!!!!! object died while performing escape analysis: %s (%s)", node, node.exactType());
+                    TTY.println("!!!!!!!! object died while performing escape analysis: %s (%s)", node, node.exactType());
                 }
                 break;
             }
