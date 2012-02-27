@@ -24,7 +24,6 @@ package com.oracle.max.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.graph.*;
 import com.oracle.max.graal.debug.*;
@@ -57,42 +56,52 @@ public class ComputeProbabilityPhase extends Phase {
         Debug.dump(graph, "After computeLoopFactors");
         new PropagateLoopFrequency(graph.start()).apply();
 
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-
         if (GraalOptions.LoopFrequencyPropagationPolicy < 0) {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+            BitMap visitedBlocks = new BitMap(cfg.getBlocks().length);
             for (Loop loop : cfg.getLoops()) {
                 if (loop.parent == null) {
-                    correctLoopFrequencies(loop);
+                    correctLoopFrequencies(loop, 1, visitedBlocks);
                 }
             }
         }
     }
 
-    private void correctLoopFrequencies(Loop loop) {
-        double frequency = ((LoopBeginNode) loop.header.getBeginNode()).loopFrequency();
-
-        double factor;
-        switch (GraalOptions.LoopFrequencyPropagationPolicy) {
-            case -1:
-                factor = 1 / frequency;
-                break;
-            case -2:
-                factor = (1 / frequency) * (Math.log(Math.E + frequency) - 1);
-                break;
-            default: throw GraalInternalError.shouldNotReachHere();
+    private void correctLoopFrequencies(Loop loop, double parentFrequency, BitMap visitedBlocks) {
+        LoopBeginNode loopBegin = ((LoopBeginNode) loop.header.getBeginNode());
+        double frequency = parentFrequency * loopBegin.loopFrequency();
+        for (Loop child : loop.children) {
+            correctLoopFrequencies(child, frequency, visitedBlocks);
         }
 
+        double factor = getCorrectionFactor(loopBegin.probability(), frequency);
         for (Block block : loop.blocks) {
-            FixedNode node = block.getBeginNode();
+            int blockId = block.getId();
+            if (!visitedBlocks.get(blockId)) {
+                visitedBlocks.set(blockId);
 
-            while (node != block.getEndNode()) {
+                FixedNode node = block.getBeginNode();
+                while (node != block.getEndNode()) {
+                    node.setProbability(node.probability() * factor);
+                    node = ((FixedWithNextNode) node).next();
+                }
                 node.setProbability(node.probability() * factor);
-                node = ((FixedWithNextNode) node).next();
             }
         }
+    }
 
-        for (Loop child : loop.children) {
-            correctLoopFrequencies(child);
+    private static double getCorrectionFactor(double probability, double frequency) {
+        switch (GraalOptions.LoopFrequencyPropagationPolicy) {
+            case -1:
+                return 1 / frequency;
+            case -2:
+                return (1 / frequency) * (Math.log(Math.E + frequency) - 1);
+            case -3:
+                double originalProbability = probability / frequency;
+                assert isRelativeProbability(originalProbability);
+                return (1 / frequency) * Math.max(1, Math.pow(originalProbability, 1.5) * Math.log10(frequency));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -330,14 +339,13 @@ public class ComputeProbabilityPhase extends Phase {
 
     private static FrequencyPropagationPolicy createFrequencyPropagationPolicy() {
         switch (GraalOptions.LoopFrequencyPropagationPolicy) {
-            case -1:
+            case -3:
             case -2:
+            case -1:
             case 0:
                 return new FullFrequencyPropagation();
             case 1:
                 return new NoFrequencyPropagation();
-            case 2:
-                return new LogarithmicFrequencyPropagation();
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -361,15 +369,6 @@ public class ComputeProbabilityPhase extends Phase {
         @Override
         public double compute(double probability, double frequency) {
             return probability;
-        }
-    }
-
-    private static class LogarithmicFrequencyPropagation implements FrequencyPropagationPolicy {
-
-        @Override
-        public double compute(double probability, double frequency) {
-            double result = Math.pow(probability, 1.5) * Math.log(frequency);
-            return Math.max(probability, result);
         }
     }
 }
