@@ -153,15 +153,20 @@ public class AMD64LIRGenerator extends LIRGenerator {
                 scale = target().sizeInBytes(location.getValueKind());
             }
             if (isConstant(index)) {
-                displacement += asConstant(index).asLong() * scale;
-                index = CiValue.IllegalValue;
+                long newDisplacement = displacement + asConstant(index).asLong() * scale;
+                // only use the constant index if the resulting displacement fits into a 32 bit offset
+                if (NumUtil.isInt(newDisplacement)) {
+                    displacement = newDisplacement;
+                    index = CiValue.IllegalValue;
+                } else {
+                    // create a temporary variable for the index, the pointer load cannot handle a constant index
+                    CiValue newIndex = newVariable(CiKind.Long);
+                    emitMove(index, newIndex);
+                    index = newIndex;
+                }
             }
         }
 
-        if (!NumUtil.isInt(displacement)) {
-            // Currently it's not worth handling this case.
-            throw new CiBailout("integer overflow when computing constant displacement");
-        }
         return new CiAddress(location.getValueKind(), base, index, CiAddress.Scale.fromInt(scale), (int) displacement);
     }
 
