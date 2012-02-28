@@ -26,9 +26,9 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.hotspot.*;
 
 
-public class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {
+public final class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {
     /**
-     * 
+     *
      */
     private static final long serialVersionUID = 7110038548061733686L;
     private int startBci;
@@ -37,7 +37,7 @@ public class HotSpotExceptionHandler extends CompilerObject implements RiExcepti
     private int catchClassIndex;
     private RiType catchClass;
 
-    public HotSpotExceptionHandler() {
+    private HotSpotExceptionHandler() {
         super(null);
     }
 
