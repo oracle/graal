@@ -34,13 +34,11 @@ public final class DebugScope {
     private static ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
     private static ThreadLocal<Throwable> lastExceptionThrownTL = new ThreadLocal<>();
     private static DebugTimer scopeTime = Debug.timer("ScopeTime");
-    private static DebugMetric scopeCount = Debug.metric("ScopeCount");
 
     private final DebugScope parent;
 
     private Object[] context;
 
-    private List<DebugScope> children;
     private DebugValueMap valueMap;
     private String qualifiedName;
     private String name;
@@ -122,7 +120,6 @@ public final class DebugScope {
         }
         instanceTL.set(newChild);
         newChild.updateFlags();
-        scopeCount.increment();
         try (TimerCloseable a = scopeTime.start()) {
             return executeScope(runnable, callable);
         } finally {
@@ -218,10 +215,6 @@ public final class DebugScope {
             newQualifiedName = this.qualifiedName + SCOPE_SEP + newName;
         }
         DebugScope result = new DebugScope(newName, newQualifiedName, this, newContext);
-        if (children == null) {
-            children = new ArrayList<>(4);
-        }
-        children.add(result);
         return result;
     }
 
