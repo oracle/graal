@@ -35,6 +35,7 @@ import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.compiler.phases.PhasePlan.*;
 import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.hotspot.*;
@@ -448,7 +449,7 @@ public class HotSpotRuntime implements GraalRuntime {
         runtimeCall.setStateAfter(initialFrameState.duplicateModified(0, false, CiKind.Void, runtimeCall));
 
         @SuppressWarnings("unused")
-        HotSpotCompiledMethod hotSpotCompiledMethod = new HotSpotCompiledMethod(null); // initialize class...
+        HotSpotCompiledMethod hotSpotCompiledMethod = new HotSpotCompiledMethod(null, null); // initialize class...
         RiResolvedType compiledMethodClass = getType(HotSpotCompiledMethod.class);
         RiResolvedField nmethodField = null;
         for (RiResolvedField field : compiledMethodClass.declaredFields()) {
@@ -482,5 +483,13 @@ public class HotSpotRuntime implements GraalRuntime {
 
         CiTargetMethod result = compiler.getCompiler().compileMethod(method, graph, -1, PhasePlan.DEFAULT);
         return result;
+    }
+
+    @Override
+    public CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph) {
+        final PhasePlan plan = new PhasePlan();
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
+        plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+        return compiler.getCompiler().compileMethod(method, graph, -1, plan);
     }
 }

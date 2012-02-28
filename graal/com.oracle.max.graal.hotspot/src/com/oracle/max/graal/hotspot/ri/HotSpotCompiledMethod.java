@@ -22,17 +22,25 @@
  */
 package com.oracle.max.graal.hotspot.ri;
 
+import java.lang.reflect.*;
+
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.hotspot.*;
+import com.oracle.max.graal.hotspot.Compiler;
 
 /**
  * Implementation of RiCompiledMethod for HotSpot. Stores a reference to the nmethod which contains the compiled code.
  */
-public class HotSpotCompiledMethod implements RiCompiledMethod {
+public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledMethod {
+
+    private static final long serialVersionUID = 156632908220561612L;
 
     private final RiResolvedMethod method;
     private long nmethod;
 
-    public HotSpotCompiledMethod(RiResolvedMethod method) {
+    public HotSpotCompiledMethod(Compiler compiler, RiResolvedMethod method) {
+        super(compiler);
         this.method = method;
     }
 
@@ -49,5 +57,14 @@ public class HotSpotCompiledMethod implements RiCompiledMethod {
     @Override
     public String toString() {
         return "compiled method " + method + " @" + nmethod;
+    }
+
+    @Override
+    public Object execute(Object arg1, Object arg2, Object arg3) {
+        assert method.signature().argumentCount(!Modifier.isStatic(method.accessFlags())) == 3;
+        assert method.signature().argumentKindAt(0, false) == CiKind.Object;
+        assert method.signature().argumentKindAt(1, false) == CiKind.Object;
+        assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2, false) == CiKind.Object;
+        return compiler.getVMEntries().executeCompiledMethod(this, arg1, arg2, arg3);
     }
 }

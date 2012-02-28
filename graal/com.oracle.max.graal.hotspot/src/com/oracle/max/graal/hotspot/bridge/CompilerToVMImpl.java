@@ -156,5 +156,8 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     @Override
     public native String disassembleJava(HotSpotMethodResolved method);
 
+    @Override
+    public native Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);
+
     // Checkstyle: resume
 }

@@ -24,6 +24,7 @@ package com.oracle.max.graal.cri;
 
 import java.util.*;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
@@ -36,4 +37,6 @@ public interface GraalRuntime extends RiRuntime {
     void lower(Node n, CiLoweringTool tool);
 
     StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters);
+
+    CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
 }

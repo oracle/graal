@@ -109,5 +109,7 @@ public interface CompilerToVM {
 
     String disassembleJava(HotSpotMethodResolved method);
 
+    Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);
+
     // Checkstyle: resume
 }

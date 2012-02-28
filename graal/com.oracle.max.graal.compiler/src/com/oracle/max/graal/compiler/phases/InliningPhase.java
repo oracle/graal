@@ -156,6 +156,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         if (plan != null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
         }
+        assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
 
         if (GraalOptions.ProbabilityAnalysis) {
             new DeadCodeEliminationPhase().apply(newGraph);
