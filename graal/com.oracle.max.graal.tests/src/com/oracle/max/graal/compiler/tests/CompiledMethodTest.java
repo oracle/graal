@@ -30,7 +30,9 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiCompiledMethod.MethodInvalidatedException;
 import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;
 
 /**
@@ -70,5 +72,94 @@ public class CompiledMethodTest extends GraphTest {
             Assert.fail("method invalidated");
         }
 
+    }
+
+    @Test
+    public void test2() throws NoSuchMethodException, SecurityException {
+        Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
+        RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        StructuredGraph graph = new StructuredGraph(riMethod);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault()).apply(graph);
+        new CanonicalizerPhase(null, runtime, null).apply(graph);
+        new DeadCodeEliminationPhase().apply(graph);
+
+        for (Node node : graph.getNodes()) {
+            if (node instanceof ConstantNode) {
+                ConstantNode constant = (ConstantNode) node;
+                if (constant.kind() == CiKind.Object && "1 ".equals(constant.value.asObject())) {
+                    graph.replaceFloating(constant, ConstantNode.forObject("1-", runtime, graph));
+                }
+            }
+        }
+
+        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
+        final RiCompiledMethod compiledMethod = runtime.addMethod(riMethod, targetMethod);
+
+        final CompilableObject compilableObject = new CompilableObjectImpl(0);
+
+        Object result;
+        result = compilableObject.execute(new ObjectCompilerImpl(compiledMethod), "3");
+        Assert.assertEquals("1-3", result);
+    }
+
+    public abstract class CompilableObject {
+
+        private CompiledObject compiledObject;
+        private final int compileThreshold;
+        private int counter;
+
+        public CompilableObject(int compileThreshold) {
+            this.compileThreshold = compileThreshold;
+        }
+
+        public final Object execute(ObjectCompiler compiler, String args) {
+            if (counter++ < compileThreshold || compiler == null) {
+                return executeHelper(compiler, args);
+            } else {
+                compiledObject = compiler.compile(this);
+                return compiledObject.execute(compiler, args);
+            }
+        }
+
+        protected abstract Object executeHelper(ObjectCompiler context, String args);
+    }
+
+    private final class CompilableObjectImpl extends CompilableObject {
+
+        private CompilableObjectImpl(int compileThreshold) {
+            super(compileThreshold);
+        }
+
+        @Override
+        protected Object executeHelper(ObjectCompiler compiler, String args) {
+            return "1 " + args;
+        }
+    }
+
+    public interface CompiledObject {
+        Object execute(ObjectCompiler context, String args);
+    }
+
+    public interface ObjectCompiler {
+        CompiledObject compile(CompilableObject node);
+    }
+
+    private final class ObjectCompilerImpl implements ObjectCompiler {
+
+        private final RiCompiledMethod compiledMethod;
+
+        private ObjectCompilerImpl(RiCompiledMethod compiledMethod) {
+            this.compiledMethod = compiledMethod;
+        }
+
+        @Override
+        public CompiledObject compile(final CompilableObject node) {
+            return new CompiledObject() {
+                @Override
+                public Object execute(ObjectCompiler compiler, String args) {
+                    return compiledMethod.execute(node, compiler, args);
+                }
+            };
+        }
     }
 }
