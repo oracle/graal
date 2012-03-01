@@ -35,6 +35,8 @@ public final class GraalOptions {
     // Checkstyle: resume
 
 
+
+
     public static int     Threads                            = 4;
     public static boolean Lower                              = true;
 
@@ -151,6 +153,7 @@ public final class GraalOptions {
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
     public static boolean UseTypeCheckHints                  = true;
+    public static boolean InlineVTableStubs                  = ____;
 
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;

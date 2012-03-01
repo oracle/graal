@@ -37,7 +37,7 @@ import com.oracle.max.graal.nodes.util.*;
 public final class InvokeNode extends AbstractStateSplit implements Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint  {
 
     @Input private final MethodCallTargetNode callTarget;
-    private final int bci;
+    @Data private final int bci;
     private boolean useForInlining;
 
     /**

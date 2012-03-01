@@ -37,7 +37,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     private static final long serialVersionUID = 156632908220561612L;
 
     private final RiResolvedMethod method;
-    private long nmethod;
+    public long nmethod;
 
     public HotSpotCompiledMethod(Compiler compiler, RiResolvedMethod method) {
         super(compiler);

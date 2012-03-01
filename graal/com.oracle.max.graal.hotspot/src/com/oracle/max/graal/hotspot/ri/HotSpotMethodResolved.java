@@ -29,4 +29,5 @@ public interface HotSpotMethodResolved extends RiResolvedMethod, Remote {
 
     RiResolvedMethod uniqueConcreteMethod();
     void dumpProfile();
+    int vtableEntryOffset();
 }
