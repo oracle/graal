@@ -78,9 +78,9 @@ public final class GraalOptions {
     public static int     LoopFrequencyPropagationPolicy     = -1;
 
     // profiling information
-    public static int     MatureExecutionsBranch             = 50;
-    public static int     MatureExecutionsPerSwitchCase      = 15;
-    public static int     MatureExecutionsTypeProfile        = 100;
+    public static int     MatureExecutionsBranch             = 1;
+    public static int     MatureExecutionsPerSwitchCase      = 1;
+    public static int     MatureExecutionsTypeProfile        = 1;
 
     //rematerialize settings
     public static float   MinimumUsageProbability            = 0.95f;

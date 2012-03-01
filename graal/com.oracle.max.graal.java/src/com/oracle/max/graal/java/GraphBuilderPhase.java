@@ -610,6 +610,7 @@ public final class GraphBuilderPhase extends Phase {
         assert !x.isDeleted() && !y.isDeleted();
         double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
+            assert probability == -1 : "invalid probability";
             Debug.log("missing probability in %s at bci %d", method, bci());
             probability = 0.5;
         }
