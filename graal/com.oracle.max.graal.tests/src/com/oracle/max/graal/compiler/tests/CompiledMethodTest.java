@@ -30,7 +30,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiCompiledMethod.MethodInvalidatedException;
 import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.cri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.nodes.*;

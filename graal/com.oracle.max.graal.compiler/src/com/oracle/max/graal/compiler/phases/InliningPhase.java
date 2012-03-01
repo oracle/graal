@@ -90,7 +90,6 @@ public class InliningPhase extends Phase implements InliningCallback {
                 if (info.invoke.node().isAlive()) {
                     try {
                         info.inline(graph, runtime, this);
-                        Debug.log("inlining %f: %s", info.weight, info);
                         Debug.dump(graph, "after %s", info);
                         // get the new nodes here, the canonicalizer phase will reset the mark
                         newNodes = graph.getNewNodes();
@@ -119,6 +118,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         if (GraalOptions.Debug && graph.getNodeCount() >= GraalOptions.MaximumDesiredSize) {
+            Debug.log("inlining cut off by MaximumDesiredSize");
             metricInliningStoppedByMaxDesiredSize.increment();
         }
     }
@@ -247,14 +247,17 @@ public class InliningPhase extends Phase implements InliningCallback {
         @Override
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                Debug.log("not inlining (CompiledCodeSize too large %d): %s", info.compiledCodeSize(), info);
                 return false;
             }
 
             double penalty = Math.pow(GraalOptions.InliningSizePenaltyExp, callerGraph.getNodeCount() / (double) GraalOptions.MaximumDesiredSize) / GraalOptions.InliningSizePenaltyExp;
             if (info.weight > GraalOptions.MaximumInlineWeight / (1 + penalty * GraalOptions.InliningSizePenalty)) {
-                Debug.log("not inlining (cut off by weight): %e", info.weight);
+                Debug.log("not inlining (cut off by weight %e): ", info.weight);
                 return false;
             }
+
+            Debug.log("inlining (weight %f): %s", info.weight, info);
             return true;
         }
     }
@@ -263,7 +266,13 @@ public class InliningPhase extends Phase implements InliningCallback {
         @Override
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             double maxSize = Math.max(GraalOptions.MaximumTrivialSize, Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize);
-            return info.weight <= maxSize;
+            if (info.weight <= maxSize) {
+                Debug.log("inlining (size %f): %s", info.weight, info);
+                return true;
+            } else {
+                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                return false;
+            }
         }
     }
 
@@ -272,13 +281,21 @@ public class InliningPhase extends Phase implements InliningCallback {
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             assert GraalOptions.ProbabilityAnalysis;
             if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                Debug.log("not inlining (CompiledCodeSize too large %d): %s", info.compiledCodeSize(), info);
                 return false;
             }
 
             double inlineWeight = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
             double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize * inlineWeight;
             maxSize = Math.max(GraalOptions.MaximumTrivialSize, maxSize);
-            return info.weight <= maxSize;
+
+            if (info.weight <= maxSize) {
+                Debug.log("inlining (size %f): %s", info.weight, info);
+                return true;
+            } else {
+                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                return false;
+            }
         }
     }
 
@@ -287,6 +304,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             assert GraalOptions.ProbabilityAnalysis;
             if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                Debug.log("not inlining (CompiledCodeSize too large %d): %s", info.compiledCodeSize(), info);
                 return false;
             }
 
@@ -294,7 +312,14 @@ public class InliningPhase extends Phase implements InliningCallback {
             double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumInlineSize;
             maxSize = maxSize + maxSize * inlineBoost;
             maxSize = Math.min(GraalOptions.MaximumGreedyInlineSize, Math.max(GraalOptions.MaximumTrivialSize, maxSize));
-            return info.weight <= maxSize;
+
+            if (info.weight <= maxSize) {
+                Debug.log("inlining (size %f): %s", info.weight, info);
+                return true;
+            } else {
+                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                return false;
+            }
         }
     }
 
@@ -303,13 +328,21 @@ public class InliningPhase extends Phase implements InliningCallback {
         public boolean isWorthInlining(StructuredGraph callerGraph, InlineInfo info) {
             assert GraalOptions.ProbabilityAnalysis;
             if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
+                Debug.log("not inlining (CompiledCodeSize too large %d): %s", info.compiledCodeSize(), info);
                 return false;
             }
 
             double inlineRatio = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
             double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumGreedyInlineSize * inlineRatio;
             maxSize = Math.max(maxSize, GraalOptions.MaximumTrivialSize);
-            return info.weight <= maxSize;
+
+            if (info.weight <= maxSize) {
+                Debug.log("inlining (size %f): %s", info.weight, info);
+                return true;
+            } else {
+                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                return false;
+            }
         }
     }
 

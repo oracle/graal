@@ -214,19 +214,19 @@ public class InliningUtil {
         public final List<RiResolvedMethod> concretes;
         public final RiResolvedType[] types;
         public final int[] typesToConcretes;
-        public final double[] branchProbabilities;
+        public final double[] typeProbabilities;
         public final double notRecordedTypeProbability;
 
         public MultiTypeGuardInlineInfo(Invoke invoke, double weight, int level, List<RiResolvedMethod> concretes, RiResolvedType[] types,
-                        int[] typesToConcretes, double[] branchProbabilities, double notRecordedTypeProbability) {
+                        int[] typesToConcretes, double[] typeProbabilities, double notRecordedTypeProbability) {
             super(invoke, weight, level);
             assert concretes.size() > 0 && concretes.size() <= types.length : "must have at least one method but no more than types methods";
-            assert types.length == typesToConcretes.length && types.length == branchProbabilities.length : "array length must match";
+            assert types.length == typesToConcretes.length && types.length == typeProbabilities.length : "array length must match";
 
             this.concretes = concretes;
             this.types = types;
             this.typesToConcretes = typesToConcretes;
-            this.branchProbabilities = branchProbabilities;
+            this.typeProbabilities = typeProbabilities;
             this.notRecordedTypeProbability = notRecordedTypeProbability;
         }
 
@@ -291,14 +291,22 @@ public class InliningUtil {
             // create one separate block for each invoked method
             BeginNode[] calleeEntryNodes = new BeginNode[numberOfMethods];
             for (int i = 0; i < numberOfMethods; i++) {
-                int predecessors = getPredecessorCount(i);
-                calleeEntryNodes[i] = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, predecessors, true);
+                int predecessors = 0;
+                double probability = 0;
+                for (int j = 0; j < typesToConcretes.length; j++) {
+                    if (typesToConcretes[j] == i) {
+                        predecessors++;
+                        probability += typeProbabilities[j];
+                    }
+                }
+
+                calleeEntryNodes[i] = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, predecessors, invoke.probability() * probability, true);
             }
 
             // create the successor for an unknown type
             FixedNode unknownTypeNode;
             if (shouldFallbackToInvoke()) {
-                unknownTypeNode = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, 1, false);
+                unknownTypeNode = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, 1, notRecordedTypeProbability, false);
             } else {
                 unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
             }
@@ -382,17 +390,19 @@ public class InliningUtil {
         private FixedNode createDispatchOnType(StructuredGraph graph, ReadHubNode objectClassNode, BeginNode[] calleeEntryNodes, FixedNode unknownTypeSux) {
             assert types.length > 1;
 
-            // TODO (ch) set probabilities for all created fixed nodes...
             int lastIndex = types.length - 1;
-            FixedNode nextNode = createTypeCheck(graph, objectClassNode, types[lastIndex], calleeEntryNodes[typesToConcretes[lastIndex]], unknownTypeSux, branchProbabilities[lastIndex]);
+            double[] branchProbabilities = convertTypeToBranchProbabilities(typeProbabilities, notRecordedTypeProbability);
+            double nodeProbability = typeProbabilities[lastIndex];
+            IfNode nextNode = createTypeCheck(graph, objectClassNode, types[lastIndex], calleeEntryNodes[typesToConcretes[lastIndex]], unknownTypeSux, branchProbabilities[lastIndex], invoke.probability() * nodeProbability);
             for (int i = lastIndex - 1; i >= 0; i--) {
-                nextNode = createTypeCheck(graph, objectClassNode, types[i], calleeEntryNodes[typesToConcretes[i]], nextNode, branchProbabilities[i]);
+                nodeProbability += typeProbabilities[i];
+                nextNode = createTypeCheck(graph, objectClassNode, types[i], calleeEntryNodes[typesToConcretes[i]], nextNode, branchProbabilities[i], invoke.probability() * nodeProbability);
             }
 
             return nextNode;
         }
 
-        private static FixedNode createTypeCheck(StructuredGraph graph, ReadHubNode objectClassNode, RiResolvedType type, BeginNode tsux, FixedNode nextNode, double tsuxProbability) {
+        private static IfNode createTypeCheck(StructuredGraph graph, ReadHubNode objectClassNode, RiResolvedType type, BeginNode tsux, FixedNode nextNode, double tsuxProbability, double probability) {
             IfNode result;
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClassNode, type));
             if (tsux instanceof MergeNode) {
@@ -402,45 +412,46 @@ public class InliningUtil {
             } else {
                 result = graph.add(new IfNode(isTypeNode, tsux, nextNode, tsuxProbability));
             }
+            result.setProbability(probability);
             return result;
         }
 
-        private int getPredecessorCount(int concreteMethodIndex) {
-            if (concretes.size() == types.length) {
-                return 1;
-            } else {
-                int count = 0;
-                for (int i = 0; i < typesToConcretes.length; i++) {
-                    if (typesToConcretes[i] == concreteMethodIndex) {
-                        count++;
-                    }
-                }
-                return count;
+        private static double[] convertTypeToBranchProbabilities(double[] typeProbabilities, double notRecordedTypeProbability) {
+            double[] result = new double[typeProbabilities.length];
+            double total = notRecordedTypeProbability;
+            for (int i = typeProbabilities.length - 1; i >= 0; i--) {
+                total += typeProbabilities[i];
+                result[i] = typeProbabilities[i] / total;
             }
+            assert total > 0.99 && total < 1.01;
+            return result;
         }
 
         private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi,
-                        MergeNode exceptionMerge, PhiNode exceptionObjectPhi, int predecessors, boolean useForInlining) {
-            Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
-            // TODO (ch) set probabilities
+                        MergeNode exceptionMerge, PhiNode exceptionObjectPhi, int predecessors, double probability, boolean useForInlining) {
+            Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining, probability);
             BeginNode calleeEntryNode = graph.add(predecessors > 1 ? new MergeNode() : new BeginNode());
             calleeEntryNode.setNext(duplicatedInvoke.node());
+            calleeEntryNode.setProbability(probability);
 
             EndNode endNode = graph.add(new EndNode());
-            // TODO (ch) set probability
+            endNode.setProbability(probability);
+
             duplicatedInvoke.setNext(endNode);
             returnMerge.addForwardEnd(endNode);
+
             if (returnValuePhi != null) {
                 returnValuePhi.addInput(duplicatedInvoke.node());
             }
             return calleeEntryNode;
         }
 
-        private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
+        private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining, double probability) {
             Invoke result = (Invoke) invoke.node().copyWithInputs();
             Node callTarget = result.callTarget().copyWithInputs();
             result.node().replaceFirstInput(result.callTarget(), callTarget);
             result.setUseForInlining(useForInlining);
+            result.setProbability(probability);
 
             CiKind kind = invoke.node().kind();
             if (!kind.isVoid()) {
@@ -644,7 +655,6 @@ public class InliningUtil {
                         }
 
                         if (canInline) {
-                            convertTypeToBranchProbabilities(probabilities, notRecordedTypeProbability);
                             return new MultiTypeGuardInlineInfo(invoke, totalWeight, level, concreteMethods, types, typesToConcretes, probabilities, notRecordedTypeProbability);
                         } else {
                             Debug.log("not inlining %s because it is a polymorphic method call and at least one invoked method cannot be inlined", methodName(targetMethod, invoke));
@@ -670,17 +680,6 @@ public class InliningUtil {
         ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(commonType.getEncoding(Representation.ObjectHub), runtime, graph));
         CheckCastNode checkCast = graph.unique(new CheckCastNode(anchor, typeConst, commonType, receiver, false));
         return checkCast;
-    }
-
-    private static void convertTypeToBranchProbabilities(double[] typeProbabilities, double notRecordedTypeProbability) {
-        // avoid branches with 0.0/1.0 probability
-        double total = Math.max(1E-10, notRecordedTypeProbability);
-
-        for (int i = typeProbabilities.length - 1; i >= 0; i--) {
-            total += typeProbabilities[i];
-            typeProbabilities[i] = typeProbabilities[i] / total;
-        }
-        assert total > 0.99 && total < 1.01;
     }
 
     private static boolean checkInvokeConditions(Invoke invoke) {
