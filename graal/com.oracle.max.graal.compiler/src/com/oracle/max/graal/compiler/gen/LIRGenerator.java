@@ -931,7 +931,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             case Virtual:
                 assert callTarget.receiver().kind() == CiKind.Object : callTarget + ": " + callTarget.targetMethod().toString();
                 receiver = toXirArgument(callTarget.receiver());
-                snippet = xir.genInvokeVirtual(site(x.node(), callTarget.receiver()), receiver, targetMethod);
+                snippet = xir.genInvokeVirtual(site(x.node(), callTarget.receiver()), receiver, targetMethod, x.megamorph());
                 break;
             case Interface:
                 assert callTarget.receiver().kind() == CiKind.Object : callTarget;

@@ -605,10 +605,11 @@ public class InliningUtil {
                         Debug.log("not inlining %s because method can't be inlined", methodName(targetMethod, invoke));
                         return null;
                     } else {
-                        Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(targetMethod, invoke));
+                        Debug.log("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(targetMethod, invoke));
                         return null;
                     }
                 } else {
+                    invoke.setMegamorph(true);
                     if (GraalOptions.InlinePolymorphicCalls && notRecordedTypeProbability == 0 || GraalOptions.InlineMegamorphicCalls && notRecordedTypeProbability > 0) {
                         // TODO (ch) inlining of multiple methods should work differently
                         // 1. check which methods can be inlined

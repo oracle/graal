@@ -51,7 +51,7 @@ public interface RiXirGenerator {
 
     XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, RiMethod method);
 
-    XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, RiMethod method);
+    XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, RiMethod method, boolean megamorph);
 
     XirSnippet genInvokeSpecial(XirSite site, XirArgument receiver, RiMethod method);
 

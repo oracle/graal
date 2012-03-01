@@ -159,5 +159,8 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     @Override
     public native Object executeCompiledMethod(HotSpotCompiledMethod method, Object arg1, Object arg2, Object arg3);
 
+    @Override
+    public native int RiMethod_vtableEntryOffset(HotSpotMethodResolved method);
+
     // Checkstyle: resume
 }

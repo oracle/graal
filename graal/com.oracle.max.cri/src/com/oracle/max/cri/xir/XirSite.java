@@ -23,7 +23,6 @@
 package com.oracle.max.cri.xir;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Encapsulates the notion of a site where XIR can be supplied. It is supplied to the {@link RiXirGenerator} by the

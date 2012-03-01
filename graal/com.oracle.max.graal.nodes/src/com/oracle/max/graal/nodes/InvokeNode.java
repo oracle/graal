@@ -38,6 +38,8 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
 
     @Input private final MethodCallTargetNode callTarget;
     @Data private final int bci;
+    // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
+    @Data private boolean megamorph;
     private boolean useForInlining;
 
     /**
@@ -52,11 +54,22 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
         super(callTarget.returnStamp());
         this.callTarget = callTarget;
         this.bci = bci;
+        this.megamorph = false;
         this.useForInlining = true;
     }
 
     public MethodCallTargetNode callTarget() {
         return callTarget;
+    }
+
+    @Override
+    public boolean megamorph() {
+        return megamorph;
+    }
+
+    @Override
+    public void setMegamorph(boolean megamorph) {
+        this.megamorph = megamorph;
     }
 
     public boolean useForInlining() {
