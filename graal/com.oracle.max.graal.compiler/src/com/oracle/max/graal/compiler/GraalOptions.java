@@ -153,8 +153,8 @@ public final class GraalOptions {
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
     public static boolean UseTypeCheckHints                  = true;
-    public static boolean InlineVTableStubs                  = true;
-    public static boolean AlwaysInlineVTableStubs            = true;
+    public static boolean InlineVTableStubs                  = ____;
+    public static boolean AlwaysInlineVTableStubs            = ____;
 
     public static boolean GenAssertionCode                   = ____;
     public static boolean AlignCallsForPatching              = true;
