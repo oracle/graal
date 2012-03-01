@@ -75,20 +75,4 @@ public interface XirSite {
      * @return {@code true} if an array store check is required
      */
     boolean requiresArrayStoreCheck();
-
-    /**
-     * Checks whether an approximation of the type for the specified argument is available.
-     * @param argument the argument
-     * @return an {@link RiType} indicating the most specific type known for the argument, if any;
-     * {@code null} if no particular type is known
-     */
-    RiType getApproximateType(XirArgument argument);
-
-    /**
-     * Checks whether an exact type is known for the specified argument.
-     * @param argument the argument
-     * @return an {@link RiType} indicating the exact type known for the argument, if any;
-     * {@code null} if no particular type is known
-     */
-    RiType getExactType(XirArgument argument);
 }

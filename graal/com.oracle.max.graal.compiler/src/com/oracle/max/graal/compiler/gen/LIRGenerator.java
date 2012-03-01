@@ -514,7 +514,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void visitArrayLength(ArrayLengthNode x) {
         XirArgument array = toXirArgument(x.array());
-        XirSnippet snippet = xir.genArrayLength(site(x), array);
+        XirSnippet snippet = xir.genArrayLength(site(x, x.array()), array);
         emitXir(snippet, x, state(), true);
         operand(x);
     }
@@ -522,7 +522,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void visitCheckCast(CheckCastNode x) {
         if (x.emitCode()) {
-            XirSnippet snippet = xir.genCheckCast(site(x), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
+            XirSnippet snippet = xir.genCheckCast(site(x, x.object()), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
             emitXir(snippet, x, state(), true);
         }
         // The result of a checkcast is the unmodified object, so no need to allocate a new variable for it.
@@ -548,7 +548,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
         LIRDebugInfo stateAfter = stateFor(x.stateAfter());
 
-        XirSnippet snippet = xir.genMonitorEnter(site(x), obj, lockAddress);
+        XirSnippet snippet = xir.genMonitorEnter(site(x, x.object()), obj, lockAddress);
         emitXir(snippet, x, stateBefore, stateAfter, true, null, null);
     }
 
@@ -569,7 +569,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         LIRDebugInfo stateBefore = state();
         curLocks = curLocks.outer;
 
-        XirSnippet snippet = xir.genMonitorExit(site(x), obj, lockAddress);
+        XirSnippet snippet = xir.genMonitorExit(site(x, x.object()), obj, lockAddress);
         emitXir(snippet, x, stateBefore, true);
     }
 
@@ -581,7 +581,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             emitMembar(JMM_PRE_VOLATILE_READ);
         }
         XirArgument receiver = toXirArgument(x.object());
-        XirSnippet snippet = x.isStatic() ? xir.genGetStatic(site(x), receiver, field) : xir.genGetField(site(x), receiver, field);
+        XirSnippet snippet = x.isStatic() ? xir.genGetStatic(site(x, x.object()), receiver, field) : xir.genGetField(site(x, x.object()), receiver, field);
         emitXir(snippet, x, info, true);
         if (x.isVolatile()) {
             emitMembar(JMM_POST_VOLATILE_READ);
@@ -597,7 +597,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         XirArgument receiver = toXirArgument(x.object());
         XirArgument value = toXirArgument(x.value());
-        XirSnippet snippet = x.isStatic() ? xir.genPutStatic(site(x), receiver, field, value) : xir.genPutField(site(x), receiver, field, value);
+        XirSnippet snippet = x.isStatic() ? xir.genPutStatic(site(x, x.object()), receiver, field, value) : xir.genPutField(site(x, x.object()), receiver, field, value);
         emitXir(snippet, x, info, true);
         if (x.isVolatile()) {
             emitMembar(JMM_POST_VOLATILE_WRITE);
@@ -608,7 +608,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void visitLoadIndexed(LoadIndexedNode x) {
         XirArgument array = toXirArgument(x.array());
         XirArgument index = toXirArgument(x.index());
-        XirSnippet snippet = xir.genArrayLoad(site(x), array, index, x.elementKind(), null);
+        XirSnippet snippet = xir.genArrayLoad(site(x, x.array()), array, index, x.elementKind(), null);
         emitXir(snippet, x, state(), true);
     }
 
@@ -617,7 +617,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirArgument array = toXirArgument(x.array());
         XirArgument index = toXirArgument(x.index());
         XirArgument value = toXirArgument(x.value());
-        XirSnippet snippet = xir.genArrayStore(site(x), array, index, value, x.elementKind(), null);
+        XirSnippet snippet = xir.genArrayStore(site(x, x.array()), array, index, value, x.elementKind(), null);
         emitXir(snippet, x, state(), true);
     }
 
@@ -811,7 +811,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         XirArgument obj = toXirArgument(x.object());
-        XirSnippet snippet = xir.genInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
+        XirSnippet snippet = xir.genInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
         emitXir(snippet, x, info, null, false, x.negated() ? falseSuccessor : trueSuccessor, x.negated() ? trueSuccessor : falseSuccessor);
     }
 
@@ -862,7 +862,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirArgument obj = toXirArgument(x.object());
         XirArgument trueArg = toXirArgument(x.negated() ? falseValue : trueValue);
         XirArgument falseArg = toXirArgument(x.negated() ? trueValue : falseValue);
-        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass(), x.hints(), x.hintsExact());
+        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass(), x.hints(), x.hintsExact());
         return (Variable) emitXir(snippet, null, null, false);
     }
 
@@ -926,17 +926,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 break;
             case Special:
                 receiver = toXirArgument(callTarget.receiver());
-                snippet = xir.genInvokeSpecial(site(x.node()), receiver, targetMethod);
+                snippet = xir.genInvokeSpecial(site(x.node(), callTarget.receiver()), receiver, targetMethod);
                 break;
             case Virtual:
                 assert callTarget.receiver().kind() == CiKind.Object : callTarget + ": " + callTarget.targetMethod().toString();
                 receiver = toXirArgument(callTarget.receiver());
-                snippet = xir.genInvokeVirtual(site(x.node()), receiver, targetMethod);
+                snippet = xir.genInvokeVirtual(site(x.node(), callTarget.receiver()), receiver, targetMethod);
                 break;
             case Interface:
                 assert callTarget.receiver().kind() == CiKind.Object : callTarget;
                 receiver = toXirArgument(callTarget.receiver());
-                snippet = xir.genInvokeInterface(site(x.node()), receiver, targetMethod);
+                snippet = xir.genInvokeInterface(site(x.node(), callTarget.receiver()), receiver, targetMethod);
                 break;
         }
 
@@ -1437,7 +1437,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     protected XirSupport site(ValueNode x) {
-        return xirSupport.site(x);
+        return xirSupport.site(x, null);
+    }
+
+    protected XirSupport site(ValueNode x, ValueNode receiver) {
+        return xirSupport.site(x, receiver);
     }
 
     /**
@@ -1445,6 +1449,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      */
     static class XirSupport implements XirSite {
         ValueNode current;
+        ValueNode receiver;
 
         XirSupport() {
         }
@@ -1464,7 +1469,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         public boolean requiresNullCheck() {
-            return current == null || true;
+            return receiver == null || !receiver.stamp().nonNull();
         }
 
         public boolean requiresBoundsCheck() {
@@ -1483,16 +1488,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return true;
         }
 
-        public RiType getApproximateType(XirArgument argument) {
-            return current == null ? null : current.declaredType();
-        }
-
-        public RiType getExactType(XirArgument argument) {
-            return current == null ? null : current.exactType();
-        }
-
-        XirSupport site(ValueNode v) {
+        XirSupport site(ValueNode v, ValueNode r) {
             current = v;
+            receiver = r;
             return this;
         }
 
