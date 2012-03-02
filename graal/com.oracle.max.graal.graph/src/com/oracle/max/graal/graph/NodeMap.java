@@ -39,6 +39,12 @@ public final class NodeMap<T> {
         size = values.length;
     }
 
+    public NodeMap(NodeMap<T> copyFrom) {
+        this.graph = copyFrom.graph;
+        this.values = Arrays.copyOf(copyFrom.values, copyFrom.values.length);
+        this.size = copyFrom.size;
+    }
+
     @SuppressWarnings("unchecked")
     public T get(Node node) {
         check(node);
