@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,11 @@ import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.debug.*;
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.*;
 import com.oracle.max.graal.lir.*;
+import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 
 /**
@@ -45,30 +46,11 @@ import com.oracle.max.graal.nodes.*;
 public class CFGPrinterObserver implements DebugDumpHandler {
 
     private CFGPrinter cfgPrinter;
-
-    private GraalCompiler compiler;
-    private RiResolvedMethod method;
-    private SchedulePhase schedule;
+    private Graph curGraph;
 
     @Override
-    public void dump(final Object object, final String message) {
-        Debug.sandbox("CFGPrinter", new Runnable() {
-            @Override
-            public void run() {
-                dumpSandboxed(object, message);
-            }
-        });
-    }
-
-    private void dumpSandboxed(final Object object, final String message) {
-        if (object instanceof GraalCompiler) {
-            compiler = (GraalCompiler) object;
-            return;
-        } else if (object instanceof SchedulePhase) {
-            schedule = (SchedulePhase) object;
-            return;
-        }
-
+    public void dump(Object object, String message) {
+        GraalCompiler compiler = Debug.contextLookup(GraalCompiler.class);
         if (compiler == null) {
             return;
         }
@@ -77,57 +59,61 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             File file = new File("compilations-" + System.currentTimeMillis() + ".cfg");
             try {
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(file));
-                cfgPrinter = new CFGPrinter(out, compiler.target, compiler.runtime);
+                cfgPrinter = new CFGPrinter(out);
             } catch (FileNotFoundException e) {
-                throw new InternalError("Could not open " + file.getAbsolutePath());
+                throw new GraalInternalError("Could not open " + file.getAbsolutePath());
             }
             TTY.println("CFGPrinter: Output to file %s", file);
         }
 
-        RiRuntime runtime = cfgPrinter.runtime;
-        if (object instanceof LIRGenerator) {
-            cfgPrinter.lirGenerator = (LIRGenerator) object;
-        } else if (object instanceof RiResolvedMethod) {
-            method = (RiResolvedMethod) object;
-            cfgPrinter.printCompilation(method);
+        StructuredGraph newGraph = Debug.contextLookup(StructuredGraph.class);
+        if (newGraph != curGraph) {
+            cfgPrinter.printCompilation(newGraph.method());
+            TTY.println("CFGPrinter: Dumping method %s", newGraph.method());
+            curGraph = newGraph;
+        }
 
-            cfgPrinter.lir = null;
-            cfgPrinter.lirGenerator = null;
-            schedule = null;
-            TTY.println("CFGPrinter: Dumping method %s", method);
+        cfgPrinter.target = compiler.target;
+        if (object instanceof LIR) {
+            cfgPrinter.lir = (LIR) object;
+        } else {
+            cfgPrinter.lir = Debug.contextLookup(LIR.class);
+        }
+        cfgPrinter.lirGenerator = Debug.contextLookup(LIRGenerator.class);
+        if (cfgPrinter.lir != null) {
+            cfgPrinter.cfg = cfgPrinter.lir.cfg;
+        }
 
-        } else if (object instanceof BciBlockMapping) {
+        RiRuntime runtime = compiler.runtime;
+
+        if (object instanceof BciBlockMapping) {
             BciBlockMapping blockMap = (BciBlockMapping) object;
             cfgPrinter.printCFG(message, blockMap);
             cfgPrinter.printBytecodes(runtime.disassemble(blockMap.method));
 
         } else if (object instanceof LIR) {
-            cfgPrinter.lir = (LIR) object;
-            cfgPrinter.printCFG(message, ((LIR) object).codeEmittingOrder(), schedule);
+            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder());
 
         } else if (object instanceof StructuredGraph) {
-            SchedulePhase curSchedule = schedule;
-            if (curSchedule == null) {
-                try {
-                    curSchedule = new SchedulePhase();
-                    curSchedule.apply((StructuredGraph) object);
-                } catch (Throwable ex) {
-                    curSchedule = null;
-                    // ignore
-                }
+            if (cfgPrinter.cfg == null) {
+                cfgPrinter.cfg = ControlFlowGraph.compute((StructuredGraph) object, true, true, true, false);
             }
-            if (curSchedule != null && curSchedule.getCFG() != null) {
-                cfgPrinter.printCFG(message, Arrays.asList(curSchedule.getCFG().getBlocks()), curSchedule);
-            }
+            cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
 
         } else if (object instanceof CiTargetMethod) {
             cfgPrinter.printMachineCode(runtime.disassemble((CiTargetMethod) object), null);
+
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
+
         } else if (object instanceof IntervalPrinter.Interval[]) {
             cfgPrinter.printIntervals(message, (IntervalPrinter.Interval[]) object);
         }
 
+        cfgPrinter.target = null;
+        cfgPrinter.lir = null;
+        cfgPrinter.lirGenerator = null;
+        cfgPrinter.cfg = null;
         cfgPrinter.flush();
     }
 }

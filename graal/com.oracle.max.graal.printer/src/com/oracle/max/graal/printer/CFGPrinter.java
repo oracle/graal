@@ -28,13 +28,11 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.max.graal.alloc.util.*;
 import com.oracle.max.graal.compiler.alloc.*;
 import com.oracle.max.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.schedule.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
@@ -50,20 +48,18 @@ import com.oracle.max.graal.nodes.calc.*;
  */
 class CFGPrinter extends CompilationPrinter {
 
-    public final CiTarget target;
-    public final RiRuntime runtime;
-    public LIR lir;
-    public LIRGenerator lirGenerator;
+    protected CiTarget target;
+    protected LIR lir;
+    protected LIRGenerator lirGenerator;
+    protected ControlFlowGraph cfg;
 
     /**
      * Creates a control flow graph printer.
      *
      * @param buffer where the output generated via this printer shown be written
      */
-    public CFGPrinter(OutputStream out, CiTarget target, RiRuntime runtime) {
+    public CFGPrinter(OutputStream out) {
         super(out);
-        this.target = target;
-        this.runtime = runtime;
     }
 
     /**
@@ -119,22 +115,78 @@ class CFGPrinter extends CompilationPrinter {
     }
 
 
+    private NodeMap<Block> latestScheduling;
+    private NodeBitMap printedNodes;
+
+    private boolean inFixedSchedule(Node node) {
+        return lir != null || node.isDeleted() || cfg.getNodeToBlock().get(node) != null;
+    }
+
     /**
      * Prints the specified list of blocks.
      *
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
      */
-    public void printCFG(String label, List<Block> blocks, SchedulePhase schedule) {
+    public void printCFG(String label, List<Block> blocks) {
+        if (lir == null) {
+            latestScheduling = new NodeMap<>(cfg.getNodeToBlock());
+            for (Block block : blocks) {
+                Node cur = block.getBeginNode();
+                while (true) {
+                    assert inFixedSchedule(cur) && latestScheduling.get(cur) == block;
+                    scheduleInputs(cur, block);
+
+                    if (cur == block.getEndNode()) {
+                        break;
+                    }
+                    assert cur.successors().count() == 1;
+                    cur = cur.successors().first();
+                }
+            }
+        }
+        printedNodes = new NodeBitMap(cfg.graph);
+
         begin("cfg");
         out.print("name \"").print(label).println('"');
         for (Block block : blocks) {
-            printBlock(block, schedule);
+            printBlock(block);
         }
         end("cfg");
+
+        latestScheduling = null;
+        printedNodes = null;
     }
 
-    private void printBlock(Block block, SchedulePhase schedule) {
+    private void scheduleInputs(Node node, Block nodeBlock) {
+        if (node instanceof PhiNode) {
+            PhiNode phi = (PhiNode) node;
+            assert nodeBlock.getBeginNode() == phi.merge();
+            for (Block pred : nodeBlock.getPredecessors()) {
+                schedule(phi.valueAt((EndNode) pred.getEndNode()), pred);
+            }
+
+        } else {
+            for (Node input : node.inputs()) {
+                schedule(input, nodeBlock);
+            }
+        }
+    }
+
+    private void schedule(Node input, Block block) {
+        if (!inFixedSchedule(input)) {
+            Block inputBlock = block;
+            if (latestScheduling.get(input) != null) {
+                inputBlock = ControlFlowGraph.commonDominator(inputBlock, latestScheduling.get(input));
+            }
+            if (inputBlock != latestScheduling.get(input)) {
+                latestScheduling.set(input, inputBlock);
+                scheduleInputs(input, inputBlock);
+            }
+        }
+    }
+
+    private void printBlock(Block block) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
@@ -180,15 +232,12 @@ class CFGPrinter extends CompilationPrinter {
             out.print("loop_depth ").println(block.getLoop().depth);
         }
 
-        printNodes(block, schedule);
+        printNodes(block);
         printLIR(block);
         end("block");
     }
 
-    private void printNodes(Block block, SchedulePhase schedule) {
-        if (schedule == null) {
-            return;
-        }
+    private void printNodes(Block block) {
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
@@ -196,25 +245,59 @@ class CFGPrinter extends CompilationPrinter {
         if (block.getPredecessors().size() == 0) {
             // Currently method parameters are not in the schedule, so print them separately here.
             for (ValueNode param : block.getBeginNode().graph().getNodes(LocalNode.class)) {
-                printNode(param);
+                printNode(param, false);
             }
         }
         if (block.getBeginNode() instanceof MergeNode) {
             // Currently phi functions are not in the schedule, so print them separately here.
             for (ValueNode phi : ((MergeNode) block.getBeginNode()).phis()) {
-                printNode(phi);
+                printNode(phi, false);
             }
         }
 
-        for (Node node : schedule.nodesFor(block)) {
-            printNode(node);
+        if (lir != null) {
+            for (Node node : lir.nodesFor(block)) {
+                printNode(node, false);
+            }
+        } else {
+            Node cur = block.getBeginNode();
+            while (true) {
+                printNode(cur, false);
+
+                if (cur == block.getEndNode()) {
+                    for (Map.Entry<Node, Block> entry : latestScheduling.entries()) {
+                        if (entry.getValue() == block && !inFixedSchedule(entry.getKey()) && !printedNodes.isMarked(entry.getKey())) {
+                            printNode(entry.getKey(), true);
+                        }
+                    }
+                    break;
+                }
+                assert cur.successors().count() == 1;
+                cur = cur.successors().first();
+            }
+
         }
+
         out.enableIndentation();
         end("IR");
     }
 
-    private void printNode(Node node) {
-        if (node instanceof FixedWithNextNode) {
+    private void printNode(Node node, boolean unscheduled) {
+        assert !printedNodes.isMarked(node);
+        printedNodes.mark(node);
+
+        if (!(node instanceof PhiNode)) {
+            for (Node input : node.inputs()) {
+                if (!inFixedSchedule(input) && !printedNodes.isMarked(input)) {
+                    printNode(input, true);
+                }
+            }
+        }
+
+        if (unscheduled) {
+            assert lir == null : "unscheduled nodes can only be present before LIR generation";
+            out.print("f ").print(HOVER_START).print("u").print(HOVER_SEP).print("unscheduled").print(HOVER_END).println(COLUMN_END);
+        } else if (node instanceof FixedWithNextNode) {
             out.print("f ").print(HOVER_START).print("#").print(HOVER_SEP).print("fixed with next").print(HOVER_END).println(COLUMN_END);
         } else if (node instanceof FixedNode) {
             out.print("f ").print(HOVER_START).print("*").print(HOVER_SEP).print("fixed").print(HOVER_END).println(COLUMN_END);
