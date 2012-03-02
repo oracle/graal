@@ -64,16 +64,20 @@ public class Debug {
     }
 
     public static void scope(String name, Runnable runnable) {
-        scope(name, null, runnable);
+        scope(name, new Object[0], runnable);
     }
 
     public static <T> T scope(String name, Callable<T> callable) {
-        return scope(name, null, callable);
+        return scope(name, new Object[0], callable);
     }
 
     public static void scope(String name, Object context, Runnable runnable) {
+        scope(name, new Object[] {context}, runnable);
+    }
+
+    public static void scope(String name, Object[] context, Runnable runnable) {
         if (ENABLED) {
-            DebugScope.getInstance().scope(name, runnable, null, false, new Object[] {context});
+            DebugScope.getInstance().scope(name, runnable, null, false, context);
         } else {
             runnable.run();
         }
@@ -88,8 +92,12 @@ public class Debug {
     }
 
     public static <T> T scope(String name, Object context, Callable<T> callable) {
+        return scope(name, new Object[] {context}, callable);
+    }
+
+    public static <T> T scope(String name, Object[] context, Callable<T> callable) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, null, callable, false, new Object[] {context});
+            return DebugScope.getInstance().scope(name, null, callable, false, context);
         } else {
             return DebugScope.call(callable);
         }
