@@ -259,7 +259,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyIntsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Short);
+        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Int);
         for (long i = (length - 1) * 4; i >= 0; i -= 4) {
             Integer a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Int);
             UnsafeStoreNode.store(dest, i + (destOffset + header), a.intValue(), CiKind.Int);
@@ -268,7 +268,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyLongsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Short);
+        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Long);
         for (long i = (length - 1) * 8; i >= 0; i -= 8) {
             Long a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Long);
             UnsafeStoreNode.store(dest, i + (destOffset + header), a.longValue(), CiKind.Long);
