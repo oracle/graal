@@ -22,10 +22,7 @@
  */
 package com.oracle.max.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.spi.*;
 
 /**
@@ -52,41 +49,6 @@ public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRL
 
     public ValueNode falseValue() {
         return y();
-    }
-
-    public static class ConditionalStructure {
-
-        public final IfNode ifNode;
-        public final PhiNode phi;
-        public final MergeNode merge;
-
-        public ConditionalStructure(IfNode ifNode, PhiNode phi, MergeNode merge) {
-            this.ifNode = ifNode;
-            this.phi = phi;
-            this.merge = merge;
-        }
-    }
-
-    public static ConditionalStructure createConditionalStructure(BooleanNode condition, ValueNode trueValue, ValueNode falseValue) {
-        return createConditionalStructure(condition, trueValue, falseValue, 0.5);
-    }
-
-    public static ConditionalStructure createConditionalStructure(BooleanNode condition, ValueNode trueValue, ValueNode falseValue, double trueProbability) {
-        Graph graph = condition.graph();
-        assert trueValue.kind() == falseValue.kind();
-        CiKind kind = trueValue.kind();
-        IfNode ifNode = graph.add(new IfNode(condition, trueProbability));
-        EndNode trueEnd = graph.add(new EndNode());
-        EndNode falseEnd = graph.add(new EndNode());
-        ifNode.setTrueSuccessor(BeginNode.begin(trueEnd));
-        ifNode.setFalseSuccessor(BeginNode.begin(falseEnd));
-        MergeNode merge = graph.add(new MergeNode());
-        merge.addForwardEnd(trueEnd);
-        merge.addForwardEnd(falseEnd);
-        PhiNode phi = graph.unique(new PhiNode(kind, merge, PhiType.Value));
-        phi.addInput(trueValue);
-        phi.addInput(falseValue);
-        return new ConditionalStructure(ifNode, phi, merge);
     }
 
     @Override
