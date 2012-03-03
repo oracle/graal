@@ -85,32 +85,31 @@ public class InliningPhase extends Phase implements InliningCallback {
 
         while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
             InlineInfo info = inlineCandidates.remove();
-            if (inliningPolicy.isWorthInlining(graph, info)) {
+            if (info.invoke.node().isAlive() && inliningPolicy.isWorthInlining(graph, info)) {
                 Iterable<Node> newNodes = null;
-                if (info.invoke.node().isAlive()) {
-                    try {
-                        info.inline(graph, runtime, this);
-                        Debug.dump(graph, "after %s", info);
-                        // get the new nodes here, the canonicalizer phase will reset the mark
-                        newNodes = graph.getNewNodes();
-                        if (GraalOptions.OptCanonicalizer) {
-                            new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
-                        }
-                        if (GraalOptions.Intrinsify) {
-                            new IntrinsificationPhase(runtime).apply(graph);
-                        }
-                        metricInliningPerformed.increment();
-                    } catch (CiBailout bailout) {
-                        // TODO determine if we should really bail out of the whole compilation.
-                        throw bailout;
-                    } catch (AssertionError e) {
-                        throw new GraalInternalError(e).addContext(info.toString());
-                    } catch (RuntimeException e) {
-                        throw new GraalInternalError(e).addContext(info.toString());
-                    } catch (GraalInternalError e) {
-                        throw e.addContext(info.toString());
+                try {
+                    info.inline(graph, runtime, this);
+                    Debug.dump(graph, "after %s", info);
+                    // get the new nodes here, the canonicalizer phase will reset the mark
+                    newNodes = graph.getNewNodes();
+                    if (GraalOptions.OptCanonicalizer) {
+                        new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
                     }
+                    if (GraalOptions.Intrinsify) {
+                        new IntrinsificationPhase(runtime).apply(graph);
+                    }
+                    metricInliningPerformed.increment();
+                } catch (CiBailout bailout) {
+                    // TODO determine if we should really bail out of the whole compilation.
+                    throw bailout;
+                } catch (AssertionError e) {
+                    throw new GraalInternalError(e).addContext(info.toString());
+                } catch (RuntimeException e) {
+                    throw new GraalInternalError(e).addContext(info.toString());
+                } catch (GraalInternalError e) {
+                    throw e.addContext(info.toString());
                 }
+
                 if (newNodes != null && info.level < GraalOptions.MaximumInlineLevel) {
                     scanInvokes(newNodes, info.level + 1, graph);
                 }

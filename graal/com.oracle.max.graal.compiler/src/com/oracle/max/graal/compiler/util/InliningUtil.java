@@ -187,8 +187,6 @@ public class InliningUtil {
             graph.addBeforeFixed(invoke.node(), guard);
             graph.addBeforeFixed(invoke.node(), anchor);
 
-            Debug.log("inlining 1 method using 1 type check");
-
             StructuredGraph calleeGraph = getGraph(concrete, callback);
             assert !IntrinsificationPhase.canIntrinsify(invoke, concrete, runtime);
             callback.recordMethodContentsAssumption(concrete);
@@ -251,8 +249,6 @@ public class InliningUtil {
             } else {
                 inlineSingleMethod(graph, runtime, callback);
             }
-
-            Debug.log("inlining %d methods with %d type checks and falling back to %s if violated", numberOfMethods, types.length, shouldFallbackToInvoke() ? "invocation" : "deoptimization");
         }
 
         private boolean shouldFallbackToInvoke() {
@@ -487,7 +483,8 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            StringBuilder builder = new StringBuilder(String.format("inlining %d methods with %d type checks: ", concretes.size(), types.length));
+            StringBuilder builder = new StringBuilder(shouldFallbackToInvoke() ? "megamorphic" : "polymorphic");
+            builder.append(String.format(" inlining %d methods with %d type checks: ", concretes.size(), types.length));
             for (int i = 0; i < concretes.size(); i++) {
                 builder.append(CiUtil.format("  %H.%n(%p):%r", concretes.get(i)));
             }
@@ -661,7 +658,11 @@ public class InliningUtil {
                             return null;
                         }
                     } else {
-                        Debug.log("not inlining %s because GraalOptions.InlineMonomorphicCalls == false", methodName(targetMethod, invoke));
+                        if (!GraalOptions.InlinePolymorphicCalls && notRecordedTypeProbability == 0) {
+                            Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(targetMethod, invoke));
+                        } else {
+                            Debug.log("not inlining %s because GraalOptions.InlineMegamorphicCalls == false", methodName(targetMethod, invoke));
+                        }
                         return null;
                     }
                 }
