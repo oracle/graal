@@ -282,7 +282,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     @Override
-    public void compileMethod(final HotSpotMethodResolved method, final int entryBCI, boolean blocking) throws Throwable {
+    public boolean compileMethod(final HotSpotMethodResolved method, final int entryBCI, boolean blocking) throws Throwable {
         try {
             if (Thread.currentThread() instanceof CompilerThread) {
                 if (method.holder().name().contains("java/util/concurrent")) {
@@ -290,7 +290,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                     // java.util.concurrent.BlockingQueue is used to implement the compilation worker
                     // queues. If a compiler thread triggers a compilation, then it may be blocked trying
                     // to add something to its own queue.
-                    return;
+                    return false;
                 }
             }
 
@@ -350,8 +350,9 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             }
         } catch (RejectedExecutionException e) {
             // The compile queue was already shut down.
-            return;
+            return false;
         }
+        return true;
     }
 
     @Override

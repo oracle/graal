@@ -290,10 +290,10 @@ public class InliningPhase extends Phase implements InliningCallback {
             maxSize = Math.max(GraalOptions.MaximumTrivialSize, maxSize);
 
             if (info.weight <= maxSize) {
-                Debug.log("inlining (size %f): %s", info.weight, info);
+                Debug.log("inlining (size %f <= %f): %s", info.weight, maxSize, info);
                 return true;
             } else {
-                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                Debug.log("not inlining (too large %f > %f): %s", info.weight, maxSize, info);
                 return false;
             }
         }
@@ -314,10 +314,10 @@ public class InliningPhase extends Phase implements InliningCallback {
             maxSize = Math.min(GraalOptions.MaximumGreedyInlineSize, Math.max(GraalOptions.MaximumTrivialSize, maxSize));
 
             if (info.weight <= maxSize) {
-                Debug.log("inlining (size %f): %s", info.weight, info);
+                Debug.log("inlining (size %f <= %f): %s", info.weight, maxSize, info);
                 return true;
             } else {
-                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                Debug.log("not inlining (too large %f > %f): %s", info.weight, maxSize, info);
                 return false;
             }
         }
@@ -337,10 +337,10 @@ public class InliningPhase extends Phase implements InliningCallback {
             maxSize = Math.max(maxSize, GraalOptions.MaximumTrivialSize);
 
             if (info.weight <= maxSize) {
-                Debug.log("inlining (size %f): %s", info.weight, info);
+                Debug.log("inlining (size %f <= %f): %s", info.weight, maxSize, info);
                 return true;
             } else {
-                Debug.log("not inlining (too large %f): %s", info.weight, info);
+                Debug.log("not inlining (too large %f > %f): %s", info.weight, maxSize, info);
                 return false;
             }
         }
