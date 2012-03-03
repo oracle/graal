@@ -141,7 +141,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "exact inlining " + CiUtil.format("%H.%n(%p):%r", concrete);
+            return "exact " + CiUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -195,7 +195,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "type-checked inlining " + CiUtil.format("%H.%n(%p):%r", concrete);
+            return "type-checked " + CiUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
@@ -484,7 +484,7 @@ public class InliningUtil {
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder(shouldFallbackToInvoke() ? "megamorphic" : "polymorphic");
-            builder.append(String.format(" inlining %d methods with %d type checks: ", concretes.size(), types.length));
+            builder.append(String.format(", %d methods with %d type checks:", concretes.size(), types.length));
             for (int i = 0; i < concretes.size(); i++) {
                 builder.append(CiUtil.format("  %H.%n(%p):%r", concretes.get(i)));
             }
@@ -524,7 +524,7 @@ public class InliningUtil {
 
         @Override
         public String toString() {
-            return "inlining with assumption " + CiUtil.format("%H.%n(%p):%r", concrete);
+            return "assumption " + CiUtil.format("%H.%n(%p):%r", concrete);
         }
 
         @Override
