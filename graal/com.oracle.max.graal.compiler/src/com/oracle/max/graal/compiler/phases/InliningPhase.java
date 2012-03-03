@@ -331,8 +331,18 @@ public class InliningPhase extends Phase implements InliningCallback {
                 return false;
             }
 
+            double maxSize = GraalOptions.MaximumGreedyInlineSize;
+            if (GraalOptions.InliningBonusPerTransferredValue != 0) {
+                RiSignature signature = info.invoke.callTarget().targetMethod().signature();
+                int transferredValues = signature.argumentCount(true);
+                if (signature.returnKind(false) != CiKind.Void) {
+                    transferredValues++;
+                }
+                maxSize += transferredValues * GraalOptions.InliningBonusPerTransferredValue;
+            }
+
             double inlineRatio = Math.min(GraalOptions.ProbabilityCapForInlining, info.invoke.probability());
-            double maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * GraalOptions.MaximumGreedyInlineSize * inlineRatio;
+            maxSize = Math.pow(GraalOptions.NestedInliningSizeRatio, info.level) * maxSize * inlineRatio;
             maxSize = Math.max(maxSize, GraalOptions.MaximumTrivialSize);
 
             if (info.weight <= maxSize) {

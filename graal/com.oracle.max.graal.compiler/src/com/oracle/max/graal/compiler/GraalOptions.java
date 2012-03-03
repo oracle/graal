@@ -64,7 +64,8 @@ public final class GraalOptions {
     // DynamicSizeBasedInliningPolicy (3)
     public static int     MaximumInlineSize                  = 35;
     // GreedySizeBasedInlining (4)
-    public static int     MaximumGreedyInlineSize            = 200;
+    public static int     MaximumGreedyInlineSize            = 100;
+    public static int     InliningBonusPerTransferredValue   = 10;
     // Common options for inlining policies 1 to 4
     public static float   NestedInliningSizeRatio            = 1f;
     public static float   BoostInliningForEscapeAnalysis     = 2f;

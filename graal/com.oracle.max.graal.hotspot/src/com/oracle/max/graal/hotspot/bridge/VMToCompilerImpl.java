@@ -290,7 +290,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                     // java.util.concurrent.BlockingQueue is used to implement the compilation worker
                     // queues. If a compiler thread triggers a compilation, then it may be blocked trying
                     // to add something to its own queue.
-                    return true;
+                    return false;
                 }
             }
 
