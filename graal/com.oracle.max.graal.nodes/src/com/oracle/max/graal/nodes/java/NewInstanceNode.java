@@ -25,6 +25,7 @@ package com.oracle.max.graal.nodes.java;
 import java.util.*;
 
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
@@ -111,14 +112,15 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
             if (current instanceof AccessFieldNode) {
                 AccessFieldNode x = (AccessFieldNode) current;
                 if (x.object() == node) {
-                    int field = fieldIndex.get(((AccessFieldNode) current).field());
+                    int field = fieldIndex.get(x.field());
+                    StructuredGraph graph = (StructuredGraph) x.graph();
                     if (current instanceof LoadFieldNode) {
-                        assert fieldState[field] != null : field + ", " + ((AccessFieldNode) current).field();
+                        assert fieldState[field] != null : field + ", " + x.field();
                         x.replaceAtUsages(fieldState[field]);
-                        ((StructuredGraph) x.graph()).removeFixed(x);
+                        graph.removeFixed(x);
                     } else if (current instanceof StoreFieldNode) {
                         fieldState[field] = ((StoreFieldNode) x).value();
-                        ((StructuredGraph) x.graph()).removeFixed(x);
+                        graph.removeFixed(x);
                         return field;
                     }
                 }
