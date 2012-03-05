@@ -106,13 +106,16 @@ public class DebugInfoBuilder {
     }
 
     private CiFrame computeFrameForState(FrameState state, LockScope locks) {
+        int numLocals = state.localsSize();
+        int numStack = state.stackSize();
         int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
 
-        CiValue[] values = new CiValue[state.valuesSize() + numLocks];
-        int valueIndex = 0;
-
-        for (int i = 0; i < state.valuesSize(); i++) {
-            values[valueIndex++] = toCiValue(state.valueAt(i));
+        CiValue[] values = new CiValue[numLocals + numStack + numLocks];
+        for (int i = 0; i < numLocals; i++) {
+            values[i] = toCiValue(state.localAt(i));
+        }
+        for (int i = 0; i < numStack; i++) {
+            values[numLocals + i] = toCiValue(state.stackAt(i));
         }
 
         LockScope nextLock = locks;
@@ -122,7 +125,7 @@ public class DebugInfoBuilder {
             CiValue owner = toCiValue(nextLock.monitor.object());
             CiValue lockData = nextLock.lockData;
             boolean eliminated = nextLock.monitor.eliminated();
-            values[state.valuesSize() + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
+            values[numLocals + numStack + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
 
             nextLock = nextLock.outer;
         }

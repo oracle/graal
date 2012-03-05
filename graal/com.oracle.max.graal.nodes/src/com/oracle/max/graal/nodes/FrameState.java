@@ -28,7 +28,6 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.iterators.*;
-import com.oracle.max.graal.nodes.PhiNode.PhiType;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.virtual.*;
 
@@ -36,7 +35,7 @@ import com.oracle.max.graal.nodes.virtual.*;
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and
  * operand stack) at a particular point in the abstract interpretation.
  */
-public final class FrameState extends Node implements FrameStateAccess, Node.IterableNodeType, LIRLowerable {
+public final class FrameState extends Node implements Node.IterableNodeType, LIRLowerable {
 
     protected final int localsSize;
 
@@ -114,9 +113,11 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         this.stackSize = stackSize;
         final ValueNode[] newValues = new ValueNode[locals.length + stackSize];
         for (int i = 0; i < locals.length; i++) {
+            assert locals[i] == null || !locals[i].isDeleted();
             newValues[i] = locals[i];
         }
         for (int i = 0; i < stackSize; i++) {
+            assert stack[i] == null || !stack[i].isDeleted();
             newValues[localsSize + i] = stack[i];
         }
         this.values = new NodeInputList<>(this, newValues);
@@ -124,6 +125,10 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         this.rethrowException = rethrowException;
         this.duringCall = duringCall;
         assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
+    }
+
+    public NodeIterable<ValueNode> values() {
+        return values;
     }
 
     public FrameState outerFrameState() {
@@ -135,15 +140,7 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         this.outerFrameState = x;
     }
 
-    public FrameState outermostFrameState() {
-        FrameState fs = this;
-        while (fs.outerFrameState() != null) {
-            fs = fs.outerFrameState();
-        }
-        return fs;
-    }
-
-    public void setValueAt(int i, ValueNode x) {
+    private void setValueAt(int i, ValueNode x) {
         values.set(i, x);
     }
 
@@ -199,18 +196,22 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         return other;
     }
 
-    @Override
-    public FrameState duplicateWithException(int newBci, ValueNode exceptionObject) {
-        return duplicateModified(newBci, true, CiKind.Void, exceptionObject);
-    }
-
     /**
      * Creates a copy of this frame state with one stack element of type popKind popped from the stack and the
      * values in pushedValues pushed on the stack. The pushedValues are expected to be in slot encoding: a long
      * or double is followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, CiKind popKind, ValueNode... pushedValues) {
-        int popSlots = popKind == CiKind.Void ? 0 : isTwoSlot(popKind) ? 2 : 1;
+        int popSlots = 0;
+        if (popKind != CiKind.Void) {
+            if (stackAt(stackSize() - 1) == null) {
+                popSlots = 2;
+            } else {
+                popSlots = 1;
+            }
+            assert stackAt(stackSize() - popSlots).kind().stackKind() == popKind.stackKind();
+        }
+
         int pushSlots = pushedValues.length;
         FrameState other = graph().add(new FrameState(method, newBci, localsSize, stackSize - popSlots + pushSlots, newRethrowException, false));
         for (int i = 0; i < localsSize; i++) {
@@ -228,40 +229,6 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         return other;
     }
 
-    public boolean isCompatibleWith(FrameStateAccess other) {
-        if (stackSize() != other.stackSize() || localsSize() != other.localsSize()) {
-            return false;
-        }
-        for (int i = 0; i < stackSize(); i++) {
-            ValueNode x = stackAt(i);
-            ValueNode y = other.stackAt(i);
-            if (x != y && ValueUtil.typeMismatch(x, y)) {
-                return false;
-            }
-        }
-        if (other.outerFrameState() != outerFrameState()) {
-            return false;
-        }
-        return true;
-    }
-
-    public boolean equals(FrameStateAccess other) {
-        if (stackSize() != other.stackSize() || localsSize() != other.localsSize()) {
-            return false;
-        }
-        for (int i = 0; i < stackSize(); i++) {
-            ValueNode x = stackAt(i);
-            ValueNode y = other.stackAt(i);
-            if (x != y) {
-                return false;
-            }
-        }
-        if (other.outerFrameState() != outerFrameState()) {
-            return false;
-        }
-        return true;
-    }
-
     /**
      * Gets the size of the local variables.
      */
@@ -277,52 +244,14 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
     }
 
     /**
-     * Invalidates the local variable at the specified index. If the specified index refers to a doubleword local, then
-     * invalidates the high word as well.
-     *
-     * @param i the index of the local to invalidate
-     */
-    public void invalidateLocal(int i) {
-        // note that for double word locals, the high slot should already be null
-        // unless the local is actually dead and the high slot is being reused;
-        // in either case, it is not necessary to null the high slot
-        setValueAt(i, null);
-    }
-
-    /**
-     * Stores a given local variable at the specified index. If the value is a {@linkplain CiKind#isDoubleWord() double word},
-     * then the next local variable index is also overwritten.
-     *
-     * @param i the index at which to store
-     * @param x the instruction which produces the value for the local
-     */
-    // TODO this duplicates code in FrameStateBuilder and needs to go away
-    public void storeLocal(int i, ValueNode x) {
-        assert i < localsSize : "local variable index out of range: " + i;
-        invalidateLocal(i);
-        setValueAt(i, x);
-        if (isTwoSlot(x.kind())) {
-            // (tw) if this was a double word then kill i+1
-            setValueAt(i + 1, null);
-        }
-        if (i > 0) {
-            // if there was a double word at i - 1, then kill it
-            ValueNode p = localAt(i - 1);
-            if (p != null && isTwoSlot(p.kind())) {
-                setValueAt(i - 1, null);
-            }
-        }
-    }
-
-    /**
      * Gets the value in the local variables at the specified index.
      *
      * @param i the index into the locals
      * @return the instruction that produced the value for the specified local
      */
     public ValueNode localAt(int i) {
-        assert i < localsSize : "local variable index out of range: " + i;
-        return valueAt(i);
+        assert i >= 0 && i < localsSize : "local variable index out of range: " + i;
+        return values.get(i);
     }
 
     /**
@@ -332,212 +261,16 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
      * @return the instruction at the specified position in the stack
      */
     public ValueNode stackAt(int i) {
-        assert i >= 0 && i < (localsSize + stackSize);
-        return valueAt(localsSize + i);
-    }
-
-    /**
-     * Inserts a phi statement into the stack at the specified stack index.
-     * @param block the block begin for which we are creating the phi
-     * @param i the index into the stack for which to create a phi
-     */
-    public PhiNode setupLoopPhiForStack(MergeNode block, int i) {
-        ValueNode p = stackAt(i);
-        if (p != null) {
-            if (p instanceof PhiNode) {
-                PhiNode phi = (PhiNode) p;
-                if (phi.merge() == block) {
-                    return phi;
-                }
-            }
-            PhiNode phi = graph().unique(new PhiNode(p.kind(), block, PhiType.Value));
-            phi.addInput(p);
-            setValueAt(localsSize + i, phi);
-            return phi;
-        }
-        return null;
-    }
-
-    /**
-     * Inserts a phi statement for the local at the specified index.
-     * @param block the block begin for which we are creating the phi
-     * @param i the index of the local variable for which to create the phi
-     */
-    public PhiNode setupLoopPhiForLocal(MergeNode block, int i) {
-        ValueNode p = localAt(i);
-        if (p instanceof PhiNode) {
-            PhiNode phi = (PhiNode) p;
-            if (phi.merge() == block) {
-                return phi;
-            }
-        }
-        PhiNode phi = graph().unique(new PhiNode(p.kind(), block, PhiType.Value));
-        phi.addInput(p);
-        storeLocal(i, phi);
-        return phi;
-    }
-
-    /**
-     * Gets the value at a specified index in the set of operand stack and local values represented by this frame.
-     * This method should only be used to iterate over all the values in this frame, irrespective of whether
-     * they are on the stack or in local variables.
-     * To iterate the stack slots, the {@link #stackAt(int)} and {@link #stackSize()} methods should be used.
-     * To iterate the local variables, the {@link #localAt(int)} and {@link #localsSize()} methods should be used.
-     *
-     * @param i a value in the range {@code [0 .. valuesSize()]}
-     * @return the value at index {@code i} which may be {@code null}
-     */
-    public ValueNode valueAt(int i) {
-        assert i < (localsSize + stackSize);
-        return values.isEmpty() ? null : values.get(i);
-    }
-
-    /**
-     * The number of operand stack slots and local variables in this frame.
-     * This method should typically only be used in conjunction with {@link #valueAt(int)}.
-     * To iterate the stack slots, the {@link #stackAt(int)} and {@link #stackSize()} methods should be used.
-     * To iterate the local variables, the {@link #localAt(int)} and {@link #localsSize()} methods should be used.
-     *
-     * @return the number of local variables in this frame
-     */
-    public int valuesSize() {
-        return localsSize + stackSize;
-    }
-
-    private boolean checkSize(FrameStateAccess other) {
-        assert other.stackSize() == stackSize() : "stack sizes do not match";
-        assert other.localsSize() == localsSize : "local sizes do not match";
-        return true;
-    }
-
-    public void merge(MergeNode block, FrameStateAccess other) {
-        assert checkSize(other);
-        for (int i = 0; i < valuesSize(); i++) {
-            ValueNode currentValue = valueAt(i);
-            ValueNode otherValue = other.valueAt(i);
-            if (currentValue != otherValue || block instanceof LoopBeginNode) {
-                if (block.isPhiAtMerge(currentValue)) {
-                    addToPhi((PhiNode) currentValue, otherValue, block instanceof LoopBeginNode);
-                } else {
-                    setValueAt(i, combineValues(currentValue, otherValue, block));
-                }
-            }
-        }
-    }
-
-    public void simplifyLoopState() {
-        for (PhiNode phi : values.filter(PhiNode.class).snapshot()) {
-            checkRedundantPhi(phi);
-        }
-    }
-
-    private static ValueNode combineValues(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
-        if (currentValue == null || otherValue == null || currentValue.kind() != otherValue.kind()) {
-            return null;
-        }
-
-        PhiNode phi = currentValue.graph().add(new PhiNode(currentValue.kind(), block, PhiType.Value));
-        for (int j = 0; j < block.phiPredecessorCount(); ++j) {
-            phi.addInput(currentValue);
-        }
-        phi.addInput(otherValue);
-        assert phi.valueCount() == block.phiPredecessorCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPredecessorCount();
-        return phi;
-    }
-
-    private static void addToPhi(PhiNode phiNode, ValueNode otherValue, boolean recursiveInvalidCheck) {
-        if (otherValue == null || otherValue.kind() != phiNode.kind()) {
-            if (recursiveInvalidCheck) {
-                deleteInvalidPhi(phiNode);
-            } else {
-                phiNode.replaceAtUsages(null);
-                phiNode.safeDelete();
-            }
-        } else {
-            phiNode.addInput(otherValue);
-        }
-    }
-
-    public static void deleteRedundantPhi(PhiNode redundantPhi, ValueNode phiValue) {
-        Collection<PhiNode> phiUsages = redundantPhi.usages().filter(PhiNode.class).snapshot();
-        ((StructuredGraph) redundantPhi.graph()).replaceFloating(redundantPhi, phiValue);
-        for (PhiNode phi : phiUsages) {
-            checkRedundantPhi(phi);
-        }
-    }
-
-    private static void checkRedundantPhi(PhiNode phiNode) {
-        if (phiNode.isDeleted() || phiNode.valueCount() == 1) {
-            return;
-        }
-
-        ValueNode singleValue = phiNode.singleValue();
-        if (singleValue != null) {
-            deleteRedundantPhi(phiNode, singleValue);
-        }
-    }
-
-    private static void deleteInvalidPhi(PhiNode phiNode) {
-        if (!phiNode.isDeleted()) {
-            Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
-            phiNode.replaceAtUsages(null);
-            phiNode.safeDelete();
-            for (Node n : phiUsages) {
-                deleteInvalidPhi((PhiNode) n);
-            }
-        }
+        assert i >= 0 && i < stackSize;
+        return values.get(localsSize + i);
     }
 
     public MergeNode block() {
         return usages().filter(MergeNode.class).first();
     }
 
-    public StateSplit stateSplit() {
-        return (StateSplit) usages().filterInterface(StateSplit.class).first();
-    }
-
     public NodeIterable<FrameState> innerFrameStates() {
         return usages().filter(FrameState.class);
-    }
-
-    /**
-     * The interface implemented by a client of {@link FrameState#forEachPhi(MergeNode, PhiProcedure)} and
-     * {@link FrameState#forEachLivePhi(MergeNode, PhiProcedure)}.
-     */
-    public interface PhiProcedure {
-        boolean doPhi(PhiNode phi);
-    }
-
-    /**
-     * Checks whether this frame state has any {@linkplain PhiNode phi} statements.
-     */
-    public boolean hasPhis() {
-        for (int i = 0; i < valuesSize(); i++) {
-            ValueNode value = valueAt(i);
-            if (value instanceof PhiNode) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public String toDetailedString() {
-        StringBuilder sb = new StringBuilder();
-        String nl = String.format("%n");
-        sb.append("[bci: ").append(bci).append("]");
-        if (rethrowException()) {
-            sb.append(" rethrows Exception");
-        }
-        sb.append(nl);
-        for (int i = 0; i < localsSize(); ++i) {
-            ValueNode value = localAt(i);
-            sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind().javaName, value));
-        }
-        for (int i = 0; i < stackSize(); ++i) {
-            ValueNode value = stackAt(i);
-            sb.append(String.format("  stack[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind().javaName, value));
-        }
-        return sb.toString();
     }
 
     @Override
@@ -545,20 +278,21 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         // Nothing to do, frame states are processed as part of the handling of AbstractStateSplit nodes.
     }
 
-    public static String toString(FrameState frameState) {
+    private static String toString(FrameState frameState) {
         StringBuilder sb = new StringBuilder();
         String nl = CiUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {
             CiUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
-            for (int i = 0; i < fs.localsSize(); ++i) {
-                ValueNode value = fs.localAt(i);
-                sb.append(String.format("  local[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind().javaName, value));
+            sb.append("locals: [");
+            for (int i = 0; i < fs.localsSize(); i++) {
+                sb.append(i == 0 ? "" : ", ").append(fs.localAt(i) == null ? "_" : fs.localAt(i).toString(Verbosity.Id));
             }
-            for (int i = 0; i < fs.stackSize(); ++i) {
-                ValueNode value = fs.stackAt(i);
-                sb.append(String.format("  stack[%d] = %-8s : %s%n", i, value == null ? "bogus" : value.kind().javaName, value));
+            sb.append("]").append(nl).append("stack: ");
+            for (int i = 0; i < fs.stackSize(); i++) {
+                sb.append(i == 0 ? "" : ", ").append(fs.stackAt(i) == null ? "_" : fs.stackAt(i).toString(Verbosity.Id));
             }
+            sb.append(nl);
             fs = fs.outerFrameState();
         }
         return sb.toString();
@@ -575,22 +309,6 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         }
     }
 
-    public void insertLoopPhis(LoopBeginNode loopBegin) {
-        for (int i = 0; i < stackSize(); i++) {
-            // always insert phis for the stack
-            ValueNode x = stackAt(i);
-            if (x != null) {
-                setupLoopPhiForStack(loopBegin, i);
-            }
-        }
-        for (int i = 0; i < localsSize(); i++) {
-            ValueNode x = localAt(i);
-            if (x != null) {
-                setupLoopPhiForLocal(loopBegin, i);
-            }
-        }
-    }
-
     @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> properties = super.getDebugProperties();
@@ -600,41 +318,27 @@ public final class FrameState extends Node implements FrameStateAccess, Node.Ite
         } else {
             properties.put("method", "None");
         }
-        StringBuilder str = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < localsSize(); i++) {
-            str.append(i == 0 ? "" : ", ").append(localAt(i) == null ? "_" : localAt(i).toString(Verbosity.Id));
+            sb.append(i == 0 ? "" : ", ").append(localAt(i) == null ? "_" : localAt(i).toString(Verbosity.Id));
         }
-        properties.put("locals", str.toString());
-        str = new StringBuilder();
+        properties.put("locals", sb.toString());
+        sb = new StringBuilder();
         for (int i = 0; i < stackSize(); i++) {
-            str.append(i == 0 ? "" : ", ").append(stackAt(i) == null ? "_" : stackAt(i).toString(Verbosity.Id));
+            sb.append(i == 0 ? "" : ", ").append(stackAt(i) == null ? "_" : stackAt(i).toString(Verbosity.Id));
         }
-        properties.put("stack", str.toString());
+        properties.put("stack", sb.toString());
         properties.put("rethrowException", rethrowException);
         properties.put("duringCall", duringCall);
         return properties;
     }
 
-    public CiCodePos toCodePos() {
-        FrameState caller = outerFrameState();
-        CiCodePos callerCodePos = null;
-        if (caller != null) {
-            callerCodePos = caller.toCodePos();
-        }
-        return new CiCodePos(callerCodePos, method, bci);
-    }
-
     @Override
     public boolean verify() {
         for (ValueNode value : values) {
+            assert assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
             assert assertTrue(value == null || value instanceof VirtualObjectNode || (value.kind() != CiKind.Void && value.kind() != CiKind.Illegal), "unexpected value: %s", value);
         }
         return super.verify();
-    }
-
-    // TODO this duplicates code in FrameStateBuilder and needs to go away
-    public static boolean isTwoSlot(CiKind kind) {
-        assert kind != CiKind.Void && kind != CiKind.Illegal;
-        return kind == CiKind.Long || kind == CiKind.Double;
     }
 }

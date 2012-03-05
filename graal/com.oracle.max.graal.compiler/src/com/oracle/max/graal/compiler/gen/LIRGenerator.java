@@ -347,7 +347,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 } else {
                     TTY.println("STATE CHANGE (singlePred)");
                     if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                        TTY.println(fs.toDetailedString());
+                        TTY.println(fs.toString(Node.Verbosity.Debugger));
                     }
                 }
             }
@@ -400,7 +400,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
                     TTY.println("STATE CHANGE");
                     if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
-                        TTY.println(stateAfter.toDetailedString());
+                        TTY.println(stateAfter.toString(Node.Verbosity.Debugger));
                     }
                 }
             }
@@ -428,8 +428,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private boolean checkStateReady(FrameState state) {
         FrameState fs = state;
         while (fs != null) {
-            for (int i = 0; i < fs.valuesSize(); i++) {
-                ValueNode v = fs.valueAt(i);
+            for (ValueNode v : fs.values()) {
                 if (v != null && !(v instanceof VirtualObjectNode)) {
                     assert operand(v) != null : "Value " + v + " in " + fs + " is not ready!";
                 }
@@ -1054,7 +1053,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         FrameState stateAfter = x.stateAfter();
         if (stateAfter != null) {
             // TODO change back to stateBeforeReturn() when RuntimeCallNode uses a CallTargetNode
-            FrameState stateBeforeReturn = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), x.kind());
+            // (cwi) I made the code that modifies the operand stack conditional. My scenario: runtime calls to, e.g.,
+            // CreateNullPointerException have no equivalent in the bytecodes, so there is in invoke bytecode.
+            // Therefore, the result of the runtime call was never pushed to the stack, and we cannot pop it here.
+            FrameState stateBeforeReturn = stateAfter;
+            if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == x) ||
+                (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == x)) {
+
+                stateBeforeReturn = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), x.kind());
+            }
 
             // TODO is it correct here that the pointerSlots are not passed to the oop map generation?
             info = stateFor(stateBeforeReturn);
@@ -1450,19 +1457,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     static class XirSupport implements XirSite {
         ValueNode current;
         ValueNode receiver;
-
-        XirSupport() {
-        }
-
-        public CiCodePos getCodePos() {
-            if (current instanceof StateSplit) {
-                FrameState stateAfter = ((StateSplit) current).stateAfter();
-                if (stateAfter != null) {
-                    return stateAfter.toCodePos();
-                }
-            }
-            return null;
-        }
 
         public boolean isNonNull(XirArgument argument) {
             return false;

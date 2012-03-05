@@ -29,32 +29,29 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.graph.Node.Verbosity;
+import com.oracle.max.graal.graph.iterators.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
-import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-
-public class FrameStateBuilder implements FrameStateAccess {
-
+public class FrameStateBuilder {
+    private final RiResolvedMethod method;
     private final StructuredGraph graph;
 
     private final ValueNode[] locals;
     private final ValueNode[] stack;
-
-    private int stackIndex;
+    private int stackSize;
     private boolean rethrowException;
 
-    private final RiResolvedMethod method;
-
-    public FrameStateBuilder(RiResolvedMethod method, int maxLocals, int maxStackSize, StructuredGraph graph, boolean eagerResolve) {
+    public FrameStateBuilder(RiResolvedMethod method, StructuredGraph graph, boolean eagerResolve) {
         assert graph != null;
         this.method = method;
         this.graph = graph;
-        this.locals = new ValueNode[maxLocals];
+        this.locals = new ValueNode[method.maxLocals()];
         // we always need at least one stack slot (for exceptions)
-        int stackSize = Math.max(1, maxStackSize);
-        this.stack = new ValueNode[stackSize];
+        this.stack = new ValueNode[Math.max(1, method.maxStackSize())];
 
         int javaIndex = 0;
         int index = 0;
@@ -88,33 +85,256 @@ public class FrameStateBuilder implements FrameStateAccess {
         }
     }
 
-    @Override
-    public String toString() {
-        return String.format("FrameStateBuilder[stackSize=%d]", stackIndex);
+    private FrameStateBuilder(RiResolvedMethod method, StructuredGraph graph, ValueNode[] locals, ValueNode[] stack, int stackSize, boolean rethrowException) {
+        assert locals.length == method.maxLocals();
+        assert stack.length == Math.max(1, method.maxStackSize());
+
+        this.method = method;
+        this.graph = graph;
+        this.locals = locals;
+        this.stack = stack;
+        this.stackSize = stackSize;
+        this.rethrowException = rethrowException;
     }
 
-    public void initializeFrom(FrameState other) {
-        assert locals.length == other.localsSize() : "expected: " + locals.length + ", actual: " + other.localsSize();
-        assert stack.length >= other.stackSize() : "expected: <=" + stack.length + ", actual: " + other.stackSize();
-
-        this.stackIndex = other.stackSize();
-        for (int i = 0; i < other.localsSize(); i++) {
-            locals[i] = other.localAt(i);
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[locals: [");
+        for (int i = 0; i < locals.length; i++) {
+            sb.append(i == 0 ? "" : ",").append(locals[i] == null ? "_" : locals[i].toString(Verbosity.Id));
         }
-        for (int i = 0; i < other.stackSize(); i++) {
-            stack[i] = other.stackAt(i);
+        sb.append("] stack: [");
+        for (int i = 0; i < stackSize; i++) {
+            sb.append(i == 0 ? "" : ",").append(stack[i] == null ? "_" : stack[i].toString(Verbosity.Id));
         }
-        this.rethrowException = other.rethrowException();
+        sb.append("]");
+        if (rethrowException) {
+            sb.append(" rethrowException");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     public FrameState create(int bci) {
-        return graph.add(new FrameState(method, bci, locals, stack, stackIndex, rethrowException, false));
+        return graph.add(new FrameState(method, bci, locals, stack, stackSize, rethrowException, false));
     }
 
-    public FrameState duplicateWithException(int bci, ValueNode exceptionObject) {
-        FrameState frameState = graph.add(new FrameState(method, bci, locals, new ValueNode[]{exceptionObject}, 1, true, false));
-        frameState.setOuterFrameState(outerFrameState());
-        return frameState;
+    public FrameState duplicateWithoutStack(int bci) {
+        return graph.add(new FrameState(method, bci, locals, new ValueNode[0], 0, false, false));
+    }
+
+
+    public FrameStateBuilder copy() {
+        return new FrameStateBuilder(method, graph, Arrays.copyOf(locals, locals.length), Arrays.copyOf(stack, stack.length), stackSize, rethrowException);
+    }
+
+    public FrameStateBuilder copyWithException(ValueNode exceptionObject) {
+        ValueNode[] newStack = new ValueNode[stack.length];
+        newStack[0] = exceptionObject;
+        return new FrameStateBuilder(method, graph, Arrays.copyOf(locals, locals.length), newStack, 1, true);
+    }
+
+
+    public boolean isCompatibleWith(FrameStateBuilder other) {
+        assert method == other.method && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
+
+        if (stackSize() != other.stackSize()) {
+            return false;
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            ValueNode x = stackAt(i);
+            ValueNode y = other.stackAt(i);
+            if (x != y && ValueUtil.typeMismatch(x, y)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void merge(MergeNode block, FrameStateBuilder other) {
+        assert isCompatibleWith(other);
+
+        for (int i = 0; i < localsSize(); i++) {
+            storeLocal(i, merge(localAt(i), other.localAt(i), block));
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            storeStack(i, merge(stackAt(i), other.stackAt(i), block));
+        }
+    }
+
+    private ValueNode merge(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
+        if (currentValue == null) {
+            return null;
+
+        } else if (block.isPhiAtMerge(currentValue)) {
+            if (otherValue == null || currentValue.kind() != otherValue.kind()) {
+                deletePhi(currentValue);
+                return null;
+            }
+            ((PhiNode) currentValue).addInput(otherValue);
+            return currentValue;
+
+        } else if (currentValue != otherValue) {
+            assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for all locals and stack slots";
+            if (otherValue == null || currentValue.kind() != otherValue.kind()) {
+                return null;
+            }
+
+            PhiNode phi = graph.unique(new PhiNode(currentValue.kind(), block, PhiType.Value));
+            for (int i = 0; i < block.phiPredecessorCount(); i++) {
+                phi.addInput(currentValue);
+            }
+            phi.addInput(otherValue);
+            assert phi.valueCount() == block.phiPredecessorCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPredecessorCount();
+            return phi;
+
+        } else {
+            return currentValue;
+        }
+    }
+
+    private void deletePhi(Node phi) {
+        // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
+        List<Node> phiUsages = phi.usages().filter(NodePredicates.isA(PhiNode.class)).snapshot();
+
+        // Remove the phi function from all FrameStates where it is used and then delete it.
+        assert phi.usages().filter(NodePredicates.isNotA(FrameState.class)).filter(NodePredicates.isNotA(PhiNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        phi.replaceAtUsages(null);
+        phi.safeDelete();
+
+        for (Node phiUsage : phiUsages) {
+            deletePhi(phiUsage);
+        }
+    }
+
+    public void insertLoopPhis(LoopBeginNode loopBegin) {
+        for (int i = 0; i < localsSize(); i++) {
+            storeLocal(i, createLoopPhi(loopBegin, localAt(i)));
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            storeStack(i, createLoopPhi(loopBegin, stackAt(i)));
+        }
+    }
+
+    private PhiNode createLoopPhi(MergeNode block, ValueNode value) {
+        if (value == null) {
+            return null;
+        }
+        assert !block.isPhiAtMerge(value) : "phi function for this block already created";
+
+        PhiNode phi = graph.unique(new PhiNode(value.kind(), block, PhiType.Value));
+        phi.addInput(value);
+        return phi;
+    }
+
+    public void cleanupDeletedPhis() {
+        for (int i = 0; i < localsSize(); i++) {
+            if (localAt(i) != null && localAt(i).isDeleted()) {
+                assert localAt(i) instanceof PhiNode : "Only phi functions can be deleted during parsing";
+                storeLocal(i, null);
+            }
+        }
+    }
+
+    public void clearNonLiveLocals(BitMap liveness) {
+        if (liveness == null) {
+            return;
+        }
+        assert liveness.size() == locals.length;
+        for (int i = 0; i < locals.length; i++) {
+            if (!liveness.get(i)) {
+                locals[i] = null;
+            }
+        }
+    }
+
+    public boolean rethrowException() {
+        return rethrowException;
+    }
+
+    public void setRethrowException(boolean b) {
+        rethrowException = b;
+    }
+
+
+    /**
+     * Returns the size of the local variables.
+     *
+     * @return the size of the local variables
+     */
+    public int localsSize() {
+        return locals.length;
+    }
+
+    /**
+     * Gets the current size (height) of the stack.
+     */
+    public int stackSize() {
+        return stackSize;
+    }
+
+    /**
+     * Gets the value in the local variables at the specified index, without any sanity checking.
+     *
+     * @param i the index into the locals
+     * @return the instruction that produced the value for the specified local
+     */
+    protected final ValueNode localAt(int i) {
+        return locals[i];
+    }
+
+    /**
+     * Get the value on the stack at the specified stack index.
+     *
+     * @param i the index into the stack, with {@code 0} being the bottom of the stack
+     * @return the instruction at the specified position in the stack
+     */
+    protected final ValueNode stackAt(int i) {
+        return stack[i];
+    }
+
+    /**
+     * Loads the local variable at the specified index, checking that the returned value is non-null
+     * and that two-stack values are properly handled.
+     *
+     * @param i the index of the local variable to load
+     * @return the instruction that produced the specified local
+     */
+    public ValueNode loadLocal(int i) {
+        ValueNode x = locals[i];
+        assert !x.isDeleted();
+        assert !isTwoSlot(x.kind()) || locals[i + 1] == null;
+        assert i == 0 || locals[i - 1] == null || !isTwoSlot(locals[i - 1].kind());
+        return x;
+    }
+
+    /**
+     * Stores a given local variable at the specified index. If the value is a {@linkplain CiKind#isDoubleWord() double word},
+     * then the next local variable index is also overwritten.
+     *
+     * @param i the index at which to store
+     * @param x the instruction which produces the value for the local
+     */
+    public void storeLocal(int i, ValueNode x) {
+        assert x == null || x.kind() != CiKind.Void && x.kind() != CiKind.Illegal : "unexpected value: " + x;
+        locals[i] = x;
+        if (x != null && isTwoSlot(x.kind())) {
+            // if this is a double word, then kill i+1
+            locals[i + 1] = null;
+        }
+        if (x != null && i > 0) {
+            ValueNode p = locals[i - 1];
+            if (p != null && isTwoSlot(p.kind())) {
+                // if there was a double word at i - 1, then kill it
+                locals[i - 1] = null;
+            }
+        }
+    }
+
+    private void storeStack(int i, ValueNode x) {
+        assert x == null || stack[i] == null || x.kind() == stack[i].kind() : "Method does not handle changes from one-slot to two-slot values";
+        stack[i] = x;
     }
 
     /**
@@ -123,7 +343,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param x the instruction to push onto the stack
      */
     public void push(CiKind kind, ValueNode x) {
-        assert kind != CiKind.Void;
+        assert !x.isDeleted() && x.kind() != CiKind.Void && x.kind() != CiKind.Illegal;
         xpush(assertKind(kind, x));
         if (isTwoSlot(kind)) {
             xpush(null);
@@ -135,9 +355,8 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @param x the instruction to push onto the stack
      */
     public void xpush(ValueNode x) {
-        assert x == null || !x.isDeleted();
-        assert x == null || (x.kind() != CiKind.Void && x.kind() != CiKind.Illegal) : "unexpected value: " + x;
-        stack[stackIndex++] = x;
+        assert x == null || (!x.isDeleted() && x.kind() != CiKind.Void && x.kind() != CiKind.Illegal);
+        stack[stackSize++] = x;
     }
 
     /**
@@ -215,7 +434,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @return x the instruction popped off the stack
      */
     public ValueNode xpop() {
-        ValueNode result = stack[--stackIndex];
+        ValueNode result = stack[--stackSize];
         assert result == null || !result.isDeleted();
         return result;
     }
@@ -276,7 +495,7 @@ public class FrameStateBuilder implements FrameStateAccess {
      * @return an array containing the arguments off of the stack
      */
     public ValueNode[] popArguments(int slotSize, int argSize) {
-        int base = stackIndex - slotSize;
+        int base = stackSize - slotSize;
         ValueNode[] r = new ValueNode[argSize];
         int argIndex = 0;
         int stackindex = 0;
@@ -286,7 +505,7 @@ public class FrameStateBuilder implements FrameStateAccess {
             r[argIndex++] = element;
             stackindex += stackSlots(element.kind());
         }
-        stackIndex = base;
+        stackSize = base;
         return r;
     }
 
@@ -309,173 +528,10 @@ public class FrameStateBuilder implements FrameStateAccess {
     }
 
     /**
-     * Truncates this stack to the specified size.
-     * @param size the size to truncate to
-     */
-    public void truncateStack(int size) {
-        stackIndex = size;
-        assert stackIndex >= 0;
-    }
-
-    /**
      * Clears all values on this stack.
      */
     public void clearStack() {
-        stackIndex = 0;
-    }
-
-    /**
-     * Loads the local variable at the specified index.
-     *
-     * @param i the index of the local variable to load
-     * @return the instruction that produced the specified local
-     */
-    public ValueNode loadLocal(int i) {
-        ValueNode x = locals[i];
-        if (x != null) {
-            if (x instanceof PhiNode) {
-                assert ((PhiNode) x).type() == PhiType.Value;
-                if (x.isDeleted()) {
-                    return null;
-                }
-            }
-            assert !isTwoSlot(x.kind()) || locals[i + 1] == null || locals[i + 1] instanceof PhiNode;
-        }
-        return x;
-    }
-
-    /**
-     * Stores a given local variable at the specified index. If the value is a {@linkplain CiKind#isDoubleWord() double word},
-     * then the next local variable index is also overwritten.
-     *
-     * @param i the index at which to store
-     * @param x the instruction which produces the value for the local
-     */
-    public void storeLocal(int i, ValueNode x) {
-        assert x.kind() != CiKind.Void && x.kind() != CiKind.Illegal : "unexpected value: " + x;
-        locals[i] = x;
-        if (isTwoSlot(x.kind())) {
-            // (tw) if this was a double word then kill i+1
-            locals[i + 1] = null;
-        }
-        if (i > 0) {
-            // if there was a double word at i - 1, then kill it
-            ValueNode p = locals[i - 1];
-            if (p != null && isTwoSlot(p.kind())) {
-                locals[i - 1] = null;
-            }
-        }
-    }
-
-    /**
-     * Get the value on the stack at the specified stack index.
-     *
-     * @param i the index into the stack, with {@code 0} being the bottom of the stack
-     * @return the instruction at the specified position in the stack
-     */
-    public final ValueNode stackAt(int i) {
-        return stack[i];
-    }
-
-    /**
-     * Gets the value in the local variables at the specified index.
-     *
-     * @param i the index into the locals
-     * @return the instruction that produced the value for the specified local
-     */
-    public final ValueNode localAt(int i) {
-        return locals[i];
-    }
-
-    /**
-     * Returns the size of the local variables.
-     *
-     * @return the size of the local variables
-     */
-    public int localsSize() {
-        return locals.length;
-    }
-
-    /**
-     * Gets the current size (height) of the stack.
-     */
-    public int stackSize() {
-        return stackIndex;
-    }
-
-    public Iterator<ValueNode> locals() {
-        return new ValueArrayIterator(locals);
-    }
-
-    public Iterator<ValueNode> stack() {
-        return new ValueArrayIterator(locals);
-    }
-
-
-    private static class ValueArrayIterator implements Iterator<ValueNode> {
-        private final ValueNode[] array;
-        private int index;
-
-        public ValueArrayIterator(ValueNode[] array, int length) {
-            assert length <= array.length;
-            this.array = array;
-            this.index = 0;
-        }
-
-        public ValueArrayIterator(ValueNode[] array) {
-            this(array, array.length);
-        }
-
-        @Override
-        public boolean hasNext() {
-            return index < array.length;
-        }
-
-        @Override
-        public ValueNode next() {
-            return array[index++];
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException("cannot remove from array");
-        }
-
-    }
-
-
-    @Override
-    public FrameState duplicate(int bci) {
-        return create(bci);
-    }
-
-    @Override
-    public ValueNode valueAt(int i) {
-        if (i < locals.length) {
-            return locals[i];
-        } else {
-            return stack[i - locals.length];
-        }
-    }
-
-    @Override
-    public FrameState outerFrameState() {
-        return null;
-    }
-
-    public FrameState duplicateWithoutStack(int bci) {
-        FrameState frameState = graph.add(new FrameState(method, bci, locals, new ValueNode[0], 0, false, false));
-        frameState.setOuterFrameState(outerFrameState());
-        return frameState;
-    }
-
-    @Override
-    public boolean rethrowException() {
-        return rethrowException;
-    }
-
-    public void setRethrowException(boolean b) {
-        rethrowException = b;
+        stackSize = 0;
     }
 
     public static int stackSlots(CiKind kind) {

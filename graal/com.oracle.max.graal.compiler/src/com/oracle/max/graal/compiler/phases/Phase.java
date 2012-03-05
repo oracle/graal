@@ -55,6 +55,7 @@ public abstract class Phase {
                 if (dumpGraph) {
                     Debug.dump(graph, "After phase %s", name);
                 }
+                assert graph.verify();
             }
         });
     }
