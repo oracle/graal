@@ -44,11 +44,7 @@ public class DeadCodeEliminationPhase extends Phase {
         // remove chained Merges
         for (MergeNode merge : graph.getNodes(MergeNode.class)) {
             if (merge.forwardEndCount() == 1 && !(merge instanceof LoopBeginNode)) {
-                replacePhis(merge);
-                EndNode endNode = merge.forwardEndAt(0);
-                FixedNode next = merge.next();
-                merge.safeDelete();
-                endNode.replaceAndDelete(next);
+                graph.reduceTrivialMerge(merge);
             }
         }
     }
@@ -93,12 +89,6 @@ public class DeadCodeEliminationPhase extends Phase {
                     graph.reduceDegenerateLoopBegin(loop);
                 }
             }
-        }
-    }
-
-    private static void replacePhis(MergeNode merge) {
-        for (PhiNode phi : merge.phis().snapshot()) {
-            ((StructuredGraph) merge.graph()).replaceFloating(phi, phi.valueAt(0));
         }
     }
 
