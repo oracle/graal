@@ -123,10 +123,8 @@ public class ControlFlowGraph {
             }
         }
 
-        // Compute reverse postorder.
-        reversePostOrder = new Block[numBlocks];
-        int reversePostOrderId = numBlocks - 1;
-
+        // Compute postorder.
+        ArrayList<Block> postOrder = new ArrayList<>(numBlocks);
         ArrayList<Block> stack = new ArrayList<>();
         stack.add(blockFor(graph.start()));
 
@@ -136,45 +134,60 @@ public class ControlFlowGraph {
                 // First time we see this block: push all successors.
                 for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                     Block suxBlock = blockFor(suxNode);
-                    assert suxBlock.id != BLOCK_ID_VISITED : "Sux already visited?? from " + block.getEndNode() + " to " + suxNode;
                     if (suxBlock.id == BLOCK_ID_INITIAL) {
                         stack.add(suxBlock);
                     }
                 }
                 block.id = BLOCK_ID_VISITED;
             } else if (block.id == BLOCK_ID_VISITED) {
-                // Second time we see this block: All successors haved been processed, so insert block into reverse postorder list.
+                // Second time we see this block: All successors have been processed, so add block to postorder list.
                 stack.remove(stack.size() - 1);
-                reversePostOrder[reversePostOrderId] = block;
-                block.id = reversePostOrderId;
-                reversePostOrderId--;
+                postOrder.add(block);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } while (!stack.isEmpty());
-        assert reversePostOrderId == -1;
+
+        // Compute reverse postorder and number blocks.
+        assert postOrder.size() <= numBlocks : "some blocks originally created can be unreachable, so actual block list can be shorter";
+        numBlocks = postOrder.size();
+        reversePostOrder = new Block[numBlocks];
+        for (int i = 0; i < numBlocks; i++) {
+            reversePostOrder[i] = postOrder.get(numBlocks - i - 1);
+            reversePostOrder[i].id = i;
+        }
     }
 
-    // Connect blocks (including loop backward edges).
+    // Connect blocks (including loop backward edges), but ignoring dead code (blocks with id < 0).
     private void connectBlocks() {
         for (Block block : reversePostOrder) {
             List<Block> predecessors = new ArrayList<>();
             for (Node predNode : block.getBeginNode().cfgPredecessors()) {
-                predecessors.add(nodeToBlock.get(predNode));
+                Block predBlock = nodeToBlock.get(predNode);
+                if (predBlock.id >= 0) {
+                    predecessors.add(predBlock);
+                }
             }
             if (block.getBeginNode() instanceof LoopBeginNode) {
                 for (LoopEndNode predNode : ((LoopBeginNode) block.getBeginNode()).orderedLoopEnds()) {
-                    predecessors.add(nodeToBlock.get(predNode));
+                    Block predBlock = nodeToBlock.get(predNode);
+                    if (predBlock.id >= 0) {
+                        predecessors.add(predBlock);
+                    }
                 }
             }
             block.predecessors = predecessors;
 
             List<Block> successors = new ArrayList<>();
             for (Node suxNode : block.getEndNode().cfgSuccessors()) {
-                successors.add(nodeToBlock.get(suxNode));
+                Block suxBlock = nodeToBlock.get(suxNode);
+                assert suxBlock.id >= 0;
+                successors.add(suxBlock);
             }
             if (block.getEndNode() instanceof LoopEndNode) {
-                successors.add(nodeToBlock.get(((LoopEndNode) block.getEndNode()).loopBegin()));
+                Block suxBlock = nodeToBlock.get(((LoopEndNode) block.getEndNode()).loopBegin());
+                assert suxBlock.id >= 0;
+                successors.add(suxBlock);
             }
             block.successors = successors;
         }

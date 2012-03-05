@@ -81,10 +81,8 @@ public class GraalCompiler {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
-        Debug.dump(this, "compiler");
-        Debug.dump(method, "method");
 
-        return Debug.scope(createScopeName(method), graph, new Callable<CiTargetMethod>() {
+        return Debug.scope(createScopeName(method), new Object[] {graph, method, this}, new Callable<CiTargetMethod>() {
             public CiTargetMethod call() {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
@@ -213,7 +211,7 @@ public class GraalCompiler {
         assert startBlock != null;
         assert startBlock.numberOfPreds() == 0;
 
-        return Debug.scope("Compute Linear Scan Order", new Callable<LIR>() {
+        return Debug.scope("ComputeLinearScanOrder", new Callable<LIR>() {
 
             @Override
             public LIR call() {
@@ -237,9 +235,8 @@ public class GraalCompiler {
     public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final RiResolvedMethod method) {
         final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
         final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir);
-        Debug.dump(lirGenerator, "LIRGenerator");
 
-        Debug.scope("LIRGen", new Runnable() {
+        Debug.scope("LIRGen", lirGenerator, new Runnable() {
             public void run() {
                 for (Block b : lir.linearScanOrder()) {
                     lirGenerator.doBlock(b);

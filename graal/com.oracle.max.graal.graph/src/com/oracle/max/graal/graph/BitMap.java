@@ -261,6 +261,27 @@ public final class BitMap implements Serializable {
     }
 
     /**
+     * Performs the union operation on this bitmap with the specified bitmap. That is, all bits set in either of the two
+     * bitmaps will be set in this bitmap following this operation. It returns whether this bitmap was changed by the operation.
+     *
+     * @param other the other bitmap for the union operation
+     */
+    public boolean setUnionWithResult(BitMap other) {
+        long temp = low | other.low;
+        boolean changed = temp != low;
+        low = temp;
+
+        if (extra != null && other.extra != null) {
+            for (int i = 0; i < extra.length && i < other.extra.length; i++) {
+                temp = extra[i] | other.extra[i];
+                changed = changed || temp != extra[i];
+                extra[i] |= temp;
+            }
+        }
+        return changed;
+    }
+
+    /**
      * Performs the union operation on this bitmap with the specified bitmap. That is, a bit is set in this
      * bitmap if and only if it is set in both this bitmap and the specified bitmap.
      *
