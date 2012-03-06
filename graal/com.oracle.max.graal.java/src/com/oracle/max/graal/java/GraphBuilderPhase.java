@@ -22,11 +22,12 @@
  */
 package com.oracle.max.graal.java;
 
-import static com.oracle.max.graal.java.Bytecodes.*;
+import static com.oracle.max.graal.java.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -39,6 +40,7 @@ import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.BciBlockMapping.Block;
 import com.oracle.max.graal.java.BciBlockMapping.ExceptionBlock;
+import com.oracle.max.graal.java.bytecode.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;

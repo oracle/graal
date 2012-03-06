@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java;
+package com.oracle.max.graal.java.bytecode;
 
-import static com.oracle.max.graal.java.Bytecodes.Flags.*;
+import static com.oracle.max.graal.java.bytecode.Bytecodes.Flags.*;
 
 import java.io.*;
 import java.lang.reflect.*;

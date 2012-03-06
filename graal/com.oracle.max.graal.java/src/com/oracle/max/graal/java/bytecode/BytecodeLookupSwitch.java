@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java;
+package com.oracle.max.graal.java.bytecode;
 
 /**
  * A utility for processing {@link Bytecodes#LOOKUPSWITCH} bytecodes.
  */
-class BytecodeLookupSwitch extends BytecodeSwitch {
+public class BytecodeLookupSwitch extends BytecodeSwitch {
     private static final int OFFSET_TO_NUMBER_PAIRS = 4;
     private static final int OFFSET_TO_FIRST_PAIR_MATCH = 8;
     private static final int OFFSET_TO_FIRST_PAIR_OFFSET = 12;

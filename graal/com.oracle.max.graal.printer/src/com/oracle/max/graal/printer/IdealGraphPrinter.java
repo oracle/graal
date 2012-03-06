@@ -32,7 +32,7 @@ import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.graph.Node.Verbosity;
 import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.max.graal.graph.NodeClass.Position;
-import com.oracle.max.graal.java.*;
+import com.oracle.max.graal.java.bytecode.*;
 import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 

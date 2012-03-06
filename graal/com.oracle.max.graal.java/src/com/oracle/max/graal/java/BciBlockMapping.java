@@ -22,15 +22,17 @@
  */
 package com.oracle.max.graal.java;
 
-import static com.oracle.max.graal.java.Bytecodes.*;
+import static com.oracle.max.graal.java.bytecode.Bytecodes.*;
 
 import java.util.*;
+
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.graal.compiler.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
+import com.oracle.max.graal.java.bytecode.*;
 import com.oracle.max.graal.nodes.*;
 
 /**
