@@ -302,7 +302,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public double getBranchTakenProbability(HotSpotMethodData data, int position) {
-            return 1;
+            return getExecutionCount(data, position) != 0 ? 1 : 0;
         }
 
         @Override
