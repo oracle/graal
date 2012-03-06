@@ -1723,7 +1723,7 @@ public final class GraphBuilderPhase extends Phase {
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;
             case GOTO_W         : genGoto(); break;
-            case JSR_W          : genJsr(stream.readFarBranchDest()); break;
+            case JSR_W          : genJsr(stream.readBranchDest()); break;
             case BREAKPOINT:
                 throw new CiBailout("concurrent setting of breakpoint");
             default:

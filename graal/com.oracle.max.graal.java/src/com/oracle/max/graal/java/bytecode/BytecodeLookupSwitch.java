@@ -40,33 +40,24 @@ public class BytecodeLookupSwitch extends BytecodeSwitch {
         super(stream, bci);
     }
 
-    /**
-     * Constructor for a bytecode array.
-     * @param code the bytecode array containing the switch instruction.
-     * @param bci the index in the array of the switch instruction
-     */
-    public BytecodeLookupSwitch(byte[] code, int bci) {
-        super(code, bci);
-    }
-
     @Override
     public int defaultOffset() {
-        return readWord(alignedBci);
+        return stream.readInt(alignedBci);
     }
 
     @Override
     public int offsetAt(int i) {
-        return readWord(alignedBci + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
+        return stream.readInt(alignedBci + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
     }
 
     @Override
     public int keyAt(int i) {
-        return readWord(alignedBci + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * i);
+        return stream.readInt(alignedBci + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * i);
     }
 
     @Override
     public int numberOfCases() {
-        return readWord(alignedBci + OFFSET_TO_NUMBER_PAIRS);
+        return stream.readInt(alignedBci + OFFSET_TO_NUMBER_PAIRS);
     }
 
     @Override

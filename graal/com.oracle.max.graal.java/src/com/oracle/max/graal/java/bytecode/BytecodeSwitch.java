@@ -28,13 +28,9 @@ package com.oracle.max.graal.java.bytecode;
  */
 public abstract class BytecodeSwitch {
     /**
-     * The {@link BytecodeStream} containing bytecode array or {@code null} if {@link #code} is not {@code null}.
+     * The {@link BytecodeStream} containing the bytecode array.
      */
-    private final BytecodeStream stream;
-    /**
-     * The bytecode array or {@code null} if {@link #stream} is not {@code null}.
-     */
-    private final byte[] code;
+    protected final BytecodeStream stream;
     /**
      * Index of start of switch instruction.
      */
@@ -50,22 +46,9 @@ public abstract class BytecodeSwitch {
      * @param bci the index in the stream of the switch instruction
      */
     public BytecodeSwitch(BytecodeStream stream, int bci) {
-        this.alignedBci = (bci + 4) & 0xfffffffc;
         this.stream = stream;
-        this.code = null;
         this.bci = bci;
-    }
-
-    /**
-     * Constructor for a bytecode array.
-     * @param code the bytecode array containing the switch instruction.
-     * @param bci the index in the array of the switch instruction
-     */
-    public BytecodeSwitch(byte[] code, int bci) {
         this.alignedBci = (bci + 4) & 0xfffffffc;
-        this.stream = null;
-        this.code = code;
-        this.bci = bci;
     }
 
     /**
@@ -124,16 +107,4 @@ public abstract class BytecodeSwitch {
      * @return the total size in bytes of the switch instruction
      */
     public abstract int size();
-
-    /**
-     * Reads the signed value at given bytecode index.
-     * @param readBci the start index of the value to retrieve
-     * @return the signed, 4-byte value in the bytecode array starting at {@code bci}
-     */
-    protected int readWord(int readBci) {
-        if (code != null) {
-            return Bytes.beS4(code, readBci);
-        }
-        return stream.readInt(readBci);
-    }
 }

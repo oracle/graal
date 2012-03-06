@@ -120,16 +120,11 @@ public final class BytecodeStream {
      */
     public int readBranchDest() {
         // reads the destination for a branch bytecode
-        return curBCI + Bytes.beS2(code, curBCI + 1);
-    }
-
-    /**
-     * Read the destination of a {@link Bytecodes#GOTO_W} or {@link Bytecodes#JSR_W} instructions.
-     * @return the destination bytecode index
-     */
-    public int readFarBranchDest() {
-        // reads the destination for a wide branch bytecode
-        return curBCI + Bytes.beS4(code, curBCI + 1);
+        if (opcode == Bytecodes.GOTO_W || opcode == Bytecodes.JSR_W) {
+            return curBCI + Bytes.beS4(code, curBCI + 1);
+        } else {
+            return curBCI + Bytes.beS2(code, curBCI + 1);
+        }
     }
 
     /**
@@ -188,10 +183,40 @@ public final class BytecodeStream {
         curBCI = bci;
         if (curBCI < code.length) {
             opcode = Bytes.beU1(code, bci);
-            nextBCI = bci + Bytecodes.lengthOf(code, bci);
+            nextBCI = bci + lengthOf();
         } else {
             opcode = Bytecodes.END;
             nextBCI = curBCI;
         }
+    }
+
+    /**
+     * Gets the length of the current bytecode.
+     */
+    private int lengthOf() {
+        int length = Bytecodes.lengthOf(opcode);
+        if (length == 0) {
+            switch (opcode) {
+                case Bytecodes.TABLESWITCH: {
+                    return new BytecodeTableSwitch(this, curBCI).size();
+                }
+                case Bytecodes.LOOKUPSWITCH: {
+                    return new BytecodeLookupSwitch(this, curBCI).size();
+                }
+                case Bytecodes.WIDE: {
+                    int opc = Bytes.beU1(code, curBCI + 1);
+                    if (opc == Bytecodes.RET) {
+                        return 4;
+                    } else if (opc == Bytecodes.IINC) {
+                        return 6;
+                    } else {
+                        return 4; // a load or store bytecode
+                    }
+                }
+                default:
+                    throw new Error("unknown variable-length bytecode: " + opcode);
+            }
+        }
+        return length;
     }
 }

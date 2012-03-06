@@ -41,20 +41,11 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
     }
 
     /**
-     * Constructor for a bytecode array.
-     * @param code the bytecode array containing the switch instruction.
-     * @param bci the index in the array of the switch instruction
-     */
-    public BytecodeTableSwitch(byte[] code, int bci) {
-        super(code, bci);
-    }
-
-    /**
      * Gets the low key of the table switch.
      * @return the low key
      */
     public int lowKey() {
-        return readWord(alignedBci + OFFSET_TO_LOW_KEY);
+        return stream.readInt(alignedBci + OFFSET_TO_LOW_KEY);
     }
 
     /**
@@ -62,7 +53,7 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
      * @return the high key
      */
     public int highKey() {
-        return readWord(alignedBci + OFFSET_TO_HIGH_KEY);
+        return stream.readInt(alignedBci + OFFSET_TO_HIGH_KEY);
     }
 
     @Override
@@ -72,12 +63,12 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
 
     @Override
     public int defaultOffset() {
-        return readWord(alignedBci);
+        return stream.readInt(alignedBci);
     }
 
     @Override
     public int offsetAt(int i) {
-        return readWord(alignedBci + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
+        return stream.readInt(alignedBci + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
     }
 
     @Override
