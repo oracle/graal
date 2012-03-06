@@ -51,6 +51,10 @@ public class JsrScope {
         return scope == 0;
     }
 
+    public boolean isPrefixOf(JsrScope other) {
+        return (scope & other.scope) == scope;
+    }
+
     public JsrScope pop() {
         return new JsrScope(scope >>> 16);
     }
