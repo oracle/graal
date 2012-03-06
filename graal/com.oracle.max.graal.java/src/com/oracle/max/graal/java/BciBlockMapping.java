@@ -177,12 +177,6 @@ public final class BciBlockMapping {
         public int deoptBci;
     }
 
-    public static class DeoptBlock extends Block {
-        public DeoptBlock(int startBci) {
-            this.startBci = startBci;
-        }
-    }
-
     /**
      * The blocks found in this method, in reverse postorder.
      */
@@ -320,10 +314,8 @@ public final class BciBlockMapping {
                 case IFNULL:    // fall through
                 case IFNONNULL: {
                     current = null;
-                    double probability = useBranchPrediction ? profilingInfo.getBranchTakenProbability(bci) : -1;
-
-                    Block b1 = probability == 0.0 ? new DeoptBlock(bci + Bytes.beS2(code, bci + 1)) : makeBlock(bci + Bytes.beS2(code, bci + 1));
-                    Block b2 = probability == 1.0 ? new DeoptBlock(bci + 3) : makeBlock(bci + 3);
+                    Block b1 = makeBlock(bci + Bytes.beS2(code, bci + 1));
+                    Block b2 = makeBlock(bci + 3);
                     setSuccessors(bci, b1, b2);
                     break;
                 }

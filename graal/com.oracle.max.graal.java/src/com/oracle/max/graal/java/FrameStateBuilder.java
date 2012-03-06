@@ -195,6 +195,9 @@ public class FrameStateBuilder {
     }
 
     private void deletePhi(Node phi) {
+        if (phi.isDeleted()) {
+            return;
+        }
         // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
         List<Node> phiUsages = phi.usages().filter(NodePredicates.isA(PhiNode.class)).snapshot();
 

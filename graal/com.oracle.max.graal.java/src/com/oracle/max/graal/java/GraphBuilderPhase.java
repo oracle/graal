@@ -38,7 +38,6 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.BciBlockMapping.Block;
-import com.oracle.max.graal.java.BciBlockMapping.DeoptBlock;
 import com.oracle.max.graal.java.BciBlockMapping.ExceptionBlock;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -536,6 +535,14 @@ public final class GraphBuilderPhase extends Phase {
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
+        assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
+        Block trueBlock = currentBlock.successors.get(0);
+        Block falseBlock = currentBlock.successors.get(1);
+        if (trueBlock == falseBlock) {
+            appendGoto(createTarget(trueBlock, frameState));
+            return;
+        }
+
         double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
             assert probability == -1 : "invalid probability";
@@ -544,15 +551,9 @@ public final class GraphBuilderPhase extends Phase {
         }
 
         CompareNode condition = currentGraph.unique(new CompareNode(x, cond, y));
-        FixedNode trueSuccessor = createTarget(currentBlock.successors.get(0), frameState);
-        FixedNode falseSuccessor = createTarget(currentBlock.successors.get(1), frameState);
-        if (trueSuccessor == falseSuccessor) {
-            appendGoto(trueSuccessor);
-        } else {
-            append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, probability)));
-        }
-
-        assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
+        BeginNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+        BeginNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+        append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, probability)));
     }
 
     private void genIfZero(Condition cond) {
@@ -1117,9 +1118,10 @@ public final class GraphBuilderPhase extends Phase {
         int nofCases = ts.numberOfCases() + 1; // including default case
         assert currentBlock.normalSuccessors == nofCases;
 
-        TableSwitchNode tableSwitch = currentGraph.add(new TableSwitchNode(value, ts.lowKey(), switchProbability(nofCases, bci)));
+        double[] probabilities = switchProbability(nofCases, bci);
+        TableSwitchNode tableSwitch = currentGraph.add(new TableSwitchNode(value, ts.lowKey(), probabilities));
         for (int i = 0; i < nofCases; ++i) {
-            tableSwitch.setBlockSuccessor(i, BeginNode.begin(createTarget(currentBlock.successors.get(i), frameState)));
+            tableSwitch.setBlockSuccessor(i, createBlockTarget(probabilities[i], currentBlock.successors.get(i), frameState));
         }
         append(tableSwitch);
     }
@@ -1150,9 +1152,10 @@ public final class GraphBuilderPhase extends Phase {
         for (int i = 0; i < nofCases - 1; ++i) {
             keys[i] = ls.keyAt(i);
         }
-        LookupSwitchNode lookupSwitch = currentGraph.add(new LookupSwitchNode(value, keys, switchProbability(nofCases, bci)));
+        double[] probabilities = switchProbability(nofCases, bci);
+        LookupSwitchNode lookupSwitch = currentGraph.add(new LookupSwitchNode(value, keys, probabilities));
         for (int i = 0; i < nofCases; ++i) {
-            lookupSwitch.setBlockSuccessor(i, BeginNode.begin(createTarget(currentBlock.successors.get(i), frameState)));
+            lookupSwitch.setBlockSuccessor(i, createBlockTarget(probabilities[i], currentBlock.successors.get(i), frameState));
         }
         append(lookupSwitch);
     }
@@ -1245,6 +1248,30 @@ public final class GraphBuilderPhase extends Phase {
         return result;
     }
 
+    /**
+     * Returns a block begin node with the specified state.  If the specified probability is 0, the block
+     * deoptimizes immediately.
+     */
+    private BeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
+        assert probability >= 0 && probability <= 1;
+        if (probability == 0) {
+            FrameStateBuilder state = stateAfter.copy();
+            state.clearNonLiveLocals(block.localsLiveIn);
+
+            BeginNode begin = currentGraph.add(new BeginNode());
+            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+            begin.setNext(deopt);
+            begin.setStateAfter(state.create(block.startBci));
+            return begin;
+        }
+
+        FixedNode target = createTarget(block, stateAfter);
+        assert !(target instanceof BeginNode);
+        BeginNode begin = currentGraph.add(new BeginNode());
+        begin.setNext(target);
+        return begin;
+    }
+
     private ValueNode synchronizedObject(FrameStateBuilder state, RiResolvedMethod target) {
         if (isStatic(target.accessFlags())) {
             return append(ConstantNode.forCiConstant(target.holder().getEncoding(Representation.JavaClass), runtime, currentGraph));
@@ -1282,8 +1309,6 @@ public final class GraphBuilderPhase extends Phase {
             createUnwind();
         } else if (block instanceof ExceptionBlock) {
             createExceptionDispatch((ExceptionBlock) block);
-        } else if (block instanceof DeoptBlock) {
-            createDeopt();
         } else {
             frameState.setRethrowException(false);
             iterateBytecodesForBlock(block);
@@ -1325,10 +1350,6 @@ public final class GraphBuilderPhase extends Phase {
                 checkRedundantPhi(phi);
             }
         }
-    }
-
-    private void createDeopt() {
-        append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile)));
     }
 
     private void createUnwind() {

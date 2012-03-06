@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.gen.LIRGenerator.LockScope;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.*;
 import com.oracle.max.graal.nodes.*;
@@ -151,18 +152,22 @@ public class DebugInfoBuilder {
                 ciObj = CiVirtualObject.get(obj.type(), null, virtualObjects.size());
                 virtualObjects.put(obj, ciObj);
             }
+            Debug.metric("StateVirtualObjects").increment();
             return ciObj;
 
         } else if (value instanceof ConstantNode) {
+            Debug.metric("StateConstants").increment();
             return ((ConstantNode) value).value;
 
         } else if (value != null) {
+            Debug.metric("StateVariables").increment();
             CiValue operand = nodeOperands.get(value);
             assert operand != null && (operand instanceof Variable || operand instanceof CiConstant);
             return operand;
 
         } else {
             // return a dummy value because real value not needed
+            Debug.metric("StateIllegals").increment();
             return CiValue.IllegalValue;
         }
     }

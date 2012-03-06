@@ -28,7 +28,6 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 import static com.oracle.max.graal.lir.ValueUtil.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.asm.*;
@@ -50,7 +49,11 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.StandardOp.*;
+import com.oracle.max.graal.lir.StandardOp.JumpOp;
+import com.oracle.max.graal.lir.StandardOp.LabelOp;
+import com.oracle.max.graal.lir.StandardOp.ParametersOp;
+import com.oracle.max.graal.lir.StandardOp.PhiJumpOp;
+import com.oracle.max.graal.lir.StandardOp.PhiLabelOp;
 import com.oracle.max.graal.lir.cfg.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
@@ -395,7 +398,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
             if (stateAfter != null) {
                 lastState = stateAfter;
-                assert checkStartOperands(instr, lastState);
                 assert checkStateReady(lastState);
                 if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
                     TTY.println("STATE CHANGE");
@@ -490,25 +492,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             setResult(local, emitMove(param));
         }
     }
-
-    private boolean checkStartOperands(Node node, FrameState fs) {
-        if (!Modifier.isNative(method.accessFlags())) {
-            if (node == ((StructuredGraph) node.graph()).start()) {
-                CiKind[] arguments = CiUtil.signatureToKinds(method);
-                int slot = 0;
-                for (CiKind kind : arguments) {
-                    ValueNode arg = fs.localAt(slot);
-                    assert arg != null && arg.kind() == kind.stackKind() : "No valid local in framestate for slot #" + slot + " (" + arg + ")";
-                    slot++;
-                    if (slot < fs.localsSize() && fs.localAt(slot) == null) {
-                        slot++;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
 
     @Override
     public void visitArrayLength(ArrayLengthNode x) {
