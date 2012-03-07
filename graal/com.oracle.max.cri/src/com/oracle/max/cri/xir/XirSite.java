@@ -22,21 +22,12 @@
  */
 package com.oracle.max.cri.xir;
 
-import com.oracle.max.cri.ci.*;
-
 /**
  * Encapsulates the notion of a site where XIR can be supplied. It is supplied to the {@link RiXirGenerator} by the
  * compiler for each place where XIR can be generated. This interface allows a number of queries, including the
  * bytecode-level location and optimization hints computed by the compiler.
  */
 public interface XirSite {
-
-    /**
-     * Gets the {@link CiCodePos code position} associated with this site. This is useful for inserting
-     * instrumentation at the XIR level.
-     * @return the code position if it is available; {@code null} otherwise
-     */
-    CiCodePos getCodePos();
 
     /**
      * Checks whether the specified argument is guaranteed to be non-null at this site.

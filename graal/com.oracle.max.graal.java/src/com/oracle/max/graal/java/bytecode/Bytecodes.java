@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java;
+package com.oracle.max.graal.java.bytecode;
 
-import static com.oracle.max.graal.java.Bytecodes.Flags.*;
+import static com.oracle.max.graal.java.bytecode.Bytecodes.Flags.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -588,42 +588,6 @@ public class Bytecodes {
      */
     public static int lengthOf(int opcode) {
         return lengthArray[opcode & 0xff];
-    }
-
-    /**
-     * Gets the length of an instruction at a given position in a given bytecode array.
-     * This methods handles variable length and {@linkplain #WIDE widened} instructions.
-     *
-     * @param code an array of bytecode
-     * @param bci the position in {@code code} of an instruction's opcode
-     * @return the length of the instruction at position {@code bci} in {@code code}
-     */
-    public static int lengthOf(byte[] code, int bci) {
-        int opcode = Bytes.beU1(code, bci);
-        int length = Bytecodes.lengthArray[opcode & 0xff];
-        if (length == 0) {
-            switch (opcode) {
-                case TABLESWITCH: {
-                    return new BytecodeTableSwitch(code, bci).size();
-                }
-                case LOOKUPSWITCH: {
-                    return new BytecodeLookupSwitch(code, bci).size();
-                }
-                case WIDE: {
-                    int opc = Bytes.beU1(code, bci + 1);
-                    if (opc == RET) {
-                        return 4;
-                    } else if (opc == IINC) {
-                        return 6;
-                    } else {
-                        return 4; // a load or store bytecode
-                    }
-                }
-                default:
-                    throw new Error("unknown variable-length bytecode: " + opcode);
-            }
-        }
-        return length;
     }
 
     /**

@@ -22,9 +22,23 @@
  */
 package com.oracle.max.graal.compiler.phases;
 
+import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.nodes.*;
+import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.type.*;
 
 public class InsertStateAfterPlaceholderPhase extends Phase {
+
+    private static class PlaceholderNode extends AbstractStateSplit implements Node.IterableNodeType, LIRLowerable {
+        public PlaceholderNode() {
+            super(StampFactory.illegal());
+        }
+
+        @Override
+        public void generate(LIRGeneratorTool gen) {
+            // nothing to do
+        }
+    }
 
     @Override
     protected void run(StructuredGraph graph) {

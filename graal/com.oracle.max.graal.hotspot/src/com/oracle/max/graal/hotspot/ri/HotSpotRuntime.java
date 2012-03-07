@@ -437,7 +437,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
     private CiTargetMethod createCallbackStub(RiResolvedMethod method, CiGenericCallback callback) {
         StructuredGraph graph = new StructuredGraph();
-        FrameStateBuilder frameState = new FrameStateBuilder(method, method.maxLocals(), method.maxStackSize(), graph, false);
+        FrameStateBuilder frameState = new FrameStateBuilder(method, graph, false);
         ValueNode local0 = frameState.loadLocal(0);
 
         FrameState initialFrameState = frameState.create(0);

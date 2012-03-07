@@ -22,11 +22,12 @@
  */
 package com.oracle.max.graal.java;
 
-import static com.oracle.max.graal.java.Bytecodes.*;
+import static com.oracle.max.graal.java.bytecode.Bytecodes.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -38,8 +39,8 @@ import com.oracle.max.graal.compiler.util.*;
 import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.java.BciBlockMapping.Block;
-import com.oracle.max.graal.java.BciBlockMapping.DeoptBlock;
 import com.oracle.max.graal.java.BciBlockMapping.ExceptionBlock;
+import com.oracle.max.graal.java.bytecode.*;
 import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.max.graal.nodes.PhiNode.PhiType;
@@ -47,7 +48,7 @@ import com.oracle.max.graal.nodes.calc.*;
 import com.oracle.max.graal.nodes.extended.*;
 import com.oracle.max.graal.nodes.java.*;
 import com.oracle.max.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.max.graal.nodes.type.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -80,29 +81,31 @@ public final class GraphBuilderPhase extends Phase {
     private FrameStateBuilder frameState;          // the current execution state
     private Block currentBlock;
 
-    private int nextBlockNumber;
-
     private ValueNode methodSynchronizedObject;
     private ExceptionBlock unwindBlock;
     private Block returnBlock;
 
-    // the worklist of blocks, sorted by depth first number
-    private final PriorityQueue<Block> workList = new PriorityQueue<>(10, new Comparator<Block>() {
-        public int compare(Block o1, Block o2) {
-            return o1.blockID - o2.blockID;
-        }
-    });
-
     private FixedWithNextNode lastInstr;                 // the last instruction added
-
-    private Set<Block> blocksOnWorklist;
-    private Set<Block> blocksVisited;
 
     private BitSet canTrapBitSet;
 
     public static final Map<RiMethod, StructuredGraph> cachedGraphs = new WeakHashMap<>();
 
     private final GraphBuilderConfiguration config;
+
+
+    /**
+     * Node that marks the begin of block during bytecode parsing.  When a block is identified the first
+     * time as a jump target, the placeholder is created and used as the successor for the jump.  When the
+     * block is seen the second time, a MergeNode is created to correctly merge the now two different
+     * predecessor states.
+     */
+    private static class BlockPlaceholderNode extends FixedWithNextNode implements Node.IterableNodeType {
+        public BlockPlaceholderNode() {
+            super(StampFactory.illegal());
+        }
+    }
+
 
     public GraphBuilderPhase(RiRuntime runtime) {
         this(runtime, GraphBuilderConfiguration.getDefault());
@@ -121,14 +124,12 @@ public final class GraphBuilderPhase extends Phase {
         assert method.code() != null : "method must contain bytecodes: " + method;
         this.stream = new BytecodeStream(method.code());
         this.constantPool = method.getConstantPool();
-        this.blocksOnWorklist = new HashSet<>();
-        this.blocksVisited = new HashSet<>();
         unwindBlock = null;
         returnBlock = null;
         methodSynchronizedObject = null;
         exceptionHandlers = null;
         this.currentGraph = graph;
-        this.frameState = new FrameStateBuilder(method, method.maxLocals(), method.maxStackSize(), graph, config.eagerResolving());
+        this.frameState = new FrameStateBuilder(method, graph, config.eagerResolving());
         build();
     }
 
@@ -140,12 +141,8 @@ public final class GraphBuilderPhase extends Phase {
     private BciBlockMapping createBlockMap() {
         BciBlockMapping map = new BciBlockMapping(method, config.useBranchPrediction());
         map.build();
+        Debug.dump(map, CiUtil.format("After block building %f %R %H.%n(%P)", method));
 
-//        if (currentContext.isObserved()) {
-//            String label = CiUtil.format("BlockListBuilder %f %R %H.%n(%P)", method);
-//            currentContext.observable.fireCompilationEvent(label, map);
-//        }
-        // TODO(tw): Reinstall this logging code when debug framework is finished.
         return map;
     }
 
@@ -165,8 +162,6 @@ public final class GraphBuilderPhase extends Phase {
 
         exceptionHandlers = blockMap.exceptionHandlers();
 
-        nextBlockNumber = blockMap.blocks.size();
-
         lastInstr = currentGraph.start();
         if (isSynchronized(method.accessFlags())) {
             // add a monitor enter to the start block
@@ -174,6 +169,7 @@ public final class GraphBuilderPhase extends Phase {
             methodSynchronizedObject = synchronizedObject(frameState, method);
             lastInstr = genMonitorEnter(methodSynchronizedObject);
         }
+        frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
 
         // finish the start block
         ((AbstractStateSplit) lastInstr).setStateAfter(frameState.create(0));
@@ -181,14 +177,21 @@ public final class GraphBuilderPhase extends Phase {
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
             blockMap.startBlock.firstInstruction = lastInstr;
+            blockMap.startBlock.entryState = frameState;
         }
-        addToWorkList(blockMap.startBlock);
 
-        iterateAllBlocks();
+        for (Block block : blockMap.blocks) {
+            processBlock(block);
+        }
+        processBlock(returnBlock);
+        processBlock(unwindBlock);
+
+        Debug.dump(currentGraph, "After bytecode parsing");
+
         connectLoopEndToBegin();
 
         // remove Placeholders (except for loop exits)
-        for (PlaceholderNode n : currentGraph.getNodes(PlaceholderNode.class)) {
+        for (BlockPlaceholderNode n : currentGraph.getNodes(BlockPlaceholderNode.class)) {
             currentGraph.removeFixed(n);
         }
 
@@ -204,18 +207,13 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private int nextBlockNumber() {
-        return nextBlockNumber++;
-    }
-
     private Block unwindBlock(int bci) {
         if (unwindBlock == null) {
             unwindBlock = new ExceptionBlock();
             unwindBlock.startBci = -1;
             unwindBlock.endBci = -1;
             unwindBlock.deoptBci = bci;
-            unwindBlock.blockID = nextBlockNumber();
-            addToWorkList(unwindBlock);
+            unwindBlock.blockID = Integer.MAX_VALUE;
         }
         return unwindBlock;
     }
@@ -225,78 +223,9 @@ public final class GraphBuilderPhase extends Phase {
             returnBlock = new Block();
             returnBlock.startBci = bci;
             returnBlock.endBci = bci;
-            returnBlock.blockID = nextBlockNumber();
-            addToWorkList(returnBlock);
+            returnBlock.blockID = Integer.MAX_VALUE;
         }
         return returnBlock;
-    }
-
-    private void markOnWorkList(Block block) {
-        blocksOnWorklist.add(block);
-    }
-
-    private boolean isOnWorkList(Block block) {
-        return blocksOnWorklist.contains(block);
-    }
-
-    private void markVisited(Block block) {
-        blocksVisited.add(block);
-    }
-
-    private boolean isVisited(Block block) {
-        return blocksVisited.contains(block);
-    }
-
-    public void mergeOrClone(Block target, FrameStateAccess newState, StateSplit first) {
-
-        int bci = target.startBci;
-        if (target instanceof ExceptionBlock) {
-            bci = ((ExceptionBlock) target).deoptBci;
-        }
-
-        FrameState existingState = first.stateAfter();
-        if (existingState == null) {
-            // There was no state : new target
-            // copy state because it is modified
-            first.setStateAfter(newState.duplicate(bci));
-            return;
-        } else {
-            if (!GraalOptions.AssumeVerifiedBytecode && !existingState.isCompatibleWith(newState)) {
-                // stacks or locks do not match--bytecodes would not verify
-                TTY.println(existingState.toString());
-                TTY.println(newState.duplicate(0).toString());
-                throw new CiBailout("stack or locks do not match");
-            }
-            assert existingState.localsSize() == newState.localsSize();
-            assert existingState.stackSize() == newState.stackSize();
-
-            if (first instanceof PlaceholderNode) {
-                // there is no merge yet here
-                PlaceholderNode p = (PlaceholderNode) first;
-                if (p.predecessor() == null) {
-                    //nothing seems to come here, yet there's a state?
-                    Debug.log("Funky control flow going to @bci %d : we already have a state but no predecessor", bci);
-                    p.setStateAfter(newState.duplicate(bci));
-                    return;
-                } else {
-                    //create a merge
-                    MergeNode merge = currentGraph.add(new MergeNode());
-                    FixedNode next = p.next();
-                    if (p.predecessor() != null) {
-                        EndNode end = currentGraph.add(new EndNode());
-                        p.setNext(end);
-                        merge.addForwardEnd(end);
-                    }
-                    merge.setNext(next);
-                    FrameState mergeState = existingState.duplicate(bci);
-                    merge.setStateAfter(mergeState);
-                    mergeState.merge(merge, newState);
-                    target.firstInstruction = merge;
-                }
-            } else {
-                existingState.merge((MergeNode) first, newState);
-            }
-        }
     }
 
     public BytecodeStream stream() {
@@ -375,9 +304,9 @@ public final class GraphBuilderPhase extends Phase {
         } else {
             currentExceptionObject = exceptionObject;
         }
-        FrameState stateWithException = frameState.duplicateWithException(bci, currentExceptionObject);
+        FrameStateBuilder stateWithException = frameState.copyWithException(currentExceptionObject);
         if (newObj != null) {
-            newObj.setStateAfter(stateWithException);
+            newObj.setStateAfter(stateWithException.create(bci));
         }
         FixedNode target = createTarget(dispatchBlock, stateWithException);
         if (exceptionObject == null) {
@@ -600,7 +529,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genIncrement() {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
-        ValueNode x = frameState.localAt(index);
+        ValueNode x = frameState.loadLocal(index);
         ValueNode y = append(ConstantNode.forInt(delta, currentGraph));
         frameState.storeLocal(index, append(currentGraph.unique(new IntegerAddNode(CiKind.Int, x, y))));
     }
@@ -616,23 +545,25 @@ public final class GraphBuilderPhase extends Phase {
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
-        double takenProbability = profilingInfo.getBranchTakenProbability(bci());
-        if (takenProbability < 0) {
-            assert takenProbability == -1 : "invalid probability";
+        assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
+        Block trueBlock = currentBlock.successors.get(0);
+        Block falseBlock = currentBlock.successors.get(1);
+        if (trueBlock == falseBlock) {
+            appendGoto(createTarget(trueBlock, frameState));
+            return;
+        }
+
+        double probability = profilingInfo.getBranchTakenProbability(bci());
+        if (probability < 0) {
+            assert probability == -1 : "invalid probability";
             Debug.log("missing probability in %s at bci %d", method, bci());
             takenProbability = 0.5;
         }
 
         CompareNode condition = currentGraph.unique(new CompareNode(x, cond, y));
-        FixedNode trueSuccessor = createTarget(currentBlock.successors.get(0), frameState);
-        FixedNode falseSuccessor = createTarget(currentBlock.successors.get(1), frameState);
-        if (trueSuccessor == falseSuccessor) {
-            appendGoto(trueSuccessor);
-        } else {
-            append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, takenProbability)));
-        }
-
-        assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
+        BeginNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+        BeginNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+        append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, probability)));
     }
 
     private void genIfZero(Condition cond) {
@@ -765,7 +696,7 @@ public final class GraphBuilderPhase extends Phase {
             InstanceOfNode instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, hints, Util.isFinalClass(resolvedType), false);
             frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode), currentGraph)));
         } else {
-            PlaceholderNode trueSucc = currentGraph.add(new PlaceholderNode());
+            BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
             DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile));
             IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new NullCheckNode(object, true)), trueSucc, deopt, 1));
             append(ifNode);
@@ -869,8 +800,8 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private ExceptionInfo emitNullCheck(ValueNode receiver) {
-        PlaceholderNode trueSucc = currentGraph.add(new PlaceholderNode());
-        PlaceholderNode falseSucc = currentGraph.add(new PlaceholderNode());
+        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
+        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
         IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new NullCheckNode(receiver, false)), trueSucc, falseSucc, 1));
 
         append(ifNode);
@@ -881,15 +812,15 @@ public final class GraphBuilderPhase extends Phase {
             return new ExceptionInfo(falseSucc, exception);
         } else {
             RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CiRuntimeCall.CreateNullPointerException));
-            call.setStateAfter(frameState.duplicate(bci()));
+            call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             return new ExceptionInfo(call, call);
         }
     }
 
     private ExceptionInfo emitBoundsCheck(ValueNode index, ValueNode length) {
-        PlaceholderNode trueSucc = currentGraph.add(new PlaceholderNode());
-        PlaceholderNode falseSucc = currentGraph.add(new PlaceholderNode());
+        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
+        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
         IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new CompareNode(index, Condition.BT, length)), trueSucc, falseSucc, 1));
 
         append(ifNode);
@@ -900,7 +831,7 @@ public final class GraphBuilderPhase extends Phase {
             return new ExceptionInfo(falseSucc, exception);
         } else {
             RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CiRuntimeCall.CreateOutOfBoundsException, new ValueNode[] {index}));
-            call.setStateAfter(frameState.duplicate(bci()));
+            call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             return new ExceptionInfo(call, call);
         }
@@ -930,7 +861,7 @@ public final class GraphBuilderPhase extends Phase {
                     merge.addForwardEnd(end);
                     phi.addInput(info.exception);
                 }
-                merge.setStateAfter(frameState.duplicate(bci()));
+                merge.setStateAfter(frameState.create(bci()));
                 exception = new ExceptionInfo(merge, phi);
             }
 
@@ -938,7 +869,7 @@ public final class GraphBuilderPhase extends Phase {
             if (entry != null) {
                 exception.exceptionEdge.setNext(entry);
             } else {
-                exception.exceptionEdge.setNext(createTarget(unwindBlock(bci()), frameState.duplicateWithException(bci(), exception.exception)));
+                exception.exceptionEdge.setNext(createTarget(unwindBlock(bci()), frameState.copyWithException(exception.exception)));
             }
             Debug.metric("ExplicitExceptions").increment();
         }
@@ -1106,6 +1037,10 @@ public final class GraphBuilderPhase extends Phase {
                 result = append(invoke);
                 frameState.pushReturn(resultType, result);
                 Block nextBlock = currentBlock.successors.get(0);
+
+                assert bci() == currentBlock.endBci;
+                frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+
                 invoke.setNext(createTarget(nextBlock, frameState));
                 invoke.setStateAfter(frameState.create(nextBlock.startBci));
             } else {
@@ -1193,9 +1128,10 @@ public final class GraphBuilderPhase extends Phase {
         int nofCases = ts.numberOfCases() + 1; // including default case
         assert currentBlock.normalSuccessors == nofCases;
 
-        TableSwitchNode tableSwitch = currentGraph.add(new TableSwitchNode(value, ts.lowKey(), switchProbability(nofCases, bci)));
+        double[] probabilities = switchProbability(nofCases, bci);
+        TableSwitchNode tableSwitch = currentGraph.add(new TableSwitchNode(value, ts.lowKey(), probabilities));
         for (int i = 0; i < nofCases; ++i) {
-            tableSwitch.setBlockSuccessor(i, BeginNode.begin(createTarget(currentBlock.successors.get(i), frameState)));
+            tableSwitch.setBlockSuccessor(i, createBlockTarget(probabilities[i], currentBlock.successors.get(i), frameState));
         }
         append(tableSwitch);
     }
@@ -1226,9 +1162,10 @@ public final class GraphBuilderPhase extends Phase {
         for (int i = 0; i < nofCases - 1; ++i) {
             keys[i] = ls.keyAt(i);
         }
-        LookupSwitchNode lookupSwitch = currentGraph.add(new LookupSwitchNode(value, keys, switchProbability(nofCases, bci)));
+        double[] probabilities = switchProbability(nofCases, bci);
+        LookupSwitchNode lookupSwitch = currentGraph.add(new LookupSwitchNode(value, keys, probabilities));
         for (int i = 0; i < nofCases; ++i) {
-            lookupSwitch.setBlockSuccessor(i, BeginNode.begin(createTarget(currentBlock.successors.get(i), frameState)));
+            lookupSwitch.setBlockSuccessor(i, createBlockTarget(probabilities[i], currentBlock.successors.get(i), frameState));
         }
         append(lookupSwitch);
     }
@@ -1259,134 +1196,170 @@ public final class GraphBuilderPhase extends Phase {
         return x;
     }
 
-    private FixedNode createTarget(Block block, FrameStateAccess stateAfter) {
+    private FixedNode createTarget(Block block, FrameStateBuilder stateAfter) {
         assert block != null && stateAfter != null;
-        assert block.isLoopHeader || block.firstInstruction == null || block.firstInstruction.next() == null :
-            "non-loop block must be iterated after all its predecessors. startBci=" + block.startBci + ", " + block.getClass().getSimpleName() + ", " + block.firstInstruction.next();
-
-        if (block.isExceptionEntry) {
-            assert stateAfter.stackSize() == 1;
-        }
+        assert !block.isExceptionEntry || stateAfter.stackSize() == 1;
 
         if (block.firstInstruction == null) {
-            if (block.isLoopHeader) {
-                LoopBeginNode loop = currentGraph.add(new LoopBeginNode());
-                EndNode end = currentGraph.add(new EndNode());
-                loop.addForwardEnd(end);
-                PlaceholderNode p = currentGraph.add(new PlaceholderNode());
-                p.setNext(end);
-                block.firstInstruction = p;
-            } else {
-                block.firstInstruction = currentGraph.add(new PlaceholderNode());
-            }
-        }
-        LoopEndNode loopend = null;
-        StateSplit mergeAt = null;
-        if (block.isLoopHeader && isVisited(block)) { // backedge
-            loopend = currentGraph.add(new LoopEndNode(loopBegin(block)));
-            mergeAt = loopBegin(block);
-        } else {
-            mergeAt = (StateSplit) block.firstInstruction;
+            // This is the first time we see this block as a branch target.
+            // Create and return a placeholder that later can be replaced with a MergeNode when we see this block again.
+            block.firstInstruction = currentGraph.add(new BlockPlaceholderNode());
+            block.entryState = stateAfter.copy();
+            block.entryState.clearNonLiveLocals(block.localsLiveIn);
+
+            Debug.log("createTarget %s: first visit, result: %s", block, block.firstInstruction);
+            return block.firstInstruction;
         }
 
-        mergeOrClone(block, stateAfter, mergeAt);
-        addToWorkList(block);
-
-        FixedNode result = null;
-        if (loopend != null) {
-            result = loopend;
-        } else {
-            result = block.firstInstruction;
+        // We already saw this block before, so we have to merge states.
+        if (!block.entryState.isCompatibleWith(stateAfter)) {
+            throw new CiBailout("stacks do not match; bytecodes would not verify");
         }
 
-        if (result instanceof MergeNode) {
+        if (block.firstInstruction instanceof LoopBeginNode) {
+            assert block.isLoopHeader && currentBlock.blockID >= block.blockID : "must be backward branch";
+            // Backward loop edge. We need to create a special LoopEndNode and merge with the loop begin node created before.
+            LoopBeginNode loopBegin = (LoopBeginNode) block.firstInstruction;
+            LoopEndNode result = currentGraph.add(new LoopEndNode(loopBegin));
+            block.entryState.merge(loopBegin, stateAfter);
+
+            Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
+            return result;
+        }
+        assert currentBlock == null || currentBlock.blockID < block.blockID : "must not be backward branch";
+        assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
+
+        if (block.firstInstruction instanceof BlockPlaceholderNode) {
+            // This is the second time we see this block. Create the actual MergeNode and the End Node for the already existing edge.
+            // For simplicity, we leave the placeholder in the graph and just append the new nodes after the placeholder.
+            BlockPlaceholderNode placeholder = (BlockPlaceholderNode) block.firstInstruction;
+
+            // The EndNode for the already existing edge.
             EndNode end = currentGraph.add(new EndNode());
-            ((MergeNode) result).addForwardEnd(end);
-            result = end;
+            // The MergeNode that replaces the placeholder.
+            MergeNode mergeNode  = currentGraph.add(new MergeNode());
+            FixedNode next = placeholder.next();
+
+            placeholder.setNext(end);
+            mergeNode.addForwardEnd(end);
+            mergeNode.setNext(next);
+
+            block.firstInstruction = mergeNode;
         }
-        assert !(result instanceof MergeNode);
-        Debug.log("createTarget(%s, state) = %s", block, result);
+
+        MergeNode mergeNode = (MergeNode) block.firstInstruction;
+
+        // The EndNode for the newly merged edge.
+        EndNode result = currentGraph.add(new EndNode());
+        block.entryState.merge(mergeNode, stateAfter);
+        mergeNode.addForwardEnd(result);
+
+        Debug.log("createTarget %s: merging state, result: %s", block, result);
         return result;
     }
 
-    private ValueNode synchronizedObject(FrameStateAccess state, RiResolvedMethod target) {
+    /**
+     * Returns a block begin node with the specified state.  If the specified probability is 0, the block
+     * deoptimizes immediately.
+     */
+    private BeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
+        assert probability >= 0 && probability <= 1;
+        if (probability == 0) {
+            FrameStateBuilder state = stateAfter.copy();
+            state.clearNonLiveLocals(block.localsLiveIn);
+
+            BeginNode begin = currentGraph.add(new BeginNode());
+            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+            begin.setNext(deopt);
+            begin.setStateAfter(state.create(block.startBci));
+            return begin;
+        }
+
+        FixedNode target = createTarget(block, stateAfter);
+        assert !(target instanceof BeginNode);
+        BeginNode begin = currentGraph.add(new BeginNode());
+        begin.setNext(target);
+        return begin;
+    }
+
+    private ValueNode synchronizedObject(FrameStateBuilder state, RiResolvedMethod target) {
         if (isStatic(target.accessFlags())) {
             return append(ConstantNode.forCiConstant(target.holder().getEncoding(Representation.JavaClass), runtime, currentGraph));
         } else {
-            return state.localAt(0);
+            return state.loadLocal(0);
         }
     }
 
-    private void iterateAllBlocks() {
-        Block block;
-        while ((block = removeFromWorkList()) != null) {
-            // remove blocks that have no predecessors by the time it their bytecodes are parsed
-            if (block.firstInstruction == null) {
-                markVisited(block);
-                continue;
-            }
+    private void processBlock(Block block) {
+        // Ignore blocks that have no predecessors by the time it their bytecodes are parsed
+        if (block == null || block.firstInstruction == null) {
+            Debug.log("Ignoring block %s", block);
+            return;
+        }
+        Debug.log("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader);
 
-            if (!isVisited(block)) {
-                markVisited(block);
-                // now parse the block
-                if (block.isLoopHeader) {
-                    LoopBeginNode begin = loopBegin(block);
-                    FrameState preLoopState = ((StateSplit) block.firstInstruction).stateAfter();
-                    FrameState loopState = preLoopState.duplicate(preLoopState.bci);
-                    begin.setStateAfter(loopState);
-                    loopState.insertLoopPhis(begin);
-                    lastInstr = begin;
-                } else {
-                    lastInstr = block.firstInstruction;
-                }
-                frameState.initializeFrom(((StateSplit) lastInstr).stateAfter());
-                assert lastInstr.next() == null : "instructions already appended at block " + block.blockID;
+        lastInstr = block.firstInstruction;
+        frameState = block.entryState;
+        currentBlock = block;
 
-                if (block == returnBlock) {
-                    frameState.setRethrowException(false);
-                    createReturn();
-                } else if (block == unwindBlock) {
-                    frameState.setRethrowException(false);
-                    createUnwind();
-                } else if (block instanceof ExceptionBlock) {
-                    createExceptionDispatch((ExceptionBlock) block);
-                } else if (block instanceof DeoptBlock) {
-                    createDeopt();
-                } else {
-                    frameState.setRethrowException(false);
-                    iterateBytecodesForBlock(block);
-                }
+        frameState.cleanupDeletedPhis();
+        if (lastInstr instanceof MergeNode) {
+            int bci = block.startBci;
+            if (block instanceof ExceptionBlock) {
+                bci = ((ExceptionBlock) block).deoptBci;
             }
+            ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
+        }
+
+        if (block == returnBlock) {
+            frameState.setRethrowException(false);
+            createReturn();
+        } else if (block == unwindBlock) {
+            frameState.setRethrowException(false);
+            createUnwind();
+        } else if (block instanceof ExceptionBlock) {
+            createExceptionDispatch((ExceptionBlock) block);
+        } else {
+            frameState.setRethrowException(false);
+            iterateBytecodesForBlock(block);
         }
     }
 
     private void connectLoopEndToBegin() {
         for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
             if (begin.loopEnds().isEmpty()) {
-//              This can happen with degenerated loops like this one:
-//              for (;;) {
-//                  try {
-//                      break;
-//                  } catch (UnresolvedException iioe) {
-//                  }
-//              }
-
-                // Remove the loop begin or transform it into a merge.
-                assert begin.forwardEndCount() > 0;
+                // Remove loop header without loop ends.
+                // This can happen with degenerated loops like this one:
+                // for (;;) {
+                //     try {
+                //         break;
+                //     } catch (UnresolvedException iioe) {
+                //     }
+                // }
+                assert begin.forwardEndCount() == 1;
                 currentGraph.reduceDegenerateLoopBegin(begin);
             } else {
-                begin.stateAfter().simplifyLoopState();
+                // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either the same or the phi itself.
+                for (PhiNode phi : begin.stateAfter().values().filter(PhiNode.class).snapshot()) {
+                    checkRedundantPhi(phi);
+                }
             }
         }
     }
 
-    private static LoopBeginNode loopBegin(Block block) {
-        LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) block.firstInstruction.next()).merge();
-        return loopBegin;
-    }
+    private static void checkRedundantPhi(PhiNode phiNode) {
+        if (phiNode.isDeleted() || phiNode.valueCount() == 1) {
+            return;
+        }
 
-    private void createDeopt() {
-        append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile)));
+        ValueNode singleValue = phiNode.singleValue();
+        if (singleValue != null) {
+            Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
+            ((StructuredGraph) phiNode.graph()).replaceFloating(phiNode, singleValue);
+            for (PhiNode phi : phiUsages) {
+                checkRedundantPhi(phi);
+            }
+        }
     }
 
     private void createUnwind() {
@@ -1480,9 +1453,30 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void iterateBytecodesForBlock(Block block) {
-        assert frameState != null;
+        if (block.isLoopHeader) {
+            // Create the loop header block, which later will merge the backward branches of the loop.
+            EndNode preLoopEnd = currentGraph.add(new EndNode());
+            LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
+            lastInstr.setNext(preLoopEnd);
+            // Add the single non-loop predecessor of the loop header.
+            loopBegin.addForwardEnd(preLoopEnd);
+            lastInstr = loopBegin;
 
-        currentBlock = block;
+            // Create phi functions for all local variables and operand stack slots.
+            frameState.insertLoopPhis(loopBegin);
+            loopBegin.setStateAfter(frameState.create(block.startBci));
+
+            // We have seen all forward branches. All subsequent backward branches will merge to the loop header.
+            // This ensures that the loop header has exactly one non-loop predecessor.
+            block.firstInstruction = loopBegin;
+            // We need to preserve the frame state builder of the loop header so that we can merge values for
+            // phi functions, so make a copy of it.
+            block.entryState = frameState.copy();
+
+            Debug.log("  created loop header %s", loopBegin);
+        }
+        assert lastInstr.next() == null : "instructions already appended at block " + block;
+        Debug.log("  frameState: %s", frameState);
 
         int endBCI = stream.endBCI();
 
@@ -1737,7 +1731,7 @@ public final class GraphBuilderPhase extends Phase {
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;
             case GOTO_W         : genGoto(); break;
-            case JSR_W          : genJsr(stream.readFarBranchDest()); break;
+            case JSR_W          : genJsr(stream.readBranchDest()); break;
             case BREAKPOINT:
                 throw new CiBailout("concurrent setting of breakpoint");
             default:
@@ -1768,32 +1762,5 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genArrayLength() {
         frameState.ipush(append(currentGraph.add(new ArrayLengthNode(frameState.apop()))));
-    }
-
-    /**
-     * Adds a block to the worklist, if it is not already in the worklist.
-     * This method will keep the worklist topologically stored (i.e. the lower
-     * DFNs are earlier in the list).
-     * @param block the block to add to the work list
-     */
-    private void addToWorkList(Block block) {
-        if (!isOnWorkList(block)) {
-            markOnWorkList(block);
-            sortIntoWorkList(block);
-        }
-    }
-
-    private void sortIntoWorkList(Block top) {
-        workList.offer(top);
-    }
-
-    /**
-     * Removes the next block from the worklist. The list is sorted topologically, so the
-     * block with the lowest depth first number in the list will be removed and returned.
-     * @return the next block from the worklist; {@code null} if there are no blocks
-     * in the worklist
-     */
-    private Block removeFromWorkList() {
-        return workList.poll();
     }
 }

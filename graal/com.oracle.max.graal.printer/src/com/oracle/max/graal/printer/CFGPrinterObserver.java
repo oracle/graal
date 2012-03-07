@@ -50,6 +50,14 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     @Override
     public void dump(Object object, String message) {
+        try {
+            dumpSandboxed(object, message);
+        } catch (Throwable ex) {
+            TTY.println("CFGPrinter: Exception during output of " + message + ": " + ex);
+        }
+    }
+
+    public void dumpSandboxed(Object object, String message) {
         GraalCompiler compiler = Debug.contextLookup(GraalCompiler.class);
         if (compiler == null) {
             return;

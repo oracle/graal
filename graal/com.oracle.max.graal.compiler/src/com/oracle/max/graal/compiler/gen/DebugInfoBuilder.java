@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.graal.compiler.gen.LIRGenerator.LockScope;
+import com.oracle.max.graal.debug.*;
 import com.oracle.max.graal.graph.*;
 import com.oracle.max.graal.lir.*;
 import com.oracle.max.graal.nodes.*;
@@ -106,13 +107,16 @@ public class DebugInfoBuilder {
     }
 
     private CiFrame computeFrameForState(FrameState state, LockScope locks) {
+        int numLocals = state.localsSize();
+        int numStack = state.stackSize();
         int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
 
-        CiValue[] values = new CiValue[state.valuesSize() + numLocks];
-        int valueIndex = 0;
-
-        for (int i = 0; i < state.valuesSize(); i++) {
-            values[valueIndex++] = toCiValue(state.valueAt(i));
+        CiValue[] values = new CiValue[numLocals + numStack + numLocks];
+        for (int i = 0; i < numLocals; i++) {
+            values[i] = toCiValue(state.localAt(i));
+        }
+        for (int i = 0; i < numStack; i++) {
+            values[numLocals + i] = toCiValue(state.stackAt(i));
         }
 
         LockScope nextLock = locks;
@@ -122,7 +126,7 @@ public class DebugInfoBuilder {
             CiValue owner = toCiValue(nextLock.monitor.object());
             CiValue lockData = nextLock.lockData;
             boolean eliminated = nextLock.monitor.eliminated();
-            values[state.valuesSize() + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
+            values[numLocals + numStack + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
 
             nextLock = nextLock.outer;
         }
@@ -148,18 +152,22 @@ public class DebugInfoBuilder {
                 ciObj = CiVirtualObject.get(obj.type(), null, virtualObjects.size());
                 virtualObjects.put(obj, ciObj);
             }
+            Debug.metric("StateVirtualObjects").increment();
             return ciObj;
 
         } else if (value instanceof ConstantNode) {
+            Debug.metric("StateConstants").increment();
             return ((ConstantNode) value).value;
 
         } else if (value != null) {
+            Debug.metric("StateVariables").increment();
             CiValue operand = nodeOperands.get(value);
             assert operand != null && (operand instanceof Variable || operand instanceof CiConstant);
             return operand;
 
         } else {
             // return a dummy value because real value not needed
+            Debug.metric("StateIllegals").increment();
             return CiValue.IllegalValue;
         }
     }
