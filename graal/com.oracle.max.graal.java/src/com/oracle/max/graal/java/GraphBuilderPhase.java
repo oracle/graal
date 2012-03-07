@@ -535,7 +535,11 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genGoto() {
-        appendGoto(createBlockTarget(profilingInfo.getBranchTakenProbability(bci()), currentBlock.successors.get(0), frameState));
+        double probability = profilingInfo.getBranchTakenProbability(bci());
+        if (probability < 0) {
+            probability = 1;
+        }
+        appendGoto(createBlockTarget(probability, currentBlock.successors.get(0), frameState));
         assert currentBlock.normalSuccessors == 1;
     }
 
