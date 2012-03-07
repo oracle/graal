@@ -155,6 +155,10 @@ public final class GraphBuilderPhase extends Phase {
             log.println("Compiling " + method);
         }
 
+        if (GraalOptions.PrintProfilingInformation) {
+            method.dumpProfile();
+        }
+
         // compute the block map, setup exception handlers and get the entrypoint(s)
         BciBlockMapping blockMap = createBlockMap();
         this.canTrapBitSet = blockMap.canTrap;
@@ -602,17 +606,21 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genGoto() {
-        appendGoto(createTarget(currentBlock.successors.get(0), frameState));
-        assert currentBlock.normalSuccessors == 1;
+        if (profilingInfo.getBranchTakenProbability(bci()) == 0) {
+            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile)));
+        } else {
+            appendGoto(createTarget(currentBlock.successors.get(0), frameState));
+            assert currentBlock.normalSuccessors == 1;
+        }
     }
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
-        double probability = profilingInfo.getBranchTakenProbability(bci());
-        if (probability < 0) {
-            assert probability == -1 : "invalid probability";
+        double takenProbability = profilingInfo.getBranchTakenProbability(bci());
+        if (takenProbability < 0) {
+            assert takenProbability == -1 : "invalid probability";
             Debug.log("missing probability in %s at bci %d", method, bci());
-            probability = 0.5;
+            takenProbability = 0.5;
         }
 
         CompareNode condition = currentGraph.unique(new CompareNode(x, cond, y));
@@ -621,7 +629,7 @@ public final class GraphBuilderPhase extends Phase {
         if (trueSuccessor == falseSuccessor) {
             appendGoto(trueSuccessor);
         } else {
-            append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, probability)));
+            append(currentGraph.add(new IfNode(condition, trueSuccessor, falseSuccessor, takenProbability)));
         }
 
         assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
