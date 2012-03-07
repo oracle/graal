@@ -535,12 +535,8 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genGoto() {
-        if (profilingInfo.getBranchTakenProbability(bci()) == 0) {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile)));
-        } else {
-            appendGoto(createTarget(currentBlock.successors.get(0), frameState));
-            assert currentBlock.normalSuccessors == 1;
-        }
+        appendGoto(createBlockTarget(profilingInfo.getBranchTakenProbability(bci()), currentBlock.successors.get(0), frameState));
+        assert currentBlock.normalSuccessors == 1;
     }
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
