@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.schedule.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 public class GraphScheduleTest extends GraphTest {
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {

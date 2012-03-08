@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.hotspot.bridge.*;
-import com.oracle.max.graal.hotspot.ri.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.ri.*;
 
 public interface Compiler {
 

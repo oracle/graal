@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.*;
-import com.oracle.max.graal.hotspot.logging.*;
-import com.oracle.max.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.logging.*;
+import com.oracle.graal.hotspot.ri.*;
 
 /**
  * CiTargetMethod augmented with HotSpot-specific information.

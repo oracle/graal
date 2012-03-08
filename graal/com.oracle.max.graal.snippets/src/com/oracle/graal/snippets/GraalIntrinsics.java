@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.graal.snippets;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.cri.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.cri.*;
 
 /**
  * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.

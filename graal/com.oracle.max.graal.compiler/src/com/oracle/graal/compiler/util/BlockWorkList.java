@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.util;
+package com.oracle.graal.compiler.util;
 
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * This class implements a worklist for dealing with blocks. The worklist can
@@ -32,7 +32,7 @@ import com.oracle.max.graal.nodes.*;
  *
  * This implementation is not able to tell if a block is in the worklist already.
  * Note that this implementation is slightly less efficient than the dedicated
- * work list in {@link com.oracle.max.graal.compiler.graph.ScopeData}, because this worklist uses
+ * work list in {@link com.oracle.graal.compiler.graph.ScopeData}, because this worklist uses
  * an externally supplied number.
  */
 public class BlockWorkList {

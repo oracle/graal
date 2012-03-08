@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and

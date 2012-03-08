@@ -24,7 +24,7 @@
 /*
  */
 
-package com.oracle.max.graal.jtt.threads;
+package com.oracle.graal.jtt.threads;
 
 import org.junit.*;
 

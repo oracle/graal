@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
@@ -41,17 +41,17 @@ public class Math_sin {
         return v;
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_sin.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_sin.NaN.class)
     public void run0() throws Throwable {
         test(java.lang.Double.NaN);
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_sin.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_sin.NaN.class)
     public void run1() throws Throwable {
         test(java.lang.Double.NEGATIVE_INFINITY);
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_sin.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_sin.NaN.class)
     public void run2() throws Throwable {
         test(java.lang.Double.POSITIVE_INFINITY);
     }

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph.iterators;
+package com.oracle.graal.graph.iterators;
 
 import java.util.*;
 
-import com.oracle.max.graal.graph.*;
+import com.oracle.graal.graph.*;
 
 public class FilteredNodeIterable<T extends Node> extends NodeIterable<T> {
     private final NodeIterable<T> nodeIterable;

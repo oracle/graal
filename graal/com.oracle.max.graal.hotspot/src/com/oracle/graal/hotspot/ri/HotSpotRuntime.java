@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -33,21 +33,21 @@ import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
-import com.oracle.max.graal.hotspot.nodes.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.snippets.nodes.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.PhasePlan.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.snippets.nodes.*;
 
 /**
  * CRI runtime implementation for the HotSpot VM.

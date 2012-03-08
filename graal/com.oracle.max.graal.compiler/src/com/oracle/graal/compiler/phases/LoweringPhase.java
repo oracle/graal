@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.phases;
+package com.oracle.graal.compiler.phases;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class LoweringPhase extends Phase {
 

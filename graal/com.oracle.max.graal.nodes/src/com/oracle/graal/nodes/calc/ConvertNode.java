@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.calc;
+package com.oracle.graal.nodes.calc;
 
 import static com.oracle.max.cri.ci.CiKind.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code ConvertNode} class represents a conversion between primitive types.

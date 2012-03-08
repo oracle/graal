@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
-import com.oracle.max.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.*;
 
 public abstract class NodeList<T extends Node> extends NodeIterable<T> implements List<T> {
 

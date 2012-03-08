@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.type.*;
 
 
 public abstract class BooleanNode extends FloatingNode {

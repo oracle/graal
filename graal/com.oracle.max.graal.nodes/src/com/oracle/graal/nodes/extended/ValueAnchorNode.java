@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.extended;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.

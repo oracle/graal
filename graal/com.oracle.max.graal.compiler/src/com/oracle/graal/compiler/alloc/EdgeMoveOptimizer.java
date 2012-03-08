@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.alloc;
+package com.oracle.graal.compiler.alloc;
 
 import java.util.*;
 
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.StandardOp.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.

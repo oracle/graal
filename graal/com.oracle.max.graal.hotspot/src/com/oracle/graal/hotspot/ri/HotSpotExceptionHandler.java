@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.*;
+import com.oracle.graal.hotspot.*;
 
 
 public final class HotSpotExceptionHandler extends CompilerObject implements RiExceptionHandler {

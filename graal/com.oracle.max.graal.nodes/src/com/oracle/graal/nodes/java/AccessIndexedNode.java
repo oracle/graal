@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.java;
+package com.oracle.graal.nodes.java;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code AccessIndexedNode} class is the base class of instructions that read or write

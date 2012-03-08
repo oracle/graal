@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.phases;
+package com.oracle.graal.compiler.phases;
 
-import com.oracle.max.graal.graph.iterators.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.util.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.util.*;
 
 public class SafepointPollingEliminationPhase extends Phase {
 

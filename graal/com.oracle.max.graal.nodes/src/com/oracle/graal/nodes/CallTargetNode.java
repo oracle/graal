@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     @Input protected final NodeInputList<ValueNode> arguments;

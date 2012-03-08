@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;
 
 /**
  * Provides methods to classify the HotSpot-internal identifiers.

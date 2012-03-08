@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.except;
+package com.oracle.graal.jtt.except;
 
 import org.junit.*;
 
@@ -30,7 +30,7 @@ public class BC_checkcast2 {
 
     static Object object2 = new Object();
     static Object object3 = "";
-    static Object object4 = new com.oracle.max.graal.jtt.except.BC_checkcast2();
+    static Object object4 = new com.oracle.graal.jtt.except.BC_checkcast2();
 
     public static int test(int arg) {
         Object obj;

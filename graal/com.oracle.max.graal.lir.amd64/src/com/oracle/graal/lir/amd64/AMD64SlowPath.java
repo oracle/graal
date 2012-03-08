@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir.amd64;
+package com.oracle.graal.lir.amd64;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.asm.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
  * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.

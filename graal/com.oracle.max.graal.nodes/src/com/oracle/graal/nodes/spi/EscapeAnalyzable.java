@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.spi;
+package com.oracle.graal.nodes.spi;
 
 public interface EscapeAnalyzable {
 

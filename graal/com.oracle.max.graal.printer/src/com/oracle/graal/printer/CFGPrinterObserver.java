@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.printer;
+package com.oracle.graal.printer;
 
 import java.io.*;
 import java.util.*;
@@ -28,16 +28,16 @@ import java.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.alloc.util.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.alloc.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the <a

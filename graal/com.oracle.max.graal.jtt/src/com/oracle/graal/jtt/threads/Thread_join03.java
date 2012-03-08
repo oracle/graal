@@ -25,7 +25,7 @@
  * This test sleeps the joining thread, which should enure that the joinee is
  * terminated by the time the join occurs.
  */
-package com.oracle.max.graal.jtt.threads;
+package com.oracle.graal.jtt.threads;
 
 import org.junit.*;
 

@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
 import java.util.*;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.nodes.util.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 
 
 /**

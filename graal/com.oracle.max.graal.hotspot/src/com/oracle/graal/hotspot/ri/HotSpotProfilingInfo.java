@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
 
 
 public final class HotSpotProfilingInfo extends CompilerObject implements RiProfilingInfo {

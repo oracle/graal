@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.target.amd64;
+package com.oracle.graal.hotspot.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
@@ -28,10 +28,10 @@ import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.amd64.*;
-import com.oracle.max.graal.lir.asm.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
  * Performs a hard-coded tail call to the specified target, which normally should be an RiCompiledCode instance.

@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target.amd64;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.target.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 
 /**
  * The {@code X86Backend} class represents the backend for the AMD64 architecture.

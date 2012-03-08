@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.Compiler;
 
 /**
  * Implementation of RiType for unresolved HotSpot classes.

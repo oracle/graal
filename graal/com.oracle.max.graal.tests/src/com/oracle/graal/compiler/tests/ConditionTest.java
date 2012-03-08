@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import static org.junit.Assert.*;
 
@@ -29,7 +29,7 @@ import java.util.*;
 import org.junit.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.*;
 
 
 public class ConditionTest {

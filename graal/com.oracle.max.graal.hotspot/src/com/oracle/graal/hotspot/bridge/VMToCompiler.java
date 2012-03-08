@@ -21,11 +21,11 @@
  * questions.
  */
 
-package com.oracle.max.graal.hotspot.bridge;
+package com.oracle.graal.hotspot.bridge;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.ri.*;
 
 /**
  * Calls from HotSpot into Java.

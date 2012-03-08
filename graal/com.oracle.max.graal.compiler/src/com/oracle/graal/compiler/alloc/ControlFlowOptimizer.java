@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.alloc;
+package com.oracle.graal.compiler.alloc;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.

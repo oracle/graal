@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java;
+package com.oracle.graal.java;
 
-import static com.oracle.max.graal.java.bytecode.Bytecodes.*;
+import static com.oracle.graal.java.bytecode.Bytecodes.*;
 
 import java.util.*;
 
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.bytecode.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.java.bytecode.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow

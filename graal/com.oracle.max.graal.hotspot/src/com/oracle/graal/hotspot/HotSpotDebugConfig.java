@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;
 
 import java.util.*;
 import java.util.regex.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.printer.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.printer.*;
 
 
 public class HotSpotDebugConfig implements DebugConfig {

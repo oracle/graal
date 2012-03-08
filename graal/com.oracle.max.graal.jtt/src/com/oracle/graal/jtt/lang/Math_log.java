@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
@@ -46,17 +46,17 @@ public class Math_log {
         Assert.assertEquals(1.0d, test(java.lang.Math.E), 0);
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_log.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_log.NaN.class)
     public void run1() throws Throwable {
         test(java.lang.Double.NaN);
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_log.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_log.NaN.class)
     public void run2() throws Throwable {
         test(-1.0d);
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_log.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_log.NaN.class)
     public void run3() throws Throwable {
         test(java.lang.Double.NEGATIVE_INFINITY);
     }

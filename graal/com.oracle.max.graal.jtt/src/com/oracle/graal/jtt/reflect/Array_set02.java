@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt.reflect;
+package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 

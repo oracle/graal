@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.extended;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Store of a value at a location specified as an offset relative to an object.

@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.graal.snippets;
 
 import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * Utilities for snippet installation and management.

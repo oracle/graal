@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.logging;
+package com.oracle.graal.hotspot.logging;
 
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.graal.hotspot.server.*;
 
 /**
  * A java.lang.reflect proxy that hierarchically logs all method invocations along with their parameters and return

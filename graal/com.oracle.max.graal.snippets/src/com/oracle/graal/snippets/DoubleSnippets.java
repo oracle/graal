@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets;
+package com.oracle.graal.snippets;
 
 import com.oracle.max.cri.util.*;
-import com.oracle.max.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.*;
 
 /**
  * Snippets for {@link java.lang.Double} methods.

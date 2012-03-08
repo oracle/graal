@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java;
+package com.oracle.graal.java;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
 
 public class GraphBuilderConfiguration {
 

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 public final class FieldWriteBarrier extends WriteBarrier implements LIRLowerable {
 

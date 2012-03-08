@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.gen;
+package com.oracle.graal.compiler.gen;
 
-import static com.oracle.max.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.*;
+import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.*;
 
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * A {@link ValueVisitor} for {@linkplain #printInstruction(ValueNode) printing}
@@ -50,7 +50,7 @@ public class InstructionPrinter {
         USE(7, "use"),
 
         /**
-         * The instruction as a {@linkplain com.oracle.max.graal.compiler.util.Util#valueString(com.oracle.max.graal.compiler.ir.Value) value}.
+         * The instruction as a {@linkplain com.oracle.graal.compiler.util.Util#valueString(com.oracle.graal.compiler.ir.Value) value}.
          */
         VALUE(12, "tid"),
 

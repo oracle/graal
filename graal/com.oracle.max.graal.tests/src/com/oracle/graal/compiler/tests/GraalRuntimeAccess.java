@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.graal.cri.*;
+import com.oracle.graal.cri.*;
 
 /**
  * Utility for getting a {@link GraalRuntime} instance from the current execution environment.
@@ -39,7 +39,7 @@ class GraalRuntimeAccess {
      */
     private static Map<String, String> graalRuntimeFactoryClasses = new LinkedHashMap<>();
     static {
-        graalRuntimeFactoryClasses.put("HotSpot", "com.oracle.max.graal.hotspot.CompilerImpl");
+        graalRuntimeFactoryClasses.put("HotSpot", "com.oracle.graal.hotspot.CompilerImpl");
         graalRuntimeFactoryClasses.put("Maxine", "com.oracle.max.vm.ext.maxri.MaxRuntime");
     }
 

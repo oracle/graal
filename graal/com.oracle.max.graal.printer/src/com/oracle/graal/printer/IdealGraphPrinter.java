@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.printer;
+package com.oracle.graal.printer;
 
 import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.Node.Verbosity;
-import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.max.graal.graph.NodeClass.Position;
-import com.oracle.max.graal.java.bytecode.*;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.schedule.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.NodeClass.Position;
+import com.oracle.graal.java.bytecode.*;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the <a

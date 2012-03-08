@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.debug;
+package com.oracle.graal.debug;
 
 public interface DebugDumpHandler {
     void dump(Object object, String message);

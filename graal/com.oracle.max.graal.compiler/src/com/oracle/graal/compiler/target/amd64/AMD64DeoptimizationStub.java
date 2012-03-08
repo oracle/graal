@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target.amd64;
 
 import java.util.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.amd64.*;
-import com.oracle.max.graal.lir.asm.*;
-import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 
 public class AMD64DeoptimizationStub extends AMD64SlowPath {
     public final Label label = new Label();

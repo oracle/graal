@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.extended;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 // TODO (chaeubl) this should be a FloatingNode but Lowering is not possible in that case
 public final class ReadHubNode extends FixedWithNextNode implements Lowerable {

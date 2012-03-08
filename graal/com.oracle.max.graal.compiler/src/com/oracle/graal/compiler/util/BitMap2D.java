@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.util;
+package com.oracle.graal.compiler.util;
 
-import com.oracle.max.graal.graph.*;
+import com.oracle.graal.graph.*;
 
 /**
  * This class implements a two-dimensional bitmap.

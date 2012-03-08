@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt.micro;
+package com.oracle.graal.jtt.micro;
 
 import org.junit.*;
 

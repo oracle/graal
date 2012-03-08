@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.max.graal.graph.NodeClass.*;
+import com.oracle.graal.graph.NodeClass.*;
 
 
 /**

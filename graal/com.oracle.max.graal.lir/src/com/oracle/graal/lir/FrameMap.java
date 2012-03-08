@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir;
+package com.oracle.graal.lir;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 

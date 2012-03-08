@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
-import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
@@ -31,11 +31,11 @@ import junit.framework.*;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.iterators.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.

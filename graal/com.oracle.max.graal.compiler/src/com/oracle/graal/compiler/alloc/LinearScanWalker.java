@@ -20,25 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.alloc;
+package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.max.cri.ci.CiUtil.*;
-import static com.oracle.max.graal.alloc.util.LocationUtil.*;
+import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
-import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
-import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
-import com.oracle.max.graal.compiler.alloc.Interval.State;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.StandardOp.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
+import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
+import com.oracle.graal.compiler.alloc.Interval.SpillState;
+import com.oracle.graal.compiler.alloc.Interval.State;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  */

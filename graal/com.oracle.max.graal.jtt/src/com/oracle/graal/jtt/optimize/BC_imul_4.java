@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.optimize;
+package com.oracle.graal.jtt.optimize;
 
 import org.junit.*;
 

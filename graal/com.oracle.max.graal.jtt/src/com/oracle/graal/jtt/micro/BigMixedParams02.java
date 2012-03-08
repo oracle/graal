@@ -23,7 +23,7 @@
 /*
  * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
  */
-package com.oracle.max.graal.jtt.micro;
+package com.oracle.graal.jtt.micro;
 
 import org.junit.*;
 

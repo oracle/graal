@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 
 import java.util.*;
 
-import com.oracle.max.graal.graph.iterators.*;
+import com.oracle.graal.graph.iterators.*;
 
 public final class NodeUsagesList extends NodeIterable<Node> {
 

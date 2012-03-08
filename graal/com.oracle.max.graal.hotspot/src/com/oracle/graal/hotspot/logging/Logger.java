@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.logging;
+package com.oracle.graal.hotspot.logging;
 
 import java.io.*;
 import java.lang.reflect.*;

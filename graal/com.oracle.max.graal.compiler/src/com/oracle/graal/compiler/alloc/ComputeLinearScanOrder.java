@@ -21,15 +21,15 @@
  * questions.
  */
 
-package com.oracle.max.graal.compiler.alloc;
+package com.oracle.graal.compiler.alloc;
 
 import java.util.*;
 
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 public final class ComputeLinearScanOrder {
 

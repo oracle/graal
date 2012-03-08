@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
-import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.iterators.*;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * Denotes the merging of multiple control-flow paths.

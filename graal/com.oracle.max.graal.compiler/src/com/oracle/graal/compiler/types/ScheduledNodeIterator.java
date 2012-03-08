@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.types;
+package com.oracle.graal.compiler.types;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.graph.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 
 public abstract class ScheduledNodeIterator<T extends MergeableState<T>> {
 

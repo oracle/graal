@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
@@ -71,7 +71,7 @@ public class Math_abs {
         Assert.assertEquals(java.lang.Double.POSITIVE_INFINITY, test(java.lang.Double.POSITIVE_INFINITY), 0);
     }
 
-    @Test(expected = com.oracle.max.graal.jtt.lang.Math_abs.NaN.class)
+    @Test(expected = com.oracle.graal.jtt.lang.Math_abs.NaN.class)
     public void run6() throws Throwable {
         test(java.lang.Double.NaN);
     }

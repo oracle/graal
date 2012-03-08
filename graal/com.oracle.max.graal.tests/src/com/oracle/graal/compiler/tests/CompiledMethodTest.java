@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
 
@@ -29,10 +29,10 @@ import org.junit.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiCompiledMethod.MethodInvalidatedException;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then

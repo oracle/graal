@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.server;
+package com.oracle.graal.hotspot.server;
 
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.graal.hotspot.logging.*;
+import com.oracle.graal.hotspot.logging.*;
 
 /**
  * A collection of java.lang.reflect proxies that communicate over a socket connection.

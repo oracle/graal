@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.max.graal.hotspot.bridge;
+package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -30,18 +30,18 @@ import java.util.concurrent.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.debug.internal.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
-import com.oracle.max.graal.hotspot.ri.*;
-import com.oracle.max.graal.hotspot.server.*;
-import com.oracle.max.graal.hotspot.snippets.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.snippets.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.server.*;
+import com.oracle.graal.hotspot.snippets.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * Exits from the HotSpot VM into Java code.

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
@@ -89,22 +89,22 @@ public final class Class_getInterfaces01 {
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.lang.Class_getInterfaces01$I1", test(1));
+        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I1", test(1));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.lang.Class_getInterfaces01$I1", test(2));
+        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I1", test(2));
     }
 
     @Test
     public void run3() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.lang.Class_getInterfaces01$I2", test(3));
+        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I2", test(3));
     }
 
     @Test
     public void run4() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.lang.Class_getInterfaces01$I1 com.oracle.max.graal.jtt.lang.Class_getInterfaces01$I2", test(4));
+        Assert.assertEquals("com.oracle.graal.jtt.lang.Class_getInterfaces01$I1 com.oracle.graal.jtt.lang.Class_getInterfaces01$I2", test(4));
     }
 
 }

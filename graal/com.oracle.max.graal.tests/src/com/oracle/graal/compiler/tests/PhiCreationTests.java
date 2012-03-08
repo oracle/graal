@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import org.junit.*;
 
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * In the following tests, the correct removal of redundant phis during graph building is tested.

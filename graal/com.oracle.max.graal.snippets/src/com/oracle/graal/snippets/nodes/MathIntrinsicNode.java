@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets.nodes;
+package com.oracle.graal.snippets.nodes;
 
-import static com.oracle.max.graal.lir.amd64.AMD64Arithmetic.*;
+import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.target.amd64.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
-import com.oracle.max.graal.snippets.target.amd64.*;
+import com.oracle.graal.compiler.target.amd64.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.target.amd64.*;
 
 public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, AMD64LIRLowerable {
 

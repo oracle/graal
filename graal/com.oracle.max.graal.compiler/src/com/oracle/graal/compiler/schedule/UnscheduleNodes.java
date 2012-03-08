@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.schedule;
+package com.oracle.graal.compiler.schedule;
 
 import java.util.*;
 
-import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.types.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.graph.*;
+import com.oracle.graal.compiler.types.*;
+import com.oracle.graal.nodes.*;
 
 class UnscheduleState implements MergeableState<UnscheduleState> {
 

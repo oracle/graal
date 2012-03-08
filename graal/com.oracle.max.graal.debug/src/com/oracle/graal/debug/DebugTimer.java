@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.debug;
+package com.oracle.graal.debug;
 
-import com.oracle.max.graal.debug.internal.*;
+import com.oracle.graal.debug.internal.*;
 
 public interface DebugTimer {
     TimerCloseable start();

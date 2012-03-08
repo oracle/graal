@@ -23,4 +23,4 @@
 /**
  * Logging framework for the HotSpot CRI implementation.
  */
-package com.oracle.max.graal.hotspot.logging;
+package com.oracle.graal.hotspot.logging;

@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.debug.internal;
+package com.oracle.graal.debug.internal;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.graal.debug.*;
+import com.oracle.graal.debug.*;
 
 public final class DebugScope {
 

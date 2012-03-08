@@ -24,4 +24,4 @@
 /**
  *
  */
-package com.oracle.max.graal.compiler.graph;
+package com.oracle.graal.compiler.graph;

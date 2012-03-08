@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.phases;
+package com.oracle.graal.compiler.phases;
 
-import static com.oracle.max.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.iterators.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.PhiNode.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.virtual.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.virtual.*;
 
 public class BoxingEliminationPhase extends Phase {
 

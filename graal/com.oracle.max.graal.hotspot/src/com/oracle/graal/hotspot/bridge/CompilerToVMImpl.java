@@ -21,15 +21,15 @@
  * questions.
  */
 
-package com.oracle.max.graal.hotspot.bridge;
+package com.oracle.graal.hotspot.bridge;
 
 import java.lang.reflect.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.ri.*;
-import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.server.*;
 
 /**
  * Entries into the HotSpot VM from Java code.

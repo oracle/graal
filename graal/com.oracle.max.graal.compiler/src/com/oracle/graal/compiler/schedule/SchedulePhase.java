@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.schedule;
+package com.oracle.graal.compiler.schedule;
 
 import java.util.*;
 
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.Node.Verbosity;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.virtual.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.virtual.*;
 
 public class SchedulePhase extends Phase {
     private ControlFlowGraph cfg;

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 import java.util.*;
 
 import sun.misc.*;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
 
 
 public final class HotSpotMethodData extends CompilerObject {

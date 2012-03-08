@@ -25,7 +25,7 @@
  * This test sleeps the thread that is joined to, which should ensure that the joining thread
  * actually does wait for completeion.
  */
-package com.oracle.max.graal.jtt.threads;
+package com.oracle.graal.jtt.threads;
 
 import org.junit.*;
 

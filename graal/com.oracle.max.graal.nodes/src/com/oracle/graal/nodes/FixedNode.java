@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.nodes.type.*;
 
 public abstract class FixedNode extends ValueNode {
 

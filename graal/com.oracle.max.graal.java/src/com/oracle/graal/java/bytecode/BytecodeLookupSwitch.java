@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java.bytecode;
+package com.oracle.graal.java.bytecode;
 
 /**
  * A utility for processing {@link Bytecodes#LOOKUPSWITCH} bytecodes.

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.except;
+package com.oracle.graal.jtt.except;
 
 import org.junit.*;
 
@@ -28,7 +28,7 @@ import org.junit.*;
  */
 public class BC_monitorenter {
 
-    static com.oracle.max.graal.jtt.bytecode.BC_monitorenter object = new com.oracle.max.graal.jtt.bytecode.BC_monitorenter();
+    static com.oracle.graal.jtt.bytecode.BC_monitorenter object = new com.oracle.graal.jtt.bytecode.BC_monitorenter();
 
     public static boolean test(boolean arg) {
         final Object o = arg ? object : null;

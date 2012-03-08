@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir;
+package com.oracle.graal.lir;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.asm.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  * This class implements the overall container for the LIR graph

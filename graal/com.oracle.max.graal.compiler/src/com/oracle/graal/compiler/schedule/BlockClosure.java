@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.schedule;
+package com.oracle.graal.compiler.schedule;
 
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.

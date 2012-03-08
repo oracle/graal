@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 
 
 public abstract class GraphEvent {
@@ -84,7 +84,7 @@ public abstract class GraphEvent {
             StackTraceElement elem = stackTrace[i];
             int toBottom = stackTrace.length - i;
             if (atTop) {
-                if (!elem.getClassName().startsWith("com.oracle.max.graal.graph.Graph") && !elem.getClassName().startsWith("com.oracle.max.graal.graph.Node")) {
+                if (!elem.getClassName().startsWith("com.oracle.graal.graph.Graph") && !elem.getClassName().startsWith("com.oracle.graal.graph.Node")) {
                     atTop = false;
                 } else {
                     continue;

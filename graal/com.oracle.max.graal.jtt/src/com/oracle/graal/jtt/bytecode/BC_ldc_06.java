@@ -23,7 +23,7 @@
 /*
  * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
  */
-package com.oracle.max.graal.jtt.bytecode;
+package com.oracle.graal.jtt.bytecode;
 
 import org.junit.*;
 
@@ -41,7 +41,7 @@ public class BC_ldc_06 {
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.bytecode.BC_ldc_06", test());
+        Assert.assertEquals("com.oracle.graal.jtt.bytecode.BC_ldc_06", test());
     }
 
 }

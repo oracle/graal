@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt.except;
+package com.oracle.graal.jtt.except;
 
 import org.junit.*;
 

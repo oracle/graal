@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.jdk;
+package com.oracle.graal.jtt.jdk;
 
 import java.util.*;
 

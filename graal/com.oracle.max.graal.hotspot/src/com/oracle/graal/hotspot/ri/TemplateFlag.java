@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 enum TemplateFlag {
     NULL_CHECK, READ_BARRIER, WRITE_BARRIER, STORE_CHECK, BOUNDS_CHECK, GIVEN_LENGTH, INPUTS_DIFFERENT, INPUTS_SAME, STATIC_METHOD, SYNCHRONIZED, EXACT_HINTS;

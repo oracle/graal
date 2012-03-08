@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.extended;
+package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.

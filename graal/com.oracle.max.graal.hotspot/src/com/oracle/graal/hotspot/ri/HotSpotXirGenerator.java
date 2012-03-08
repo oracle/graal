@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.ri;
+package com.oracle.graal.hotspot.ri;
 
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.hotspot.ri.TemplateFlag.*;
+import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -38,9 +38,9 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.CiXirAssembler.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 

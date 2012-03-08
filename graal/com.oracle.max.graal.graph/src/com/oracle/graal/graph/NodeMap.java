@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;

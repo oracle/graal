@@ -20,29 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.alloc;
+package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.max.cri.ci.CiUtil.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.alloc.util.LocationUtil.*;
+import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.alloc.Interval.RegisterBinding;
-import com.oracle.max.graal.compiler.alloc.Interval.RegisterPriority;
-import com.oracle.max.graal.compiler.alloc.Interval.SpillState;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.LIRInstruction.*;
-import com.oracle.max.graal.lir.StandardOp.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
+import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
+import com.oracle.graal.compiler.alloc.Interval.SpillState;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described

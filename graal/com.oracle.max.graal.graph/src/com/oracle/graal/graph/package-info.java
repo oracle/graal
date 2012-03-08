@@ -23,4 +23,4 @@
 /**
  * This package contains the Node base class and the Graph container class of the Graal IR.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;

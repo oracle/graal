@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.alloc.util;
+package com.oracle.graal.alloc.util;
 
-import static com.oracle.max.graal.alloc.util.LocationUtil.*;
+import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
 
 public class LocationMap {
     private final Location[] locations;

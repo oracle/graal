@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir;
+package com.oracle.graal.lir;
 
 import com.oracle.max.asm.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.lir.cfg.*;
 
 /**
  * LIR instructions such as JUMP and BRANCH need to reference their target {@link Block}. However,

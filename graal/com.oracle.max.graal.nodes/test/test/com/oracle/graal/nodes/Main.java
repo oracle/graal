@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package test.com.oracle.max.graal.nodes;
+package test.com.oracle.graal.nodes;
 
 
 public class Main {

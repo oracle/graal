@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.Map.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.max.graal.graph.Node.Data;
+import com.oracle.graal.graph.Node.Data;
 
 import sun.misc.Unsafe;
 

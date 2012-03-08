@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.xir.XirTemplate.GlobalFlags.*;
 

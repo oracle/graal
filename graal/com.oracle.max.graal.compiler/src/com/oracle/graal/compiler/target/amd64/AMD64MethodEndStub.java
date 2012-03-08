@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target.amd64;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.lir.amd64.*;
-import com.oracle.max.graal.lir.asm.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
 
 public class AMD64MethodEndStub extends AMD64SlowPath {
     @Override

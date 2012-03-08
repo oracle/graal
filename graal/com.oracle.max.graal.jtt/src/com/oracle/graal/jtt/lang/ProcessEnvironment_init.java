@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import java.util.*;
 

@@ -23,4 +23,4 @@
 /**
  * A collection of debugging aids for Graal development.
  */
-package com.oracle.max.graal.compiler.debug;
+package com.oracle.graal.compiler.debug;

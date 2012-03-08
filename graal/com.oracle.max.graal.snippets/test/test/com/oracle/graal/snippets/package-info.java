@@ -24,4 +24,4 @@
 /**
  * Test cases for Graal snippets.
  */
-package test.com.oracle.max.graal.snippets;
+package test.com.oracle.graal.snippets;

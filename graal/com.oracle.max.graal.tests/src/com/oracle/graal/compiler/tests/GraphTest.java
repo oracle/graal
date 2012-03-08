@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
 
 import junit.framework.Assert;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.PhasePlan.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Base class for Graal compiler unit tests. These are white box tests

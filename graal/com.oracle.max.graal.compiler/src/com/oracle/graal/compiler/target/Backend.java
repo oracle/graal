@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.target;
+package com.oracle.graal.compiler.target;
 
 import java.lang.reflect.*;
 
@@ -28,9 +28,9 @@ import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
@@ -45,7 +45,7 @@ public abstract class Backend {
     }
 
     public static Backend create(CiArchitecture arch, RiRuntime runtime, CiTarget target) {
-        String className = arch.getClass().getName().replace("com.oracle.max.asm", "com.oracle.max.graal.compiler") + "Backend";
+        String className = arch.getClass().getName().replace("com.oracle.max.asm", "com.oracle.graal.compiler") + "Backend";
         try {
             Class<?> c = Class.forName(className);
             Constructor<?> cons = c.getDeclaredConstructor(RiRuntime.class, CiTarget.class);

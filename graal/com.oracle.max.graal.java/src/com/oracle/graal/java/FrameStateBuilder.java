@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.java;
+package com.oracle.graal.java;
 
-import static com.oracle.max.graal.nodes.ValueUtil.*;
+import static com.oracle.graal.nodes.ValueUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.Node.Verbosity;
-import com.oracle.max.graal.graph.iterators.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.PhiNode.PhiType;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.type.*;
 
 public class FrameStateBuilder {
     private final RiResolvedMethod method;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.debug.internal;
+package com.oracle.graal.debug.internal;
 
 public interface TimerCloseable extends AutoCloseable {
     void close();

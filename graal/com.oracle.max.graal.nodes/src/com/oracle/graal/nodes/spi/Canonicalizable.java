@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.spi;
+package com.oracle.graal.nodes.spi;
 
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.nodes.*;
 
 public interface Canonicalizable {
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler;
+package com.oracle.graal.compiler;
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.

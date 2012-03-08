@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
@@ -37,7 +37,7 @@ public final class Class_forName01 {
             return Class.forName("java.lang.String").toString();
         }
         if (i == 2) {
-            return Class.forName("com.oracle.max.graal.jtt.lang.Class_forName01").toString();
+            return Class.forName("com.oracle.graal.jtt.lang.Class_forName01").toString();
         }
         if (i == 3) {
             return Class.forName("xyxzz.xyzyzyz.XXYYY").toString();
@@ -57,7 +57,7 @@ public final class Class_forName01 {
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("class com.oracle.max.graal.jtt.lang.Class_forName01", test(2));
+        Assert.assertEquals("class com.oracle.graal.jtt.lang.Class_forName01", test(2));
     }
 
     @Test(expected = java.lang.ClassNotFoundException.class)

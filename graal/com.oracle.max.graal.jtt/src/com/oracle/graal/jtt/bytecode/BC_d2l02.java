@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.max.graal.jtt.bytecode;
+package com.oracle.graal.jtt.bytecode;
 
 import org.junit.*;
 

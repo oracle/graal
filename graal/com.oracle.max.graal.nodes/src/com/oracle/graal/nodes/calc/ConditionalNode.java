@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.calc;
+package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note that these nodes are not

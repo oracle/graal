@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir.asm;
+package com.oracle.graal.lir.asm;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
@@ -29,10 +29,10 @@ import java.util.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.LIR.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIR.*;
 
 public class TargetMethodAssembler {
 

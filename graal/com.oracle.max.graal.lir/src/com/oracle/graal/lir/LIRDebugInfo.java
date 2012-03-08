@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir;
+package com.oracle.graal.lir;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.max.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.max.graal.lir.LIRInstruction.ValueProcedure;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR instruction.

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.server;
+package com.oracle.graal.hotspot.server;
 
 import java.io.*;
 import java.net.*;
@@ -28,10 +28,10 @@ import java.util.*;
 
 import javax.net.*;
 
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.Compiler;
-import com.oracle.max.graal.hotspot.bridge.*;
-import com.oracle.max.graal.hotspot.logging.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.logging.*;
 
 /**
  * Server side of the client/server compilation model. The server listens for connections on the hardcoded port 1199.

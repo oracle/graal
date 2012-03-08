@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.gen;
+package com.oracle.graal.compiler.gen;
 
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
-import static com.oracle.max.graal.lir.ValueUtil.*;
+import static com.oracle.graal.lir.ValueUtil.*;
 
 import java.util.*;
 
@@ -44,25 +44,25 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirRegister;
 import com.oracle.max.cri.xir.CiXirAssembler.XirTemp;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.StandardOp.JumpOp;
-import com.oracle.max.graal.lir.StandardOp.LabelOp;
-import com.oracle.max.graal.lir.StandardOp.ParametersOp;
-import com.oracle.max.graal.lir.StandardOp.PhiJumpOp;
-import com.oracle.max.graal.lir.StandardOp.PhiLabelOp;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
-import com.oracle.max.graal.nodes.PhiNode.PhiType;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.virtual.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.ParametersOp;
+import com.oracle.graal.lir.StandardOp.PhiJumpOp;
+import com.oracle.graal.lir.StandardOp.PhiLabelOp;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
+import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

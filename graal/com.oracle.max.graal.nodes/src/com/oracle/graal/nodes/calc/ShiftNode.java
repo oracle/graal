@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.calc;
+package com.oracle.graal.nodes.calc;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * The {@code ShiftOp} class represents shift operations.

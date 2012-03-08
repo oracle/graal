@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.phases;
+package com.oracle.graal.compiler.phases;
 
 import java.lang.reflect.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.max.graal.graph.Node.NodeIntrinsic;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.nodes.util.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 
 public class SnippetIntrinsificationPhase extends Phase {
 

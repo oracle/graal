@@ -22,7 +22,7 @@
  */
 // Checkstyle: stop
 
-package com.oracle.max.graal.jtt.hotpath;
+package com.oracle.graal.jtt.hotpath;
 
 import org.junit.*;
 

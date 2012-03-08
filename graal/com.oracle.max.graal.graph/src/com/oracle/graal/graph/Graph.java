@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.graph;
+package com.oracle.graal.graph;
 
 import java.util.*;
 
-import com.oracle.max.graal.graph.GraphEvent.NodeEvent;
-import com.oracle.max.graal.graph.Node.IterableNodeType;
-import com.oracle.max.graal.graph.Node.ValueNumberable;
-import com.oracle.max.graal.graph.iterators.*;
+import com.oracle.graal.graph.GraphEvent.NodeEvent;
+import com.oracle.graal.graph.Node.IterableNodeType;
+import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.graph.iterators.*;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.

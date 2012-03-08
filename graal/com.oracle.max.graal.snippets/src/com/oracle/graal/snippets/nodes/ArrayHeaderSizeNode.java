@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.snippets.nodes;
+package com.oracle.graal.snippets.nodes;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 public class ArrayHeaderSizeNode extends FloatingNode implements Lowerable {
     @Data private final CiKind elementKind;

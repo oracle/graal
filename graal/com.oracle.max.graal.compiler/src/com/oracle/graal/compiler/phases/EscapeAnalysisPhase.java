@@ -20,24 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.phases;
+package com.oracle.graal.compiler.phases;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.PhiNode.PhiType;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.virtual.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.graph.*;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 
 public class EscapeAnalysisPhase extends Phase {

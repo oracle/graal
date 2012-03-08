@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.alloc;
+package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
@@ -28,8 +28,8 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.lir.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.lir.*;
 
 /**
  */

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import org.junit.*;
 
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.types.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.types.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see the relation between the different conditions.

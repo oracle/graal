@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir.cfg;
+package com.oracle.graal.lir.cfg;
 
 public class BlockMap<T> {
     private final T[] data;

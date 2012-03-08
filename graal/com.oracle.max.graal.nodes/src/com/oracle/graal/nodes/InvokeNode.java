@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes;
+package com.oracle.graal.nodes;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.util.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.

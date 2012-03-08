@@ -25,4 +25,4 @@
  * There is a class that bridges from the C++ to the Java side (VMExitsNative.java) and one that bridges
  * from the Java to the C++ side (VMEntriesNative.java).
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;

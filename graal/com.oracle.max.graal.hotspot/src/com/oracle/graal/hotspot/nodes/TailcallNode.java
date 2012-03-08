@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.hotspot.*;
-import com.oracle.max.graal.hotspot.target.amd64.*;
-import com.oracle.max.graal.java.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Performs a tail call to the specified target compiled method, with the parameter taken from the supplied FrameState.

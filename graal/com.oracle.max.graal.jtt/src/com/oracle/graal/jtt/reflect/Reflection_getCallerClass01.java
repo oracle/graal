@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.reflect;
+package com.oracle.graal.jtt.reflect;
 
 import org.junit.*;
 
@@ -62,12 +62,12 @@ public final class Reflection_getCallerClass01 {
 
     @Test
     public void run1() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.reflect.Reflection_getCallerClass01$Caller1", test(1));
+        Assert.assertEquals("com.oracle.graal.jtt.reflect.Reflection_getCallerClass01$Caller1", test(1));
     }
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("com.oracle.max.graal.jtt.reflect.Reflection_getCallerClass01$Caller2", test(2));
+        Assert.assertEquals("com.oracle.graal.jtt.reflect.Reflection_getCallerClass01$Caller2", test(2));
     }
 
 }

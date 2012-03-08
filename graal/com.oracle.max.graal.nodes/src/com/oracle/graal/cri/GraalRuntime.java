@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.cri;
+package com.oracle.graal.cri;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Graal-specific extensions for the runtime interface that must be implemented by the VM.

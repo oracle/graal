@@ -23,4 +23,4 @@
 /**
  * Implementation of a compilation server socket that delegates incoming requests to Graal.
  */
-package com.oracle.max.graal.hotspot.server;
+package com.oracle.graal.hotspot.server;

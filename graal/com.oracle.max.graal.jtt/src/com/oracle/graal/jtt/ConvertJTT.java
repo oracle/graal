@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt;
+package com.oracle.graal.jtt;
 
 import java.io.*;
 import java.nio.charset.*;
@@ -35,7 +35,7 @@ import java.util.*;
 public class ConvertJTT {
 
     public static void main(String[] args) throws IOException {
-        String targetPath = "graalvm/graal/com.oracle.max.graal.tests/src/com/oracle/max/graal/jtt";
+        String targetPath = "graalvm/graal/com.oracle.graal.tests/src/com/oracle/max/graal/jtt";
         String sourcePath = "maxine/com.oracle.max.vm/test/jtt";
 
         File target = new File(targetPath);
@@ -118,7 +118,7 @@ public class ConvertJTT {
                     javaHarness = true;
                 }
             } else if (line.startsWith("package jtt.")) {
-                output.add("package com.oracle.max.graal.jtt." + packageName + ";");
+                output.add("package com.oracle.graal.jtt." + packageName + ";");
                 output.add("");
                 output.add("import org.junit.*;");
             } else if (line.contains("@NEVER_INLINE")) {
@@ -136,7 +136,7 @@ public class ConvertJTT {
                 output.add(line);
             } else {
 // line = line.replace(oldClassName, newClassName);
-                line = line.replace(" jtt.", " com.oracle.max.graal.jtt.");
+                line = line.replace(" jtt.", " com.oracle.graal.jtt.");
                 output.add(line);
             }
         }
@@ -152,7 +152,7 @@ public class ConvertJTT {
 
     private static void processRun(ArrayList<String> output, Run run, int n) {
         if (run.output.startsWith("!")) {
-            output.add("    @Test(expected = " + run.output.substring(1).replace("jtt.", "com.oracle.max.graal.jtt.").replace('$', '.') + ".class)");
+            output.add("    @Test(expected = " + run.output.substring(1).replace("jtt.", "com.oracle.graal.jtt.").replace('$', '.') + ".class)");
             output.add("    public void run" + n + "() throws Throwable {");
             output.add("        test(" + parameters(run.input) + ");");
             output.add("    }");
@@ -193,7 +193,7 @@ public class ConvertJTT {
                     return "((byte) " + params.substring(0, params.length() - 1) + ")";
                 }
             }
-            return params.replace("jtt.", "com.oracle.max.graal.jtt.");
+            return params.replace("jtt.", "com.oracle.graal.jtt.");
         }
     }
 

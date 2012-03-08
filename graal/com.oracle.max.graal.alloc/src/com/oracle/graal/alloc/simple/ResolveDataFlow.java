@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.alloc.simple;
+package com.oracle.graal.alloc.simple;
 
-import static com.oracle.max.graal.alloc.util.LocationUtil.*;
+import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.alloc.util.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.LIRInstruction.*;
-import com.oracle.max.graal.lir.StandardOp.*;
-import com.oracle.max.graal.lir.cfg.*;
+import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.cfg.*;
 
 public abstract class ResolveDataFlow {
     public final LIR lir;

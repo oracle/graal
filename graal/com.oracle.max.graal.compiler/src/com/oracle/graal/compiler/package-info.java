@@ -23,7 +23,7 @@
 
 /**
  * The top-level package in Graal containing options, metrics, timers and the main compiler class
- * {@link com.oracle.max.graal.compiler.GraalCompiler}.
+ * {@link com.oracle.graal.compiler.GraalCompiler}.
  *
  * <H2>{@code GraalCompiler} Overview</H2>
  *
@@ -37,11 +37,11 @@
  *
  * <H3>The Graal Compilation Process</H3>
  *
- * {@link com.oracle.max.graal.compiler.GraalCompiler#compileMethod} creates a {@link GraalCompilation} instance and then returns the result of calling its
- * {@link com.oracle.max.graal.compiler.GraalCompilation#compile} method.
+ * {@link com.oracle.graal.compiler.GraalCompiler#compileMethod} creates a {@link GraalCompilation} instance and then returns the result of calling its
+ * {@link com.oracle.graal.compiler.GraalCompilation#compile} method.
  * <p>
  * While there is only one {@code GraalCompiler} instance, there may be several compilations proceeding concurrently, each of
- * which is represented by a unique {@code GraalCompilation} instance. The static method {@link com.oracle.max.graal.compiler.GraalCompilation#currentInterval}} returns the
+ * which is represented by a unique {@code GraalCompilation} instance. The static method {@link com.oracle.graal.compiler.GraalCompilation#currentInterval}} returns the
  * {@code GraalCompilation} instance associated with the current thread, and is managed using a {@link java.lang.ThreadLocal} variable.
  * Each {@code GraalCompilation} instance has an associated {@link com.oracle.max.cri.ci.CiStatistics} object that accumulates information about the compilation process.
  * </p>
@@ -51,4 +51,4 @@
  * <li>AMD64/x64 with SSE2</li>
  * </ul>
  */
-package com.oracle.max.graal.compiler;
+package com.oracle.graal.compiler;

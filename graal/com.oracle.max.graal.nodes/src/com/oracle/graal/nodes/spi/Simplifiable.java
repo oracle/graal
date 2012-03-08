@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.nodes.spi;
+package com.oracle.graal.nodes.spi;
 
 /**
  * This interface allows nodes to perform more complicated simplifications, in contrast to {@link Canonicalizable},
  * which supports only replacing the current node.
  *
- * Implementors of this interface need to be aware that they need to call {@link SimplifierTool#addToWorkList(com.oracle.max.graal.graph.Node)} for each node that might
+ * Implementors of this interface need to be aware that they need to call {@link SimplifierTool#addToWorkList(com.oracle.graal.graph.Node)} for each node that might
  * be influenced (in terms of simplification and canonicalization) by the actions performed in simplify.
  */
 public interface Simplifiable {

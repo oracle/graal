@@ -22,7 +22,7 @@
  */
 /**
  * The compiler-provided part of the bi-directional interface between the compiler and the runtime system of a virtual machine for the instruction set defined in
- * {@link com.oracle.max.graal.compiler.graphbuilder.Bytecodes}.
+ * {@link com.oracle.graal.compiler.graphbuilder.Bytecodes}.
  *
  * The target hardware architecture is represented by {@link com.oracle.max.cri.ci.CiArchitecture} and the specific target machine
  * environment for a compiler instance is represented by {@link com.oracle.max.cri.ci.CiTarget}.
@@ -40,7 +40,7 @@
  * <li>{@link com.oracle.max.cri.ci.CiRegisterValue}: a value stored in a {@linkplain com.oracle.max.cri.ci.CiRegister target machine register}.
  * <li>{@link com.oracle.max.cri.ci.CiStackSlot}: a spill slot or an outgoing stack-based argument in a method's frame.
  * <li>{@link com.oracle.max.cri.ci.CiAddress}: an address in target machine memory.
- * <li>{@link com.oracle.max.graal.compiler.lir.CiVariable}: a value (cf. virtual register) that is yet to be bound to a target machine location (physical register or memory address).
+ * <li>{@link com.oracle.graal.compiler.lir.CiVariable}: a value (cf. virtual register) that is yet to be bound to a target machine location (physical register or memory address).
  *</ul>
  */
 package com.oracle.max.cri.ci;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.jtt.reflect;
+package com.oracle.graal.jtt.reflect;
 
 import java.lang.reflect.*;
 

@@ -24,7 +24,7 @@
  * A virtual machine compiler-runtime interface (CRI).
  * <p>
  * Specifically, this package defines an interface between the compiler and the runtime system of a virtual machine for
- * the instruction set defined in {@link com.oracle.max.graal.compiler.graphbuilder.Bytecodes}. The interface has three components:
+ * the instruction set defined in {@link com.oracle.graal.compiler.graphbuilder.Bytecodes}. The interface has three components:
  * <ol>
  * <li>the {@link com.oracle.max.cri.ci compiler-provided interface} that must be used by the runtime.
  * <li>the {@link com.oracle.max.cri.ri runtime-provided interface} that must be used by the compiler.

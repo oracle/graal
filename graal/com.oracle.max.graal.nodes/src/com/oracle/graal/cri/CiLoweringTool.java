@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.cri;
+package com.oracle.graal.cri;
 
-import com.oracle.max.graal.graph.*;
+import com.oracle.graal.graph.*;
 
 public interface CiLoweringTool {
     GraalRuntime getRuntime();

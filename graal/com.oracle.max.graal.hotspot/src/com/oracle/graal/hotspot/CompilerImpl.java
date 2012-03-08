@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;
 
 import java.io.*;
 import java.net.*;
@@ -29,13 +29,13 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.compiler.target.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.hotspot.bridge.*;
-import com.oracle.max.graal.hotspot.logging.*;
-import com.oracle.max.graal.hotspot.ri.*;
-import com.oracle.max.graal.hotspot.server.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.logging.*;
+import com.oracle.graal.hotspot.ri.*;
+import com.oracle.graal.hotspot.server.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.

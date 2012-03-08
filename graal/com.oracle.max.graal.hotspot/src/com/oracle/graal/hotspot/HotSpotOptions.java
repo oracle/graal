@@ -21,12 +21,12 @@
  * questions.
  */
 
-package com.oracle.max.graal.hotspot;
+package com.oracle.graal.hotspot;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.hotspot.logging.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.hotspot.logging.*;
 
 public class HotSpotOptions {
 

@@ -24,4 +24,4 @@
  * This package contains the port of the LIRGenerator which translates
  * HIR instructions to LIR instructions for the backend.
  */
-package com.oracle.max.graal.compiler.gen;
+package com.oracle.graal.compiler.gen;

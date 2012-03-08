@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.max.graal.jtt.lang;
+package com.oracle.graal.jtt.lang;
 
 import org.junit.*;
 
@@ -61,7 +61,7 @@ public final class Object_getClass01 {
 
     @Test
     public void run2() throws Throwable {
-        Assert.assertEquals("class com.oracle.max.graal.jtt.lang.Object_getClass01", test(2));
+        Assert.assertEquals("class com.oracle.graal.jtt.lang.Object_getClass01", test(2));
     }
 
     @Test

@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.lir.cfg;
+package com.oracle.graal.lir.cfg;
 
 import java.util.*;
 
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 
 public class Block {
     protected int id;

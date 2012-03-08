@@ -21,11 +21,11 @@
  * questions.
  */
 
-package com.oracle.max.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.graal.lir.amd64.AMD64Arithmetic.*;
-import static com.oracle.max.graal.lir.amd64.AMD64Compare.*;
+import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
+import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 
 import java.util.*;
 
@@ -36,41 +36,41 @@ import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.util.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.StandardOp.JumpOp;
-import com.oracle.max.graal.lir.StandardOp.LabelOp;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.DivOp;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.Op2Stack;
-import com.oracle.max.graal.lir.amd64.AMD64Arithmetic.ShiftOp;
-import com.oracle.max.graal.lir.amd64.AMD64Call.DirectCallOp;
-import com.oracle.max.graal.lir.amd64.AMD64Call.IndirectCallOp;
-import com.oracle.max.graal.lir.amd64.AMD64Compare.CompareOp;
-import com.oracle.max.graal.lir.amd64.AMD64ControlFlow.BranchOp;
-import com.oracle.max.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
-import com.oracle.max.graal.lir.amd64.AMD64ControlFlow.FloatBranchOp;
-import com.oracle.max.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
-import com.oracle.max.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
-import com.oracle.max.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.LeaOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.LoadOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.MembarOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.MoveToRegOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.NullCheckOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.SpillMoveOp;
-import com.oracle.max.graal.lir.amd64.AMD64Move.StoreOp;
-import com.oracle.max.graal.nodes.DeoptimizeNode.DeoptAction;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivOp;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Reg;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op1Stack;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Stack;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.ShiftOp;
+import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
+import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
+import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatBranchOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
+import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
+import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
+import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
+import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
+import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
+import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
+import com.oracle.graal.lir.amd64.AMD64Move.NullCheckOp;
+import com.oracle.graal.lir.amd64.AMD64Move.SpillMoveOp;
+import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
+import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * This class implements the X86-specific portion of the LIR generator.

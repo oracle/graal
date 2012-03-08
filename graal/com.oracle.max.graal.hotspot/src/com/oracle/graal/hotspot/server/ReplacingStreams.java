@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.server;
+package com.oracle.graal.hotspot.server;
 
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.hotspot.*;
+import com.oracle.graal.hotspot.*;
 
 public class ReplacingStreams {
 

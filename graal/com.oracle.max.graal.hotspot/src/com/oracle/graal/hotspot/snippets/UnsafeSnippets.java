@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.hotspot.snippets;
+package com.oracle.graal.hotspot.snippets;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.util.*;
-import com.oracle.max.graal.nodes.extended.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.snippets.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.snippets.*;
 
 /**
  * Snippets for {@link sun.misc.Unsafe} methods.

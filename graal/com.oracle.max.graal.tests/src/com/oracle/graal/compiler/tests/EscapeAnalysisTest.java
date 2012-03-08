@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.tests;
+package com.oracle.graal.compiler.tests;
 
 import junit.framework.*;
 
 import org.junit.Test;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.java.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline them all.

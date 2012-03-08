@@ -20,25 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.types;
+package com.oracle.graal.compiler.types;
 
 import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.graal.compiler.graph.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.max.graal.graph.NodeClass.Position;
-import com.oracle.max.graal.nodes.*;
-import com.oracle.max.graal.nodes.calc.*;
-import com.oracle.max.graal.nodes.java.*;
-import com.oracle.max.graal.nodes.spi.*;
-import com.oracle.max.graal.nodes.type.*;
+import com.oracle.graal.compiler.graph.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.schedule.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.NodeClass.Position;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 public class PropagateTypesPhase extends Phase {
 

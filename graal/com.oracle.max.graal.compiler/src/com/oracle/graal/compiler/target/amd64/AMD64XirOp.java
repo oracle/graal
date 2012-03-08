@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target.amd64;
 
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
@@ -38,11 +38,11 @@ import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
-import com.oracle.max.graal.compiler.*;
-import com.oracle.max.graal.graph.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.amd64.*;
-import com.oracle.max.graal.lir.asm.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
 
 public class AMD64XirOp extends LIRXirInstruction {
     public AMD64XirOp(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,

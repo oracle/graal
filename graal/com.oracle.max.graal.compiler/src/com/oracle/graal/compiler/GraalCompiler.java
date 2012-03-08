@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.graal.compiler;
+package com.oracle.graal.compiler;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -29,20 +29,20 @@ import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
-import com.oracle.max.graal.alloc.simple.*;
-import com.oracle.max.graal.compiler.alloc.*;
-import com.oracle.max.graal.compiler.gen.*;
-import com.oracle.max.graal.compiler.phases.*;
-import com.oracle.max.graal.compiler.phases.PhasePlan.PhasePosition;
-import com.oracle.max.graal.compiler.schedule.*;
-import com.oracle.max.graal.compiler.target.*;
-import com.oracle.max.graal.compiler.types.*;
-import com.oracle.max.graal.cri.*;
-import com.oracle.max.graal.debug.*;
-import com.oracle.max.graal.lir.*;
-import com.oracle.max.graal.lir.asm.*;
-import com.oracle.max.graal.lir.cfg.*;
-import com.oracle.max.graal.nodes.*;
+import com.oracle.graal.alloc.simple.*;
+import com.oracle.graal.compiler.alloc.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.compiler.schedule.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.types.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.cfg.*;
+import com.oracle.graal.nodes.*;
 
 public class GraalCompiler {
 
