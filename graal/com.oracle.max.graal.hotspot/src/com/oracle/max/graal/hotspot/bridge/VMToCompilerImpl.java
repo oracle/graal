@@ -312,7 +312,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
                         long nanoTime;
                         try {
-                            result = Debug.scope("Compiling", method, new Callable<CiTargetMethod>() {
+                            result = Debug.scope("Compiling", new Callable<CiTargetMethod>() {
                                 @Override
                                 public CiTargetMethod call() throws Exception {
                                     return compiler.getCompiler().compileMethod(method, -1, plan);
