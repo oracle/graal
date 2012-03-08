@@ -430,7 +430,7 @@ public final class X86InstructionDecoder {
             }
         }
 
-        assert hasDisp32 : "(tw) not sure if this holds: instruction has no disp32 field";
+        assert hasDisp32 : "(thomaswue) not sure if this holds: instruction has no disp32 field";
 
         // parse the output of emitOperand
         int op2 = 0xFF & code[ip++];

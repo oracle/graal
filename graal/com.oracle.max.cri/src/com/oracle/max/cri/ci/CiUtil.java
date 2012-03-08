@@ -413,7 +413,7 @@ public class CiUtil {
      * Gets a stack trace element for a given method and bytecode index.
      */
     public static StackTraceElement toStackTraceElement(RiMethod method, @SuppressWarnings("unused") int bci) {
-        // TODO(tw): Look if we can use bci to get the line number.
+        // TODO (thomaswue): Look if we can use bci to get the line number.
         return new StackTraceElement(CiUtil.toJavaName(method.holder()), method.name(), null, -1);
     }
 

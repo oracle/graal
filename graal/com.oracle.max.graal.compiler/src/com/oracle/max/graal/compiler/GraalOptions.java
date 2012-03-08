@@ -26,7 +26,7 @@ package com.oracle.max.graal.compiler;
  * This class encapsulates options that control the behavior of the Graal compiler.
  * The help message for each option is specified by a {@linkplain #helpMap help map}.
  *
- * (tw) WARNING: Fields of this class are treated as final by Graal.
+ * (thomaswue) WARNING: Fields of this class are treated as final by Graal.
  */
 public final class GraalOptions {
 

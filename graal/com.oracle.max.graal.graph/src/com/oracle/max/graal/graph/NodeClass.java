@@ -131,7 +131,7 @@ public class NodeClass {
         this.shortName = newShortName;
         if (Node.IterableNodeType.class.isAssignableFrom(clazz)) {
             this.iterableId = nextIterableId++;
-            // TODO(ls) add type hierarchy - based node iteration
+            // TODO (lstadler) add type hierarchy - based node iteration
 //            for (NodeClass nodeClass : nodeClasses.values()) {
 //                if (clazz.isAssignableFrom(nodeClass.clazz)) {
 //                    throw new UnsupportedOperationException("iterable non-final Node classes not supported: " + clazz);

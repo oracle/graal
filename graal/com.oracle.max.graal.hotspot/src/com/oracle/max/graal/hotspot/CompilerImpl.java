@@ -224,7 +224,7 @@ public final class CompilerImpl implements Compiler, Remote {
               //      observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
               //  }
 //                context.addCompilationObserver(observer);
-                // TODO(tw): Install observer.
+                // TODO (thomaswue): Install observer.
            // }
             runtime = new HotSpotRuntime(config, this);
         }

@@ -80,9 +80,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
             if (targetMethod == arrayCopy) {
                 ValueNode src = methodCallTarget.arguments().get(0);
                 ValueNode dest = methodCallTarget.arguments().get(2);
-                if (src == null || dest == null) { //TODO (gd) this should never be null : check
-                    return;
-                }
+                assert src != null && dest != null;
                 RiResolvedType srcDeclaredType = src.declaredType();
                 RiResolvedType destDeclaredType = dest.declaredType();
                 if (srcDeclaredType != null

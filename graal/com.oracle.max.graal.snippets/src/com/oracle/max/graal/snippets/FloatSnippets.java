@@ -44,9 +44,7 @@ public class FloatSnippets implements SnippetsInterface {
         if (value != value) {
             return NAN_RAW_INT_BITS;
         } else {
-            @JavacBug(id = 6995200)
-            Integer result = ConvertNode.convert(ConvertNode.Op.MOV_F2I, value);
-            return result;
+            return floatToRawIntBits(value);
         }
     }
 

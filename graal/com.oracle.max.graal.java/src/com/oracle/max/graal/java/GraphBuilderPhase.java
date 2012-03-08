@@ -292,7 +292,7 @@ public final class GraphBuilderPhase extends Phase {
             }
         }
 
-        // TODO(tw): Merge BeginNode with ExceptionObject node to get a correct and uniform FrameState.
+        // TODO (thomaswue): Merge BeginNode with ExceptionObject node to get a correct and uniform FrameState.
         BeginNode p = currentGraph.add(new BeginNode());
         p.setStateAfter(frameState.duplicateWithoutStack(bci));
 
@@ -1376,7 +1376,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode x = returnKind == CiKind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
-        // TODO (gd) remove this when FloatingRead is fixed
+        // TODO (gdub) remove this when FloatingRead can handle this case
         if (Modifier.isSynchronized(method.accessFlags())) {
             append(currentGraph.add(new ValueAnchorNode(x)));
             assert !frameState.rethrowException();

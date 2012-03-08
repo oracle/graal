@@ -114,8 +114,6 @@ public class BoxingEliminationPhase extends Phase {
             return;
         }
 
-        // TODO(ls) this seems weird: there might still be references to boxNode, yet it is deleted...
-
         FrameState stateAfter = boxNode.stateAfter();
         boxNode.setStateAfter(null);
         stateAfter.safeDelete();

@@ -224,7 +224,7 @@ public abstract class Node implements Cloneable, Formattable {
         return nodeClass;
     }
 
-    // TODO(tw): Do not allow to replace with null.
+    // TODO (thomaswue): Do not allow to replace with null.
     private boolean checkReplaceWith(Node other) {
         assert assertFalse(other == this, "cannot replace a node with itself");
         assert assertFalse(isDeleted(), "cannot replace deleted node");

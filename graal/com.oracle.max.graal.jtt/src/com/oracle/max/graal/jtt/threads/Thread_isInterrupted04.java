@@ -28,8 +28,8 @@ import org.junit.*;
  */
 
 // Interrupted while running, do nothing, just set the flag and continue
-// (tw) This test will exercise deoptimization on HotSpot, because a volatile unloaded field is accessed.
-// (tw) The temporary result variable is needed, because in order to query the isInterrupted flag, the thread must be alive.
+// (thomaswue) This test will exercise deoptimization on HotSpot, because a volatile unloaded field is accessed.
+// (thomaswue) The temporary result variable is needed, because in order to query the isInterrupted flag, the thread must be alive.
 public class Thread_isInterrupted04 {
 
     public static boolean test() throws InterruptedException {

@@ -372,7 +372,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             }
 
             final double normalSize;
-            // TODO(ls) get rid of this magic, it's here to emulate the old behavior for the time being
+            // TODO (lstadler) get rid of this magic, it's here to emulate the old behavior for the time being
             if (ratio < 0.01) {
                 ratio = 0.01;
             }

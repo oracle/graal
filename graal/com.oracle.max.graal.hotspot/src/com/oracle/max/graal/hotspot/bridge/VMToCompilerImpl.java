@@ -198,8 +198,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     public void shutdownCompiler() throws Throwable {
-// compiler.getCompiler().context.print();
-        // TODO(tw): Print context results.
+        // compiler.getCompiler().context.print();
+        // TODO (thomaswue): Print context results.
         compileQueue.shutdown();
 
         if (Debug.isEnabled()) {

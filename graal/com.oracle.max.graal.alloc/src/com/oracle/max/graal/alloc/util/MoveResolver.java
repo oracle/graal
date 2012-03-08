@@ -264,7 +264,7 @@ public abstract class MoveResolver {
 
     private void insertExchange(Location from, Location to) {
         Debug.log("mr      XCHG %s, %s", from, to);
-        // TODO create XCHG instruction and use it here
+        // TODO (cwimmer) create XCHG instruction and use it here
         insertionBuffer.append(insertPos, null);
         throw GraalInternalError.unimplemented();
     }

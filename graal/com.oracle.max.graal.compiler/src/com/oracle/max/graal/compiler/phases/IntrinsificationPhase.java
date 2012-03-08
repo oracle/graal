@@ -69,7 +69,7 @@ public class IntrinsificationPhase extends Phase {
     private static StructuredGraph getIntrinsicGraph(Invoke invoke, RiResolvedMethod target, GraalRuntime runtime) {
         StructuredGraph intrinsicGraph = (StructuredGraph) target.compilerStorage().get(Graph.class);
         if (intrinsicGraph == null) {
-            // TODO (ph) remove once all intrinsics are available via RiMethod
+            // TODO (ph) remove once all intrinsics are available via compilerStorage
             intrinsicGraph = runtime.intrinsicGraph(invoke.stateAfter().method(), invoke.bci(), target, invoke.callTarget().arguments());
         }
         return intrinsicGraph;

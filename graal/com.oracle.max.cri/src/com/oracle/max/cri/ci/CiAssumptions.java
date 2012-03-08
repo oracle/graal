@@ -204,7 +204,7 @@ public final class CiAssumptions implements Serializable, Iterable<CiAssumptions
      */
     @SuppressWarnings("static-method")
     public boolean recordNoFinalizableSubclassAssumption(RiResolvedType receiverType) {
-        // TODO(tw): Record that assumption correctly.
+        // TODO (thomaswue): Record that assumption correctly.
         return false;
     }
 

@@ -44,9 +44,7 @@ public class DoubleSnippets implements SnippetsInterface {
         if (value != value) {
             return NAN_RAW_LONG_BITS;
         } else {
-            @JavacBug(id = 6995200)
-            Long result = ConvertNode.convert(ConvertNode.Op.MOV_D2L, value);
-            return result;
+            return doubleToRawLongBits(value);
         }
     }
 

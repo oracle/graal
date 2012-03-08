@@ -666,7 +666,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @SuppressWarnings("unused")
     protected void preGCWriteBarrier(CiValue addrOpr, boolean patch, LIRDebugInfo info) {
-        // TODO(tw): Implement this.
+        // TODO (thomaswue): Implement this.
     }
 
 
@@ -924,7 +924,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         CiValue destinationAddress = null;
         if (!target().invokeSnippetAfterArguments) {
-            // TODO This is the version currently necessary for Maxine: since the invokeinterface-snippet uses a division, it
+            // This is the version currently necessary for Maxine: since the invokeinterface-snippet uses a division, it
             // destroys rdx, which is also used to pass a parameter.  Therefore, the snippet must be before the parameters are assigned to their locations.
             LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()));
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
@@ -938,7 +938,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         List<CiValue> argList = visitInvokeArguments(cc, callTarget.arguments());
 
         if (target().invokeSnippetAfterArguments) {
-            // TODO This is the version currently active for HotSpot.
+            // This is the version currently active for HotSpot.
             LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), null, null);
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
@@ -1035,9 +1035,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         LIRDebugInfo info = null;
         FrameState stateAfter = x.stateAfter();
         if (stateAfter != null) {
-            // TODO change back to stateBeforeReturn() when RuntimeCallNode uses a CallTargetNode
-            // (cwi) I made the code that modifies the operand stack conditional. My scenario: runtime calls to, e.g.,
-            // CreateNullPointerException have no equivalent in the bytecodes, so there is in invoke bytecode.
+            // (cwimmer) I made the code that modifies the operand stack conditional. My scenario: runtime calls to, e.g.,
+            // CreateNullPointerException have no equivalent in the bytecodes, so there is no invoke bytecode.
             // Therefore, the result of the runtime call was never pushed to the stack, and we cannot pop it here.
             FrameState stateBeforeReturn = stateAfter;
             if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == x) ||

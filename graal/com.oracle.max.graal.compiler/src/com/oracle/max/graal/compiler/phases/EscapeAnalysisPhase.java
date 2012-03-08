@@ -301,7 +301,7 @@ public class EscapeAnalysisPhase extends Phase {
 
     @SuppressWarnings("unused")
     private static void completeAnalysis(StructuredGraph graph) {
-        // TODO(ls): debugging code
+        // TODO (lstadler): debugging code
 
         TTY.println("================================================================");
         for (Node node : graph.getNodes()) {

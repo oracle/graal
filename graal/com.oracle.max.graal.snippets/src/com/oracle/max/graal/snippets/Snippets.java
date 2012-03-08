@@ -126,7 +126,7 @@ public class Snippets {
                     new CanonicalizerPhase(target, runtime, null).apply(graph);
                 }
 
-                // TODO (gd) remove when we have safepoint polling elimination
+                // TODO (gdub) remove when we have good safepoint polling elimination
                 for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
                     end.setSafepointPolling(false);
                 }

@@ -91,7 +91,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
         @Override
         public LIRInstruction createExchange(CiValue input1, CiValue input2) {
-            // TODO implement XCHG operation for LIR
+            // TODO (cwimmer) implement XCHG operation for LIR
             return null;
         }
     }
@@ -562,7 +562,7 @@ public class AMD64LIRGenerator extends LIRGenerator {
         append(new NullCheckOp(value, info));
     }
 
-    // TODO The CompareAndSwapNode in its current form needs to be lowered to several Nodes before code generation to separate three parts:
+    // TODO (cwimmer) The CompareAndSwapNode in its current form needs to be lowered to several Nodes before code generation to separate three parts:
     // * The write barriers (and possibly read barriers) when accessing an object field
     // * The distinction of returning a boolean value (semantic similar to a BooleanNode to be used as a condition?) or the old value being read
     // * The actual compare-and-swap

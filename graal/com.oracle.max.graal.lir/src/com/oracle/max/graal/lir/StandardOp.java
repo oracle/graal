@@ -105,7 +105,7 @@ public class StandardOp {
      * When the LIR is constructed, the last operation of every block must implement this interface. After
      * register allocation, unnecessary jumps can be deleted.
      *
-     * TODO Currently, a block can also end with an XIR operation.
+     * TODO (cwimmer) Currently, a block can also end with an XIR operation.
      */
     public static class JumpOp extends LIRInstruction {
         private final LabelRef destination;

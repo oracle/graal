@@ -362,7 +362,7 @@ public abstract class LIRInstruction {
      * @param index The index of the operand.
      * @return The flags for the operand.
      */
-    // TODO this method will go away when we have named operands, the flags will be specified as annotations instead.
+    // TODO (cwimmer) this method will go away when we have named operands, the flags will be specified as annotations instead.
     protected abstract EnumSet<OperandFlag> flagsFor(OperandMode mode, int index);
 
     protected void verify() {

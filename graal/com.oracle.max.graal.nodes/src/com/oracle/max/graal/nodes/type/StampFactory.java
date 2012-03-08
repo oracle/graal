@@ -129,7 +129,7 @@ public class StampFactory {
     }
 
     public static Stamp exactNonNull(final RiResolvedType type) {
-        // (cwi) type can be null for certain Maxine-internal objects such as the static hub. Is this a problem here?
+        // (cwimmer) type can be null for certain Maxine-internal objects such as the static hub. Is this a problem here?
         assert type == null || type.kind(false) == CiKind.Object;
         return new BasicValueStamp(CiKind.Object, true, type, type);
     }

@@ -361,7 +361,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             }
 
 
-            // (tw) It is important to use for this runtime call the debug info AFTER the monitor enter. Otherwise the monitor object
+            // (thomaswue) It is important to use for this runtime call the debug info AFTER the monitor enter. Otherwise the monitor object
             // is not correctly garbage collected.
             final boolean useInfoAfter = true;
 

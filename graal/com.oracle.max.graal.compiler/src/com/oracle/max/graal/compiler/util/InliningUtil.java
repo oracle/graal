@@ -574,12 +574,12 @@ public class InliningUtil {
         if (callTarget.receiver().declaredType() != null) {
             RiResolvedType declared = callTarget.receiver().declaredType();
             // the invoke target might be more specific than the holder (happens after inlining: locals lose their declared type...)
-            // TODO (ls) fix this
+            // TODO (lstadler) fix this
             if (declared != null && declared.isSubtypeOf(holder)) {
                 holder = declared;
             }
         }
-        // TODO (tw) fix this
+        // TODO (thomaswue) fix this
         if (assumptions != null) {
             RiResolvedMethod concrete = holder.uniqueConcreteMethod(targetMethod);
             if (concrete != null) {

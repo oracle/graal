@@ -286,15 +286,11 @@ public class SchedulePhase extends Phase {
                 }
             }
             if (canNotMove) {
-                // (cwi) this was the assertion commented out below.  However, it is failing frequently when the
-                // scheduler is used for debug printing in early compiler phases. This was annoying during debugging
-                // when an exception breakpoint is set for assertion errors, so I changed it to a bailout.
                 if (b.getEndNode() instanceof ControlSplitNode) {
                     throw new GraalInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").
                     addContext(lastSorted).
                     addContext(b.getEndNode());
                 }
-                //assert !(b.lastNode() instanceof ControlSplitNode);
 
                 //b.setLastNode(lastSorted);
             } else {
@@ -308,11 +304,6 @@ public class SchedulePhase extends Phase {
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {
         if (i == null || map.isMarked(i) || cfg.getNodeToBlock().get(i) != b || i instanceof PhiNode || i instanceof LocalNode) {
             return;
-        }
-
-        if (i instanceof WriteNode) {
-            // TODO(tw): Make sure every ReadNode that is connected to the same memory state is executed before every write node.
-            // WriteNode wn = (WriteNode) i;
         }
 
         FrameState state = null;

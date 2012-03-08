@@ -60,7 +60,7 @@ public class LoweringPhase extends Phase {
 
             @Override
             public Node createGuard(Node condition) {
-                // TODO(tw): Explain why this must not be called on floating nodes.
+                // TODO (thomaswue): Docuemnt why this must not be called on floating nodes.
                 throw new UnsupportedOperationException();
             }
         };
