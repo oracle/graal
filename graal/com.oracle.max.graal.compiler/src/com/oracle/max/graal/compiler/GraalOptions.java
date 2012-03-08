@@ -129,6 +129,7 @@ public final class GraalOptions {
     // Other printing settings
     public static boolean PrintQueue                         = ____;
     public static boolean PrintCompilation                   = ____;
+    public static boolean PrintProfilingInformation          = ____;
     public static boolean PrintXirTemplates                  = ____;
     public static boolean PrintIRWithLIR                     = ____;
     public static boolean PrintAssembly                      = ____;

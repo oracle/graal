@@ -48,7 +48,11 @@ public class HotSpotDebugConfig implements DebugConfig {
         this.timerFilter = timerFilter;
         this.dumpFilter = dumpFilter;
         this.methodFilter = methodFilter == null ? null : methodFilter.split(",");
-        dumpHandlers.add(new IdealGraphPrinterDumpHandler(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort));
+        if (GraalOptions.PrintIdealGraphFile) {
+            dumpHandlers.add(new IdealGraphPrinterDumpHandler());
+        } else {
+            dumpHandlers.add(new IdealGraphPrinterDumpHandler(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort));
+        }
         dumpHandlers.add(new CFGPrinterObserver());
     }
 

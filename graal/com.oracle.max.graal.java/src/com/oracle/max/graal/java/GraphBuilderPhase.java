@@ -152,6 +152,10 @@ public final class GraphBuilderPhase extends Phase {
             log.println("Compiling " + method);
         }
 
+        if (GraalOptions.PrintProfilingInformation) {
+            method.dumpProfile();
+        }
+
         // compute the block map, setup exception handlers and get the entrypoint(s)
         BciBlockMapping blockMap = createBlockMap();
         this.canTrapBitSet = blockMap.canTrap;
@@ -531,7 +535,11 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genGoto() {
-        appendGoto(createTarget(currentBlock.successors.get(0), frameState));
+        double probability = profilingInfo.getBranchTakenProbability(bci());
+        if (probability < 0) {
+            probability = 1;
+        }
+        appendGoto(createTarget(probability, currentBlock.successors.get(0), frameState));
         assert currentBlock.normalSuccessors == 1;
     }
 
@@ -1188,6 +1196,15 @@ public final class GraphBuilderPhase extends Phase {
         return x;
     }
 
+    private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
+        assert probability >= 0 && probability <= 1;
+        if (probability == 0 && config.useBranchPrediction()) {
+            return currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+        } else {
+            return createTarget(block, stateAfter);
+        }
+    }
+
     private FixedNode createTarget(Block block, FrameStateBuilder stateAfter) {
         assert block != null && stateAfter != null;
         assert !block.isExceptionEntry || stateAfter.stackSize() == 1;
@@ -1255,22 +1272,13 @@ public final class GraphBuilderPhase extends Phase {
      * deoptimizes immediately.
      */
     private BeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
-        assert probability >= 0 && probability <= 1;
-        if (probability == 0) {
-            FrameStateBuilder state = stateAfter.copy();
-            state.clearNonLiveLocals(block.localsLiveIn);
-
-            BeginNode begin = currentGraph.add(new BeginNode());
-            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
-            begin.setNext(deopt);
-            begin.setStateAfter(state.create(block.startBci));
-            return begin;
-        }
-
-        FixedNode target = createTarget(block, stateAfter);
+        FixedNode target = createTarget(probability, block, stateAfter);
         assert !(target instanceof BeginNode);
         BeginNode begin = currentGraph.add(new BeginNode());
         begin.setNext(target);
+
+        assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) :
+            "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
 
