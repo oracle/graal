@@ -619,13 +619,13 @@ public class InliningUtil {
                 } else {
                     invoke.setMegamorph(true);
                     if (GraalOptions.InlinePolymorphicCalls && notRecordedTypeProbability == 0 || GraalOptions.InlineMegamorphicCalls && notRecordedTypeProbability > 0) {
-                        // TODO (ch) inlining of multiple methods should work differently
+                        // TODO (chaeubl) inlining of multiple methods should work differently
                         // 1. check which methods can be inlined
                         // 2. for those methods, use weight and probability to compute which of them should be inlined
                         // 3. do the inlining
                         //    a) all seen methods can be inlined -> do so and guard with deopt
                         //    b) some methods can be inlined -> inline them and fall back to invocation if violated
-                        // TODO (ch) sort types by probability
+                        // TODO (chaeubl) sort types by probability
 
                         // determine concrete methods and map type to specific method
                         ArrayList<RiResolvedMethod> concreteMethods = new ArrayList<>();

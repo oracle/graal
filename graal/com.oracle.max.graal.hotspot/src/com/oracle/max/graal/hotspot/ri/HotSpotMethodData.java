@@ -43,7 +43,7 @@ public final class HotSpotMethodData extends CompilerObject {
         config = CompilerImpl.getInstance().getConfig();
     }
 
-    // TODO (ch) use same logic as in NodeClass?
+    // TODO (chaeubl) use same logic as in NodeClass?
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(RiExceptionSeen.FALSE);
     private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(RiExceptionSeen.NOT_SUPPORTED);

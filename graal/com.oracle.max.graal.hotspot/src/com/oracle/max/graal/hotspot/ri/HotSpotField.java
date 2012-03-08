@@ -79,7 +79,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
             return constant;
         } else {
             assert !Modifier.isStatic(accessFlags);
-            // TODO (ch) HotSpot does not trust final non-static fields (see ciField.cpp)
+            // TODO (chaeubl) HotSpot does not trust final non-static fields (see ciField.cpp)
             if (Modifier.isFinal(accessFlags())) {
                 return this.kind(false).readUnsafeConstant(receiver.asObject(), offset);
             }

@@ -28,7 +28,7 @@ import com.oracle.max.graal.nodes.*;
 import com.oracle.max.graal.nodes.spi.*;
 import com.oracle.max.graal.nodes.type.*;
 
-// TODO (ch) this should be a FloatingNode but Lowering is not possible in that case
+// TODO (chaeubl) this should be a FloatingNode but Lowering is not possible in that case
 public final class ReadHubNode extends FixedWithNextNode implements Lowerable {
     @Input private ValueNode object;
 
