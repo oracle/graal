@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -78,6 +79,7 @@ public class GraalCompiler {
     }
 
     public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final PhasePlan plan) {
+        assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
