@@ -47,7 +47,6 @@ public class GraphBuilderConfiguration {
         return useBranchPrediction;
     }
 
-
     public void setSkippedExceptionTypes(RiResolvedType[] skippedExceptionTypes) {
         this.skippedExceptionTypes = skippedExceptionTypes;
     }
@@ -73,7 +72,7 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(GraalOptions.UseBranchPrediction, ResolvePolicy.Default, plan);
+        return new GraphBuilderConfiguration(true, ResolvePolicy.Default, plan);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault() {
