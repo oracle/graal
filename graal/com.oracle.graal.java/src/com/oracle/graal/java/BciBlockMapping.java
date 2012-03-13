@@ -380,7 +380,7 @@ public final class BciBlockMapping {
                 case SALOAD:
                 case PUTFIELD:
                 case GETFIELD: {
-                    if (GraalOptions.AllowExplicitExceptionChecks && profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
+                    if (GraalOptions.AllowExplicitExceptionChecks && (!GraalOptions.UseExceptionProbability || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE)) {
                         canTrap.set(bci);
                     }
                 }
