@@ -30,6 +30,7 @@ import java.util.concurrent.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.java.bytecode.*;
 
 /**
@@ -213,12 +214,13 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public RiProfilingInfo profilingInfo() {
-        if (methodData == null) {
+        if (GraalOptions.UseProfilingInformation && methodData == null) {
             methodData = compiler.getVMEntries().RiMethod_methodData(this);
         }
 
         if (methodData == null) {
-            return new HotSpotNoProfilingInfo(compiler);
+            // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in case of a deoptimization.
+            return BaseProfilingInfo.get(RiExceptionSeen.FALSE);
         } else {
             return new HotSpotProfilingInfo(compiler, methodData);
         }

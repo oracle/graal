@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -79,7 +79,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract CiValue emitConvert(ConvertNode.Op opcode, CiValue inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOn(Condition of, DeoptAction action, Object deoptInfo);
+    public abstract void emitDeoptimizeOn(Condition of, RiDeoptAction action, Object deoptInfo);
     public abstract CiValue emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args);
 
     public abstract void emitIf(IfNode i);

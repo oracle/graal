@@ -423,7 +423,7 @@ public class HotSpotRuntime implements GraalRuntime {
     @Override
     public CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph) {
         final PhasePlan plan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault());
         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         return compiler.getCompiler().compileMethod(method, graph, -1, plan);
     }

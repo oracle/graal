@@ -42,7 +42,6 @@ import com.oracle.graal.java.BciBlockMapping.Block;
 import com.oracle.graal.java.BciBlockMapping.ExceptionBlock;
 import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -106,11 +105,6 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-
-    public GraphBuilderPhase(RiRuntime runtime) {
-        this(runtime, GraphBuilderConfiguration.getDefault());
-    }
-
     public GraphBuilderPhase(RiRuntime runtime, GraphBuilderConfiguration config) {
         this.config = config;
         this.runtime = runtime;
@@ -139,7 +133,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private BciBlockMapping createBlockMap() {
-        BciBlockMapping map = new BciBlockMapping(method, config.useBranchPrediction());
+        BciBlockMapping map = new BciBlockMapping(method);
         map.build();
         Debug.dump(map, CiUtil.format("After block building %f %R %H.%n(%P)", method));
 
@@ -328,7 +322,7 @@ public final class GraphBuilderPhase extends Phase {
             if (riType instanceof RiResolvedType) {
                 frameState.push(CiKind.Object, append(ConstantNode.forCiConstant(((RiResolvedType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
             } else {
-                append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+                append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
                 frameState.push(CiKind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
             }
         } else if (con instanceof CiConstant) {
@@ -697,7 +691,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode), currentGraph)));
         } else {
             BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
-            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile));
+            DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile));
             IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new NullCheckNode(object, true)), trueSucc, deopt, 1));
             append(ifNode);
             lastInstr = trueSucc;
@@ -711,7 +705,7 @@ public final class GraphBuilderPhase extends Phase {
             NewInstanceNode n = currentGraph.add(new NewInstanceNode((RiResolvedType) type));
             frameState.apush(append(n));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+            append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
     }
@@ -752,7 +746,7 @@ public final class GraphBuilderPhase extends Phase {
             NewArrayNode n = currentGraph.add(new NewObjectArrayNode((RiResolvedType) type, length));
             frameState.apush(append(n));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+            append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
 
@@ -769,7 +763,7 @@ public final class GraphBuilderPhase extends Phase {
             FixedWithNextNode n = currentGraph.add(new NewMultiArrayNode((RiResolvedType) type, dims));
             frameState.apush(append(n));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+            append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
     }
@@ -783,7 +777,7 @@ public final class GraphBuilderPhase extends Phase {
             LoadFieldNode load = currentGraph.add(new LoadFieldNode(receiver, (RiResolvedField) field));
             appendOptimizedLoadField(kind, load);
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+            append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
             frameState.push(kind.stackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
         }
     }
@@ -884,7 +878,7 @@ public final class GraphBuilderPhase extends Phase {
             StoreFieldNode store = currentGraph.add(new StoreFieldNode(receiver, (RiResolvedField) field, value));
             appendOptimizedStoreField(store);
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+            append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
         }
     }
 
@@ -926,7 +920,7 @@ public final class GraphBuilderPhase extends Phase {
         if (initialized) {
             return appendConstant(((RiResolvedType) holder).getEncoding(representation));
         } else {
-            append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+            append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
             return null;
         }
     }
@@ -987,7 +981,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genInvokeDeopt(RiMethod unresolvedTarget, boolean withReceiver) {
-        append(currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateRecompile)));
+        append(currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
         frameState.popArguments(unresolvedTarget.signature().argumentSlots(withReceiver), unresolvedTarget.signature().argumentCount(withReceiver));
         CiKind kind = unresolvedTarget.signature().returnKind(false);
         if (kind != CiKind.Void) {
@@ -1024,7 +1018,7 @@ public final class GraphBuilderPhase extends Phase {
     private void appendInvoke(InvokeKind invokeKind, RiResolvedMethod targetMethod, ValueNode[] args) {
         CiKind resultType = targetMethod.signature().returnKind(false);
         if (GraalOptions.DeoptALot) {
-            DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(DeoptAction.None));
+            DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(RiDeoptAction.None));
             deoptimize.setMessage("invoke " + targetMethod.name());
             append(deoptimize);
             frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, currentGraph));
@@ -1198,8 +1192,8 @@ public final class GraphBuilderPhase extends Phase {
 
     private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1;
-        if (probability == 0 && config.useBranchPrediction()) {
-            return currentGraph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+        if (probability == 0 && GraalOptions.RemoveNeverExecutedCode) {
+            return currentGraph.add(new DeoptimizeNode(RiDeoptAction.InvalidateReprofile));
         } else {
             return createTarget(block, stateAfter);
         }

@@ -299,7 +299,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 public void run() {
                     try {
                         final PhasePlan plan = getDefaultPhasePlan();
-                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
+                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault());
                         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                         long startTime = System.nanoTime();
                         int index = compiledMethodCount++;
@@ -330,9 +330,13 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         compiler.getRuntime().installMethod(method, result);
                     } catch (CiBailout bailout) {
                         Debug.metric("Bailouts").increment();
-                        if (GraalOptions.ExitVMOnBailout) {
+                        if (GraalOptions.PrintBailouts || GraalOptions.ExitVMOnBailout) {
+                            TTY.println("WARN: Compilation bailout");
                             bailout.printStackTrace(TTY.cachedOut);
-                            System.exit(-1);
+
+                            if (GraalOptions.ExitVMOnBailout) {
+                                System.exit(-1);
+                            }
                         }
                     } catch (Throwable t) {
                         if (GraalOptions.ExitVMOnException) {

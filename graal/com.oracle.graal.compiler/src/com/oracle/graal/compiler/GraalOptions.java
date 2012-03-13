@@ -140,6 +140,7 @@ public final class GraalOptions {
     public static int     TraceLIRGeneratorLevel             = 0;
     public static boolean TraceEscapeAnalysis                = ____;
     public static int     TraceBytecodeParserLevel           = 0;
+    public static boolean PrintBailouts                      = true;
     public static boolean ExitVMOnBailout                    = ____;
     public static boolean ExitVMOnException                  = true;
 
@@ -148,7 +149,8 @@ public final class GraalOptions {
 
     // Code generator settings
     public static boolean PropagateTypes                     = ____;
-    public static boolean UseBranchPrediction                = true;
+    public static boolean UseProfilingInformation            = true;
+    public static boolean RemoveNeverExecutedCode            = true;
     public static boolean UseExceptionProbability            = true;
     public static boolean AllowExplicitExceptionChecks       = true;
     public static boolean OmitHotExceptionStacktrace         = ____;

@@ -198,20 +198,17 @@ public final class BciBlockMapping {
 
     public Block startBlock;
 
-    public final boolean useBranchPrediction;
-
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(RiResolvedMethod method, boolean useBranchPrediction) {
+    public BciBlockMapping(RiResolvedMethod method) {
         this.method = method;
         exceptionHandlers = method.exceptionHandlers();
         stream = new BytecodeStream(method.code());
         this.blockMap = new Block[method.codeSize()];
         this.canTrap = new BitSet(blockMap.length);
         this.blocks = new ArrayList<>();
-        this.useBranchPrediction = useBranchPrediction;
     }
 
     public RiExceptionHandler[] exceptionHandlers() {

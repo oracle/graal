@@ -24,28 +24,26 @@ package com.oracle.graal.compiler.target.amd64;
 
 import java.util.*;
 
-import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
+import com.oracle.max.asm.*;
+import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class AMD64DeoptimizationStub extends AMD64SlowPath {
     public final Label label = new Label();
     public final LIRDebugInfo info;
-    public final DeoptAction action;
+    public final RiDeoptAction action;
     public final Object deoptInfo;
 
-    public AMD64DeoptimizationStub(DeoptAction action, LIRDebugInfo info, Object deoptInfo) {
+    public AMD64DeoptimizationStub(RiDeoptAction action, LIRDebugInfo info, Object deoptInfo) {
         this.action = action;
         this.info = info;
         this.deoptInfo = deoptInfo;
     }
-
 
     private static ArrayList<Object> keepAlive = new ArrayList<>();
 
@@ -62,27 +60,8 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
             // TODO Make this an explicit calling convention instead of using a scratch register
             AMD64Call.directCall(tasm, masm, CiRuntimeCall.SetDeoptInfo, info);
         }
-        int code;
-        switch(action) {
-            case None:
-                code = 0;
-                break;
-            case Recompile:
-                code = 1;
-                break;
-            case InvalidateReprofile:
-                code = 2;
-                break;
-            case InvalidateRecompile:
-                code = 3;
-                break;
-            case InvalidateStopCompiling:
-                code = 4;
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-        masm.movq(scratch, code);
+
+        masm.movq(scratch, action.value());
      // TODO Make this an explicit calling convention instead of using a scratch register
         AMD64Call.directCall(tasm, masm, CiRuntimeCall.Deoptimize, info);
         AMD64Call.shouldNotReachHere(tasm, masm);
