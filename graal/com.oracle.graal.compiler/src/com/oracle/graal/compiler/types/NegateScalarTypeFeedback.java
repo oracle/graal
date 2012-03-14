@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.type;
+package com.oracle.graal.compiler.types;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.types.*;
 
 
-public interface Stamp {
-    boolean nonNull();
-    RiResolvedType declaredType();
-    RiResolvedType exactType();
-    CiKind kind();
-    boolean alwaysDistinct(Stamp other);
+public class NegateScalarTypeFeedback implements ScalarTypeFeedbackTool {
 
-    ScalarTypeQuery scalarType();
-    ObjectTypeQuery objectType();
+    private final ScalarTypeFeedbackTool delegate;
+
+    public NegateScalarTypeFeedback(ScalarTypeFeedbackTool delegate) {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public void constantBound(Condition condition, CiConstant constant) {
+        delegate.constantBound(condition.negate(), constant);
+    }
+
+    @Override
+    public void valueBound(Condition condition, ValueNode otherValue, ScalarTypeQuery type) {
+        delegate.valueBound(condition.negate(), otherValue, type);
+    }
+
+    @Override
+    public void setTranslated(CiConstant delta, ScalarTypeQuery old) {
+        throw new UnsupportedOperationException();
+    }
 }

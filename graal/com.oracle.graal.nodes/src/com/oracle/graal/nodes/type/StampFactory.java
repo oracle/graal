@@ -26,6 +26,9 @@ import java.util.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.types.*;
 
 
 public class StampFactory {
@@ -36,16 +39,24 @@ public class StampFactory {
         private final boolean nonNull;
         private RiResolvedType declaredType;
         private RiResolvedType exactType;
+        private final ScalarTypeQuery scalarType;
+        private final ObjectTypeQuery objectType;
 
         public BasicValueStamp(CiKind kind) {
             this(kind, false, null, null);
         }
 
         public BasicValueStamp(CiKind kind, boolean nonNull, RiResolvedType declaredType, RiResolvedType exactType) {
+            this(kind, nonNull, declaredType, exactType, null, null);
+        }
+
+        public BasicValueStamp(CiKind kind, boolean nonNull, RiResolvedType declaredType, RiResolvedType exactType, ScalarTypeQuery scalarType, ObjectTypeQuery objectType) {
             this.kind = kind;
             this.nonNull = nonNull;
             this.declaredType = declaredType;
             this.exactType = exactType;
+            this.scalarType = scalarType;
+            this.objectType = objectType;
         }
 
         @Override
@@ -87,7 +98,18 @@ public class StampFactory {
 
         @Override
         public String toString() {
-            return String.format("%c%s %s %s", kind().typeChar, nonNull ? "!" : "", declaredType == null ? "-" : declaredType.name(), exactType == null ? "-" : exactType.name());
+            StringBuilder str = new StringBuilder();
+            str.append(kind().typeChar);
+            if (nonNull || declaredType != null || exactType != null) {
+                str.append(nonNull ? "!" : "").append(' ').append(declaredType == null ? "-" : declaredType.name()).append(' ').append(exactType == null ? "-" : exactType.name());
+            }
+            if (scalarType != null) {
+                str.append(' ').append(scalarType);
+            }
+            if (objectType != null) {
+                str.append(' ').append(objectType);
+            }
+            return str.toString();
         }
 
         @Override
@@ -106,6 +128,16 @@ public class StampFactory {
                 // Both values may be null.
                 return false;
             }
+        }
+
+        @Override
+        public ScalarTypeQuery scalarType() {
+            return scalarType;
+        }
+
+        @Override
+        public ObjectTypeQuery objectType() {
+            return objectType;
         }
     }
 
@@ -128,17 +160,68 @@ public class StampFactory {
         return stampCache[kind.stackKind().ordinal()];
     }
 
+    public static Stamp forKind(CiKind kind, ScalarTypeQuery scalarTypeFeedback, ObjectTypeQuery objectTypeFeedback) {
+        if (scalarTypeFeedback == null && objectTypeFeedback == null) {
+            return forKind(kind);
+        } else {
+            return new BasicValueStamp(kind, false, null, null, scalarTypeFeedback, objectTypeFeedback);
+        }
+    }
+
+    public static final Stamp positiveInt = forInt(0, Integer.MAX_VALUE);
+
+    public static Stamp positiveInt() {
+        return positiveInt;
+    }
+
+    public static Stamp forInt(int lowerBound, int upperBound) {
+        ScalarTypeFeedbackStore scalarType = new ScalarTypeFeedbackStore(CiKind.Int, new TypeFeedbackChanged());
+        scalarType.constantBound(Condition.GE, CiConstant.forInt(lowerBound));
+        scalarType.constantBound(Condition.LE, CiConstant.forInt(upperBound));
+
+        return new BasicValueStamp(CiKind.Int, false, null, null, scalarType.query(), null);
+    }
+
+    public static Stamp forLong(long lowerBound, long upperBound) {
+        ScalarTypeFeedbackStore scalarType = new ScalarTypeFeedbackStore(CiKind.Long, new TypeFeedbackChanged());
+        scalarType.constantBound(Condition.GE, CiConstant.forLong(lowerBound));
+        scalarType.constantBound(Condition.LE, CiConstant.forLong(upperBound));
+
+        return new BasicValueStamp(CiKind.Long, false, null, null, scalarType.query(), null);
+    }
+
     public static Stamp exactNonNull(final RiResolvedType type) {
         // (cwimmer) type can be null for certain Maxine-internal objects such as the static hub. Is this a problem here?
         assert type == null || type.kind(false) == CiKind.Object;
-        return new BasicValueStamp(CiKind.Object, true, type, type);
+        ObjectTypeFeedbackStore objectType = new ObjectTypeFeedbackStore(new TypeFeedbackChanged());
+        objectType.constantBound(Condition.NE, CiConstant.NULL_OBJECT);
+        objectType.exactType(type);
+        return new BasicValueStamp(CiKind.Object, true, type, type, null, objectType.query());
+    }
+
+    public static Stamp forConstant(CiConstant value) {
+        assert value.kind != CiKind.Object;
+        if (value.kind == CiKind.Object) {
+            throw new GraalInternalError("unexpected kind: %s", value.kind);
+        } else {
+            if (value.kind == CiKind.Int) {
+                return forInt(value.asInt(), value.asInt());
+            } else if (value.kind == CiKind.Long) {
+                return forLong(value.asLong(), value.asLong());
+            }
+            return forKind(value.kind.stackKind());
+        }
     }
 
     public static Stamp forConstant(CiConstant value, RiRuntime runtime) {
-        if (runtime != null && value.kind == CiKind.Object && !value.isNull()) {
-            return exactNonNull(runtime.getTypeOf(value));
+        assert value.kind == CiKind.Object;
+        if (value.kind == CiKind.Object) {
+            ObjectTypeFeedbackStore objectType = new ObjectTypeFeedbackStore(new TypeFeedbackChanged());
+            objectType.constantBound(Condition.EQ, value);
+            RiResolvedType type = value.isNull() ? null : runtime.getTypeOf(value);
+            return new BasicValueStamp(CiKind.Object, value.isNonNull(), type, type, null, objectType.query());
         } else {
-            return forKind(value.kind.stackKind());
+            throw new GraalInternalError("CiKind.Object expected, actual kind: %s", value.kind);
         }
     }
 
