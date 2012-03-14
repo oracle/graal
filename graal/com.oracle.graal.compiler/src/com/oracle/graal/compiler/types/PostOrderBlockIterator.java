@@ -29,40 +29,81 @@ import com.oracle.graal.lir.cfg.*;
 
 public abstract class PostOrderBlockIterator {
 
-    private final BitMap visitedEndBlocks;
-    private final Deque<Block> blockQueue;
-
-    public PostOrderBlockIterator(Block start, int blockCount) {
-        visitedEndBlocks = new BitMap(blockCount);
-        blockQueue = new ArrayDeque<>();
-        blockQueue.add(start);
+    private static class MergeInfo {
+        int endsVisited;
+        int loopVisited;
     }
 
-    public void apply() {
-        while (!blockQueue.isEmpty()) {
-            Block current = blockQueue.removeLast();
-            block(current);
+    private final Deque<Block> blockQueue = new ArrayDeque<>();
+    private final Deque<Block> epochs = new ArrayDeque<>();
+    private final HashMap<Block, MergeInfo> mergeInfo = new HashMap<>();
 
-            for (int i = 0; i < current.getSuccessors().size(); i++) {
-                Block successor = current.getSuccessors().get(i);
-                if (successor.getPredecessors().size() > 1) {
-                    queueMerge(current, successor);
+    public void apply(Block start) {
+        blockQueue.add(start);
+        while (true) {
+            while (!blockQueue.isEmpty()) {
+                Block current = blockQueue.removeLast();
+                boolean queueSuccessors = true;
+                if (current.isLoopHeader()) {
+                    MergeInfo info = mergeInfo.get(current);
+//                    System.out.println("loop header: " + info.loopVisited + " " + info.endsVisited + "-" + info.epoch + " " + epoch);
+                    if (info.endsVisited == 1) {
+                        loopHeaderInitial(current);
+                    } else {
+                        info.loopVisited++;
+                        if (loopHeader(current, info.loopVisited)) {
+                            epochs.addFirst(current);
+                        }
+                        queueSuccessors = false;
+                    }
                 } else {
-                    blockQueue.addLast(successor);
+                    block(current);
+                }
+
+                if (queueSuccessors) {
+                    for (int i = 0; i < current.getSuccessors().size(); i++) {
+                        Block successor = current.getSuccessors().get(i);
+                        if (successor.getPredecessors().size() > 1) {
+                            queueMerge(successor);
+                        } else {
+                            blockQueue.addLast(successor);
+                        }
+                    }
+                }
+            }
+            if (epochs.isEmpty()) {
+                return;
+            } else {
+                Block nextEpoch = epochs.removeLast();
+
+                for (int i = 0; i < nextEpoch.getSuccessors().size(); i++) {
+                    Block successor = nextEpoch.getSuccessors().get(i);
+                    if (successor.getPredecessors().size() > 1) {
+                        queueMerge(successor);
+                    } else {
+                        blockQueue.addLast(successor);
+                    }
                 }
             }
         }
     }
 
+    protected abstract void loopHeaderInitial(Block block);
+
+    protected abstract boolean loopHeader(Block block, int loopVisitedCount);
+
     protected abstract void block(Block block);
 
-    private void queueMerge(Block end, Block merge) {
-        visitedEndBlocks.set(end.getId());
-        for (Block pred : merge.getPredecessors()) {
-            if (!visitedEndBlocks.get(pred.getId())) {
-                return;
-            }
+    private void queueMerge(Block merge) {
+        if (!mergeInfo.containsKey(merge)) {
+            mergeInfo.put(merge, new MergeInfo());
         }
-        blockQueue.addFirst(merge);
+        MergeInfo info = mergeInfo.get(merge);
+        info.endsVisited++;
+        if (merge.isLoopHeader() && info.endsVisited == 1) {
+            blockQueue.addFirst(merge);
+        } else if (info.endsVisited == merge.getPredecessors().size()) {
+            blockQueue.addFirst(merge);
+        }
     }
 }
