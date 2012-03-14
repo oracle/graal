@@ -118,7 +118,7 @@ public class PropagateTypesPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, Collection<TypeInfo> withStates) {
+        public boolean merge(MergeNode merge, List<TypeInfo> withStates) {
             if (merge.forwardEndCount() > 1) {
                 HashMap<ValueNode, PiNodeList> newPiNodes = new HashMap<>();
                 for (Entry<ValueNode, PiNodeList> entry : piNodes.entrySet()) {
@@ -148,7 +148,7 @@ public class PropagateTypesPhase extends Phase {
         }
 
         @Override
-        public void loopEnds(LoopBeginNode loop, Collection<TypeInfo> loopEndStates) {
+        public void loopEnds(LoopBeginNode loop, List<TypeInfo> loopEndStates) {
         }
 
         @Override

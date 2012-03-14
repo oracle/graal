@@ -180,7 +180,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, Collection<Probability> withStates) {
+        public boolean merge(MergeNode merge, List<Probability> withStates) {
             if (merge.forwardEndCount() > 1) {
                 HashSet<LoopInfo> intersection = new HashSet<>(loops);
                 for (Probability other : withStates) {
@@ -223,7 +223,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public void loopEnds(LoopBeginNode loopBegin, Collection<Probability> loopEndStates) {
+        public void loopEnds(LoopBeginNode loopBegin, List<Probability> loopEndStates) {
             assert loopInfo != null;
             List<LoopEndNode> loopEnds = loopBegin.orderedLoopEnds();
             int i = 0;
@@ -291,7 +291,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, Collection<LoopCount> withStates) {
+        public boolean merge(MergeNode merge, List<LoopCount> withStates) {
             assert merge.forwardEndCount() == withStates.size() + 1;
             if (merge.forwardEndCount() > 1) {
                 Set<LoopInfo> loops = mergeLoops.get(merge);
@@ -311,7 +311,7 @@ public class ComputeProbabilityPhase extends Phase {
         }
 
         @Override
-        public void loopEnds(LoopBeginNode loopBegin, Collection<LoopCount> loopEndStates) {
+        public void loopEnds(LoopBeginNode loopBegin, List<LoopCount> loopEndStates) {
             // nothing to do...
         }
 
