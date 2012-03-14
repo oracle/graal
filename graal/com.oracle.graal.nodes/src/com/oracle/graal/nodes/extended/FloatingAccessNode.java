@@ -65,4 +65,11 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
         this.guard = guard;
         this.location = location;
     }
+
+    public FloatingAccessNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp, Node... dependencies) {
+        super(stamp, dependencies);
+        this.object = object;
+        this.guard = guard;
+        this.location = location;
+    }
 }

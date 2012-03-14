@@ -27,7 +27,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class FloatingNode extends ValueNode implements Node.ValueNumberable {
+
     public FloatingNode(Stamp stamp) {
         super(stamp);
+    }
+
+    public FloatingNode(Stamp stamp, Node... dependencies) {
+        super(stamp, dependencies);
     }
 }

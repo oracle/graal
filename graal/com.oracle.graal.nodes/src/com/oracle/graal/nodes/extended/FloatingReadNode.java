@@ -32,15 +32,8 @@ import com.oracle.graal.nodes.type.*;
 
 public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
-    @Input private final NodeInputList<Node> dependencies;
-
-    public NodeInputList<Node> dependencies() {
-        return dependencies;
-    }
-
     public FloatingReadNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp, Node... dependencies) {
-        super(object, guard, location, stamp);
-        this.dependencies = new NodeInputList<>(this, dependencies);
+        super(object, guard, location, stamp, dependencies);
     }
 
     @Override

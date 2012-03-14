@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -30,6 +31,10 @@ public abstract class BooleanNode extends FloatingNode {
 
     public BooleanNode(Stamp stamp) {
         super(stamp);
+    }
+
+    public BooleanNode(Stamp stamp, Node... dependencies) {
+        super(stamp, dependencies);
     }
 
     public abstract BooleanNode negate();
