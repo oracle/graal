@@ -26,9 +26,10 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 
 @NodeInfo(shortName = "+")
-public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
+public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider {
 
     public IntegerAddNode(CiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
@@ -92,5 +93,14 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
             op2 = op;
         }
         gen.setResult(this, gen.emitAdd(op1, op2));
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        if (y().isConstant() && !x().isConstant()) {
+            tool.addScalar(this).setTranslated(y().asConstant(), tool.queryScalar(x()));
+        } else if (x().isConstant() && !y().isConstant()) {
+            tool.addScalar(this).setTranslated(x().asConstant(), tool.queryScalar(y()));
+        }
     }
 }

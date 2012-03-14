@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable {
+public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType {
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
@@ -47,6 +49,11 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return condition;
     }
 
+    public void setCondition(BooleanNode x) {
+        updateUsages(condition, x);
+        condition = x;
+    }
+
     public GuardNode(BooleanNode condition, FixedNode anchor) {
         super(StampFactory.illegal());
         this.condition = condition;
@@ -63,10 +70,24 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         if (condition() instanceof ConstantNode) {
             ConstantNode c = (ConstantNode) condition();
             if (c.asConstant().asBoolean()) {
+                if (!dependencies().isEmpty()) {
+                    for (Node usage : usages()) {
+                        if (usage instanceof ValueNode) {
+                            ((ValueNode) usage).dependencies().addAll(dependencies());
+                        }
+                    }
+                }
                 this.replaceAtUsages(null);
                 return null;
             }
         }
         return this;
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        if (condition instanceof ConditionalTypeFeedbackProvider) {
+            ((ConditionalTypeFeedbackProvider) condition).typeFeedback(tool);
+        }
     }
 }

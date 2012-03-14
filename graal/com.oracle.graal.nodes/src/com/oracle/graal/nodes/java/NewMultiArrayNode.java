@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object
  * array.
  */
-public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLowerable {
+public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLowerable, TypeFeedbackProvider {
 
     @Input private final NodeInputList<ValueNode> dimensions;
     @Data private final RiResolvedType type;
@@ -66,5 +69,13 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
 
     public RiResolvedType type() {
         return type;
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        for (ValueNode length : dimensions) {
+            assert length.kind() == CiKind.Int;
+            tool.addScalar(length).constantBound(Condition.GE, CiConstant.INT_0);
+        }
     }
 }
