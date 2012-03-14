@@ -141,13 +141,13 @@ public enum Condition {
         switch (this) {
             case EQ: return other == LE || other == GE || other == BE || other == AE;
             case NE: return false;
-            case LT: return other == LE;
+            case LT: return other == LE || other == NE;
             case LE: return false;
-            case GT: return other == GE;
+            case GT: return other == GE || other == NE;
             case GE: return false;
-            case BT: return other == BE;
+            case BT: return other == BE || other == NE;
             case BE: return false;
-            case AT: return other == AE;
+            case AT: return other == AE || other == NE;
             case AE: return false;
             case OF: return false;
             case NOF: return false;
