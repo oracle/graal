@@ -26,14 +26,14 @@ import static com.oracle.graal.java.bytecode.Bytecodes.*;
 
 import java.util.*;
 
-
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow
@@ -183,27 +183,23 @@ public final class BciBlockMapping {
      * The blocks found in this method, in reverse postorder.
      */
     public final List<Block> blocks;
-
     public final RiResolvedMethod method;
-
-    private final BytecodeStream stream;
-
-    private final RiExceptionHandler[] exceptionHandlers;
-
-    private Block[] blockMap;
-
     public final BitSet canTrap;
-
     public boolean hasJsrBytecodes;
-
     public Block startBlock;
+
+    private final ProfilingInfoConfiguration profilingInfoConfig;
+    private final BytecodeStream stream;
+    private final RiExceptionHandler[] exceptionHandlers;
+    private Block[] blockMap;
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(RiResolvedMethod method) {
+    public BciBlockMapping(RiResolvedMethod method, ProfilingInfoConfiguration profilingInfoConfig) {
         this.method = method;
+        this.profilingInfoConfig = profilingInfoConfig;
         exceptionHandlers = method.exceptionHandlers();
         stream = new BytecodeStream(method.code());
         this.blockMap = new Block[method.codeSize()];
@@ -380,8 +376,10 @@ public final class BciBlockMapping {
                 case SALOAD:
                 case PUTFIELD:
                 case GETFIELD: {
-                    if (GraalOptions.AllowExplicitExceptionChecks && (!GraalOptions.UseExceptionProbability || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE)) {
-                        canTrap.set(bci);
+                    if (GraalOptions.AllowExplicitExceptionChecks) {
+                        if (!GraalOptions.UseExceptionProbability || !profilingInfoConfig.useExceptionProbability() || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
+                            canTrap.set(bci);
+                        }
                     }
                 }
             }

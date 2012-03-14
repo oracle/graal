@@ -33,6 +33,7 @@ import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
@@ -41,6 +42,7 @@ import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.*;
 
 /**
@@ -122,10 +124,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 @Override
                 public void run() {
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
+                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets());
                 }
             });
 
@@ -298,9 +300,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
                 public void run() {
                     try {
-                        final PhasePlan plan = getDefaultPhasePlan();
-                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault());
-                        plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+                        final ProfilingInfoConfiguration profilingInfoConfig = new ProfilingInfoConfiguration(true, true, true);
+                        final PhasePlan plan = createHotSpotSpecificPhasePlan(profilingInfoConfig);
                         long startTime = System.nanoTime();
                         int index = compiledMethodCount++;
                         final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
@@ -315,7 +316,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                             result = Debug.scope("Compiling", new Callable<CiTargetMethod>() {
                                 @Override
                                 public CiTargetMethod call() throws Exception {
-                                    return compiler.getCompiler().compileMethod(method, -1, plan);
+                                    StructuredGraph graph = new StructuredGraph(method);
+                                    return compiler.getCompiler().compileMethod(method, graph, -1, plan, profilingInfoConfig);
                                 }
                             });
                         } finally {
@@ -448,8 +450,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         return CiConstant.forObject(object);
     }
 
-    private PhasePlan getDefaultPhasePlan() {
+    private PhasePlan createHotSpotSpecificPhasePlan(ProfilingInfoConfiguration profilingInfoConfig) {
         PhasePlan phasePlan = new PhasePlan();
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), profilingInfoConfig);
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         if (GraalOptions.Intrinsify) {
             phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }

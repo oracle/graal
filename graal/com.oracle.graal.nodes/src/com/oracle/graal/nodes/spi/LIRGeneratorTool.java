@@ -79,12 +79,12 @@ public abstract class LIRGeneratorTool {
 
     public abstract CiValue emitConvert(ConvertNode.Op opcode, CiValue inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOn(Condition of, RiDeoptAction action, Object deoptInfo);
+    public abstract void emitDeoptimizeOn(Condition of, RiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
     public abstract CiValue emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args);
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp);
+    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);

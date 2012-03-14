@@ -28,6 +28,7 @@ import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -84,7 +85,7 @@ public class IfBoxingEliminationTest extends GraphTest {
                 for (Invoke invoke : graph.getInvokes()) {
                     hints.add(invoke);
                 }
-                new InliningPhase(null, runtime(), hints, null, phasePlan).apply(graph);
+                new InliningPhase(null, runtime(), hints, null, phasePlan, ProfilingInfoConfiguration.ALL).apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
                 new PhiStampPhase().apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);

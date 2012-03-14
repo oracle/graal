@@ -31,16 +31,18 @@ import com.oracle.max.cri.ri.*;
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable {
 
     @Input private final NodeInputList<BooleanNode> conditions;
+    @Data  private final RiDeoptReason deoptReason;
 
-    public FixedGuardNode(BooleanNode condition) {
+    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason) {
         super(StampFactory.illegal());
         this.conditions = new NodeInputList<>(this, new BooleanNode[] {condition});
+        this.deoptReason = deoptReason;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
         for (BooleanNode condition : conditions()) {
-            gen.emitGuardCheck(condition);
+            gen.emitGuardCheck(condition, deoptReason);
         }
     }
 
@@ -64,7 +66,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                     if (next != null) {
                         tool.deleteBranch(next);
                     }
-                    setNext(graph().add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile)));
+                    setNext(graph().add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, deoptReason)));
                     return;
                 }
             }
@@ -78,7 +80,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     public void lower(CiLoweringTool tool) {
         AnchorNode newAnchor = graph().add(new AnchorNode());
         for (BooleanNode b : conditions) {
-            newAnchor.addGuard((GuardNode) tool.createGuard(b));
+            newAnchor.addGuard((GuardNode) tool.createGuard(b, deoptReason));
         }
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, newAnchor);
     }

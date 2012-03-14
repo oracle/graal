@@ -37,10 +37,12 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
     public final Label label = new Label();
     public final LIRDebugInfo info;
     public final RiDeoptAction action;
+    public final RiDeoptReason reason;
     public final Object deoptInfo;
 
-    public AMD64DeoptimizationStub(RiDeoptAction action, LIRDebugInfo info, Object deoptInfo) {
+    public AMD64DeoptimizationStub(RiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
         this.action = action;
+        this.reason = reason;
         this.info = info;
         this.deoptInfo = deoptInfo;
     }
@@ -61,9 +63,16 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
             AMD64Call.directCall(tasm, masm, CiRuntimeCall.SetDeoptInfo, info);
         }
 
-        masm.movq(scratch, action.value());
-     // TODO Make this an explicit calling convention instead of using a scratch register
+        masm.movq(scratch, encodeDeoptActionAndReason(action, reason));
+        // TODO Make this an explicit calling convention instead of using a scratch register
         AMD64Call.directCall(tasm, masm, CiRuntimeCall.Deoptimize, info);
         AMD64Call.shouldNotReachHere(tasm, masm);
+    }
+
+    public static int encodeDeoptActionAndReason(RiDeoptAction action, RiDeoptReason reason) {
+        int a = action.value();
+        int r = reason.value();
+        assert NumUtil.isUShort(a) && NumUtil.isUShort(r) : "both values are encoded in one uint";
+        return (a << 16) | r;
     }
 }
