@@ -27,12 +27,13 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends TypeCheckNode implements Canonicalizable, LIRLowerable {
+public final class InstanceOfNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
     @Data private final boolean negated;
 
@@ -96,5 +97,32 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
     @Override
     public BooleanNode negate() {
         return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), hints(), hintsExact(), !negated));
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        if (negated) {
+            tool.addObject(object()).notDeclaredType(targetClass(), true);
+        } else {
+            tool.addObject(object()).declaredType(targetClass(), true);
+        }
+    }
+
+    @Override
+    public Result canonical(TypeFeedbackTool tool) {
+        ObjectTypeQuery query = tool.queryObject(object());
+        if (query.constantBound(Condition.EQ, CiConstant.NULL_OBJECT)) {
+            return new Result(ConstantNode.forBoolean(negated, graph()), query);
+        } else if (targetClass() != null) {
+            if (query.notDeclaredType(targetClass())) {
+                return new Result(ConstantNode.forBoolean(negated, graph()), query);
+            }
+            if (query.constantBound(Condition.NE, CiConstant.NULL_OBJECT)) {
+                if (query.declaredType(targetClass())) {
+                    return new Result(ConstantNode.forBoolean(!negated, graph()), query);
+                }
+            }
+        }
+        return null;
     }
 }
