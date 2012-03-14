@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -32,8 +31,8 @@ import com.oracle.graal.nodes.type.*;
 
 public class SafeReadNode extends SafeAccessNode implements Lowerable {
 
-    public SafeReadNode(CiKind kind, ValueNode object, LocationNode location, Stamp stamp) {
-        super(kind, object, location, stamp);
+    public SafeReadNode(ValueNode object, LocationNode location, Stamp stamp) {
+        super(object, location, stamp);
         assert object != null && location != null;
     }
 

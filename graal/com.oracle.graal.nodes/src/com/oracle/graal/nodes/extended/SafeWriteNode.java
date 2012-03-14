@@ -35,7 +35,7 @@ public class SafeWriteNode extends SafeAccessNode implements Lowerable{
     @Input private ValueNode value;
 
     public SafeWriteNode(ValueNode object, ValueNode value, LocationNode location) {
-        super(CiKind.Void, object, location, StampFactory.forKind(CiKind.Void));
+        super(object, location, StampFactory.forKind(CiKind.Void));
         this.value = value;
     }
 

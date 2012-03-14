@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.types;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 
 public abstract class PostOrderBlockIterator {
