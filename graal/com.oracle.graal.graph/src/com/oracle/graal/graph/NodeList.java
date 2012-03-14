@@ -321,6 +321,13 @@ public abstract class NodeList<T extends Node> extends NodeIterable<T> implement
         return true;
     }
 
+    public boolean addAll(T[] c) {
+        for (T e : c) {
+            add(e);
+        }
+        return true;
+    }
+
     @Override
     public boolean addAll(int index, Collection< ? extends T> c) {
         throw new UnsupportedOperationException("not implemented");
