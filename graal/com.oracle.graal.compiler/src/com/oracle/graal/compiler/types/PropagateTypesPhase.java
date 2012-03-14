@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 public class PropagateTypesPhase extends Phase {
 
@@ -56,7 +57,7 @@ public class PropagateTypesPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-
+/*
         new DeadCodeEliminationPhase().apply(graph);
 
         changedNodes = graph.createNodeWorkList(false, 10);
@@ -72,9 +73,9 @@ public class PropagateTypesPhase extends Phase {
 
         new UnscheduleNodes(graph.start()).apply();
 
-        CanonicalizerPhase.canonicalize(graph, changedNodes, runtime, target, assumptions);
+        CanonicalizerPhase.canonicalize(graph, changedNodes, runtime, target, assumptions);*/
     }
-
+/*
     private class PiNodeList {
 
         public final PiNodeList last;
@@ -104,6 +105,48 @@ public class PropagateTypesPhase extends Phase {
         }
     }
 
+    private static RiResolvedType mergeSuperType(RiResolvedType type1, RiResolvedType type2) {
+        Set<RiResolvedType> superTypes = new HashSet<>();
+
+        RiResolvedType current = type1;
+        while (current != null) {
+            superTypes.add(current);
+            current = current.superType();
+        }
+
+        current = type2;
+        while (current != null) {
+            if (superTypes.contains(current)) {
+                return current;
+            }
+            current = current.superType();
+        }
+
+        return null;
+    }
+
+    private static RiResolvedType mergeType(RiResolvedType type1, RiResolvedType type2) {
+        if (type1 == null || type2 == null) {
+            return null;
+        }
+        if (type1.isInterface() && !type2.isInterface()) {
+            if (type1.toJava().isAssignableFrom(type2.toJava())) {
+                return type1;
+            } else {
+                return null;
+            }
+        } else if (type2.isInterface() && !type1.isInterface()) {
+            if (type2.toJava().isAssignableFrom(type1.toJava())) {
+                return type2;
+            } else {
+                return null;
+            }
+        } else {
+            // both are either types or interfaces
+            return mergeSuperType(type1, type2);
+        }
+    }
+
     private class TypeInfo implements MergeableState<TypeInfo> {
 
         private HashMap<ValueNode, PiNodeList> piNodes = new HashMap<>();
@@ -111,6 +154,16 @@ public class PropagateTypesPhase extends Phase {
         public TypeInfo(HashMap<ValueNode, PiNodeList> piNodes) {
             this.piNodes.putAll(piNodes);
         }
+
+        public ValueNode getNode(ValueNode value) {
+            PiNodeList list = piNodes.get(value);
+            if (list == null) {
+                return value;
+            } else {
+                return list.replacement;
+            }
+        }
+
 
         @Override
         public TypeInfo clone() {
@@ -136,6 +189,28 @@ public class PropagateTypesPhase extends Phase {
                     }
                     if (list != null) {
                         newPiNodes.put(entry.getKey(), list);
+                    }
+                }
+
+                for (PhiNode phi : merge.phis()) {
+                    if (phi.kind() == CiKind.Object && phi.valueCount() == (withStates.size() + 1)) {
+                        ValueNode node = getNode(phi.valueAt(0));
+                        RiResolvedType type = node.declaredType();
+                        boolean nonNull = node.stamp().nonNull();
+                        for (int i = 1; i < phi.valueCount(); i++) {
+                            node = withStates.get(i - 1).getNode(phi.valueAt(i));
+                            type = mergeType(type, node.declaredType());
+                            nonNull &= node.stamp().nonNull();
+                        }
+                        if (type != null) {
+                            if (nonNull) {
+                                phi.setStamp(StampFactory.declaredNonNull(type));
+                            } else {
+                                phi.setStamp(StampFactory.declared(type));
+                            }
+                        } else if (nonNull) {
+                            phi.setStamp(StampFactory.objectNonNull());
+                        }
                     }
                 }
                 piNodes = newPiNodes;
@@ -166,7 +241,7 @@ public class PropagateTypesPhase extends Phase {
                         if (value.declaredType() != instanceOf.targetClass() || !value.stamp().nonNull()) {
                             PiNode piNode = node.graph().unique(new PiNode(value, (BeginNode) node, StampFactory.declaredNonNull(instanceOf.targetClass())));
                             PiNodeList list = piNodes.get(value);
-                            piNodes.put(value, new PiNodeList(piNode, list));
+                            piNodes.put(GraphUtil.producingInstruction(value), new PiNodeList(piNode, list));
                         }
                     }
                 } else if (ifNode.compare() instanceof CompareNode) {
@@ -176,7 +251,7 @@ public class PropagateTypesPhase extends Phase {
                         if (compare.y().isConstant()) {
                             ValueNode value = compare.x();
                             PiNodeList list = piNodes.get(value);
-                            piNodes.put(value, new PiNodeList(compare.y(), list));
+                            piNodes.put(GraphUtil.producingInstruction(value), new PiNodeList(compare.y(), list));
                         }
                     } else if ((node == ifNode.trueSuccessor() && compare.condition() == Condition.NE) || (node == ifNode.falseSuccessor() && compare.condition() == Condition.EQ)) {
                         if (!compare.x().isConstant() && compare.y().isNullConstant() && !compare.x().stamp().nonNull()) {
@@ -190,7 +265,7 @@ public class PropagateTypesPhase extends Phase {
                                 piNode = node.graph().unique(new PiNode(value, (BeginNode) node, StampFactory.objectNonNull()));
                             }
                             PiNodeList list = piNodes.get(value);
-                            piNodes.put(value, new PiNodeList(piNode, list));
+                            piNodes.put(GraphUtil.producingInstruction(value), new PiNodeList(piNode, list));
                         }
                     }
                 }
@@ -225,13 +300,14 @@ public class PropagateTypesPhase extends Phase {
 
         @Override
         protected void node(ScheduledNode node) {
+
             if (node instanceof Canonicalizable || node instanceof Invoke) {
                 NodeClassIterator iter = node.inputs().iterator();
                 ArrayList<Node> changedInputs = new ArrayList<>();
                 while (iter.hasNext()) {
                     Position pos = iter.nextPosition();
                     Node value = pos.get(node);
-                    PiNodeList list = state.piNodes.get(value);
+                    PiNodeList list = value == null ? null : state.piNodes.get(GraphUtil.producingInstruction(value));
                     if (list != null) {
                         changedInputs.add(list.replacement instanceof PiNode ? value : null);
                         pos.set(node, list.replacement);
@@ -261,4 +337,5 @@ public class PropagateTypesPhase extends Phase {
             }
         }
     }
+    */
 }

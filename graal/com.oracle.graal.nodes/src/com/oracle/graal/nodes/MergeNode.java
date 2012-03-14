@@ -115,7 +115,12 @@ public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLo
     }
 
     public NodeIterable<PhiNode> phis() {
-        return this.usages().filter(PhiNode.class);
+        return this.usages().filter(new NodePredicate() {
+            @Override
+            public boolean apply(Node n) {
+                return n instanceof PhiNode && ((PhiNode) n).merge() == MergeNode.this;
+            }
+        }).filter(PhiNode.class);
     }
 
     @Override

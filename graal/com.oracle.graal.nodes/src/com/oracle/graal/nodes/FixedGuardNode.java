@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable {
+public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType {
 
     @Input private final NodeInputList<BooleanNode> conditions;
 
