@@ -147,7 +147,7 @@ public final class GraalOptions {
     public static boolean AssumeVerifiedBytecode             = true;
 
     // Code generator settings
-    public static boolean PropagateTypes                     = true;
+    public static boolean PropagateTypes                     = ____;
     public static boolean UseBranchPrediction                = true;
     public static boolean UseExceptionProbability            = true;
     public static boolean AllowExplicitExceptionChecks       = true;
