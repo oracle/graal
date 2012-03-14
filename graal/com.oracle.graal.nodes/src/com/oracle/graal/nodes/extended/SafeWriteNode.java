@@ -27,6 +27,7 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 
 public class SafeWriteNode extends SafeAccessNode implements Lowerable{
@@ -34,7 +35,7 @@ public class SafeWriteNode extends SafeAccessNode implements Lowerable{
     @Input private ValueNode value;
 
     public SafeWriteNode(ValueNode object, ValueNode value, LocationNode location) {
-        super(CiKind.Void, object, location);
+        super(CiKind.Void, object, location, StampFactory.forKind(CiKind.Void));
         this.value = value;
     }
 

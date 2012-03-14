@@ -27,6 +27,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 
 public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
@@ -37,8 +38,8 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
         return dependencies;
     }
 
-    public FloatingReadNode(CiKind kind, ValueNode object, GuardNode guard, LocationNode location, Node... dependencies) {
-        super(kind, object, guard, location);
+    public FloatingReadNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp, Node... dependencies) {
+        super(object, guard, location, stamp);
         this.dependencies = new NodeInputList<>(this, dependencies);
     }
 

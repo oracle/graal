@@ -32,8 +32,8 @@ public abstract class SafeAccessNode extends AbstractStateSplit {
     @Input private ValueNode object;
     @Input private LocationNode location;
 
-    public SafeAccessNode(CiKind kind, ValueNode object, LocationNode location) {
-        super(StampFactory.forKind(kind));
+    public SafeAccessNode(CiKind kind, ValueNode object, LocationNode location, Stamp stamp) {
+        super(stamp);
         this.object = object;
         this.location = location;
     }
