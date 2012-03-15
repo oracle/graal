@@ -20,23 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.nodes;
 
 
-public enum RiDeoptAction {
-    None(0),                           // just interpret, do not invalidate nmethod
-    RecompileIfTooManyDeopts(1),       // recompile the nmethod; need not invalidate
-    InvalidateReprofile(2),            // invalidate the nmethod, reset IC, maybe recompile
-    InvalidateRecompile(3),            // invalidate the nmethod, recompile (probably)
-    InvalidateStopCompiling(4);        // invalidate the nmethod and do not compile
-
-    private final int value;
-
-    private RiDeoptAction(int value) {
-        this.value = value;
-    }
-
-    public int value() {
-        return value;
-    }
+public enum DeoptAction {
+    None,                           // just interpret, do not invalidate nmethod
+    RecompileIfTooManyDeopts,       // recompile the nmethod; need not invalidate
+    InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
+    InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
+    InvalidateStopCompiling;        // invalidate the nmethod and do not compile
 }

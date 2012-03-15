@@ -20,29 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.nodes;
 
 
-public enum RiDeoptReason {
-    IllegalDeoptReason(0),
-    Unresolved(1),
-    UnreachedCode(2),
-    TypeCheckedInliningViolated(3),
-    TypeCheckAssumptionViolated(4),
-    NotCompiledExceptionHandler(5),
-    JavaSubroutineMismatch(6),
-    TypeCheckFailed(7),
-    BoundsCheckFailed(8),
-    NullCheckFailed(9),
-    DeoptimizeALot(10);
-
-    private int value;
-
-    private RiDeoptReason(int value) {
-        this.value = value;
-    }
-
-    public int value() {
-        return value;
-    }
+public enum DeoptReason {
+    None,
+    NullCheckException,
+    BoundsCheckException,
+    ClassCastException,
+    ArrayStoreException,
+    UnreachedCode,
+    TypeCheckedInliningViolated,
+    OptimizedTypeCheckViolated,
+    NotCompiledExceptionHandler,
+    Unresolved,
+    JavaSubroutineMismatch,
+    ArithmeticException,
+    RuntimeConstraint;
 }

@@ -42,6 +42,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.nodes.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 
@@ -712,9 +713,9 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 }
             }
 
-            RiDeoptReason deoptReason = is(EXACT_HINTS, flags) ? RiDeoptReason.TypeCheckAssumptionViolated : RiDeoptReason.TypeCheckFailed;
+            DeoptReason deoptReason = is(EXACT_HINTS, flags) ? DeoptReason.OptimizedTypeCheckViolated : DeoptReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-            asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(RiDeoptAction.InvalidateReprofile, deoptReason)));
+            asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(DeoptAction.InvalidateReprofile, deoptReason)));
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
 
@@ -892,7 +893,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.BoundsCheckFailed)));
+                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(DeoptAction.None, DeoptReason.BoundsCheckException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
@@ -1082,7 +1083,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 checkSubtype(asm, temp, valueHub, compHub);
                 asm.jneq(store, temp, wordConst(asm, 0));
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.TypeCheckFailed)));
+                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(DeoptAction.None, DeoptReason.ClassCastException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.jmp(store);
             }
@@ -1163,7 +1164,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.BoundsCheckFailed)));
+                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(DeoptAction.None, DeoptReason.BoundsCheckException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
@@ -1173,7 +1174,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 checkSubtype(asm, temp, valueHub, compHub);
                 asm.jneq(store, temp, wordConst(asm, 0));
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.TypeCheckFailed)));
+                asm.mov(scratch, wordConst(asm, AMD64DeoptimizationStub.encodeDeoptActionAndReason(DeoptAction.None, DeoptReason.ArrayStoreException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
