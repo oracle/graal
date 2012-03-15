@@ -70,7 +70,7 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
         AMD64Call.shouldNotReachHere(tasm, masm);
     }
 
-    // TODO (ch) this is HotSpot specific -> move it somewhere else
+    // TODO (chaeubl) this is HotSpot specific -> move it somewhere else
     public static int encodeDeoptActionAndReason(DeoptAction action, DeoptReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
@@ -80,7 +80,7 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
         return (~(((reasonValue) << reasonShift) + ((actionValue) << actionShift)));
     }
 
-    // TODO (ch) this is HotSpot specific -> move it somewhere else
+    // TODO (chaeubl) this is HotSpot specific -> move it somewhere else
     private static int getDeoptActionValue(DeoptAction action) {
         switch(action) {
             case None: return 0;
@@ -92,7 +92,7 @@ public class AMD64DeoptimizationStub extends AMD64SlowPath {
         }
     }
 
-    // TODO (ch) this is HotSpot specific -> move it somewhere else
+    // TODO (chaeubl) this is HotSpot specific -> move it somewhere else
     private static int getDeoptReasonValue(DeoptReason reason) {
         switch(reason) {
             case None: return 0;
