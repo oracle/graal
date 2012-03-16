@@ -39,7 +39,7 @@ public class HotSpotDebugConfig implements DebugConfig {
     private final String meterFilter;
     private final String timerFilter;
     private final String dumpFilter;
-    private final String[] methodFilter;
+    private final MethodFilter[] methodFilter;
     private final List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
 
     public HotSpotDebugConfig(String logFilter, String meterFilter, String timerFilter, String dumpFilter, String methodFilter) {
@@ -47,7 +47,15 @@ public class HotSpotDebugConfig implements DebugConfig {
         this.meterFilter = meterFilter;
         this.timerFilter = timerFilter;
         this.dumpFilter = dumpFilter;
-        this.methodFilter = methodFilter == null ? null : methodFilter.split(",");
+        if (methodFilter == null || methodFilter.isEmpty()) {
+            this.methodFilter = null;
+        } else {
+            String[] filters = methodFilter.split(",");
+            this.methodFilter = new MethodFilter[filters.length];
+            for (int i = 0; i < filters.length; i++) {
+                this.methodFilter[i] = new MethodFilter(filters[i]);
+            }
+        }
         if (GraalOptions.PrintIdealGraphFile) {
             dumpHandlers.add(new IdealGraphPrinterDumpHandler());
         } else {
@@ -93,9 +101,8 @@ public class HotSpotDebugConfig implements DebugConfig {
         } else {
             for (Object o : Debug.context()) {
                 if (o instanceof RiMethod) {
-                    String methodName = CiUtil.format("%H.%n", (RiMethod) o);
-                    for (String filter : methodFilter) {
-                        if (methodName.contains(filter)) {
+                    for (MethodFilter filter : methodFilter) {
+                        if (filter.matches((RiMethod) o)) {
                             return true;
                         }
                     }
