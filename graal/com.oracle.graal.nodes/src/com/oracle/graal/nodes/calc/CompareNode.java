@@ -26,6 +26,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /* TODO (thomaswue/gdub) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
-public final class CompareNode extends BooleanNode implements Canonicalizable, LIRLowerable {
+public final class CompareNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
     @Input private ValueNode x;
     @Input private ValueNode y;
@@ -196,5 +197,109 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
             }
         }
         return this;
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        CiKind kind = x().kind();
+        assert y().kind() == kind;
+        if (kind == CiKind.Object) {
+            assert condition == Condition.EQ || condition == Condition.NE;
+            if (y().isConstant() && !x().isConstant()) {
+                tool.addObject(x()).constantBound(condition, y().asConstant());
+            } else if (x().isConstant() && !y().isConstant()) {
+                tool.addObject(y()).constantBound(condition.mirror(), x().asConstant());
+            } else if (!x().isConstant() && !y.isConstant()) {
+                tool.addObject(x()).valueBound(condition, y());
+                tool.addObject(y()).valueBound(condition.mirror(), x());
+            } else {
+                // both are constant, this should be canonicalized...
+            }
+        } else if (kind == CiKind.Int || kind == CiKind.Long) {
+            assert condition != Condition.NOF && condition != Condition.OF;
+            if (y().isConstant() && !x().isConstant()) {
+                tool.addScalar(x()).constantBound(condition, y().asConstant());
+            } else if (x().isConstant() && !y().isConstant()) {
+                tool.addScalar(y()).constantBound(condition.mirror(), x().asConstant());
+            } else if (!x().isConstant() && !y.isConstant()) {
+                tool.addScalar(x()).valueBound(condition, y(), tool.queryScalar(y()));
+                tool.addScalar(y()).valueBound(condition.mirror(), x(), tool.queryScalar(x()));
+            } else {
+                // both are constant, this should be canonicalized...
+            }
+        } else if (kind == CiKind.Float || kind == CiKind.Double) {
+            // nothing yet...
+        }
+    }
+
+    @Override
+    public Result canonical(TypeFeedbackTool tool) {
+        CiKind kind = x().kind();
+        if (kind == CiKind.Int || kind == CiKind.Long) {
+            assert condition != Condition.NOF && condition != Condition.OF;
+            ScalarTypeQuery queryX = tool.queryScalar(x());
+            if (y().isConstant() && !x().isConstant()) {
+                if (queryX.constantBound(condition, y().asConstant())) {
+                    return new Result(ConstantNode.forBoolean(true, graph()), queryX);
+                } else if (queryX.constantBound(condition.negate(), y().asConstant())) {
+                    return new Result(ConstantNode.forBoolean(false, graph()), queryX);
+                }
+            } else {
+                ScalarTypeQuery queryY = tool.queryScalar(y());
+                if (x().isConstant() && !y().isConstant()) {
+                    if (queryY.constantBound(condition.mirror(), x().asConstant())) {
+                        return new Result(ConstantNode.forBoolean(true, graph()), queryY);
+                    } else if (queryY.constantBound(condition.mirror().negate(), x().asConstant())) {
+                        return new Result(ConstantNode.forBoolean(false, graph()), queryY);
+                    }
+                } else if (!x().isConstant() && !y.isConstant()) {
+                    if (condition == Condition.BT || condition == Condition.BE) {
+                        if (queryY.constantBound(Condition.GE, new CiConstant(kind, 0))) {
+                            if (queryX.constantBound(Condition.GE, new CiConstant(kind, 0))) {
+                                if (queryX.valueBound(condition == Condition.BT ? Condition.LT : Condition.LE, y())) {
+                                    return new Result(ConstantNode.forBoolean(true, graph()), queryX, queryY);
+                                }
+                            }
+                        }
+                    }
+
+                    if (queryX.valueBound(condition, y())) {
+                        return new Result(ConstantNode.forBoolean(true, graph()), queryX);
+                    } else if (queryX.valueBound(condition.negate(), y())) {
+                        return new Result(ConstantNode.forBoolean(false, graph()), queryX);
+                    }
+                } else {
+                    // both are constant, this should be canonicalized...
+                }
+            }
+        } else  if (kind == CiKind.Object) {
+            assert condition == Condition.EQ || condition == Condition.NE;
+            ObjectTypeQuery queryX = tool.queryObject(x());
+            if (y().isConstant() && !x().isConstant()) {
+                if (queryX.constantBound(condition, y().asConstant())) {
+                    return new Result(ConstantNode.forBoolean(true, graph()), queryX);
+                } else if (queryX.constantBound(condition.negate(), y().asConstant())) {
+                    return new Result(ConstantNode.forBoolean(false, graph()), queryX);
+                }
+            } else {
+                ObjectTypeQuery queryY = tool.queryObject(y());
+                if (x().isConstant() && !y().isConstant()) {
+                    if (queryY.constantBound(condition.mirror(), x().asConstant())) {
+                        return new Result(ConstantNode.forBoolean(true, graph()), queryY);
+                    } else if (queryY.constantBound(condition.mirror().negate(), x().asConstant())) {
+                        return new Result(ConstantNode.forBoolean(false, graph()), queryY);
+                    }
+                } else if (!x().isConstant() && !y.isConstant()) {
+                    if (queryX.valueBound(condition, y())) {
+                        return new Result(ConstantNode.forBoolean(true, graph()), queryX);
+                    } else if (queryX.valueBound(condition.negate(), y())) {
+                        return new Result(ConstantNode.forBoolean(false, graph()), queryX);
+                    }
+                } else {
+                    // both are constant, this should be canonicalized...
+                }
+            }
+        }
+        return null;
     }
 }

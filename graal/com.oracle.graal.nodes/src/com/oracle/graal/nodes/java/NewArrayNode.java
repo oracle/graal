@@ -28,13 +28,15 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
  */
-public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAnalyzable{
+public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAnalyzable, TypeFeedbackProvider {
 
     @Input private ValueNode length;
 
@@ -73,6 +75,12 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
      * @return the element type of the array
      */
     public abstract RiResolvedType elementType();
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        assert length.kind() == CiKind.Int;
+        tool.addScalar(length).constantBound(Condition.GE, CiConstant.INT_0);
+    }
 
     @Override
     public Map<Object, Object> getDebugProperties() {

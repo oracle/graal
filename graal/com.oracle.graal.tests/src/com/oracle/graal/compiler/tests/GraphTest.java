@@ -56,6 +56,7 @@ public abstract class GraphTest {
     protected final GraalRuntime runtime;
 
     public GraphTest() {
+        Debug.enable();
         this.runtime = GraalRuntimeAccess.getGraalRuntime();
     }
 
@@ -63,7 +64,7 @@ public abstract class GraphTest {
         if (expected.getNodeCount() != graph.getNodeCount()) {
             Debug.dump(expected, "Node count not matching - expected");
             Debug.dump(graph, "Node count not matching - actual");
-            Assert.fail("Graphs do not have the same number of nodes");
+            Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount());
         }
     }
 

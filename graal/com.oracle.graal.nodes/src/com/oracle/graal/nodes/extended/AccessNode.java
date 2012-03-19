@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -58,8 +57,8 @@ public abstract class AccessNode extends AbstractStateSplit implements Access {
         this.nullCheck = check;
     }
 
-    public AccessNode(CiKind kind, ValueNode object, LocationNode location) {
-        super(StampFactory.forKind(kind));
+    public AccessNode(ValueNode object, LocationNode location, Stamp stamp) {
+        super(stamp);
         this.object = object;
         this.location = location;
     }

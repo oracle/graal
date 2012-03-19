@@ -41,7 +41,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     public ArrayLengthNode(ValueNode array) {
-        super(StampFactory.intValue());
+        super(StampFactory.positiveInt());
         this.array = array;
     }
 

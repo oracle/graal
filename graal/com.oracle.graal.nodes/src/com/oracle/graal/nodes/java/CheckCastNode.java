@@ -22,20 +22,22 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * The {@code CheckCastNode} represents a {@link Bytecodes#CHECKCAST}.
  *
  * The {@link #targetClass()} of a CheckCastNode can be null for array store checks!
  */
-public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
+public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, TypeFeedbackProvider, TypeCanonicalizable {
 
     @Input protected final FixedNode anchor;
     @Data  protected final boolean emitCode;
@@ -115,5 +117,25 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
     @Override
     public BooleanNode negate() {
         throw new Error("A CheckCast does not produce a boolean value, so it should actually not be a subclass of BooleanNode");
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        if (targetClass() != null) {
+            tool.addObject(object()).declaredType(targetClass(), false);
+        }
+    }
+
+    @Override
+    public Result canonical(TypeFeedbackTool tool) {
+        ObjectTypeQuery query = tool.queryObject(object());
+        if (query.constantBound(Condition.EQ, CiConstant.NULL_OBJECT)) {
+            return new Result(object(), query);
+        } else if (targetClass() != null) {
+            if (query.declaredType(targetClass())) {
+                return new Result(object(), query);
+            }
+        }
+        return null;
     }
 }

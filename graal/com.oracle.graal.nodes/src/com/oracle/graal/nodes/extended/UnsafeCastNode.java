@@ -34,30 +34,30 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class UnsafeCastNode extends FloatingNode implements Canonicalizable, Lowerable {
 
-    @Input private ValueNode x;
+    @Input private ValueNode object;
     @Data private RiResolvedType toType;
 
-    public ValueNode x() {
-        return x;
+    public ValueNode object() {
+        return object;
     }
 
-    public UnsafeCastNode(ValueNode x, RiResolvedType toType) {
+    public UnsafeCastNode(ValueNode object, RiResolvedType toType) {
         super(StampFactory.declared(toType));
-        this.x = x;
+        this.object = object;
         this.toType = toType;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (x != null && x.declaredType() != null && x.declaredType().isSubtypeOf(toType)) {
-            return x;
+        if (object != null && object.declaredType() != null && object.declaredType().isSubtypeOf(toType)) {
+            return object;
         }
         return this;
     }
 
     @Override
     public void lower(CiLoweringTool tool) {
-        ((StructuredGraph) graph()).replaceFloating(this, x);
+        ((StructuredGraph) graph()).replaceFloating(this, object);
     }
 
     @SuppressWarnings("unused")

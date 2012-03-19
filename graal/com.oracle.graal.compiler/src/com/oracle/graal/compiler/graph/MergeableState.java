@@ -28,8 +28,8 @@ import com.oracle.graal.nodes.*;
 
 public interface MergeableState <T> {
     T clone();
-    boolean merge(MergeNode merge, Collection<T> withStates);
+    boolean merge(MergeNode merge, List<T> withStates);
     void loopBegin(LoopBeginNode loopBegin);
-    void loopEnds(LoopBeginNode loopBegin, Collection<T> loopEndStates);
+    void loopEnds(LoopBeginNode loopBegin, List<T> loopEndStates);
     void afterSplit(FixedNode node);
 }

@@ -25,9 +25,10 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.max.cri.ci.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class NullCheckNode extends BooleanNode implements Canonicalizable, LIRLowerable {
+public final class NullCheckNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
     @Input private ValueNode object;
     @Data public final boolean expectedNull;
@@ -76,5 +77,23 @@ public final class NullCheckNode extends BooleanNode implements Canonicalizable,
     @Override
     public BooleanNode negate() {
         return graph().unique(new NullCheckNode(object(), !expectedNull));
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        Condition expectedCondition = expectedNull ? Condition.EQ : Condition.NE;
+        tool.addObject(object()).constantBound(expectedCondition, CiConstant.NULL_OBJECT);
+    }
+
+    @Override
+    public Result canonical(TypeFeedbackTool tool) {
+        Condition expectedCondition = expectedNull ? Condition.EQ : Condition.NE;
+        ObjectTypeQuery query = tool.queryObject(object());
+        if (query.constantBound(expectedCondition, CiConstant.NULL_OBJECT)) {
+            return new Result(ConstantNode.forBoolean(true, graph()), query);
+        } else if (query.constantBound(expectedCondition.negate(), CiConstant.NULL_OBJECT)) {
+            return new Result(ConstantNode.forBoolean(false, graph()), query);
+        }
+        return null;
     }
 }

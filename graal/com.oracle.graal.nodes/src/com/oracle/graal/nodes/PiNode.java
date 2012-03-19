@@ -29,25 +29,25 @@ import com.oracle.graal.nodes.type.*;
 
 public class PiNode extends FloatingNode implements LIRLowerable {
 
-    @Input private ValueNode value;
+    @Input private ValueNode object;
     @Input private BeginNode anchor;
 
-    public ValueNode value() {
-        return value;
+    public ValueNode object() {
+        return object;
     }
 
     public BeginNode anchor() {
         return anchor;
     }
 
-    public PiNode(ValueNode value, BeginNode anchor, Stamp stamp) {
+    public PiNode(ValueNode object, BeginNode anchor, Stamp stamp) {
         super(stamp);
-        this.value = value;
+        this.object = object;
         this.anchor = anchor;
     }
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(value));
+        generator.setResult(this, generator.operand(object));
     }
 }

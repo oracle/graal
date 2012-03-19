@@ -60,9 +60,8 @@ public class GraphUtil {
                 loopend.predecessor().replaceFirstSuccessor(loopend, null);
                 loopend.safeDelete();
             }
-            FixedNode next = begin.next();
+            killCFG(begin.next());
             begin.safeDelete();
-            killCFG(next);
         } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
             ((StructuredGraph) end.graph()).reduceDegenerateLoopBegin((LoopBeginNode) merge);
         } else if (merge.phiPredecessorCount() == 1) { // not a merge anymore

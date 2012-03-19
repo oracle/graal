@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * The {@code AccessIndexedNode} class is the base class of instructions that read or write
  * elements of an array.
  */
-public abstract class AccessIndexedNode extends AccessArrayNode {
+public abstract class AccessIndexedNode extends AccessArrayNode implements TypeFeedbackProvider {
 
     @Input private ValueNode index;
     @Input private ValueNode length;
@@ -66,5 +68,11 @@ public abstract class AccessIndexedNode extends AccessArrayNode {
      */
     public CiKind elementKind() {
         return elementType;
+    }
+
+    @Override
+    public void typeFeedback(TypeFeedbackTool tool) {
+        tool.addScalar(index()).constantBound(Condition.GE, CiConstant.INT_0);
+        tool.addScalar(index()).valueBound(Condition.LT, length, tool.queryScalar(length));
     }
 }

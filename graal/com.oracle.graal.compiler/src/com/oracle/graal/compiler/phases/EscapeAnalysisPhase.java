@@ -76,7 +76,7 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, Collection<BlockExitState> withStates) {
+        public boolean merge(MergeNode merge, List<BlockExitState> withStates) {
             PhiNode vobjPhi = null;
             PhiNode[] valuePhis = new PhiNode[fieldState.length];
             for (BlockExitState other : withStates) {
@@ -129,7 +129,7 @@ public class EscapeAnalysisPhase extends Phase {
         }
 
         @Override
-        public void loopEnds(LoopBeginNode loopBegin, Collection<BlockExitState> loopEndStates) {
+        public void loopEnds(LoopBeginNode loopBegin, List<BlockExitState> loopEndStates) {
             while (!(virtualObjectField instanceof PhiNode)) {
                 virtualObjectField = ((VirtualObjectFieldNode) virtualObjectField).lastState();
             }

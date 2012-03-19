@@ -39,7 +39,8 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
     @Data public final CiConstant value;
 
     protected ConstantNode(CiConstant value) {
-        this(value, null);
+        super(StampFactory.forConstant(value));
+        this.value = value;
     }
 
     /**
@@ -65,7 +66,11 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
     }
 
     public static ConstantNode forCiConstant(CiConstant constant, RiRuntime runtime, Graph graph) {
-        return graph.unique(new ConstantNode(constant, runtime));
+        if (constant.kind == CiKind.Object) {
+            return graph.unique(new ConstantNode(constant, runtime));
+        } else {
+            return graph.unique(new ConstantNode(constant));
+        }
     }
 
     /**

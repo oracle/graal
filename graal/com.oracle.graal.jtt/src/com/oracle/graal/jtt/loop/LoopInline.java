@@ -24,9 +24,6 @@ package com.oracle.graal.jtt.loop;
 
 import org.junit.*;
 
-/*
- * This test is meaningful only if you run it with 'forced' inlinning because running it in the harness with -Xcomp will not trigger any normal inlining
- */
 public class LoopInline {
 
     public static int test(int arg) {

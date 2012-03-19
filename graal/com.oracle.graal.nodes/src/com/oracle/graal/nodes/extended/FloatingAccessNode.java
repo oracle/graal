@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
@@ -59,8 +59,15 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
         this.nullCheck = check;
     }
 
-    public FloatingAccessNode(CiKind kind, ValueNode object, GuardNode guard, LocationNode location) {
-        super(StampFactory.forKind(kind));
+    public FloatingAccessNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp) {
+        super(stamp);
+        this.object = object;
+        this.guard = guard;
+        this.location = location;
+    }
+
+    public FloatingAccessNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp, Node... dependencies) {
+        super(stamp, dependencies);
         this.object = object;
         this.guard = guard;
         this.location = location;

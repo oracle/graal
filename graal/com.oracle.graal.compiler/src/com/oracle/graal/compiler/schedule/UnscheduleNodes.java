@@ -33,7 +33,7 @@ class UnscheduleState implements MergeableState<UnscheduleState> {
     public FixedWithNextNode last;
 
     @Override
-    public boolean merge(MergeNode merge, Collection<UnscheduleState> withStates) {
+    public boolean merge(MergeNode merge, List<UnscheduleState> withStates) {
         last = null;
         return true;
     }
@@ -44,7 +44,7 @@ class UnscheduleState implements MergeableState<UnscheduleState> {
     }
 
     @Override
-    public void loopEnds(LoopBeginNode loop, Collection<UnscheduleState> loopEndStates) {
+    public void loopEnds(LoopBeginNode loop, List<UnscheduleState> loopEndStates) {
         last = null;
     }
 

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.graal.nodes.spi.types.*;
 
 
 public interface Stamp {
@@ -32,4 +33,7 @@ public interface Stamp {
     RiResolvedType exactType();
     CiKind kind();
     boolean alwaysDistinct(Stamp other);
+
+    ScalarTypeQuery scalarType();
+    ObjectTypeQuery objectType();
 }

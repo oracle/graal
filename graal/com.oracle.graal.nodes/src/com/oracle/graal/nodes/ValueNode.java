@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
+import java.util.*;
+
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -38,15 +41,21 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     @Data private Stamp stamp;
 
-    /**
-     * Creates a new value with the specified kind.
-     * @param kind the type of this value
-     * @param inputCount
-     * @param successorCount
-     * @param graph
-     */
+    @Input private NodeInputList<Node> dependencies;
+
+    public NodeInputList<Node> dependencies() {
+        return dependencies;
+    }
+
     public ValueNode(Stamp stamp) {
         this.stamp = stamp;
+        this.dependencies = new NodeInputList<>(this);
+        assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();
+    }
+
+    public ValueNode(Stamp stamp, Node... dependencies) {
+        this.stamp = stamp;
+        this.dependencies = new NodeInputList<>(this, dependencies);
         assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();
     }
 
@@ -104,5 +113,18 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     public final RiResolvedType declaredType() {
         return stamp.declaredType();
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties() {
+        Map<Object, Object> properties = super.getDebugProperties();
+        if (!dependencies.isEmpty()) {
+            StringBuilder str = new StringBuilder();
+            for (int i = 0; i < dependencies.size(); i++) {
+                str.append(i == 0 ? "" : ", ").append(dependencies.get(i).toString(Verbosity.Id));
+            }
+            properties.put("dependencies", str.toString());
+        }
+        return properties;
     }
 }

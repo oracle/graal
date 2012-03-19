@@ -27,12 +27,13 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 
 public final class ReadNode extends AccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
-    public ReadNode(CiKind kind, ValueNode object, LocationNode location) {
-        super(kind, object, location);
+    public ReadNode(ValueNode object, LocationNode location, Stamp stamp) {
+        super(object, location, stamp);
     }
 
     @Override

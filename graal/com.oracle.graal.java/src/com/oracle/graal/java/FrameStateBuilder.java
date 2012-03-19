@@ -22,19 +22,19 @@
  */
 package com.oracle.graal.java;
 
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import static com.oracle.graal.nodes.ValueUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class FrameStateBuilder {
     private final RiResolvedMethod method;
@@ -169,7 +169,7 @@ public class FrameStateBuilder {
 
         } else if (block.isPhiAtMerge(currentValue)) {
             if (otherValue == null || currentValue.kind() != otherValue.kind()) {
-                deletePhi(currentValue);
+                deletePhi((PhiNode) currentValue);
                 return null;
             }
             ((PhiNode) currentValue).addInput(otherValue);
@@ -194,19 +194,19 @@ public class FrameStateBuilder {
         }
     }
 
-    private void deletePhi(Node phi) {
+    private void deletePhi(PhiNode phi) {
         if (phi.isDeleted()) {
             return;
         }
         // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
-        List<Node> phiUsages = phi.usages().filter(NodePredicates.isA(PhiNode.class)).snapshot();
+        List<PhiNode> phiUsages = phi.usages().filter(PhiNode.class).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
-        assert phi.usages().filter(NodePredicates.isNotA(FrameState.class)).filter(NodePredicates.isNotA(PhiNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        assert phi.usages().filter(isNotA(FrameState.class).nor(PhiNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
         phi.replaceAtUsages(null);
         phi.safeDelete();
 
-        for (Node phiUsage : phiUsages) {
+        for (PhiNode phiUsage : phiUsages) {
             deletePhi(phiUsage);
         }
     }
