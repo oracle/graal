@@ -26,10 +26,6 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.xir.*;
 import com.oracle.graal.alloc.simple.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
@@ -38,13 +34,16 @@ import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.types.*;
-import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 
 public class GraalCompiler {
 
@@ -75,7 +74,7 @@ public class GraalCompiler {
         this.backend = backend;
     }
 
-    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final PhasePlan plan, final ProfilingInfoConfiguration profilingInfoConfig) {
+    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
@@ -86,7 +85,7 @@ public class GraalCompiler {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
                     public LIR call() {
-                        return emitHIR(graph, assumptions, plan, profilingInfoConfig);
+                        return emitHIR(graph, assumptions, plan, optimisticOpts);
                     }
                 });
                 final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
@@ -123,7 +122,7 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, PhasePlan plan, ProfilingInfoConfiguration profilingInfoConfig) {
+    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);
@@ -151,7 +150,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
-            new InliningPhase(target, runtime, null, assumptions, plan, profilingInfoConfig).apply(graph);
+            new InliningPhase(target, runtime, null, assumptions, plan, optimisticOpts).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new PhiStampPhase().apply(graph);
         }
@@ -171,7 +170,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
-            new EscapeAnalysisPhase(target, runtime, assumptions, plan, profilingInfoConfig).apply(graph);
+            new EscapeAnalysisPhase(target, runtime, assumptions, plan, optimisticOpts).apply(graph);
             new PhiStampPhase().apply(graph);
             if (GraalOptions.OptCanonicalizer) {
                 new CanonicalizerPhase(target, runtime, assumptions).apply(graph);

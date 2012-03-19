@@ -27,7 +27,6 @@ import static com.oracle.graal.java.bytecode.Bytecodes.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.bytecode.*;
@@ -188,7 +187,7 @@ public final class BciBlockMapping {
     public boolean hasJsrBytecodes;
     public Block startBlock;
 
-    private final ProfilingInfoConfiguration profilingInfoConfig;
+    private final OptimisticOptimizations optimisticOpts;
     private final BytecodeStream stream;
     private final RiExceptionHandler[] exceptionHandlers;
     private Block[] blockMap;
@@ -197,9 +196,9 @@ public final class BciBlockMapping {
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(RiResolvedMethod method, ProfilingInfoConfiguration profilingInfoConfig) {
+    public BciBlockMapping(RiResolvedMethod method, OptimisticOptimizations optimisticOpts) {
         this.method = method;
-        this.profilingInfoConfig = profilingInfoConfig;
+        this.optimisticOpts = optimisticOpts;
         exceptionHandlers = method.exceptionHandlers();
         stream = new BytecodeStream(method.code());
         this.blockMap = new Block[method.codeSize()];
@@ -377,7 +376,7 @@ public final class BciBlockMapping {
                 case PUTFIELD:
                 case GETFIELD: {
                     if (GraalOptions.AllowExplicitExceptionChecks) {
-                        if (!GraalOptions.UseExceptionProbability || !profilingInfoConfig.useExceptionProbability() || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
+                        if (!optimisticOpts.useExceptionProbability() || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
                             canTrap.set(bci);
                         }
                     }

@@ -25,18 +25,9 @@ package com.oracle.graal.hotspot.ri;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Call;
-import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
-import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
-import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.PhasePlan.*;
-import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -48,6 +39,14 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.snippets.nodes.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Call;
+import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
+import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
+import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.max.criutils.*;
 
 /**
  * CRI runtime implementation for the HotSpot VM.
@@ -229,7 +228,7 @@ public class HotSpotRuntime implements GraalRuntime {
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind() != CiKind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.field().kind(true).stackKind(), field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph)));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), DeoptReason.NullCheckException));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), RiDeoptReason.NullCheckException));
             graph.replaceFixedWithFixed(field, memoryRead);
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
@@ -238,7 +237,7 @@ public class HotSpotRuntime implements GraalRuntime {
             }
             HotSpotField field = (HotSpotField) storeField.field();
             WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(true), field.offset(), graph)));
-            memoryWrite.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), DeoptReason.NullCheckException));
+            memoryWrite.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), RiDeoptReason.NullCheckException));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
@@ -277,7 +276,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 } else {
                     AnchorNode anchor = graph.add(new AnchorNode());
                     graph.addBeforeFixed(storeIndexed, anchor);
-                    GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), DeoptReason.NullCheckException);
+                    GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException);
                     ReadNode arrayClass = graph.add(new ReadNode(CiKind.Object, array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph)));
                     arrayClass.setGuard(guard);
                     graph.addBeforeFixed(storeIndexed, arrayClass);
@@ -300,7 +299,7 @@ public class HotSpotRuntime implements GraalRuntime {
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph);
             location.setIndexScalingEnabled(false);
             ReadNode memoryRead = graph.add(new ReadNode(load.kind(), load.object(), location));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(load.object(), false)), DeoptReason.NullCheckException));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(load.object(), false)), RiDeoptReason.NullCheckException));
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
@@ -318,7 +317,7 @@ public class HotSpotRuntime implements GraalRuntime {
             ReadHubNode objectClassNode = (ReadHubNode) n;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
             ReadNode memoryRead = graph.add(new ReadNode(CiKind.Object, objectClassNode.object(), location));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), DeoptReason.NullCheckException));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException));
             graph.replaceFixed(objectClassNode, memoryRead);
         }
     }
@@ -328,7 +327,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     private static GuardNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
-        return (GuardNode) tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), DeoptReason.BoundsCheckException);
+        return (GuardNode) tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), RiDeoptReason.BoundsCheckException);
     }
 
     @Override
@@ -424,8 +423,50 @@ public class HotSpotRuntime implements GraalRuntime {
     @Override
     public CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph) {
         final PhasePlan plan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), ProfilingInfoConfiguration.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        return compiler.getCompiler().compileMethod(method, graph, -1, plan, ProfilingInfoConfiguration.ALL);
+        return compiler.getCompiler().compileMethod(method, graph, -1, plan, OptimisticOptimizations.ALL);
+    }
+
+    @Override
+    public int encodeDeoptActionAndReason(RiDeoptAction action, RiDeoptReason reason) {
+        final int actionShift = 0;
+        final int reasonShift = 3;
+
+        int actionValue = convertDeoptAction(action);
+        int reasonValue = convertDeoptReason(reason);
+        return (~(((reasonValue) << reasonShift) + ((actionValue) << actionShift)));
+    }
+
+    @Override
+    public int convertDeoptAction(RiDeoptAction action) {
+        switch(action) {
+            case None: return 0;
+            case RecompileIfTooManyDeopts: return 1;
+            case InvalidateReprofile: return 2;
+            case InvalidateRecompile: return 3;
+            case InvalidateStopCompiling: return 4;
+            default: throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    public int convertDeoptReason(RiDeoptReason reason) {
+        switch(reason) {
+            case None: return 0;
+            case NullCheckException: return 1;
+            case BoundsCheckException: return 2;
+            case ClassCastException: return 3;
+            case ArrayStoreException: return 4;
+            case UnreachedCode: return 5;
+            case TypeCheckedInliningViolated: return 6;
+            case OptimizedTypeCheckViolated: return 7;
+            case NotCompiledExceptionHandler: return 8;
+            case Unresolved: return 9;
+            case JavaSubroutineMismatch: return 10;
+            case ArithmeticException: return 11;
+            case RuntimeConstraint: return 12;
+            default: throw GraalInternalError.shouldNotReachHere();
+        }
     }
 }

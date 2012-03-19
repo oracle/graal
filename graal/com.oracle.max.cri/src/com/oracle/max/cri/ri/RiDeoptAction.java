@@ -20,32 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.util;
+package com.oracle.max.cri.ri;
 
 
-public final class ProfilingInfoConfiguration {
-    public static ProfilingInfoConfiguration ALL = new ProfilingInfoConfiguration(true, true, true);
-    public static ProfilingInfoConfiguration NONE = new ProfilingInfoConfiguration(false, false, false);
-
-    private final boolean useBranchProbability;
-    private final boolean useTypeProfile;
-    private final boolean useExceptionSeen;
-
-    public ProfilingInfoConfiguration(boolean useBranchProbability, boolean useTypeProfile, boolean useExceptionSeen) {
-        this.useBranchProbability = useBranchProbability;
-        this.useTypeProfile = useTypeProfile;
-        this.useExceptionSeen = useExceptionSeen;
-    }
-
-    public boolean useBranchProbability() {
-        return useBranchProbability;
-    }
-
-    public boolean useTypeProfile() {
-        return useTypeProfile;
-    }
-
-    public boolean useExceptionProbability() {
-        return useExceptionSeen;
-    }
+public enum RiDeoptAction {
+    None,                           // just interpret, do not invalidate nmethod
+    RecompileIfTooManyDeopts,       // recompile the nmethod; need not invalidate
+    InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile
+    InvalidateRecompile,            // invalidate the nmethod, recompile (probably)
+    InvalidateStopCompiling;        // invalidate the nmethod and do not compile
 }

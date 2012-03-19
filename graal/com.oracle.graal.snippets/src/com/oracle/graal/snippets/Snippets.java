@@ -94,7 +94,7 @@ public class Snippets {
             @Override
             public StructuredGraph call() throws Exception {
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-                GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, ProfilingInfoConfiguration.NONE);
+                GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
                 StructuredGraph graph = new StructuredGraph(snippetRiMethod);
                 graphBuilder.apply(graph);
 

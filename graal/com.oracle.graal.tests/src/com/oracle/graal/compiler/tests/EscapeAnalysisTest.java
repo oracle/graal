@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import junit.framework.*;
+import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * In these test cases the probability of all invokes is set to a high value, such that an InliningPhase should inline them all.
@@ -122,10 +122,10 @@ public class EscapeAnalysisTest extends GraphTest {
             n.node().setProbability(100000);
         }
 
-        new InliningPhase(null, runtime(), null, null, getDefaultPhasePlan(), ProfilingInfoConfiguration.ALL).apply(graph);
+        new InliningPhase(null, runtime(), null, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         Debug.dump(graph, "Graph");
-        new EscapeAnalysisPhase(null, runtime(), null, getDefaultPhasePlan(), ProfilingInfoConfiguration.ALL).apply(graph);
+        new EscapeAnalysisPhase(null, runtime(), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
         Debug.dump(graph, "Graph");
         int retCount = 0;
         for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {

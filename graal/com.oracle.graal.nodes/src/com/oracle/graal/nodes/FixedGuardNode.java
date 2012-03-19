@@ -26,13 +26,14 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ri.*;
 
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable {
 
     @Input private final NodeInputList<BooleanNode> conditions;
-    @Data  private final DeoptReason deoptReason;
+    @Data  private final RiDeoptReason deoptReason;
 
-    public FixedGuardNode(BooleanNode condition, DeoptReason deoptReason) {
+    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason) {
         super(StampFactory.illegal());
         this.conditions = new NodeInputList<>(this, new BooleanNode[] {condition});
         this.deoptReason = deoptReason;
@@ -65,7 +66,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                     if (next != null) {
                         tool.deleteBranch(next);
                     }
-                    setNext(graph().add(new DeoptimizeNode(DeoptAction.InvalidateRecompile, deoptReason)));
+                    setNext(graph().add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, deoptReason)));
                     return;
                 }
             }

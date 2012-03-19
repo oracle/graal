@@ -27,13 +27,9 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
@@ -44,6 +40,9 @@ import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Exits from the HotSpot VM into Java code.
@@ -300,8 +299,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
                 public void run() {
                     try {
-                        final ProfilingInfoConfiguration profilingInfoConfig = new ProfilingInfoConfiguration(true, true, true);
-                        final PhasePlan plan = createHotSpotSpecificPhasePlan(profilingInfoConfig);
+                        final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
+                        final PhasePlan plan = createHotSpotSpecificPhasePlan(optimisticOpts);
                         long startTime = System.nanoTime();
                         int index = compiledMethodCount++;
                         final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
@@ -317,7 +316,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                                 @Override
                                 public CiTargetMethod call() throws Exception {
                                     StructuredGraph graph = new StructuredGraph(method);
-                                    return compiler.getCompiler().compileMethod(method, graph, -1, plan, profilingInfoConfig);
+                                    return compiler.getCompiler().compileMethod(method, graph, -1, plan, optimisticOpts);
                                 }
                             });
                         } finally {
@@ -450,9 +449,9 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         return CiConstant.forObject(object);
     }
 
-    private PhasePlan createHotSpotSpecificPhasePlan(ProfilingInfoConfiguration profilingInfoConfig) {
+    private PhasePlan createHotSpotSpecificPhasePlan(OptimisticOptimizations optimisticOpts) {
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), profilingInfoConfig);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         if (GraalOptions.Intrinsify) {
             phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);

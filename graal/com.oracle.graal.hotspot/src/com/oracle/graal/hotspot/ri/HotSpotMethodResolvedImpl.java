@@ -280,6 +280,17 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
                     TTY.println(" not recorded (%f)", typeProfile.getNotRecordedProbability());
                 }
             }
+
+            boolean firstDeoptReason = true;
+            for (RiDeoptReason reason: RiDeoptReason.values()) {
+                int count = profilingInfo.getDeoptimizationCount(reason);
+                if (count > 0) {
+                    if (firstDeoptReason) {
+                        TTY.println("Deopt Statistics");
+                    }
+                    TTY.println("  %s: %d", reason.name(), count);
+                }
+            }
         }
     }
 

@@ -44,9 +44,9 @@ public final class GraalOptions {
     public static boolean Inline                             = true;
     public static boolean Intrinsify                         = true;
     public static boolean CacheGraphs                        = ____;
-    public static boolean InlineMonomorphicCalls             = true;
-    public static boolean InlinePolymorphicCalls             = true;
-    public static boolean InlineMegamorphicCalls             = ____;
+           static boolean InlineMonomorphicCalls             = true;
+           static boolean InlinePolymorphicCalls             = true;
+           static boolean InlineMegamorphicCalls             = ____;
     public static int     InliningPolicy                     = 4;
     public static int     WeightComputationPolicy            = 2;
     public static int     MaximumTrivialSize                 = 10;
@@ -81,6 +81,7 @@ public final class GraalOptions {
     public static int     LoopFrequencyPropagationPolicy     = -2;
 
     // profiling information
+    public static int     MaximumDeoptsBeforeDisablingOptimisticOptimization = 25;
     public static int     MatureExecutionsBranch             = 1;
     public static int     MatureExecutionsPerSwitchCase      = 1;
     public static int     MatureExecutionsTypeProfile        = 1;
@@ -150,13 +151,13 @@ public final class GraalOptions {
     // Code generator settings
     public static boolean PropagateTypes                     = ____;
     public static boolean UseProfilingInformation            = true;
-    public static boolean RemoveNeverExecutedCode            = true;
-    public static boolean UseExceptionProbability            = true;
+           static boolean RemoveNeverExecutedCode            = true;
+           static boolean UseExceptionProbability            = true;
     public static boolean AllowExplicitExceptionChecks       = true;
     public static boolean OmitHotExceptionStacktrace         = ____;
     public static boolean GenSafepoints                      = true;
     public static boolean GenLoopSafepoints                  = true;
-    public static boolean UseTypeCheckHints                  = true;
+           static boolean UseTypeCheckHints                  = true;
     public static boolean InlineVTableStubs                  = ____;
     public static boolean AlwaysInlineVTableStubs            = ____;
 

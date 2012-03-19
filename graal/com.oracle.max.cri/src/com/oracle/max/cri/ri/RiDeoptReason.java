@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.max.cri.ri;
 
 
-public enum DeoptReason {
+public enum RiDeoptReason {
     None,
     NullCheckException,
     BoundsCheckException,

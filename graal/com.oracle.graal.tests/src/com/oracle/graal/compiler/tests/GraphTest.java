@@ -24,16 +24,16 @@ package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
 
-import junit.framework.Assert;
+import junit.framework.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.PhasePlan.*;
-import com.oracle.graal.compiler.util.*;
+import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * Base class for Graal compiler unit tests. These are white box tests
@@ -110,7 +110,7 @@ public abstract class GraphTest {
     protected StructuredGraph parse(Method m) {
         RiResolvedMethod riMethod = runtime.getRiMethod(m);
         StructuredGraph graph = new StructuredGraph(riMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), ProfilingInfoConfiguration.NONE).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
         return graph;
     }
 
@@ -120,13 +120,13 @@ public abstract class GraphTest {
     protected StructuredGraph parseProfiled(Method m) {
         RiResolvedMethod riMethod = runtime.getRiMethod(m);
         StructuredGraph graph = new StructuredGraph(riMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), ProfilingInfoConfiguration.ALL).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
 
     protected PhasePlan getDefaultPhasePlan() {
         PhasePlan plan = new PhasePlan();
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), ProfilingInfoConfiguration.NONE));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE));
         return plan;
     }
 }

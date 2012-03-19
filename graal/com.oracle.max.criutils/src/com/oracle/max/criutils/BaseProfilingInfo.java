@@ -70,4 +70,9 @@ public final class BaseProfilingInfo implements RiProfilingInfo {
     public static RiProfilingInfo get(RiExceptionSeen exceptionSeen) {
         return NO_PROFILING_INFO[exceptionSeen.ordinal()];
     }
+
+    @Override
+    public int getDeoptimizationCount(RiDeoptReason reason) {
+        return 0;
+    }
 }

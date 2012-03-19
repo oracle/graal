@@ -25,15 +25,16 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ri.*;
 
 @NodeInfo(shortName = "Deopt")
 public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
     @Data private String message;
-    @Data private final DeoptAction action;
-    @Data private final DeoptReason reason;
+    @Data private final RiDeoptAction action;
+    @Data private final RiDeoptReason reason;
 
-    public DeoptimizeNode(DeoptAction action, DeoptReason reason) {
+    public DeoptimizeNode(RiDeoptAction action, RiDeoptReason reason) {
         super(StampFactory.illegal());
         this.action = action;
         this.reason = reason;
@@ -47,11 +48,11 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
         return message;
     }
 
-    public DeoptAction action() {
+    public RiDeoptAction action() {
         return action;
     }
 
-    public DeoptReason reason() {
+    public RiDeoptReason reason() {
         return reason;
     }
 

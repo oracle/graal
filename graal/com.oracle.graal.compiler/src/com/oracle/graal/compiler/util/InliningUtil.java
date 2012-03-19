@@ -175,7 +175,7 @@ public class InliningUtil {
             ValueNode receiver = invoke.callTarget().receiver();
             ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
-            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, DeoptReason.TypeCheckedInliningViolated));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, RiDeoptReason.TypeCheckedInliningViolated));
             AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
 
@@ -303,7 +303,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 unknownTypeNode = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, 1, notRecordedTypeProbability, false);
             } else {
-                unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile, DeoptReason.TypeCheckedInliningViolated));
+                unknownTypeNode = graph.add(new DeoptimizeNode(RiDeoptAction.InvalidateReprofile, RiDeoptReason.TypeCheckedInliningViolated));
             }
 
             // replace the invoke exception edge
@@ -368,7 +368,7 @@ public class InliningUtil {
             ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
-            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile, DeoptReason.TypeCheckedInliningViolated));
+            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(RiDeoptAction.InvalidateReprofile, RiDeoptReason.TypeCheckedInliningViolated));
             FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
@@ -540,7 +540,7 @@ public class InliningUtil {
      * @param callback a callback that is used to determine the weight of a specific inlining
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalRuntime runtime, CiAssumptions assumptions, InliningCallback callback, boolean allowTypeCheckedInlining) {
+    public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalRuntime runtime, CiAssumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
@@ -591,15 +591,10 @@ public class InliningUtil {
         }
 
         // type check based inlining
-        if (allowTypeCheckedInlining) {
-            return getTypeCheckedInlineInfo(invoke, level, callback, parent, targetMethod);
-        } else {
-            Debug.log("not inlining %s because type checked inlining is prohibited", methodName(targetMethod, invoke));
-            return null;
-        }
+        return getTypeCheckedInlineInfo(invoke, level, callback, parent, targetMethod, optimisticOpts);
     }
 
-    private static InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int level, InliningCallback callback, RiResolvedMethod parent, RiResolvedMethod targetMethod) {
+    private static InlineInfo getTypeCheckedInlineInfo(Invoke invoke, int level, InliningCallback callback, RiResolvedMethod parent, RiResolvedMethod targetMethod, OptimisticOptimizations optimisticOpts) {
         RiProfilingInfo profilingInfo = parent.profilingInfo();
         RiTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
         if (typeProfile != null) {
@@ -610,7 +605,7 @@ public class InliningUtil {
                 assert types.length == probabilities.length : "length must match";
                 double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
                 if (types.length == 1 && notRecordedTypeProbability == 0) {
-                    if (GraalOptions.InlineMonomorphicCalls) {
+                    if (optimisticOpts.inlineMonomorphicCalls()) {
                         RiResolvedType type = types[0];
                         RiResolvedMethod concrete = type.resolveMethodImpl(targetMethod);
                         if (checkTargetConditions(invoke, concrete)) {
@@ -626,7 +621,7 @@ public class InliningUtil {
                     }
                 } else {
                     invoke.setMegamorph(true);
-                    if (GraalOptions.InlinePolymorphicCalls && notRecordedTypeProbability == 0 || GraalOptions.InlineMegamorphicCalls && notRecordedTypeProbability > 0) {
+                    if (optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0 || optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
                         // TODO (chaeubl) inlining of multiple methods should work differently
                         // 1. check which methods can be inlined
                         // 2. for those methods, use weight and probability to compute which of them should be inlined
@@ -666,7 +661,7 @@ public class InliningUtil {
                             return null;
                         }
                     } else {
-                        if (!GraalOptions.InlinePolymorphicCalls && notRecordedTypeProbability == 0) {
+                        if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
                             Debug.log("not inlining %s because GraalOptions.InlinePolymorphicCalls == false", methodName(targetMethod, invoke));
                         } else {
                             Debug.log("not inlining %s because GraalOptions.InlineMegamorphicCalls == false", methodName(targetMethod, invoke));
@@ -820,7 +815,7 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptAction.InvalidateRecompile, DeoptReason.NotCompiledExceptionHandler);
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, RiDeoptReason.NotCompiledExceptionHandler);
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the "after exception" frame state
                 // (because there is no "after exception" frame state!)
@@ -908,7 +903,7 @@ public class InliningUtil {
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.stamp().nonNull()) {
-            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(firstParam, false)), DeoptReason.ClassCastException)));
+            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(firstParam, false)), RiDeoptReason.ClassCastException)));
         }
     }
 }

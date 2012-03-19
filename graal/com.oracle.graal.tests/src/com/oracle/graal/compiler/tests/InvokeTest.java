@@ -28,8 +28,8 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
@@ -82,7 +82,7 @@ public class InvokeTest extends GraphTest {
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }
-        new InliningPhase(null, runtime(), hints, null, getDefaultPhasePlan(), ProfilingInfoConfiguration.ALL).apply(graph);
+        new InliningPhase(null, runtime(), hints, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);

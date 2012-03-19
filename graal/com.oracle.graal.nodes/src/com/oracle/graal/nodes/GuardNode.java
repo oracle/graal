@@ -25,12 +25,13 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ri.*;
 
 public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
-    @Data private DeoptReason reason;
+    @Data private RiDeoptReason reason;
 
     public FixedNode anchor() {
         return anchor;
@@ -48,11 +49,11 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return condition;
     }
 
-    public DeoptReason reason() {
+    public RiDeoptReason reason() {
         return reason;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, DeoptReason reason) {
+    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason) {
         super(StampFactory.illegal());
         this.condition = condition;
         this.anchor = anchor;
