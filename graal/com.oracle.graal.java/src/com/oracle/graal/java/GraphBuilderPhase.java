@@ -190,7 +190,7 @@ public final class GraphBuilderPhase extends Phase {
 
         connectLoopEndToBegin();
 
-        // remove Placeholders (except for loop exits)
+        // remove Placeholders
         for (BlockPlaceholderNode n : currentGraph.getNodes(BlockPlaceholderNode.class)) {
             currentGraph.removeFixed(n);
         }
@@ -1340,7 +1340,7 @@ public final class GraphBuilderPhase extends Phase {
                 currentGraph.reduceDegenerateLoopBegin(begin);
             } else {
                 // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either the same or the phi itself.
-                for (PhiNode phi : begin.stateAfter().values().filter(PhiNode.class).snapshot()) {
+                for (PhiNode phi : begin.phis().snapshot()) {
                     checkRedundantPhi(phi);
                 }
             }
