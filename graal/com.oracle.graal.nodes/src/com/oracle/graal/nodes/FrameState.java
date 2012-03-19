@@ -209,7 +209,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
             } else {
                 popSlots = 1;
             }
-            assert stackAt(stackSize() - popSlots).kind().stackKind() == popKind.stackKind();
+            assert stackAt(stackSize() - popSlots).kind().stackKind() == popKind.stackKind() || (stackAt(stackSize() - popSlots) instanceof BoxedVirtualObjectNode && popKind.isObject());
         }
 
         int pushSlots = pushedValues.length;
