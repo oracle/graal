@@ -349,7 +349,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(CiKind.Object, 0));
                 SafeReadNode klassOop = safeReadHub(graph, receiver);
-                ReadNode result = graph.add(new ReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), StampFactory.objectNonNull()));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), StampFactory.objectNonNull()));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(klassOop);
                 klassOop.setNext(ret);
