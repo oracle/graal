@@ -47,7 +47,7 @@ public final class OptimisticOptimizations {
     }
 
     private static boolean checkDeoptimization(RiProfilingInfo profilingInfo, RiDeoptReason reason) {
-        boolean result = profilingInfo.getDeoptimizationCount(reason) < GraalOptions.MaximumDeoptsBeforeDisablingOptimisticOptimization;
+        boolean result = profilingInfo.getDeoptimizationCount(reason) < GraalOptions.DeoptsToDisableOptimisticOptimization;
         if (!result) {
             if (GraalOptions.PrintDisabledOptimisticOptimizations) {
                 TTY.println("WARN: deactivated optimistic optimization because of %s", reason.name());
