@@ -82,6 +82,7 @@ public final class GraalOptions {
 
     // profiling information
     public static int     MaximumDeoptsBeforeDisablingOptimisticOptimization = 25;
+    public static boolean PrintDisabledOptimisticOptimizations = true;
     public static int     MatureExecutionsBranch             = 1;
     public static int     MatureExecutionsPerSwitchCase      = 1;
     public static int     MatureExecutionsTypeProfile        = 1;

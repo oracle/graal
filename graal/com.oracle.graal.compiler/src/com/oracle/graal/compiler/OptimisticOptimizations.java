@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.graal.debug.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 
 
 public final class OptimisticOptimizations {
     public static OptimisticOptimizations ALL = new OptimisticOptimizations(true, true, true, true);
     public static OptimisticOptimizations NONE = new OptimisticOptimizations(false, false, false, false);
+    private static final DebugMetric disabledOptimisticOptsMetric = Debug.metric("DisabledOptimisticOpts");
 
     private final boolean removeNeverExecutedCode;
     private final boolean useTypeCheckedInlining;
@@ -37,10 +40,21 @@ public final class OptimisticOptimizations {
 
     public OptimisticOptimizations(RiResolvedMethod method) {
         RiProfilingInfo profilingInfo = method.profilingInfo();
-        removeNeverExecutedCode = profilingInfo.getDeoptimizationCount(RiDeoptReason.UnreachedCode) < GraalOptions.MaximumDeoptsBeforeDisablingOptimisticOptimization;
-        useTypeCheckedInlining = profilingInfo.getDeoptimizationCount(RiDeoptReason.TypeCheckedInliningViolated) < GraalOptions.MaximumDeoptsBeforeDisablingOptimisticOptimization;
-        useTypeCheckHints = profilingInfo.getDeoptimizationCount(RiDeoptReason.OptimizedTypeCheckViolated) < GraalOptions.MaximumDeoptsBeforeDisablingOptimisticOptimization;
-        useExceptionProbability = profilingInfo.getDeoptimizationCount(RiDeoptReason.NotCompiledExceptionHandler) < GraalOptions.MaximumDeoptsBeforeDisablingOptimisticOptimization;
+        removeNeverExecutedCode = checkDeoptimization(profilingInfo, RiDeoptReason.UnreachedCode);
+        useTypeCheckedInlining = checkDeoptimization(profilingInfo, RiDeoptReason.TypeCheckedInliningViolated);
+        useTypeCheckHints = checkDeoptimization(profilingInfo, RiDeoptReason.OptimizedTypeCheckViolated);
+        useExceptionProbability = checkDeoptimization(profilingInfo, RiDeoptReason.NotCompiledExceptionHandler);
+    }
+
+    private static boolean checkDeoptimization(RiProfilingInfo profilingInfo, RiDeoptReason reason) {
+        boolean result = profilingInfo.getDeoptimizationCount(reason) < GraalOptions.MaximumDeoptsBeforeDisablingOptimisticOptimization;
+        if (!result) {
+            if (GraalOptions.PrintDisabledOptimisticOptimizations) {
+                TTY.println("WARN: deactivated optimistic optimization because of %s", reason.name());
+            }
+            disabledOptimisticOptsMetric.increment();
+        }
+        return result;
     }
 
     public OptimisticOptimizations(boolean removeNeverExecutedCode, boolean useTypeCheckedInlining, boolean useTypeCheckHints, boolean useExceptionProbability) {
