@@ -57,7 +57,7 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
 
     @Override
     public boolean add(T node) {
-        assert !node.isDeleted();
+        assert node == null || !node.isDeleted();
         self.incModCount();
         return super.add(node);
     }
