@@ -50,7 +50,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     public BooleanNode condition() {
         return condition;
     }
-    
+
     public void setCondition(BooleanNode x) {
         updateUsages(condition, x);
         condition = x;
