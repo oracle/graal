@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler;
 
 import com.oracle.graal.debug.*;
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
@@ -40,17 +41,17 @@ public final class OptimisticOptimizations {
 
     public OptimisticOptimizations(RiResolvedMethod method) {
         RiProfilingInfo profilingInfo = method.profilingInfo();
-        removeNeverExecutedCode = checkDeoptimization(profilingInfo, RiDeoptReason.UnreachedCode);
-        useTypeCheckedInlining = checkDeoptimization(profilingInfo, RiDeoptReason.TypeCheckedInliningViolated);
-        useTypeCheckHints = checkDeoptimization(profilingInfo, RiDeoptReason.OptimizedTypeCheckViolated);
-        useExceptionProbability = checkDeoptimization(profilingInfo, RiDeoptReason.NotCompiledExceptionHandler);
+        removeNeverExecutedCode = checkDeoptimization(method, profilingInfo, RiDeoptReason.UnreachedCode);
+        useTypeCheckedInlining = checkDeoptimization(method, profilingInfo, RiDeoptReason.TypeCheckedInliningViolated);
+        useTypeCheckHints = checkDeoptimization(method, profilingInfo, RiDeoptReason.OptimizedTypeCheckViolated);
+        useExceptionProbability = checkDeoptimization(method, profilingInfo, RiDeoptReason.NotCompiledExceptionHandler);
     }
 
-    private static boolean checkDeoptimization(RiProfilingInfo profilingInfo, RiDeoptReason reason) {
+    private static boolean checkDeoptimization(RiResolvedMethod method, RiProfilingInfo profilingInfo, RiDeoptReason reason) {
         boolean result = profilingInfo.getDeoptimizationCount(reason) < GraalOptions.DeoptsToDisableOptimisticOptimization;
         if (!result) {
             if (GraalOptions.PrintDisabledOptimisticOptimizations) {
-                TTY.println("WARN: deactivated optimistic optimization because of %s", reason.name());
+                TTY.println("WARN: deactivated optimistic optimizations for %s because of %s", CiUtil.format("%H.%n(%p)", method), reason.name());
             }
             disabledOptimisticOptsMetric.increment();
         }

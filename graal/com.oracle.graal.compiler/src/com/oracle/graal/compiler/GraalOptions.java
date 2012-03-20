@@ -81,7 +81,7 @@ public final class GraalOptions {
     public static int     LoopFrequencyPropagationPolicy     = -2;
 
     // profiling information
-    public static int     DeoptsToDisableOptimisticOptimization = 25;
+    public static int     DeoptsToDisableOptimisticOptimization = 40;
     public static boolean PrintDisabledOptimisticOptimizations = true;
     public static int     MatureExecutionsBranch             = 1;
     public static int     MatureExecutionsPerSwitchCase      = 1;

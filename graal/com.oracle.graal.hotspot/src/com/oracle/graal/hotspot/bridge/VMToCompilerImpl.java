@@ -299,6 +299,9 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
                 public void run() {
                     try {
+                        if (method.name().contains("accept") && method.holder().name().contains("ClassReader")) {
+                            throw new AssertionError("Stop compiling");
+                        }
                         final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
                         final PhasePlan plan = createHotSpotSpecificPhasePlan(optimisticOpts);
                         long startTime = System.nanoTime();
