@@ -111,7 +111,7 @@ public abstract class GraphTest {
     protected StructuredGraph parse(Method m) {
         RiResolvedMethod riMethod = runtime.getRiMethod(m);
         StructuredGraph graph = new StructuredGraph(riMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
 
@@ -127,7 +127,7 @@ public abstract class GraphTest {
 
     protected PhasePlan getDefaultPhasePlan() {
         PhasePlan plan = new PhasePlan();
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.ALL));
         return plan;
     }
 }

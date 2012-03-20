@@ -50,7 +50,7 @@ public class GraphScheduleTest extends GraphTest {
                 }
                 block = block.getDominator();
             }
-            Assert.assertTrue(block == aBlock);
+            Assert.assertSame(block, aBlock);
         }
     }
 }
