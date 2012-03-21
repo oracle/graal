@@ -113,30 +113,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     }
 
     public int getArrayOffset(CiKind kind) {
-        return arrayOffsets[getKindNumber(kind)];
-    }
-
-    private static int getKindNumber(CiKind kind) {
-        if (kind == CiKind.Boolean) {
-            return 0;
-        } else if (kind == CiKind.Byte) {
-            return 1;
-        } else if (kind == CiKind.Short) {
-            return 2;
-        } else if (kind == CiKind.Char) {
-            return 3;
-        } else if (kind == CiKind.Int) {
-            return 4;
-        } else if (kind == CiKind.Float) {
-            return 5;
-        } else if (kind == CiKind.Long) {
-            return 6;
-        } else if (kind == CiKind.Double) {
-            return 7;
-        } else if (kind == CiKind.Object) {
-            return 8;
-        } else {
-            throw new RuntimeException(kind + " is not a Java kind");
-        }
+        return arrayOffsets[kind.ordinal()];
     }
 }
