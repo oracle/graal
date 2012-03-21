@@ -26,10 +26,10 @@ import java.util.*;
 
 import sun.misc.*;
 
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
+import com.oracle.max.cri.ri.*;
 
 
 public final class HotSpotMethodData extends CompilerObject {
@@ -78,6 +78,11 @@ public final class HotSpotMethodData extends CompilerObject {
 
     public boolean isWithin(int position) {
         return position >= 0 && position < normalDataSize + extraDataSize;
+    }
+
+    public int getDeoptimizationCount(RiDeoptReason reason) {
+        int reasonIndex = compiler.getRuntime().convertDeoptReason(reason);
+        return unsafe.getByte(hotspotMirror, (long) config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
     public HotSpotMethodDataAccessor getNormalData(int position) {

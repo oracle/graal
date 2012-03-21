@@ -20,50 +20,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.max.criutils;
 
 import com.oracle.max.cri.ri.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+
 
 /**
  * Dummy profiling information in case that a method was not executed frequently enough so that
- * no profiling information does exist yet.
+ * no profiling information does exist yet, or in case that the profiling information should not be used.
  */
-public final class HotSpotNoProfilingInfo extends CompilerObject implements RiProfilingInfo {
-    /**
-     *
-     */
-    private static final long serialVersionUID = 4357945025049704109L;
-    // Be optimistic and return false for exceptionSeen. A methodDataOop is allocated in case of a deoptimization.
-    private static final HotSpotMethodDataAccessor noData = HotSpotMethodData.getNoDataAccessor(false);
+public final class BaseProfilingInfo implements RiProfilingInfo {
+    private static final RiProfilingInfo[] NO_PROFILING_INFO = new RiProfilingInfo[] {
+        new BaseProfilingInfo(RiExceptionSeen.TRUE),
+        new BaseProfilingInfo(RiExceptionSeen.FALSE),
+        new BaseProfilingInfo(RiExceptionSeen.NOT_SUPPORTED)
+    };
 
-    public HotSpotNoProfilingInfo(Compiler compiler) {
-        super(compiler);
+    private final RiExceptionSeen exceptionSeen;
+
+    BaseProfilingInfo(RiExceptionSeen exceptionSeen) {
+        this.exceptionSeen = exceptionSeen;
     }
 
     @Override
     public RiTypeProfile getTypeProfile(int bci) {
-        return noData.getTypeProfile(null, -1);
+        return null;
     }
 
     @Override
     public double getBranchTakenProbability(int bci) {
-        return noData.getBranchTakenProbability(null, -1);
+        return -1;
     }
 
     @Override
     public double[] getSwitchProbabilities(int bci) {
-        return noData.getSwitchProbabilities(null, -1);
+        return null;
     }
 
     @Override
     public RiExceptionSeen getExceptionSeen(int bci) {
-        return noData.getExceptionSeen(null, -1);
+        return exceptionSeen;
     }
 
     @Override
     public int getExecutionCount(int bci) {
-        return noData.getExecutionCount(null, -1);
+        return -1;
+    }
+
+    public static RiProfilingInfo get(RiExceptionSeen exceptionSeen) {
+        return NO_PROFILING_INFO[exceptionSeen.ordinal()];
+    }
+
+    @Override
+    public int getDeoptimizationCount(RiDeoptReason reason) {
+        return 0;
     }
 }

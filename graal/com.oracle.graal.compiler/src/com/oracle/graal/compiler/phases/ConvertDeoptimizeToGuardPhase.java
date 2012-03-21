@@ -49,25 +49,30 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         }
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
-            visitDeoptBranch(findBeginNode(d), d, graph);
+            visitDeoptBegin(findBeginNode(d), d, graph);
         }
 
         new DeadCodeEliminationPhase().apply(graph);
     }
 
-    private void visitDeoptBranch(BeginNode deoptBegin, DeoptimizeNode deopt, StructuredGraph graph) {
+    private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizeNode deopt, StructuredGraph graph) {
         if (deoptBegin instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) deoptBegin;
-            Debug.log("Eliminating %s followed by %s", mergeNode, deopt);
+            Debug.log("Visiting %s followed by %s", mergeNode, deopt);
             List<EndNode> ends = mergeNode.forwardEnds().snapshot();
             for (EndNode end : ends) {
                 if (!end.isDeleted()) {
                     BeginNode beginNode = findBeginNode(end);
-                    visitDeoptBranch(beginNode, deopt, graph);
+                    if (!(beginNode instanceof MergeNode)) {
+                        visitDeoptBegin(beginNode, deopt, graph);
+                    }
                 }
             }
-            if (!deopt.isDeleted()) {
-                visitDeoptBranch(findBeginNode(deopt), deopt, graph);
+            if (mergeNode.isDeleted()) {
+                if (!deopt.isDeleted()) {
+                    Debug.log("Merge deleted, deopt moved to %s", findBeginNode(deopt));
+                    visitDeoptBegin(findBeginNode(deopt), deopt, graph);
+                }
             }
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
@@ -79,7 +84,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             }
             BeginNode ifBlockBegin = findBeginNode(ifNode);
             Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s. IfBegin=%s", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin, ifBlockBegin);
-            FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.leafGraphId()));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.leafGraphId()));
             otherBegin.replaceAtUsages(ifBlockBegin);
             FixedNode next = otherBegin.next();
             otherBegin.setNext(null);

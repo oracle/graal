@@ -215,12 +215,14 @@ public class EscapeAnalysisPhase extends Phase {
     private final GraalRuntime runtime;
     private final CiAssumptions assumptions;
     private final PhasePlan plan;
+    private final OptimisticOptimizations optimisticOpts;
 
-    public EscapeAnalysisPhase(CiTarget target, GraalRuntime runtime, CiAssumptions assumptions, PhasePlan plan) {
+    public EscapeAnalysisPhase(CiTarget target, GraalRuntime runtime, CiAssumptions assumptions, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;
         this.plan = plan;
+        this.optimisticOpts = optimisticOpts;
     }
 
     public static class EscapeRecord {
@@ -387,7 +389,7 @@ public class EscapeAnalysisPhase extends Phase {
             if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {
                 TTY.println("Trying inlining to get a non-escaping object for %s", node);
             }
-            new InliningPhase(target, runtime, invokes, assumptions, plan).apply(graph);
+            new InliningPhase(target, runtime, invokes, assumptions, plan, optimisticOpts).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             if (node.isDeleted()) {
                 if (GraalOptions.TraceEscapeAnalysis || GraalOptions.PrintEscapeAnalysis) {

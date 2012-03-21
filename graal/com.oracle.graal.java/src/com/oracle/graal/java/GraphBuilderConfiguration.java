@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.max.cri.ri.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.max.cri.ri.*;
 
 public class GraphBuilderConfiguration {
 
@@ -32,21 +31,14 @@ public class GraphBuilderConfiguration {
         Default, EagerForSnippets, Eager,
     }
 
-    private final boolean useBranchPrediction;
     private final ResolvePolicy resolving;
     private final PhasePlan plan;
     private RiResolvedType[] skippedExceptionTypes;
 
-    public GraphBuilderConfiguration(boolean useBranchPrediction, ResolvePolicy resolving, PhasePlan plan) {
-        this.useBranchPrediction = useBranchPrediction;
+    public GraphBuilderConfiguration(ResolvePolicy resolving, PhasePlan plan) {
         this.resolving = resolving;
         this.plan = plan;
     }
-
-    public boolean useBranchPrediction() {
-        return useBranchPrediction;
-    }
-
 
     public void setSkippedExceptionTypes(RiResolvedType[] skippedExceptionTypes) {
         this.skippedExceptionTypes = skippedExceptionTypes;
@@ -73,7 +65,7 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(GraalOptions.UseBranchPrediction, ResolvePolicy.Default, plan);
+        return new GraphBuilderConfiguration(ResolvePolicy.Default, plan);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault() {
@@ -81,6 +73,6 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getSnippetDefault(PhasePlan plan) {
-        return new GraphBuilderConfiguration(false, ResolvePolicy.EagerForSnippets, plan);
+        return new GraphBuilderConfiguration(ResolvePolicy.EagerForSnippets, plan);
     }
 }

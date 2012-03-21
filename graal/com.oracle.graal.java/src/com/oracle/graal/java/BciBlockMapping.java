@@ -26,14 +26,13 @@ import static com.oracle.graal.java.bytecode.Bytecodes.*;
 
 import java.util.*;
 
-
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow
@@ -183,35 +182,28 @@ public final class BciBlockMapping {
      * The blocks found in this method, in reverse postorder.
      */
     public final List<Block> blocks;
-
     public final RiResolvedMethod method;
-
-    private final BytecodeStream stream;
-
-    private final RiExceptionHandler[] exceptionHandlers;
-
-    private Block[] blockMap;
-
     public final BitSet canTrap;
-
     public boolean hasJsrBytecodes;
-
     public Block startBlock;
 
-    public final boolean useBranchPrediction;
+    private final OptimisticOptimizations optimisticOpts;
+    private final BytecodeStream stream;
+    private final RiExceptionHandler[] exceptionHandlers;
+    private Block[] blockMap;
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(RiResolvedMethod method, boolean useBranchPrediction) {
+    public BciBlockMapping(RiResolvedMethod method, OptimisticOptimizations optimisticOpts) {
         this.method = method;
+        this.optimisticOpts = optimisticOpts;
         exceptionHandlers = method.exceptionHandlers();
         stream = new BytecodeStream(method.code());
         this.blockMap = new Block[method.codeSize()];
         this.canTrap = new BitSet(blockMap.length);
         this.blocks = new ArrayList<>();
-        this.useBranchPrediction = useBranchPrediction;
     }
 
     public RiExceptionHandler[] exceptionHandlers() {
@@ -383,8 +375,10 @@ public final class BciBlockMapping {
                 case SALOAD:
                 case PUTFIELD:
                 case GETFIELD: {
-                    if (GraalOptions.AllowExplicitExceptionChecks && profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
-                        canTrap.set(bci);
+                    if (GraalOptions.AllowExplicitExceptionChecks) {
+                        if (!optimisticOpts.useExceptionProbability() || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
+                            canTrap.set(bci);
+                        }
                     }
                 }
             }

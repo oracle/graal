@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.snippets;
+package com.oracle.max.cri.ri;
 
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.cri.*;
-import com.oracle.max.cri.ci.*;
 
-/**
- * Definition of the snippets that are VM-independent and can be intrinsified by Graal in any VM.
- */
-public class GraalIntrinsics {
-    public static void installIntrinsics(GraalRuntime runtime, CiTarget target) {
-        if (GraalOptions.Intrinsify) {
-            Snippets.install(runtime, target, new MathSnippetsX86());
-            Snippets.install(runtime, target, new DoubleSnippets());
-            Snippets.install(runtime, target, new FloatSnippets());
-            Snippets.install(runtime, target, new NodeClassSnippets());
-        }
-    }
+public enum RiDeoptReason {
+    None,
+    NullCheckException,
+    BoundsCheckException,
+    ClassCastException,
+    ArrayStoreException,
+    UnreachedCode,
+    TypeCheckedInliningViolated,
+    OptimizedTypeCheckViolated,
+    NotCompiledExceptionHandler,
+    Unresolved,
+    JavaSubroutineMismatch,
+    ArithmeticException,
+    RuntimeConstraint;
 }

@@ -27,9 +27,6 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
@@ -41,7 +38,11 @@ import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Exits from the HotSpot VM into Java code.
@@ -122,10 +123,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 @Override
                 public void run() {
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
+                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets());
                 }
             });
 
@@ -298,15 +299,15 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
                 public void run() {
                     try {
-                        final PhasePlan plan = getDefaultPhasePlan();
-                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
-                        plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+                        final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
+                        final PhasePlan plan = createHotSpotSpecificPhasePlan(optimisticOpts);
                         long startTime = System.nanoTime();
                         int index = compiledMethodCount++;
                         final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
                         if (printCompilation) {
                             TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...", index, method.holder().name(), method.name(), method.signature().asString()));
                         }
+                        optimisticOpts.log(method);
 
                         CiTargetMethod result = null;
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
@@ -315,7 +316,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                             result = Debug.scope("Compiling", new Callable<CiTargetMethod>() {
                                 @Override
                                 public CiTargetMethod call() throws Exception {
-                                    return compiler.getCompiler().compileMethod(method, -1, plan);
+                                    StructuredGraph graph = new StructuredGraph(method);
+                                    return compiler.getCompiler().compileMethod(method, graph, -1, plan, optimisticOpts);
                                 }
                             });
                         } finally {
@@ -330,9 +332,13 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         compiler.getRuntime().installMethod(method, result);
                     } catch (CiBailout bailout) {
                         Debug.metric("Bailouts").increment();
-                        if (GraalOptions.ExitVMOnBailout) {
+                        if (GraalOptions.PrintBailouts || GraalOptions.ExitVMOnBailout) {
+                            TTY.println("WARN: Compilation bailout");
                             bailout.printStackTrace(TTY.cachedOut);
-                            System.exit(-1);
+
+                            if (GraalOptions.ExitVMOnBailout) {
+                                System.exit(-1);
+                            }
                         }
                     } catch (Throwable t) {
                         if (GraalOptions.ExitVMOnException) {
@@ -444,8 +450,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         return CiConstant.forObject(object);
     }
 
-    private PhasePlan getDefaultPhasePlan() {
+    private PhasePlan createHotSpotSpecificPhasePlan(OptimisticOptimizations optimisticOpts) {
         PhasePlan phasePlan = new PhasePlan();
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts);
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         if (GraalOptions.Intrinsify) {
             phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }

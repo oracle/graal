@@ -27,11 +27,13 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ri.*;
 
 public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType {
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
+    @Data private RiDeoptReason reason;
     private final long leafGraphId;
 
     public FixedNode anchor() {
@@ -55,16 +57,21 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         condition = x;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, long leafGraphId) {
+    public RiDeoptReason reason() {
+        return reason;
+    }
+
+    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, long leafGraphId) {
         super(StampFactory.illegal());
         this.condition = condition;
         this.anchor = anchor;
+        this.reason = reason;
         this.leafGraphId = leafGraphId;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition(), leafGraphId);
+        gen.emitGuardCheck(condition(), reason(), leafGraphId);
     }
 
     @Override

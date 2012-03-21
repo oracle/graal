@@ -64,4 +64,12 @@ public interface RiProfilingInfo {
      * @return the estimated execution count or -1 if not available.
      */
     int getExecutionCount(int bci);
+
+    /**
+     * Returns how frequently a method was deoptimized for the given deoptimization reason. This only indicates how
+     * often the method did fall back to the interpreter for the execution and does not indicate how often it was recompiled.
+     * @param reason the reason for which the number of deoptimizations should be queried
+     * @return the number of times the compiled method deoptimized for the given reason.
+     */
+    int getDeoptimizationCount(RiDeoptReason reason);
 }

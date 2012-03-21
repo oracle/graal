@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public abstract class LIRGeneratorTool {
     public abstract CiTarget target();
@@ -79,13 +79,13 @@ public abstract class LIRGeneratorTool {
 
     public abstract CiValue emitConvert(ConvertNode.Op opcode, CiValue inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOn(Condition cond, DeoptAction action, Object deoptInfo);
-    public abstract void emitDeoptimize(DeoptAction action, Object deoptInfo, long leafGraphId);
+    public abstract void emitDeoptimizeOn(Condition cond, RiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
+    public abstract void emitDeoptimize(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId);
     public abstract CiValue emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args);
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, long leafGraphId);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);

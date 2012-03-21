@@ -26,6 +26,7 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.nodes.*;
 
@@ -62,7 +63,7 @@ public class InvokeExceptionTest extends GraphTest {
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
         }
-        new InliningPhase(null, runtime(), hints, null, getDefaultPhasePlan()).apply(graph);
+        new InliningPhase(null, runtime(), hints, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
     }

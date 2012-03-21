@@ -43,17 +43,17 @@ import com.oracle.graal.nodes.java.*;
  */
 public class Snippets {
 
-    public static void install(GraalRuntime runtime, CiTarget target, SnippetsInterface obj, PhasePlan plan) {
+    public static void install(GraalRuntime runtime, CiTarget target, SnippetsInterface obj) {
         Class<? extends SnippetsInterface> clazz = obj.getClass();
         BoxingMethodPool pool = new BoxingMethodPool(runtime);
         if (clazz.isAnnotationPresent(ClassSubstitution.class)) {
-            installSubstitution(runtime, target, plan, clazz, pool, clazz.getAnnotation(ClassSubstitution.class).value());
+            installSubstitution(runtime, target, clazz, pool, clazz.getAnnotation(ClassSubstitution.class).value());
         } else {
-            installSnippets(runtime, target, plan, clazz, pool);
+            installSnippets(runtime, target, clazz, pool);
         }
     }
 
-    private static void installSnippets(GraalRuntime runtime, CiTarget target, PhasePlan plan, Class< ? extends SnippetsInterface> clazz,
+    private static void installSnippets(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz,
                     BoxingMethodPool pool) {
         for (Method snippet : clazz.getDeclaredMethods()) {
             int modifiers = snippet.getModifiers();
@@ -62,12 +62,12 @@ public class Snippets {
             }
             RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
             if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
-                buildSnippetGraph(snippetRiMethod, runtime, target, pool, plan);
+                buildSnippetGraph(snippetRiMethod, runtime, target, pool);
             }
         }
     }
 
-    private static void installSubstitution(GraalRuntime runtime, CiTarget target, PhasePlan plan, Class< ? extends SnippetsInterface> clazz,
+    private static void installSubstitution(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz,
                     BoxingMethodPool pool, Class<?> original) throws GraalInternalError {
         for (Method snippet : clazz.getDeclaredMethods()) {
             try {
@@ -80,7 +80,7 @@ public class Snippets {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
-                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool, plan);
+                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool);
                 runtime.getRiMethod(method).compilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("Could not resolve method to substitute with: " + snippet.getName(), e);
@@ -88,13 +88,13 @@ public class Snippets {
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final BoxingMethodPool pool, final PhasePlan plan) {
+    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
         return Debug.scope("BuildSnippetGraph", snippetRiMethod, new Callable<StructuredGraph>() {
 
             @Override
             public StructuredGraph call() throws Exception {
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-                GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config);
+                GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
                 StructuredGraph graph = new StructuredGraph(snippetRiMethod);
                 graphBuilder.apply(graph);
 
@@ -109,7 +109,7 @@ public class Snippets {
                     if (holder.isSubtypeOf(runtime.getType(SnippetsInterface.class))) {
                         StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
                         if (targetGraph == null) {
-                            targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool, plan);
+                            targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool);
                         }
                         InliningUtil.inline(invoke, targetGraph, true);
                         if (GraalOptions.OptCanonicalizer) {
