@@ -249,15 +249,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public LIRDebugInfo state() {
         assert lastState != null : "must have state before instruction";
-        return stateFor(lastState);
+        return stateFor(lastState, -1);
     }
 
-    public LIRDebugInfo stateFor(FrameState state) {
-        return stateFor(state, null, null);
+    public LIRDebugInfo state(long leafGraphId) {
+        assert lastState != null : "must have state before instruction";
+        return stateFor(lastState, leafGraphId);
     }
 
-    public LIRDebugInfo stateFor(FrameState state, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
-        return debugInfoBuilder.build(state, curLocks, pointerSlots, exceptionEdge);
+    public LIRDebugInfo stateFor(FrameState state, long leafGraphId) {
+        return stateFor(state, null, null, leafGraphId);
+    }
+
+    public LIRDebugInfo stateFor(FrameState state, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
+        return debugInfoBuilder.build(state, curLocks, pointerSlots, exceptionEdge, leafGraphId);
     }
 
     /**
@@ -528,7 +533,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         // The state before the monitor enter is used for null checks, so it must not contain the newly locked object.
         curLocks = new LockScope(curLocks, x.stateAfter().outerFrameState(), x, lockData);
         // The state after the monitor enter is used for deoptimization, after the monitor has blocked, so it must contain the newly locked object.
-        LIRDebugInfo stateAfter = stateFor(x.stateAfter());
+        LIRDebugInfo stateAfter = stateFor(x.stateAfter(), -1);
 
         XirSnippet snippet = xir.genMonitorEnter(site(x, x.object()), obj, lockAddress);
         emitXir(snippet, x, stateBefore, stateAfter, true, null, null);
@@ -745,20 +750,21 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp) {
+    public void emitGuardCheck(BooleanNode comp, long leafGraphId) {
         if (comp instanceof NullCheckNode && !((NullCheckNode) comp).expectedNull) {
-            emitNullCheckGuard((NullCheckNode) comp);
+            emitNullCheckGuard((NullCheckNode) comp, leafGraphId);
         } else if (comp instanceof ConstantNode && comp.asConstant().asBoolean()) {
             // True constant, nothing to emit.
+            // False constants are handled within emitBranch.
         } else {
             // Fall back to a normal branch.
-            LIRDebugInfo info = state();
+            LIRDebugInfo info = state(leafGraphId);
             LabelRef stubEntry = createDeoptStub(DeoptAction.InvalidateReprofile, info, comp);
             emitBranch(comp, null, stubEntry, info);
         }
     }
 
-    protected abstract void emitNullCheckGuard(NullCheckNode node);
+    protected abstract void emitNullCheckGuard(NullCheckNode node, long leafGraphId);
 
     public void emitBranch(BooleanNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         if (node instanceof NullCheckNode) {
@@ -926,7 +932,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (!target().invokeSnippetAfterArguments) {
             // This is the version currently necessary for Maxine: since the invokeinterface-snippet uses a division, it
             // destroys rdx, which is also used to pass a parameter.  Therefore, the snippet must be before the parameters are assigned to their locations.
-            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()));
+            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), x.leafGraphId());
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
@@ -939,11 +945,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         if (target().invokeSnippetAfterArguments) {
             // This is the version currently active for HotSpot.
-            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), null, null);
+            LIRDebugInfo addrInfo = stateFor(stateBeforeCallWithArguments(x.stateAfter(), callTarget, x.bci()), null, null, x.leafGraphId());
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
-        LIRDebugInfo callInfo = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null);
+        LIRDebugInfo callInfo = stateFor(x.stateDuring(), null, x instanceof InvokeWithExceptionNode ? getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge()) : null, x.leafGraphId());
         emitCall(targetMethod, resultOperand, argList, destinationAddress, callInfo, snippet.marks);
 
         if (isLegal(resultOperand)) {
@@ -984,7 +990,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         return argList;
     }
-
 
     protected abstract LabelRef createDeoptStub(DeoptAction action, LIRDebugInfo info, Object deoptInfo);
 
@@ -1046,7 +1051,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
 
             // TODO is it correct here that the pointerSlots are not passed to the oop map generation?
-            info = stateFor(stateBeforeReturn);
+            info = stateFor(stateBeforeReturn, -1);
         }
 
         emitCall(x.call(), resultOperand, argList, CiConstant.forLong(0), info, null);

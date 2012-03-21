@@ -41,6 +41,7 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
     // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
     @Data private boolean megamorph;
     private boolean useForInlining;
+    private final long leafGraphId;
 
     /**
      * Constructs a new Invoke instruction.
@@ -50,10 +51,11 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
      * @param target the target method being called
      * @param args the list of instructions producing arguments to the invocation, including the receiver object
      */
-    public InvokeNode(MethodCallTargetNode callTarget, int bci) {
+    public InvokeNode(MethodCallTargetNode callTarget, int bci, long leafGraphId) {
         super(callTarget.returnStamp());
         this.callTarget = callTarget;
         this.bci = bci;
+        this.leafGraphId = leafGraphId;
         this.megamorph = false;
         this.useForInlining = true;
     }
@@ -79,6 +81,11 @@ public final class InvokeNode extends AbstractStateSplit implements Node.Iterabl
     @Override
     public void setUseForInlining(boolean value) {
         this.useForInlining = value;
+    }
+
+    @Override
+    public long leafGraphId() {
+        return leafGraphId;
     }
 
     @Override

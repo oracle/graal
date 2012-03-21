@@ -113,5 +113,7 @@ public interface CompilerToVM {
 
     int RiMethod_vtableEntryOffset(HotSpotMethodResolved method);
 
+    long[] getDeoptedLeafGraphIds();
+
     // Checkstyle: resume
 }

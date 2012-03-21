@@ -43,9 +43,9 @@ public class DebugInfoBuilder {
 
     private HashMap<VirtualObjectNode, CiVirtualObject> virtualObjects = new HashMap<>();
 
-    public LIRDebugInfo build(FrameState topState, LockScope locks, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge) {
+    public LIRDebugInfo build(FrameState topState, LockScope locks, List<CiStackSlot> pointerSlots, LabelRef exceptionEdge, long leafGraphId) {
         assert virtualObjects.size() == 0;
-        CiFrame frame = computeFrameForState(topState, locks);
+        CiFrame frame = computeFrameForState(topState, locks, leafGraphId);
 
         CiVirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
@@ -106,7 +106,7 @@ public class DebugInfoBuilder {
         return new LIRDebugInfo(frame, virtualObjectsArray, pointerSlots, exceptionEdge);
     }
 
-    private CiFrame computeFrameForState(FrameState state, LockScope locks) {
+    private CiFrame computeFrameForState(FrameState state, LockScope locks, long leafGraphId) {
         int numLocals = state.localsSize();
         int numStack = state.stackSize();
         int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
@@ -133,14 +133,14 @@ public class DebugInfoBuilder {
 
         CiFrame caller = null;
         if (state.outerFrameState() != null) {
-            caller = computeFrameForState(state.outerFrameState(), nextLock);
+            caller = computeFrameForState(state.outerFrameState(), nextLock, -1);
         } else {
             if (nextLock != null) {
                 throw new CiBailout("unbalanced monitors: found monitor for unknown frame");
             }
         }
         assert state.bci >= 0 || state.bci == FrameState.BEFORE_BCI;
-        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, state.localsSize(), state.stackSize(), numLocks);
+        CiFrame frame = new CiFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, state.localsSize(), state.stackSize(), numLocks, leafGraphId);
         return frame;
     }
 

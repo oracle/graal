@@ -41,8 +41,8 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Lowerabl
      * @param length the instruction producing the length
      * @param elementKind the element type
      */
-    public LoadIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind) {
-        super(createStamp(array, elementKind), array, index, length, elementKind);
+    public LoadIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, long leafGraphId) {
+        super(createStamp(array, elementKind), array, index, length, elementKind, leafGraphId);
     }
 
     private static Stamp createStamp(ValueNode array, CiKind kind) {

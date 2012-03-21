@@ -57,7 +57,7 @@ public final class BoxNode extends AbstractStateSplit implements Node.IterableNo
     public void expand(BoxingMethodPool pool) {
         RiResolvedMethod boxingMethod = pool.getBoxingMethod(sourceKind);
         MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(InvokeKind.Static, boxingMethod, new ValueNode[]{source}, boxingMethod.signature().returnType(boxingMethod.holder())));
-        InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci));
+        InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci, -1));
         invokeNode.setProbability(this.probability());
         invokeNode.setStateAfter(stateAfter());
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, invokeNode);

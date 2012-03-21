@@ -46,6 +46,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
     }
 
     private final CiKind elementType;
+    private final long leafGraphId;
 
     /**
      * Create an new AccessIndexedNode.
@@ -55,11 +56,12 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * @param length the instruction producing the length
      * @param elementKind the type of the elements of the array
      */
-    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, ValueNode length, CiKind elementKind) {
+    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, long leafGraphId) {
         super(stamp, array);
         this.index = index;
         this.length = length;
         this.elementType = elementKind;
+        this.leafGraphId = leafGraphId;
     }
 
     /**
@@ -68,6 +70,10 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      */
     public CiKind elementKind() {
         return elementType;
+    }
+
+    public long leafGraphId() {
+        return leafGraphId;
     }
 
     @Override

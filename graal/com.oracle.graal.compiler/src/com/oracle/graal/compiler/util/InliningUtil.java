@@ -176,7 +176,7 @@ public class InliningUtil {
             ValueNode receiver = invoke.callTarget().receiver();
             ReadHubNode objectClass = graph.add(new ReadHubNode(receiver));
             IsTypeNode isTypeNode = graph.unique(new IsTypeNode(objectClass, type));
-            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(isTypeNode, invoke.leafGraphId()));
             AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
 
@@ -304,7 +304,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 unknownTypeNode = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, 1, notRecordedTypeProbability, false);
             } else {
-                unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+                unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile, invoke.leafGraphId()));
             }
 
             // replace the invoke exception edge
@@ -369,7 +369,7 @@ public class InliningUtil {
             ReadHubNode objectClassNode = graph.add(new ReadHubNode(invoke.callTarget().receiver()));
             graph.addBeforeFixed(invoke.node(), objectClassNode);
 
-            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile));
+            FixedNode unknownTypeNode = graph.add(new DeoptimizeNode(DeoptAction.InvalidateReprofile, invoke.leafGraphId()));
             FixedNode dispatchOnType = createDispatchOnType(graph, objectClassNode, new BeginNode[] {calleeEntryNode}, unknownTypeNode);
 
             FixedWithNextNode pred = (FixedWithNextNode) invoke.node().predecessor();
@@ -812,7 +812,7 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptAction.InvalidateRecompile);
+                DeoptimizeNode deoptimizeNode = new DeoptimizeNode(DeoptAction.InvalidateRecompile, invoke.leafGraphId());
                 unwindDuplicate.replaceAndDelete(graph.add(deoptimizeNode));
                 // move the deopt upwards if there is a monitor exit that tries to use the "after exception" frame state
                 // (because there is no "after exception" frame state!)
@@ -900,7 +900,7 @@ public class InliningUtil {
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.stamp().nonNull()) {
-            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(firstParam, false)))));
+            graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new NullCheckNode(firstParam, false)), invoke.leafGraphId())));
         }
     }
 }

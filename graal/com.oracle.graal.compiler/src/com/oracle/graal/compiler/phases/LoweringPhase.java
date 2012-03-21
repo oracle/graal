@@ -59,8 +59,8 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public Node createGuard(Node condition) {
-                // TODO (thomaswue): Docuemnt why this must not be called on floating nodes.
+            public Node createGuard(Node condition, long leafGraphId) {
+                // TODO (thomaswue): Document why this must not be called on floating nodes.
                 throw new UnsupportedOperationException();
             }
         };
@@ -117,7 +117,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public Node createGuard(Node condition) {
+            public Node createGuard(Node condition, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {
@@ -126,7 +126,7 @@ public class LoweringPhase extends Phase {
                         }
                     }
                 }
-                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor));
+                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor, leafGraphId));
                 activeGuards.grow();
                 activeGuards.mark(newGuard);
                 return newGuard;

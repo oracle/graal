@@ -27,6 +27,6 @@ import com.oracle.graal.graph.*;
 public interface CiLoweringTool {
     GraalRuntime getRuntime();
     Node getGuardAnchor();
-    Node createGuard(Node condition);
+    Node createGuard(Node condition, long leafGraphId);
 }
 

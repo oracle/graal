@@ -39,14 +39,16 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
 
     @Data private String message;
     @Data private final DeoptAction action;
+    private final long leafGraphId;
 
     public DeoptimizeNode() {
-        this(DeoptAction.InvalidateReprofile);
+        this(DeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID);
     }
 
-    public DeoptimizeNode(DeoptAction action) {
+    public DeoptimizeNode(DeoptAction action, long leafGraphId) {
         super(StampFactory.illegal());
         this.action = action;
+        this.leafGraphId = leafGraphId;
     }
 
     public void setMessage(String message) {
@@ -61,9 +63,13 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
         return action;
     }
 
+    public long leafGraphId() {
+        return leafGraphId;
+    }
+
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimizeOn(null, action, message);
+        gen.emitDeoptimize(action, message, leafGraphId);
     }
 
     @NodeIntrinsic

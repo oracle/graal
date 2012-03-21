@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import java.util.*;
+import java.util.concurrent.atomic.*;
 
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
@@ -36,8 +37,19 @@ import com.oracle.graal.nodes.util.*;
  * This node is the start of the control flow of the graph.
  */
 public class StructuredGraph extends Graph {
+
+    public static final long INVALID_GRAPH_ID = -1;
+    private static final AtomicLong uniqueGraphIds = new AtomicLong();
     private final BeginNode start;
     private final RiResolvedMethod method;
+    private final long graphId;
+
+    /**
+     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
+     */
+    public StructuredGraph() {
+        this(null, null);
+    }
 
     /**
      * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
@@ -50,13 +62,7 @@ public class StructuredGraph extends Graph {
         super(name);
         this.start = add(new BeginNode());
         this.method = method;
-    }
-
-    /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
-     */
-    public StructuredGraph() {
-        this((String) null);
+        this.graphId = uniqueGraphIds.incrementAndGet();
     }
 
     public StructuredGraph(RiResolvedMethod method) {
@@ -69,6 +75,10 @@ public class StructuredGraph extends Graph {
 
     public RiResolvedMethod method() {
         return method;
+    }
+
+    public long graphId() {
+        return graphId;
     }
 
     @Override
