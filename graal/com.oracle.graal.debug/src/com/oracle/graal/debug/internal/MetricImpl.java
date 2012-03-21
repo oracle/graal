@@ -39,4 +39,9 @@ public final class MetricImpl extends DebugValue implements DebugMetric {
             super.addToCurrentValue(value);
         }
     }
+
+    @Override
+    public String toString(long value) {
+        return Long.toString(value);
+    }
 }

@@ -32,6 +32,8 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
         }
     };
 
+    private ThreadLocal<Long> valueToSubstract = new ThreadLocal<>();
+
     public TimerImpl(String name) {
         super(name);
     }
@@ -39,16 +41,29 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     @Override
     public TimerCloseable start() {
         if (Debug.isTimeEnabled()) {
-            final long startTime = System.currentTimeMillis();
-            return new TimerCloseable() {
+            final long startTime = System.nanoTime();
+            if (valueToSubstract.get() == null) {
+                valueToSubstract.set(0L);
+            }
+            final long previousValueToSubstract = valueToSubstract.get();
+            TimerCloseable result = new TimerCloseable() {
                 @Override
                 public void close() {
-                    long timeSpan = System.currentTimeMillis() - startTime;
-                    TimerImpl.this.addToCurrentValue(timeSpan);
+                    long timeSpan = System.nanoTime() - startTime;
+                    long oldValueToSubstract = valueToSubstract.get();
+                    valueToSubstract.set(timeSpan + previousValueToSubstract);
+                    TimerImpl.this.addToCurrentValue(timeSpan - oldValueToSubstract);
                 }
             };
+            valueToSubstract.set(0L);
+            return result;
         } else {
             return VOID_CLOSEABLE;
         }
+    }
+
+    @Override
+    public String toString(long value) {
+        return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
     }
 }

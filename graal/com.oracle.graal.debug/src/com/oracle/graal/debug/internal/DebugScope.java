@@ -41,7 +41,6 @@ public final class DebugScope {
 
     private DebugValueMap valueMap;
     private String qualifiedName;
-    private String name;
 
     private static final char SCOPE_SEP = '.';
 
@@ -67,11 +66,23 @@ public final class DebugScope {
     }
 
     private DebugScope(String name, String qualifiedName, DebugScope parent, Object... context) {
-        this.name = name;
         this.parent = parent;
         this.context = context;
         this.qualifiedName = qualifiedName;
         assert context != null;
+
+        if (parent != null) {
+            for (DebugValueMap child : parent.getValueMap().getChildren()) {
+                if (child.getName().equals(name)) {
+                    this.valueMap = child;
+                    return;
+                }
+            }
+            this.valueMap = new DebugValueMap(name);
+            parent.getValueMap().addChild(this.valueMap);
+        } else {
+            this.valueMap = new DebugValueMap(name);
+        }
     }
 
     public boolean isDumpEnabled() {
@@ -123,9 +134,6 @@ public final class DebugScope {
         try (TimerCloseable a = scopeTime.start()) {
             return executeScope(runnable, callable);
         } finally {
-            if (!sandbox && newChild.hasValueMap()) {
-                getValueMap().addChild(newChild.getValueMap());
-            }
             newChild.context = null;
             instanceTL.set(oldContext);
             setConfig(oldConfig);
@@ -133,6 +141,7 @@ public final class DebugScope {
     }
 
     private <T> T executeScope(Runnable runnable, Callable<T> callable) {
+
         try {
             if (runnable != null) {
                 runnable.run();
@@ -191,14 +200,7 @@ public final class DebugScope {
     }
 
     private DebugValueMap getValueMap() {
-        if (valueMap == null) {
-            valueMap = new DebugValueMap(name);
-        }
         return valueMap;
-    }
-
-    private boolean hasValueMap() {
-        return valueMap != null;
     }
 
     long getCurrentValue(int index) {

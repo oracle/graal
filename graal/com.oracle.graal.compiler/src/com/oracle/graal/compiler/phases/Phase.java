@@ -28,6 +28,8 @@ import com.oracle.graal.nodes.*;
 public abstract class Phase {
 
     private String name;
+    private static final DebugMetric metricPhaseRuns = Debug.metric("Runs");
+    protected static final DebugMetric METRIC_PROCESSED_NODES = Debug.metric("ProcessedNodes");
 
     protected Phase() {
         this.name = this.getClass().getSimpleName();
@@ -52,6 +54,7 @@ public abstract class Phase {
         Debug.scope(name, this, new Runnable() {
             public void run() {
                 Phase.this.run(graph);
+                metricPhaseRuns.increment();
                 if (dumpGraph) {
                     Debug.dump(graph, "After phase %s", name);
                 }

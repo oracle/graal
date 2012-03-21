@@ -20,45 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package com.oracle.graal.hotspot;
 
-public abstract class DebugValue {
+import java.util.concurrent.*;
 
-    private String name;
-    private int index;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
 
-    protected DebugValue(String name) {
-        this.name = name;
-        this.index = -1;
-    }
 
-    protected long getCurrentValue() {
-        ensureInitialized();
-        return DebugScope.getInstance().getCurrentValue(index);
-    }
+public final class CompilerThread extends Thread {
 
-    protected void setCurrentValue(long l) {
-        ensureInitialized();
-        DebugScope.getInstance().setCurrentValue(index, l);
-    }
+    public static final ThreadFactory FACTORY = new ThreadFactory() {
 
-    private void ensureInitialized() {
-        if (index == -1) {
-            index = KeyRegistry.register(name, this);
+        @Override
+        public Thread newThread(Runnable r) {
+            return new CompilerThread(r);
         }
+    };
+
+    private CompilerThread(Runnable r) {
+        super(r);
+        this.setName("GraalCompilerThread-" + this.getId());
+        this.setDaemon(true);
     }
 
-    protected void addToCurrentValue(long timeSpan) {
-        setCurrentValue(getCurrentValue() + timeSpan);
+    @Override
+    public void run() {
+        if (GraalOptions.Debug) {
+            Debug.enable();
+            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
+            Debug.setConfig(hotspotDebugConfig);
+        }
+        super.run();
     }
-
-    public int getIndex() {
-        return index;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public abstract String toString(long value);
 }

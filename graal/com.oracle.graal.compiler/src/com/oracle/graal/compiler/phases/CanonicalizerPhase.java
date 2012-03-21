@@ -33,6 +33,9 @@ import com.oracle.graal.nodes.util.*;
 
 public class CanonicalizerPhase extends Phase {
     private static final int MAX_ITERATION_PER_NODE = 10;
+    private static final DebugMetric METRIC_CANONICALIZED_NODES = Debug.metric("CanonicalizedNodes");
+    private static final DebugMetric METRIC_CANONICALIZATION_CONSIDERED_NODES = Debug.metric("CanonicalizationConsideredNodes");
+    private static final DebugMetric METRIC_SIMPLIFICATION_CONSIDERED_NODES = Debug.metric("SimplificationConsideredNodes");
 
     private boolean newNodes;
     private final CiTarget target;
@@ -64,7 +67,9 @@ public class CanonicalizerPhase extends Phase {
         graph.trackInputChange(nodeWorkList);
         Tool tool = new Tool(nodeWorkList, runtime, target, assumptions);
         for (Node node : nodeWorkList) {
+            METRIC_PROCESSED_NODES.increment();
             if (node instanceof Canonicalizable) {
+                METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 Debug.log("Canonicalizer: work on %s", node);
                 graph.mark();
                 ValueNode canonical = ((Canonicalizable) node).canonical(tool);
@@ -81,6 +86,7 @@ public class CanonicalizerPhase extends Phase {
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
                 if (canonical != node) {
+                    METRIC_CANONICALIZED_NODES.increment();
                     if (node instanceof FloatingNode) {
                         if (canonical == null) {
                             // case 1
@@ -116,6 +122,7 @@ public class CanonicalizerPhase extends Phase {
                     nodeWorkList.addAll(graph.getNewNodes());
                 }
             } else if (node instanceof Simplifiable) {
+                METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 ((Simplifiable) node).simplify(tool);
             }
         }

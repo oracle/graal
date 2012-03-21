@@ -46,6 +46,12 @@ public class DebugValueMap {
         return values[index];
     }
 
+    public void clearChildren() {
+        if (children != null) {
+            children.clear();
+        }
+    }
+
     private void ensureSize(int index) {
         if (values == null) {
             values = new long[index + 1];
