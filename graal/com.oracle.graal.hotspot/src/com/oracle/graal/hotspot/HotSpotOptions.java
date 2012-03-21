@@ -61,7 +61,7 @@ public class HotSpotOptions {
 
         Field f;
         try {
-            f = GraalOptions.class.getField(fieldName);
+            f = GraalOptions.class.getDeclaredField(fieldName);
 
             if (value == null) {
                 if (f.getType() == Float.TYPE) {
@@ -85,6 +85,7 @@ public class HotSpotOptions {
                 }
             }
             if (value != null) {
+                f.setAccessible(true);
                 f.set(null, value);
                 //Logger.info("Set option " + fieldName + " to " + value);
             } else {
