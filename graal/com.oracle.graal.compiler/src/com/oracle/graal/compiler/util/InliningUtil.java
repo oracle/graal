@@ -51,21 +51,21 @@ public class InliningUtil {
         void recordConcreteMethodAssumption(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl);
     }
 
-    public static String methodName(RiResolvedMethod method) {
-        return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
-    }
-
     private static String methodName(RiResolvedMethod method, Invoke invoke) {
         if (Debug.isLogEnabled()) {
             if (invoke != null && invoke.stateAfter() != null) {
                 RiMethod parent = invoke.stateAfter().method();
-                return parent.name() + "@" + invoke.bci() + ": " + CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+                return parent.name() + "@" + invoke.bci() + ": " + methodNameAndCodeSize(method);
             } else {
-                return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+                return methodNameAndCodeSize(method);
             }
         } else {
             return null;
         }
+    }
+
+    private static String methodNameAndCodeSize(RiResolvedMethod method) {
+        return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
     }
 
     /**
@@ -541,18 +541,18 @@ public class InliningUtil {
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
     public static InlineInfo getInlineInfo(Invoke invoke, int level, GraalRuntime runtime, CiAssumptions assumptions, InliningCallback callback, OptimisticOptimizations optimisticOpts) {
-        if (!checkInvokeConditions(invoke)) {
-            return null;
-        }
         RiResolvedMethod parent = invoke.stateAfter().method();
         MethodCallTargetNode callTarget = invoke.callTarget();
         RiResolvedMethod targetMethod = callTarget.targetMethod();
-
         if (targetMethod == null) {
             return null;
         }
+        if (!checkInvokeConditions(invoke)) {
+            return null;
+        }
+
         if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
-            if (checkTargetConditions(invoke, targetMethod)) {
+            if (checkTargetConditions(invoke, targetMethod, optimisticOpts)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, targetMethod, invoke);
                 return new ExactInlineInfo(invoke, weight, level, targetMethod);
             }
@@ -562,7 +562,7 @@ public class InliningUtil {
             RiResolvedType exact = callTarget.receiver().exactType();
             assert exact.isSubtypeOf(targetMethod.holder()) : exact + " subtype of " + targetMethod.holder() + " for " + targetMethod;
             RiResolvedMethod resolved = exact.resolveMethodImpl(targetMethod);
-            if (checkTargetConditions(invoke, resolved)) {
+            if (checkTargetConditions(invoke, resolved, optimisticOpts)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
                 return new ExactInlineInfo(invoke, weight, level, resolved);
             }
@@ -582,7 +582,7 @@ public class InliningUtil {
         if (assumptions != null) {
             RiResolvedMethod concrete = holder.uniqueConcreteMethod(targetMethod);
             if (concrete != null) {
-                if (checkTargetConditions(invoke, concrete)) {
+                if (checkTargetConditions(invoke, concrete, optimisticOpts)) {
                     double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                     return new AssumptionInlineInfo(invoke, weight, level, holder, concrete);
                 }
@@ -608,7 +608,7 @@ public class InliningUtil {
                     if (optimisticOpts.inlineMonomorphicCalls()) {
                         RiResolvedType type = types[0];
                         RiResolvedMethod concrete = type.resolveMethodImpl(targetMethod);
-                        if (checkTargetConditions(invoke, concrete)) {
+                        if (checkTargetConditions(invoke, concrete, optimisticOpts)) {
                             double weight = callback == null ? 0 : callback.inliningWeight(parent, concrete, invoke);
                             return new TypeGuardInlineInfo(invoke, weight, level, concrete, type);
                         }
@@ -647,7 +647,7 @@ public class InliningUtil {
                         double totalWeight = 0;
                         boolean canInline = true;
                         for (RiResolvedMethod concrete: concreteMethods) {
-                            if (!checkTargetConditions(invoke, concrete)) {
+                            if (!checkTargetConditions(invoke, concrete, optimisticOpts)) {
                                 canInline = false;
                                 break;
                             }
@@ -702,7 +702,7 @@ public class InliningUtil {
         return true;
     }
 
-    private static boolean checkTargetConditions(Invoke invoke, RiMethod method) {
+    private static boolean checkTargetConditions(Invoke invoke, RiMethod method, OptimisticOptimizations optimisticOpts) {
         if (method == null) {
             Debug.log("not inlining because method is not resolved");
             return false;
@@ -713,23 +713,28 @@ public class InliningUtil {
         }
         RiResolvedMethod resolvedMethod = (RiResolvedMethod) method;
         if (Modifier.isNative(resolvedMethod.accessFlags())) {
-            Debug.log("not inlining %s because it is a native method", methodName(resolvedMethod));
+            Debug.log("not inlining %s because it is a native method", methodName(resolvedMethod, invoke));
             return false;
         }
         if (Modifier.isAbstract(resolvedMethod.accessFlags())) {
-            Debug.log("not inlining %s because it is an abstract method", methodName(resolvedMethod));
+            Debug.log("not inlining %s because it is an abstract method", methodName(resolvedMethod, invoke));
             return false;
         }
         if (!resolvedMethod.holder().isInitialized()) {
-            Debug.log("not inlining %s because of non-initialized class", methodName(resolvedMethod));
+            Debug.log("not inlining %s because of non-initialized class", methodName(resolvedMethod, invoke));
             return false;
         }
         if (!resolvedMethod.canBeInlined()) {
-            Debug.log("not inlining %s because it is marked non-inlinable", methodName(resolvedMethod));
+            Debug.log("not inlining %s because it is marked non-inlinable", methodName(resolvedMethod, invoke));
             return false;
         }
         if (computeRecursiveInliningLevel(invoke.stateAfter(), (RiResolvedMethod) method) > GraalOptions.MaximumRecursiveInlining) {
-            Debug.log("not inlining %s because it exceeds the maximum recursive inlining depth", methodName(resolvedMethod));
+            Debug.log("not inlining %s because it exceeds the maximum recursive inlining depth", methodName(resolvedMethod, invoke));
+            return false;
+        }
+        OptimisticOptimizations calleeOpts = new OptimisticOptimizations(resolvedMethod);
+        if (calleeOpts.lessOptimisticThan(optimisticOpts)) {
+            Debug.log("not inlining %s because callee uses less optimistic optimizations than caller", methodName(resolvedMethod, invoke));
             return false;
         }
 

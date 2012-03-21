@@ -299,9 +299,6 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
                 public void run() {
                     try {
-                        if (method.name().contains("accept") && method.holder().name().contains("ClassReader")) {
-                            throw new AssertionError("Stop compiling");
-                        }
                         final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
                         final PhasePlan plan = createHotSpotSpecificPhasePlan(optimisticOpts);
                         long startTime = System.nanoTime();
@@ -310,6 +307,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                         if (printCompilation) {
                             TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...", index, method.holder().name(), method.name(), method.signature().asString()));
                         }
+                        optimisticOpts.log(method);
 
                         CiTargetMethod result = null;
                         TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
