@@ -28,7 +28,6 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;

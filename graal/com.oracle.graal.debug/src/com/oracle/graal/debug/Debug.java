@@ -55,6 +55,22 @@ public class Debug {
         return ENABLED && DebugScope.getInstance().isLogEnabled();
     }
 
+    public static Runnable decorateDebugRoot(Runnable runnable, String name, DebugConfig config) {
+        return runnable;
+    }
+
+    public static <T> Callable<T> decorateDebugRoot(Callable<T> callable, String name, DebugConfig config) {
+        return callable;
+    }
+
+    public static Runnable decorateScope(Runnable runnable, String name, Object... context) {
+        return runnable;
+    }
+
+    public static <T> Callable<T> decorateScope(Callable<T> callable, String name, Object... context) {
+        return callable;
+    }
+
     public static void sandbox(String name, Runnable runnable) {
         if (ENABLED) {
             DebugScope.getInstance().scope(name, runnable, null, true, new Object[0]);

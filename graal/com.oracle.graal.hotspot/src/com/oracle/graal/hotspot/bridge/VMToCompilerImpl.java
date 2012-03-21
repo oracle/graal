@@ -40,7 +40,6 @@ import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
 
 /**
@@ -276,7 +275,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             }
         }
 
-        CompilationTask task = CompilationTask.create(compiler, getDefaultPhasePlan(), method);
+        Runnable task = CompilationTask.create(compiler, getDefaultPhasePlan(), method);
         if (blocking) {
             task.run();
         } else {
