@@ -49,8 +49,6 @@ import com.oracle.graal.snippets.*;
 public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private final Compiler compiler;
-    private int compiledMethodCount;
-    private long totalCompilationTime;
     private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotTypePrimitive typeBoolean;
@@ -206,10 +204,6 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 }
             }
         }
-
-        if (GraalOptions.PrintCompilationStatistics) {
-            printCompilationStatistics();
-        }
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
@@ -218,12 +212,6 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             flattenChildren(child, globalMap);
         }
         map.clearChildren();
-    }
-
-    private void printCompilationStatistics() {
-        TTY.println("Accumulated compilation statistics");
-        TTY.println("  Compiled methods         : %d", compiledMethodCount);
-        TTY.println("  Total compilation time   : %6.3f s", totalCompilationTime / Math.pow(10, 9));
     }
 
     private static void printSummary(List<DebugValueMap> topLevelMaps, List<DebugValue> debugValues) {
@@ -278,75 +266,26 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     @Override
     public boolean compileMethod(final HotSpotMethodResolved method, final int entryBCI, boolean blocking) throws Throwable {
-        try {
-            if (Thread.currentThread() instanceof CompilerThread) {
-                if (method.holder().name().contains("java/util/concurrent")) {
-                    // This is required to avoid deadlocking a compiler thread. The issue is that a
-                    // java.util.concurrent.BlockingQueue is used to implement the compilation worker
-                    // queues. If a compiler thread triggers a compilation, then it may be blocked trying
-                    // to add something to its own queue.
-                    return false;
-                }
+        if (Thread.currentThread() instanceof CompilerThread) {
+            if (method.holder().name().contains("java/util/concurrent")) {
+                // This is required to avoid deadlocking a compiler thread. The issue is that a
+                // java.util.concurrent.BlockingQueue is used to implement the compilation worker
+                // queues. If a compiler thread triggers a compilation, then it may be blocked trying
+                // to add something to its own queue.
+                return false;
             }
+        }
 
-            Runnable runnable = new Runnable() {
-
-                public void run() {
-                    try {
-                        final PhasePlan plan = getDefaultPhasePlan();
-                        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
-                        plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                        long startTime = System.nanoTime();
-                        int index = compiledMethodCount++;
-                        final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
-                        if (printCompilation) {
-                            TTY.println(String.format("Graal %4d %-70s %-45s %-50s ...", index, method.holder().name(), method.name(), method.signature().asString()));
-                        }
-
-                        CiTargetMethod result = null;
-                        TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
-                        long nanoTime;
-                        try {
-                            result = Debug.scope("Compiling", new Callable<CiTargetMethod>() {
-
-                                @Override
-                                public CiTargetMethod call() throws Exception {
-                                    return compiler.getCompiler().compileMethod(method, -1, plan);
-                                }
-                            });
-                        } finally {
-                            filter.remove();
-                            nanoTime = System.nanoTime() - startTime;
-                            totalCompilationTime += nanoTime;
-                            if (printCompilation) {
-                                TTY.println(String.format("Graal %4d %-70s %-45s %-50s | %3d.%dms %4dnodes %5dB", index, "", "", "", nanoTime / 1000000, nanoTime % 1000000, 0,
-                                                (result != null ? result.targetCodeSize() : -1)));
-                            }
-                        }
-                        compiler.getRuntime().installMethod(method, result);
-                    } catch (CiBailout bailout) {
-                        Debug.metric("Bailouts").increment();
-                        if (GraalOptions.ExitVMOnBailout) {
-                            bailout.printStackTrace(TTY.cachedOut);
-                            System.exit(-1);
-                        }
-                    } catch (Throwable t) {
-                        if (GraalOptions.ExitVMOnException) {
-                            t.printStackTrace(TTY.cachedOut);
-                            System.exit(-1);
-                        }
-                    }
-                }
-            };
-
-            if (blocking) {
-                runnable.run();
-            } else {
-                compileQueue.execute(runnable);
+        CompilationTask task = CompilationTask.create(compiler, getDefaultPhasePlan(), method);
+        if (blocking) {
+            task.run();
+        } else {
+            try {
+                compileQueue.execute(task);
+            } catch (RejectedExecutionException e) {
+                // The compile queue was already shut down.
+                return false;
             }
-        } catch (RejectedExecutionException e) {
-            // The compile queue was already shut down.
-            return false;
         }
         return true;
     }
