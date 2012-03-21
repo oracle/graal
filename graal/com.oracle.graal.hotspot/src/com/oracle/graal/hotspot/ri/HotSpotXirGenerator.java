@@ -22,25 +22,29 @@
  */
 package com.oracle.graal.hotspot.ri;
 
+import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiAddress.*;
-import com.oracle.max.cri.ci.CiRegister.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.*;
-import com.oracle.max.cri.xir.*;
-import com.oracle.max.cri.xir.CiXirAssembler.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
+import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.CiAddress.Scale;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.max.cri.xir.*;
+import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
+import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
+import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
+import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 
@@ -72,6 +76,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private final CiTarget target;
     private final RiRegisterConfig registerConfig;
     private final Compiler compiler;
+
 
     private CiXirAssembler globalAsm;
 
@@ -710,10 +715,10 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                     asm.jneq(end, objHub, asm.o(null));
                 }
             }
+
+            RiDeoptReason deoptReason = is(EXACT_HINTS, flags) ? RiDeoptReason.OptimizedTypeCheckViolated : RiDeoptReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-
-            asm.mov(scratch, wordConst(asm, 2));
-
+            asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.InvalidateReprofile, deoptReason)));
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
 
@@ -891,7 +896,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, 0));
+                asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.BoundsCheckException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
@@ -1081,7 +1086,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 checkSubtype(asm, temp, valueHub, compHub);
                 asm.jneq(store, temp, wordConst(asm, 0));
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, 0));
+                asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.ClassCastException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.jmp(store);
             }
@@ -1162,7 +1167,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (is(BOUNDS_CHECK, flags)) {
                 asm.bindOutOfLine(failBoundsCheck);
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, 0));
+                asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.BoundsCheckException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }
@@ -1172,7 +1177,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 checkSubtype(asm, temp, valueHub, compHub);
                 asm.jneq(store, temp, wordConst(asm, 0));
                 XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-                asm.mov(scratch, wordConst(asm, 0));
+                asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.None, RiDeoptReason.ArrayStoreException)));
                 asm.callRuntime(CiRuntimeCall.Deoptimize, null);
                 asm.shouldNotReachHere();
             }

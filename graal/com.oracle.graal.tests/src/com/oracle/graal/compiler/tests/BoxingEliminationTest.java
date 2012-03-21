@@ -28,6 +28,7 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
@@ -123,7 +124,8 @@ public class BoxingEliminationTest extends GraphTest {
                 for (Invoke invoke : graph.getInvokes()) {
                     hints.add(invoke);
                 }
-                new InliningPhase(null, runtime(), hints, null, phasePlan).apply(graph);
+
+                new InliningPhase(null, runtime(), hints, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
                 Debug.dump(graph, "Graph");
                 new BoxingEliminationPhase().apply(graph);

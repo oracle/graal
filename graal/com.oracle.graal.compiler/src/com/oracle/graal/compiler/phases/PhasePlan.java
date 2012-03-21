@@ -53,11 +53,8 @@ public class PhasePlan {
         LOW_LEVEL
     }
 
-    public static final PhasePlan DEFAULT = new PhasePlan();
-
     @SuppressWarnings("unchecked")
     private final ArrayList<Phase>[] phases = new ArrayList[PhasePosition.values().length];
-
     private final Set<Class<? extends Phase>> disabledPhases = new HashSet<>();
 
     public void addPhase(PhasePosition pos, Phase phase) {

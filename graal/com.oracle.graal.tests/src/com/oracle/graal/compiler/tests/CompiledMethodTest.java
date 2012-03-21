@@ -26,13 +26,14 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiCompiledMethod.MethodInvalidatedException;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiCompiledMethod.MethodInvalidatedException;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then
@@ -78,7 +79,7 @@ public class CompiledMethodTest extends GraphTest {
         Method method = CompilableObjectImpl.class.getDeclaredMethod("executeHelper", ObjectCompiler.class, String.class);
         RiResolvedMethod riMethod = runtime.getRiMethod(method);
         StructuredGraph graph = new StructuredGraph(riMethod);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault()).apply(graph);
+        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
         new CanonicalizerPhase(null, runtime, null).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
 

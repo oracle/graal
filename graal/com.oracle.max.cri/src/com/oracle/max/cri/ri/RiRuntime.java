@@ -195,4 +195,22 @@ public interface RiRuntime {
      * @return a reference to the compiled and ready-to-run code
      */
     RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code);
+
+    /**
+     * Encodes a deoptimization action and a deoptimization reason in an integer value.
+     * @return the encoded value as an integer
+     */
+    int encodeDeoptActionAndReason(RiDeoptAction action, RiDeoptReason reason);
+
+    /**
+     * Converts a RiDeoptReason into an integer value.
+     * @return An integer value representing the given RiDeoptReason.
+     */
+    int convertDeoptReason(RiDeoptReason reason);
+
+    /**
+     * Converts a RiDeoptAction into an integer value.
+     * @return An integer value representing the given RiDeoptAction.
+     */
+    int convertDeoptAction(RiDeoptAction action);
 }

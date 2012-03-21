@@ -56,18 +56,20 @@ public class InliningPhase extends Phase implements InliningCallback {
     private final PhasePlan plan;
     private final WeightComputationPolicy weightComputationPolicy;
     private final InliningPolicy inliningPolicy;
+    private final OptimisticOptimizations optimisticOpts;
 
     // Metrics
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
 
-    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, PhasePlan plan) {
+    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;
         this.assumptions = assumptions;
         this.plan = plan;
+        this.optimisticOpts = optimisticOpts;
         this.weightComputationPolicy = createWeightComputationPolicy();
         this.inliningPolicy = createInliningPolicy();
     }
@@ -139,7 +141,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     }
 
     private void scanInvoke(Invoke invoke, int level) {
-        InlineInfo info = InliningUtil.getInlineInfo(invoke, level >= 0 ? level : computeInliningLevel(invoke), runtime, assumptions, this);
+        InlineInfo info = InliningUtil.getInlineInfo(invoke, level >= 0 ? level : computeInliningLevel(invoke), runtime, assumptions, this, optimisticOpts);
         if (info != null) {
             assert level == -1 || computeInliningLevel(invoke) == level : "outer FramesStates must match inlining level";
             metricInliningConsidered.increment();

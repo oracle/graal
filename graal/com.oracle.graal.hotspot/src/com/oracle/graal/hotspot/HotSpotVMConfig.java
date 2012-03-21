@@ -76,6 +76,7 @@ public final class HotSpotVMConfig extends CompilerObject {
 
     // methodData information
     public int methodDataOopDataOffset;
+    public int methodDataOopTrapHistoryOffset;
     public int dataLayoutHeaderSize;
     public int dataLayoutTagOffset;
     public int dataLayoutFlagsOffset;

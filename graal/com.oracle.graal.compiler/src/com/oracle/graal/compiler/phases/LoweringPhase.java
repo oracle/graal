@@ -28,6 +28,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.max.cri.ri.*;
 
 public class LoweringPhase extends Phase {
 
@@ -59,8 +60,8 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public Node createGuard(Node condition) {
-                // TODO (thomaswue): Docuemnt why this must not be called on floating nodes.
+            public Node createGuard(Node condition, RiDeoptReason deoptReason) {
+                // TODO (thomaswue): Document why this must not be called on floating nodes.
                 throw new UnsupportedOperationException();
             }
         };
@@ -117,7 +118,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public Node createGuard(Node condition) {
+            public Node createGuard(Node condition, RiDeoptReason deoptReason) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {
@@ -126,7 +127,7 @@ public class LoweringPhase extends Phase {
                         }
                     }
                 }
-                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor));
+                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor, deoptReason));
                 activeGuards.grow();
                 activeGuards.mark(newGuard);
                 return newGuard;

@@ -26,9 +26,8 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.PhasePlan.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
@@ -39,21 +38,21 @@ public final class CompilationTask implements Runnable {
     private final Compiler compiler;
     private final PhasePlan plan;
     private final RiResolvedMethod method;
+    private final OptimisticOptimizations optimisticOpts;
 
-    public static CompilationTask create(Compiler compiler, PhasePlan plan, RiResolvedMethod method) {
-        return new CompilationTask(compiler, plan, method);
+    public static CompilationTask create(Compiler compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, RiResolvedMethod method) {
+        return new CompilationTask(compiler, plan, optimisticOpts, method);
     }
 
-    private CompilationTask(Compiler compiler, PhasePlan plan, RiResolvedMethod method) {
+    private CompilationTask(Compiler compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, RiResolvedMethod method) {
         this.compiler = compiler;
         this.plan = plan;
         this.method = method;
+        this.optimisticOpts = optimisticOpts;
     }
 
     public void run() {
         try {
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime());
-            plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("Graal %-70s %-45s %-50s ...", method.holder().name(), method.name(), method.signature().asString()));
@@ -66,7 +65,8 @@ public final class CompilationTask implements Runnable {
 
                     @Override
                     public CiTargetMethod call() throws Exception {
-                        return compiler.getCompiler().compileMethod(method, -1, plan);
+                        StructuredGraph graph = new StructuredGraph(method);
+                        return compiler.getCompiler().compileMethod(method, graph, -1, plan, optimisticOpts);
                     }
                 });
             } finally {

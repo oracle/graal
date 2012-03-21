@@ -27,9 +27,6 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
@@ -40,7 +37,11 @@ import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Exits from the HotSpot VM into Java code.
@@ -93,10 +94,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
                 @Override
                 public void run() {
                     VMToCompilerImpl.this.intrinsifyArrayCopy = new IntrinsifyArrayCopyPhase(runtime);
-                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets(), PhasePlan.DEFAULT);
-                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets(), PhasePlan.DEFAULT);
+                    GraalIntrinsics.installIntrinsics(runtime, runtime.getCompiler().getTarget());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new SystemSnippets());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new UnsafeSnippets());
+                    Snippets.install(runtime, runtime.getCompiler().getTarget(), new ArrayCopySnippets());
                 }
             });
 
@@ -275,7 +276,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             }
         }
 
-        Runnable task = CompilationTask.create(compiler, getDefaultPhasePlan(), method);
+        final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
+        Runnable task = CompilationTask.create(compiler, createHotSpotSpecificPhasePlan(optimisticOpts), optimisticOpts, method);
         if (blocking) {
             task.run();
         } else {
@@ -378,8 +380,11 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         return CiConstant.forObject(object);
     }
 
-    private PhasePlan getDefaultPhasePlan() {
+
+    private PhasePlan createHotSpotSpecificPhasePlan(OptimisticOptimizations optimisticOpts) {
         PhasePlan phasePlan = new PhasePlan();
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts);
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         if (GraalOptions.Intrinsify) {
             phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }

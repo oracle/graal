@@ -56,7 +56,6 @@ import com.oracle.graal.lir.StandardOp.PhiJumpOp;
 import com.oracle.graal.lir.StandardOp.PhiLabelOp;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -745,7 +744,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp) {
+    public void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason) {
         if (comp instanceof NullCheckNode && !((NullCheckNode) comp).expectedNull) {
             emitNullCheckGuard((NullCheckNode) comp);
         } else if (comp instanceof ConstantNode && comp.asConstant().asBoolean()) {
@@ -753,7 +752,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             // Fall back to a normal branch.
             LIRDebugInfo info = state();
-            LabelRef stubEntry = createDeoptStub(DeoptAction.InvalidateReprofile, info, comp);
+            LabelRef stubEntry = createDeoptStub(RiDeoptAction.InvalidateReprofile, deoptReason, info, comp);
             emitBranch(comp, null, stubEntry, info);
         }
     }
@@ -986,7 +985,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    protected abstract LabelRef createDeoptStub(DeoptAction action, LIRDebugInfo info, Object deoptInfo);
+    protected abstract LabelRef createDeoptStub(RiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
 
     @Override
     public Variable emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {

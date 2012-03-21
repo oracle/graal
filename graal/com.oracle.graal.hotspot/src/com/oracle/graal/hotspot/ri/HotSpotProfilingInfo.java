@@ -79,6 +79,11 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
         return dataAccessor.getExecutionCount(methodData, position);
     }
 
+    @Override
+    public int getDeoptimizationCount(RiDeoptReason reason) {
+        return methodData.getDeoptimizationCount(reason);
+    }
+
     private void findBCI(int targetBCI, boolean searchExtraData) {
         assert targetBCI >= 0 : "invalid BCI";
 

@@ -66,7 +66,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.NullCheckOp;
 import com.oracle.graal.lir.amd64.AMD64Move.SpillMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
-import com.oracle.graal.nodes.DeoptimizeNode.DeoptAction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -500,9 +499,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimizeOn(Condition cond, DeoptAction action, Object deoptInfo) {
+    public void emitDeoptimizeOn(Condition cond, RiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
         LIRDebugInfo info = state();
-        LabelRef stubEntry = createDeoptStub(action, info, deoptInfo);
+        LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         if (cond != null) {
             append(new BranchOp(cond, stubEntry, info));
         } else {
@@ -547,9 +546,9 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(DeoptAction action, LIRDebugInfo info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(RiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
         assert info.topFrame.bci >= 0 : "invalid bci for deopt framestate";
-        AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, info, deoptInfo);
+        AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.deoptimizationStubs.add(stub);
         return LabelRef.forLabel(stub.label);
     }
