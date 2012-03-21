@@ -68,8 +68,9 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
         gen.emitDeoptimize(action, reason, message, leafGraphId);
     }
 
+    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void deopt() {
+    public static void deopt(@ConstantNodeParameter RiDeoptAction action, @ConstantNodeParameter RiDeoptReason reason) {
         throw new UnsupportedOperationException();
     }
 }
