@@ -41,16 +41,18 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
     @Data private boolean megamorph;
     private boolean useForInlining;
+    private final long leafGraphId;
 
     /**
      * @param kind
      * @param blockSuccessors
      * @param branchProbability
      */
-    public InvokeWithExceptionNode(MethodCallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
+    public InvokeWithExceptionNode(MethodCallTargetNode callTarget, BeginNode exceptionEdge, int bci, long leafGraphId) {
         super(callTarget.returnStamp(), new BeginNode[]{null, exceptionEdge}, new double[]{1.0, 0.0});
         this.bci = bci;
         this.callTarget = callTarget;
+        this.leafGraphId = leafGraphId;
         this.megamorph = true;
         this.useForInlining = true;
     }
@@ -93,6 +95,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public void setUseForInlining(boolean value) {
         this.useForInlining = value;
+    }
+
+    @Override
+    public long leafGraphId() {
+        return leafGraphId;
     }
 
     @Override

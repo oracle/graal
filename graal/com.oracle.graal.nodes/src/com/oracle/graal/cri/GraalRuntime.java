@@ -39,4 +39,6 @@ public interface GraalRuntime extends RiRuntime {
     StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters);
 
     CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
+
+    long[] getDeoptedLeafGraphIds();
 }

@@ -32,10 +32,8 @@ import com.oracle.max.cri.ri.*;
  * can be used by the runtime system to reconstruct a source-level stack trace
  * for exceptions and to create {@linkplain CiFrame frames} for deoptimization.
  */
-public class CiCodePos implements Serializable {
-    /**
-     * 
-     */
+public abstract class CiCodePos implements Serializable {
+
     private static final long serialVersionUID = 8633885274526033515L;
 
     /**

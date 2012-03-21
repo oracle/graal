@@ -58,4 +58,6 @@ public interface Invoke extends StateSplit {
     boolean megamorph();
 
     void setMegamorph(boolean megamorph);
+
+    long leafGraphId();
 }

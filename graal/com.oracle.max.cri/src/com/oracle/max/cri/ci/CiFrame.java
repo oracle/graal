@@ -65,6 +65,8 @@ public class CiFrame extends CiCodePos implements Serializable {
      */
     public final int numLocks;
 
+    public final long leafGraphId;
+
     public final boolean rethrowException;
 
     public final boolean duringCall;
@@ -81,15 +83,16 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, boolean duringCall, CiValue[] values, int numLocals, int numStack, int numLocks) {
+    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, boolean duringCall, CiValue[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
+        this.duringCall = duringCall;
         this.values = values;
-        this.numLocks = numLocks;
         this.numLocals = numLocals;
         this.numStack = numStack;
-        this.duringCall = duringCall;
+        this.numLocks = numLocks;
+        this.leafGraphId = leafGraphId;
         assert !rethrowException || numStack == 1 : "must have exception on top of the stack";
     }
 

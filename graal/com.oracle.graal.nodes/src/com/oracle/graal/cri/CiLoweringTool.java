@@ -28,6 +28,6 @@ import com.oracle.max.cri.ri.*;
 public interface CiLoweringTool {
     GraalRuntime getRuntime();
     Node getGuardAnchor();
-    Node createGuard(Node condition, RiDeoptReason deoptReason);
+    Node createGuard(Node condition, RiDeoptReason deoptReason, long leafGraphId);
 }
 

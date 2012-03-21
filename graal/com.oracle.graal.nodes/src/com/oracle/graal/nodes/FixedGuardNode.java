@@ -32,9 +32,11 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
 
     @Input private final NodeInputList<BooleanNode> conditions;
     @Data  private final RiDeoptReason deoptReason;
+    private final long leafGraphId;
 
-    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason) {
+    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, long leafGraphId) {
         super(StampFactory.illegal());
+        this.leafGraphId = leafGraphId;
         this.conditions = new NodeInputList<>(this, new BooleanNode[] {condition});
         this.deoptReason = deoptReason;
     }
@@ -42,7 +44,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     @Override
     public void generate(LIRGeneratorTool gen) {
         for (BooleanNode condition : conditions()) {
-            gen.emitGuardCheck(condition, deoptReason);
+            gen.emitGuardCheck(condition, deoptReason, leafGraphId);
         }
     }
 
@@ -66,7 +68,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
                     if (next != null) {
                         tool.deleteBranch(next);
                     }
-                    setNext(graph().add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, deoptReason)));
+                    setNext(graph().add(new DeoptimizeNode(RiDeoptAction.InvalidateRecompile, deoptReason, leafGraphId)));
                     return;
                 }
             }
@@ -80,7 +82,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     public void lower(CiLoweringTool tool) {
         AnchorNode newAnchor = graph().add(new AnchorNode());
         for (BooleanNode b : conditions) {
-            newAnchor.addGuard((GuardNode) tool.createGuard(b, deoptReason));
+            newAnchor.addGuard((GuardNode) tool.createGuard(b, deoptReason, leafGraphId));
         }
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, newAnchor);
     }

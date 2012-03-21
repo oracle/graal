@@ -47,8 +47,8 @@ public final class StoreIndexedNode extends AccessIndexedNode implements Lowerab
      * @param elementKind the element type
      * @param value the value to store into the array
      */
-    public StoreIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, ValueNode value) {
-        super(StampFactory.illegal(), array, index, length, elementKind);
+    public StoreIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, ValueNode value, long leafGraphId) {
+        super(StampFactory.illegal(), array, index, length, elementKind, leafGraphId);
         this.value = value;
     }
 

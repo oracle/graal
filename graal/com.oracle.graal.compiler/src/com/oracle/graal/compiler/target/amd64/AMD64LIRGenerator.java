@@ -500,13 +500,18 @@ public class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitDeoptimizeOn(Condition cond, RiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
+        assert cond != null;
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
-        if (cond != null) {
-            append(new BranchOp(cond, stubEntry, info));
-        } else {
-            append(new JumpOp(stubEntry, info));
-        }
+        append(new BranchOp(cond, stubEntry, info));
+    }
+
+
+    @Override
+    public void emitDeoptimize(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId) {
+        LIRDebugInfo info = state(leafGraphId);
+        LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
+        append(new JumpOp(stubEntry, info));
     }
 
     @Override
@@ -554,10 +559,10 @@ public class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitNullCheckGuard(NullCheckNode node) {
+    protected void emitNullCheckGuard(NullCheckNode node, long leafGraphId) {
         assert !node.expectedNull;
         Variable value = load(operand(node.object()));
-        LIRDebugInfo info = state();
+        LIRDebugInfo info = state(leafGraphId);
         append(new NullCheckOp(value, info));
     }
 

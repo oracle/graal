@@ -162,5 +162,8 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     @Override
     public native int RiMethod_vtableEntryOffset(HotSpotMethodResolved method);
 
+    @Override
+    public native long[] getDeoptedLeafGraphIds();
+
     // Checkstyle: resume
 }

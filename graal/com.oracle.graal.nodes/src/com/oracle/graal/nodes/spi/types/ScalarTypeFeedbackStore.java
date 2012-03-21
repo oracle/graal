@@ -24,10 +24,10 @@ package com.oracle.graal.nodes.spi.types;
 
 import java.util.*;
 
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.max.cri.ci.*;
 
 public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbackStore> implements ScalarTypeFeedbackTool, CloneableTypeFeedback {
 
