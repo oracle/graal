@@ -145,13 +145,11 @@ public class ComputeProbabilityPhase extends Phase {
                     }
                     backEdgeProb += le.probability() * factor;
                 }
-                double d = backEdgeProb;
+                double d = loopBegin.probability() - backEdgeProb;
                 if (d < EPSILON) {
                     d = EPSILON;
-                } else if (d > loopBegin.probability() - EPSILON) {
-                    d = loopBegin.probability() - EPSILON;
                 }
-                loopFrequency = loopBegin.probability() / (loopBegin.probability() - d);
+                loopFrequency = loopBegin.probability() / d;
                 loopBegin.setLoopFrequency(loopFrequency);
             }
             return loopFrequency;
