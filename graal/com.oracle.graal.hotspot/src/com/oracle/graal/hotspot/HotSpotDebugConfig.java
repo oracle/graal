@@ -143,7 +143,7 @@ public class HotSpotDebugConfig implements DebugConfig {
         Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             Debug.log("Context obj %s", o);
-            if (o instanceof Graph) {
+            if (o instanceof Graph && GraalOptions.DumpOnError) {
                 Graph graph = (Graph) o;
                 Debug.log("Found graph in context: ", graph);
                 Debug.dump(o, "Exception graph");
