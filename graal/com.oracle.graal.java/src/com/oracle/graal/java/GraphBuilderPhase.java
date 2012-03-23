@@ -27,7 +27,6 @@ import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -1139,7 +1138,17 @@ public final class GraphBuilderPhase extends Phase {
                 prob[i] = 1.0d / numberOfCases;
             }
         }
+        assert allPositive(prob);
         return prob;
+    }
+
+    private static boolean allPositive(double[] a) {
+        for (double d : a) {
+            if (d < 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void genLookupswitch() {

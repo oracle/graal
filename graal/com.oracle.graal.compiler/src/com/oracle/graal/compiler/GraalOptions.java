@@ -117,11 +117,10 @@ public final class GraalOptions {
     public static String Time                                = null;
     public static String Log                                 = null;
     public static String MethodFilter                        = null;
+    public static boolean DumpOnError                        = ____;
 
     // Ideal graph visualizer output settings
-    public static boolean PlotOnError                        = ____;
     public static int     PlotLevel                          = 3;
-    public static boolean PlotSnippets                       = ____;
     public static int     PrintIdealGraphLevel               = 0;
     public static boolean PrintIdealGraphFile                = ____;
     public static String  PrintIdealGraphAddress             = "127.0.0.1";
