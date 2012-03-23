@@ -38,6 +38,7 @@ public interface RiResolvedMethod extends RiMethod {
 
     /**
      * Gets the bytecode of the method, if the method {@linkplain #isResolved()} and has code.
+     * The returned byte array does not contain breakpoints or non-Java bytecodes.
      * @return the bytecode of the method or {@code null} if none is available
      */
     byte[] code();
