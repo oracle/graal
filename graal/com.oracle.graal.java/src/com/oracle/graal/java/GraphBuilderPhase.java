@@ -578,7 +578,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private void genThrow(int bci) {
         ValueNode exception = frameState.apop();
-        FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new NullCheckNode(exception, false)), RiDeoptReason.NullCheckException, graphId));
+        FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new NullCheckNode(exception, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, graphId));
         append(node);
         append(handleException(exception, bci));
     }
@@ -670,7 +670,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.apush(checkCast);
         } else {
             ValueNode object = frameState.apop();
-            append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new CompareNode(object, Condition.EQ, ConstantNode.forObject(null, runtime, currentGraph))), RiDeoptReason.Unresolved, graphId)));
+            append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new CompareNode(object, Condition.EQ, ConstantNode.forObject(null, runtime, currentGraph))), RiDeoptReason.Unresolved, RiDeoptAction.InvalidateRecompile, graphId)));
             frameState.apush(appendConstant(CiConstant.NULL_OBJECT));
         }
     }
@@ -1104,7 +1104,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode local = frameState.loadLocal(localIndex);
         JsrScope scope = currentBlock.jsrScope;
         int retAddress = scope.nextReturnAddress();
-        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new CompareNode(local, Condition.EQ, ConstantNode.forJsr(retAddress, currentGraph))), RiDeoptReason.JavaSubroutineMismatch, graphId)));
+        append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new CompareNode(local, Condition.EQ, ConstantNode.forJsr(retAddress, currentGraph))), RiDeoptReason.JavaSubroutineMismatch, RiDeoptAction.InvalidateReprofile, graphId)));
         if (!successor.jsrScope.equals(scope.pop())) {
             throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
         }

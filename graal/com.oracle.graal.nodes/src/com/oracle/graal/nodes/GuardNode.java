@@ -33,7 +33,8 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
-    @Data private RiDeoptReason reason;
+    @Data private final RiDeoptReason reason;
+    @Data private final RiDeoptAction action;
     private final long leafGraphId;
 
     public FixedNode anchor() {
@@ -61,17 +62,22 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return reason;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, long leafGraphId) {
+    public RiDeoptAction action() {
+        return action;
+    }
+
+    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, RiDeoptAction action, long leafGraphId) {
         super(StampFactory.illegal());
         this.condition = condition;
         this.anchor = anchor;
         this.reason = reason;
+        this.action = action;
         this.leafGraphId = leafGraphId;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition(), reason(), leafGraphId);
+        gen.emitGuardCheck(condition(), reason(), action(), leafGraphId);
     }
 
     @Override

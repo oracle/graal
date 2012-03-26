@@ -229,7 +229,7 @@ public class HotSpotRuntime implements GraalRuntime {
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind() != CiKind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph), field.stamp()));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), RiDeoptReason.NullCheckException, StructuredGraph.INVALID_GRAPH_ID));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixedWithFixed(field, memoryRead);
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
@@ -238,7 +238,7 @@ public class HotSpotRuntime implements GraalRuntime {
             }
             HotSpotField field = (HotSpotField) storeField.field();
             WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(true), field.offset(), graph)));
-            memoryWrite.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), RiDeoptReason.NullCheckException, StructuredGraph.INVALID_GRAPH_ID));
+            memoryWrite.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
@@ -277,7 +277,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 } else {
                     AnchorNode anchor = graph.add(new AnchorNode());
                     graph.addBeforeFixed(storeIndexed, anchor);
-                    GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException, StructuredGraph.INVALID_GRAPH_ID);
+                    GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID);
                     ReadNode arrayClass = graph.add(new ReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), StampFactory.objectNonNull()));
                     arrayClass.setGuard(guard);
                     graph.addBeforeFixed(storeIndexed, arrayClass);
@@ -300,7 +300,7 @@ public class HotSpotRuntime implements GraalRuntime {
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph);
             location.setIndexScalingEnabled(false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(load.object(), false)), RiDeoptReason.NullCheckException, StructuredGraph.INVALID_GRAPH_ID));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(load.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
@@ -318,7 +318,7 @@ public class HotSpotRuntime implements GraalRuntime {
             ReadHubNode objectClassNode = (ReadHubNode) n;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, StructuredGraph.INVALID_GRAPH_ID));
+            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         }
     }
@@ -328,7 +328,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     private static GuardNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool, long leafGraphId) {
-        return (GuardNode) tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), RiDeoptReason.BoundsCheckException, leafGraphId);
+        return (GuardNode) tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId);
     }
 
     @Override

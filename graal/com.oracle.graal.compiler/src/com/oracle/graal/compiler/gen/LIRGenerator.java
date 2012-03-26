@@ -749,7 +749,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, long leafGraphId) {
+    public void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
         if (comp instanceof NullCheckNode && !((NullCheckNode) comp).expectedNull) {
             emitNullCheckGuard((NullCheckNode) comp, leafGraphId);
         } else if (comp instanceof ConstantNode && comp.asConstant().asBoolean()) {
@@ -758,7 +758,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         } else {
             // Fall back to a normal branch.
             LIRDebugInfo info = state(leafGraphId);
-            LabelRef stubEntry = createDeoptStub(RiDeoptAction.InvalidateReprofile, deoptReason, info, comp);
+            LabelRef stubEntry = createDeoptStub(action, deoptReason, info, comp);
             emitBranch(comp, null, stubEntry, info);
         }
     }

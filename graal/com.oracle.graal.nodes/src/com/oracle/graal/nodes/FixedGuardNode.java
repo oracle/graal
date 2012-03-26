@@ -31,11 +31,13 @@ import com.oracle.max.cri.ri.*;
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType {
 
     @Input private final NodeInputList<BooleanNode> conditions;
-    @Data  private final RiDeoptReason deoptReason;
+    @Data private final RiDeoptReason deoptReason;
+    @Data private final RiDeoptAction action;
     private final long leafGraphId;
 
-    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, long leafGraphId) {
+    public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
         super(StampFactory.illegal());
+        this.action = action;
         this.leafGraphId = leafGraphId;
         this.conditions = new NodeInputList<>(this, new BooleanNode[] {condition});
         this.deoptReason = deoptReason;
@@ -44,7 +46,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     @Override
     public void generate(LIRGeneratorTool gen) {
         for (BooleanNode condition : conditions()) {
-            gen.emitGuardCheck(condition, deoptReason, leafGraphId);
+            gen.emitGuardCheck(condition, deoptReason, action, leafGraphId);
         }
     }
 
@@ -82,7 +84,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     public void lower(CiLoweringTool tool) {
         AnchorNode newAnchor = graph().add(new AnchorNode());
         for (BooleanNode b : conditions) {
-            newAnchor.addGuard((GuardNode) tool.createGuard(b, deoptReason, leafGraphId));
+            newAnchor.addGuard((GuardNode) tool.createGuard(b, deoptReason, action, leafGraphId));
         }
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, newAnchor);
     }
