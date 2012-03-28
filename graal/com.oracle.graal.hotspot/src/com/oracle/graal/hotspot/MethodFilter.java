@@ -98,7 +98,7 @@ public class MethodFilter {
         if (pattern.contains(".")) {
             return Pattern.compile(createGlobString(pattern));
         } else {
-            return Pattern.compile("([^\\.]\\.])*" + createGlobString(pattern));
+            return Pattern.compile("([^\\.]\\.)*" + createGlobString(pattern));
         }
     }
 
@@ -125,4 +125,22 @@ public class MethodFilter {
         return true;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder("MethodFilter[");
+        String sep = "";
+        if (clazz != null) {
+            buf.append(sep).append("clazz=").append(clazz);
+            sep = ", ";
+        }
+        if (methodName != null) {
+            buf.append(sep).append("methodName=").append(methodName);
+            sep = ", ";
+        }
+        if (signature != null) {
+            buf.append(sep).append("signature=").append(signature);
+            sep = ", ";
+        }
+        return buf.append("]").toString();
+    }
 }

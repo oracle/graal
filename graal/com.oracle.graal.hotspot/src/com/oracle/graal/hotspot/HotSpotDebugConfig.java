@@ -54,6 +54,7 @@ public class HotSpotDebugConfig implements DebugConfig {
             this.methodFilter = new MethodFilter[filters.length];
             for (int i = 0; i < filters.length; i++) {
                 this.methodFilter[i] = new MethodFilter(filters[i]);
+                // TTY.println(this.methodFilter[i].toString());
             }
         }
         if (GraalOptions.PrintIdealGraphFile) {
