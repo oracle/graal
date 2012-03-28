@@ -26,10 +26,27 @@ import java.util.*;
 
 
 public interface DebugConfig {
+    /**
+     * @see Debug#log(String, Object...)
+     */
     boolean isLogEnabled();
+
+    /**
+     * @see Debug#metric(String)
+     */
     boolean isMeterEnabled();
+
+    /**
+     * @see Debug#dump(Object, String, Object...)
+     */
     boolean isDumpEnabled();
+
+    /**
+     * @see Debug#timer(String)
+     */
     boolean isTimeEnabled();
+
     RuntimeException interceptException(Throwable e);
+
     Collection<? extends DebugDumpHandler> dumpHandlers();
 }
