@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * Represents an atomic compare-and-swap operation
  * The result is a boolean that contains whether the value matched the expected value.
  */
-public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
+public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerable, Lowerable, MemoryCheckpoint {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
@@ -67,6 +68,11 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.visitCompareAndSwap(this);
+    }
+
+    @Override
+    public void lower(CiLoweringTool tool) {
+        tool.getRuntime().lower(this, tool);
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification

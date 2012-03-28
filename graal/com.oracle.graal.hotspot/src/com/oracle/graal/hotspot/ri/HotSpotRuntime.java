@@ -261,9 +261,16 @@ public class HotSpotRuntime implements GraalRuntime {
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
             if (expected.kind() == CiKind.Object && !cas.newValue().isNullConstant()) {
-                // Don't know if this is a store into an array or field - so use an array write barrier which is more precise
-                LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), 0, cas.offset(), graph, false);
-                graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
+                RiResolvedType declaredType = cas.object().declaredType();
+                if (declaredType != null && !declaredType.isArrayClass() && declaredType.toJava() != Object.class) {
+                    // Use a field write barrier since it's not an array store
+                    FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
+                    graph.addAfterFixed(cas, writeBarrier);
+                } else {
+                    // This may be an array store so use an array write barrier
+                    LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), 0, cas.offset(), graph, false);
+                    graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
+                }
             }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;

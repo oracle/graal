@@ -22,42 +22,32 @@
  */
 package com.oracle.graal.jtt.jdk;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import sun.misc.*;
 
-/*
- */
-public class UnsafeAccess01 {
-
-    @SuppressWarnings("unused")
-    private int field = 42;
-
-    public static int test() throws SecurityException, NoSuchFieldException {
-        final Unsafe unsafe = getUnsafe();
-
-        final UnsafeAccess01 object = new UnsafeAccess01();
-        final Field field = UnsafeAccess01.class.getDeclaredField("field");
-        final long offset = unsafe.objectFieldOffset(field);
-        final int value = unsafe.getInt(object, offset);
-        return value;
-    }
-
-    static Unsafe getUnsafe() {
+public class Unsafe_compareAndSwap {
+    static final Unsafe unsafe = UnsafeAccess01.getUnsafe();
+    static final long valueOffset;
+    static {
         try {
-            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            return (Unsafe) unsafeField.get(null);
-        } catch (Exception e) {
-            throw new Error(e);
-        }
+            valueOffset = unsafe.objectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
+        } catch (Exception ex) { throw new Error(ex); }
     }
+
+    public static void test(Unsafe_compareAndSwap u, Object o, String expected, String newValue) {
+        // First arg is not an array - can use a field write barrier
+        unsafe.compareAndSwapObject(u, valueOffset, expected, newValue);
+        // Not known if first arg is an array - different write barrier may be used
+        unsafe.compareAndSwapObject(o, valueOffset, expected, newValue);
+    }
+
+    private String value = "a";
 
     @Test
     public void run0() throws Throwable {
-        Assert.assertEquals(42, test());
+        Unsafe_compareAndSwap u = new Unsafe_compareAndSwap();
+        test(u, u, "a", "b");
+        Assert.assertEquals(u.value, "b");
     }
-
 }
