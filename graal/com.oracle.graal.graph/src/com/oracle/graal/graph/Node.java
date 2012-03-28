@@ -240,6 +240,10 @@ public abstract class Node implements Cloneable, Formattable {
             boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
+                NodeWorkList inputChanged = graph.inputChanged;
+                if (inputChanged != null) {
+                    inputChanged.addAgain(usage);
+                }
                 other.usages.add(usage);
             }
         }
