@@ -80,6 +80,13 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     public void startCompiler() throws Throwable {
         // Make sure TTY is initialized here such that the correct System.out is used for TTY.
         TTY.initialize();
+
+        if (GraalOptions.Log == null && GraalOptions.Meter == null && GraalOptions.Time == null && GraalOptions.Dump == null) {
+            if (GraalOptions.MethodFilter != null) {
+                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time and Dump options are all null");
+            }
+        }
+
         if (GraalOptions.Debug) {
             Debug.enable();
             HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
