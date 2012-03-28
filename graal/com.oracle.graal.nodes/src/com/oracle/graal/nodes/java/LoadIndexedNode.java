@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-public final class LoadIndexedNode extends AccessIndexedNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
+public final class LoadIndexedNode extends AccessIndexedNode implements Lowerable, Node.IterableNodeType {
 
     /**
      * Creates a new LoadIndexedNode.
@@ -51,11 +51,6 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Lowerabl
         } else {
             return StampFactory.forKind(kind);
         }
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitLoadIndexed(this);
     }
 
     @Override

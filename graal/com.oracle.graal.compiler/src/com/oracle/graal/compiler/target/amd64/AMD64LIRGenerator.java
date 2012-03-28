@@ -566,10 +566,6 @@ public class AMD64LIRGenerator extends LIRGenerator {
         append(new NullCheckOp(value, info));
     }
 
-    // TODO (cwimmer) The CompareAndSwapNode in its current form needs to be lowered to several Nodes before code generation to separate three parts:
-    // * The write barriers (and possibly read barriers) when accessing an object field
-    // * The distinction of returning a boolean value (semantic similar to a BooleanNode to be used as a condition?) or the old value being read
-    // * The actual compare-and-swap
     @Override
     public void visitCompareAndSwap(CompareAndSwapNode node) {
         CiKind kind = node.newValue().kind();
@@ -586,25 +582,12 @@ public class AMD64LIRGenerator extends LIRGenerator {
             address = new CiAddress(kind, load(operand(node.object())), load(index), CiAddress.Scale.Times1, 0);
         }
 
-        if (kind == CiKind.Object) {
-            address = new CiAddress(kind, emitLea(address));
-            preGCWriteBarrier(address.base, false, null);
-        }
-
         CiRegisterValue rax = AMD64.rax.asValue(kind);
         emitMove(expected, rax);
         append(new CompareAndSwapOp(rax, address, rax, newValue));
 
         Variable result = newVariable(node.kind());
-        if (node.directResult()) {
-            emitMove(rax, result);
-        } else {
-            append(new CondMoveOp(result, Condition.EQ, load(CiConstant.TRUE), CiConstant.FALSE));
-        }
+        append(new CondMoveOp(result, Condition.EQ, load(CiConstant.TRUE), CiConstant.FALSE));
         setResult(node, result);
-
-        if (kind == CiKind.Object) {
-            postGCWriteBarrier(address.base, newValue);
-        }
     }
 }

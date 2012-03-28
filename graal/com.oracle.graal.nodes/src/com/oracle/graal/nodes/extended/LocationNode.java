@@ -41,7 +41,12 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
             return "ANY_LOCATION";
         }
     };
-    public static final Object FINAL_LOCATION = new Object();
+    public static final Object FINAL_LOCATION = new Object() {
+        @Override
+        public String toString() {
+            return "FINAL_LOCATION";
+        }
+    };
 
     public static Object getArrayLocation(CiKind elementKind) {
         return elementKind;

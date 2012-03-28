@@ -26,9 +26,9 @@ import org.junit.*;
 
 /*
  */
-public class BC_putfield {
+public class BC_putfield_01 {
 
-    private static BC_putfield object = new BC_putfield();
+    private static BC_putfield_01 object = new BC_putfield_01();
 
     private int field;
 

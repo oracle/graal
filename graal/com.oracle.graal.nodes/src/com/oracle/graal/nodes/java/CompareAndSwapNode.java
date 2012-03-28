@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Represents an atomic compare-and-swap operation. If {@link #directResult} is true then the value read from the memory location is produced.
- * Otherwise the result is a boolean that contains whether the value matched the expected value.
+ * Represents an atomic compare-and-swap operation
+ * The result is a boolean that contains whether the value matched the expected value.
  */
 public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
 
@@ -38,7 +38,6 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
     @Input private ValueNode offset;
     @Input private ValueNode expected;
     @Input private ValueNode newValue;
-    @Data private final boolean directResult;
 
     public ValueNode object() {
         return object;
@@ -56,22 +55,13 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
         return newValue;
     }
 
-    public boolean directResult() {
-        return directResult;
-    }
-
     public CompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue) {
-        this(object, offset, expected, newValue, false);
-    }
-
-    public CompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, boolean directResult) {
-        super(StampFactory.forKind(directResult ? expected.kind().stackKind() : CiKind.Boolean.stackKind()));
+        super(StampFactory.forKind(CiKind.Boolean.stackKind()));
         assert expected.kind() == newValue.kind();
         this.object = object;
         this.offset = offset;
         this.expected = expected;
         this.newValue = newValue;
-        this.directResult = directResult;
     }
 
     @Override

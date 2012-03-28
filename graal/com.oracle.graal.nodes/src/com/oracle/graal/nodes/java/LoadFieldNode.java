@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, Node.IterableNodeType {
 
     /**
      * Creates a new LoadFieldNode instance.
@@ -52,11 +52,6 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         } else {
             return StampFactory.forKind(kind);
         }
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitLoadField(this);
     }
 
     @Override

@@ -22,28 +22,12 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import static com.oracle.graal.lir.ValueUtil.*;
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
-import static com.oracle.max.cri.ci.CiValueUtil.*;
-import static com.oracle.max.cri.util.MemoryBarriers.*;
-import static com.oracle.graal.lir.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Mark;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
-import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
-import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
-import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
-import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
-import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
-import com.oracle.max.cri.xir.CiXirAssembler.XirRegister;
-import com.oracle.max.cri.xir.CiXirAssembler.XirTemp;
-import com.oracle.max.cri.xir.*;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
@@ -62,6 +46,20 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.max.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
+import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
+import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
+import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
+import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
+import com.oracle.max.cri.xir.CiXirAssembler.XirRegister;
+import com.oracle.max.cri.xir.CiXirAssembler.XirTemp;
+import com.oracle.max.cri.xir.*;
+import com.oracle.max.criutils.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -498,14 +496,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitArrayLength(ArrayLengthNode x) {
-        XirArgument array = toXirArgument(x.array());
-        XirSnippet snippet = xir.genArrayLength(site(x, x.array()), array);
-        emitXir(snippet, x, state(), true);
-        operand(x);
-    }
-
-    @Override
     public void visitCheckCast(CheckCastNode x) {
         if (x.emitCode()) {
             XirSnippet snippet = xir.genCheckCast(site(x, x.object()), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
@@ -560,54 +550,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitLoadField(LoadFieldNode x) {
-        RiField field = x.field();
-        LIRDebugInfo info = state();
-        if (x.isVolatile()) {
-            emitMembar(JMM_PRE_VOLATILE_READ);
-        }
-        XirArgument receiver = toXirArgument(x.object());
-        XirSnippet snippet = x.isStatic() ? xir.genGetStatic(site(x, x.object()), receiver, field) : xir.genGetField(site(x, x.object()), receiver, field);
-        emitXir(snippet, x, info, true);
-        if (x.isVolatile()) {
-            emitMembar(JMM_POST_VOLATILE_READ);
-        }
-    }
-
-    @Override
-    public void visitStoreField(StoreFieldNode x) {
-        RiField field = x.field();
-        LIRDebugInfo info = state();
-        if (x.isVolatile()) {
-            emitMembar(JMM_PRE_VOLATILE_WRITE);
-        }
-        XirArgument receiver = toXirArgument(x.object());
-        XirArgument value = toXirArgument(x.value());
-        XirSnippet snippet = x.isStatic() ? xir.genPutStatic(site(x, x.object()), receiver, field, value) : xir.genPutField(site(x, x.object()), receiver, field, value);
-        emitXir(snippet, x, info, true);
-        if (x.isVolatile()) {
-            emitMembar(JMM_POST_VOLATILE_WRITE);
-        }
-    }
-
-    @Override
-    public void visitLoadIndexed(LoadIndexedNode x) {
-        XirArgument array = toXirArgument(x.array());
-        XirArgument index = toXirArgument(x.index());
-        XirSnippet snippet = xir.genArrayLoad(site(x, x.array()), array, index, x.elementKind(), null);
-        emitXir(snippet, x, state(), true);
-    }
-
-    @Override
-    public void visitStoreIndexed(StoreIndexedNode x) {
-        XirArgument array = toXirArgument(x.array());
-        XirArgument index = toXirArgument(x.index());
-        XirArgument value = toXirArgument(x.value());
-        XirSnippet snippet = xir.genArrayStore(site(x, x.array()), array, index, value, x.elementKind(), null);
-        emitXir(snippet, x, state(), true);
-    }
-
-    @Override
     public void visitNewInstance(NewInstanceNode x) {
         XirSnippet snippet = xir.genNewInstance(site(x), x.instanceClass());
         emitXir(snippet, x, state(), true);
@@ -659,21 +601,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     protected abstract void emitReturn(CiValue input);
-
-    @SuppressWarnings("unused")
-    protected void postGCWriteBarrier(CiValue addr, CiValue newVal) {
-        XirSnippet writeBarrier = xir.genWriteBarrier(toXirArgument(addr));
-        if (writeBarrier != null) {
-            emitXir(writeBarrier, null, null, false);
-        }
-     }
-
-    @SuppressWarnings("unused")
-    protected void preGCWriteBarrier(CiValue addrOpr, boolean patch, LIRDebugInfo info) {
-        // TODO (thomaswue): Implement this.
-    }
-
-
 
     @Override
     public void visitMerge(MergeNode x) {

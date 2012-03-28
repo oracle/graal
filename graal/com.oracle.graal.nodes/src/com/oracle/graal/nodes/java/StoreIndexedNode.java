@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.
  */
-public final class StoreIndexedNode extends AccessIndexedNode implements Lowerable, LIRLowerable {
+public final class StoreIndexedNode extends AccessIndexedNode implements Lowerable {
 
     @Input private ValueNode value;
 
@@ -50,11 +50,6 @@ public final class StoreIndexedNode extends AccessIndexedNode implements Lowerab
     public StoreIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, ValueNode value, long leafGraphId) {
         super(StampFactory.illegal(), array, index, length, elementKind, leafGraphId);
         this.value = value;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitStoreIndexed(this);
     }
 
     @Override

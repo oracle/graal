@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.ri;
 
+import static com.oracle.max.cri.util.MemoryBarriers.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -223,27 +225,45 @@ public class HotSpotRuntime implements GraalRuntime {
             safeReadArrayLength.lower(tool);
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
-            if (field.isVolatile()) {
-                return;
-            }
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind() != CiKind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph), field.stamp()));
             memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixedWithFixed(field, memoryRead);
+            if (field.isVolatile()) {
+                MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
+                graph.addBeforeFixed(memoryRead, preMembar);
+                MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
+                graph.addAfterFixed(memoryRead, postMembar);
+            }
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
-            if (storeField.isVolatile()) {
-                return;
-            }
             HotSpotField field = (HotSpotField) storeField.field();
             WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(true), field.offset(), graph)));
             memoryWrite.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
+            FixedWithNextNode last = memoryWrite;
             if (field.kind(true) == CiKind.Object && !memoryWrite.value().isNullConstant()) {
-                graph.addAfterFixed(memoryWrite, graph.add(new FieldWriteBarrier(memoryWrite.object())));
+                FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
+                graph.addAfterFixed(memoryWrite, writeBarrier);
+                last = writeBarrier;
+            }
+            if (storeField.isVolatile()) {
+                MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
+                graph.addBeforeFixed(memoryWrite, preMembar);
+                MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
+                graph.addAfterFixed(last, postMembar);
+            }
+        } else if (n instanceof CompareAndSwapNode) {
+            // Separate out GC barrier semantics
+            CompareAndSwapNode cas = (CompareAndSwapNode) n;
+            ValueNode expected = cas.expected();
+            if (expected.kind() == CiKind.Object && !cas.newValue().isNullConstant()) {
+                // Don't know if this is a store into an array or field - so use an array write barrier which is more precise
+                LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), 0, cas.offset(), graph, false);
+                graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
             }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;

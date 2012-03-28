@@ -42,6 +42,8 @@ public class ArrayCopySnippets implements SnippetsInterface{
         if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
             throw new IndexOutOfBoundsException();
         }
+
+        // TODO remainder
         if (src == dest && srcPos < destPos) { // bad aliased case
             if ((length & 0x01) == 0) {
                 if ((length & 0x02) == 0) {

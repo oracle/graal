@@ -25,14 +25,18 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.util.*;
 
 /**
- * Cretes a memory barrier.
+ * Creates a memory barrier.
  */
 public class MembarNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
 
     private final int barriers;
 
+    /**
+     * @param barriers a mask of the barrier constants defined in {@link MemoryBarriers}
+     */
     public MembarNode(int barriers) {
         super(StampFactory.illegal());
         this.barriers = barriers;

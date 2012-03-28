@@ -106,14 +106,9 @@ public abstract class LIRGeneratorTool {
 
     // Functionality that is currently implemented in XIR.
     // These methods will go away eventually when lowering is done via snippets in the front end.
-    public abstract void visitArrayLength(ArrayLengthNode i);
     public abstract void visitCheckCast(CheckCastNode i);
     public abstract void visitMonitorEnter(MonitorEnterNode i);
     public abstract void visitMonitorExit(MonitorExitNode i);
-    public abstract void visitLoadField(LoadFieldNode i);
-    public abstract void visitStoreField(StoreFieldNode i);
-    public abstract void visitLoadIndexed(LoadIndexedNode i);
-    public abstract void visitStoreIndexed(StoreIndexedNode i);
     public abstract void visitNewInstance(NewInstanceNode i);
     public abstract void visitNewTypeArray(NewTypeArrayNode i);
     public abstract void visitNewObjectArray(NewObjectArrayNode i);

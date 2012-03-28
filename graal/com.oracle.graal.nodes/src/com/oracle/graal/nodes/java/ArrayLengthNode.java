@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable, Lowerable, LIRLowerable {
+public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable, Lowerable {
 
     @Input private ValueNode array;
 
@@ -43,11 +43,6 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     public ArrayLengthNode(ValueNode array) {
         super(StampFactory.positiveInt());
         this.array = array;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitArrayLength(this);
     }
 
     @Override
