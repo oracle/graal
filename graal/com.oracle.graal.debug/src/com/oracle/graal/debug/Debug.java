@@ -55,18 +55,22 @@ public class Debug {
         return ENABLED && DebugScope.getInstance().isLogEnabled();
     }
 
+    @SuppressWarnings("unused")
     public static Runnable decorateDebugRoot(Runnable runnable, String name, DebugConfig config) {
         return runnable;
     }
 
+    @SuppressWarnings("unused")
     public static <T> Callable<T> decorateDebugRoot(Callable<T> callable, String name, DebugConfig config) {
         return callable;
     }
 
+    @SuppressWarnings("unused")
     public static Runnable decorateScope(Runnable runnable, String name, Object... context) {
         return runnable;
     }
 
+    @SuppressWarnings("unused")
     public static <T> Callable<T> decorateScope(Callable<T> callable, String name, Object... context) {
         return callable;
     }
