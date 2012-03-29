@@ -25,13 +25,12 @@ package com.oracle.graal.hotspot;
 import java.util.*;
 import java.util.regex.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.printer.*;
-
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class HotSpotDebugConfig implements DebugConfig {
 
@@ -54,7 +53,7 @@ public class HotSpotDebugConfig implements DebugConfig {
             this.methodFilter = new MethodFilter[filters.length];
             for (int i = 0; i < filters.length; i++) {
                 this.methodFilter[i] = new MethodFilter(filters[i]);
-                // TTY.println(this.methodFilter[i].toString());
+                // com.oracle.max.criutils.TTY.println(this.methodFilter[i].toString());
             }
         }
         if (GraalOptions.PrintIdealGraphFile) {
