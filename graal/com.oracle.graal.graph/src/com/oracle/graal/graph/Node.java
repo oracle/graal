@@ -77,7 +77,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Annotates a method that can be replaced by a compiler intrinsic.
-     * That is, a (resolved) call to the annotated method can be replaced
+     * A (resolved) call to the annotated method can be replaced
      * with an instance of the node class denoted by {@link #value()}.
      * For this reason, the signature of the annotated method must match
      * the signature of a constructor in the node class.
@@ -92,6 +92,21 @@ public abstract class Node implements Cloneable, Formattable {
          */
         Class value() default NodeIntrinsic.class;
     }
+
+
+    /**
+     * Annotates a method replaced by a compile-time constant.
+     * A (resolved) call to the annotated method is replaced
+     * with a constant obtained by calling the annotated method via reflection.
+     *
+     * All arguments to such a method (including the receiver if applicable)
+     * must be compile-time constants.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public static @interface Fold {
+    }
+
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)

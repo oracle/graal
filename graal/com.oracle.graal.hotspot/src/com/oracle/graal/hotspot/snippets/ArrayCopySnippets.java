@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.snippets;
 import com.oracle.max.cri.ci.*;
 import com.oracle.graal.cri.*;
+import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -43,7 +44,6 @@ public class ArrayCopySnippets implements SnippetsInterface{
             throw new IndexOutOfBoundsException();
         }
 
-        // TODO remainder
         if (src == dest && srcPos < destPos) { // bad aliased case
             if ((length & 0x01) == 0) {
                 if ((length & 0x02) == 0) {
@@ -229,8 +229,8 @@ public class ArrayCopySnippets implements SnippetsInterface{
         }
         if (length > 0) {
             long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
-            int cardShift = CardTableShiftNode.get();
-            long cardStart = CardTableStartNode.get();
+            int cardShift = cardTableShift();
+            long cardStart = cardTableStart();
             long dstAddr = GetObjectAddressNode.get(dest);
             long start = (dstAddr + header + destPos * 8L) >>> cardShift;
             long end = (dstAddr + header + (destPos + length - 1) * 8L) >>> cardShift;
@@ -436,25 +436,13 @@ public class ArrayCopySnippets implements SnippetsInterface{
         }
     }
 
-    private static class CardTableShiftNode extends ConstantNode {
-        public CardTableShiftNode() {
-            super(CiConstant.forInt(CompilerImpl.getInstance().getConfig().cardtableShift));
-        }
-
-        @NodeIntrinsic
-        public static int get() {
-            throw new UnsupportedOperationException();
-        }
+    @Fold
+    private static int cardTableShift() {
+        return CompilerImpl.getInstance().getConfig().cardtableShift;
     }
 
-    private static class CardTableStartNode extends ConstantNode {
-        public CardTableStartNode() {
-            super(CiConstant.forLong(CompilerImpl.getInstance().getConfig().cardtableStartAddress));
-        }
-
-        @NodeIntrinsic
-        public static long get() {
-            throw new UnsupportedOperationException();
-        }
+    @Fold
+    private static long cardTableStart() {
+        return CompilerImpl.getInstance().getConfig().cardtableStartAddress;
     }
 }
