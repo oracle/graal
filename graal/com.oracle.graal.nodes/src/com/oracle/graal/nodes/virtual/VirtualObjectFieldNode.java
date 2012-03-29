@@ -34,7 +34,7 @@ public class VirtualObjectFieldNode extends ValueNode implements LIRLowerable {
     @Input private ValueNode lastState;
     @Input private ValueNode input;
 
-    private int index;
+    @Data private int index;
 
     public VirtualObjectNode object() {
         return object;

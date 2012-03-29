@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.ri;
 
 import com.oracle.max.cri.ri.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.server.*;
 
 public interface HotSpotMethodResolved extends RiResolvedMethod, Remote {
@@ -30,4 +31,7 @@ public interface HotSpotMethodResolved extends RiResolvedMethod, Remote {
     RiResolvedMethod uniqueConcreteMethod();
     void dumpProfile();
     int vtableEntryOffset();
+
+    void setCurrentTask(CompilationTask task);
+    CompilationTask currentTask();
 }

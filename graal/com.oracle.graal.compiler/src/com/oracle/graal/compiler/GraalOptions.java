@@ -87,6 +87,12 @@ public final class GraalOptions {
     public static int     MatureExecutionsPerSwitchCase      = 1;
     public static int     MatureExecutionsTypeProfile        = 1;
 
+    // comilation queue
+    public static boolean PriorityCompileQueue               = true;
+    public static int     SlowQueueCutoff                    = 100000;
+    public static boolean SlowCompileThreads                 = false;
+    public static boolean DynamicCompilePriority             = true;
+
     //rematerialize settings
     public static float   MinimumUsageProbability            = 0.95f;
 
