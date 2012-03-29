@@ -86,11 +86,11 @@ public final class GraalOptions {
     // comilation queue
     public static boolean PriorityCompileQueue               = true;
     public static int     SlowQueueCutoff                    = 100000;
-    public static boolean SlowCompileThreads                 = false;
+    public static boolean SlowCompileThreads                 = ____;
     public static boolean DynamicCompilePriority             = true;
 
     // graph caching
-    public static boolean CacheGraphs                        = true;
+    public static boolean CacheGraphs                        = ____;
     public static int     GraphCacheSize                     = 1000;
     public static boolean PrintGraphCache                    = ____;
 
