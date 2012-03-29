@@ -90,7 +90,7 @@ public final class GraalOptions {
     public static boolean DynamicCompilePriority             = true;
 
     // graph caching
-    public static boolean CacheGraphs                        = ____;
+    public static boolean CacheGraphs                        = true;
     public static int     GraphCacheSize                     = 1000;
     public static boolean PrintGraphCache                    = ____;
 
