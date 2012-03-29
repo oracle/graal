@@ -45,7 +45,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     public HotSpotTypePrimitive(Compiler compiler, CiKind kind) {
         super(compiler);
         this.kind = kind;
-        this.name = kind.toString();
+        this.name = String.valueOf(Character.toUpperCase(kind.typeChar));
     }
 
     @Override
