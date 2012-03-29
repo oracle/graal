@@ -191,6 +191,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         CiCompilationStatistics.clear("bootstrap");
 
         TTY.println(" in %d ms", System.currentTimeMillis() - startTime);
+        if (compiler.getCache() != null) {
+            compiler.getCache().clear();
+            compiler.getCache().enable();
+        }
         System.gc();
         CiCompilationStatistics.clear("bootstrap2");
     }

@@ -85,7 +85,7 @@ public class IfBoxingEliminationTest extends GraphTest {
                 for (Invoke invoke : graph.getInvokes()) {
                     hints.add(invoke);
                 }
-                new InliningPhase(null, runtime(), hints, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
+                new InliningPhase(null, runtime(), hints, null, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
                 new PhiStampPhase().apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);

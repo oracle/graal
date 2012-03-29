@@ -30,6 +30,7 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -91,6 +92,7 @@ public final class CompilerImpl implements Compiler, Remote {
     private HotSpotRuntime runtime;
     private GraalCompiler compiler;
     private CiTarget target;
+    private volatile GraphCache cache;
 
     private final HotSpotVMConfig config;
 
@@ -161,8 +163,16 @@ public final class CompilerImpl implements Compiler, Remote {
             generator.initialize(backend.newXirAssembler());
 
             compiler = new GraalCompiler(getRuntime(), getTarget(), backend, generator);
+            if (GraalOptions.CacheGraphs) {
+                cache = new GraphCache(GraalOptions.PrintGraphCache);
+            }
         }
         return compiler;
+    }
+
+    @Override
+    public GraphCache getCache() {
+        return cache;
     }
 
     @Override

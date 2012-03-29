@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.compiler.util.InliningUtil.InlineInfo;
@@ -54,6 +57,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private CiAssumptions assumptions;
 
     private final PhasePlan plan;
+    private final GraphCache cache;
     private final WeightComputationPolicy weightComputationPolicy;
     private final InliningPolicy inliningPolicy;
     private final OptimisticOptimizations optimisticOpts;
@@ -63,11 +67,12 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
 
-    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;
         this.assumptions = assumptions;
+        this.cache = cache;
         this.plan = plan;
         this.optimisticOpts = optimisticOpts;
         this.weightComputationPolicy = createWeightComputationPolicy();
@@ -98,9 +103,9 @@ public class InliningPhase extends Phase implements InliningCallback {
                     if (GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
                     }
-                    if (GraalOptions.Intrinsify) {
-                        new IntrinsificationPhase(runtime).apply(graph);
-                    }
+//                    if (GraalOptions.Intrinsify) {
+//                        new IntrinsificationPhase(runtime).apply(graph);
+//                    }
                     metricInliningPerformed.increment();
                 } catch (CiBailout bailout) {
                     // TODO determine if we should really bail out of the whole compilation.
@@ -151,23 +156,47 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     public static final Map<RiMethod, Integer> parsedMethods = new HashMap<>();
 
+
+
+    private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
+
     @Override
-    public StructuredGraph buildGraph(RiResolvedMethod method) {
-        StructuredGraph newGraph = new StructuredGraph(method);
+    public StructuredGraph buildGraph(final RiResolvedMethod method) {
+        final StructuredGraph newGraph = new StructuredGraph(method);
 
-        if (plan != null) {
-            plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
-        }
-        assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
+        return Debug.scope("buildInlineGraph", this, new Callable<StructuredGraph>() {
 
-        if (GraalOptions.ProbabilityAnalysis) {
-            new DeadCodeEliminationPhase().apply(newGraph);
-            new ComputeProbabilityPhase().apply(newGraph);
-        }
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
-        }
-        return newGraph;
+            public StructuredGraph call() {
+                metricInliningRuns.increment();
+                if (GraalOptions.CacheGraphs && cache != null) {
+                    StructuredGraph cachedGraph = cache.get(method);
+                    if (cachedGraph != null) {
+                        return cachedGraph;
+                    }
+                }
+
+
+                if (plan != null) {
+                    plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
+                }
+                assert newGraph.start().next() != null : "graph needs to be populated during PhasePosition.AFTER_PARSING";
+
+                if (GraalOptions.ProbabilityAnalysis) {
+                    new DeadCodeEliminationPhase().apply(newGraph);
+                    new ComputeProbabilityPhase().apply(newGraph);
+                }
+                if (GraalOptions.OptCanonicalizer) {
+                    new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
+                }
+                if (GraalOptions.Intrinsify) {
+                    new IntrinsificationPhase(runtime).apply(newGraph);
+                }
+                if (GraalOptions.CacheGraphs && cache != null) {
+                    cache.put(newGraph);
+                }
+                return newGraph;
+            }
+        });
     }
 
     @Override
@@ -230,9 +259,9 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private WeightComputationPolicy createWeightComputationPolicy() {
+    private static WeightComputationPolicy createWeightComputationPolicy() {
         switch(GraalOptions.WeightComputationPolicy) {
-            case 0: return new ExecutionCountBasedWeightComputationPolicy();
+            case 0: throw new GraalInternalError("removed because of invokation counter changes");
             case 1: return new BytecodeSizeBasedWeightComputationPolicy();
             case 2: return new ComplexityBasedWeightComputationPolicy();
             default:
@@ -315,7 +344,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             double maxSize = GraalOptions.MaximumGreedyInlineSize;
             if (GraalOptions.InliningBonusPerTransferredValue != 0) {
                 RiSignature signature = info.invoke.callTarget().targetMethod().signature();
-                int transferredValues = signature.argumentCount(true);
+                int transferredValues = signature.argumentCount(!Modifier.isStatic(info.invoke.callTarget().targetMethod().accessFlags()));
                 if (signature.returnKind(false) != CiKind.Void) {
                     transferredValues++;
                 }
@@ -350,67 +379,6 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private interface WeightComputationPolicy {
         double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke);
-    }
-
-    private class ExecutionCountBasedWeightComputationPolicy implements WeightComputationPolicy {
-        @Override
-        public double computeWeight(RiResolvedMethod caller, RiResolvedMethod method, Invoke invoke, boolean preferredInvoke) {
-            double ratio;
-            if (preferredInvoke) {
-                ratio = 1000000;
-            } else {
-                if (GraalOptions.ProbabilityAnalysis) {
-                    ratio = invoke.node().probability();
-                } else {
-                    RiProfilingInfo profilingInfo = method.profilingInfo();
-                    int executionCount = profilingInfo.getExecutionCount(invoke.bci());
-                    if (executionCount > 0) {
-                        RiResolvedMethod parent = invoke.stateAfter().method();
-                        ratio = executionCount / (float) parent.invocationCount();
-                    } else {
-                        ratio = 1;
-                    }
-                }
-            }
-
-            final double normalSize;
-            // TODO (lstadler) get rid of this magic, it's here to emulate the old behavior for the time being
-            if (ratio < 0.01) {
-                ratio = 0.01;
-            }
-            if (ratio < 0.5) {
-                normalSize = 10 * ratio / 0.5;
-            } else if (ratio < 2) {
-                normalSize = 10 + (35 - 10) * (ratio - 0.5) / 1.5;
-            } else if (ratio < 20) {
-                normalSize = 35;
-            } else if (ratio < 40) {
-                normalSize = 35 + (350 - 35) * (ratio - 20) / 20;
-            } else {
-                normalSize = 350;
-            }
-
-            int count;
-            if (GraalOptions.ParseBeforeInlining) {
-                if (!parsedMethods.containsKey(method)) {
-                    StructuredGraph newGraph = new StructuredGraph(method);
-                    if (plan != null) {
-                        plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
-                    }
-                    if (GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(target, runtime, assumptions).apply(newGraph);
-                    }
-                    count = graphComplexity(newGraph);
-                    parsedMethods.put(method, count);
-                } else {
-                    count = parsedMethods.get(method);
-                }
-            } else {
-                count = method.codeSize();
-            }
-
-            return count / normalSize;
-        }
     }
 
     private static class BytecodeSizeBasedWeightComputationPolicy implements WeightComputationPolicy {

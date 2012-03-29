@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.io.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.*;
@@ -71,7 +70,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         cancelled = true;
     }
 
-    private static PrintStream out = System.out;
+//    private static PrintStream out = System.out;
 
     public void run() {
         if (cancelled) {
@@ -99,7 +98,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     @Override
                     public CiTargetMethod call() throws Exception {
                         StructuredGraph graph = new StructuredGraph(method);
-                        return compiler.getCompiler().compileMethod(method, graph, -1, plan, optimisticOpts);
+                        return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, optimisticOpts);
                     }
                 });
             } finally {

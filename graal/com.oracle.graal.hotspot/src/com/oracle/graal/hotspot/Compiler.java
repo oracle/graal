@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.ri.*;
@@ -38,5 +39,6 @@ public interface Compiler {
     HotSpotVMConfig getConfig();
     GraalRuntime getRuntime();
     CiTarget getTarget();
+    GraphCache getCache();
 
 }

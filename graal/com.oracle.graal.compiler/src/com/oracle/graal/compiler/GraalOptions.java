@@ -34,16 +34,12 @@ public final class GraalOptions {
     private static final boolean ____ = false;
     // Checkstyle: resume
 
-
-
-
     public static int     Threads                            = 4;
     public static boolean Lower                              = true;
 
     // inlining settings
     public static boolean Inline                             = true;
     public static boolean Intrinsify                         = true;
-    public static boolean CacheGraphs                        = ____;
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
            static boolean InlineMegamorphicCalls             = ____;
@@ -92,6 +88,11 @@ public final class GraalOptions {
     public static int     SlowQueueCutoff                    = 100000;
     public static boolean SlowCompileThreads                 = false;
     public static boolean DynamicCompilePriority             = true;
+
+    // graph caching
+    public static boolean CacheGraphs                        = true;
+    public static int     GraphCacheSize                     = 1000;
+    public static boolean PrintGraphCache                    = ____;
 
     //rematerialize settings
     public static float   MinimumUsageProbability            = 0.95f;

@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 import com.oracle.graal.alloc.simple.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.schedule.*;
@@ -74,10 +75,21 @@ public class GraalCompiler {
         this.backend = backend;
     }
 
-    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+
+    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
+        }
+        if (cache != null) {
+            long[] deoptedGraphs = runtime.getDeoptedLeafGraphIds();
+            if (deoptedGraphs != null) {
+                if (deoptedGraphs.length == 0) {
+                    cache.clear();
+                } else {
+                    cache.removeGraphs(deoptedGraphs);
+                }
+            }
         }
 
         return Debug.scope("GraalCompiler", new Object[] {graph, method, this}, new Callable<CiTargetMethod>() {
@@ -85,7 +97,7 @@ public class GraalCompiler {
                 final CiAssumptions assumptions = GraalOptions.OptAssumptions ? new CiAssumptions() : null;
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
                     public LIR call() {
-                        return emitHIR(graph, assumptions, plan, optimisticOpts);
+                        return emitHIR(graph, assumptions, cache, plan, optimisticOpts);
                     }
                 });
                 final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
@@ -105,7 +117,7 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);
@@ -137,7 +149,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
-            new InliningPhase(target, runtime, null, assumptions, plan, optimisticOpts).apply(graph);
+            new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new PhiStampPhase().apply(graph);
         }
@@ -157,7 +169,7 @@ public class GraalCompiler {
         }
 
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
-            new EscapeAnalysisPhase(target, runtime, assumptions, plan, optimisticOpts).apply(graph);
+            new EscapeAnalysisPhase(target, runtime, assumptions, cache, plan, optimisticOpts).apply(graph);
             new PhiStampPhase().apply(graph);
             if (GraalOptions.OptCanonicalizer) {
                 new CanonicalizerPhase(target, runtime, assumptions).apply(graph);

@@ -453,7 +453,7 @@ public class HotSpotRuntime implements GraalRuntime {
         final PhasePlan plan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        return compiler.getCompiler().compileMethod(method, graph, -1, plan, OptimisticOptimizations.ALL);
+        return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, OptimisticOptimizations.ALL);
     }
 
     @Override
