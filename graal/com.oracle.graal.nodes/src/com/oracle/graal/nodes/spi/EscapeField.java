@@ -26,9 +26,9 @@ import com.oracle.max.cri.ri.*;
 
 public class EscapeField {
 
-    private String name;
-    private Object representation;
-    private RiType type;
+    private final String name;
+    private final Object representation;
+    private final RiType type;
 
     public EscapeField(String name, Object representation, RiType type) {
         this.name = name;

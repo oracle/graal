@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import java.io.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.*;
@@ -35,6 +36,15 @@ import com.oracle.max.criutils.*;
 
 
 public final class CompilationTask implements Runnable, Comparable<CompilationTask> {
+
+
+    public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return Boolean.valueOf(Thread.currentThread() instanceof CompilerThread);
+        }
+    };
+
 
     private volatile boolean cancelled;
 
@@ -73,16 +83,28 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 //    private static PrintStream out = System.out;
 
     public void run() {
-        if (cancelled) {
-            return;
-        }
-        if (GraalOptions.DynamicCompilePriority) {
-            int threadPriority = priority < GraalOptions.SlowQueueCutoff ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
-            if (Thread.currentThread().getPriority() != threadPriority) {
-//                out.print(threadPriority);
-                Thread.currentThread().setPriority(threadPriority);
+        withinEnqueue.set(Boolean.FALSE);
+        try {
+            if (cancelled) {
+                return;
             }
+            if (GraalOptions.DynamicCompilePriority) {
+                int threadPriority = priority < GraalOptions.SlowQueueCutoff ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
+                if (Thread.currentThread().getPriority() != threadPriority) {
+    //                out.print(threadPriority);
+                    Thread.currentThread().setPriority(threadPriority);
+                }
+            }
+            runCompilation();
+            if (method.currentTask() == this) {
+                method.setCurrentTask(null);
+            }
+        } finally {
+            withinEnqueue.set(Boolean.TRUE);
         }
+    }
+
+    public void runCompilation() {
         CiCompilationStatistics stats = CiCompilationStatistics.create(method);
         try {
             final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
@@ -121,9 +143,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
         }
         stats.finish(method);
-        if (method.currentTask() == this) {
-            method.setCurrentTask(null);
-        }
     }
 
     @Override
