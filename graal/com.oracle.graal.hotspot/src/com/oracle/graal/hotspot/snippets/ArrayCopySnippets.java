@@ -21,16 +21,15 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.cri.*;
-import com.oracle.graal.graph.Node.Fold;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.nodes.*;
+import com.oracle.max.cri.ci.*;
 
 
 public class ArrayCopySnippets implements SnippetsInterface{
@@ -228,7 +227,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
             copyObjectsUp(src, srcPos * 8L, dest, destPos * 8L, length);
         }
         if (length > 0) {
-            long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
+            int header = arrayHeaderSizeFor(CiKind.Object);
             int cardShift = cardTableShift();
             long cardStart = cardTableStart();
             long dstAddr = GetObjectAddressNode.get(dest);
@@ -243,47 +242,47 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyBytesDown(Object src, int srcPos, Object dest, int destPos, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Byte);
+        int header = arrayHeaderSizeFor(CiKind.Byte);
         for (long i = length - 1; i >= 0; i--) {
-            Byte a = UnsafeLoadNode.load(src, i + (srcPos + header), CiKind.Byte);
-            UnsafeStoreNode.store(dest, i + (destPos + header), a.byteValue(), CiKind.Byte);
+            Byte a = UnsafeLoadNode.load(src, header, i + srcPos, CiKind.Byte);
+            UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), CiKind.Byte);
         }
     }
 
     @Snippet
     public static void copyShortsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Short);
+        int header = arrayHeaderSizeFor(CiKind.Short);
         for (long i = (length - 1) * 2; i >= 0; i -= 2) {
-            Character a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Short);
-            UnsafeStoreNode.store(dest, i + (destOffset + header), a.charValue(), CiKind.Short);
+            Character a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Short);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), CiKind.Short);
         }
     }
 
     @Snippet
     public static void copyIntsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Int);
+        int header = arrayHeaderSizeFor(CiKind.Int);
         for (long i = (length - 1) * 4; i >= 0; i -= 4) {
-            Integer a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Int);
-            UnsafeStoreNode.store(dest, i + (destOffset + header), a.intValue(), CiKind.Int);
+            Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Int);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), CiKind.Int);
         }
     }
 
     @Snippet
     public static void copyLongsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Long);
+        int header = arrayHeaderSizeFor(CiKind.Long);
         for (long i = (length - 1) * 8; i >= 0; i -= 8) {
-            Long a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Long);
-            UnsafeStoreNode.store(dest, i + (destOffset + header), a.longValue(), CiKind.Long);
+            Long a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Long);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), CiKind.Long);
         }
     }
 
     // Does NOT perform store checks
     @Snippet
     public static void copyObjectsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
+        int header = arrayHeaderSizeFor(CiKind.Object);
         for (long i = (length - 1) * 8; i >= 0; i -= 8) {
-            Object a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Object);
-            DirectObjectStoreNode.store(dest, i + (destOffset + header), a);
+            Object a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Object);
+            DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
     }
     /**
@@ -296,10 +295,10 @@ public class ArrayCopySnippets implements SnippetsInterface{
      */
     @Snippet
     public static void copyBytesUp(Object src, int srcPos, Object dest, int destPos, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Byte);
+        int header = arrayHeaderSizeFor(CiKind.Byte);
         for (long i = 0; i < length; i++) {
-            Byte a = UnsafeLoadNode.load(src, i + (srcPos + header), CiKind.Byte);
-            UnsafeStoreNode.store(dest, i + (destPos + header), a.byteValue(), CiKind.Byte);
+            Byte a = UnsafeLoadNode.load(src, header, i + srcPos, CiKind.Byte);
+            UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), CiKind.Byte);
         }
     }
 
@@ -313,38 +312,38 @@ public class ArrayCopySnippets implements SnippetsInterface{
      */
     @Snippet
     public static void copyShortsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Short);
+        int header = arrayHeaderSizeFor(CiKind.Short);
         for (long i = 0; i < length * 2L; i += 2) {
-            Character a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Short);
-            UnsafeStoreNode.store(dest, i + (destOffset + header), a.charValue(), CiKind.Short);
+            Character a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Short);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), CiKind.Short);
         }
     }
 
     @Snippet
     public static void copyIntsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Int);
+        int header = arrayHeaderSizeFor(CiKind.Int);
         for (long i = 0; i < length * 4L; i += 4) {
-            Integer a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Int);
-            UnsafeStoreNode.store(dest, i + (destOffset + header), a.intValue(), CiKind.Int);
+            Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Int);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), CiKind.Int);
         }
     }
 
     @Snippet
     public static void copyLongsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Long);
+        int header = arrayHeaderSizeFor(CiKind.Long);
         for (long i = 0; i < length * 8L; i += 8) {
-            Long a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Long);
-            UnsafeStoreNode.store(dest, i + (destOffset + header), a.longValue(), CiKind.Long);
+            Long a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Long);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), CiKind.Long);
         }
     }
 
     // Does NOT perform store checks
     @Snippet
     public static void copyObjectsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        long header = ArrayHeaderSizeNode.sizeFor(CiKind.Object);
+        int header = arrayHeaderSizeFor(CiKind.Object);
         for (long i = 0; i < length * 8L; i += 8) {
-            Object a = UnsafeLoadNode.load(src, i + (srcOffset + header), CiKind.Object);
-            DirectObjectStoreNode.store(dest, i + (destOffset + header), a);
+            Object a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Object);
+            DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
     }
     private static class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
@@ -401,39 +400,34 @@ public class ArrayCopySnippets implements SnippetsInterface{
         @Input private ValueNode object;
         @Input private ValueNode value;
         @Input private ValueNode offset;
+        @Data private final int displacement;
 
-        public DirectObjectStoreNode(ValueNode object, ValueNode offset, ValueNode value) {
+        public DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value) {
             super(StampFactory.illegal());
             this.object = object;
             this.value = value;
             this.offset = offset;
+            this.displacement = displacement;
         }
 
         @SuppressWarnings("unused")
         @NodeIntrinsic
-        public static void store(Object obj, long offset, long value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("unused")
-        @NodeIntrinsic
-        public static void store(Object obj, long offset, boolean value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("unused")
-        @NodeIntrinsic
-        public static void store(Object obj, long offset, Object value) {
+        public static void store(Object obj, @ConstantNodeParameter int displacement, long offset, Object value) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void lower(CiLoweringTool tool) {
             StructuredGraph graph = (StructuredGraph) this.graph();
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, value.kind(), 0, offset, graph, false);
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, value.kind(), displacement, offset, graph, false);
             WriteNode write = graph.add(new WriteNode(object, value, location));
             graph.replaceFixedWithFixed(this, write);
         }
+    }
+
+    @Fold
+    private static int arrayHeaderSizeFor(CiKind elementKind) {
+        return CompilerImpl.getInstance().getConfig().getArrayOffset(elementKind);
     }
 
     @Fold

@@ -41,7 +41,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.snippets.nodes.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.Call;
 import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
@@ -268,7 +267,7 @@ public class HotSpotRuntime implements GraalRuntime {
                     graph.addAfterFixed(cas, writeBarrier);
                 } else {
                     // This may be an array store so use an array write barrier
-                    LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), 0, cas.offset(), graph, false);
+                    LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, false);
                     graph.addAfterFixed(cas, graph.add(new ArrayWriteBarrier(cas.object(), location)));
                 }
             }
@@ -338,9 +337,6 @@ public class HotSpotRuntime implements GraalRuntime {
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
             graph.addBeforeFixed(write, barrier);
-        } else if (n instanceof ArrayHeaderSizeNode) {
-            ArrayHeaderSizeNode arrayHeaderSize = (ArrayHeaderSizeNode) n;
-            graph.replaceFloating(arrayHeaderSize, ConstantNode.forLong(config.getArrayOffset(arrayHeaderSize.elementKind()), n.graph()));
         } else if (n instanceof ReadHubNode) {
             ReadHubNode objectClassNode = (ReadHubNode) n;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);

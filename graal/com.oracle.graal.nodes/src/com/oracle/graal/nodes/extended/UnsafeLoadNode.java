@@ -50,10 +50,6 @@ public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable {
         return offset;
     }
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, CiKind kind) {
-        this(object, 0, offset, kind);
-    }
-
     public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, CiKind kind) {
         super(StampFactory.forKind(kind.stackKind()));
         this.object = object;
@@ -73,7 +69,7 @@ public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T load(Object object, long offset, @ConstantNodeParameter CiKind kind) {
+    public static <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter CiKind kind) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 }

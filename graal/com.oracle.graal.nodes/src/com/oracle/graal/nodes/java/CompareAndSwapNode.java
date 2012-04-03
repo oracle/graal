@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * Represents an atomic compare-and-swap operation
@@ -39,6 +39,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
     @Input private ValueNode offset;
     @Input private ValueNode expected;
     @Input private ValueNode newValue;
+    @Data private final int displacement;
 
     public ValueNode object() {
         return object;
@@ -56,13 +57,18 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
         return newValue;
     }
 
-    public CompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue) {
+    public int displacement() {
+        return displacement;
+    }
+
+    public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
         super(StampFactory.forKind(CiKind.Boolean.stackKind()));
         assert expected.kind() == newValue.kind();
         this.object = object;
         this.offset = offset;
         this.expected = expected;
         this.newValue = newValue;
+        this.displacement = displacement;
     }
 
     @Override
@@ -78,19 +84,19 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, long offset, Object expected, Object newValue) {
+    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, Object expected, Object newValue) {
         throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, long offset, long expected, long newValue) {
+    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, long expected, long newValue) {
         throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, long offset, int expected, int newValue) {
+    public static boolean compareAndSwap(Object object, @ConstantNodeParameter int displacement, long offset, int expected, int newValue) {
         throw new UnsupportedOperationException();
     }
 }
