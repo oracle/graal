@@ -23,12 +23,9 @@
 package com.oracle.graal.hotspot;
 
 import java.io.*;
+import java.lang.reflect.*;
 import java.net.*;
 
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.xir.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.target.*;
@@ -37,6 +34,10 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
+import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.
@@ -128,6 +129,21 @@ public final class CompilerImpl implements Compiler, Remote {
         // initialize compiler
         config = vmEntries.getConfiguration();
         config.check();
+
+        if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
+            printConfig(config);
+        }
+    }
+
+    private static void printConfig(HotSpotVMConfig config) {
+        Field[] fields = config.getClass().getDeclaredFields();
+        for (Field f : fields) {
+            f.setAccessible(true);
+            try {
+                Logger.info(String.format("%9s %-40s = %s", f.getType().getSimpleName(), f.getName(), Logger.pretty(f.get(config))));
+            } catch (Exception e) {
+            }
+        }
     }
 
     @Override

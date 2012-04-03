@@ -164,7 +164,7 @@ public class Logger {
             }
             return value + " (0x" + Integer.toHexString((Integer) value) + ")";
         } else if (value instanceof Long) {
-            if ((Long) value < 10) {
+            if ((Long) value < 10 && (Long) value > -10) {
                 return value + "l";
             }
             return value + "l (0x" + Long.toHexString((Long) value) + "l)";
@@ -175,10 +175,19 @@ public class Logger {
                 dimensions++;
                 klass = klass.getComponentType();
             }
-            str.append(klass.getSimpleName()).append('[').append(Array.getLength(value)).append(']');
+            int length = Array.getLength(value);
+            str.append(klass.getSimpleName()).append('[').append(length).append(']');
             for (int i = 1; i < dimensions; i++) {
                 str.append("[]");
             }
+            str.append(" {");
+            for (int i = 0; i < length; i++) {
+                str.append(pretty(Array.get(value, i)));
+                if (i < length - 1) {
+                    str.append(", ");
+                }
+            }
+            str.append('}');
             return str.toString();
         }
 
