@@ -33,13 +33,27 @@ public class Logger {
 
     public static final boolean ENABLED = Boolean.valueOf(System.getProperty("graal.debug"));
     private static final int SPACING = 4;
-    private static Deque<Boolean> openStack = new LinkedList<>();
-    private static boolean open = false;
-    private static int level = 0;
+    private static final ThreadLocal<Logger> loggerTL;
+
+    private Deque<Boolean> openStack = new LinkedList<>();
+    private boolean open = false;
+    private int level = 0;
 
     private static final PrintStream out;
 
     static {
+        if (ENABLED) {
+            loggerTL = new ThreadLocal<Logger>() {
+                @Override
+                protected Logger initialValue() {
+                    return new Logger();
+                }
+            };
+        } else {
+            loggerTL = null;
+        }
+
+
         PrintStream ps = null;
         String filename = System.getProperty("graal.info_file");
         if (filename != null && !"".equals(filename)) {
@@ -70,12 +84,13 @@ public class Logger {
 
     public static void log(String message) {
         if (ENABLED) {
+            Logger logger = loggerTL.get();
             for (String line : message.split("\n")) {
-                if (open) {
+                if (logger.open) {
                     System.out.println("...");
-                    open = false;
+                    logger.open = false;
                 }
-                System.out.print(space(level));
+                System.out.print(space(logger.level));
                 System.out.println(line);
             }
         }
@@ -83,27 +98,29 @@ public class Logger {
 
     public static void startScope(String message) {
         if (ENABLED) {
-            if (open) {
+            Logger logger = loggerTL.get();
+            if (logger.open) {
                 System.out.println("...");
-                open = false;
+                logger.open = false;
             }
-            System.out.print(space(level));
+            System.out.print(space(logger.level));
             System.out.print(message);
-            openStack.push(open);
-            open = true;
-            level++;
+            logger.openStack.push(logger.open);
+            logger.open = true;
+            logger.level++;
         }
     }
 
     public static void endScope(String message) {
         if (ENABLED) {
-            level--;
-            if (open) {
+            Logger logger = loggerTL.get();
+            logger.level--;
+            if (logger.open) {
                 System.out.println(message);
             } else {
-                System.out.println(space(level) + "..." + message);
+                System.out.println(space(logger.level) + "..." + message);
             }
-            open = openStack.pop();
+            logger.open = logger.openStack.pop();
         }
     }
 
