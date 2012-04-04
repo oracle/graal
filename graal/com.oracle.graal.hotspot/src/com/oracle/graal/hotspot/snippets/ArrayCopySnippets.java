@@ -280,7 +280,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
     @Snippet
     public static void copyObjectsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
         int header = arrayHeaderSizeFor(CiKind.Object);
-        for (long i = (length - 1) * 8; i >= 0; i -= 8) {
+        for (long i = (length - 1) * wordSize(); i >= 0; i -= wordSize()) {
             Object a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Object);
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
@@ -341,7 +341,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
     @Snippet
     public static void copyObjectsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
         int header = arrayHeaderSizeFor(CiKind.Object);
-        for (long i = 0; i < length * 8L; i += 8) {
+        for (long i = 0; i < length * wordSize(); i += wordSize()) {
             Object a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Object);
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
@@ -423,6 +423,11 @@ public class ArrayCopySnippets implements SnippetsInterface{
             WriteNode write = graph.add(new WriteNode(object, value, location));
             graph.replaceFixedWithFixed(this, write);
         }
+    }
+
+    @Fold
+    private static int wordSize() {
+        return CompilerImpl.getInstance().getTarget().wordSize;
     }
 
     @Fold
