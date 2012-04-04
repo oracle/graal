@@ -333,12 +333,12 @@ public class HotSpotRuntime implements GraalRuntime {
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.storeKind(), store.displacement(), store.offset(), graph);
             location.setIndexScalingEnabled(false);
             WriteNode write = graph.add(new WriteNode(store.object(), store.value(), location));
-            if (store.storeKind() == CiKind.Object && !store.value().isNullConstant()) {
-                FieldWriteBarrier barrier = graph.add(new FieldWriteBarrier(store.object()));
-                graph.addBeforeFixed(write, barrier);
-            }
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
+            if (write.value().kind() == CiKind.Object && !write.value().isNullConstant()) {
+                FieldWriteBarrier barrier = graph.add(new FieldWriteBarrier(write.object()));
+                graph.addBeforeFixed(write, barrier);
+            }
         } else if (n instanceof ReadHubNode) {
             ReadHubNode objectClassNode = (ReadHubNode) n;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
