@@ -36,6 +36,8 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
 
     @Input private ValueNode index;
     @Input private ValueNode length;
+    @Data private final CiKind elementType;
+    private final long leafGraphId;
 
     public ValueNode index() {
         return index;
@@ -44,9 +46,6 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
     public ValueNode length() {
         return length;
     }
-
-    private final CiKind elementType;
-    private final long leafGraphId;
 
     /**
      * Create an new AccessIndexedNode.

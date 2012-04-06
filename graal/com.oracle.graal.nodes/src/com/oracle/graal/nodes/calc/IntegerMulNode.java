@@ -52,7 +52,7 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
                 return x();
             }
             if (c == 0) {
-                return ConstantNode.forInt(0, graph());
+                return ConstantNode.defaultForKind(kind(), graph());
             }
             if (c > 0 && CiUtil.isPowerOf2(c)) {
                 return graph().unique(new LeftShiftNode(kind(), x(), ConstantNode.forInt(CiUtil.log2(c), graph())));

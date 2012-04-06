@@ -33,22 +33,15 @@ import com.oracle.graal.nodes.type.*;
  * and a variable.
  */
 public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
-
-    @Input(notDataflow = true) private MergeNode merge;
-
-    @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
-
-    public MergeNode merge() {
-        return merge;
-    }
-
     public static enum PhiType {
         Value, // normal value phis
         Memory, // memory phis
         Virtual // phis used for VirtualObjectField merges
     }
 
-    private final PhiType type;
+    @Input(notDataflow = true) private MergeNode merge;
+    @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
+    @Data private final PhiType type;
 
     public PhiNode(CiKind kind, MergeNode merge, PhiType type) {
         super(StampFactory.forKind(kind));
@@ -58,6 +51,10 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     public PhiType type() {
         return type;
+    }
+
+    public MergeNode merge() {
+        return merge;
     }
 
     public NodeInputList<ValueNode> values() {
