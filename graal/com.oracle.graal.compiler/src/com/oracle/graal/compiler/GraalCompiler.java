@@ -128,45 +128,37 @@ public class GraalCompiler {
 
         new PhiStampPhase().apply(graph);
 
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-        }
-
         if (GraalOptions.ProbabilityAnalysis && graph.start().probability() == 0) {
             new ComputeProbabilityPhase().apply(graph);
+        }
+
+        if (GraalOptions.PropagateTypes) {
+            new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
+        }
+
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
 
         if (GraalOptions.Intrinsify) {
             new IntrinsificationPhase(runtime).apply(graph);
         }
 
-        if (GraalOptions.PropagateTypes) {
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-            }
-
-            new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
-        }
-
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             new InliningPhase(target, runtime, null, assumptions, cache, plan, optimisticOpts).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new PhiStampPhase().apply(graph);
+            if (GraalOptions.PropagateTypes) {
+                new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
+            }
+
+            if (GraalOptions.OptCanonicalizer) {
+                new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
+            }
         }
 
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
-        }
-
-        if (GraalOptions.PropagateTypes) {
-            new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
-        }
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
-
-        if (GraalOptions.OptLoops) {
-            new SafepointPollingEliminationPhase().apply(graph);
-        }
 
         if (GraalOptions.EscapeAnalysis && !plan.isPhaseDisabled(EscapeAnalysisPhase.class)) {
             new EscapeAnalysisPhase(target, runtime, assumptions, cache, plan, optimisticOpts).apply(graph);
@@ -175,7 +167,9 @@ public class GraalCompiler {
                 new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
             }
         }
-
+        if (GraalOptions.OptLoops) {
+            new SafepointPollingEliminationPhase().apply(graph);
+        }
         if (GraalOptions.OptGVN) {
             new GlobalValueNumberingPhase().apply(graph);
         }
@@ -196,6 +190,9 @@ public class GraalCompiler {
 
         if (GraalOptions.PropagateTypes) {
             new PropagateTypeCachePhase(target, runtime, assumptions).apply(graph);
+        }
+        if (GraalOptions.OptCanonicalizer) {
+            new CanonicalizerPhase(target, runtime, assumptions).apply(graph);
         }
         if (GraalOptions.OptGVN) {
             new GlobalValueNumberingPhase().apply(graph);
