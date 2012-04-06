@@ -73,15 +73,25 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
         }
     }
 
-    public void evacuateGuards() {
+    public void evacuateGuards(FixedNode evacuateFrom) {
         if (!usages().isEmpty()) {
-            Node prevBegin = predecessor();
+            Node prevBegin = evacuateFrom;
             assert prevBegin != null;
             while (!(prevBegin instanceof BeginNode)) {
                 prevBegin = prevBegin.predecessor();
             }
-            replaceAtUsages(prevBegin);
+            for (Node anchored : anchored().snapshot()) {
+                anchored.replaceFirstInput(this, prevBegin);
+            }
         }
+    }
+
+    public void prepareDelete() {
+        prepareDelete((FixedNode) predecessor());
+    }
+
+    public void prepareDelete(FixedNode evacuateFrom) {
+        evacuateGuards(evacuateFrom);
     }
 
     @Override
@@ -97,5 +107,9 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
 
     public NodeIterable<GuardNode> guards() {
         return usages().filter(GuardNode.class);
+    }
+
+    public NodeIterable<Node> anchored() {
+        return usages();
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -49,8 +51,13 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         return usages().filter(LoopEndNode.class);
     }
 
+    @Override
+    public NodeIterable<Node> anchored() {
+        return super.anchored().filter(isNotA(LoopEndNode.class));
+    }
+
     public List<LoopEndNode> orderedLoopEnds() {
-        List<LoopEndNode> snapshot = usages().filter(LoopEndNode.class).snapshot();
+        List<LoopEndNode> snapshot = loopEnds().snapshot();
         Collections.sort(snapshot, new Comparator<LoopEndNode>() {
             @Override
             public int compare(LoopEndNode o1, LoopEndNode o2) {

@@ -161,14 +161,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         EndNode falseEnd = (EndNode) falseSuccessor.next();
         assert trueEnd.merge() == falseEnd.merge();
 
+        FixedWithNextNode pred = (FixedWithNextNode) predecessor();
         MergeNode merge = trueEnd.merge();
+        merge.prepareDelete(pred);
         assert merge.usages().isEmpty();
 
         FixedNode next = merge.next();
         merge.setNext(null);
         setTrueSuccessor(null);
         setFalseSuccessor(null);
-        ((FixedWithNextNode) predecessor()).setNext(next);
+        pred.setNext(next);
         safeDelete();
         trueSuccessor.safeDelete();
         falseSuccessor.safeDelete();
