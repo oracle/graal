@@ -132,8 +132,12 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         } catch (CiBailout bailout) {
             Debug.metric("Bailouts").increment();
             if (GraalOptions.ExitVMOnBailout) {
+                TTY.cachedOut.println(CiUtil.format("%H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
                 System.exit(-1);
+            } else if (GraalOptions.PrintBailout) {
+                TTY.cachedOut.println(CiUtil.format("%H.%n(%p)", method));
+                bailout.printStackTrace(TTY.cachedOut);
             }
         } catch (Throwable t) {
             if (GraalOptions.ExitVMOnException) {
