@@ -27,8 +27,10 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.virtual.*;
 
 public class GraphUtil {
 
@@ -40,7 +42,11 @@ public class GraphUtil {
             killEnd(end);
         } else {
             // Normal control flow node.
-            for (Node successor : node.successors().snapshot()) {
+            /* We do not take a successor snapshot because this iterator supports concurrent modifications
+             * as long as they do not change the size of the successor list. Not tasking a snapshot allows
+             * us to see modifications to other branches that may happen while processing one branch.
+             */
+            for (Node successor : node.successors()) {
                 killCFG((FixedNode) successor);
             }
         }
@@ -50,6 +56,7 @@ public class GraphUtil {
     private static void killEnd(EndNode end) {
         MergeNode merge = end.merge();
         merge.removeEnd(end);
+        StructuredGraph graph = (StructuredGraph) end.graph();
         if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { //dead loop
             for (PhiNode phi : merge.phis().snapshot()) {
                 propagateKill(phi);
@@ -63,15 +70,19 @@ public class GraphUtil {
             killCFG(begin.next());
             begin.safeDelete();
         } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) { // not a loop anymore
-            ((StructuredGraph) end.graph()).reduceDegenerateLoopBegin((LoopBeginNode) merge);
+            graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
         } else if (merge.phiPredecessorCount() == 1) { // not a merge anymore
-            ((StructuredGraph) end.graph()).reduceTrivialMerge(merge);
+            graph.reduceTrivialMerge(merge);
         }
+    }
+
+    public static NodePredicate isFloatingNode() {
+        return isA(FloatingNode.class).or(CallTargetNode.class).or(FrameState.class).or(VirtualObjectFieldNode.class).or(VirtualObjectNode.class);
     }
 
     public static void propagateKill(Node node) {
         if (node != null && node.isAlive()) {
-            List<Node> usagesSnapshot = node.usages().filter(isA(FloatingNode.class).or(CallTargetNode.class).or(FrameState.class)).snapshot();
+            List<Node> usagesSnapshot = node.usages().filter(isFloatingNode()).snapshot();
 
             // null out remaining usages
             node.replaceAtUsages(null);
@@ -91,7 +102,7 @@ public class GraphUtil {
     }
 
     public static void killUnusedFloatingInputs(Node node) {
-        List<Node> floatingInputs = node.inputs().filter(isA(FloatingNode.class).or(CallTargetNode.class).or(FrameState.class)).snapshot();
+        List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
         node.safeDelete();
 
         for (Node in : floatingInputs) {
