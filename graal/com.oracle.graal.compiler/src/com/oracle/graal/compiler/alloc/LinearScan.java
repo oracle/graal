@@ -860,7 +860,7 @@ public final class LinearScan {
         for (int operandNum = 0; operandNum < blockData.get(ir.cfg.getStartBlock()).liveIn.size(); operandNum++) {
             if (blockData.get(ir.cfg.getStartBlock()).liveIn.get(operandNum)) {
                 CiValue operand = operandFor(operandNum);
-                TTY.println(" var %d; operand=%s", operandNum, operand.toString());
+                TTY.println(" var %d; operand=%s; node=%s", operandNum, operand.toString(), gen.valueForOperand(operand));
 
                 for (int j = 0; j < numBlocks; j++) {
                     Block block = blockAt(j);

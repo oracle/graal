@@ -27,6 +27,7 @@ import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValue.*;
 
 import java.util.*;
+import java.util.Map.Entry;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
@@ -171,6 +172,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return null;
         }
         return nodeOperands.get(node);
+    }
+
+    public ValueNode valueForOperand(CiValue value) {
+        for (Entry<Node, CiValue> entry : nodeOperands.entries()) {
+            if (entry.getValue() == value) {
+                return (ValueNode) entry.getKey();
+            }
+        }
+        return null;
     }
 
     /**
