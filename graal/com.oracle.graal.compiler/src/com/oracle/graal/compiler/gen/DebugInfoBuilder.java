@@ -31,6 +31,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.virtual.*;
 
 public class DebugInfoBuilder {
@@ -54,7 +55,13 @@ public class DebugInfoBuilder {
             FrameState current = topState;
             do {
                 for (Node n : current.virtualObjectMappings()) {
-                    VirtualObjectFieldNode field = (VirtualObjectFieldNode) n;
+                    Node p = n;
+                    while (p instanceof PhiNode) {
+                        PhiNode phi = (PhiNode) p;
+                        assert phi.type() == PhiType.Virtual;
+                        p = phi.valueAt(0);
+                    }
+                    VirtualObjectFieldNode field = (VirtualObjectFieldNode) p;
                     // null states occur for objects with 0 fields
                     if (field != null && !objectStates.containsKey(field.object())) {
                         objectStates.put(field.object(), field);
