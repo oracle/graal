@@ -168,8 +168,12 @@ public class GraalCompiler {
             }
         }
         if (GraalOptions.OptLoops) {
-            new LoopTransformPhase().apply(graph);
-            new SafepointPollingEliminationPhase().apply(graph);
+            if (GraalOptions.OptLoopTransform) {
+                new LoopTransformPhase().apply(graph);
+            }
+            if (GraalOptions.OptSafepointElimination) {
+                new SafepointPollingEliminationPhase().apply(graph);
+            }
         }
         new RemoveValueProxyPhase().apply(graph);
         if (GraalOptions.OptCanonicalizer) {

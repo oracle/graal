@@ -36,6 +36,7 @@ public class LoopTransformPhase extends Phase {
         if (graph.hasLoops()) {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             Loop[] loops = cfg.getLoops();
+            // outermost first
             Arrays.sort(loops, new Comparator<Loop>() {
                 @Override
                 public int compare(Loop o1, Loop o2) {

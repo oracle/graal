@@ -193,12 +193,14 @@ public final class GraalOptions {
     public static boolean OptReadElimination                 = true;
     public static boolean OptGVN                             = true;
     public static boolean OptCanonicalizer                   = true;
-    public static boolean OptLoops                           = ____;
+    public static boolean OptLoops                           = true;
     public static boolean ScheduleOutOfLoops                 = true;
     public static boolean OptReorderLoops                    = true;
     public static boolean OptEliminateGuards                 = true;
     public static boolean OptImplicitNullChecks              = true;
     public static boolean OptLivenessAnalysis                = true;
+    public static boolean OptLoopTransform                   = true;
+    public static boolean OptSafepointElimination            = true;
 
     /**
      * Flag to turn on SSA-based register allocation, which is currently under development.

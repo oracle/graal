@@ -39,6 +39,7 @@ public class SuperBlock {
     protected LoopBeginNode loop;
     protected Map<Node, Node> duplicationMapping;
     protected SuperBlock original;
+    protected NodeBitMap loopNodes;
 
     public SuperBlock(BeginNode entry, BeginNode exit, List<BeginNode> blocks, List<BeginNode> earlyExits, LoopBeginNode loop) {
         this.entry = entry;
@@ -58,8 +59,15 @@ public class SuperBlock {
         return entry;
     }
 
+    public NodeBitMap loopNodes() {
+        if (loopNodes == null) {
+            loopNodes = computeNodes();
+        }
+        return loopNodes;
+    }
+
     public SuperBlock duplicate() {
-        NodeBitMap nodes = computeNodes();
+        NodeBitMap nodes = loopNodes();
         Map<Node, Node> replacements = new HashMap<>();
         StructuredGraph graph = (StructuredGraph) entry.graph();
         BeginNode newEntry = graph.add(new BeginNode());
@@ -264,46 +272,46 @@ public class SuperBlock {
     }
 
     private NodeBitMap computeNodes() {
-        NodeBitMap loopNodes = entry.graph().createNodeBitMap();
+        NodeBitMap nodes = entry.graph().createNodeBitMap();
         for (BeginNode b : blocks) {
             for (Node n : b.getBlockNodes()) {
                 if (n instanceof Invoke) {
-                    loopNodes.mark(((Invoke) n).callTarget());
+                    nodes.mark(((Invoke) n).callTarget());
                 }
                 if (n instanceof StateSplit) {
                     FrameState stateAfter = ((StateSplit) n).stateAfter();
                     if (stateAfter != null) {
-                        loopNodes.mark(stateAfter);
+                        nodes.mark(stateAfter);
                     }
                 }
-                loopNodes.mark(n);
+                nodes.mark(n);
             }
         }
         for (BeginNode earlyExit : earlyExits) {
             FrameState stateAfter = earlyExit.stateAfter();
             assert stateAfter != null;
-            loopNodes.mark(stateAfter);
-            loopNodes.mark(earlyExit);
+            nodes.mark(stateAfter);
+            nodes.mark(earlyExit);
             for (ValueProxyNode proxy : earlyExit.proxies()) {
-                loopNodes.mark(proxy);
+                nodes.mark(proxy);
             }
         }
 
         for (BeginNode b : blocks) {
             for (Node n : b.getBlockNodes()) {
                 for (Node usage : n.usages()) {
-                    markFloating(usage, loopNodes, "");
+                    markFloating(usage, nodes, "");
                 }
             }
         }
 
         if (entry instanceof LoopBeginNode) {
             for (PhiNode phi : ((LoopBeginNode) entry).phis()) {
-                loopNodes.clear(phi);
+                nodes.clear(phi);
             }
         }
 
-        return loopNodes;
+        return nodes;
     }
 
     private static boolean markFloating(Node n, NodeBitMap loopNodes, String ind) {

@@ -61,27 +61,26 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
             // This begin node is necessary.
         } else {
             // This begin node can be removed and all guards moved up to the preceding begin node.
-            if (!usages().isEmpty()) {
-                Node prevBegin = prev;
-                while (!(prevBegin instanceof BeginNode)) {
-                    prevBegin = prevBegin.predecessor();
-                }
-                for (Node usage : usages()) {
-                    tool.addToWorkList(usage);
-                }
-                replaceAtUsages(prevBegin);
-            }
+            prepareDelete();
             ((StructuredGraph) graph()).removeFixed(this);
         }
     }
 
+    public static BeginNode prevBegin(FixedNode from) {
+        Node prevBegin = from;
+        while (prevBegin != null) {
+            if (prevBegin instanceof BeginNode) {
+                return (BeginNode) prevBegin;
+            }
+            prevBegin = prevBegin.predecessor();
+        }
+        return null;
+    }
+
     public void evacuateGuards(FixedNode evacuateFrom) {
         if (!usages().isEmpty()) {
-            Node prevBegin = evacuateFrom;
+            BeginNode prevBegin = prevBegin(evacuateFrom);
             assert prevBegin != null;
-            while (!(prevBegin instanceof BeginNode)) {
-                prevBegin = prevBegin.predecessor();
-            }
             for (Node anchored : anchored().snapshot()) {
                 anchored.replaceFirstInput(this, prevBegin);
             }
