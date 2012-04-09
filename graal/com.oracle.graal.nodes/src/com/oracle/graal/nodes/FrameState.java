@@ -184,6 +184,13 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
         return duplicate(newBci, false);
     }
 
+    /**
+     * Gets a copy of this frame state.
+     */
+    public FrameState duplicate() {
+        return duplicate(bci);
+    }
+
     public FrameState duplicate(int newBci, boolean duplicateOuter) {
         FrameState other = graph().add(new FrameState(method, newBci, localsSize, stackSize, rethrowException, duringCall));
         other.values.setAll(values);

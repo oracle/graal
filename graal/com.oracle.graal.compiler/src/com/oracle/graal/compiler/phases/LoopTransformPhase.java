@@ -20,43 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.cfg;
+package com.oracle.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.loop.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 
-public class Loop {
-    public final Loop parent;
-    public final List<Loop> children;
-
-    public final int depth;
-    public final int index;
-    public final Block header;
-    public final List<Block> blocks;
-    public final List<Block> exits;
-
-    protected Loop(Loop parent, int index, Block header) {
-        this.parent = parent;
-        if (parent != null) {
-            this.depth = parent.depth + 1;
-            parent.children.add(this);
-        } else {
-            this.depth = 1;
-        }
-        this.index = index;
-        this.header = header;
-        this.blocks = new ArrayList<>();
-        this.children = new ArrayList<>();
-        this.exits = new ArrayList<>();
-    }
+public class LoopTransformPhase extends Phase {
 
     @Override
-    public String toString() {
-        return "loop " + index + " depth " + depth + (parent != null ? " outer " + parent.index : "");
+    protected void run(StructuredGraph graph) {
+        if (graph.hasLoops()) {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+            Loop[] loops = cfg.getLoops();
+            Arrays.sort(loops, new Comparator<Loop>() {
+                @Override
+                public int compare(Loop o1, Loop o2) {
+                    return o1.depth - o2.depth;
+                }
+            });
+            for (Loop loop : loops) {
+                LoopTransformUtil.peel(loop);
+                Debug.dump(graph, "After peeling %s", loop);
+            }
+        }
     }
 
-    public LoopBeginNode loopBegin() {
-        return (LoopBeginNode) header.getBeginNode();
-    }
+
 }

@@ -352,6 +352,10 @@ public class NodeClass {
             node.getNodeClass().set(node, this, value);
         }
 
+        public boolean isValidFor(Node node, Node from) {
+            return node.getNodeClass().isValid(this, from.getNodeClass());
+        }
+
         @Override
         public int hashCode() {
             final int prime = 31;
@@ -605,6 +609,18 @@ public class NodeClass {
         return true;
     }
 
+    public boolean isValid(Position pos, NodeClass from) {
+        long[] offsets = pos.input ? inputOffsets : successorOffsets;
+        if (pos.index >= offsets.length) {
+            return false;
+        }
+        long[] fromOffsets = pos.input ? from.inputOffsets : from.successorOffsets;
+        if (pos.index >= fromOffsets.length) {
+            return false;
+        }
+        return offsets[pos.index] == fromOffsets[pos.index];
+    }
+
     public Node get(Node node, Position pos) {
         long offset = pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index];
         if (pos.subIndex == NOT_ITERABLE) {
@@ -678,7 +694,7 @@ public class NodeClass {
         while (index < directInputCount) {
             Node input = getNode(node, inputOffsets[index]);
             if (input == old) {
-                assert other == null || inputTypes[index].isAssignableFrom(other.getClass());
+                assert other == null || inputTypes[index].isAssignableFrom(other.getClass()); // : "Can not assign " + other.getClass() + " to " + inputTypes[index] + " in " + node;
                 putNode(node, inputOffsets[index], other);
                 return true;
             }
@@ -700,7 +716,7 @@ public class NodeClass {
         while (index < directSuccessorCount) {
             Node successor = getNode(node, successorOffsets[index]);
             if (successor == old) {
-                assert other == null || successorTypes[index].isAssignableFrom(other.getClass()) : successorTypes[index] + " is not compatible with " + other.getClass();
+                assert other == null || successorTypes[index].isAssignableFrom(other.getClass()); // : successorTypes[index] + " is not compatible with " + other.getClass();
                 putNode(node, successorOffsets[index], other);
                 return true;
             }

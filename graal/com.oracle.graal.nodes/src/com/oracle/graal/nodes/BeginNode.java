@@ -126,4 +126,45 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
     public NodeIterable<ValueProxyNode> proxies() {
         return usages().filter(ValueProxyNode.class);
     }
+
+    public NodeIterable<FixedNode> getBlockNodes() {
+        return new NodeIterable<FixedNode>() {
+            @Override
+            public Iterator<FixedNode> iterator() {
+                return new BlockNodeIterator(BeginNode.this);
+            }
+        };
+    }
+
+    private class BlockNodeIterator implements Iterator<FixedNode> {
+        private FixedNode current;
+
+        public BlockNodeIterator(FixedNode next) {
+            this.current = next;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return current != null;
+        }
+
+        @Override
+        public FixedNode next() {
+            FixedNode ret = current;
+            if (ret == null) {
+                throw new NoSuchElementException();
+            }
+            if (!(current instanceof FixedWithNextNode) || (current instanceof BeginNode && current != BeginNode.this)) {
+                current = null;
+            } else {
+                current = ((FixedWithNextNode) current).next();
+            }
+            return ret;
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
 }
