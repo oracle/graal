@@ -98,6 +98,9 @@ public final class GraalOptions {
     //rematerialize settings
     public static float   MinimumUsageProbability            = 0.95f;
 
+    //loop transform settings
+    public static float   MinimumPeelProbability             = 0.25f;
+
     // debugging settings
     public static int     MethodEndBreakpointGuards          = 0;
     public static boolean ZapStackOnMethodEntry              = ____;

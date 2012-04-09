@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.phases;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.cfg.*;
@@ -44,8 +45,12 @@ public class LoopTransformPhase extends Phase {
                 }
             });
             for (Loop loop : loops) {
-                LoopTransformUtil.peel(loop);
-                Debug.dump(graph, "After peeling %s", loop);
+                double entryProbability = loop.loopBegin().forwardEnd().probability();
+                if (entryProbability > GraalOptions.MinimumPeelProbability) {
+                    Debug.log("Peeling %s", loop);
+                    LoopTransformUtil.peel(loop);
+                    Debug.dump(graph, "After peeling %s", loop);
+                }
             }
         }
     }
