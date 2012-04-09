@@ -304,10 +304,9 @@ public class HotSpotRuntime implements GraalRuntime {
                     AnchorNode anchor = graph.add(new AnchorNode());
                     graph.addBeforeFixed(storeIndexed, anchor);
                     GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID);
-                    ReadNode arrayClass = graph.add(new ReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), StampFactory.objectNonNull()));
+                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), StampFactory.objectNonNull()));
                     arrayClass.setGuard(guard);
-                    graph.addBeforeFixed(storeIndexed, arrayClass);
-                    FloatingReadNode arrayElementKlass = graph.add(new FloatingReadNode(arrayClass, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), StampFactory.objectNonNull()));
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), StampFactory.objectNonNull()));
                     value = graph.unique(new CheckCastNode(anchor, arrayElementKlass, null, value));
                 }
             }
