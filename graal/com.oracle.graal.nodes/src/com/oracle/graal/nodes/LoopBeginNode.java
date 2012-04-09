@@ -51,9 +51,13 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         return usages().filter(LoopEndNode.class);
     }
 
+    public NodeIterable<LoopExitNode> loopExits() {
+        return usages().filter(LoopExitNode.class);
+    }
+
     @Override
     public NodeIterable<Node> anchored() {
-        return super.anchored().filter(isNotA(LoopEndNode.class));
+        return super.anchored().filter(isNotA(LoopEndNode.class).nor(LoopExitNode.class));
     }
 
     public List<LoopEndNode> orderedLoopEnds() {

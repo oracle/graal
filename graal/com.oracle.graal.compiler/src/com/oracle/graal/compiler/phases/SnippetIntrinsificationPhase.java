@@ -227,6 +227,9 @@ public class SnippetIntrinsificationPhase extends Phase {
         if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != CiKind.Object) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
+                for (ValueProxyNode vpn : checkCastNode.usages().filter(ValueProxyNode.class).snapshot()) {
+                    graph.replaceFloating(vpn, checkCastNode);
+                }
                 for (Node checkCastUsage : checkCastNode.usages().snapshot()) {
                     if (checkCastUsage instanceof ValueAnchorNode) {
                         ValueAnchorNode valueAnchorNode = (ValueAnchorNode) checkCastUsage;

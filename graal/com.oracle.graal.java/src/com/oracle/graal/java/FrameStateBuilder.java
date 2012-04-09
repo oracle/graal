@@ -28,6 +28,7 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
@@ -200,14 +201,39 @@ public class FrameStateBuilder {
         }
         // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
         List<PhiNode> phiUsages = phi.usages().filter(PhiNode.class).snapshot();
+        List<ValueProxyNode> vpnUsages = phi.usages().filter(ValueProxyNode.class).snapshot();
 
         // Remove the phi function from all FrameStates where it is used and then delete it.
-        assert phi.usages().filter(isNotA(FrameState.class).nor(PhiNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        assert phi.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ValueProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
         phi.replaceAtUsages(null);
         phi.safeDelete();
 
         for (PhiNode phiUsage : phiUsages) {
             deletePhi(phiUsage);
+        }
+        for (ValueProxyNode proxyUsage : vpnUsages) {
+            deleteProxy(proxyUsage);
+        }
+    }
+
+    private void deleteProxy(ValueProxyNode proxy) {
+        if (proxy.isDeleted()) {
+            return;
+        }
+        // Collect all phi functions that use this phi so that we can delete them recursively (after we delete ourselfs to avoid circles).
+        List<PhiNode> phiUsages = proxy.usages().filter(PhiNode.class).snapshot();
+        List<ValueProxyNode> vpnUsages = proxy.usages().filter(ValueProxyNode.class).snapshot();
+
+        // Remove the proxy function from all FrameStates where it is used and then delete it.
+        assert proxy.usages().filter(isNotA(FrameState.class).nor(PhiNode.class).nor(ValueProxyNode.class)).isEmpty() : "phi function that gets deletes must only be used in frame states";
+        proxy.replaceAtUsages(null);
+        proxy.safeDelete();
+
+        for (PhiNode phiUsage : phiUsages) {
+            deletePhi(phiUsage);
+        }
+        for (ValueProxyNode proxyUsage : vpnUsages) {
+            deleteProxy(proxyUsage);
         }
     }
 
@@ -217,6 +243,23 @@ public class FrameStateBuilder {
         }
         for (int i = 0; i < stackSize(); i++) {
             storeStack(i, createLoopPhi(loopBegin, stackAt(i)));
+        }
+    }
+
+    public void insertProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
+        for (int i = 0; i < localsSize(); i++) {
+            ValueNode value = localAt(i);
+            if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
+                Debug.log(" inserting proxy for %s", value);
+                storeLocal(i, graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value)));
+            }
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            ValueNode value = stackAt(i);
+            if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
+                Debug.log(" inserting proxy for %s", value);
+                storeStack(i, graph.unique(new ValueProxyNode(value, loopExit, PhiType.Value)));
+            }
         }
     }
 
@@ -544,5 +587,19 @@ public class FrameStateBuilder {
     public static boolean isTwoSlot(CiKind kind) {
         assert kind != CiKind.Void && kind != CiKind.Illegal;
         return kind == CiKind.Long || kind == CiKind.Double;
+    }
+
+    public boolean contains(ValueNode value) {
+        for (int i = 0; i < localsSize(); i++) {
+            if (localAt(i) == value) {
+                return true;
+            }
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            if (stackAt(i) == value) {
+                return true;
+            }
+        }
+        return false;
     }
 }

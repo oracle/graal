@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code NewArrayNode} class is the base of all instructions that allocate arrays.
@@ -130,7 +131,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
         public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
             if (current instanceof AccessIndexedNode) {
                 AccessIndexedNode x = (AccessIndexedNode) current;
-                if (x.array() == node) {
+                if (GraphUtil.unProxify(x.array()) == node) {
                     int index = ((AccessIndexedNode) current).index().asConstant().asInt();
                     if (current instanceof LoadIndexedNode) {
                         x.replaceAtUsages(fieldState[index]);

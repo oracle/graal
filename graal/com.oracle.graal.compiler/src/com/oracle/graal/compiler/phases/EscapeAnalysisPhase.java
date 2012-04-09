@@ -188,6 +188,11 @@ public class EscapeAnalysisPhase extends Phase {
             FixedNode next = node.next();
             graph.removeFixed(node);
 
+            for (ValueProxyNode vpn : virtual.usages().filter(ValueProxyNode.class).snapshot()) {
+                assert vpn.value() == virtual;
+                graph.replaceFloating(vpn, virtual);
+            }
+
             if (virtual.fieldsCount() > 0) {
                 final BlockExitState startState = new BlockExitState(escapeFields, virtual);
                 final PostOrderNodeIterator<?> iterator = new PostOrderNodeIterator<BlockExitState>(next, startState) {
@@ -196,6 +201,12 @@ public class EscapeAnalysisPhase extends Phase {
                         int changedField = op.updateState(virtual, curNode, fields, state.fieldState);
                         if (changedField != -1) {
                             state.updateField(changedField);
+                        }
+                        if (curNode instanceof LoopExitNode) {
+                            state.virtualObjectField = graph.unique(new ValueProxyNode(state.virtualObjectField, (LoopExitNode) curNode, PhiType.Virtual));
+                            for (int i = 0; i < state.fieldState.length; i++) {
+                                state.fieldState[i] = graph.unique(new ValueProxyNode(state.fieldState[i], (LoopExitNode) curNode, PhiType.Value));
+                            }
                         }
                         if (!curNode.isDeleted() && curNode instanceof StateSplit && ((StateSplit) curNode).stateAfter() != null) {
                             if (state.virtualObjectField != null) {

@@ -81,6 +81,13 @@ public abstract class EscapeOp {
         } else if (usage instanceof ArrayLengthNode) {
             assert ((ArrayLengthNode) usage).array() == node;
             return false;
+        } else if (usage instanceof ValueProxyNode) {
+            for (Node vpnUsage : usage.usages().snapshot()) {
+                if (escape(usage, vpnUsage)) {
+                    return true;
+                }
+            }
+            return false;
         } else {
             return true;
         }

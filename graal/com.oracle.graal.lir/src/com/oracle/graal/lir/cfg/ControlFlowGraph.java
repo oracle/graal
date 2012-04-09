@@ -24,6 +24,7 @@ package com.oracle.graal.lir.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
@@ -201,26 +202,51 @@ public class ControlFlowGraph {
                 Loop loop = new Loop(block.getLoop(), loopsList.size(), block);
                 loopsList.add(loop);
 
-                for (LoopEndNode end : ((LoopBeginNode) beginNode).loopEnds()) {
+                LoopBeginNode loopBegin = (LoopBeginNode) beginNode;
+                for (LoopEndNode end : loopBegin.loopEnds()) {
                     Block endBlock = nodeToBlock.get(end);
                     computeLoopBlocks(endBlock, loop);
+                }
+
+                for (LoopExitNode exit : loopBegin.loopExits()) {
+                    Block exitBlock = nodeToBlock.get(exit);
+                    List<Block> predecessors = exitBlock.getPredecessors();
+                    assert predecessors.size() == 1;
+                    computeLoopBlocks(predecessors.get(0), loop);
+                    loop.exits.add(exitBlock);
+                }
+                List<Block> unexpected = new LinkedList<>();
+                for (Block b : loop.blocks) {
+                    for (Block sux : b.getSuccessors()) {
+                        if (sux.loop != loop) {
+                            BeginNode begin = sux.getBeginNode();
+                            if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
+                                Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
+                                unexpected.add(sux);
+                            }
+                        }
+                    }
+                }
+                for (Block b : unexpected) {
+                    addBranchToLoop(loop, b);
                 }
             }
         }
         loops = loopsList.toArray(new Loop[loopsList.size()]);
+    }
 
-        for (Loop loop : loops) {
-            for (Block block : loop.blocks) {
-                for (Block sux : block.getSuccessors()) {
-                    if (sux.getLoopDepth() < loop.depth) {
-                        loop.exits.add(sux);
-                    }
-                }
-            }
+    private static void addBranchToLoop(Loop l, Block b) {
+        if (l.blocks.contains(b)) {
+            return;
+        }
+        l.blocks.add(b);
+        b.loop = l;
+        for (Block sux : b.getSuccessors()) {
+            addBranchToLoop(l, sux);
         }
     }
 
-    private void computeLoopBlocks(Block block, Loop loop) {
+    private static void computeLoopBlocks(Block block, Loop loop) {
         if (block.getLoop() == loop) {
             return;
         }

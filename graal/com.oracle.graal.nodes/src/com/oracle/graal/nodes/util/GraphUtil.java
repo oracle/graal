@@ -62,10 +62,16 @@ public class GraphUtil {
                 propagateKill(phi);
             }
             LoopBeginNode begin = (LoopBeginNode) merge;
-            // disconnect and delete loop ends
+            // disconnect and delete loop ends & loop exits
             for (LoopEndNode loopend : begin.loopEnds().snapshot()) {
                 loopend.predecessor().replaceFirstSuccessor(loopend, null);
                 loopend.safeDelete();
+            }
+            for (LoopExitNode loopexit : begin.loopExits().snapshot()) {
+                for (ValueProxyNode vpn : loopexit.proxies().snapshot()) {
+                    graph.replaceFloating(vpn, vpn.value());
+                }
+                graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
             }
             killCFG(begin.next());
             begin.safeDelete();
@@ -110,5 +116,71 @@ public class GraphUtil {
                 killUnusedFloatingInputs(in);
             }
         }
+    }
+
+    public static void checkRedundantPhi(PhiNode phiNode) {
+        if (phiNode.isDeleted() || phiNode.valueCount() == 1) {
+            return;
+        }
+
+        ValueNode singleValue = phiNode.singleValue();
+        if (singleValue != null) {
+            Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
+            Collection<ValueProxyNode> proxyUsages = phiNode.usages().filter(ValueProxyNode.class).snapshot();
+            ((StructuredGraph) phiNode.graph()).replaceFloating(phiNode, singleValue);
+            for (PhiNode phi : phiUsages) {
+                checkRedundantPhi(phi);
+            }
+            for (ValueProxyNode proxy : proxyUsages) {
+                checkRedundantProxy(proxy);
+            }
+        }
+    }
+
+    public static void checkRedundantProxy(ValueProxyNode vpn) {
+        BeginNode proxyPoint = vpn.proxyPoint();
+        if (proxyPoint instanceof LoopExitNode) {
+            LoopExitNode exit = (LoopExitNode) proxyPoint;
+            LoopBeginNode loopBegin = exit.loopBegin();
+            ValueNode vpnValue = vpn.value();
+            for (ValueNode v : loopBegin.stateAfter().values()) {
+                ValueNode v2 = v;
+                if (loopBegin.isPhiAtMerge(v2)) {
+                    v2 = ((PhiNode) v2).valueAt(loopBegin.forwardEnd());
+                }
+                if (vpnValue == v2) {
+                    Collection<PhiNode> phiUsages = vpn.usages().filter(PhiNode.class).snapshot();
+                    Collection<ValueProxyNode> proxyUsages = vpn.usages().filter(ValueProxyNode.class).snapshot();
+                    ((StructuredGraph) vpn.graph()).replaceFloating(vpn, vpnValue);
+                    for (PhiNode phi : phiUsages) {
+                        checkRedundantPhi(phi);
+                    }
+                    for (ValueProxyNode proxy : proxyUsages) {
+                        checkRedundantProxy(proxy);
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    public static void normalizeLoopBegin(LoopBeginNode begin) {
+        // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either the same or the phi itself.
+        for (PhiNode phi : begin.phis().snapshot()) {
+            GraphUtil.checkRedundantPhi(phi);
+        }
+        for (LoopExitNode exit : begin.loopExits()) {
+            for (ValueProxyNode vpn : exit.proxies().snapshot()) {
+                GraphUtil.checkRedundantProxy(vpn);
+            }
+        }
+    }
+
+    public static ValueNode unProxify(ValueNode proxy) {
+        ValueNode v = proxy;
+        while (v instanceof ValueProxyNode) {
+            v = ((ValueProxyNode) v).value();
+        }
+        return v;
     }
 }

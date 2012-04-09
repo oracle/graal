@@ -108,6 +108,7 @@ public class SchedulePhase extends Phase {
             return;
         }
         assert !(n instanceof PhiNode) : n;
+        assert !(n instanceof MergeNode);
         // if in CFG, schedule at the latest position possible in the outermost loop possible
         Block latestBlock = latestBlock(n);
         Block block;
@@ -120,7 +121,6 @@ public class SchedulePhase extends Phase {
         } else {
             block = latestBlock;
         }
-        assert !(n instanceof MergeNode);
         cfg.getNodeToBlock().set(n, block);
         nodesFor.get(block).add(n);
     }

@@ -43,6 +43,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.Representation;
@@ -104,6 +105,8 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
+    private Block[] loopHeaders;
+
     public GraphBuilderPhase(RiRuntime runtime, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
@@ -156,6 +159,7 @@ public final class GraphBuilderPhase extends Phase {
         this.canTrapBitSet = blockMap.canTrap;
 
         exceptionHandlers = blockMap.exceptionHandlers();
+        loopHeaders = blockMap.loopHeaders;
 
         lastInstr = currentGraph.start();
         if (isSynchronized(method.accessFlags())) {
@@ -1197,6 +1201,67 @@ public final class GraphBuilderPhase extends Phase {
         return x;
     }
 
+    private static class Target {
+        FixedNode fixed;
+        FrameStateBuilder state;
+        public Target(FixedNode fixed, FrameStateBuilder state) {
+            this.fixed = fixed;
+            this.state = state;
+        }
+    }
+
+    private Target checkLoopExit(FixedNode traget, Block targetBlock, FrameStateBuilder state) {
+        if (currentBlock != null) {
+            long exits = currentBlock.loops & ~targetBlock.loops;
+            if (exits != 0) {
+                LoopExitNode firstLoopExit = null;
+                LoopExitNode lastLoopExit = null;
+
+                int pos = 0;
+                ArrayList<Block> exitLoops = new ArrayList<>(Long.bitCount(exits));
+                do {
+                    int lMask = 1 << pos;
+                    if ((exits & lMask) != 0) {
+                        exitLoops.add(loopHeaders[pos]);
+                        exits &= ~lMask;
+                    }
+                    pos++;
+                } while (exits != 0);
+
+                Collections.sort(exitLoops, new Comparator<Block>() {
+                    @Override
+                    public int compare(Block o1, Block o2) {
+                        return Long.bitCount(o2.loops) - Long.bitCount(o1.loops);
+                    }
+                });
+
+                int bci = targetBlock.startBci;
+                if (targetBlock instanceof ExceptionBlock) {
+                    bci = ((ExceptionBlock) targetBlock).deoptBci;
+                }
+                FrameStateBuilder newState = state.copy();
+                for (Block loop : exitLoops) {
+                    LoopBeginNode loopBegin = (LoopBeginNode) loop.firstInstruction;
+                    LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                    if (lastLoopExit != null) {
+                        lastLoopExit.setNext(loopExit);
+                    }
+                    if (firstLoopExit == null) {
+                        firstLoopExit = loopExit;
+                    }
+                    lastLoopExit = loopExit;
+                    Debug.log("Traget %s (%s) Exits %s, scanning framestates...", targetBlock, traget, loop);
+                    newState.insertProxies(loopExit, loop.entryState);
+                    loopExit.setStateAfter(newState.create(bci));
+                }
+
+                lastLoopExit.setNext(traget);
+                return new Target(firstLoopExit, newState);
+            }
+        }
+        return new Target(traget, state);
+    }
+
     private FixedNode createTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1;
         if (probability == 0 && optimisticOpts.removeNeverExecutedCode()) {
@@ -1206,23 +1271,25 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private FixedNode createTarget(Block block, FrameStateBuilder stateAfter) {
-        assert block != null && stateAfter != null;
-        assert !block.isExceptionEntry || stateAfter.stackSize() == 1;
+    private FixedNode createTarget(Block block, FrameStateBuilder state) {
+        assert block != null && state != null;
+        assert !block.isExceptionEntry || state.stackSize() == 1;
 
         if (block.firstInstruction == null) {
             // This is the first time we see this block as a branch target.
             // Create and return a placeholder that later can be replaced with a MergeNode when we see this block again.
             block.firstInstruction = currentGraph.add(new BlockPlaceholderNode());
-            block.entryState = stateAfter.copy();
+            Target target = checkLoopExit(block.firstInstruction, block, state);
+            FixedNode result = target.fixed;
+            block.entryState = target.state == state ? state.copy() : target.state;
             block.entryState.clearNonLiveLocals(block.localsLiveIn);
 
             Debug.log("createTarget %s: first visit, result: %s", block, block.firstInstruction);
-            return block.firstInstruction;
+            return result;
         }
 
         // We already saw this block before, so we have to merge states.
-        if (!block.entryState.isCompatibleWith(stateAfter)) {
+        if (!block.entryState.isCompatibleWith(state)) {
             throw new CiBailout("stacks do not match; bytecodes would not verify");
         }
 
@@ -1230,8 +1297,9 @@ public final class GraphBuilderPhase extends Phase {
             assert block.isLoopHeader && currentBlock.blockID >= block.blockID : "must be backward branch";
             // Backward loop edge. We need to create a special LoopEndNode and merge with the loop begin node created before.
             LoopBeginNode loopBegin = (LoopBeginNode) block.firstInstruction;
-            LoopEndNode result = currentGraph.add(new LoopEndNode(loopBegin));
-            block.entryState.merge(loopBegin, stateAfter);
+            Target target = checkLoopExit(currentGraph.add(new LoopEndNode(loopBegin)), block, state);
+            FixedNode result = target.fixed;
+            block.entryState.merge(loopBegin, target.state);
 
             Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
             return result;
@@ -1260,9 +1328,11 @@ public final class GraphBuilderPhase extends Phase {
         MergeNode mergeNode = (MergeNode) block.firstInstruction;
 
         // The EndNode for the newly merged edge.
-        EndNode result = currentGraph.add(new EndNode());
-        block.entryState.merge(mergeNode, stateAfter);
-        mergeNode.addForwardEnd(result);
+        EndNode newEnd = currentGraph.add(new EndNode());
+        Target target = checkLoopExit(newEnd, block, state);
+        FixedNode result = target.fixed;
+        block.entryState.merge(mergeNode, target.state);
+        mergeNode.addForwardEnd(newEnd);
 
         Debug.log("createTarget %s: merging state, result: %s", block, result);
         return result;
@@ -1274,9 +1344,7 @@ public final class GraphBuilderPhase extends Phase {
      */
     private BeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         FixedNode target = createTarget(probability, block, stateAfter);
-        assert !(target instanceof BeginNode);
-        BeginNode begin = currentGraph.add(new BeginNode());
-        begin.setNext(target);
+        BeginNode begin = BeginNode.begin(target);
 
         assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) :
             "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
@@ -1340,25 +1408,7 @@ public final class GraphBuilderPhase extends Phase {
                 assert begin.forwardEndCount() == 1;
                 currentGraph.reduceDegenerateLoopBegin(begin);
             } else {
-                // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either the same or the phi itself.
-                for (PhiNode phi : begin.phis().snapshot()) {
-                    checkRedundantPhi(phi);
-                }
-            }
-        }
-    }
-
-    private static void checkRedundantPhi(PhiNode phiNode) {
-        if (phiNode.isDeleted() || phiNode.valueCount() == 1) {
-            return;
-        }
-
-        ValueNode singleValue = phiNode.singleValue();
-        if (singleValue != null) {
-            Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
-            ((StructuredGraph) phiNode.graph()).replaceFloating(phiNode, singleValue);
-            for (PhiNode phi : phiUsages) {
-                checkRedundantPhi(phi);
+                GraphUtil.normalizeLoopBegin(begin);
             }
         }
     }

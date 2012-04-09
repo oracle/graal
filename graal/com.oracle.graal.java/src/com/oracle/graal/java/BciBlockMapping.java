@@ -121,12 +121,14 @@ public final class BciBlockMapping {
         public int endBci;
         public boolean isExceptionEntry;
         public boolean isLoopHeader;
+        public int loopId;
         public int blockID;
 
         public FixedWithNextNode firstInstruction;
         public FrameStateBuilder entryState;
 
         public ArrayList<Block> successors = new ArrayList<>(2);
+        public long exits;
         public int normalSuccessors;
 
         private boolean visited;
@@ -191,6 +193,7 @@ public final class BciBlockMapping {
     private final BytecodeStream stream;
     private final RiExceptionHandler[] exceptionHandlers;
     private Block[] blockMap;
+    public Block[] loopHeaders;
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
@@ -204,6 +207,7 @@ public final class BciBlockMapping {
         this.blockMap = new Block[method.codeSize()];
         this.canTrap = new BitSet(blockMap.length);
         this.blocks = new ArrayList<>();
+        this.loopHeaders = new Block[64];
     }
 
     public RiExceptionHandler[] exceptionHandlers() {
@@ -223,7 +227,11 @@ public final class BciBlockMapping {
             }
             createJsrAlternatives(blockMap[0]);
         }
+        if (Debug.isLogEnabled()) {
+            this.log("Before BlockOrder");
+        }
         computeBlockOrder();
+        fixLoopBits();
 
         initializeBlockIds();
 
@@ -231,7 +239,9 @@ public final class BciBlockMapping {
 
         // Discard big arrays so that they can be GCed
         blockMap = null;
-
+        if (Debug.isLogEnabled()) {
+            this.log("Before LivenessAnalysis");
+        }
         if (GraalOptions.OptLivenessAnalysis) {
             Debug.scope("LivenessAnalysis", new Runnable() {
                 @Override
@@ -541,6 +551,26 @@ public final class BciBlockMapping {
         }
     }
 
+    private boolean loopChanges;
+
+    private void fixLoopBits() {
+        do {
+            loopChanges = false;
+            for (Block b : blocks) {
+                b.visited = false;
+            }
+
+            long loop = fixLoopBits(blockMap[0]);
+
+            if (loop != 0) {
+                // There is a path from a loop end to the method entry that does not pass the loop header.
+                // Therefore, the loop is non reducible (has more than one entry).
+                // We don't want to compile such methods because the IR only supports structured loops.
+                throw new CiBailout("Non-reducible loop");
+            }
+        } while (loopChanges);
+    }
+
     private void computeBlockOrder() {
         long loop = computeBlockOrder(blockMap[0]);
 
@@ -553,6 +583,64 @@ public final class BciBlockMapping {
 
         // Convert postorder to the desired reverse postorder.
         Collections.reverse(blocks);
+    }
+
+    public void log(String name) {
+        if (Debug.isLogEnabled()) {
+            String n = System.lineSeparator();
+            StringBuilder sb = new StringBuilder(Debug.currentScope()).append("BlockMap ").append(name).append(" :");
+            sb.append(n);
+            Iterable<Block> it;
+            if (blocks.isEmpty()) {
+                it = new HashSet<>(Arrays.asList(blockMap));
+            } else {
+                it = blocks;
+            }
+            for (Block b : it) {
+                if (b == null) {
+                    continue;
+                }
+                sb.append("B").append(b.blockID).append(" (").append(b.startBci).append(" -> ").append(b.endBci).append(")");
+                if (b.isLoopHeader) {
+                    sb.append(" LoopHeader");
+                }
+                if (b.isExceptionEntry) {
+                    sb.append(" ExceptionEntry");
+                }
+                sb.append(n).append("  Sux : ");
+                for (Block s : b.successors) {
+                    sb.append("B").append(s.blockID).append(" (").append(s.startBci).append(" -> ").append(s.endBci).append(")");
+                    if (s.isExceptionEntry) {
+                        sb.append("!");
+                    }
+                    sb.append(" ");
+                }
+                sb.append(n).append("  Loop : ");
+                long l = b.loops;
+                int pos = 0;
+                while (l != 0) {
+                    int lMask = 1 << pos;
+                    if ((l & lMask) != 0) {
+                        sb.append("B").append(loopHeaders[pos].blockID).append(" ");
+                        l &= ~lMask;
+                    }
+                    pos++;
+                }
+                sb.append(n).append("  Exits : ");
+                l = b.exits;
+                pos = 0;
+                while (l != 0) {
+                    int lMask = 1 << pos;
+                    if ((l & lMask) != 0) {
+                        sb.append("B").append(loopHeaders[pos].blockID).append(" ");
+                        l &= ~lMask;
+                    }
+                    pos++;
+                }
+                sb.append(n);
+            }
+            Debug.log(sb.toString());
+        }
     }
 
     /**
@@ -581,6 +669,9 @@ public final class BciBlockMapping {
 
             assert block.loops == 0;
             block.loops = (long) 1 << (long) nextLoop;
+            Debug.log("makeLoopHeader(%s) -> %x", block, block.loops);
+            loopHeaders[nextLoop] = block;
+            block.loopId = nextLoop;
             nextLoop++;
         }
         assert Long.bitCount(block.loops) == 1;
@@ -596,9 +687,13 @@ public final class BciBlockMapping {
             if (block.active) {
                 // Reached block via backward branch.
                 makeLoopHeader(block);
+                // Return cached loop information for this block.
+                return block.loops;
+            } else if (block.isLoopHeader) {
+                return block.loops & ~(1L << block.loopId);
+            } else {
+                return block.loops;
             }
-            // Return cached loop information for this block.
-            return block.loops;
         }
 
         block.visited = true;
@@ -610,18 +705,50 @@ public final class BciBlockMapping {
             loops |= computeBlockOrder(successor);
         }
 
+        block.loops = loops;
+        Debug.log("computeBlockOrder(%s) -> %x", block, block.loops);
+
         if (block.isLoopHeader) {
-            assert Long.bitCount(block.loops) == 1;
-            loops &= ~block.loops;
+            loops &= ~(1L << block.loopId);
         }
 
-        block.loops = loops;
         block.active = false;
         blocks.add(block);
 
         return loops;
     }
 
+    private long fixLoopBits(Block block) {
+        if (block.visited) {
+            // Return cached loop information for this block.
+            if (block.isLoopHeader) {
+                return block.loops & ~(1L << block.loopId);
+            } else {
+                return block.loops;
+            }
+        }
+
+        block.visited = true;
+        long loops = block.loops;
+        for (Block successor : block.successors) {
+            // Recursively process successors.
+            loops |= fixLoopBits(successor);
+        }
+        for (Block successor : block.successors) {
+            successor.exits = loops & ~successor.loops;
+        }
+        if (block.loops != loops) {
+            loopChanges = true;
+            block.loops = loops;
+            Debug.log("fixLoopBits0(%s) -> %x", block, block.loops);
+        }
+
+        if (block.isLoopHeader) {
+            loops &= ~(1L << block.loopId);
+        }
+
+        return loops;
+    }
 
     private void computeLiveness() {
         for (Block block : blocks) {

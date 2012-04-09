@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -91,7 +93,15 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
     }
 
     public void prepareDelete(FixedNode evacuateFrom) {
+        removeProxies();
         evacuateGuards(evacuateFrom);
+    }
+
+    public void removeProxies() {
+        StructuredGraph graph = (StructuredGraph) graph();
+        for (ValueProxyNode vpn : proxies().snapshot()) {
+            graph.replaceFloating(vpn, vpn.value());
+        }
     }
 
     @Override
@@ -110,6 +120,10 @@ public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simpl
     }
 
     public NodeIterable<Node> anchored() {
-        return usages();
+        return usages().filter(isNotA(ValueProxyNode.class));
+    }
+
+    public NodeIterable<ValueProxyNode> proxies() {
+        return usages().filter(ValueProxyNode.class);
     }
 }

@@ -312,6 +312,13 @@ public class StructuredGraph extends Graph {
         EndNode singleEnd = merge.forwardEndAt(0);
         FixedNode sux = merge.next();
         FrameState stateAfter = merge.stateAfter();
+        // remove loop exits
+        if (merge instanceof LoopBeginNode) {
+            for (LoopExitNode exit : ((LoopBeginNode) merge).loopExits().snapshot()) {
+                exit.removeProxies();
+                replaceFixedWithFixed(exit, this.add(new BeginNode()));
+            }
+        }
         // evacuateGuards
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();

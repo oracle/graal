@@ -161,7 +161,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
     }
 
     public void addVirtualObjectMapping(Node virtualObject) {
-        assert virtualObject instanceof VirtualObjectFieldNode || virtualObject instanceof PhiNode : virtualObject;
+        assert virtualObject instanceof VirtualObjectFieldNode || virtualObject instanceof PhiNode || virtualObject instanceof ValueProxyNode : virtualObject;
         virtualObjectMappings.add(virtualObject);
     }
 

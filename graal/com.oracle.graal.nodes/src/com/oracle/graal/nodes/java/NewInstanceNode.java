@@ -29,6 +29,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
@@ -110,7 +111,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements EscapeAn
         public int updateState(Node node, Node current, Map<Object, Integer> fieldIndex, ValueNode[] fieldState) {
             if (current instanceof AccessFieldNode) {
                 AccessFieldNode x = (AccessFieldNode) current;
-                if (x.object() == node) {
+                if (GraphUtil.unProxify(x.object()) == node) {
                     int field = fieldIndex.get(x.field());
                     StructuredGraph graph = (StructuredGraph) x.graph();
                     if (current instanceof LoadFieldNode) {
