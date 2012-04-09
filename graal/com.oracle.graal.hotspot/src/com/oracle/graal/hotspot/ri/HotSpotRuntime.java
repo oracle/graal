@@ -307,7 +307,7 @@ public class HotSpotRuntime implements GraalRuntime {
                     ReadNode arrayClass = graph.add(new ReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), StampFactory.objectNonNull()));
                     arrayClass.setGuard(guard);
                     graph.addBeforeFixed(storeIndexed, arrayClass);
-                    ReadNode arrayElementKlass = graph.add(new ReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), StampFactory.objectNonNull()));
+                    FloatingReadNode arrayElementKlass = graph.add(new FloatingReadNode(arrayClass, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), StampFactory.objectNonNull()));
                     value = graph.unique(new CheckCastNode(anchor, arrayElementKlass, null, value));
                 }
             }
@@ -387,7 +387,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 SafeReadNode klassOop = safeRead(graph, CiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
                 graph.start().setNext(klassOop);
                 // TODO(thomaswue): Care about primitive classes! Crashes for primitive classes at the moment (klassOop == null)
-                FloatingReadNode result = graph.add(new FloatingReadNode(klassOop, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), StampFactory.forKind(CiKind.Int)));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), StampFactory.forKind(CiKind.Int)));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 klassOop.setNext(ret);
                 return graph;

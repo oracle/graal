@@ -53,4 +53,9 @@ public abstract class FixedNode extends ValueNode {
         return properties;
     }
 
+    @Override
+    public boolean verify() {
+        assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float");
+        return super.verify();
+    }
 }
