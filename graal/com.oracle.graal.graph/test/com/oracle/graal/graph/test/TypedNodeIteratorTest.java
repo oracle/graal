@@ -46,7 +46,7 @@ public class TypedNodeIteratorTest {
         TestNode testNode = new TestNode("a");
         Graph graph = new Graph();
         graph.add(testNode);
-        testNode.delete();
+        testNode.safeDelete();
         assertEquals("", toString(graph.getNodes(TestNode.class)));
     }
 
@@ -56,7 +56,7 @@ public class TypedNodeIteratorTest {
         Graph graph = new Graph();
         graph.add(new TestNode("a"));
         graph.add(testNode);
-        testNode.delete();
+        testNode.safeDelete();
         assertEquals("a", toString(graph.getNodes(TestNode.class)));
         graph.add(new TestNode("c"));
         assertEquals("ac", toString(graph.getNodes(TestNode.class)));
@@ -77,7 +77,7 @@ public class TypedNodeIteratorTest {
         TestNode c = new TestNode("c");
         graph.add(c);
         assertTrue(iterator.hasNext());
-        c.delete();
+        c.safeDelete();
         assertFalse(iterator.hasNext());
     }
 
@@ -90,11 +90,11 @@ public class TypedNodeIteratorTest {
             for (int i = 0; i < name.length(); ++i) {
                 char c = name.charAt(i);
                 if (c == 'a') {
-                    tn.delete();
+                    tn.safeDelete();
                     graph.add(new TestNode("b"));
                     graph.add(new TestNode("c"));
                 } else if (c == 'b') {
-                    tn.delete();
+                    tn.safeDelete();
                 } else if (c == 'c') {
                     graph.add(new TestNode("d"));
                     graph.add(new TestNode("e"));
@@ -107,9 +107,9 @@ public class TypedNodeIteratorTest {
                 } else if (c == 'd') {
                     for (TestNode tn2 : graph.getNodes(TestNode.class)) {
                         if (tn2.getName().equals("e")) {
-                            tn2.delete();
+                            tn2.safeDelete();
                         } else if (tn2.getName().equals("c")) {
-                            tn2.delete();
+                            tn2.safeDelete();
                         }
                     }
                 } else if (c == 'e') {
@@ -146,7 +146,7 @@ public class TypedNodeIteratorTest {
         assertEquals(3, z);
     }
 
-    private String toString(Iterable<TestNode> nodes) {
+    private static String toString(Iterable<TestNode> nodes) {
         StringBuilder sb = new StringBuilder();
         for (TestNode tn : nodes) {
             sb.append(tn.getName());
