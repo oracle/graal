@@ -204,8 +204,12 @@ public class SuperBlock {
 
     private static ValueProxyNode findProxy(ValueNode value, BeginNode proxyPoint) {
         for (ValueProxyNode vpn : proxyPoint.proxies()) {
-            if (GraphUtil.unProxify(vpn) == value) {
-                return vpn;
+            ValueNode v = vpn;
+            while (v instanceof ValueProxyNode) {
+                v = ((ValueProxyNode) v).value();
+                if (v == value) {
+                    return vpn;
+                }
             }
         }
         return null;
@@ -233,7 +237,7 @@ public class SuperBlock {
                 ValueProxyNode inputProxy = findProxy(value, earlyExit);
                 if (inputProxy != null) {
                     ValueProxyNode newInputProxy = findProxy(newValue, newEarlyExit);
-                    assert newInputProxy != null;
+                    assert newInputProxy != null : "no proxy for " + newValue + " at " + newEarlyExit;
                     valuePhi.addInput(inputProxy);
                     valuePhi.addInput(newInputProxy);
                 } else {
