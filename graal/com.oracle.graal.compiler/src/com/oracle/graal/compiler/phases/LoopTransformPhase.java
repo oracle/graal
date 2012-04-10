@@ -46,7 +46,8 @@ public class LoopTransformPhase extends Phase {
             });
             for (Loop loop : loops) {
                 double entryProbability = loop.loopBegin().forwardEnd().probability();
-                if (entryProbability > GraalOptions.MinimumPeelProbability) {
+                if (entryProbability > GraalOptions.MinimumPeelProbability
+                                && LoopTransformUtil.estimateSize(loop) + graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
                     Debug.log("Peeling %s", loop);
                     LoopTransformUtil.peel(loop);
                     Debug.dump(graph, "After peeling %s", loop);
