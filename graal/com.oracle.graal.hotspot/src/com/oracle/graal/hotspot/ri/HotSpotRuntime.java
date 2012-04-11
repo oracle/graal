@@ -81,6 +81,22 @@ public class HotSpotRuntime implements GraalRuntime {
         return compiler.getVMEntries().disassembleNative(code, address);
     }
 
+    private String getTargetName(Object target) {
+        Field[] fields = config.getClass().getDeclaredFields();
+        for (Field f : fields) {
+            if (f.getName().endsWith("Stub")) {
+                f.setAccessible(true);
+                try {
+                    if (f.get(config) == target) {
+                        return f.getName();
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+        return String.valueOf(target);
+    }
+
     @Override
     public String disassemble(CiTargetMethod tm) {
         byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
@@ -96,7 +112,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 if (call.debugInfo != null) {
                     hcf.addComment(call.pcOffset + call.size, CiUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
                 }
-                addOperandComment(hcf, call.pcOffset, "{" + call.target + "}");
+                addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call.target) + "}");
             } else {
                 if (safepoint.debugInfo != null) {
                     hcf.addComment(safepoint.pcOffset, CiUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
