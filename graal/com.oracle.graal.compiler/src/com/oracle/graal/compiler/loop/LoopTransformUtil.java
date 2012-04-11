@@ -26,20 +26,21 @@ import java.util.*;
 
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.util.*;
 
 
 public class LoopTransformUtil {
 
     public static void peel(Loop loop) {
-        GraphUtil.normalizeLoopBegin(loop.loopBegin());
-        SuperBlock block = wholeLoop(loop);
-        SuperBlock peel = block.duplicate(); // duplicates the nodes, merges early exits
+        peel(loop, wholeLoop(loop));
+    }
+
+    public static void peel(Loop loop, SuperBlock wholeLoop) {
+        SuperBlock peel = wholeLoop.duplicate(); // duplicates the nodes, merges early exits
 
         peel.insertBefore(loop.loopBegin().forwardEnd()); // connects peeled part's CFG
 
         LoopTransformDataResolver resolver = new LoopTransformDataResolver();
-        resolver.wholeLoop(block).peeled(peel); // block (comming from the loop) was peeled into peel
+        resolver.wholeLoop(wholeLoop).peeled(peel); // block (comming from the loop) was peeled into peel
         resolver.resolve();
 
         peel.finish();
