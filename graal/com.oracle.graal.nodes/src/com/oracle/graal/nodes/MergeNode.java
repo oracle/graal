@@ -28,7 +28,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.util.*;
 
 /**
  * Denotes the merging of multiple control-flow paths.
@@ -143,6 +142,10 @@ public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLo
             if (merge instanceof LoopBeginNode && !(origLoopEnd instanceof LoopEndNode)) {
                 return;
             }
+            // in order to move anchored values to the other merge we would need to check if the anchors are used by phis of the other merge
+            if (this.anchored().isNotEmpty()) {
+                return;
+            }
             for (PhiNode phi : phis()) {
                 for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
                     if (!merge.isPhiAtMerge(usage)) {
@@ -150,9 +153,7 @@ public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLo
                     }
                 }
             }
-            FixedNode evacuateAnchoredTo = new ComputeImmediateDominator(this).compute();
-            Debug.log("Split %s into ends for %s. Evacuate to %s", this, merge, evacuateAnchoredTo);
-            this.prepareDelete(evacuateAnchoredTo);
+            Debug.log("Split %s into ends for %s.", this, merge);
             int numEnds = this.forwardEndCount();
             StructuredGraph graph = (StructuredGraph) graph();
             for (int i = 0; i < numEnds - 1; i++) {
