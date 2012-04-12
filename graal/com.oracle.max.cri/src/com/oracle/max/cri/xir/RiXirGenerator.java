@@ -31,16 +31,6 @@ import com.oracle.max.cri.ri.RiType.Representation;
  */
 public interface RiXirGenerator {
 
-    /**
-     * Note: may return {@code null}.
-     */
-    XirSnippet genPrologue(XirSite site, RiResolvedMethod method);
-
-    /**
-     * Note: may return {@code null} in which case the compiler will not emit a return instruction.
-     */
-    XirSnippet genEpilogue(XirSite site, RiResolvedMethod method);
-
     XirSnippet genSafepointPoll(XirSite site);
 
     XirSnippet genExceptionObject(XirSite site);

@@ -493,11 +493,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
         append(new ParametersOp(params));
 
-        XirSnippet prologue = xir.genPrologue(null, method);
-        if (prologue != null) {
-            emitXir(prologue, null, null, false);
-        }
-
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             CiValue param = params[local.index()];
             assert param.kind == local.kind().stackKind();
@@ -603,11 +598,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             operand = resultOperandFor(x.kind());
             emitMove(operand(x.result()), operand);
         }
-        XirSnippet epilogue = xir.genEpilogue(site(x), method);
-        if (epilogue != null) {
-            emitXir(epilogue, x, null, false);
-            emitReturn(operand);
-        }
+        emitReturn(operand);
     }
 
     protected abstract void emitReturn(CiValue input);

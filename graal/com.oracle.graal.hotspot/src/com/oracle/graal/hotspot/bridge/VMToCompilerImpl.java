@@ -147,7 +147,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     /**
      * This method is the first method compiled during bootstrapping. Put any code in there that warms up compiler paths
-     * that are otherwise no exercised during bootstrapping and lead to later deoptimization when application code is
+     * that are otherwise not exercised during bootstrapping and lead to later deoptimization when application code is
      * compiled.
      */
     @SuppressWarnings("unused")

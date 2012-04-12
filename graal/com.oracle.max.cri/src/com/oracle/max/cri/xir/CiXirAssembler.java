@@ -553,26 +553,6 @@ public abstract class CiXirAssembler {
          */
         Safepoint,
         /**
-         * Align the code following this instruction to a multiple of (int)extra.
-         */
-        Align,
-        /**
-         * Creates the stack banging overflow check.
-         */
-        StackOverflowCheck,
-        /**
-         * Creates the stack frame for the method and spills callee-save registers (if any) to the {@linkplain CiRegisterSaveArea register save area}.
-         */
-        PushFrame,
-        /**
-         * Restores all callee-save registers (if any) and removes the stack frame of the method.
-         */
-        PopFrame,
-        /**
-         * Inserts an array of bytes directly into the code output.
-         */
-        RawBytes,
-        /**
          * Pushes a value onto the stack.
          */
         Push,
@@ -767,27 +747,6 @@ public abstract class CiXirAssembler {
 
     public void safepoint() {
         append(new XirInstruction(CiKind.Void, null, Safepoint, null));
-    }
-
-    public void align(int multiple) {
-        assert multiple > 0;
-        append(new XirInstruction(CiKind.Void, multiple, Align, null));
-    }
-
-    public void stackOverflowCheck() {
-        append(new XirInstruction(CiKind.Void, null, StackOverflowCheck, null));
-    }
-
-    public void pushFrame() {
-        append(new XirInstruction(CiKind.Void, null, PushFrame, null));
-    }
-
-    public void popFrame() {
-        append(new XirInstruction(CiKind.Void, null, PopFrame, null));
-    }
-
-    public void rawBytes(byte[] bytes) {
-        append(new XirInstruction(CiKind.Void, bytes, RawBytes, null));
     }
 
     public void push(XirOperand value) {

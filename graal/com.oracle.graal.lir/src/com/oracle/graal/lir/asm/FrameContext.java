@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.target.amd64;
+package com.oracle.graal.lir.asm;
 
-import com.oracle.max.asm.target.amd64.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
 
-public class AMD64MethodEndStub extends AMD64SlowPath {
-    @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        for (int i = 0; i < GraalOptions.MethodEndBreakpointGuards; ++i) {
-            masm.int3();
-        }
-    }
+/**
+ * Emits common code for {@linkplain #enter(TargetMethodAssembler) entering} and
+ * {@linkplain #leave(TargetMethodAssembler) leaving} a method.
+ */
+public interface FrameContext {
+    /**
+     * Emits code common to all entry points of a method. This may include:
+     * <ul>
+     * <li>setting up the stack frame</li>
+     * <li>saving callee-saved registers</li>
+     * <li>stack overflow checking</li>
+     * </ul>
+     */
+    void enter(TargetMethodAssembler tasm);
+
+    /**
+     * Emits code to be executed just prior to returning from a method. This may include:
+     * <ul>
+     * <li>restoring callee-saved registers</li>
+     * <li>performing a safepoint</li>
+     * <li>destroying the stack frame</li>
+     * </ul>
+     */
+    void leave(TargetMethodAssembler tasm);
 }

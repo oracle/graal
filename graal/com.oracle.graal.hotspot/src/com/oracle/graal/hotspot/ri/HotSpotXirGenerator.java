@@ -23,10 +23,8 @@
 package com.oracle.graal.hotspot.ri;
 
 import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
-import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -49,25 +47,25 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     // this needs to correspond to graal_CodeInstaller.hpp
     // @formatter:off
-    private static final Integer MARK_VERIFIED_ENTRY            = 0x0001;
-    private static final Integer MARK_UNVERIFIED_ENTRY          = 0x0002;
-    private static final Integer MARK_OSR_ENTRY                 = 0x0003;
-    private static final Integer MARK_UNWIND_ENTRY              = 0x0004;
-    private static final Integer MARK_EXCEPTION_HANDLER_ENTRY   = 0x0005;
-    private static final Integer MARK_DEOPT_HANDLER_ENTRY       = 0x0006;
+    public static final Integer MARK_VERIFIED_ENTRY            = 0x0001;
+    public static final Integer MARK_UNVERIFIED_ENTRY          = 0x0002;
+    public static final Integer MARK_OSR_ENTRY                 = 0x0003;
+    public static final Integer MARK_UNWIND_ENTRY              = 0x0004;
+    public static final Integer MARK_EXCEPTION_HANDLER_ENTRY   = 0x0005;
+    public static final Integer MARK_DEOPT_HANDLER_ENTRY       = 0x0006;
 
-    private static final Integer MARK_STATIC_CALL_STUB          = 0x1000;
+    public static final Integer MARK_STATIC_CALL_STUB          = 0x1000;
 
-    private static final Integer MARK_INVOKEINTERFACE           = 0x2001;
-    private static final Integer MARK_INVOKESTATIC              = 0x2002;
-    private static final Integer MARK_INVOKESPECIAL             = 0x2003;
-    private static final Integer MARK_INVOKEVIRTUAL             = 0x2004;
+    public static final Integer MARK_INVOKEINTERFACE           = 0x2001;
+    public static final Integer MARK_INVOKESTATIC              = 0x2002;
+    public static final Integer MARK_INVOKESPECIAL             = 0x2003;
+    public static final Integer MARK_INVOKEVIRTUAL             = 0x2004;
 
-    private static final Integer MARK_IMPLICIT_NULL             = 0x3000;
-    private static final Integer MARK_POLL_NEAR                 = 0x3001;
-    private static final Integer MARK_POLL_RETURN_NEAR          = 0x3002;
-    private static final Integer MARK_POLL_FAR                  = 0x3003;
-    private static final Integer MARK_POLL_RETURN_FAR           = 0x3004;
+    public static final Integer MARK_IMPLICIT_NULL             = 0x3000;
+    public static final Integer MARK_POLL_NEAR                 = 0x3001;
+    public static final Integer MARK_POLL_RETURN_NEAR          = 0x3002;
+    public static final Integer MARK_POLL_FAR                  = 0x3003;
+    public static final Integer MARK_POLL_RETURN_FAR           = 0x3004;
 
     // @formatter:on
 
@@ -103,98 +101,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             return XirArgument.forInt((int) value);
         }
     }
-
-    private SimpleTemplates prologueTemplates = new SimpleTemplates(STATIC_METHOD) {
-
-        @Override
-        protected XirTemplate create(CiXirAssembler asm, long flags) {
-            asm.restart(CiKind.Void);
-            XirOperand framePointer = asm.createRegisterTemp("frame pointer", target.wordKind, AMD64.rbp);
-            XirOperand stackPointer = asm.createRegisterTemp("stack pointer", target.wordKind, AMD64.rsp);
-            XirLabel unverifiedStub = null;
-
-            asm.mark(MARK_OSR_ENTRY);
-            asm.mark(MARK_UNVERIFIED_ENTRY);
-            if (!is(STATIC_METHOD, flags)) {
-                unverifiedStub = asm.createOutOfLineLabel("unverified");
-
-                XirOperand temp = asm.createRegisterTemp("temp (r10)", target.wordKind, AMD64.r10);
-                XirOperand cache = asm.createRegisterTemp("cache (rax)", target.wordKind, AMD64.rax);
-
-                CiCallingConvention conventions = registerConfig.getCallingConvention(JavaCallee, new CiKind[] {CiKind.Object}, target, false);
-                XirOperand receiver = asm.createRegister("receiver", target.wordKind, asRegister(conventions.locations[0]));
-
-                asm.pload(target.wordKind, temp, receiver, asm.i(config.hubOffset), false);
-                asm.jneq(unverifiedStub, cache, temp);
-            }
-            asm.align(config.codeEntryAlignment);
-            asm.mark(MARK_VERIFIED_ENTRY);
-            asm.stackOverflowCheck();
-            asm.push(framePointer);
-            asm.mov(framePointer, stackPointer);
-            // Compensate for the push of framePointer (the XIR instruction pushFrame is not flexible enough to reduce the frame size, wait until XIR goes away to fix this).
-            asm.add(stackPointer, stackPointer,  asm.i(8));
-            asm.pushFrame();
-
-            // -- out of line -------------------------------------------------------
-            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
-            XirOperand exceptionOop = asm.createTemp("exception oop", CiKind.Object);
-            XirLabel unwind = asm.createOutOfLineLabel("unwind");
-            asm.bindOutOfLine(unwind);
-
-            asm.mark(MARK_UNWIND_ENTRY);
-
-            asm.pload(CiKind.Object, exceptionOop, thread, asm.i(config.threadExceptionOopOffset), false);
-            asm.pstore(CiKind.Object, thread, asm.i(config.threadExceptionOopOffset), asm.createConstant(CiConstant.NULL_OBJECT), false);
-            asm.pstore(CiKind.Long, thread, asm.i(config.threadExceptionPcOffset), asm.l(0), false);
-
-            asm.callRuntime(config.unwindExceptionStub, null, exceptionOop);
-            asm.shouldNotReachHere();
-
-            asm.mark(MARK_EXCEPTION_HANDLER_ENTRY);
-            asm.callRuntime(config.handleExceptionStub, null);
-            asm.shouldNotReachHere();
-
-            asm.mark(MARK_DEOPT_HANDLER_ENTRY);
-            asm.callRuntime(config.handleDeoptStub, null);
-            asm.shouldNotReachHere();
-
-            if (!is(STATIC_METHOD, flags)) {
-                asm.bindOutOfLine(unverifiedStub);
-                asm.jmpRuntime(config.inlineCacheMissStub);
-            }
-
-            return asm.finishTemplate(is(STATIC_METHOD, flags) ? "static prologue" : "prologue");
-        }
-    };
-
-    private SimpleTemplates epilogueTemplates = new SimpleTemplates(STATIC_METHOD, SYNCHRONIZED) {
-
-        @Override
-        protected XirTemplate create(CiXirAssembler asm, long flags) {
-            asm.restart(CiKind.Void);
-            XirOperand framePointer = asm.createRegisterTemp("frame pointer", target.wordKind, AMD64.rbp);
-            XirOperand stackPointer = asm.createRegisterTemp("stack pointer", target.wordKind, AMD64.rsp);
-
-            asm.popFrame();
-            asm.pload(CiKind.Long, framePointer, stackPointer, asm.i(-8), false);
-
-            if (GraalOptions.GenSafepoints) {
-                XirOperand temp = asm.createRegisterTemp("temp", target.wordKind, AMD64.r10);
-                if (config.isPollingPageFar) {
-                    asm.mov(temp, wordConst(asm, config.safepointPollingAddress));
-                    asm.mark(MARK_POLL_RETURN_FAR);
-                    asm.pload(target.wordKind, temp, temp, true);
-                } else {
-                    XirOperand rip = asm.createRegister("rip", target.wordKind, AMD64.rip);
-                    asm.mark(MARK_POLL_RETURN_NEAR);
-                    asm.pload(target.wordKind, temp, rip, asm.i(0xEFBEADDE), true);
-                }
-            }
-
-            return asm.finishTemplate("epilogue");
-        }
-    };
 
     private SimpleTemplates safepointTemplates = new SimpleTemplates() {
 
@@ -956,17 +862,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
            return asm.finishTemplate("typeCheck");
        }
     };
-
-    @Override
-    public XirSnippet genPrologue(XirSite site, RiResolvedMethod method) {
-        boolean staticMethod = Modifier.isStatic(method.accessFlags());
-        return new XirSnippet(staticMethod ? prologueTemplates.get(site, STATIC_METHOD) : prologueTemplates.get(site));
-    }
-
-    @Override
-    public XirSnippet genEpilogue(XirSite site, RiResolvedMethod method) {
-        return new XirSnippet(epilogueTemplates.get(site));
-    }
 
     @Override
     public XirSnippet genSafepointPoll(XirSite site) {

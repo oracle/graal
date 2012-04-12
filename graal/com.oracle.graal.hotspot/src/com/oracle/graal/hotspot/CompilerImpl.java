@@ -175,7 +175,7 @@ public final class CompilerImpl implements Compiler, Remote {
                 generator = LoggingProxy.getProxy(RiXirGenerator.class, generator);
             }
 
-            Backend backend = Backend.create(target.arch, runtime, target);
+            Backend backend = Backend.create(runtime, target);
             generator.initialize(backend.newXirAssembler());
 
             compiler = new GraalCompiler(getRuntime(), getTarget(), backend, generator);

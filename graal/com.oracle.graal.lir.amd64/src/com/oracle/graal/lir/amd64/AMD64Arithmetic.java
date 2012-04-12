@@ -510,7 +510,7 @@ public enum AMD64Arithmetic {
         masm.bind(slowPath.continuation);
     }
 
-    private static class ConvertSlowPath extends AMD64SlowPath {
+    private static class ConvertSlowPath extends AMD64Code {
         public final Label start = new Label();
         public final Label continuation = new Label();
         private final CiValue result;

@@ -188,15 +188,10 @@ public class AMD64XirAssembler extends CiXirAssembler {
                     boundLabels.add(label);
                     break;
                 case Safepoint:
-                case Align:
-                case StackOverflowCheck:
-                case PushFrame:
-                case PopFrame:
                 case Push:
                 case Pop:
                 case Mark:
                 case Nop:
-                case RawBytes:
                 case ShouldNotReachHere:
                     break;
                 default:

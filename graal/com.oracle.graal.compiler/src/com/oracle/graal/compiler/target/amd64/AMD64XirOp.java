@@ -28,6 +28,10 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
@@ -38,11 +42,6 @@ import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
 
 public class AMD64XirOp extends LIRXirInstruction {
     public AMD64XirOp(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
@@ -86,7 +85,7 @@ public class AMD64XirOp extends LIRXirInstruction {
         }
     }
 
-    private class SlowPath extends AMD64SlowPath {
+    private class SlowPath extends AMD64Code {
         public final Label[] labels;
 
         public SlowPath(Label[] labels) {
@@ -391,52 +390,6 @@ public class AMD64XirOp extends LIRXirInstruction {
                     masm.nullCheck(asRegister(pointer));
                     break;
                 }
-                case Align: {
-                    masm.align((Integer) inst.extra);
-                    break;
-                }
-                case StackOverflowCheck: {
-                    int frameSize = tasm.frameMap.frameSize();
-                    int lastFramePage = frameSize / tasm.target.pageSize;
-                    // emit multiple stack bangs for methods with frames larger than a page
-                    for (int i = 0; i <= lastFramePage; i++) {
-                        int offset = (i + GraalOptions.StackShadowPages) * tasm.target.pageSize;
-                        // Deduct 'frameSize' to handle frames larger than the shadow
-                        bangStackWithOffset(tasm, masm, offset - frameSize);
-                    }
-                    break;
-                }
-                case PushFrame: {
-                    int frameSize = tasm.frameMap.frameSize();
-                    masm.decrementq(AMD64.rsp, frameSize); // does not emit code for frameSize == 0
-                    if (GraalOptions.ZapStackOnMethodEntry) {
-                        final int intSize = 4;
-                        for (int i = 0; i < frameSize / intSize; ++i) {
-                            masm.movl(new CiAddress(CiKind.Int, AMD64.rsp.asValue(), i * intSize), 0xC1C1C1C1);
-                        }
-                    }
-                    CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
-                    if (csl != null && csl.size != 0) {
-                        int frameToCSA = tasm.frameMap.offsetToCalleeSaveArea();
-                        assert frameToCSA >= 0;
-                        masm.save(csl, frameToCSA);
-                    }
-                    break;
-                }
-                case PopFrame: {
-                    int frameSize = tasm.frameMap.frameSize();
-
-                    CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
-                    if (csl != null && csl.size != 0) {
-                        tasm.targetMethod.setRegisterRestoreEpilogueOffset(masm.codeBuffer.position());
-                        // saved all registers, restore all registers
-                        int frameToCSA = tasm.frameMap.offsetToCalleeSaveArea();
-                        masm.restore(csl, frameToCSA);
-                    }
-
-                    masm.incrementq(AMD64.rsp, frameSize);
-                    break;
-                }
                 case Push: {
                     CiRegisterValue value = assureInRegister(tasm, masm, operands[inst.x().index]);
                     masm.push(asRegister(value));
@@ -467,12 +420,6 @@ public class AMD64XirOp extends LIRXirInstruction {
                 case Nop: {
                     for (int i = 0; i < (Integer) inst.extra; i++) {
                         masm.nop();
-                    }
-                    break;
-                }
-                case RawBytes: {
-                    for (byte b : (byte[]) inst.extra) {
-                        masm.codeBuffer.emitByte(b & 0xff);
                     }
                     break;
                 }
@@ -519,16 +466,6 @@ public class AMD64XirOp extends LIRXirInstruction {
         }
         AMD64Compare.emit(tasm, masm, code, x, y);
         masm.jcc(cflag, label);
-    }
-
-    /**
-     * @param offset the offset RSP at which to bang. Note that this offset is relative to RSP after RSP has been
-     *            adjusted to allocated the frame for the method. It denotes an offset "down" the stack.
-     *            For very large frames, this means that the offset may actually be negative (i.e. denoting
-     *            a slot "up" the stack above RSP).
-     */
-    private static void bangStackWithOffset(TargetMethodAssembler tasm, AMD64MacroAssembler masm, int offset) {
-        masm.movq(new CiAddress(tasm.target.wordKind, AMD64.RSP, -offset), AMD64.rax);
     }
 
     private static CiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue value) {

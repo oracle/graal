@@ -66,14 +66,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
     private final CiRegister[] xmmParameterRegisters = {xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7};
     private final CiRegister[] allParameterRegisters;
 
-    private final CiRegister[] rsaRegs = {
-        rax,  rcx,  rdx,   rbx,   rsp,   rbp,   rsi,   rdi,
-        r8,   r9,   r10,   r11,   r12,   r13,   r14,   r15,
-        xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
-        xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
-    };
-
-    private final CiCalleeSaveLayout registerSaveArea;
+    private final CiCalleeSaveLayout csl;
 
     public HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
         if (config.windowsOs) {
@@ -83,9 +76,20 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
         }
 
         if (globalStubConfig) {
-            registerSaveArea = new CiCalleeSaveLayout(0, -1, 8, rsaRegs);
+            CiRegister[] regs = {
+                rax,  rcx,  rdx,   rbx,   rsp,   rbp,   rsi,   rdi,
+                r8,   r9,   r10,   r11,   r12,   r13,   r14,   r15,
+                xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
+                xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
+            };
+            csl = new CiCalleeSaveLayout(0, -1, 8, regs);
         } else {
-            registerSaveArea = new CiCalleeSaveLayout(0, 8, 8, new CiRegister[0]);
+            // We reserve space for saving RBP but don't explicitly specify
+            // it as a callee save register since we explicitly do the saving
+            // with push and pop in HotSpotFrameContext
+            final int size = 8;
+            final CiRegister[] regs = {};
+            csl = new CiCalleeSaveLayout(0, size, 8, regs);
         }
 
         attributesMap = RiRegisterAttributes.createMap(this, AMD64.allRegisters);
@@ -191,7 +195,7 @@ public class HotSpotRegisterConfig implements RiRegisterConfig {
     }
 
     public CiCalleeSaveLayout getCalleeSaveLayout() {
-        return registerSaveArea;
+        return csl;
     }
 
     @Override

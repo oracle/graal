@@ -41,7 +41,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
@@ -269,18 +268,9 @@ public class GraalCompiler {
         return frameMap;
     }
 
-    private TargetMethodAssembler createAssembler(FrameMap frameMap, LIR lir) {
-        AbstractAssembler masm = backend.newAssembler(frameMap.registerConfig);
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime, frameMap, lir.slowPaths, masm);
-        tasm.setFrameSize(frameMap.frameSize());
-        tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
-        return tasm;
-    }
-
     public CiTargetMethod emitCode(CiAssumptions assumptions, RiResolvedMethod method, LIR lir, FrameMap frameMap) {
-        TargetMethodAssembler tasm = createAssembler(frameMap, lir);
-        lir.emitCode(tasm);
-
+        TargetMethodAssembler tasm = backend.newAssembler(frameMap, lir);
+        backend.emitCode(tasm, method, lir);
         CiTargetMethod targetMethod = tasm.finishTargetMethod(method, false);
         if (assumptions != null && !assumptions.isEmpty()) {
             targetMethod.setAssumptions(assumptions);

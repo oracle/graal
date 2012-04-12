@@ -30,11 +30,13 @@ import java.util.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -42,9 +44,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Call;
-import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
-import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
+import com.oracle.max.cri.ci.CiTargetMethod.*;
 import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.Representation;
@@ -54,7 +54,7 @@ import com.oracle.max.criutils.*;
  * CRI runtime implementation for the HotSpot VM.
  */
 public class HotSpotRuntime implements GraalRuntime {
-    final HotSpotVMConfig config;
+    public final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
@@ -64,6 +64,8 @@ public class HotSpotRuntime implements GraalRuntime {
         this.compiler = compiler;
         regConfig = new HotSpotRegisterConfig(config, false);
         globalStubRegConfig = new HotSpotRegisterConfig(config, true);
+
+        System.setProperty(Backend.BACKEND_CLASS_PROPERTY, HotSpotAMD64Backend.class.getName());
     }
 
     @Override
@@ -81,20 +83,42 @@ public class HotSpotRuntime implements GraalRuntime {
         return compiler.getVMEntries().disassembleNative(code, address);
     }
 
-    private String getTargetName(Object target) {
+    /**
+     * Decodes a call target to a mnemonic if possible.
+     */
+    private String getTargetName(Call call) {
         Field[] fields = config.getClass().getDeclaredFields();
         for (Field f : fields) {
             if (f.getName().endsWith("Stub")) {
                 f.setAccessible(true);
                 try {
-                    if (f.get(config) == target) {
+                    if (f.get(config).equals(call.target)) {
                         return f.getName();
                     }
                 } catch (Exception e) {
                 }
             }
         }
-        return String.valueOf(target);
+        return String.valueOf(call.target);
+    }
+
+    /**
+     * Decodes a mark to a mnemonic if possible.
+     */
+    private static String getMarkName(Mark mark) {
+        Field[] fields = HotSpotXirGenerator.class.getDeclaredFields();
+        for (Field f : fields) {
+            if (Modifier.isStatic(f.getModifiers()) && f.getName().startsWith("MARK_")) {
+                f.setAccessible(true);
+                try {
+                    if (f.get(null).equals(mark.id)) {
+                        return f.getName();
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+        return "MARK:" + mark.id;
     }
 
     @Override
@@ -112,7 +136,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 if (call.debugInfo != null) {
                     hcf.addComment(call.pcOffset + call.size, CiUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
                 }
-                addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call.target) + "}");
+                addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call) + "}");
             } else {
                 if (safepoint.debugInfo != null) {
                     hcf.addComment(safepoint.pcOffset, CiUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
@@ -122,6 +146,9 @@ public class HotSpotRuntime implements GraalRuntime {
         }
         for (DataPatch site : tm.dataReferences) {
             hcf.addOperandComment(site.pcOffset, "{" + site.constant + "}");
+        }
+        for (Mark mark : tm.marks) {
+            hcf.addComment(mark.pcOffset, getMarkName(mark));
         }
         return hcf.toEmbeddedString();
     }

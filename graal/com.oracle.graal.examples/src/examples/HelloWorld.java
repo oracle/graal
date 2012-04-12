@@ -25,6 +25,20 @@ package examples;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        System.out.println("hello world!");
+        new HelloWorld(args).greet();
+    }
+
+    public HelloWorld(String[] args) {
+        name = args.length == 0 ? "world" : args[0];
+    }
+
+    public String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void greet() {
+        System.out.println("hello " + getName() + "!");
     }
 }

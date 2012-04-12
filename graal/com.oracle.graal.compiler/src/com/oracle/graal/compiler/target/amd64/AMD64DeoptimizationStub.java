@@ -33,7 +33,7 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
-public class AMD64DeoptimizationStub extends AMD64SlowPath {
+public class AMD64DeoptimizationStub extends AMD64Code {
     public final Label label = new Label();
     public final LIRDebugInfo info;
     public final RiDeoptAction action;

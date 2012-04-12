@@ -24,18 +24,26 @@ package com.oracle.graal.compiler.target;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.xir.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.xir.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
  */
 public abstract class Backend {
+
+    /**
+     * The name of the system property whose value (if non-null) specifies the fully qualified
+     * name of the class to be instantiated by {@link #create(RiRuntime, CiTarget)}.
+     */
+    public static final String BACKEND_CLASS_PROPERTY = "graal.compiler.backend.class";
+
     public final RiRuntime runtime;
     public final CiTarget target;
 
@@ -44,8 +52,13 @@ public abstract class Backend {
         this.target = target;
     }
 
-    public static Backend create(CiArchitecture arch, RiRuntime runtime, CiTarget target) {
-        String className = arch.getClass().getName().replace("com.oracle.max.asm", "com.oracle.graal.compiler") + "Backend";
+    /**
+     * Creates the architecture and runtime specific back-end object.
+     * The class of the object instantiated must be in the {@link #BACKEND_CLASS_PROPERTY} system property.
+     */
+    public static Backend create(RiRuntime runtime, CiTarget target) {
+        String className = System.getProperty(BACKEND_CLASS_PROPERTY);
+        assert className != null : "System property must be defined: " + BACKEND_CLASS_PROPERTY;
         try {
             Class<?> c = Class.forName(className);
             Constructor<?> cons = c.getDeclaredConstructor(RiRuntime.class, CiTarget.class);
@@ -55,9 +68,46 @@ public abstract class Backend {
         }
     }
 
-    public abstract FrameMap newFrameMap(RiRegisterConfig registerConfig);
+    public FrameMap newFrameMap(RiRegisterConfig registerConfig) {
+        return new FrameMap(runtime, target, registerConfig);
+    }
+
     public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir);
-    public abstract AbstractAssembler newAssembler(RiRegisterConfig registerConfig);
+
+    public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
+
     public abstract CiXirAssembler newXirAssembler();
 
+    /**
+     * Emits code to do stack overflow checking.
+     *
+     * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate the current frame
+     */
+    protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, LIR lir, boolean afterFrameInit) {
+        if (GraalOptions.StackShadowPages > 0) {
+            int frameSize = tasm.frameMap.frameSize();
+            if (frameSize > 0 || lir.containsCalls()) {
+                int lastFramePage = frameSize / tasm.target.pageSize;
+                // emit multiple stack bangs for methods with frames larger than a page
+                for (int i = 0; i <= lastFramePage; i++) {
+                    int disp = (i + GraalOptions.StackShadowPages) * tasm.target.pageSize;
+                    if (afterFrameInit) {
+                        disp -= frameSize;
+                    }
+                    tasm.asm.bangStack(disp);
+                }
+            }
+        }
+    }
+
+    /**
+     * Emits the code for a given method. This includes any architecture/runtime specific
+     * prefix/suffix. A prefix typically contains the code for setting up the frame,
+     * spilling callee-save registers, stack overflow checking, handling multiple entry
+     * points etc. A suffix may contain out-of-line stubs and method end guard instructions.
+     *
+     * @param the method associated with {@code lir}
+     * @param lir the LIR of {@code method}
+     */
+    public abstract void emitCode(TargetMethodAssembler tasm, RiResolvedMethod method, LIR lir);
 }

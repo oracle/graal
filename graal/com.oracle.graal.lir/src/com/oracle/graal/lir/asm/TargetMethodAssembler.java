@@ -51,24 +51,30 @@ public class TargetMethodAssembler {
     public final CiTarget target;
     public final RiRuntime runtime;
     public final FrameMap frameMap;
-    public final List<SlowPath> slowPaths;
+    public final List<Code> slowPaths;
+    public final FrameContext frameContext;
 
     private List<ExceptionInfo> exceptionInfoList;
     private int lastSafepointPos;
 
-    public TargetMethodAssembler(CiTarget target, RiRuntime runtime, FrameMap frameMap, List<SlowPath> slowPaths, AbstractAssembler asm) {
+    public TargetMethodAssembler(CiTarget target, RiRuntime runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext) {
         this.target = target;
         this.runtime = runtime;
         this.frameMap = frameMap;
-        this.slowPaths = slowPaths;
+        this.slowPaths = new ArrayList<>();
         this.asm = asm;
         this.targetMethod = new CiTargetMethod();
+        this.frameContext = frameContext;
         // 0 is a valid pc for safepoints in template methods
         this.lastSafepointPos = -1;
     }
 
     public void setFrameSize(int frameSize) {
         targetMethod.setFrameSize(frameSize);
+    }
+
+    public CiTargetMethod.Mark recordMark(Object id) {
+        return targetMethod.recordMark(asm.codeBuffer.position(), id, null);
     }
 
     public CiTargetMethod.Mark recordMark(Object id, CiTargetMethod.Mark[] references) {

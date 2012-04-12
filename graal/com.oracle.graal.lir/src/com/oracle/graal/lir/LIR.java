@@ -55,14 +55,9 @@ public class LIR {
     private final List<Block> codeEmittingOrder;
 
 
-    public final List<SlowPath> slowPaths;
+    public final List<Code> slowPaths;
 
-    public final List<SlowPath> deoptimizationStubs;
-
-    /**
-     * The last slow path emitted, which can be used emit marker bytes.
-     */
-    public SlowPath methodEndMarker;
+    public final List<Code> deoptimizationStubs;
 
     private int numVariables;
 
@@ -73,7 +68,10 @@ public class LIR {
         LIRInstruction createExchange(CiValue input1, CiValue input2);
     }
 
-    public interface SlowPath {
+    /**
+     * An opaque chunk of machine code.
+     */
+    public interface Code {
         void emitCode(TargetMethodAssembler tasm);
     }
 
@@ -97,6 +95,23 @@ public class LIR {
     }
 
     /**
+     * Determines if this LIR contains any calls.
+     */
+    public boolean containsCalls() {
+        if (!slowPaths.isEmpty() || !deoptimizationStubs.isEmpty()) {
+            return true;
+        }
+        for (Block b : linearScanOrder) {
+            for (LIRInstruction op : b.lir) {
+                if (op.hasCall()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Gets the linear scan ordering of blocks as a list.
      * @return the blocks in linear scan order
      */
@@ -117,20 +132,23 @@ public class LIR {
     }
 
     public void emitCode(TargetMethodAssembler tasm) {
+        tasm.frameContext.enter(tasm);
+
         for (Block b : codeEmittingOrder()) {
             emitBlock(tasm, b);
         }
 
         // generate code for slow cases
-        for (SlowPath sp : slowPaths) {
+        for (Code sp : slowPaths) {
+            emitSlowPath(tasm, sp);
+        }
+        for (Code sp : tasm.slowPaths) {
             emitSlowPath(tasm, sp);
         }
         // generate deoptimization stubs
-        for (SlowPath sp : deoptimizationStubs) {
+        for (Code sp : deoptimizationStubs) {
             emitSlowPath(tasm, sp);
         }
-        // generate traps at the end of the method
-        emitSlowPath(tasm, methodEndMarker);
     }
 
     private static void emitBlock(TargetMethodAssembler tasm, Block block) {
@@ -161,7 +179,7 @@ public class LIR {
         }
     }
 
-    private static void emitSlowPath(TargetMethodAssembler tasm, SlowPath sp) {
+    private static void emitSlowPath(TargetMethodAssembler tasm, Code sp) {
         if (Debug.isDumpEnabled()) {
             tasm.blockComment(String.format("slow case %s", sp.getClass().getName()));
         }
