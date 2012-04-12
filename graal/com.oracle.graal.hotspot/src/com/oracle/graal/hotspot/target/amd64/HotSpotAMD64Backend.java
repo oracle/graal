@@ -43,6 +43,8 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ci.CiCallingConvention.Type;
+import com.oracle.max.cri.ci.CiRegister.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 
@@ -155,7 +157,6 @@ public class HotSpotAMD64Backend extends Backend {
         RiRegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
         Label unverifiedStub = new Label();
-        CiRegister scratch = regConfig.getScratchRegister();
 
         // Emit the prefix
         tasm.recordMark(MARK_OSR_ENTRY);
@@ -168,8 +169,7 @@ public class HotSpotAMD64Backend extends Backend {
             CiRegister receiver = asRegister(cc.locations[0]);
             CiAddress src = new CiAddress(target.wordKind, receiver.asValue(), config.hubOffset);
 
-            asm.movq(scratch, src);
-            asm.cmpq(inlineCacheKlass, scratch);
+            asm.cmpq(inlineCacheKlass, src);
             asm.jcc(ConditionFlag.notEqual, unverifiedStub);
         }
 
@@ -181,16 +181,15 @@ public class HotSpotAMD64Backend extends Backend {
 
         // Emit the suffix (i.e. out-of-line stubs)
         CiRegister thread = r15;
-        CiRegister exceptionOop = regConfig.getScratchRegister();
+        CiRegister exceptionOop = regConfig.getCallingConventionRegisters(Type.RuntimeCall, RegisterFlag.CPU)[0];
         Label unwind = new Label();
         asm.bind(unwind);
         tasm.recordMark(MARK_UNWIND_ENTRY);
         CiAddress exceptionOopField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionOopOffset);
         CiAddress exceptionPcField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionPcOffset);
         asm.movq(exceptionOop, exceptionOopField);
-        asm.xorq(scratch, scratch);
-        asm.movq(exceptionOopField, scratch);
-        asm.movq(exceptionPcField, scratch);
+        asm.movslq(exceptionOopField, 0);
+        asm.movslq(exceptionPcField, 0);
 
         AMD64Call.directCall(tasm, asm, config.unwindExceptionStub, null);
         AMD64Call.shouldNotReachHere(tasm, asm);
