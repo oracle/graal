@@ -612,11 +612,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         moveToPhi(end.merge(), end);
     }
 
+    /**
+     * Runtime specific classes can override this to insert a safepoint at the end of a loop.
+     */
     @Override
     public void visitLoopEnd(LoopEndNode x) {
-        if (GraalOptions.GenLoopSafepoints && x.hasSafepointPolling()) {
-            emitSafepointPoll(x);
-        }
     }
 
     private ArrayList<CiValue> phiValues = new ArrayList<>();
@@ -659,14 +659,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return newOperand;
         } else {
             return result;
-        }
-    }
-
-
-    public void emitSafepointPoll(FixedNode x) {
-        if (!lastState.method().noSafepointPolls()) {
-            XirSnippet snippet = xir.genSafepointPoll(site(x));
-            emitXir(snippet, x, state(), false);
         }
     }
 

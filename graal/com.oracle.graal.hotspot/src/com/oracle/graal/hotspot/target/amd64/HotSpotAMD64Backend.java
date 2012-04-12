@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
@@ -56,7 +57,17 @@ public class HotSpotAMD64Backend extends Backend {
 
     @Override
     public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
-        return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir);
+        return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir) {
+            @Override
+            public void visitLoopEnd(LoopEndNode x) {
+                if (GraalOptions.GenLoopSafepoints && x.hasSafepointPolling()) {
+                    LIRDebugInfo info = state();
+                    if (!info.topFrame.method.noSafepointPolls()) {
+                        append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
+                    }
+                }
+            }
+        };
     }
 
     @Override

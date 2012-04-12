@@ -102,27 +102,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     }
 
-    private SimpleTemplates safepointTemplates = new SimpleTemplates() {
-
-        @Override
-        protected XirTemplate create(CiXirAssembler asm, long flags) {
-            asm.restart(CiKind.Void);
-
-            XirOperand temp = asm.createRegisterTemp("temp", target.wordKind, AMD64.r10);
-            if (config.isPollingPageFar) {
-                asm.mov(temp, wordConst(asm, config.safepointPollingAddress));
-                asm.mark(MARK_POLL_FAR);
-                asm.pload(target.wordKind, temp, temp, true);
-            } else {
-                XirOperand rip = asm.createRegister("rip", target.wordKind, AMD64.rip);
-                asm.mark(MARK_POLL_NEAR);
-                asm.pload(target.wordKind, temp, rip, asm.i(0xEFBEADDE), true);
-            }
-
-            return asm.finishTemplate("safepoint");
-        }
-    };
-
     private SimpleTemplates exceptionObjectTemplates = new SimpleTemplates() {
 
         @Override
@@ -862,11 +841,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
            return asm.finishTemplate("typeCheck");
        }
     };
-
-    @Override
-    public XirSnippet genSafepointPoll(XirSite site) {
-        return new XirSnippet(safepointTemplates.get(site));
-    }
 
     @Override
     public XirSnippet genExceptionObject(XirSite site) {
