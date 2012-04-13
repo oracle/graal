@@ -155,7 +155,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public StackTraceElement toStackTraceElement(int bci) {
-        return CiUtil.toStackTraceElement(this, bci);
+        return compiler.getVMEntries().RiMethod_toStackTraceElement(this, bci);
     }
 
     @Override

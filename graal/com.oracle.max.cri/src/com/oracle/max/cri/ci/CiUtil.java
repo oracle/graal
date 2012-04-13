@@ -410,14 +410,6 @@ public class CiUtil {
     }
 
     /**
-     * Gets a stack trace element for a given method and bytecode index.
-     */
-    public static StackTraceElement toStackTraceElement(RiMethod method, @SuppressWarnings("unused") int bci) {
-        // TODO (thomaswue): Look if we can use bci to get the line number.
-        return new StackTraceElement(CiUtil.toJavaName(method.holder()), method.name(), null, -1);
-    }
-
-    /**
      * Converts a Java source-language class name into the internal form.
      *
      * @param className the class name
