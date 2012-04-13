@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.graph;
 
-import java.io.Serializable;
-import java.util.Arrays;
-import java.util.BitSet;
+import java.io.*;
+import java.util.*;
 
 /**
  * Implements a bitmap that stores a single bit for a range of integers (0-n).
@@ -114,7 +113,8 @@ public final class BitMap implements Serializable {
         assert length >= 0;
         this.size = length;
         if (length > BITS_PER_WORD) {
-            extra = new long[length >> ADDRESS_BITS_PER_WORD];
+            int n = wordIndex(length - 1) + 1;
+            extra = new long[n];
         }
     }
 
@@ -357,10 +357,27 @@ public final class BitMap implements Serializable {
     }
 
     public void negate() {
-        low = ~low;
-        if (extra != null) {
-            for (int i = 0; i < extra.length; i++) {
-                extra[i] = ~extra[i];
+        if (size == 0) {
+            return;
+        }
+        if (size < BITS_PER_WORD) {
+            long mask = (1L << size) - 1;
+            low = ~low & mask;
+        } else if (size == BITS_PER_WORD) {
+            low = ~low;
+        } else {
+            low = ~low;
+            if (extra != null) {
+                for (int i = 0; i < extra.length; i++) {
+                    extra[i] = ~extra[i];
+                    if (i == extra.length - 1 && wordIndex(size) == i) {
+                        if (bitInWord(size) != 0) {
+                            long mask = (1L << bitInWord(size)) - 1;
+                            extra[i] &= mask;
+                        }
+                    }
+                }
+
             }
         }
     }
@@ -597,17 +614,10 @@ public final class BitMap implements Serializable {
      * Returns a string representation of this bit map with every set bit represented as {@code '1'}
      * and every unset bit represented as {@code '0'}. The first character in the returned string represents
      * bit 0 in this bit map.
-     *
-     * @param length the number of bits represented in the returned string. If {@code length < 0 || length > size()},
-     *            then the value of {@link #length()} is used.
      */
     public String toBinaryString() {
-        int length = length();
-        if (length == 0) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder(length);
-        for (int i = 0; i < length; ++i) {
+        StringBuilder sb = new StringBuilder(size);
+        for (int i = 0; i < size; ++i) {
             sb.append(get(i) ? '1' : '0');
         }
         return sb.toString();
