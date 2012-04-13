@@ -59,6 +59,8 @@ public class HotSpotRuntime implements GraalRuntime {
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
 
+    private static final boolean ExceptionObjectWithoutXIR = Boolean.getBoolean("ExceptionObjectWithoutXIR");
+
     public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
         this.config = config;
         this.compiler = compiler;
@@ -162,6 +164,8 @@ public class HotSpotRuntime implements GraalRuntime {
                     append(e.pcOffset).append(" -> ").
                     append(e.handlerPos).
                     append(nl);
+                hcf.addComment(e.pcOffset, "[exception -> " + e.handlerPos + "]");
+                hcf.addComment(e.handlerPos, "[exception handler for " + e.pcOffset + "]");
             }
             hcf.addComment(0, buf.toString());
         }
@@ -387,6 +391,14 @@ public class HotSpotRuntime implements GraalRuntime {
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
             memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
+        } else if (n instanceof ExceptionObjectNode) {
+            if (ExceptionObjectWithoutXIR) {
+                ExceptionObjectNode exceptionObjectNode = (ExceptionObjectNode) n;
+                HotSpotExceptionObject exceptionObject = graph.add(new HotSpotExceptionObject(config.threadExceptionOopOffset, config.threadExceptionPcOffset));
+                graph.replaceFixedWithFixed(exceptionObjectNode, exceptionObject);
+            }
+        } else {
+            assert false : "Node implementing Lowerable not handled: " + n;
         }
     }
 

@@ -20,34 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.cri.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import static com.oracle.max.asm.target.amd64.AMD64.*;
+
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
 
-/**
- * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
- */
-public class ExceptionObjectNode extends AbstractStateSplit implements Lowerable, LIRLowerable, MemoryCheckpoint {
+public final class HotSpotExceptionObject extends ExceptionObjectNode {
 
-    /**
-     * Constructs a new ExceptionObject instruction.
-     */
-    public ExceptionObjectNode() {
-        super(StampFactory.forKind(CiKind.Object));
-    }
+    private final int threadExceptionOopOffset;
+    private final int threadExceptionPcOffset;
 
-    @Override
-    public void lower(CiLoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+    public HotSpotExceptionObject(int threadExceptionOopOffset, int threadExceptionPcOffset) {
+        this.threadExceptionOopOffset = threadExceptionOopOffset;
+        this.threadExceptionPcOffset = threadExceptionPcOffset;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.visitExceptionObject(this);
+        CiRegisterValue thread = r15.asValue();
+        CiAddress exceptionAddress = new CiAddress(CiKind.Object, thread, threadExceptionOopOffset);
+        CiAddress pcAddress = new CiAddress(CiKind.Long, thread, threadExceptionPcOffset);
+        CiValue exception = gen.emitLoad(exceptionAddress, false);
+        CiRegisterValue raxException = rax.asValue(CiKind.Object);
+        gen.emitMove(exception, raxException);
+        gen.emitStore(exceptionAddress, CiConstant.NULL_OBJECT, false);
+        gen.emitStore(pcAddress, CiConstant.LONG_0, false);
+        gen.setResult(this, raxException);
     }
 }
