@@ -24,30 +24,22 @@ package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.max.asm.target.amd64.AMD64.*;
 
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.ci.*;
 
-public final class HotSpotExceptionObject extends ExceptionObjectNode {
-
-    private final int threadExceptionOopOffset;
-    private final int threadExceptionPcOffset;
-
-    public HotSpotExceptionObject(int threadExceptionOopOffset, int threadExceptionPcOffset) {
-        this.threadExceptionOopOffset = threadExceptionOopOffset;
-        this.threadExceptionPcOffset = threadExceptionPcOffset;
-    }
+public final class HotSpotExceptionObjectNode extends ExceptionObjectNode {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
+        HotSpotVMConfig config = CompilerImpl.getInstance().getConfig();
         CiRegisterValue thread = r15.asValue();
-        CiAddress exceptionAddress = new CiAddress(CiKind.Object, thread, threadExceptionOopOffset);
-        CiAddress pcAddress = new CiAddress(CiKind.Long, thread, threadExceptionPcOffset);
+        CiAddress exceptionAddress = new CiAddress(CiKind.Object, thread, config.threadExceptionOopOffset);
+        CiAddress pcAddress = new CiAddress(CiKind.Long, thread, config.threadExceptionPcOffset);
         CiValue exception = gen.emitLoad(exceptionAddress, false);
-        CiRegisterValue raxException = rax.asValue(CiKind.Object);
-        gen.emitMove(exception, raxException);
         gen.emitStore(exceptionAddress, CiConstant.NULL_OBJECT, false);
         gen.emitStore(pcAddress, CiConstant.LONG_0, false);
-        gen.setResult(this, raxException);
+        gen.setResult(this, exception);
     }
 }

@@ -40,6 +40,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
@@ -66,6 +67,17 @@ public class HotSpotAMD64Backend extends Backend {
                         append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
                     }
                 }
+            }
+            @Override
+            public void visitExceptionObject(ExceptionObjectNode x) {
+                HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
+                CiRegisterValue thread = r15.asValue();
+                CiAddress exceptionAddress = new CiAddress(CiKind.Object, thread, config.threadExceptionOopOffset);
+                CiAddress pcAddress = new CiAddress(CiKind.Long, thread, config.threadExceptionPcOffset);
+                CiValue exception = emitLoad(exceptionAddress, false);
+                emitStore(exceptionAddress, CiConstant.NULL_OBJECT, false);
+                emitStore(pcAddress, CiConstant.LONG_0, false);
+                setResult(x, exception);
             }
         };
     }

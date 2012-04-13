@@ -31,8 +31,6 @@ import com.oracle.max.cri.ri.RiType.Representation;
  */
 public interface RiXirGenerator {
 
-    XirSnippet genExceptionObject(XirSite site);
-
     XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, RiMethod method);
 
     XirSnippet genInvokeVirtual(XirSite site, XirArgument receiver, RiMethod method, boolean megamorph);

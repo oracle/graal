@@ -102,21 +102,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     }
 
-    private SimpleTemplates exceptionObjectTemplates = new SimpleTemplates() {
-
-        @Override
-        protected XirTemplate create(CiXirAssembler asm, long flags) {
-            XirOperand result = asm.restart(CiKind.Object);
-            XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
-
-            asm.pload(CiKind.Object, result, thread, asm.i(config.threadExceptionOopOffset), false);
-            asm.pstore(CiKind.Object, thread, asm.i(config.threadExceptionOopOffset), asm.o(null), false);
-            asm.pstore(CiKind.Long, thread, asm.i(config.threadExceptionPcOffset), asm.l(0), false);
-
-            return asm.finishTemplate("exception object");
-        }
-    };
-
     private SimpleTemplates invokeInterfaceTemplates = new SimpleTemplates(NULL_CHECK) {
 
         @Override
@@ -841,11 +826,6 @@ public class HotSpotXirGenerator implements RiXirGenerator {
            return asm.finishTemplate("typeCheck");
        }
     };
-
-    @Override
-    public XirSnippet genExceptionObject(XirSite site) {
-        return new XirSnippet(exceptionObjectTemplates.get(site));
-    }
 
     @Override
     public XirSnippet genInvokeInterface(XirSite site, XirArgument receiver, RiMethod method) {

@@ -586,9 +586,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitExceptionObject(ExceptionObjectNode x) {
-        XirSnippet snippet = xir.genExceptionObject(site(x));
-        LIRDebugInfo info = state();
-        emitXir(snippet, x, info, true);
+        throw new GraalInternalError("Runtime must provide lowering for " + x);
     }
 
     @Override

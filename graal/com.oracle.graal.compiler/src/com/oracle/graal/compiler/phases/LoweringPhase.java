@@ -27,6 +27,7 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.ri.*;
 
@@ -67,7 +68,8 @@ public class LoweringPhase extends Phase {
         };
         for (Node node : processed) {
             if (node instanceof Lowerable) {
-                assert !(node instanceof FixedNode) || node.predecessor() == null;
+                // TODO (dnsimon) is it safe to replace ExceptionObjectNode with HotSpotExceptionObjectNode?
+                assert !(node instanceof FixedNode) || node instanceof ExceptionObjectNode || node.predecessor() == null;
                 ((Lowerable) node).lower(loweringTool);
             }
         }

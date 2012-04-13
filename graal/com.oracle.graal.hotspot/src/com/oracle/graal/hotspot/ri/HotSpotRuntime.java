@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.target.*;
@@ -59,7 +60,15 @@ public class HotSpotRuntime implements GraalRuntime {
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
 
-    private static final boolean ExceptionObjectWithoutXIR = Boolean.getBoolean("ExceptionObjectWithoutXIR");
+    /**
+     * System-property defined constant to select mechanism for specific lowering of an ExceptionObjectNode.
+     * By default, the override of {@link LIRGenerator#visitExceptionObject} in {@link HotSpotAMD64Backend}
+     * is used. This seems to work. The alternative is to replace ExceptionObjecNode with
+     * {@link HotSpotExceptionObjectNode} in {@link LoweringPhase}. This does not seem work - it crashes
+     * the Eclipse DaCapo benchmark. Once it is understood why the latter happens, a permanent choice
+     * can be made as to which lowering mechanism to use.
+     */
+    private static final boolean UseHotSpotExceptionObjectNode = Boolean.getBoolean("UseHotSpotExceptionObjectNode");
 
     public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
         this.config = config;
@@ -392,9 +401,9 @@ public class HotSpotRuntime implements GraalRuntime {
             memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         } else if (n instanceof ExceptionObjectNode) {
-            if (ExceptionObjectWithoutXIR) {
+            if (UseHotSpotExceptionObjectNode) {
                 ExceptionObjectNode exceptionObjectNode = (ExceptionObjectNode) n;
-                HotSpotExceptionObject exceptionObject = graph.add(new HotSpotExceptionObject(config.threadExceptionOopOffset, config.threadExceptionPcOffset));
+                HotSpotExceptionObjectNode exceptionObject = graph.add(new HotSpotExceptionObjectNode());
                 graph.replaceFixedWithFixed(exceptionObjectNode, exceptionObject);
             }
         } else {
