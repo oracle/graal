@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,7 +31,7 @@ import com.oracle.max.cri.ci.*;
 /**
  * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
  */
-public class ExceptionObjectNode extends AbstractStateSplit implements Lowerable, LIRLowerable, MemoryCheckpoint {
+public class ExceptionObjectNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
 
     /**
      * Constructs a new ExceptionObject instruction.
@@ -42,12 +41,13 @@ public class ExceptionObjectNode extends AbstractStateSplit implements Lowerable
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+    public void generate(LIRGeneratorTool gen) {
+        gen.visitExceptionObject(this);
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitExceptionObject(this);
+    public boolean verify() {
+        assertTrue(stateAfter() != null, "an exception handler needs a frame state");
+        return super.verify();
     }
 }

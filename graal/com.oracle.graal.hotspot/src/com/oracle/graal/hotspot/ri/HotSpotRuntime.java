@@ -28,7 +28,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.target.*;
@@ -45,7 +44,10 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.max.cri.ci.CiTargetMethod.Call;
+import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
+import com.oracle.max.cri.ci.CiTargetMethod.Mark;
+import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
 import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.Representation;
@@ -59,16 +61,6 @@ public class HotSpotRuntime implements GraalRuntime {
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
-
-    /**
-     * System-property defined constant to select mechanism for specific lowering of an ExceptionObjectNode.
-     * By default, the override of {@link LIRGenerator#visitExceptionObject} in {@link HotSpotAMD64Backend}
-     * is used. This seems to work. The alternative is to replace ExceptionObjecNode with
-     * {@link HotSpotExceptionObjectNode} in {@link LoweringPhase}. This does not seem work - it crashes
-     * the Eclipse DaCapo benchmark. Once it is understood why the latter happens, a permanent choice
-     * can be made as to which lowering mechanism to use.
-     */
-    private static final boolean UseHotSpotExceptionObjectNode = Boolean.getBoolean("UseHotSpotExceptionObjectNode");
 
     public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
         this.config = config;
@@ -400,12 +392,6 @@ public class HotSpotRuntime implements GraalRuntime {
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
             memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
-        } else if (n instanceof ExceptionObjectNode) {
-            if (UseHotSpotExceptionObjectNode) {
-                ExceptionObjectNode exceptionObjectNode = (ExceptionObjectNode) n;
-                HotSpotExceptionObjectNode exceptionObject = graph.add(new HotSpotExceptionObjectNode());
-                graph.replaceFixedWithFixed(exceptionObjectNode, exceptionObject);
-            }
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }

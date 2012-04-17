@@ -357,9 +357,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     public boolean canBeInlined() {
         return canBeInlined;
     }
-    public void neverInline() {
-        this.canBeInlined = false;
-    }
 
     @Override
     public int vtableEntryOffset() {

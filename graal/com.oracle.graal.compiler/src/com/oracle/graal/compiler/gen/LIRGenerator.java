@@ -585,11 +585,6 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void visitExceptionObject(ExceptionObjectNode x) {
-        throw new GraalInternalError("Runtime must provide lowering for " + x);
-    }
-
-    @Override
     public void visitReturn(ReturnNode x) {
         CiValue operand = CiValue.IllegalValue;
         if (!x.kind().isVoid()) {

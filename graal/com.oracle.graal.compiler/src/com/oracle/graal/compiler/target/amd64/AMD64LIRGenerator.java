@@ -74,7 +74,7 @@ import com.oracle.graal.nodes.java.*;
 /**
  * This class implements the X86-specific portion of the LIR generator.
  */
-public class AMD64LIRGenerator extends LIRGenerator {
+public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     private static final CiRegisterValue RAX_I = AMD64.rax.asValue(CiKind.Int);
     private static final CiRegisterValue RAX_L = AMD64.rax.asValue(CiKind.Long);
