@@ -44,4 +44,6 @@ public interface RiCompiledMethod {
     boolean isValid();
 
     Object execute(Object arg1, Object arg2, Object arg3);
+
+    Object executeVarargs(Object... args);
 }

@@ -46,6 +46,11 @@ public class CompiledMethodTest extends GraphTest {
         return arg1 + " " + arg2 + " " + arg3;
     }
 
+    Object f1;
+    public Object testMethodVirtual(Object arg1, Object arg2, Object arg3) {
+        return f1 + " " + arg1 + " " + arg2 + " " + arg3;
+    }
+
     @Test
     public void test1() {
         Method method = getMethod("testMethod");
@@ -71,7 +76,37 @@ public class CompiledMethodTest extends GraphTest {
         } catch (MethodInvalidatedException t) {
             Assert.fail("method invalidated");
         }
+    }
 
+    @Test
+    public void test3() {
+        Method method = getMethod("testMethod");
+        final StructuredGraph graph = parse(method);
+        final RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
+        RiCompiledMethod compiledMethod = runtime.addMethod(riMethod, targetMethod);
+        try {
+            Object result = compiledMethod.executeVarargs("1", "2", "3");
+            Assert.assertEquals("1 2 3", result);
+        } catch (MethodInvalidatedException t) {
+            Assert.fail("method invalidated");
+        }
+    }
+
+    @Test
+    public void test4() {
+        Method method = getMethod("testMethodVirtual");
+        final StructuredGraph graph = parse(method);
+        final RiResolvedMethod riMethod = runtime.getRiMethod(method);
+        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
+        RiCompiledMethod compiledMethod = runtime.addMethod(riMethod, targetMethod);
+        try {
+            f1 = "0";
+            Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
+            Assert.assertEquals("0 1 2 3", result);
+        } catch (MethodInvalidatedException t) {
+            Assert.fail("method invalidated");
+        }
     }
 
     @Test
