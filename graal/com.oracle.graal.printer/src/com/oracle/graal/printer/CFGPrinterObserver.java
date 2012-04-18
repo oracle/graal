@@ -109,7 +109,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
 
         } else if (object instanceof CiTargetMethod) {
-            cfgPrinter.printMachineCode(runtime.disassemble((CiTargetMethod) object), null);
+            cfgPrinter.printMachineCode(runtime.disassemble((CiTargetMethod) object), message);
 
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);

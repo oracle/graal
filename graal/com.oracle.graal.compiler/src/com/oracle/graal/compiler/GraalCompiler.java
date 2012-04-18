@@ -277,7 +277,7 @@ public class GraalCompiler {
         }
 
         Debug.dump(lir, "After code generation");
-        Debug.dump(targetMethod, "After code generation");
+        Debug.dump(targetMethod, "Generated code");
         return targetMethod;
     }
 }
