@@ -226,7 +226,7 @@ public class TypeSystemTest extends GraphTest {
                 System.out.print(succ + " ");
             }
             System.out.println();
-            for (Node node : schedule.getNodesFor().get(block)) {
+            for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 System.out.println("  " + node + "    (" + node.usages().size() + ")");
             }
         }

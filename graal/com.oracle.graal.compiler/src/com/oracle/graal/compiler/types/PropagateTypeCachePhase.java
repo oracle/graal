@@ -141,7 +141,7 @@ public class PropagateTypeCachePhase extends Phase {
                 out.print(succ + " ");
             }
             System.out.println();
-            for (Node node : printSchedule.getNodesFor().get(block)) {
+            for (Node node : printSchedule.getBlockToNodesMap().get(block)) {
                 out.println("  " + node + "    (" + node.usages().size() + ")");
             }
         }

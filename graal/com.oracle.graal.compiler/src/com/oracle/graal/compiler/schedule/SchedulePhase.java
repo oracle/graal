@@ -38,7 +38,10 @@ public class SchedulePhase extends Phase {
     private ControlFlowGraph cfg;
     private NodeMap<Block> earliestCache;
 
-    private BlockMap<List<Node>> nodesFor;
+    /**
+     * Map from blocks to the nodes in each block.
+     */
+    private BlockMap<List<Node>> blockToNodesMap;
 
     public SchedulePhase() {
         super("Schedule");
@@ -48,7 +51,7 @@ public class SchedulePhase extends Phase {
     protected void run(StructuredGraph graph) {
         cfg = ControlFlowGraph.compute(graph, true, true, true, false);
         earliestCache = graph.createNodeMap();
-        nodesFor = new BlockMap<>(cfg);
+        blockToNodesMap = new BlockMap<>(cfg);
 
         assignBlockToNodes(graph);
         sortNodesWithinBlocks(graph);
@@ -56,7 +59,7 @@ public class SchedulePhase extends Phase {
 
     public void scheduleGraph() {
         for (Block block : cfg.getBlocks()) {
-            List<Node> nodeList = nodesFor.get(block);
+            List<Node> nodeList = blockToNodesMap.get(block);
             ScheduledNode last = null;
             for (Node node : nodeList) {
                 if (!(node instanceof FrameState)) {
@@ -73,19 +76,25 @@ public class SchedulePhase extends Phase {
         return cfg;
     }
 
-    public BlockMap<List<Node>> getNodesFor() {
-        return nodesFor;
+    /**
+     * Gets the map from each block to the nodes in the block.
+     */
+    public BlockMap<List<Node>> getBlockToNodesMap() {
+        return blockToNodesMap;
     }
 
+    /**
+     * Gets the nodes in a given block.
+     */
     public List<Node> nodesFor(Block block) {
-        return nodesFor.get(block);
+        return blockToNodesMap.get(block);
     }
 
     private void assignBlockToNodes(StructuredGraph graph) {
         for (Block block : cfg.getBlocks()) {
             List<Node> nodes = new ArrayList<>();
-            assert nodesFor.get(block) == null;
-            nodesFor.put(block, nodes);
+            assert blockToNodesMap.get(block) == null;
+            blockToNodesMap.put(block, nodes);
             for (Node node : block.getNodes()) {
                 nodes.add(node);
             }
@@ -122,7 +131,7 @@ public class SchedulePhase extends Phase {
             block = latestBlock;
         }
         cfg.getNodeToBlock().set(n, block);
-        nodesFor.get(block).add(n);
+        blockToNodesMap.get(block).add(n);
     }
 
     private Block latestBlock(Node n) {
@@ -264,7 +273,7 @@ public class SchedulePhase extends Phase {
     }
 
     private void sortNodesWithinBlocks(Block b, NodeBitMap map) {
-        List<Node> instructions = nodesFor.get(b);
+        List<Node> instructions = blockToNodesMap.get(b);
         List<Node> sortedInstructions = new ArrayList<>(instructions.size() + 2);
 
         assert !map.isMarked(b.getBeginNode()) && cfg.blockFor(b.getBeginNode()) == b;
@@ -298,7 +307,7 @@ public class SchedulePhase extends Phase {
                 sortedInstructions.add(b.getEndNode());
             }
         }
-        nodesFor.put(b, sortedInstructions);
+        blockToNodesMap.put(b, sortedInstructions);
     }
 
     private void addToSorting(Block b, Node i, List<Node> sortedInstructions, NodeBitMap map) {

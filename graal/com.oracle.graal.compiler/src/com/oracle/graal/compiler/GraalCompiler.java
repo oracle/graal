@@ -233,7 +233,7 @@ public class GraalCompiler {
                     b.linearScanNumber = z++;
                 }
 
-                LIR lir = new LIR(schedule.getCFG(), schedule.getNodesFor(), linearScanOrder, codeEmittingOrder);
+                LIR lir = new LIR(schedule.getCFG(), schedule.getBlockToNodesMap(), linearScanOrder, codeEmittingOrder);
                 Debug.dump(lir, "After linear scan order");
                 return lir;
 

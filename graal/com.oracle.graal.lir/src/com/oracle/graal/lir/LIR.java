@@ -42,7 +42,7 @@ public class LIR {
      * The nodes for the blocks.
      * TODO: This should go away, we want all nodes connected with a next-pointer.
      */
-    private final BlockMap<List<Node>> nodesFor;
+    private final BlockMap<List<Node>> blockToNodesMap;
 
     /**
      * The linear-scan ordered list of blocks.
@@ -80,9 +80,9 @@ public class LIR {
      * @param numLoops number of loops
      * @param compilation the compilation
      */
-    public LIR(ControlFlowGraph cfg, BlockMap<List<Node>> nodesFor, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
+    public LIR(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
         this.cfg = cfg;
-        this.nodesFor = nodesFor;
+        this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
 
@@ -90,8 +90,11 @@ public class LIR {
         deoptimizationStubs = new ArrayList<>();
     }
 
+    /**
+     * Gets the nodes in a given block.
+     */
     public List<Node> nodesFor(Block block) {
-        return nodesFor.get(block);
+        return blockToNodesMap.get(block);
     }
 
     /**
