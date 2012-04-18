@@ -155,6 +155,11 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public StackTraceElement toStackTraceElement(int bci) {
+        if (bci < 0 || bci >= codeSize) {
+            // HotSpot code can only construct stack trace elements for valid bcis
+            StackTraceElement ste = compiler.getVMEntries().RiMethod_toStackTraceElement(this, 0);
+            return new StackTraceElement(ste.getClassName(), ste.getMethodName(), ste.getFileName(), -1);
+        }
         return compiler.getVMEntries().RiMethod_toStackTraceElement(this, bci);
     }
 
