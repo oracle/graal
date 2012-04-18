@@ -85,6 +85,12 @@ public final class FrameMap {
     public final RiRegisterConfig registerConfig;
 
     /**
+     * The initial frame size, not including the size of the return address.
+     * This is the constant space reserved by the runtime for all compiled methods.
+     */
+    public final int initialFrameSize;
+
+    /**
      * The final frame size, not including the size of the return address.
      * The value is only set after register allocation is complete, i.e., after all spill slots have been allocated.
      */
@@ -112,6 +118,11 @@ public final class FrameMap {
     private final CiStackSlot customArea;
 
     /**
+     * Records whether an offset to an incoming stack argument was ever returned by {@link #offsetForStackSlot(CiStackSlot)}.
+     */
+    private boolean accessesCallerFrame;
+
+    /**
      * Creates a new frame map for the specified method.
      */
     public FrameMap(RiRuntime runtime, CiTarget target, RiRegisterConfig registerConfig) {
@@ -123,8 +134,8 @@ public final class FrameMap {
         this.outgoingSize = runtime.getMinimumOutgoingSize();
         this.objectStackBlocks = new ArrayList<>();
         this.customArea = allocateStackBlock(runtime.getCustomStackAreaSize(), false);
+        this.initialFrameSize = currentFrameSize();
     }
-
 
     private int returnAddressSize() {
         return target.arch.returnAddressSize;
@@ -133,6 +144,13 @@ public final class FrameMap {
     private int calleeSaveAreaSize() {
         CiCalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
         return csl != null ? csl.size : 0;
+    }
+
+    /**
+     * Determines if an offset to an incoming stack argument was ever returned by {@link #offsetForStackSlot(CiStackSlot)}.
+     */
+    public boolean accessesCallerFrame() {
+        return accessesCallerFrame;
     }
 
     /**
@@ -153,20 +171,20 @@ public final class FrameMap {
     }
 
     /**
-     * Sets the frame size for this frame.
-     * @param frameSize The frame size (in bytes).
+     * Gets the current size of this frame. This is the size that would be returned by
+     * {@link #frameSize()} if {@link #finish()} were called now.
      */
-    public void setFrameSize(int frameSize) {
-        assert this.frameSize == -1 : "must only be set once";
-        this.frameSize = frameSize;
+    public int currentFrameSize() {
+        return target.alignFrameSize(outgoingSize + spillSize - returnAddressSize());
     }
 
     /**
-     * Computes the frame size for this frame. After this method has been called, methods that change the
+     * Computes the final size of this frame. After this method has been called, methods that change the
      * frame size cannot be called anymore, e.g., no more spill slots or outgoing arguments can be requested.
      */
     public void finish() {
-        setFrameSize(target.alignFrameSize(outgoingSize + spillSize - returnAddressSize()));
+        assert this.frameSize == -1 : "must only be set once";
+        frameSize = currentFrameSize();
     }
 
     /**
@@ -180,6 +198,9 @@ public final class FrameMap {
         assert (!slot.rawAddFrameSize() && slot.rawOffset() < outgoingSize) ||
             (slot.rawAddFrameSize() && slot.rawOffset() < 0 && -slot.rawOffset() <= spillSize) ||
             (slot.rawAddFrameSize() && slot.rawOffset() >= 0);
+        if (slot.inCallerFrame()) {
+            accessesCallerFrame = true;
+        }
         return slot.offset(totalFrameSize());
     }
 

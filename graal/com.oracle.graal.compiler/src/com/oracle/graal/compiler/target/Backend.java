@@ -80,13 +80,13 @@ public abstract class Backend {
 
     /**
      * Emits code to do stack overflow checking.
-     *
+     * 
      * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate the current frame
      */
-    protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, LIR lir, boolean afterFrameInit) {
+    protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
         if (GraalOptions.StackShadowPages > 0) {
             int frameSize = tasm.frameMap.frameSize();
-            if (frameSize > 0 || lir.containsCalls()) {
+            if (frameSize > 0) {
                 int lastFramePage = frameSize / tasm.target.pageSize;
                 // emit multiple stack bangs for methods with frames larger than a page
                 for (int i = 0; i <= lastFramePage; i++) {

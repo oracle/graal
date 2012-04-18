@@ -54,7 +54,6 @@ public class LIR {
      */
     private final List<Block> codeEmittingOrder;
 
-
     public final List<Code> slowPaths;
 
     public final List<Code> deoptimizationStubs;
@@ -67,6 +66,8 @@ public class LIR {
         LIRInstruction createMove(CiValue result, CiValue input);
         LIRInstruction createExchange(CiValue input1, CiValue input2);
     }
+
+    private boolean hasArgInCallerFrame;
 
     /**
      * An opaque chunk of machine code.
@@ -98,15 +99,12 @@ public class LIR {
     }
 
     /**
-     * Determines if this LIR contains any calls.
+     * Determines if any instruction in the LIR has any debug info associated with it.
      */
-    public boolean containsCalls() {
-        if (!slowPaths.isEmpty() || !deoptimizationStubs.isEmpty()) {
-            return true;
-        }
-        for (Block b : linearScanOrder) {
+    public boolean hasDebugInfo() {
+        for (Block b : linearScanOrder()) {
             for (LIRInstruction op : b.lir) {
-                if (op.hasCall()) {
+                if (op.info != null) {
                     return true;
                 }
             }
@@ -135,7 +133,9 @@ public class LIR {
     }
 
     public void emitCode(TargetMethodAssembler tasm) {
-        tasm.frameContext.enter(tasm);
+        if (tasm.frameContext != null) {
+            tasm.frameContext.enter(tasm);
+        }
 
         for (Block b : codeEmittingOrder()) {
             emitBlock(tasm, b);
@@ -187,6 +187,18 @@ public class LIR {
             tasm.blockComment(String.format("slow case %s", sp.getClass().getName()));
         }
         sp.emitCode(tasm);
+    }
+
+    public void setHasArgInCallerFrame() {
+        hasArgInCallerFrame = true;
+    }
+
+    /**
+     * Determines if any of the parameters to the method are passed via the stack
+     * where the parameters are located in the caller's frame.
+     */
+    public boolean hasArgInCallerFrame() {
+        return hasArgInCallerFrame;
     }
 
 /*

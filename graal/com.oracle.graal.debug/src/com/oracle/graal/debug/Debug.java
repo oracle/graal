@@ -158,6 +158,10 @@ public class Debug {
         }
     }
 
+    /**
+     * Searches the current debug scope, bottom up, for a context object that is an instance of a given type.
+     * The first such object found is returned.
+     */
     @SuppressWarnings("unchecked")
     public static <T> T contextLookup(Class<T> clazz) {
         if (ENABLED) {

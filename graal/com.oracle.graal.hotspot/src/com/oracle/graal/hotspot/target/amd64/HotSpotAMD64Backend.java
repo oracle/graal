@@ -42,11 +42,11 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiCallingConvention.Type;
-import com.oracle.max.cri.ci.CiRegister.*;
+import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 
@@ -89,45 +89,32 @@ public class HotSpotAMD64Backend extends Backend {
 
     class HotSpotFrameContext implements FrameContext {
 
-        private final LIR lir;
-        private boolean needsLeave;
-
-        public HotSpotFrameContext(LIR lir) {
-            this.lir = lir;
-        }
-
         @Override
         public void enter(TargetMethodAssembler tasm) {
             FrameMap frameMap = tasm.frameMap;
             int frameSize = frameMap.frameSize();
-            if (frameSize != 0) {
-                AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-                emitStackOverflowCheck(tasm, lir, false);
-                asm.push(rbp);
-                asm.movq(rbp, rsp);
-                asm.decrementq(rsp, frameSize - 8); // account for the push of RBP above
-                if (GraalOptions.ZapStackOnMethodEntry) {
-                    final int intSize = 4;
-                    for (int i = 0; i < frameSize / intSize; ++i) {
-                        asm.movl(new CiAddress(CiKind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
-                    }
+
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
+            emitStackOverflowCheck(tasm, false);
+            asm.push(rbp);
+            asm.movq(rbp, rsp);
+            asm.decrementq(rsp, frameSize - 8); // account for the push of RBP above
+            if (GraalOptions.ZapStackOnMethodEntry) {
+                final int intSize = 4;
+                for (int i = 0; i < frameSize / intSize; ++i) {
+                    asm.movl(new CiAddress(CiKind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
                 }
-                CiCalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
-                if (csl != null && csl.size != 0) {
-                    int frameToCSA = frameMap.offsetToCalleeSaveArea();
-                    assert frameToCSA >= 0;
-                    asm.save(csl, frameToCSA);
-                }
-                needsLeave = true;
+            }
+            CiCalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
+            if (csl != null && csl.size != 0) {
+                int frameToCSA = frameMap.offsetToCalleeSaveArea();
+                assert frameToCSA >= 0;
+                asm.save(csl, frameToCSA);
             }
         }
 
         @Override
         public void leave(TargetMethodAssembler tasm) {
-            if (!needsLeave) {
-                return;
-            }
-
             int frameSize = tasm.frameMap.frameSize();
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
@@ -165,8 +152,19 @@ public class HotSpotAMD64Backend extends Backend {
 
     @Override
     public TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir) {
+        // Omit the frame if the method:
+        //  - has no spill slots or other slots allocated during register allocation
+        //  - has no callee-saved registers
+        //  - has no incoming arguments passed on the stack
+        //  - has no instructions with debug info
+        boolean canOmitFrame =
+            frameMap.frameSize() == frameMap.initialFrameSize &&
+            frameMap.registerConfig.getCalleeSaveLayout().registers.length == 0 &&
+            !lir.hasArgInCallerFrame() &&
+            !lir.hasDebugInfo();
+
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(lir);
+        HotSpotFrameContext frameContext = canOmitFrame ? null : new HotSpotFrameContext();
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime, frameMap, masm, frameContext);
         tasm.setFrameSize(frameMap.frameSize());
         tasm.targetMethod.setCustomStackAreaOffset(frameMap.offsetToCustomArea());
@@ -202,28 +200,34 @@ public class HotSpotAMD64Backend extends Backend {
         // Emit code for the LIR
         lir.emitCode(tasm);
 
-        // Emit the suffix (i.e. out-of-line stubs)
-        CiRegister thread = r15;
-        CiRegister exceptionOop = regConfig.getCallingConventionRegisters(Type.RuntimeCall, RegisterFlag.CPU)[0];
-        Label unwind = new Label();
-        asm.bind(unwind);
-        tasm.recordMark(MARK_UNWIND_ENTRY);
-        CiAddress exceptionOopField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionOopOffset);
-        CiAddress exceptionPcField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionPcOffset);
-        asm.movq(exceptionOop, exceptionOopField);
-        asm.movslq(exceptionOopField, 0);
-        asm.movslq(exceptionPcField, 0);
+        boolean frameOmitted = tasm.frameContext == null;
+        if (!frameOmitted) {
+            CiRegister thread = r15;
+            CiRegister exceptionOop = regConfig.getCallingConventionRegisters(Type.RuntimeCall, RegisterFlag.CPU)[0];
+            Label unwind = new Label();
+            asm.bind(unwind);
+            tasm.recordMark(MARK_UNWIND_ENTRY);
+            CiAddress exceptionOopField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionOopOffset);
+            CiAddress exceptionPcField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionPcOffset);
+            asm.movq(exceptionOop, exceptionOopField);
+            asm.movslq(exceptionOopField, 0);
+            asm.movslq(exceptionPcField, 0);
 
-        AMD64Call.directCall(tasm, asm, config.unwindExceptionStub, null);
-        AMD64Call.shouldNotReachHere(tasm, asm);
+            AMD64Call.directCall(tasm, asm, config.unwindExceptionStub, null);
+            AMD64Call.shouldNotReachHere(tasm, asm);
 
-        tasm.recordMark(MARK_EXCEPTION_HANDLER_ENTRY);
-        AMD64Call.directCall(tasm, asm, config.handleExceptionStub, null);
-        AMD64Call.shouldNotReachHere(tasm, asm);
+            tasm.recordMark(MARK_EXCEPTION_HANDLER_ENTRY);
+            AMD64Call.directCall(tasm, asm, config.handleExceptionStub, null);
+            AMD64Call.shouldNotReachHere(tasm, asm);
 
-        tasm.recordMark(MARK_DEOPT_HANDLER_ENTRY);
-        AMD64Call.directCall(tasm, asm, config.handleDeoptStub, null);
-        AMD64Call.shouldNotReachHere(tasm, asm);
+            tasm.recordMark(MARK_DEOPT_HANDLER_ENTRY);
+            AMD64Call.directCall(tasm, asm, config.handleDeoptStub, null);
+            AMD64Call.shouldNotReachHere(tasm, asm);
+        } else {
+            // No need to emit the stubs for entries back into the method since
+            // it has no calls that can cause such "return" entries
+            assert !frameMap.accessesCallerFrame();
+        }
 
         if (!isStatic) {
             asm.bind(unverifiedStub);

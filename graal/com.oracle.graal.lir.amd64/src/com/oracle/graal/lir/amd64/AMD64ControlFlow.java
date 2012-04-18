@@ -46,7 +46,9 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            tasm.frameContext.leave(tasm);
+            if (tasm.frameContext != null) {
+                tasm.frameContext.leave(tasm);
+            }
             masm.ret(0);
         }
 

@@ -490,7 +490,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         CiValue[] params = new CiValue[incomingArguments.locations.length];
         for (int i = 0; i < params.length; i++) {
             params[i] = toStackKind(incomingArguments.locations[i]);
+            if (CiValueUtil.isStackSlot(params[i])) {
+                CiStackSlot slot = CiValueUtil.asStackSlot(params[i]);
+                if (slot.inCallerFrame() && !lir.hasArgInCallerFrame()) {
+                    lir.setHasArgInCallerFrame();
+                }
+            }
         }
+
         append(new ParametersOp(params));
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {

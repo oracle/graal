@@ -52,6 +52,11 @@ public class TargetMethodAssembler {
     public final RiRuntime runtime;
     public final FrameMap frameMap;
     public final List<Code> slowPaths;
+
+    /**
+     * The object that emits code for managing a method's frame.
+     * If null, no frame is used by the method.
+     */
     public final FrameContext frameContext;
 
     private List<ExceptionInfo> exceptionInfoList;

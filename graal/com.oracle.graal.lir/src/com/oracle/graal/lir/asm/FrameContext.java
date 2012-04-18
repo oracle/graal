@@ -24,8 +24,7 @@ package com.oracle.graal.lir.asm;
 
 
 /**
- * Emits common code for {@linkplain #enter(TargetMethodAssembler) entering} and
- * {@linkplain #leave(TargetMethodAssembler) leaving} a method.
+ * Code for managing a method's native frame.
  */
 public interface FrameContext {
     /**
