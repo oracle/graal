@@ -59,15 +59,13 @@ public class HotSpotAMD64Backend extends Backend {
     @Override
     public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
         return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir) {
+
             @Override
-            public void visitLoopEnd(LoopEndNode x) {
-                if (GraalOptions.GenLoopSafepoints && x.hasSafepointPolling()) {
-                    LIRDebugInfo info = state();
-                    if (!info.topFrame.method.noSafepointPolls()) {
-                        append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
-                    }
-                }
+            public void visitSafepointNode(SafepointNode i) {
+                LIRDebugInfo info = state();
+                append(new AMD64SafepointOp(info, ((HotSpotRuntime) runtime).config));
             }
+
             @Override
             public void visitExceptionObject(ExceptionObjectNode x) {
                 HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
@@ -181,10 +179,10 @@ public class HotSpotAMD64Backend extends Backend {
 
         // Emit the prefix
         tasm.recordMark(MARK_OSR_ENTRY);
-        tasm.recordMark(MARK_UNVERIFIED_ENTRY);
 
         boolean isStatic = Modifier.isStatic(method.accessFlags());
         if (!isStatic) {
+            tasm.recordMark(MARK_UNVERIFIED_ENTRY);
             CiCallingConvention cc = regConfig.getCallingConvention(JavaCallee, new CiKind[] {CiKind.Object}, target, false);
             CiRegister inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
             CiRegister receiver = asRegister(cc.locations[0]);

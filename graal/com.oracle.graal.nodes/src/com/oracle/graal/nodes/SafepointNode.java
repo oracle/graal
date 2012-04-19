@@ -20,31 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.util.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * Removes safepoints from loops that include calls.
- * This optimization is conservative; it does not try to remove safepoints from outer loops.
+ * Marks a position in the graph where a safepoint should be emitted.
  */
-public class SafepointPollingEliminationPhase extends Phase {
+public final class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
+
+    /**
+     * Will be null if this safepoint is not associated with a loop end.
+     */
+    @Data private final LoopEndNode loopEnd;
+
+    public SafepointNode(LoopEndNode loopEnd) {
+        super(StampFactory.illegal());
+        this.loopEnd = loopEnd;
+    }
+
 
     @Override
-    protected void run(StructuredGraph graph) {
-        for (SafepointNode safepoint : graph.getNodes(SafepointNode.class)) {
-            LoopEndNode loopEnd = safepoint.loopEnd();
-            if (loopEnd != null) {
-                NodeIterable<FixedNode> it = NodeIterators.dominators(loopEnd).until(loopEnd.loopBegin());
-                for (FixedNode n : it) {
-                    if (n instanceof Invoke) {
-                        graph.removeFixed(safepoint);
-                        break;
-                    }
-                }
-            }
-        }
+    public void generate(LIRGeneratorTool gen) {
+        gen.visitSafepointNode(this);
+    }
+
+    /**
+     * Gets the loop end (if any) associated with this safepoint.
+     */
+    public LoopEndNode loopEnd() {
+        return loopEnd;
     }
 }
