@@ -80,7 +80,7 @@ public abstract class Backend {
 
     /**
      * Emits code to do stack overflow checking.
-     * 
+     *
      * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate the current frame
      */
     protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
@@ -94,6 +94,7 @@ public abstract class Backend {
                     if (afterFrameInit) {
                         disp -= frameSize;
                     }
+                    tasm.blockComment("[stack overflow check]");
                     tasm.asm.bangStack(disp);
                 }
             }
