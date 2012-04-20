@@ -166,6 +166,12 @@ public class StructuredGraph extends Graph {
         node.safeDelete();
     }
 
+    /**
+     * Unlinks a node from all its control flow neighbours and then removes it from its graph.
+     * The node must have no {@linkplain Node#usages() usages}.
+     *
+     * @param node the node to be unlinked and removed
+     */
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;
         if (node instanceof BeginNode) {

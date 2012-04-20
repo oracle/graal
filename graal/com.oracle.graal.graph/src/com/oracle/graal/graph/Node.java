@@ -332,6 +332,10 @@ public abstract class Node implements Cloneable, Formattable {
         return true;
     }
 
+    /**
+     * Removes this node from its graph.
+     * This node must have no {@linkplain Node#usages() usages} and no {@linkplain #predecessor() predecessor}.
+     */
     public void safeDelete() {
         assert checkDeletion();
         clearInputs();
