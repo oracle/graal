@@ -178,23 +178,28 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
             // Compile until the queue is empty.
             int z = 0;
-            if (slowCompileQueue == null) {
-                while (compileQueue.getCompletedTaskCount() < Math.max(3, compileQueue.getTaskCount())) {
-                    Thread.sleep(100);
-                    while (z < compileQueue.getCompletedTaskCount() / 100) {
-                        ++z;
-                        TTY.print(".");
-                        TTY.flush();
+            while (true) {
+                try {
+                    assert !CompilationTask.withinEnqueue.get();
+                    CompilationTask.withinEnqueue.set(Boolean.TRUE);
+                    if (slowCompileQueue == null) {
+                        if (compileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getTaskCount())) {
+                            break;
+                        }
+                    } else {
+                        if (compileQueue.getCompletedTaskCount() + slowCompileQueue.getCompletedTaskCount() >= Math.max(3, compileQueue.getTaskCount() + slowCompileQueue.getTaskCount())) {
+                            break;
+                        }
                     }
+                } finally {
+                    CompilationTask.withinEnqueue.set(Boolean.FALSE);
                 }
-            } else {
-                while (compileQueue.getCompletedTaskCount() + slowCompileQueue.getCompletedTaskCount() < Math.max(3, compileQueue.getTaskCount() + slowCompileQueue.getTaskCount())) {
-                    Thread.sleep(100);
-                    while (z < (compileQueue.getCompletedTaskCount() + slowCompileQueue.getCompletedTaskCount()) / 100) {
-                        ++z;
-                        TTY.print(".");
-                        TTY.flush();
-                    }
+
+                Thread.sleep(100);
+                while (z < compileQueue.getCompletedTaskCount() / 100) {
+                    ++z;
+                    TTY.print(".");
+                    TTY.flush();
                 }
             }
         } while ((System.currentTimeMillis() - startTime) <= GraalOptions.TimedBootstrap);
@@ -216,9 +221,15 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     public void shutdownCompiler() throws Throwable {
-        compileQueue.shutdown();
-        if (slowCompileQueue != null) {
-            slowCompileQueue.shutdown();
+        try {
+            assert !CompilationTask.withinEnqueue.get();
+            CompilationTask.withinEnqueue.set(Boolean.TRUE);
+            compileQueue.shutdown();
+            if (slowCompileQueue != null) {
+                slowCompileQueue.shutdown();
+            }
+        } finally {
+            CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
         if (Debug.isEnabled()) {
