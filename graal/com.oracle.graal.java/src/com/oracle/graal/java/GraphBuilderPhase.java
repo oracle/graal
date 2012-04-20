@@ -34,10 +34,9 @@ import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.BciBlockMapping.Block;
-import com.oracle.graal.java.BciBlockMapping.ExceptionBlock;
+import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -70,7 +69,6 @@ public final class GraphBuilderPhase extends Phase {
 
     private final RiRuntime runtime;
     private RiConstantPool constantPool;
-    private RiExceptionHandler[] exceptionHandlers;
     private RiResolvedMethod method;
     private RiProfilingInfo profilingInfo;
 
@@ -81,12 +79,10 @@ public final class GraphBuilderPhase extends Phase {
     private Block currentBlock;
 
     private ValueNode methodSynchronizedObject;
-    private ExceptionBlock unwindBlock;
+    private ExceptionDispatchBlock unwindBlock;
     private Block returnBlock;
 
     private FixedWithNextNode lastInstr;                 // the last instruction added
-
-    private BitSet canTrapBitSet;
 
     private final GraphBuilderConfiguration graphBuilderConfig;
     private final OptimisticOptimizations optimisticOpts;
@@ -125,7 +121,6 @@ public final class GraphBuilderPhase extends Phase {
         unwindBlock = null;
         returnBlock = null;
         methodSynchronizedObject = null;
-        exceptionHandlers = null;
         this.currentGraph = graph;
         this.frameState = new FrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
         build();
@@ -137,7 +132,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private BciBlockMapping createBlockMap() {
-        BciBlockMapping map = new BciBlockMapping(method, optimisticOpts);
+        BciBlockMapping map = new BciBlockMapping(method);
         map.build();
         Debug.dump(map, CiUtil.format("After block building %f %R %H.%n(%P)", method));
 
@@ -156,9 +151,6 @@ public final class GraphBuilderPhase extends Phase {
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
         BciBlockMapping blockMap = createBlockMap();
-        this.canTrapBitSet = blockMap.canTrap;
-
-        exceptionHandlers = blockMap.exceptionHandlers();
         loopHeaders = blockMap.loopHeaders;
 
         lastInstr = currentGraph.start();
@@ -212,7 +204,7 @@ public final class GraphBuilderPhase extends Phase {
 
     private Block unwindBlock(int bci) {
         if (unwindBlock == null) {
-            unwindBlock = new ExceptionBlock();
+            unwindBlock = new ExceptionDispatchBlock();
             unwindBlock.startBci = -1;
             unwindBlock.endBci = -1;
             unwindBlock.deoptBci = bci;
@@ -257,69 +249,38 @@ public final class GraphBuilderPhase extends Phase {
 
     private BeginNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
+        Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
 
-        if (optimisticOpts.useExceptionProbability()) {
-            // be conservative if information was not recorded (could result in endless recompiles otherwise)
-            if (bci != FrameState.BEFORE_BCI && exceptionObject == null && profilingInfo.getExceptionSeen(bci) == RiExceptionSeen.FALSE) {
-                return null;
-            } else {
-                Debug.log("Creating exception edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
-            }
-        }
-
-        RiExceptionHandler firstHandler = null;
-        // join with all potential exception handlers
-        if (exceptionHandlers != null) {
-            for (RiExceptionHandler handler : exceptionHandlers) {
-                if (covers(handler, bci)) {
-                    firstHandler = handler;
-                    break;
-                }
-            }
-        }
-
-        Block dispatchBlock = null;
-        if (firstHandler == null) {
+        Block dispatchBlock = currentBlock.exceptionDispatchBlock();
+        // The exception dispatch block is always for the last bytecode of a block, so if we are not at the endBci yet,
+        // there is no exception handler for this bci and we can unwind immediately.
+        if (bci != currentBlock.endBci || dispatchBlock == null) {
             dispatchBlock = unwindBlock(bci);
-        } else {
-            for (int i = currentBlock.normalSuccessors; i < currentBlock.successors.size(); i++) {
-                Block block = currentBlock.successors.get(i);
-                if (block instanceof ExceptionBlock && ((ExceptionBlock) block).handler == firstHandler) {
-                    dispatchBlock = block;
-                    break;
-                }
-                if (isCatchAll(firstHandler) && block.startBci == firstHandler.handlerBCI()) {
-                    dispatchBlock = block;
-                    break;
-                }
-            }
         }
 
-        // TODO (thomaswue): Merge BeginNode with ExceptionObject node to get a correct and uniform FrameState.
-        BeginNode p = currentGraph.add(new BeginNode());
-        p.setStateAfter(frameState.duplicateWithoutStack(bci));
+        FrameStateBuilder dispatchState = frameState.copy();
+        dispatchState.clearStack();
 
-        ValueNode currentExceptionObject;
-        ExceptionObjectNode newObj = null;
+        BeginNode dispatchBegin = currentGraph.add(new BeginNode());
+        dispatchBegin.setStateAfter(dispatchState.create(bci));
+
         if (exceptionObject == null) {
-            newObj = currentGraph.add(new ExceptionObjectNode());
-            currentExceptionObject = newObj;
+            ExceptionObjectNode newExceptionObject = currentGraph.add(new ExceptionObjectNode());
+            dispatchState.apush(newExceptionObject);
+            dispatchState.setRethrowException(true);
+            newExceptionObject.setStateAfter(dispatchState.create(bci));
+
+            FixedNode target = createTarget(dispatchBlock, dispatchState);
+            dispatchBegin.setNext(newExceptionObject);
+            newExceptionObject.setNext(target);
         } else {
-            currentExceptionObject = exceptionObject;
+            dispatchState.apush(exceptionObject);
+            dispatchState.setRethrowException(true);
+
+            FixedNode target = createTarget(dispatchBlock, dispatchState);
+            dispatchBegin.setNext(target);
         }
-        FrameStateBuilder stateWithException = frameState.copyWithException(currentExceptionObject);
-        if (newObj != null) {
-            newObj.setStateAfter(stateWithException.create(bci));
-        }
-        FixedNode target = createTarget(dispatchBlock, stateWithException);
-        if (exceptionObject == null) {
-            ExceptionObjectNode eObj = (ExceptionObjectNode) currentExceptionObject;
-            eObj.setNext(target);
-            p.setNext(eObj);
-        } else {
-            p.setNext(target);
-        }
-        return p;
+        return dispatchBegin;
     }
 
     private void genLoadConstant(int cpi, int opcode) {
@@ -543,12 +504,12 @@ public final class GraphBuilderPhase extends Phase {
             probability = 1;
         }
         appendGoto(createTarget(probability, currentBlock.successors.get(0), frameState));
-        assert currentBlock.normalSuccessors == 1;
+        assert currentBlock.numNormalSuccessors() == 1;
     }
 
     private void ifNode(ValueNode x, Condition cond, ValueNode y) {
         assert !x.isDeleted() && !y.isDeleted();
-        assert currentBlock.normalSuccessors == 2 : currentBlock.normalSuccessors;
+        assert currentBlock.numNormalSuccessors() == 2;
         Block trueBlock = currentBlock.successors.get(0);
         Block falseBlock = currentBlock.successors.get(1);
         if (trueBlock == falseBlock) {
@@ -588,11 +549,11 @@ public final class GraphBuilderPhase extends Phase {
         ifNode(x, cond, y);
     }
 
-    private void genThrow(int bci) {
+    private void genThrow() {
         ValueNode exception = frameState.apop();
         FixedGuardNode node = currentGraph.add(new FixedGuardNode(currentGraph.unique(new NullCheckNode(exception, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, graphId));
         append(node);
-        append(handleException(exception, bci));
+        append(handleException(exception, bci()));
     }
 
     private RiType lookupType(int cpi, int bytecode) {
@@ -802,7 +763,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private ExceptionInfo emitNullCheck(ValueNode receiver) {
+    private void emitNullCheck(ValueNode receiver) {
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
         BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
         IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new NullCheckNode(receiver, false)), trueSucc, falseSucc, 1));
@@ -812,16 +773,16 @@ public final class GraphBuilderPhase extends Phase {
 
         if (GraalOptions.OmitHotExceptionStacktrace) {
             ValueNode exception = ConstantNode.forObject(new NullPointerException(), runtime, currentGraph);
-            return new ExceptionInfo(falseSucc, exception);
+            falseSucc.setNext(handleException(exception, bci()));
         } else {
             RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CiRuntimeCall.CreateNullPointerException));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
-            return new ExceptionInfo(call, call);
+            call.setNext(handleException(call, bci()));
         }
     }
 
-    private ExceptionInfo emitBoundsCheck(ValueNode index, ValueNode length) {
+    private void emitBoundsCheck(ValueNode index, ValueNode length) {
         BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
         BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
         IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new CompareNode(index, Condition.BT, length)), trueSucc, falseSucc, 1));
@@ -831,51 +792,27 @@ public final class GraphBuilderPhase extends Phase {
 
         if (GraalOptions.OmitHotExceptionStacktrace) {
             ValueNode exception = ConstantNode.forObject(new ArrayIndexOutOfBoundsException(), runtime, currentGraph);
-            return new ExceptionInfo(falseSucc, exception);
+            falseSucc.setNext(handleException(exception, bci()));
         } else {
             RuntimeCallNode call = currentGraph.add(new RuntimeCallNode(CiRuntimeCall.CreateOutOfBoundsException, new ValueNode[] {index}));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
-            return new ExceptionInfo(call, call);
+            call.setNext(handleException(call, bci()));
         }
     }
 
     private void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
         assert receiver != null;
-
-        if (canTrapBitSet.get(bci()) && GraalOptions.AllowExplicitExceptionChecks) {
-            ArrayList<ExceptionInfo> exceptions = new ArrayList<>(2);
-            exceptions.add(emitNullCheck(receiver));
-            if (outOfBoundsIndex != null) {
-                ArrayLengthNode length = currentGraph.add(new ArrayLengthNode(receiver));
-                append(length);
-                exceptions.add(emitBoundsCheck(outOfBoundsIndex, length));
-            }
-            final ExceptionInfo exception;
-            if (exceptions.size() == 1) {
-                exception = exceptions.get(0);
-            } else {
-                assert exceptions.size() > 1;
-                MergeNode merge = currentGraph.add(new MergeNode());
-                PhiNode phi = currentGraph.unique(new PhiNode(CiKind.Object, merge, PhiType.Value));
-                for (ExceptionInfo info : exceptions) {
-                    EndNode end = currentGraph.add(new EndNode());
-                    info.exceptionEdge.setNext(end);
-                    merge.addForwardEnd(end);
-                    phi.addInput(info.exception);
-                }
-                merge.setStateAfter(frameState.create(bci()));
-                exception = new ExceptionInfo(merge, phi);
-            }
-
-            FixedNode entry = handleException(exception.exception, bci());
-            if (entry != null) {
-                exception.exceptionEdge.setNext(entry);
-            } else {
-                exception.exceptionEdge.setNext(createTarget(unwindBlock(bci()), frameState.copyWithException(exception.exception)));
-            }
-            Debug.metric("ExplicitExceptions").increment();
+        if (!GraalOptions.AllowExplicitExceptionChecks || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == RiExceptionSeen.FALSE)) {
+            return;
         }
+
+        emitNullCheck(receiver);
+        if (outOfBoundsIndex != null) {
+            ValueNode length = append(currentGraph.add(new ArrayLengthNode(receiver)));
+            emitBoundsCheck(outOfBoundsIndex, length);
+        }
+        Debug.metric("ExplicitExceptions").increment();
     }
 
     private void genPutField(RiField field) {
@@ -1031,25 +968,27 @@ public final class GraphBuilderPhase extends Phase {
             deoptimize.setMessage("invoke " + targetMethod.name());
             append(deoptimize);
             frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, currentGraph));
+            return;
+        }
+
+        MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, targetMethod.signature().returnType(method.holder())));
+        // be conservative if information was not recorded (could result in endless recompiles otherwise)
+        if (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == RiExceptionSeen.FALSE) {
+            ValueNode result = appendWithBCI(currentGraph.add(new InvokeNode(callTarget, bci(), graphId)));
+            frameState.pushReturn(resultType, result);
+
         } else {
-            MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, targetMethod.signature().returnType(method.holder())));
             BeginNode exceptionEdge = handleException(null, bci());
-            ValueNode result;
-            if (exceptionEdge != null) {
-                InvokeWithExceptionNode invoke = currentGraph.add(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci(), graphId));
-                result = append(invoke);
-                frameState.pushReturn(resultType, result);
-                Block nextBlock = currentBlock.successors.get(0);
+            InvokeWithExceptionNode invoke = currentGraph.add(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci(), graphId));
+            ValueNode result = append(invoke);
+            frameState.pushReturn(resultType, result);
+            Block nextBlock = currentBlock.successors.get(0);
 
-                assert bci() == currentBlock.endBci;
-                frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+            assert bci() == currentBlock.endBci;
+            frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
 
-                invoke.setNext(createTarget(nextBlock, frameState));
-                invoke.setStateAfter(frameState.create(nextBlock.startBci));
-            } else {
-                result = appendWithBCI(currentGraph.add(new InvokeNode(callTarget, bci(), graphId)));
-                frameState.pushReturn(resultType, result);
-            }
+            invoke.setNext(createTarget(nextBlock, frameState));
+            invoke.setStateAfter(frameState.create(nextBlock.startBci));
         }
     }
 
@@ -1129,7 +1068,7 @@ public final class GraphBuilderPhase extends Phase {
         BytecodeTableSwitch ts = new BytecodeTableSwitch(stream(), bci);
 
         int nofCases = ts.numberOfCases() + 1; // including default case
-        assert currentBlock.normalSuccessors == nofCases;
+        assert currentBlock.numNormalSuccessors() == nofCases;
 
         double[] probabilities = switchProbability(nofCases, bci);
         TableSwitchNode tableSwitch = currentGraph.add(new TableSwitchNode(value, ts.lowKey(), probabilities));
@@ -1169,7 +1108,7 @@ public final class GraphBuilderPhase extends Phase {
         BytecodeLookupSwitch ls = new BytecodeLookupSwitch(stream(), bci);
 
         int nofCases = ls.numberOfCases() + 1; // including default case
-        assert currentBlock.normalSuccessors == nofCases;
+        assert currentBlock.numNormalSuccessors() == nofCases;
 
         int[] keys = new int[nofCases - 1];
         for (int i = 0; i < nofCases - 1; ++i) {
@@ -1244,8 +1183,8 @@ public final class GraphBuilderPhase extends Phase {
                 });
 
                 int bci = targetBlock.startBci;
-                if (targetBlock instanceof ExceptionBlock) {
-                    bci = ((ExceptionBlock) targetBlock).deoptBci;
+                if (targetBlock instanceof ExceptionDispatchBlock) {
+                    bci = ((ExceptionDispatchBlock) targetBlock).deoptBci;
                 }
                 FrameStateBuilder newState = state.copy();
                 for (Block loop : exitLoops) {
@@ -1382,8 +1321,8 @@ public final class GraphBuilderPhase extends Phase {
         frameState.cleanupDeletedPhis();
         if (lastInstr instanceof MergeNode) {
             int bci = block.startBci;
-            if (block instanceof ExceptionBlock) {
-                bci = ((ExceptionBlock) block).deoptBci;
+            if (block instanceof ExceptionDispatchBlock) {
+                bci = ((ExceptionDispatchBlock) block).deoptBci;
             }
             ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
         }
@@ -1394,8 +1333,8 @@ public final class GraphBuilderPhase extends Phase {
         } else if (block == unwindBlock) {
             frameState.setRethrowException(false);
             createUnwind();
-        } else if (block instanceof ExceptionBlock) {
-            createExceptionDispatch((ExceptionBlock) block);
+        } else if (block instanceof ExceptionDispatchBlock) {
+            createExceptionDispatch((ExceptionDispatchBlock) block);
         } else {
             frameState.setRethrowException(false);
             iterateBytecodesForBlock(block);
@@ -1422,6 +1361,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void createUnwind() {
+        assert frameState.stackSize() == 1 : frameState;
         synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI);
         UnwindNode unwindNode = currentGraph.add(new UnwindNode(frameState.apop()));
         append(unwindNode);
@@ -1454,37 +1394,37 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void createExceptionDispatch(ExceptionBlock block) {
-        if (block.handler == null) {
-            assert frameState.stackSize() == 1 : "only exception object expected on stack, actual size: " + frameState.stackSize();
-            createUnwind();
-        } else {
-            assert frameState.stackSize() == 1 : frameState;
+    private void createExceptionDispatch(ExceptionDispatchBlock block) {
+        assert frameState.stackSize() == 1 : frameState;
+        if (block.handler.isCatchAll()) {
+            assert block.successors.size() == 1;
+            appendGoto(createTarget(block.successors.get(0), frameState));
+            return;
+        }
 
-            RiType catchType = block.handler.catchType();
-            if (graphBuilderConfig.eagerResolving()) {
-                catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
-            }
-            boolean initialized = (catchType instanceof RiResolvedType);
-            if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
-                RiResolvedType resolvedCatchType = (RiResolvedType) catchType;
-                for (RiResolvedType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
-                    initialized &= !resolvedCatchType.isSubtypeOf(skippedType);
-                    if (!initialized) {
-                        break;
-                    }
+        RiType catchType = block.handler.catchType();
+        if (graphBuilderConfig.eagerResolving()) {
+            catchType = lookupType(block.handler.catchTypeCPI(), INSTANCEOF);
+        }
+        boolean initialized = (catchType instanceof RiResolvedType);
+        if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
+            RiResolvedType resolvedCatchType = (RiResolvedType) catchType;
+            for (RiResolvedType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
+                initialized &= !resolvedCatchType.isSubtypeOf(skippedType);
+                if (!initialized) {
+                    break;
                 }
             }
+        }
 
-            ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, catchType, initialized);
-            if (typeInstruction != null) {
-                Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
-                FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
-                FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                ValueNode exception = frameState.stackAt(0);
-                IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (RiResolvedType) catchType, exception, false)), catchSuccessor, nextDispatch, 0.5));
-                append(ifNode);
-            }
+        ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, catchType, initialized);
+        if (typeInstruction != null) {
+            Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
+            FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
+            FixedNode nextDispatch = createTarget(nextBlock, frameState);
+            ValueNode exception = frameState.stackAt(0);
+            IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new InstanceOfNode(typeInstruction, (RiResolvedType) catchType, exception, false)), catchSuccessor, nextDispatch, 0.5));
+            append(ifNode);
         }
     }
 
@@ -1554,6 +1494,10 @@ public final class GraphBuilderPhase extends Phase {
 
             stream.next();
             bci = stream.currentBCI();
+
+            if (bci > block.endBci) {
+                frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+            }
             if (lastInstr instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) lastInstr;
                 if (stateSplit.stateAfter() == null && stateSplit.needsStateAfter()) {
@@ -1563,7 +1507,7 @@ public final class GraphBuilderPhase extends Phase {
             if (bci < endBCI) {
                 if (bci > block.endBci) {
                     assert !block.successors.get(0).isExceptionEntry;
-                    assert block.normalSuccessors == 1;
+                    assert block.numNormalSuccessors() == 1;
                     // we fell through to the next block, add a goto and break
                     appendGoto(createTarget(block.successors.get(0), frameState));
                     break;
@@ -1781,7 +1725,7 @@ public final class GraphBuilderPhase extends Phase {
             case NEWARRAY       : genNewTypeArray(stream.readLocalIndex()); break;
             case ANEWARRAY      : genNewObjectArray(stream.readCPI()); break;
             case ARRAYLENGTH    : genArrayLength(); break;
-            case ATHROW         : genThrow(stream.currentBCI()); break;
+            case ATHROW         : genThrow(); break;
             case CHECKCAST      : genCheckCast(); break;
             case INSTANCEOF     : genInstanceOf(); break;
             case MONITORENTER   : genMonitorEnter(frameState.apop()); break;

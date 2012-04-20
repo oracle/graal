@@ -121,21 +121,9 @@ public class FrameStateBuilder {
         return graph.add(new FrameState(method, bci, locals, stack, stackSize, rethrowException, false));
     }
 
-    public FrameState duplicateWithoutStack(int bci) {
-        return graph.add(new FrameState(method, bci, locals, new ValueNode[0], 0, false, false));
-    }
-
-
     public FrameStateBuilder copy() {
         return new FrameStateBuilder(method, graph, Arrays.copyOf(locals, locals.length), Arrays.copyOf(stack, stack.length), stackSize, rethrowException);
     }
-
-    public FrameStateBuilder copyWithException(ValueNode exceptionObject) {
-        ValueNode[] newStack = new ValueNode[stack.length];
-        newStack[0] = exceptionObject;
-        return new FrameStateBuilder(method, graph, Arrays.copyOf(locals, locals.length), newStack, 1, true);
-    }
-
 
     public boolean isCompatibleWith(FrameStateBuilder other) {
         assert method == other.method && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
