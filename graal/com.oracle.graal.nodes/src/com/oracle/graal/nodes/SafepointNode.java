@@ -31,14 +31,8 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
 
-    /**
-     * Will be null if this safepoint is not associated with a loop end.
-     */
-    @Data private final LoopEndNode loopEnd;
-
-    public SafepointNode(LoopEndNode loopEnd) {
+    public SafepointNode() {
         super(StampFactory.illegal());
-        this.loopEnd = loopEnd;
     }
 
 
@@ -51,6 +45,9 @@ public final class SafepointNode extends FixedWithNextNode implements LIRLowerab
      * Gets the loop end (if any) associated with this safepoint.
      */
     public LoopEndNode loopEnd() {
-        return loopEnd;
+        if (next() instanceof LoopEndNode) {
+            return (LoopEndNode) next();
+        }
+        return null;
     }
 }

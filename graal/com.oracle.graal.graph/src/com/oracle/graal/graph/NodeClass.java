@@ -274,6 +274,7 @@ public class NodeClass {
                             }
                             successorNamesMap.put(offset, name);
                         } else if (field.isAnnotationPresent(Node.Data.class)) {
+                            assert !Node.class.isAssignableFrom(field.getType()) : "cannot have a node as data: " + currentClazz;
                             dataOffsets.add(offset);
                             dataTypes.add(type);
                             dataNames.add(name);
