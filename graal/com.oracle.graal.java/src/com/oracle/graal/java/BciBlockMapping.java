@@ -35,84 +35,34 @@ import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 /**
- * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow
- * graph. Note that this class serves a similar role to C1's {@code BlockListBuilder}, but makes fewer assumptions about
- * what the compiler interface provides. It builds all basic blocks for the control flow graph without requiring the
- * compiler interface to provide a bitmap of the beginning of basic blocks. It makes two linear passes; one over the
- * bytecodes to build block starts and successor lists, and one pass over the block map to build the CFG.
- *
- * Note that the CFG built by this class is <i>not</i> connected to the actual {@code BlockBegin} instances; this class
- * does, however, compute and assign the reverse postorder number of the blocks. This comment needs refinement. (MJJ)
- *
- * <H2>More Details on {@link BciBlockMapping#build}</H2>
- *
- * If the method has any exception handlers the {@linkplain #exceptionMap exception map} will be created (TBD).
- *
- * The bytecodes are then scanned linearly looking for bytecodes that contain control transfers, e.g., {@code GOTO},
- * {@code RETURN}, {@code IFGE}, and creating the corresponding entries in {@link #successorMap} and {@link #blockMap}.
- * In addition, if {@link #exceptionMap} is not null, entries are made for any bytecode that can cause an exception.
- * More TBD.
- *
- * Observe that this process finds bytecodes that terminate basic blocks, so the {@link #moveSuccessorLists} method is
- * called to reassign the successors to the {@code BlockBegin} node that actually starts the block.
- *
- * <H3>Example</H3>
- *
- * Consider the following source code:
- *
- * <pre>
- * <code>
- *     public static int test(int arg1, int arg2) {
- *         int x = 0;
- *         while (arg2 > 0) {
- *             if (arg1 > 0) {
- *                 x += 1;
- *             } else if (arg1 < 0) {
- *                 x -= 1;
- *             }
- *         }
- *         return x;
- *     }
- * </code>
- * </pre>
- *
- * This is translated by javac to the following bytecode:
- *
- * <pre>
- * <code>
- *    0:   iconst_0
- *    1:   istore_2
- *    2:   goto    22
- *    5:   iload_0
- *    6:   ifle    15
- *    9:   iinc    2, 1
- *    12:  goto    22
- *    15:  iload_0
- *    16:  ifge    22
- *    19:  iinc    2, -1
- *    22:  iload_1
- *    23:  ifgt    5
- *    26:  iload_2
- *    27:  ireturn
- *    </code>
- * </pre>
- *
- * There are seven basic blocks in this method, 0..2, 5..6, 9..12, 15..16, 19..19, 22..23 and 26..27. Therefore, before
- * the call to {@code moveSuccessorLists}, the {@code blockMap} array has {@code BlockBegin} nodes at indices 0, 5, 9,
- * 15, 19, 22 and 26. The {@code successorMap} array has entries at 2, 6, 12, 16, 23, 27 corresponding to the control
- * transfer bytecodes. The entry at index 6, for example, is a length two array of {@code BlockBegin} nodes for indices
- * 9 and 15, which are the successors for the basic block 5..6. After the call to {@code moveSuccessors}, {@code
- * successorMap} has entries at 0, 5, 9, 15, 19, 22 and 26, i.e, matching {@code blockMap}.
- * <p>
- * Next the blocks are numbered using <a href="http://en.wikipedia.org/wiki/Depth-first_search#Vertex_orderings">reverse
- * post-order</a>. For the above example this results in the numbering 2, 4, 7, 5, 6, 3, 8. Also loop header blocks are
- * detected during the traversal by detecting a repeat visit to a block that is still being processed. This causes the
- * block to be flagged as a loop header and also added to the {@link #loopBlocks} list. The {@code loopBlocks} list
- * contains the blocks at 0, 5, 9, 15, 19, 22, with 22 as the loop header. (N.B. the loop header block is added multiple
- * (4) times to this list). (Should 0 be in? It's not inside the loop).
- *
- * If the {@code computeStoresInLoops} argument to {@code build} is true, the {@code loopBlocks} list is processed to
- * mark all local variables that are stored in the blocks in the list.
+ * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph (CFG).
+ * It makes one linear passes over the bytecodes to build the CFG where it detects block headers and connects them.
+ * <br>
+ * It also creates exception dispatch blocks for exception handling. These blocks are between a bytecode that might
+ * throw an exception, and the actual exception handler entries, and are later used to create the type checks with the
+ * exception handler catch types. If a bytecode is covered by an exception handler, this bytecode ends the basic block.
+ * This guarantees that a) control flow cannot be transferred to an exception dispatch block in the middle of a block, and
+ * b) that every block has at most one exception dispatch block (which is always the last entry in the successor list).
+ * <br>
+ * If a bytecode is covered by multiple exception handlers, a chain of exception dispatch blocks is created so that
+ * multiple exception handler types can be checked. The chains are re-used if multiple bytecodes are covered by the same
+ * exception handlers.
+ * <br>
+ * Note that exception unwinds, i.e., bytecodes that can throw an exception but the exception is not handled in this method,
+ * do not end a basic block. Not modeling the exception unwind block reduces the complexity of the CFG, and there is no
+ * algorithm yet where the exception unwind block would matter.
+ * <br>
+ * The class also handles subroutines (jsr and ret bytecodes): subroutines are inlined by duplicating the subroutine blocks.
+ * This is limited to simple, structured subroutines with a maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
+ * <br>
+ * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more than one entry), a bailout is
+ * thrown. This simplifies the compiler later on since only structured loops need to be supported.
+ * <br>
+ * A data flow analysis computes the live local variables from the point of view of the interpreter. The result is used later
+ * to prune frame states, i.e., remove local variable entries that are guaranteed to be never used again (even in the case of
+ * deoptimization).
+ * <br>
+ * The algorithms and analysis in this class are conservative and do not use any assumptions or profiling information.
  */
 public final class BciBlockMapping {
 
@@ -129,7 +79,6 @@ public final class BciBlockMapping {
 
         public ArrayList<Block> successors = new ArrayList<>(2);
         public long exits;
-        public int normalSuccessors;
 
         private boolean visited;
         private boolean active;
@@ -146,6 +95,20 @@ public final class BciBlockMapping {
         public BitMap localsLiveOut;
         private BitMap localsLiveGen;
         private BitMap localsLiveKill;
+
+        public Block exceptionDispatchBlock() {
+            if (successors.size() > 0 && successors.get(successors.size() - 1) instanceof ExceptionDispatchBlock) {
+                return successors.get(successors.size() - 1);
+            }
+            return null;
+        }
+
+        public int numNormalSuccessors() {
+            if  (exceptionDispatchBlock() != null) {
+                return successors.size() - 1;
+            }
+            return successors.size();
+        }
 
         public Block copy() {
             try {
@@ -175,7 +138,9 @@ public final class BciBlockMapping {
         }
     }
 
-    public static class ExceptionBlock extends Block {
+    public static class ExceptionDispatchBlock extends Block {
+        private HashMap<RiExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = new HashMap<>();
+
         public RiExceptionHandler handler;
         public int deoptBci;
     }
@@ -185,11 +150,9 @@ public final class BciBlockMapping {
      */
     public final List<Block> blocks;
     public final RiResolvedMethod method;
-    public final BitSet canTrap;
     public boolean hasJsrBytecodes;
     public Block startBlock;
 
-    private final OptimisticOptimizations optimisticOpts;
     private final BytecodeStream stream;
     private final RiExceptionHandler[] exceptionHandlers;
     private Block[] blockMap;
@@ -199,19 +162,13 @@ public final class BciBlockMapping {
      * Creates a new BlockMap instance from bytecode of the given method .
      * @param method the compiler interface method containing the code
      */
-    public BciBlockMapping(RiResolvedMethod method, OptimisticOptimizations optimisticOpts) {
+    public BciBlockMapping(RiResolvedMethod method) {
         this.method = method;
-        this.optimisticOpts = optimisticOpts;
         exceptionHandlers = method.exceptionHandlers();
         stream = new BytecodeStream(method.code());
         this.blockMap = new Block[method.codeSize()];
-        this.canTrap = new BitSet(blockMap.length);
         this.blocks = new ArrayList<>();
         this.loopHeaders = new Block[64];
-    }
-
-    public RiExceptionHandler[] exceptionHandlers() {
-        return exceptionHandlers;
     }
 
     /**
@@ -220,7 +177,6 @@ public final class BciBlockMapping {
     public void build() {
         makeExceptionEntries();
         iterateOverBytecodes();
-        addExceptionEdges();
         if (hasJsrBytecodes) {
             if (!GraalOptions.SupportJsrBytecodes) {
                 throw new JsrNotSupportedBailout("jsr/ret parsing disabled");
@@ -237,6 +193,8 @@ public final class BciBlockMapping {
 
         startBlock = blockMap[0];
 
+        assert verify();
+
         // Discard big arrays so that they can be GCed
         blockMap = null;
         if (Debug.isLogEnabled()) {
@@ -250,6 +208,21 @@ public final class BciBlockMapping {
                 }
             });
         }
+    }
+
+    private boolean verify() {
+        for (Block block : blocks) {
+            assert blocks.get(block.blockID) == block;
+
+            for (int i = 0; i < block.successors.size(); i++) {
+                Block sux = block.successors.get(i);
+                if (sux instanceof ExceptionDispatchBlock) {
+                    assert i == block.successors.size() - 1 : "Only one exception handler allowed, and it must be last in successors list";
+                }
+            }
+        }
+
+        return true;
     }
 
     private void initializeBlockIds() {
@@ -270,7 +243,6 @@ public final class BciBlockMapping {
         // iterate over the bytecodes top to bottom.
         // mark the entrypoints of basic blocks and build lists of successors for
         // all bytecodes that end basic blocks (i.e. goto, ifs, switches, throw, jsr, returns, ret)
-        RiProfilingInfo profilingInfo = method.profilingInfo();
         Block current = null;
         stream.setBCI(0);
         while (stream.currentBC() != Bytecodes.END) {
@@ -279,7 +251,7 @@ public final class BciBlockMapping {
             if (current == null || blockMap[bci] != null) {
                 Block b = makeBlock(bci);
                 if (current != null) {
-                    setSuccessors(current.endBci, b);
+                    addSuccessor(current.endBci, b);
                 }
                 current = b;
             }
@@ -298,7 +270,10 @@ public final class BciBlockMapping {
                 }
                 case ATHROW: {
                     current = null;
-                    canTrap.set(bci);
+                    ExceptionDispatchBlock handler = handleExceptions(bci);
+                    if (handler != null) {
+                        addSuccessor(bci, handler);
+                    }
                     break;
                 }
                 case IFEQ:      // fall through
@@ -318,25 +293,24 @@ public final class BciBlockMapping {
                 case IFNULL:    // fall through
                 case IFNONNULL: {
                     current = null;
-                    setSuccessors(bci, makeBlock(stream.readBranchDest()), makeBlock(stream.nextBCI()));
+                    addSuccessor(bci, makeBlock(stream.readBranchDest()));
+                    addSuccessor(bci, makeBlock(stream.nextBCI()));
                     break;
                 }
                 case GOTO:
                 case GOTO_W: {
                     current = null;
-                    setSuccessors(bci, makeBlock(stream.readBranchDest()));
+                    addSuccessor(bci, makeBlock(stream.readBranchDest()));
                     break;
                 }
                 case TABLESWITCH: {
                     current = null;
-                    BytecodeTableSwitch sw = new BytecodeTableSwitch(stream, bci);
-                    setSuccessors(bci, makeSwitchSuccessors(sw));
+                    addSwitchSuccessors(bci, new BytecodeTableSwitch(stream, bci));
                     break;
                 }
                 case LOOKUPSWITCH: {
                     current = null;
-                    BytecodeLookupSwitch sw = new BytecodeLookupSwitch(stream, bci);
-                    setSuccessors(bci, makeSwitchSuccessors(sw));
+                    addSwitchSuccessors(bci, new BytecodeLookupSwitch(stream, bci));
                     break;
                 }
                 case JSR:
@@ -350,7 +324,7 @@ public final class BciBlockMapping {
                     current.jsrSuccessor = b1;
                     current.jsrReturnBci = stream.nextBCI();
                     current = null;
-                    setSuccessors(bci, b1);
+                    addSuccessor(bci, b1);
                     break;
                 }
                 case RET: {
@@ -363,8 +337,11 @@ public final class BciBlockMapping {
                 case INVOKESTATIC:
                 case INVOKEVIRTUAL: {
                     current = null;
-                    setSuccessors(bci, makeBlock(stream.nextBCI()));
-                    canTrap.set(bci);
+                    addSuccessor(bci, makeBlock(stream.nextBCI()));
+                    ExceptionDispatchBlock handler = handleExceptions(bci);
+                    if (handler != null) {
+                        addSuccessor(bci, handler);
+                    }
                     break;
                 }
                 case IASTORE:
@@ -385,10 +362,11 @@ public final class BciBlockMapping {
                 case SALOAD:
                 case PUTFIELD:
                 case GETFIELD: {
-                    if (GraalOptions.AllowExplicitExceptionChecks) {
-                        if (!optimisticOpts.useExceptionProbability() || profilingInfo.getExceptionSeen(bci) != RiExceptionSeen.FALSE) {
-                            canTrap.set(bci);
-                        }
+                    ExceptionDispatchBlock handler = handleExceptions(bci);
+                    if (handler != null) {
+                        current = null;
+                        addSuccessor(bci, makeBlock(stream.nextBCI()));
+                        addSuccessor(bci, handler);
                     }
                 }
             }
@@ -411,12 +389,10 @@ public final class BciBlockMapping {
             newBlock.startBci = startBci;
             newBlock.endBci = oldBlock.endBci;
             newBlock.successors.addAll(oldBlock.successors);
-            newBlock.normalSuccessors = oldBlock.normalSuccessors;
 
             oldBlock.endBci = startBci - 1;
             oldBlock.successors.clear();
             oldBlock.successors.add(newBlock);
-            oldBlock.normalSuccessors = 1;
 
             for (int i = startBci; i <= newBlock.endBci; i++) {
                 blockMap[i] = newBlock;
@@ -428,26 +404,19 @@ public final class BciBlockMapping {
         }
     }
 
-    private Block[] makeSwitchSuccessors(BytecodeSwitch tswitch) {
-        int max = tswitch.numberOfCases();
-        Block[] successors = new Block[max + 1];
-        for (int i = 0; i < max; i++) {
-            successors[i] = makeBlock(tswitch.targetAt(i));
+    private void addSwitchSuccessors(int predBci, BytecodeSwitch bswitch) {
+        for (int i = 0; i < bswitch.numberOfCases(); i++) {
+            addSuccessor(predBci, makeBlock(bswitch.targetAt(i)));
         }
-        successors[max] = makeBlock(tswitch.defaultTarget());
-        return successors;
+        addSuccessor(predBci, makeBlock(bswitch.defaultTarget()));
     }
 
-    private void setSuccessors(int predBci, Block... successors) {
+    private void addSuccessor(int predBci, Block sux) {
         Block predecessor = blockMap[predBci];
-        assert predecessor.successors.size() == 0;
-        for (Block sux : successors) {
-            if (sux.isExceptionEntry) {
-                throw new CiBailout("Exception handler can be reached by both normal and exceptional control flow");
-            }
-            predecessor.successors.add(sux);
+        if (sux.isExceptionEntry) {
+            throw new CiBailout("Exception handler can be reached by both normal and exceptional control flow");
         }
-        predecessor.normalSuccessors = successors.length;
+        predecessor.successors.add(sux);
     }
 
     private final HashSet<Block> jsrVisited = new HashSet<>();
@@ -505,50 +474,38 @@ public final class BciBlockMapping {
         }
     }
 
-    private HashMap<RiExceptionHandler, ExceptionBlock> exceptionDispatch = new HashMap<>();
 
-    private Block makeExceptionDispatch(List<RiExceptionHandler> handlers, int index, int bci) {
-        RiExceptionHandler handler = handlers.get(index);
-        if (handler.isCatchAll()) {
-            return blockMap[handler.handlerBCI()];
-        }
-        ExceptionBlock block = exceptionDispatch.get(handler);
-        if (block == null) {
-            block = new ExceptionBlock();
-            block.startBci = -1;
-            block.endBci = -1;
-            block.deoptBci = bci;
-            block.handler = handler;
-            block.successors.add(blockMap[handler.handlerBCI()]);
-            if (index < handlers.size() - 1) {
-                block.successors.add(makeExceptionDispatch(handlers, index + 1, bci));
-            }
-            exceptionDispatch.put(handler, block);
-        }
-        return block;
-    }
+    private HashMap<RiExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch = new HashMap<>();
 
-    private void addExceptionEdges() {
-        for (int bci = canTrap.nextSetBit(0); bci >= 0; bci = canTrap.nextSetBit(bci + 1)) {
-            Block block = blockMap[bci];
+    private ExceptionDispatchBlock handleExceptions(int bci) {
+        ExceptionDispatchBlock lastHandler = null;
 
-            ArrayList<RiExceptionHandler> handlers = null;
-            for (RiExceptionHandler h : this.exceptionHandlers) {
-                if (h.startBCI() <= bci && bci < h.endBCI()) {
-                    if (handlers == null) {
-                        handlers = new ArrayList<>();
-                    }
-                    handlers.add(h);
-                    if (h.isCatchAll()) {
-                        break;
-                    }
+        for (int i = exceptionHandlers.length - 1; i >= 0; i--) {
+            RiExceptionHandler h = exceptionHandlers[i];
+            if (h.startBCI() <= bci && bci < h.endBCI()) {
+                if (h.isCatchAll()) {
+                    // Discard all information about succeeding exception handlers, since they can never be reached.
+                    lastHandler = null;
                 }
-            }
-            if (handlers != null) {
-                Block dispatch = makeExceptionDispatch(handlers, 0, bci);
-                block.successors.add(dispatch);
+
+                HashMap<RiExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = lastHandler != null ? lastHandler.exceptionDispatch : initialExceptionDispatch;
+                ExceptionDispatchBlock curHandler = exceptionDispatch.get(h);
+                if (curHandler == null) {
+                    curHandler = new ExceptionDispatchBlock();
+                    curHandler.startBci = -1;
+                    curHandler.endBci = -1;
+                    curHandler.deoptBci = bci;
+                    curHandler.handler = h;
+                    curHandler.successors.add(blockMap[h.handlerBCI()]);
+                    if (lastHandler != null) {
+                        curHandler.successors.add(lastHandler);
+                    }
+                    exceptionDispatch.put(h, curHandler);
+                }
+                lastHandler = curHandler;
             }
         }
+        return lastHandler;
     }
 
     private boolean loopChanges;
@@ -774,15 +731,6 @@ public final class BciBlockMapping {
                     block.localsLiveIn.setFrom(block.localsLiveOut);
                     block.localsLiveIn.setDifference(block.localsLiveKill);
                     block.localsLiveIn.setUnion(block.localsLiveGen);
-
-                    for (Block sux : block.successors) {
-                        if (sux instanceof ExceptionBlock) {
-                            // Exception handler blocks can be reached from anywhere within the block jumping to them,
-                            // so we conservatively assume local variables require by the exception handler are live both
-                            // at the beginning and end of the block.
-                            blockChanged = block.localsLiveIn.setUnionWithResult(sux.localsLiveIn) || blockChanged;
-                        }
-                    }
                     Debug.log("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.blockID, block.startBci, block.endBci, block.localsLiveIn, block.localsLiveOut, block.localsLiveGen, block.localsLiveKill);
                 }
                 changed |= blockChanged;

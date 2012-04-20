@@ -97,6 +97,7 @@ public abstract class LIRGeneratorTool {
     public abstract void visitMerge(MergeNode i);
     public abstract void visitEndNode(EndNode i);
     public abstract void visitLoopEnd(LoopEndNode i);
+    public abstract void visitSafepointNode(SafepointNode i);
 
     public abstract void visitCompareAndSwap(CompareAndSwapNode i);
 
