@@ -45,8 +45,6 @@ import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.Type;
-import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 
@@ -200,20 +198,6 @@ public class HotSpotAMD64Backend extends Backend {
 
         boolean frameOmitted = tasm.frameContext == null;
         if (!frameOmitted) {
-            CiRegister thread = r15;
-            CiRegister exceptionOop = regConfig.getCallingConventionRegisters(Type.RuntimeCall, RegisterFlag.CPU)[0];
-            Label unwind = new Label();
-            asm.bind(unwind);
-            tasm.recordMark(MARK_UNWIND_ENTRY);
-            CiAddress exceptionOopField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionOopOffset);
-            CiAddress exceptionPcField = new CiAddress(CiKind.Object, thread.asValue(), config.threadExceptionPcOffset);
-            asm.movq(exceptionOop, exceptionOopField);
-            asm.movslq(exceptionOopField, 0);
-            asm.movslq(exceptionPcField, 0);
-
-            AMD64Call.directCall(tasm, asm, config.unwindExceptionStub, null);
-            AMD64Call.shouldNotReachHere(tasm, asm);
-
             tasm.recordMark(MARK_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(tasm, asm, config.handleExceptionStub, null);
             AMD64Call.shouldNotReachHere(tasm, asm);
