@@ -98,7 +98,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long accessFieldStub;
     public long resolveStaticCallStub;
     public long inlineCacheMissStub;
-    public long unwindExceptionStub;
     public long handleExceptionStub;
     public long handleDeoptStub;
     public long monitorEnterStub;
