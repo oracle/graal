@@ -68,4 +68,9 @@ public class AMD64DeoptimizationStub extends AMD64Code {
         AMD64Call.directCall(tasm, masm, CiRuntimeCall.Deoptimize, info);
         AMD64Call.shouldNotReachHere(tasm, masm);
     }
+
+    @Override
+    public String description() {
+        return "deopt stub[reason=" + reason + ", action=" + action + "]";
+    }
 }

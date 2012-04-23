@@ -81,7 +81,7 @@ public class AMD64XirOp extends LIRXirInstruction {
         }
 
         if (snippet.template.slowPath != null) {
-            tasm.slowPaths.add(new SlowPath(labels));
+            tasm.stubs.add(new SlowPath(labels));
         }
     }
 
@@ -96,6 +96,11 @@ public class AMD64XirOp extends LIRXirInstruction {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             emitXirInstructions(tasm, masm, snippet.template.slowPath, labels, getOperands(), snippet.marks);
             masm.nop();
+        }
+
+        @Override
+        public String description() {
+            return "slow path for " + snippet.template.name;
         }
     }
 

@@ -500,7 +500,7 @@ public enum AMD64Arithmetic {
 
     private static void emitConvertFixup(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiValue x) {
         ConvertSlowPath slowPath = new ConvertSlowPath(result, x);
-        tasm.slowPaths.add(slowPath);
+        tasm.stubs.add(slowPath);
         switch (result.kind) {
             case Int:  masm.cmpl(asIntReg(result),  Integer.MIN_VALUE); break;
             case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(CiConstant.forLong(java.lang.Long.MIN_VALUE))); break;
@@ -546,6 +546,11 @@ public enum AMD64Arithmetic {
             masm.bind(nan);
             masm.xorptr(asRegister(result), asRegister(result));
             masm.jmp(continuation);
+        }
+
+        @Override
+        public String description() {
+            return "convert " + x + " to " + result;
         }
     }
 
