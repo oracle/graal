@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 public final class LoopEndNode extends EndNode {
 
     @Input(notDataflow = true) private LoopBeginNode loopBegin;
+    @Data private boolean canSafepoint;
     @Data private int endIndex;
 
     public LoopEndNode(LoopBeginNode begin) {
@@ -38,6 +39,7 @@ public final class LoopEndNode extends EndNode {
         assert idx >= 0;
         this.endIndex = idx;
         this.loopBegin = begin;
+        this.canSafepoint = true;
     }
 
     @Override
@@ -52,6 +54,18 @@ public final class LoopEndNode extends EndNode {
     public void setLoopBegin(LoopBeginNode x) {
         updateUsages(this.loopBegin, x);
         this.loopBegin = x;
+    }
+
+
+    public void disableSafepoint() {
+        this.canSafepoint = false;
+    }
+
+    public boolean canSafepoint() {
+        if (!canSafepoint) {
+            return canSafepoint;
+        }
+        return canSafepoint;
     }
 
     @Override

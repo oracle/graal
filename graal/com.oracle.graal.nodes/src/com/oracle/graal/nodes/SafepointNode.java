@@ -40,14 +40,4 @@ public final class SafepointNode extends FixedWithNextNode implements LIRLowerab
     public void generate(LIRGeneratorTool gen) {
         gen.visitSafepointNode(this);
     }
-
-    /**
-     * Gets the loop end (if any) associated with this safepoint.
-     */
-    public LoopEndNode loopEnd() {
-        if (next() instanceof LoopEndNode) {
-            return (LoopEndNode) next();
-        }
-        return null;
-    }
 }
