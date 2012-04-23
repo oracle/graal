@@ -30,14 +30,17 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 
 /**
- * Implementation of RiCompiledMethod for HotSpot. Stores a reference to the nmethod which contains the compiled code.
+ * Implementation of RiCompiledMethod for HotSpot.
+ * Stores a reference to the nmethod which contains the compiled code.
+ * The nmethod also stores a weak reference to the HotSpotCompiledMethod
+ * instance which is necessary to keep the nmethod from being unloaded.
  */
 public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledMethod {
 
     private static final long serialVersionUID = 156632908220561612L;
 
     private final RiResolvedMethod method;
-    public long nmethod;
+    private long nmethod;
 
     public HotSpotCompiledMethod(Compiler compiler, RiResolvedMethod method) {
         super(compiler);

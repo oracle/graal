@@ -100,8 +100,8 @@ public final class HotSpotTargetMethod extends CompilerObject {
         return result;
     }
 
-    public static Object installStub(Compiler compiler, CiTargetMethod targetMethod, String name) {
-        return compiler.getVMEntries().installStub(new HotSpotTargetMethod(compiler, targetMethod, name));
+    public static Object installStub(Compiler compiler, CiTargetMethod targetMethod, String name, HotSpotCodeInfo info) {
+        return compiler.getVMEntries().installStub(new HotSpotTargetMethod(compiler, targetMethod, name), info);
     }
 
 }

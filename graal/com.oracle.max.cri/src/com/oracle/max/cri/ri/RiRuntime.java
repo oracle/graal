@@ -61,25 +61,15 @@ public interface RiRuntime {
     int codeOffset();
 
     /**
-     * Returns the disassembly of the given code bytes. Used for debugging purposes only.
+     * Returns a disassembly of the given installed code.
      *
-     * @param code the code bytes that should be disassembled
-     * @param address an address at which the bytes are located. This can be used for an address prefix per line of disassembly.
-     * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
+     * @param code the code that should be disassembled
+     * @return a disassembly. This will be of length 0 if the runtime does not support disassembling.
      */
-    String disassemble(byte[] code, long address);
-
-    /**
-     * Returns the disassembly of the given code bytes. Used for debugging purposes only.
-     *
-     * @param targetMethod the {@link CiTargetMethod} containing the code bytes that should be disassembled
-     * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
-     */
-    String disassemble(CiTargetMethod targetMethod);
+    String disassemble(RiCodeInfo code);
 
     /**
      * Returns the disassembly of the given method in a {@code javap}-like format.
-     * Used for debugging purposes only.
      *
      * @param method the method that should be disassembled
      * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
@@ -92,9 +82,10 @@ public interface RiRuntime {
      *
      * @param targetMethod the target method representing the code of the compiler stub
      * @param name the name of the stub, used for debugging purposes only
+     * @param info the object into which details of the installed code will be written (ignored if null)
      * @return the identification object
      */
-    Object registerCompilerStub(CiTargetMethod targetMethod, String name);
+    Object registerCompilerStub(CiTargetMethod targetMethod, String name, RiCodeInfo info);
 
     /**
      * Returns the RiType object representing the base type for the given kind.
@@ -185,8 +176,9 @@ public interface RiRuntime {
      *
      * @param method a method whose executable code is being modified
      * @param code the code to be executed when {@code method} is called
+     * @param info the object into which details of the installed code will be written (ignored if null)
      */
-    void installMethod(RiResolvedMethod method, CiTargetMethod code);
+    void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo info);
 
     /**
      * Adds the given machine code as an implementation of the given method without making it the default implementation.

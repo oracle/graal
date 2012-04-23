@@ -46,7 +46,7 @@ import com.oracle.graal.nodes.*;
 public class CFGPrinterObserver implements DebugDumpHandler {
 
     private CFGPrinter cfgPrinter;
-    private Graph curGraph;
+    private RiResolvedMethod curMethod;
 
     @Override
     public void dump(Object object, String message) {
@@ -55,6 +55,16 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } catch (Throwable ex) {
             TTY.println("CFGPrinter: Exception during output of " + message + ": " + ex);
         }
+    }
+
+    private static RiResolvedMethod lookupMethod() {
+        RiResolvedMethod method = Debug.contextLookup(RiResolvedMethod.class);
+        if (method != null) {
+            return method;
+        }
+        StructuredGraph graph = Debug.contextLookup(StructuredGraph.class);
+        assert graph != null && graph.method() != null : "cannot find method context for CFG dump";
+        return graph.method();
     }
 
     public void dumpSandboxed(Object object, String message) {
@@ -74,11 +84,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             TTY.println("CFGPrinter: Output to file %s", file);
         }
 
-        StructuredGraph newGraph = Debug.contextLookup(StructuredGraph.class);
-        if (newGraph != curGraph) {
-            cfgPrinter.printCompilation(newGraph.method());
-            TTY.println("CFGPrinter: Dumping method %s", newGraph.method());
-            curGraph = newGraph;
+        RiResolvedMethod newMethod = lookupMethod();
+
+        if (newMethod != curMethod) {
+            cfgPrinter.printCompilation(newMethod);
+            TTY.println("CFGPrinter: Dumping method %s", newMethod);
+            curMethod = newMethod;
         }
 
         cfgPrinter.target = compiler.target;
@@ -109,8 +120,25 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
 
         } else if (object instanceof CiTargetMethod) {
-            cfgPrinter.printMachineCode(runtime.disassemble((CiTargetMethod) object), message);
-
+            final CiTargetMethod tm = (CiTargetMethod) object;
+            final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
+            RiCodeInfo info = new RiCodeInfo() {
+                public CiTargetMethod targetMethod() {
+                    return tm;
+                }
+                public long start() {
+                    return 0L;
+                }
+                public RiResolvedMethod method() {
+                    return null;
+                }
+                public byte[] code() {
+                    return code;
+                }
+            };
+            cfgPrinter.printMachineCode(runtime.disassemble(info), message);
+        } else if (object instanceof RiCodeInfo) {
+            cfgPrinter.printMachineCode(runtime.disassemble((RiCodeInfo) object), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 

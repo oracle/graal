@@ -128,7 +128,8 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dnodes %5dB", id, "", "", "", 0, (result != null ? result.targetCodeSize() : -1)));
                 }
             }
-            compiler.getRuntime().installMethod(method, result);
+
+            installMethod(result);
         } catch (CiBailout bailout) {
             Debug.metric("Bailouts").increment();
             if (GraalOptions.ExitVMOnBailout) {
@@ -146,6 +147,20 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
         }
         stats.finish(method);
+    }
+
+    private void installMethod(final CiTargetMethod tm) {
+        Debug.scope("CodeInstall", new Object[] {compiler.getCompiler(), method}, new Runnable() {
+            @Override
+            public void run() {
+                final HotSpotCodeInfo info = Debug.isDumpEnabled() ? new HotSpotCodeInfo(compiler, tm, method) : null;
+                compiler.getRuntime().installMethod(method, tm, info);
+                if (info != null) {
+                    Debug.dump(info, "After code installation");
+                }
+            }
+
+        });
     }
 
     @Override

@@ -82,8 +82,38 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public String disassemble(byte[] code, long address) {
-        return compiler.getVMEntries().disassembleNative(code, address);
+    public String disassemble(RiCodeInfo info) {
+        byte[] code = info.code();
+        CiTarget target = compiler.getTarget();
+        HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
+        CiTargetMethod tm = info.targetMethod();
+        if (tm != null) {
+            HexCodeFile.addAnnotations(hcf, tm.annotations());
+            addExceptionHandlersComment(tm, hcf);
+            CiRegister fp = regConfig.getFrameRegister();
+            RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
+            for (Safepoint safepoint : tm.safepoints) {
+                if (safepoint instanceof Call) {
+                    Call call = (Call) safepoint;
+                    if (call.debugInfo != null) {
+                        hcf.addComment(call.pcOffset + call.size, CiUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
+                    }
+                    addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call) + "}");
+                } else {
+                    if (safepoint.debugInfo != null) {
+                        hcf.addComment(safepoint.pcOffset, CiUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
+                    }
+                    addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
+                }
+            }
+            for (DataPatch site : tm.dataReferences) {
+                hcf.addOperandComment(site.pcOffset, "{" + site.constant + "}");
+            }
+            for (Mark mark : tm.marks) {
+                hcf.addComment(mark.pcOffset, getMarkName(mark));
+            }
+        }
+        return hcf.toEmbeddedString();
     }
 
     /**
@@ -122,38 +152,6 @@ public class HotSpotRuntime implements GraalRuntime {
             }
         }
         return "MARK:" + mark.id;
-    }
-
-    @Override
-    public String disassemble(CiTargetMethod tm) {
-        byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
-        CiTarget target = compiler.getTarget();
-        HexCodeFile hcf = new HexCodeFile(code, 0L, target.arch.name, target.wordSize * 8);
-        HexCodeFile.addAnnotations(hcf, tm.annotations());
-        addExceptionHandlersComment(tm, hcf);
-        CiRegister fp = regConfig.getFrameRegister();
-        RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
-        for (Safepoint safepoint : tm.safepoints) {
-            if (safepoint instanceof Call) {
-                Call call = (Call) safepoint;
-                if (call.debugInfo != null) {
-                    hcf.addComment(call.pcOffset + call.size, CiUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
-                }
-                addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call) + "}");
-            } else {
-                if (safepoint.debugInfo != null) {
-                    hcf.addComment(safepoint.pcOffset, CiUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
-                }
-                addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
-            }
-        }
-        for (DataPatch site : tm.dataReferences) {
-            hcf.addOperandComment(site.pcOffset, "{" + site.constant + "}");
-        }
-        for (Mark mark : tm.marks) {
-            hcf.addComment(mark.pcOffset, getMarkName(mark));
-        }
-        return hcf.toEmbeddedString();
     }
 
     private static void addExceptionHandlersComment(CiTargetMethod tm, HexCodeFile hcf) {
@@ -198,8 +196,8 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public Object registerCompilerStub(CiTargetMethod targetMethod, String name) {
-        return HotSpotTargetMethod.installStub(compiler, targetMethod, name);
+    public Object registerCompilerStub(CiTargetMethod targetMethod, String name, RiCodeInfo info) {
+        return HotSpotTargetMethod.installStub(compiler, targetMethod, name, (HotSpotCodeInfo) info);
     }
 
     @Override
@@ -481,13 +479,13 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public void installMethod(RiResolvedMethod method, CiTargetMethod code) {
-        compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true);
+    public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo info) {
+        compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, (HotSpotCodeInfo) info);
     }
 
     @Override
     public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code) {
-        return compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false);
+        return compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false, null);
     }
 
     @Override
