@@ -186,14 +186,6 @@ public final class GraphBuilderPhase extends Phase {
             currentGraph.removeFixed(n);
         }
 
-        // Add safepoints to loop ends
-        if (GraalOptions.GenLoopSafepoints) {
-            for (LoopEndNode loopEnd : currentGraph.getNodes(LoopEndNode.class)) {
-                SafepointNode safepoint = currentGraph.add(new SafepointNode());
-                currentGraph.addBeforeFixed(loopEnd, safepoint);
-            }
-        }
-
         // remove dead FrameStates
         for (Node n : currentGraph.getNodes(FrameState.class)) {
             if (n.usages().size() == 0 && n.predecessor() == null) {
