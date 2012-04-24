@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.util.*;
  */
 public final class NewInstanceNode extends FixedWithNextNode implements EscapeAnalyzable, LIRLowerable, Node.IterableNodeType {
 
-    private final RiResolvedType instanceClass;
+    @Data private final RiResolvedType instanceClass;
 
     /**
      * Constructs a NewInstanceNode.

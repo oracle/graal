@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class ArithmeticNode extends BinaryNode {
 
-    private final boolean isStrictFP;
+    @Data private final boolean isStrictFP;
 
     /**
      * Creates a new arithmetic operation.
