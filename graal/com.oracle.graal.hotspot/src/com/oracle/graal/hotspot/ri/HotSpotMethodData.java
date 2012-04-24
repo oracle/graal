@@ -346,7 +346,7 @@ public final class HotSpotMethodData extends CompilerObject {
                     Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.graalMirrorKlassOffset);
                     if (graalMirror == null) {
                         Class<?> javaClass = (Class<?>) unsafe.getObject(receiverKlassOop, (long) config.classMirrorOffset);
-                        graalMirror = CompilerImpl.getInstance().getVMEntries().getType(javaClass);
+                        graalMirror = CompilerImpl.getInstance().getCompilerToVM().getType(javaClass);
                         assert graalMirror != null : "must not return null";
                     }
                     sparseTypes[entries] = (RiResolvedType) graalMirror;

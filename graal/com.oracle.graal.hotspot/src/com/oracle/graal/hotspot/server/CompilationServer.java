@@ -88,11 +88,11 @@ public class CompilationServer implements Runnable {
 
                 ReplacingStreams streams = new ReplacingStreams(socket.getOutputStream(), socket.getInputStream());
 
-                // get the VMEntries proxy from the client
-                CompilerToVM entries = (CompilerToVM) streams.getInvocation().waitForResult(false);
+                // get the CompilerToVM proxy from the client
+                CompilerToVM toVM = (CompilerToVM) streams.getInvocation().waitForResult(false);
 
                 // return the initialized compiler to the client
-                Compiler compiler = CompilerImpl.initializeServer(entries);
+                Compiler compiler = CompilerImpl.initializeServer(toVM);
                 compiler.getCompiler();
                 streams.getInvocation().sendResult(compiler);
 

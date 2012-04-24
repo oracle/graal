@@ -882,7 +882,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(arrayType));
         } else {
             assert arrayType == null;
-            RiType primitiveArrayType = compiler.getVMEntries().getPrimitiveArrayType(elementKind);
+            RiType primitiveArrayType = compiler.getCompilerToVM().getPrimitiveArrayType(elementKind);
             return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(primitiveArrayType));
         }
     }

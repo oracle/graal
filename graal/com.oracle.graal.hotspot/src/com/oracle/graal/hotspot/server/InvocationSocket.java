@@ -47,7 +47,7 @@ public class InvocationSocket {
         cachedMethodNames.add("name");
         cachedMethodNames.add("kind");
         cachedMethodNames.add("isResolved");
-        cachedMethodNames.add("getVMEntries");
+        cachedMethodNames.add("getCompilerToVM");
         cachedMethodNames.add("exactType");
         cachedMethodNames.add("isInitialized");
         forbiddenMethodNames.add("javaClass");
@@ -84,10 +84,8 @@ public class InvocationSocket {
      */
     private static class Invocation implements Serializable {
 
-        /**
-         * 
-         */
         private static final long serialVersionUID = -799162779226626066L;
+
         public Object receiver;
         public String methodName;
         public Object[] args;
@@ -105,10 +103,8 @@ public class InvocationSocket {
      */
     private static class Result implements Serializable {
 
-        /**
-         * 
-         */
         private static final long serialVersionUID = -7496058356272415814L;
+
         public Object result;
 
         public Result(Object result) {

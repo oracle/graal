@@ -27,7 +27,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 /**
- * Scoped logging class used to display the call hierarchy of VMEntries/VMExits calls.
+ * Scoped logging class used to display the call hierarchy of VMToCompiler/CompilerToVM calls.
  */
 public class Logger {
 

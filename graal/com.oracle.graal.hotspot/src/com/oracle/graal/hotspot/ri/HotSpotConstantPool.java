@@ -30,10 +30,9 @@ import com.oracle.graal.hotspot.Compiler;
  * Implementation of RiConstantPool for HotSpot.
  */
 public class HotSpotConstantPool extends CompilerObject implements RiConstantPool {
-    /**
-     * 
-     */
+
     private static final long serialVersionUID = -5443206401485234850L;
+
     private final HotSpotTypeResolvedImpl type;
 
     public HotSpotConstantPool(Compiler compiler, HotSpotTypeResolvedImpl type) {
@@ -43,7 +42,7 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object constant = compiler.getVMEntries().RiConstantPool_lookupConstant(type, cpi);
+        Object constant = compiler.getCompilerToVM().RiConstantPool_lookupConstant(type, cpi);
         return constant;
     }
 
@@ -54,21 +53,21 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
 
     @Override
     public RiMethod lookupMethod(int cpi, int byteCode) {
-        return compiler.getVMEntries().RiConstantPool_lookupMethod(type, cpi, (byte) byteCode);
+        return compiler.getCompilerToVM().RiConstantPool_lookupMethod(type, cpi, (byte) byteCode);
     }
 
     @Override
     public RiType lookupType(int cpi, int opcode) {
-        return compiler.getVMEntries().RiConstantPool_lookupType(type, cpi);
+        return compiler.getCompilerToVM().RiConstantPool_lookupType(type, cpi);
     }
 
     @Override
     public RiField lookupField(int cpi, int opcode) {
-        return compiler.getVMEntries().RiConstantPool_lookupField(type, cpi, (byte) opcode);
+        return compiler.getCompilerToVM().RiConstantPool_lookupField(type, cpi, (byte) opcode);
     }
 
     @Override
     public void loadReferencedType(int cpi, int bytecode) {
-        compiler.getVMEntries().RiConstantPool_loadReferencedType(type, cpi, (byte) bytecode);
+        compiler.getCompilerToVM().RiConstantPool_loadReferencedType(type, cpi, (byte) bytecode);
     }
 }

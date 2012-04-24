@@ -177,22 +177,22 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public String disassemble(RiResolvedMethod method) {
-        return compiler.getVMEntries().disassembleJava((HotSpotMethodResolved) method);
+        return compiler.getCompilerToVM().disassembleJava((HotSpotMethodResolved) method);
     }
 
     @Override
     public RiResolvedType asRiType(CiKind kind) {
-        return (RiResolvedType) compiler.getVMEntries().getType(kind.toJavaClass());
+        return (RiResolvedType) compiler.getCompilerToVM().getType(kind.toJavaClass());
     }
 
     @Override
     public RiResolvedType getTypeOf(CiConstant constant) {
-        return (RiResolvedType) compiler.getVMEntries().getRiType(constant);
+        return (RiResolvedType) compiler.getCompilerToVM().getRiType(constant);
     }
 
     @Override
     public boolean isExceptionType(RiResolvedType type) {
-        return type.isSubtypeOf((RiResolvedType) compiler.getVMEntries().getType(Throwable.class));
+        return type.isSubtypeOf((RiResolvedType) compiler.getCompilerToVM().getType(Throwable.class));
     }
 
     @Override
@@ -219,7 +219,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public boolean areConstantObjectsEqual(CiConstant x, CiConstant y) {
-        return compiler.getVMEntries().compareConstantObjects(x, y);
+        return compiler.getCompilerToVM().compareConstantObjects(x, y);
     }
 
     @Override
@@ -243,7 +243,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public int getArrayLength(CiConstant array) {
-        return compiler.getVMEntries().getArrayLength(array);
+        return compiler.getCompilerToVM().getArrayLength(array);
     }
 
     @Override
@@ -463,7 +463,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     public RiResolvedType getType(Class<?> clazz) {
-        return (RiResolvedType) compiler.getVMEntries().getType(clazz);
+        return (RiResolvedType) compiler.getCompilerToVM().getType(clazz);
     }
 
     public Object asCallTarget(Object target) {
@@ -471,21 +471,21 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     public long getMaxCallTargetOffset(CiRuntimeCall rtcall) {
-        return compiler.getVMEntries().getMaxCallTargetOffset(rtcall);
+        return compiler.getCompilerToVM().getMaxCallTargetOffset(rtcall);
     }
 
     public RiResolvedMethod getRiMethod(Method reflectionMethod) {
-        return (RiResolvedMethod) compiler.getVMEntries().getRiMethod(reflectionMethod);
+        return (RiResolvedMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
     }
 
     @Override
     public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo info) {
-        compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, (HotSpotCodeInfo) info);
+        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, (HotSpotCodeInfo) info);
     }
 
     @Override
     public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code) {
-        return compiler.getVMEntries().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false, null);
+        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false, null);
     }
 
     @Override
@@ -503,7 +503,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public long[] getDeoptedLeafGraphIds() {
-        return compiler.getVMEntries().getDeoptedLeafGraphIds();
+        return compiler.getCompilerToVM().getDeoptedLeafGraphIds();
     }
 
     @Override
