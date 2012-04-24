@@ -22,28 +22,26 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import java.util.*;
-
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ri.*;
 
 
 public class VirtualObjectNode extends ValueNode implements LIRLowerable {
 
-    @Data private RiType type;
-    private EscapeField[] fields;
-    private int fieldsCount;
+    @Data private RiResolvedType type;
+    @Data private EscapeField[] fields;
+    @Data private int fieldsCount;
 
-    public VirtualObjectNode(RiType type, EscapeField[] fields) {
+    public VirtualObjectNode(RiResolvedType type, EscapeField[] fields) {
         super(StampFactory.illegal());
         this.type = type;
         this.fields = fields;
         this.fieldsCount = fields.length;
     }
 
-    public VirtualObjectNode(RiType type, int fieldCount) {
+    public VirtualObjectNode(RiResolvedType type, int fieldCount) {
         super(StampFactory.illegal());
         this.type = type;
         this.fieldsCount = fieldCount;
@@ -60,13 +58,6 @@ public class VirtualObjectNode extends ValueNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool gen) {
         // nothing to do...
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("type", type);
-        return properties;
     }
 
     @Override
