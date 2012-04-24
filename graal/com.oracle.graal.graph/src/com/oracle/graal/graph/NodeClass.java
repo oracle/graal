@@ -561,11 +561,22 @@ public class NodeClass {
                     value = unsafe.getInt(node, dataOffsets[i]);
                 } else if (type == Boolean.TYPE) {
                     value = unsafe.getBoolean(node, dataOffsets[i]);
+                } else if (type == Double.TYPE) {
+                    value = String.format(Locale.ENGLISH, "%7.5f", unsafe.getDouble(node, dataOffsets[i]));
                 } else {
                     assert false;
                 }
             } else {
                 value = unsafe.getObject(node, dataOffsets[i]);
+                if (type.isArray()) {
+                    if (!type.getComponentType().isPrimitive()) {
+                        value = Arrays.toString((Object[]) value);
+                    } else if (type.getComponentType() == Integer.TYPE) {
+                        value = Arrays.toString((int[]) value);
+                    } else if (type.getComponentType() == Double.TYPE) {
+                        value = Arrays.toString((double[]) value);
+                    }
+                }
             }
             properties.put("data." + dataNames[i], value);
         }

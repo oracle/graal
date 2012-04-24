@@ -34,10 +34,8 @@ import com.oracle.max.cri.ri.*;
  */
 public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpotTypeResolved {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 3481514353553840471L;
+
     private Class javaMirror;
     private String simpleName;
     private int accessFlags;
