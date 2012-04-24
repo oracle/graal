@@ -93,7 +93,7 @@ public class MethodFilter {
         }
     }
 
-    private static String createGlobString(String pattern) {
+    static String createGlobString(String pattern) {
         return pattern.replace("\\", "\\\\").replace(".", "\\.").replace('?', '.').replace("*", ".*").replace("[", "\\[").replace("]", "\\]");
     }
 
