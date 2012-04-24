@@ -40,7 +40,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     @Data private final RiType returnType;
     @Data private RiResolvedMethod targetMethod;
     @Data private InvokeKind invokeKind;
-    private final Stamp returnStamp;
 
     /**
      * @param arguments
@@ -50,12 +49,6 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         this.invokeKind = invokeKind;
         this.returnType = returnType;
         this.targetMethod = targetMethod;
-        CiKind returnKind = targetMethod.signature().returnKind(false);
-        if (returnKind == CiKind.Object && returnType instanceof RiResolvedType) {
-            returnStamp = StampFactory.declared((RiResolvedType) returnType);
-        } else {
-            returnStamp = StampFactory.forKind(returnKind);
-        }
     }
 
     @Override
@@ -146,6 +139,11 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     public Stamp returnStamp() {
-        return returnStamp;
+        CiKind returnKind = targetMethod.signature().returnKind(false);
+        if (returnKind == CiKind.Object && returnType instanceof RiResolvedType) {
+            return StampFactory.declared((RiResolvedType) returnType);
+        } else {
+            return StampFactory.forKind(returnKind);
+        }
     }
 }
