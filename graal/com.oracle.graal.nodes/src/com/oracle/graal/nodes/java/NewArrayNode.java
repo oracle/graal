@@ -83,13 +83,6 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
         tool.addScalar(length).constantBound(Condition.GE, CiConstant.INT_0);
     }
 
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("exactType", exactType());
-        return properties;
-    }
-
     public EscapeOp getEscapeOp() {
         return ESCAPE;
     }

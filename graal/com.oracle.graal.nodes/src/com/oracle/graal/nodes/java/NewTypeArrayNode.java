@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class NewTypeArrayNode extends NewArrayNode implements LIRLowerable {
 
-    private final RiResolvedType elementType;
+    @Data private final RiResolvedType elementType;
 
     public NewTypeArrayNode(ValueNode length, RiResolvedType elementType) {
         super(StampFactory.exactNonNull(elementType.arrayOf()), length);
