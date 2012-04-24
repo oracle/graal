@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,7 +36,7 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable {
     }
 
     public ReadHubNode(ValueNode object) {
-        super(StampFactory.forKind(CiKind.Object));
+        super(StampFactory.objectNonNull());
         this.object = object;
     }
 
