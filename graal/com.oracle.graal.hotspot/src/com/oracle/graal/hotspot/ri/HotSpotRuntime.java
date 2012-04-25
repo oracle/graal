@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.target.*;
@@ -499,11 +500,6 @@ public class HotSpotRuntime implements GraalRuntime {
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, OptimisticOptimizations.ALL);
-    }
-
-    @Override
-    public long[] getDeoptedLeafGraphIds() {
-        return compiler.getCompilerToVM().getDeoptedLeafGraphIds();
     }
 
     @Override

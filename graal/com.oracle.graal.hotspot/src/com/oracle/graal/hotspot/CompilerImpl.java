@@ -256,4 +256,17 @@ public final class CompilerImpl implements Compiler, Remote {
         }
         return runtime;
     }
+
+    public void evictDeoptedGraphs() {
+        if (cache != null) {
+            long[] deoptedGraphs = getCompilerToVM().getDeoptedLeafGraphIds();
+            if (deoptedGraphs != null) {
+                if (deoptedGraphs.length == 0) {
+                    cache.clear();
+                } else {
+                    cache.removeGraphs(deoptedGraphs);
+                }
+            }
+        }
+    }
 }

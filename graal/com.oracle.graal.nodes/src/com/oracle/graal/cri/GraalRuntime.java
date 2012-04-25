@@ -40,5 +40,4 @@ public interface GraalRuntime extends RiRuntime {
 
     CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
 
-    long[] getDeoptedLeafGraphIds();
 }

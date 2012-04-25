@@ -80,16 +80,6 @@ public class GraalCompiler {
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
         }
-        if (cache != null) {
-            long[] deoptedGraphs = runtime.getDeoptedLeafGraphIds();
-            if (deoptedGraphs != null) {
-                if (deoptedGraphs.length == 0) {
-                    cache.clear();
-                } else {
-                    cache.removeGraphs(deoptedGraphs);
-                }
-            }
-        }
 
         return Debug.scope("GraalCompiler", new Object[] {graph, method, this}, new Callable<CiTargetMethod>() {
             public CiTargetMethod call() {
