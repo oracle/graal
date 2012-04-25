@@ -75,7 +75,7 @@ public class GraalCompiler {
     }
 
 
-    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
+    public CiTargetMethod compileMethod(final RiResolvedMethod method, final StructuredGraph graph, int osrBCI, final RiGraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts) {
         assert (method.accessFlags() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
         if (osrBCI != -1) {
             throw new CiBailout("No OSR supported");
@@ -116,7 +116,7 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public LIR emitHIR(StructuredGraph graph, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
 
         if (graph.start().next() == null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, graph);

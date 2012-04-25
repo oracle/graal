@@ -29,10 +29,12 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.max.cri.ri.*;
 
-public class GraphCache {
+public class GraphCache implements RiGraphCache {
+
     private static final PrintStream out = System.out;
     private final boolean dump;
     private boolean enabled = true;
@@ -89,6 +91,7 @@ public class GraphCache {
         enabled = true;
     }
 
+    @Override
     public StructuredGraph get(RiResolvedMethod method) {
         if (!enabled) {
             return null;
@@ -114,6 +117,7 @@ public class GraphCache {
         return result;
     }
 
+    @Override
     public void put(StructuredGraph graph) {
         if (!enabled) {
             return;
@@ -134,6 +138,7 @@ public class GraphCache {
         }
     }
 
+    @Override
     public void clear() {
         graphs.clear();
         currentGraphIds.clear();
@@ -145,6 +150,7 @@ public class GraphCache {
         putCounter.set(0);
     }
 
+    @Override
     public void removeGraphs(long[] deoptedGraphs) {
         for (long graphId : deoptedGraphs) {
             graphs.remove(graphId);
