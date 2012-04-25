@@ -26,6 +26,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.nodes.*;
@@ -90,7 +91,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             if (GraalOptions.DynamicCompilePriority) {
                 int threadPriority = priority < GraalOptions.SlowQueueCutoff ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
                 if (Thread.currentThread().getPriority() != threadPriority) {
-    //                out.print(threadPriority);
                     Thread.currentThread().setPriority(threadPriority);
                 }
             }
@@ -118,6 +118,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
                     @Override
                     public CiTargetMethod call() throws Exception {
+                        compiler.evictDeoptedGraphs();
                         StructuredGraph graph = new StructuredGraph(method);
                         return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, optimisticOpts);
                     }

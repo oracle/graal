@@ -239,11 +239,11 @@ public class EscapeAnalysisPhase extends Phase {
     private final CiTarget target;
     private final GraalRuntime runtime;
     private final CiAssumptions assumptions;
-    private final GraphCache cache;
+    private final RiGraphCache cache;
     private final PhasePlan plan;
     private final OptimisticOptimizations optimisticOpts;
 
-    public EscapeAnalysisPhase(CiTarget target, GraalRuntime runtime, CiAssumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public EscapeAnalysisPhase(CiTarget target, GraalRuntime runtime, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.runtime = runtime;
         this.target = target;
         this.assumptions = assumptions;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,18 @@
  */
 package com.oracle.graal.cri;
 
-import java.util.*;
-
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
-/**
- * Graal-specific extensions for the runtime interface that must be implemented by the VM.
- */
-public interface GraalRuntime extends RiRuntime {
 
-    void lower(Node n, CiLoweringTool tool);
+public interface RiGraphCache {
 
-    StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters);
+    void put(StructuredGraph graph);
 
-    CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
+    StructuredGraph get(RiResolvedMethod method);
+
+    void removeGraphs(long[] deoptedGraphs);
+
+    void clear();
 
 }
