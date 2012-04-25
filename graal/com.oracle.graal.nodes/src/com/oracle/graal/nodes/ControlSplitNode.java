@@ -46,7 +46,7 @@ public abstract class ControlSplitNode extends FixedNode {
         return blockSuccessors.size();
     }
 
-    @Data protected final double[] branchProbability;
+    protected final double[] branchProbability;
 
     public ControlSplitNode(Stamp stamp, BeginNode[] blockSuccessors, double[] branchProbability) {
         super(stamp);

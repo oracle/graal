@@ -32,7 +32,7 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
     @Input private ValueNode object;
     @Input private GuardNode guard;
     @Input private LocationNode location;
-    @Data private boolean nullCheck;
+    private boolean nullCheck;
 
     public ValueNode object() {
         return object;

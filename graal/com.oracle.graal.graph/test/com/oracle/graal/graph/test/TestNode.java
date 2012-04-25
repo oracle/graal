@@ -26,7 +26,7 @@ import com.oracle.graal.graph.*;
 
 
 public class TestNode extends Node implements Node.IterableNodeType {
-    @Data private String name;
+    private String name;
 
     public TestNode(String name) {
         this.name = name;

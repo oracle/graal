@@ -29,7 +29,6 @@ import java.util.concurrent.*;
 import com.oracle.graal.alloc.simple.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.schedule.*;

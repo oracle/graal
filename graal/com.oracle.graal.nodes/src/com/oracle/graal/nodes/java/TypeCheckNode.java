@@ -34,9 +34,9 @@ public abstract class TypeCheckNode extends BooleanNode {
     protected static final RiResolvedType[] EMPTY_HINTS = new RiResolvedType[0];
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
-    @Data private final RiResolvedType targetClass;
-    @Data private final RiResolvedType[] hints;
-    @Data private final boolean hintsExact;
+    private final RiResolvedType targetClass;
+    private final RiResolvedType[] hints;
+    private final boolean hintsExact;
 
     /**
      * Creates a new TypeCheckNode.

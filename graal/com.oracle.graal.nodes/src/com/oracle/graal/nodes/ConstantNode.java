@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "Const")
 public class ConstantNode extends BooleanNode implements LIRLowerable {
 
-    @Data public final CiConstant value;
+    public final CiConstant value;
 
     protected ConstantNode(CiConstant value) {
         super(StampFactory.forConstant(value));

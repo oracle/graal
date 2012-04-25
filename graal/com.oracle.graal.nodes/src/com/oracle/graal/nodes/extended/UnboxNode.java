@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public final class UnboxNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;
-    @Data private CiKind destinationKind;
+    private CiKind destinationKind;
 
     public UnboxNode(CiKind kind, ValueNode source) {
         super(StampFactory.forKind(kind));

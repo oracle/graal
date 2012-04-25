@@ -38,7 +38,7 @@ import com.oracle.graal.snippets.target.amd64.*;
 public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, AMD64LIRLowerable {
 
     @Input private ValueNode x;
-    @Data private final Operation operation;
+    private final Operation operation;
 
     public enum Operation {
         ABS, SQRT, LOG, LOG10, SIN, COS, TAN,

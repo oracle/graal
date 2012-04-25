@@ -39,7 +39,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain CiKind#stackKind() stack kind}.
      */
-    @Data private Stamp stamp;
+    private Stamp stamp;
 
     @Input private NodeInputList<Node> dependencies;
 

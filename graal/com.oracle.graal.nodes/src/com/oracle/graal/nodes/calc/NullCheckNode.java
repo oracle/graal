@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 public final class NullCheckNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
     @Input private ValueNode object;
-    @Data public final boolean expectedNull;
+    public final boolean expectedNull;
 
     public ValueNode object() {
         return object;

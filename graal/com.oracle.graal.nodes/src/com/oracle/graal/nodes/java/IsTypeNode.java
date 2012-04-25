@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
     @Input private ValueNode objectClass;
-    @Data private final RiResolvedType type;
+    private final RiResolvedType type;
 
     public ValueNode objectClass() {
         return objectClass;

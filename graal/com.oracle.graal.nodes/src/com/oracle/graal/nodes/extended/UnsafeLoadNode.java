@@ -35,8 +35,8 @@ public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
-    @Data private final int displacement;
-    @Data private final CiKind loadKind;
+    private final int displacement;
+    private final CiKind loadKind;
 
     public ValueNode object() {
         return object;

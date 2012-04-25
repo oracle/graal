@@ -63,10 +63,6 @@ public abstract class Node implements Cloneable, Formattable {
     @Target(ElementType.FIELD)
     public static @interface Successor {}
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
-    public static @interface Data {}
-
     /**
      * Denotes that a parameter of an {@linkplain NodeIntrinsic intrinsic} method
      * must be a compile time constant at all call sites to the intrinic method.

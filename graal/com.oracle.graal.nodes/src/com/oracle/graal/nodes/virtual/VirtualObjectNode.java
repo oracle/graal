@@ -30,9 +30,9 @@ import com.oracle.max.cri.ri.*;
 
 public class VirtualObjectNode extends ValueNode implements LIRLowerable {
 
-    @Data private RiResolvedType type;
-    @Data private EscapeField[] fields;
-    @Data private int fieldsCount;
+    private RiResolvedType type;
+    private EscapeField[] fields;
+    private int fieldsCount;
 
     public VirtualObjectNode(RiResolvedType type, EscapeField[] fields) {
         super(StampFactory.illegal());

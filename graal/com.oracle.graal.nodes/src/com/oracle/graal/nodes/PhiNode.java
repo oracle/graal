@@ -41,7 +41,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     @Input(notDataflow = true) private MergeNode merge;
     @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
-    @Data private final PhiType type;
+    private final PhiType type;
 
     public PhiNode(CiKind kind, MergeNode merge, PhiType type) {
         super(StampFactory.forKind(kind));

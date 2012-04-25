@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 public final class LookupSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    @Data private final int[] keys;
+    private final int[] keys;
 
     /**
      * Constructs a new LookupSwitch instruction.

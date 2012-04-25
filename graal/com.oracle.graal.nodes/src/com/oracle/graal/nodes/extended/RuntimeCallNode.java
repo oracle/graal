@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.type.*;
 
 public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable {
 
-    @Data private final CiRuntimeCall call;
+    private final CiRuntimeCall call;
 
     public CiRuntimeCall call() {
         return call;
