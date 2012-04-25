@@ -597,8 +597,14 @@ public class NodeClass {
                     if (aBoolean != bBoolean) {
                         return false;
                     }
+                } else if (type == Long.TYPE) {
+                    long aLong = unsafe.getLong(a, dataOffsets[i]);
+                    long bLong = unsafe.getLong(b, dataOffsets[i]);
+                    if (aLong != bLong) {
+                        return false;
+                    }
                 } else {
-                    assert false;
+                    assert false : "unhandled type: " + type;
                 }
             } else {
                 Object objectA = unsafe.getObject(a, dataOffsets[i]);
