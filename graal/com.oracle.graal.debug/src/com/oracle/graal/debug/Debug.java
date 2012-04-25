@@ -23,6 +23,8 @@
 package com.oracle.graal.debug;
 
 import com.oracle.graal.debug.internal.*;
+
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -32,7 +34,6 @@ public class Debug {
 
     public static void enable() {
         ENABLED = true;
-        DebugScope.initialize();
     }
 
     public static boolean isEnabled() {
@@ -188,7 +189,7 @@ public class Debug {
         }
     }
 
-    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final Collection<? extends DebugDumpHandler> dumpHandlers) {
+    public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled, final Collection<? extends DebugDumpHandler> dumpHandlers, final PrintStream output) {
         return new DebugConfig() {
 
             @Override
@@ -219,6 +220,11 @@ public class Debug {
             @Override
             public Collection< ? extends DebugDumpHandler> dumpHandlers() {
                 return dumpHandlers;
+            }
+
+            @Override
+            public PrintStream output() {
+                return output;
             }
         };
     }

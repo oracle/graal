@@ -92,7 +92,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
         if (GraalOptions.Debug) {
             Debug.enable();
-            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter);
+            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, GraalOptions.LogFile);
             Debug.setConfig(hotspotDebugConfig);
         }
         // Install intrinsics.
