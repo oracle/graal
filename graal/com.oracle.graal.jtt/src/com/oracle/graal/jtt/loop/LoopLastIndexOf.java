@@ -34,8 +34,9 @@ public class LoopLastIndexOf {
     private final char[] v3 = new char[]{'d', 'b', 'c'};
     private final char[] v4 = new char[]{'z', 'a', 'b', 'c'};
 
-    public static int test(char[] source, int sourceOffset, int sourceCount, char[] target, int targetOffset, int targetCount, int fromIndex) {
+    public static int test(char[] source, int sourceOffset, int sourceCount, char[] target, int targetOffset, int targetCount, int fromIndexParam) {
         int rightIndex = sourceCount - targetCount;
+        int fromIndex = fromIndexParam;
         if (fromIndex < 0) {
             return -1;
         }
