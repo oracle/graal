@@ -488,15 +488,15 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 // -- out of line -------------------------------------------------------
                 asm.bindOutOfLine(slowPath);
             } else {
-                XirOperand scratchObject = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
                 // if we get an exact match: succeed immediately
+                XirOperand hintHub = asm.createTemp("hintHub", CiKind.Object);
                 for (int i = 0; i < hintCount; i++) {
-                    XirParameter hintHub = asm.createConstantInputParameter("hintHub" + i, CiKind.Object);
-                    asm.mov(scratchObject, hintHub);
+                    XirParameter hintMirror = asm.createConstantInputParameter("hintMirror" + i, CiKind.Object);
+                    asm.pload(CiKind.Object, hintHub, hintMirror, asm.i(config.klassOopOffset), false);
                     if (i < hintCount - 1) {
-                        asm.jeq(end, objHub, scratchObject);
+                        asm.jeq(end, objHub, hintHub);
                     } else {
-                        asm.jneq(slowPath, objHub, scratchObject);
+                        asm.jneq(slowPath, objHub, hintHub);
                     }
                 }
                 asm.bindInline(end);
@@ -545,21 +545,21 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.jmp(trueSucc);
             } else {
                 XirLabel slowPath = null;
-                XirOperand scratchObject = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
+                XirOperand hintHub = asm.createTemp("hintHub", CiKind.Object);
 
                 // if we get an exact match: succeed immediately
                 for (int i = 0; i < hintCount; i++) {
-                    XirParameter hintHub = asm.createConstantInputParameter("hintHub" + i, CiKind.Object);
-                    asm.mov(scratchObject, hintHub);
+                    XirParameter hintMirror = asm.createConstantInputParameter("hintMirror" + i, CiKind.Object);
+                    asm.pload(CiKind.Object, hintHub, hintMirror, asm.i(config.klassOopOffset), false);
                     if (i < hintCount - 1) {
-                        asm.jeq(trueSucc, objHub, scratchObject);
+                        asm.jeq(trueSucc, objHub, hintHub);
                     } else {
                         if (is(EXACT_HINTS, flags)) {
-                            asm.jneq(falseSucc, objHub, scratchObject);
+                            asm.jneq(falseSucc, objHub, hintHub);
                             asm.jmp(trueSucc);
                         } else {
                             slowPath = asm.createOutOfLineLabel("slow path");
-                            asm.jneq(slowPath, objHub, scratchObject);
+                            asm.jneq(slowPath, objHub, hintHub);
                             asm.jmp(trueSucc);
                         }
                     }
@@ -610,20 +610,20 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.bindInline(end);
             } else {
                 XirLabel slowPath = null;
-                XirOperand scratchObject = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
+                XirOperand hintHub = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
 
                 // if we get an exact match: succeed immediately
                 for (int i = 0; i < hintCount; i++) {
-                    XirParameter hintHub = asm.createConstantInputParameter("hintHub" + i, CiKind.Object);
-                    asm.mov(scratchObject, hintHub);
+                    XirParameter hintMirror = asm.createConstantInputParameter("hintMirror" + i, CiKind.Object);
+                    asm.pload(CiKind.Object, hintHub, hintMirror, asm.i(config.klassOopOffset), false);
                     if (i < hintCount - 1) {
-                        asm.jeq(end, objHub, scratchObject);
+                        asm.jeq(end, objHub, hintHub);
                     } else {
                         if (is(EXACT_HINTS, flags)) {
-                            asm.jeq(end, objHub, scratchObject);
+                            asm.jeq(end, objHub, hintHub);
                         } else {
                             slowPath = asm.createOutOfLineLabel("slow path");
-                            asm.jeq(end, objHub, scratchObject);
+                            asm.jeq(end, objHub, hintHub);
                             asm.jmp(slowPath);
                         }
                     }
@@ -906,7 +906,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 params[i++] = hub;
             }
             for (RiResolvedType hint : hints) {
-                params[i++] = XirArgument.forObject(hint);
+                Object hintMirror = hint.toJava();
+                params[i++] = XirArgument.forObject(hintMirror);
             }
             XirTemplate template = hintsExact ? checkCastTemplates.get(site, hints.length, EXACT_HINTS) : checkCastTemplates.get(site, hints.length);
             return new XirSnippet(template, params);
@@ -925,7 +926,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 params[i++] = hub;
             }
             for (RiResolvedType hint : hints) {
-                params[i++] = XirArgument.forObject(hint);
+                Object hintMirror = hint.toJava();
+                params[i++] = XirArgument.forObject(hintMirror);
             }
             XirTemplate template = hintsExact ? instanceOfTemplates.get(site, hints.length, EXACT_HINTS) : instanceOfTemplates.get(site, hints.length);
             return new XirSnippet(template, params);
@@ -946,7 +948,8 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             params[i++] = trueValue;
             params[i++] = falseValue;
             for (RiResolvedType hint : hints) {
-                params[i++] = XirArgument.forObject(hint);
+                Object hintMirror = hint.toJava();
+                params[i++] = XirArgument.forObject(hintMirror);
             }
             XirTemplate template = hintsExact ? materializeInstanceOfTemplates.get(site, hints.length, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hints.length);
             return new XirSnippet(template, params);

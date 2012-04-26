@@ -26,7 +26,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.nodes.*;
