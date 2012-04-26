@@ -37,9 +37,9 @@ import com.oracle.graal.nodes.util.*;
 public final class InvokeNode extends AbstractStateSplit implements Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint  {
 
     @Input private final MethodCallTargetNode callTarget;
-    @Data private final int bci;
+    private final int bci;
     // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
-    @Data private boolean megamorph;
+    private boolean megamorph;
     private boolean useForInlining;
     private final long leafGraphId;
 

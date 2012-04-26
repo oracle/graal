@@ -37,9 +37,9 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     @Input private final MethodCallTargetNode callTarget;
     @Input private FrameState stateAfter;
-    @Data private final int bci;
+    private final int bci;
     // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
-    @Data private boolean megamorph;
+    private boolean megamorph;
     private boolean useForInlining;
     private final long leafGraphId;
 

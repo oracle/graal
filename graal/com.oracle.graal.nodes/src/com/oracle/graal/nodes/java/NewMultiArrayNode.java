@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLowerable, TypeFeedbackProvider {
 
     @Input private final NodeInputList<ValueNode> dimensions;
-    @Data private final RiResolvedType type;
+    private final RiResolvedType type;
 
     public ValueNode dimension(int index) {
         return dimensions.get(index);

@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.type.*;
 
 public abstract class FixedNode extends ValueNode {
 
-    @Data private double probability;
+    private double probability;
 
     public FixedNode(Stamp stamp) {
         super(stamp);

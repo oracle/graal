@@ -36,8 +36,8 @@ public class UnsafeStoreNode extends AbstractStateSplit implements Lowerable {
     @Input private ValueNode object;
     @Input private ValueNode offset;
     @Input private ValueNode value;
-    @Data private final int displacement;
-    @Data private final CiKind storeKind;
+    private final int displacement;
+    private final CiKind storeKind;
 
     public UnsafeStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, CiKind kind) {
         super(StampFactory.illegal());

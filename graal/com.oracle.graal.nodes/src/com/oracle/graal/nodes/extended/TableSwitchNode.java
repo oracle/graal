@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 public final class TableSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    @Data private final int lowKey;
+    private final int lowKey;
 
     /**
      * Constructs a new TableSwitch instruction.

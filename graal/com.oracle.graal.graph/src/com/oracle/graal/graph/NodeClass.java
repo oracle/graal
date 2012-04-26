@@ -27,8 +27,6 @@ import java.util.*;
 import java.util.Map.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.graph.Node.Data;
-
 import sun.misc.Unsafe;
 
 public class NodeClass {
@@ -273,15 +271,13 @@ public class NodeClass {
                                 successorTypesMap.put(offset, type);
                             }
                             successorNamesMap.put(offset, name);
-                        } else if (field.isAnnotationPresent(Node.Data.class)) {
-                            assert !Node.class.isAssignableFrom(field.getType()) : "cannot have a node as data: " + currentClazz;
-                            dataOffsets.add(offset);
-                            dataTypes.add(type);
-                            dataNames.add(name);
                         } else {
                             assert !NODE_CLASS.isAssignableFrom(type) || name.equals("Null") : "suspicious node field: " + field;
                             assert !INPUT_LIST_CLASS.isAssignableFrom(type) : "suspicious node input list field: " + field;
                             assert !SUCCESSOR_LIST_CLASS.isAssignableFrom(type) : "suspicious node successor list field: " + field;
+                            dataOffsets.add(offset);
+                            dataTypes.add(type);
+                            dataNames.add(name);
                         }
                     }
                 }
@@ -601,8 +597,14 @@ public class NodeClass {
                     if (aBoolean != bBoolean) {
                         return false;
                     }
+                } else if (type == Long.TYPE) {
+                    long aLong = unsafe.getLong(a, dataOffsets[i]);
+                    long bLong = unsafe.getLong(b, dataOffsets[i]);
+                    if (aLong != bLong) {
+                        return false;
+                    }
                 } else {
-                    assert false;
+                    assert false : "unhandled type: " + type;
                 }
             } else {
                 Object objectA = unsafe.getObject(a, dataOffsets[i]);

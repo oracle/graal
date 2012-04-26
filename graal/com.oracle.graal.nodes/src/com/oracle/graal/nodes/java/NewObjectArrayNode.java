@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerable, Node.IterableNodeType {
 
-    @Data private final RiResolvedType elementClass;
+    private final RiResolvedType elementClass;
 
     /**
      * Constructs a new NewObjectArrayNode.

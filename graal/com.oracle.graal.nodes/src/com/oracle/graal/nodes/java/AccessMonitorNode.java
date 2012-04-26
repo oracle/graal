@@ -46,7 +46,7 @@ import com.oracle.graal.nodes.type.*;
 public abstract class AccessMonitorNode extends AbstractStateSplit implements MemoryCheckpoint {
 
     @Input private ValueNode object;
-    @Data private boolean eliminated;
+    private boolean eliminated;
 
     public ValueNode object() {
         return object;

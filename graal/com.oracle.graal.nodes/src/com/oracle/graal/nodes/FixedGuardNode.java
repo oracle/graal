@@ -31,8 +31,8 @@ import com.oracle.max.cri.ri.*;
 public final class FixedGuardNode extends FixedWithNextNode implements Simplifiable, Lowerable, LIRLowerable, Node.IterableNodeType {
 
     @Input private final NodeInputList<BooleanNode> conditions;
-    @Data private final RiDeoptReason deoptReason;
-    @Data private final RiDeoptAction action;
+    private final RiDeoptReason deoptReason;
+    private final RiDeoptAction action;
     private final long leafGraphId;
 
     public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {

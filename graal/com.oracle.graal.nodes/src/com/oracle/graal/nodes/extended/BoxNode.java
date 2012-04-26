@@ -34,8 +34,8 @@ import com.oracle.graal.nodes.type.*;
 public final class BoxNode extends AbstractStateSplit implements Node.IterableNodeType {
 
     @Input private ValueNode source;
-    @Data private int bci;
-    @Data private CiKind sourceKind;
+    private int bci;
+    private CiKind sourceKind;
 
     public BoxNode(ValueNode value, RiResolvedType type, CiKind sourceKind, int bci) {
         super(StampFactory.exactNonNull(type));

@@ -40,8 +40,8 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
     @Input private ValueNode x;
     @Input private ValueNode y;
 
-    @Data private final Condition condition;
-    @Data private final boolean unorderedIsTrue;
+    private final Condition condition;
+    private final boolean unorderedIsTrue;
 
     public ValueNode x() {
         return x;

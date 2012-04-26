@@ -66,7 +66,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
 
     @Input private ValueNode value;
 
-    @Data public final Op opcode;
+    public final Op opcode;
 
     public ValueNode value() {
         return value;

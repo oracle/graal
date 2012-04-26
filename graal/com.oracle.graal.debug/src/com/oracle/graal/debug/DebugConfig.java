@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.debug;
 
+import java.io.*;
 import java.util.*;
 
 
@@ -49,4 +50,6 @@ public interface DebugConfig {
     RuntimeException interceptException(Throwable e);
 
     Collection<? extends DebugDumpHandler> dumpHandlers();
+
+    PrintStream output();
 }

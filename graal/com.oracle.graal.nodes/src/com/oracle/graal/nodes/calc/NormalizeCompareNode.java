@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
  * Returns -1, 0, or 1 if either x < y, x == y, or x > y.
  */
 public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
-    @Data public final boolean isUnorderedLess;
+    public final boolean isUnorderedLess;
 
     /**
      * Creates a new compare operation.

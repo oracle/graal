@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 public class ValueProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable {
     @Input(notDataflow = true) private BeginNode proxyPoint;
     @Input private ValueNode value;
-    @Data private final PhiType type;
+    private final PhiType type;
 
     public ValueProxyNode(ValueNode value, BeginNode exit, PhiType type) {
         super(value.stamp());

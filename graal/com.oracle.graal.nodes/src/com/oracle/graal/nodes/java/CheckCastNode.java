@@ -40,7 +40,7 @@ import com.oracle.max.cri.ri.*;
 public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, TypeFeedbackProvider, TypeCanonicalizable {
 
     @Input(notDataflow = true) protected final FixedNode anchor;
-    @Data  protected final boolean emitCode;
+    protected final boolean emitCode;
 
     public FixedNode anchor() {
         return anchor;

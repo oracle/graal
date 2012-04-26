@@ -32,8 +32,4 @@ public interface RiGraphCache {
 
     StructuredGraph get(RiResolvedMethod method);
 
-    void removeGraphs(long[] deoptedGraphs);
-
-    void clear();
-
 }

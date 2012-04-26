@@ -33,8 +33,8 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
-    @Data private final RiDeoptReason reason;
-    @Data private final RiDeoptAction action;
+    private final RiDeoptReason reason;
+    private final RiDeoptAction action;
     private final long leafGraphId;
 
     public FixedNode anchor() {

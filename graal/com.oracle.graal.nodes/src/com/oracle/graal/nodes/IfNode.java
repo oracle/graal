@@ -122,7 +122,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 EndNode trueEnd = (EndNode) trueSuccessor().next();
                 EndNode falseEnd = (EndNode) falseSuccessor().next();
                 MergeNode merge = trueEnd.merge();
-                if (merge == falseEnd.merge() && merge.forwardEndCount() == 2) {
+                if (merge == falseEnd.merge() && merge.forwardEndCount() == 2 && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
                     Iterator<PhiNode> phis = merge.phis().iterator();
                     if (!phis.hasNext()) {
                         // empty if construct with no phis: remove it

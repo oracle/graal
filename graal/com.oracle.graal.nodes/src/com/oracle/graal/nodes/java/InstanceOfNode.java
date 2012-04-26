@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class InstanceOfNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
-    @Data private final boolean negated;
+    private final boolean negated;
 
     public boolean negated() {
         return negated;

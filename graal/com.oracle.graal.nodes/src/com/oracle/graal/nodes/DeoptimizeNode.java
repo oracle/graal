@@ -30,9 +30,9 @@ import com.oracle.max.cri.ri.*;
 @NodeInfo(shortName = "Deopt")
 public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
-    @Data private String message;
-    @Data private final RiDeoptAction action;
-    @Data private final RiDeoptReason reason;
+    private String message;
+    private final RiDeoptAction action;
+    private final RiDeoptReason reason;
     private final long leafGraphId;
 
 

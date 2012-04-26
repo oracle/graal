@@ -39,7 +39,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerab
     @Input private ValueNode offset;
     @Input private ValueNode expected;
     @Input private ValueNode newValue;
-    @Data private final int displacement;
+    private final int displacement;
 
     public ValueNode object() {
         return object;

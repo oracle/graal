@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 
 public final class LocalNode extends FloatingNode implements Node.IterableNodeType {
 
-    @Data private final int index;
+    private final int index;
 
     public LocalNode(CiKind kind, int index) {
         this(index, StampFactory.forKind(kind));

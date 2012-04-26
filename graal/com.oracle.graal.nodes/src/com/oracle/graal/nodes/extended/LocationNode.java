@@ -31,9 +31,9 @@ import com.oracle.graal.nodes.type.*;
 
 public class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 
-    @Data private int displacement;
-    @Data private CiKind valueKind;
-    @Data private Object locationIdentity;
+    private int displacement;
+    private CiKind valueKind;
+    private Object locationIdentity;
 
     public static final Object ANY_LOCATION = new Object() {
         @Override

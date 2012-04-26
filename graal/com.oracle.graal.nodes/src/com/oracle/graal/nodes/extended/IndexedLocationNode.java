@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 
 public final class IndexedLocationNode extends LocationNode implements LIRLowerable, Canonicalizable {
     @Input private ValueNode index;
-    @Data private boolean indexScalingEnabled;
+    private boolean indexScalingEnabled;
 
     public ValueNode index() {
         return index;

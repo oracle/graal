@@ -31,8 +31,8 @@ import com.oracle.graal.nodes.spi.*;
 public final class LoopEndNode extends EndNode {
 
     @Input(notDataflow = true) private LoopBeginNode loopBegin;
-    @Data private boolean canSafepoint;
-    @Data private int endIndex;
+    private boolean canSafepoint;
+    private int endIndex;
 
     public LoopEndNode(LoopBeginNode begin) {
         int idx = begin.nextEndIndex();

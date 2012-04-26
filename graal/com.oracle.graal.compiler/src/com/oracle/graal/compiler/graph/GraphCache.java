@@ -138,7 +138,6 @@ public class GraphCache implements RiGraphCache {
         }
     }
 
-    @Override
     public void clear() {
         graphs.clear();
         currentGraphIds.clear();
@@ -150,7 +149,6 @@ public class GraphCache implements RiGraphCache {
         putCounter.set(0);
     }
 
-    @Override
     public void removeGraphs(long[] deoptedGraphs) {
         for (long graphId : deoptedGraphs) {
             graphs.remove(graphId);

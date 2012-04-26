@@ -39,7 +39,7 @@ public abstract class AccessFieldNode extends AbstractStateSplit implements Lowe
 
     @Input private ValueNode object;
 
-    @Data protected final RiResolvedField field;
+    protected final RiResolvedField field;
 
     public ValueNode object() {
         return object;
