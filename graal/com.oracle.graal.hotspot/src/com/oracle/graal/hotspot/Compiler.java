@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.max.cri.ci.*;
@@ -38,7 +37,7 @@ public interface Compiler {
     HotSpotVMConfig getConfig();
     HotSpotRuntime getRuntime();
     CiTarget getTarget();
-    GraphCache getCache();
+    HotSpotGraphCache getCache();
     void evictDeoptedGraphs();
 
 }

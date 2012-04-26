@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 import java.net.*;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -93,7 +92,7 @@ public final class CompilerImpl implements Compiler, Remote {
     private HotSpotRuntime runtime;
     private GraalCompiler compiler;
     private CiTarget target;
-    private volatile GraphCache cache;
+    private volatile HotSpotGraphCache cache;
 
     private final HotSpotVMConfig config;
 
@@ -180,14 +179,14 @@ public final class CompilerImpl implements Compiler, Remote {
 
             compiler = new GraalCompiler(getRuntime(), getTarget(), backend, generator);
             if (GraalOptions.CacheGraphs) {
-                cache = new GraphCache(GraalOptions.PrintGraphCache);
+                cache = new HotSpotGraphCache();
             }
         }
         return compiler;
     }
 
     @Override
-    public GraphCache getCache() {
+    public HotSpotGraphCache getCache() {
         return cache;
     }
 
