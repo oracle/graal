@@ -557,10 +557,12 @@ public class NodeClass {
                     value = unsafe.getInt(node, dataOffsets[i]);
                 } else if (type == Boolean.TYPE) {
                     value = unsafe.getBoolean(node, dataOffsets[i]);
+                } else if (type == Long.TYPE) {
+                    value = unsafe.getLong(node, dataOffsets[i]);
                 } else if (type == Double.TYPE) {
-                    value = String.format(Locale.ENGLISH, "%7.5f", unsafe.getDouble(node, dataOffsets[i]));
+                    value = unsafe.getDouble(node, dataOffsets[i]);
                 } else {
-                    assert false;
+                    assert false : "unhandled property type: " + type;
                 }
             } else {
                 value = unsafe.getObject(node, dataOffsets[i]);

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -105,6 +106,15 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
             tool.addObject(object()).notDeclaredType(targetClass(), true);
         } else {
             tool.addObject(object()).declaredType(targetClass(), true);
+        }
+    }
+
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name && negated) {
+            return "!" + super.toString(Verbosity.Name);
+        } else {
+            return super.toString(verbosity);
         }
     }
 
