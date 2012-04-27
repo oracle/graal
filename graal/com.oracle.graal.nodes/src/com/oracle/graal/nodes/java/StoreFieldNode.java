@@ -43,8 +43,8 @@ public final class StoreFieldNode extends AccessFieldNode {
      * @param field the compiler interface field
      * @param value the node representing the value to store to the field
      */
-    public StoreFieldNode(ValueNode object, RiResolvedField field, ValueNode value) {
-        super(StampFactory.illegal(), object, field);
+    public StoreFieldNode(ValueNode object, RiResolvedField field, ValueNode value, long leafGraphId) {
+        super(StampFactory.illegal(), object, field, leafGraphId);
         this.value = value;
     }
 }

@@ -54,7 +54,7 @@ public final class UnboxNode extends FixedWithNextNode implements Node.IterableN
 
     public void expand(BoxingMethodPool pool) {
         RiResolvedField field = pool.getBoxField(kind());
-        LoadFieldNode loadField = graph().add(new LoadFieldNode(source, field));
+        LoadFieldNode loadField = graph().add(new LoadFieldNode(source, field, StructuredGraph.INVALID_GRAPH_ID));
         loadField.setProbability(probability());
         ((StructuredGraph) graph()).replaceFixedWithFixed(this, loadField);
     }
