@@ -79,7 +79,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
             if (arg == null) {
                 assert sig[i].isObject() : CiUtil.format("%H.%n(%p): expected arg ", method) + i + " to be Object, not " + sig[i];
             } else if (!sig[i].isObject()) {
-                assert sig[i].toUnboxedJavaClass() == arg.getClass() : CiUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
+                assert sig[i].toBoxedJavaClass() == arg.getClass() : CiUtil.format("%H.%n(%p): expected arg ", method) + i + " to be " + sig[i] + ", not " + arg.getClass();
             }
         }
         return true;

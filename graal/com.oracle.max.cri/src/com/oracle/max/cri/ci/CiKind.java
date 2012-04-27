@@ -186,7 +186,7 @@ public enum CiKind {
         // Checkstyle: resume
     }
 
-    public Class< ? > toUnboxedJavaClass() {
+    public Class< ? > toBoxedJavaClass() {
         // Checkstyle: stop
         switch(this) {
             case Void:      return null;
