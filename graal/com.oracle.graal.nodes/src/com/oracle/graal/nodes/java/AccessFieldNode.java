@@ -40,6 +40,7 @@ public abstract class AccessFieldNode extends AbstractStateSplit implements Lowe
     @Input private ValueNode object;
 
     protected final RiResolvedField field;
+    private final long leafGraphId;
 
     public ValueNode object() {
         return object;
@@ -52,10 +53,11 @@ public abstract class AccessFieldNode extends AbstractStateSplit implements Lowe
      * @param field the compiler interface representation of the field
      * @param graph
      */
-    public AccessFieldNode(Stamp stamp, ValueNode object, RiResolvedField field) {
+    public AccessFieldNode(Stamp stamp, ValueNode object, RiResolvedField field, long leafGraphId) {
         super(stamp);
         this.object = object;
         this.field = field;
+        this.leafGraphId = leafGraphId;
         assert field.holder().isInitialized();
     }
 
@@ -65,6 +67,10 @@ public abstract class AccessFieldNode extends AbstractStateSplit implements Lowe
      */
     public RiResolvedField field() {
         return field;
+    }
+
+    public long leafGraphId() {
+        return leafGraphId;
     }
 
     /**
