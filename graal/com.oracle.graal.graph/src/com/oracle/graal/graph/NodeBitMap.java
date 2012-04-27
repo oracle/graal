@@ -63,7 +63,7 @@ public final class NodeBitMap implements Iterable<Node>{
     }
 
     public boolean isMarked(Node node) {
-        check(node);
+        assert check(node);
         return bitMap.get(node.id());
     }
 
@@ -72,12 +72,12 @@ public final class NodeBitMap implements Iterable<Node>{
     }
 
     public void mark(Node node) {
-        check(node);
+        assert check(node);
         bitMap.set(node.id());
     }
 
     public void clear(Node node) {
-        check(node);
+        assert check(node);
         bitMap.clear(node.id());
     }
 
@@ -93,10 +93,11 @@ public final class NodeBitMap implements Iterable<Node>{
         bitMap.grow(graph.nodeIdCount());
     }
 
-    private void check(Node node) {
+    private boolean check(Node node) {
         assert node.graph() == graph : "this node is not part of the graph";
-        assert !isNew(node) : "this node (" + node.id() + ") was added to the graph after creating the node bitmap (" + bitMap.length() + ")";
-        assert node.isAlive() : "node " + node + " is deleted!";
+        assert !isNew(node) : "node was added to the graph after creating the node bitmap";
+        assert node.isAlive() : "node is deleted!";
+        return true;
     }
 
     @Override
