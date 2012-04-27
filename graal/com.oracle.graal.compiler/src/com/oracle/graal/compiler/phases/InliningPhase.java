@@ -80,7 +80,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(final StructuredGraph graph) {
         graph.createNodeMap();
 
         if (hints != null) {
@@ -91,8 +91,16 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
-            InlineInfo info = inlineCandidates.remove();
-            if (info.invoke.node().isAlive() && inliningPolicy.isWorthInlining(graph, info)) {
+            final InlineInfo info = inlineCandidates.remove();
+
+            boolean inline = Debug.scope("InliningDecisions", new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return info.invoke.node().isAlive() && inliningPolicy.isWorthInlining(graph, info);
+                }
+            });
+
+            if (inline) {
                 Iterable<Node> newNodes = null;
                 try {
                     info.inline(graph, runtime, this);
@@ -124,24 +132,35 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         if (GraalOptions.Debug && graph.getNodeCount() >= GraalOptions.MaximumDesiredSize) {
-            Debug.log("inlining cut off by MaximumDesiredSize");
+            Debug.scope("InliningDecisions", new Runnable() {
+                public void run() {
+                    for (InlineInfo info : inlineCandidates) {
+                        Debug.log("not inlining %s because inlining cut off by MaximumDesiredSize", InliningUtil.methodName(info));
+                    }
+                }
+            });
+
             metricInliningStoppedByMaxDesiredSize.increment();
         }
     }
 
-    private void scanInvokes(Iterable<? extends Node> newNodes, int level, StructuredGraph graph) {
-        graph.mark();
-        for (Node node : newNodes) {
-            if (node != null) {
-                if (node instanceof Invoke) {
-                    Invoke invoke = (Invoke) node;
-                    scanInvoke(invoke, level);
-                }
-                for (Node usage : node.usages().filterInterface(Invoke.class).snapshot()) {
-                    scanInvoke((Invoke) usage, level);
+    private void scanInvokes(final Iterable<? extends Node> newNodes, final int level, final StructuredGraph graph) {
+        Debug.scope("InliningDecisions", new Runnable() {
+            public void run() {
+                graph.mark();
+                for (Node node : newNodes) {
+                    if (node != null) {
+                        if (node instanceof Invoke) {
+                            Invoke invoke = (Invoke) node;
+                            scanInvoke(invoke, level);
+                        }
+                        for (Node usage : node.usages().filterInterface(Invoke.class).snapshot()) {
+                            scanInvoke((Invoke) usage, level);
+                        }
+                    }
                 }
             }
-        }
+        });
     }
 
     private void scanInvoke(Invoke invoke, int level) {
@@ -282,11 +301,11 @@ public class InliningPhase extends Phase implements InliningCallback {
 
             double penalty = Math.pow(GraalOptions.InliningSizePenaltyExp, callerGraph.getNodeCount() / (double) GraalOptions.MaximumDesiredSize) / GraalOptions.InliningSizePenaltyExp;
             if (info.weight > GraalOptions.MaximumInlineWeight / (1 + penalty * GraalOptions.InliningSizePenalty)) {
-                Debug.log("not inlining (cut off by weight %e): %s", info.weight, info);
+                Debug.log("not inlining %s (cut off by weight %e)", InliningUtil.methodName(info), info.weight);
                 return false;
             }
 
-            Debug.log("inlining (weight %f): %s", info.weight, info);
+            Debug.log("inlining %s (weight %f): %s", InliningUtil.methodName(info), info.weight);
             return true;
         }
     }
@@ -361,15 +380,15 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static boolean decideSizeBasedInlining(InlineInfo info, double maxSize) {
         boolean success = info.weight <= maxSize;
         if (DebugScope.getInstance().isLogEnabled()) {
-            String formatterString = success ? "inlining invoke at %s@%d (size %f <= %f): %s" : "not inlining invoke at %s@%d (too large %f > %f): %s";
-            Debug.log(formatterString, CiUtil.format("%H.%n(%p):%r", info.invoke.stateAfter().method()), info.invoke.bci(), info.weight, maxSize, info);
+            String formatterString = success ? "inlining %s (size %f <= %f)" : "not inlining %s (too large %f > %f)";
+            Debug.log(formatterString, InliningUtil.methodName(info), info.weight, maxSize);
         }
         return success;
     }
 
     private static boolean checkCompiledCodeSize(InlineInfo info) {
         if (GraalOptions.SmallCompiledCodeSize >= 0 && info.compiledCodeSize() > GraalOptions.SmallCompiledCodeSize) {
-            Debug.log("not inlining invoke at %s@%d (CompiledCodeSize %d > %d): %s", CiUtil.format("%H.%n(%p):%r", info.invoke.stateAfter().method()), info.invoke.bci(), info.compiledCodeSize(), GraalOptions.SmallCompiledCodeSize, info);
+            Debug.log("not inlining %s (CompiledCodeSize %d > %d)", InliningUtil.methodName(info), info.compiledCodeSize(), GraalOptions.SmallCompiledCodeSize);
             return false;
         }
         return true;

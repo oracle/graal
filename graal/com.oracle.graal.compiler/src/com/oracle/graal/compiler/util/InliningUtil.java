@@ -51,21 +51,35 @@ public class InliningUtil {
         void recordConcreteMethodAssumption(RiResolvedMethod method, RiResolvedType context, RiResolvedMethod impl);
     }
 
-    private static String methodName(RiResolvedMethod method, Invoke invoke) {
-        if (Debug.isLogEnabled()) {
-            if (invoke != null && invoke.stateAfter() != null) {
-                RiMethod parent = invoke.stateAfter().method();
-                return parent.name() + "@" + invoke.bci() + ": " + methodNameAndCodeSize(method);
-            } else {
-                return methodNameAndCodeSize(method);
-            }
-        } else {
+    public static String methodName(RiResolvedMethod method, Invoke invoke) {
+        if (!Debug.isLogEnabled()) {
             return null;
+        } else if (invoke != null && invoke.stateAfter() != null) {
+            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+        } else {
+            return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
         }
     }
 
-    private static String methodNameAndCodeSize(RiResolvedMethod method) {
-        return CiUtil.format("%H.%n(%p):%r", method) + " (" + method.codeSize() + " bytes)";
+    public static String methodName(InlineInfo info) {
+        if (!Debug.isLogEnabled()) {
+            return null;
+        } else if (info.invoke != null && info.invoke.stateAfter() != null) {
+            return methodName(info.invoke.stateAfter(), info.invoke.bci()) + ": " + info.toString();
+        } else {
+            return info.toString();
+        }
+    }
+
+    private static String methodName(FrameState frameState, int bci) {
+        StringBuilder sb = new StringBuilder();
+        if (frameState.outerFrameState() != null) {
+            sb.append(methodName(frameState.outerFrameState(), frameState.outerFrameState().bci));
+            sb.append("->");
+        }
+        sb.append(CiUtil.format("%h.%n", frameState.method()));
+        sb.append("@").append(bci);
+        return sb.toString();
     }
 
     /**
