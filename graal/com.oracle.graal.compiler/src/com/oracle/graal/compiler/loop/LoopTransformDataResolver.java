@@ -29,6 +29,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
 
 
 
@@ -60,6 +61,7 @@ public class LoopTransformDataResolver {
                 List<PhiNode> newPhis = new LinkedList<>();
                 for (PhiNode phi : loopBegin.phis().snapshot()) {
                     ValueNode first = null;
+                    StructuredGraph graph = (StructuredGraph) loopBegin.graph();
                     if (loopBegin.loopEnds().count() == 1) {
                         ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
                         first = prim(b); // corresponding value in the peel
@@ -76,7 +78,7 @@ public class LoopTransformDataResolver {
                             }
                         }
                         if (merge != null) { // found values of interest (backedge values that exist in the peel)
-                            PhiNode firstPhi = loopBegin.graph().add(new PhiNode(phi.kind(), merge, phi.type()));
+                            PhiNode firstPhi = graph.add(new PhiNode(phi.kind(), merge, phi.type()));
                             for (EndNode end : merge.forwardEnds()) {
                                 LoopEndNode loopEnd = reverseEnds.get(end);
                                 ValueNode prim = prim(phi.valueAt(loopEnd));
@@ -85,10 +87,13 @@ public class LoopTransformDataResolver {
                             }
                             first = firstPhi;
                             merge.stateAfter().replaceFirstInput(phi, firstPhi); // fix the merge's state after (see SuperBlock.mergeExits)
+                            if (phi.type() == PhiType.Virtual) {
+                                first = SuperBlock.mergeVirtualChain(graph, firstPhi, merge);
+                            }
                         }
                     }
                     if (first != null) { // create a new phi (we don't patch the old one since some usages of the old one may still be valid)
-                        PhiNode newPhi = loopBegin.graph().add(new PhiNode(phi.kind(), loopBegin, phi.type()));
+                        PhiNode newPhi = graph.add(new PhiNode(phi.kind(), loopBegin, phi.type()));
                         newPhi.addInput(first);
                         for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                             newPhi.addInput(phi.valueAt(end));
