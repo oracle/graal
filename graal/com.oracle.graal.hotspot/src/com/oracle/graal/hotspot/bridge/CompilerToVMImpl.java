@@ -171,5 +171,8 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     @Override
     public native long[] getDeoptedLeafGraphIds();
 
+    @Override
+    public native String decodePC(long pc);
+
     // Checkstyle: resume
 }

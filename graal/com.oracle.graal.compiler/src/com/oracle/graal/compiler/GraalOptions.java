@@ -207,6 +207,15 @@ public final class GraalOptions {
     public static boolean OptSafepointElimination            = true;
 
     /**
+     * Insert a counter in the method prologue to track the most frequently called methods that were compiled by Graal.
+     */
+    public static boolean MethodEntryCounters               = false;
+    /**
+     * Number of caller program counters to distinguish when counting methods.
+     */
+    public static int     MethodEntryCountersCallers        = 20;
+
+    /**
      * Flag to turn on SSA-based register allocation, which is currently under development.
      */
     public static boolean AllocSSA                           = false;

@@ -32,6 +32,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.java.bytecode.*;
 
 /**
@@ -186,7 +187,12 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     public int compiledCodeSize() {
-        return compiler.getCompilerToVM().RiMethod_getCompiledCodeSize(this);
+        int result = compiler.getCompilerToVM().RiMethod_getCompiledCodeSize(this);
+        if (result > 0) {
+            assert result > MethodEntryCounters.getCodeSize();
+            result =  result - MethodEntryCounters.getCodeSize();
+        }
+        return result;
     }
 
     @Override

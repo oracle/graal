@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.target.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -74,6 +75,12 @@ public class HotSpotAMD64Backend extends Backend {
                 emitStore(exceptionAddress, CiConstant.NULL_OBJECT, false);
                 emitStore(pcAddress, CiConstant.LONG_0, false);
                 setResult(x, exception);
+            }
+
+            @Override
+            protected void emitPrologue() {
+                super.emitPrologue();
+                MethodEntryCounters.emitCounter(this, method);
             }
         };
     }

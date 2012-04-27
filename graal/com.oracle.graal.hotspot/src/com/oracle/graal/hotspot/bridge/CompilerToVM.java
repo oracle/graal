@@ -119,5 +119,7 @@ public interface CompilerToVM {
 
     long[] getDeoptedLeafGraphIds();
 
+    String decodePC(long pc);
+
     // Checkstyle: resume
 }

@@ -484,7 +484,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return !(location instanceof IndexedLocationNode) && location.displacement() < 4096;
     }
 
-    private void emitPrologue() {
+    protected void emitPrologue() {
         CiCallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(method), target, false);
 
         CiValue[] params = new CiValue[incomingArguments.locations.length];

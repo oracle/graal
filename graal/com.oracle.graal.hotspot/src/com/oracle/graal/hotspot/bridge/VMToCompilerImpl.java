@@ -35,6 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
@@ -211,6 +212,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         }
         System.gc();
         CiCompilationStatistics.clear("bootstrap2");
+        MethodEntryCounters.printCounters(compiler);
     }
 
     private void enqueue(Method m) throws Throwable {
@@ -264,6 +266,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             }
         }
         CiCompilationStatistics.clear("final");
+        MethodEntryCounters.printCounters(compiler);
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
