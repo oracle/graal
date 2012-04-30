@@ -89,12 +89,10 @@ public class TTY {
         }
     }
 
-    public static final String MAX_TTY_LOG_FILE_PROPERTY = "max.tty.file";
-
     public static PrintStream cachedOut;
 
-    public static void initialize() {
-        cachedOut = System.out;
+    public static void initialize(PrintStream ps) {
+        cachedOut = ps;
     }
 
     private static LogStream createLog() {
@@ -102,16 +100,7 @@ public class TTY {
             // In case initialize() was not called.
             cachedOut = System.out;
         }
-        PrintStream newOut = cachedOut;
-        String value = System.getProperty(MAX_TTY_LOG_FILE_PROPERTY);
-        if (value != null) {
-            try {
-                newOut = new PrintStream(new FileOutputStream(value));
-            } catch (FileNotFoundException e) {
-                System.err.println("Could not open log file " + value + ": " + e);
-            }
-        }
-        return new LogStream(newOut);
+        return new LogStream(cachedOut);
     }
 
     private static final ThreadLocal<LogStream> out = new ThreadLocal<LogStream>() {

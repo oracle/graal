@@ -23,6 +23,8 @@
 
 package com.oracle.graal.hotspot.bridge;
 
+import java.io.*;
+
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.hotspot.ri.*;
@@ -41,6 +43,8 @@ public interface VMToCompiler {
     void startCompiler() throws Throwable;
 
     void bootstrap() throws Throwable;
+
+    PrintStream log();
 
     RiMethod createRiMethodUnresolved(String name, String signature, RiType holder);
 

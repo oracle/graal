@@ -43,10 +43,7 @@ public class HotSpotDebugConfig implements DebugConfig {
     private final List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
     private final PrintStream output;
 
-    private static final PrintStream cachedOut = System.out;
-
-
-    public HotSpotDebugConfig(String logFilter, String meterFilter, String timerFilter, String dumpFilter, String methodFilter, String logFile) {
+    public HotSpotDebugConfig(String logFilter, String meterFilter, String timerFilter, String dumpFilter, String methodFilter, PrintStream output) {
         this.logFilter = DebugFilter.parse(logFilter);
         this.meterFilter = DebugFilter.parse(meterFilter);
         this.timerFilter = DebugFilter.parse(timerFilter);
@@ -72,15 +69,7 @@ public class HotSpotDebugConfig implements DebugConfig {
             dumpHandlers.add(new IdealGraphPrinterDumpHandler(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort));
         }
         dumpHandlers.add(new CFGPrinterObserver());
-        if (logFile == null || logFile.isEmpty()) {
-            output = cachedOut;
-        } else {
-            try {
-                output = new PrintStream(logFile);
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException("couldn't create log file: " + logFile, e);
-            }
-        }
+        this.output = output;
     }
 
     public boolean isLogEnabled() {
@@ -163,10 +152,12 @@ public class HotSpotDebugConfig implements DebugConfig {
         Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             Debug.log("Context obj %s", o);
-            if (o instanceof Graph && GraalOptions.DumpOnError) {
-                Graph graph = (Graph) o;
-                Debug.log("Found graph in context: ", graph);
-                Debug.dump(o, "Exception graph");
+            if (o instanceof Graph) {
+                if (GraalOptions.DumpOnError) {
+                    Debug.dump(o, "Exception graph");
+                } else {
+                    Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
+                }
             }
         }
         return null;

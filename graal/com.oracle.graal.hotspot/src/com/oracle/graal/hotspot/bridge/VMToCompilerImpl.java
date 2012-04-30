@@ -23,6 +23,7 @@
 
 package com.oracle.graal.hotspot.bridge;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -67,6 +68,8 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     private ThreadPoolExecutor slowCompileQueue;
     private AtomicInteger compileTaskIds = new AtomicInteger();
 
+    private PrintStream log = System.out;
+
     public VMToCompilerImpl(Compiler compiler) {
         this.compiler = compiler;
 
@@ -82,8 +85,16 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     public void startCompiler() throws Throwable {
-        // Make sure TTY is initialized here such that the correct System.out is used for TTY.
-        TTY.initialize();
+        if (GraalOptions.LogFile != null) {
+            try {
+                final boolean enableAutoflush = true;
+                log = new PrintStream(new FileOutputStream(GraalOptions.LogFile), enableAutoflush);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException("couldn't open log file: " + GraalOptions.LogFile, e);
+            }
+        }
+
+        TTY.initialize(log);
 
         if (GraalOptions.Log == null && GraalOptions.Meter == null && GraalOptions.Time == null && GraalOptions.Dump == null) {
             if (GraalOptions.MethodFilter != null) {
@@ -93,7 +104,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
         if (GraalOptions.Debug) {
             Debug.enable();
-            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, GraalOptions.LogFile);
+            HotSpotDebugConfig hotspotDebugConfig = new HotSpotDebugConfig(GraalOptions.Log, GraalOptions.Meter, GraalOptions.Time, GraalOptions.Dump, GraalOptions.MethodFilter, log);
             Debug.setConfig(hotspotDebugConfig);
         }
         // Install intrinsics.
@@ -472,5 +483,10 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
             phasePlan.addPhase(PhasePosition.HIGH_LEVEL, intrinsifyArrayCopy);
         }
         return phasePlan;
+    }
+
+    @Override
+    public PrintStream log() {
+        return log;
     }
 }
