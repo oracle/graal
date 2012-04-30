@@ -55,8 +55,6 @@ public interface RiXirGenerator {
 
     XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiType type, RiResolvedType[] hints, boolean hintsExact);
 
-    XirSnippet genArrayCopy(XirSite site, XirArgument src, XirArgument srcPos, XirArgument dest, XirArgument destPos, XirArgument length, RiType elementType, boolean inputsSame, boolean inputsDifferent);
-
     /**
      * Generates code that checks that the {@linkplain Representation#ObjectHub hub} of
      * an object is identical to a given hub constant. In pseudo code:
