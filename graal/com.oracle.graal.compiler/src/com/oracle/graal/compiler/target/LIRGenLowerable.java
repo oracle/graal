@@ -20,9 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.target.amd64;
+package com.oracle.graal.compiler.target;
 
-public interface AMD64LIRLowerable {
+import com.oracle.graal.compiler.gen.*;
 
-    void generateAmd64(AMD64LIRGenerator generator);
+public interface LIRGenLowerable {
+
+    void generate(LIRGenerator generator);
 }

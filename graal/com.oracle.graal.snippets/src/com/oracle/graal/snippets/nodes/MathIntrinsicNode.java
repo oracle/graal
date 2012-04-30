@@ -24,8 +24,8 @@ package com.oracle.graal.snippets.nodes;
 
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.graal.compiler.target.amd64.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Op2Reg;
@@ -34,8 +34,9 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.target.amd64.*;
+import com.oracle.max.cri.ci.*;
 
-public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, AMD64LIRLowerable {
+public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, LIRGenLowerable {
 
     @Input private ValueNode x;
     private final Operation operation;
@@ -60,7 +61,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
-    public void generateAmd64(AMD64LIRGenerator gen) {
+    public void generate(LIRGenerator gen) {
         Variable input = gen.load(gen.operand(x()));
         Variable result = gen.newVariable(kind());
         switch (operation()) {

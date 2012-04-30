@@ -37,6 +37,7 @@ import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -102,8 +103,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitNode(ValueNode node) {
-        if (node instanceof AMD64LIRLowerable) {
-            ((AMD64LIRLowerable) node).generateAmd64(this);
+        if (node instanceof LIRGenLowerable) {
+            ((LIRGenLowerable) node).generate(this);
         } else {
             super.emitNode(node);
         }
