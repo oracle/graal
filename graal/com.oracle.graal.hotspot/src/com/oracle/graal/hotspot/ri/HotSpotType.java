@@ -41,4 +41,10 @@ public abstract class HotSpotType extends CompilerObject implements RiType {
     public final String name() {
         return name;
     }
+
+    /**
+     * Gets the object representing the C++ klassOop for this type.
+     * Such a value cannot be safely exposed to Java code.
+     */
+    public abstract HotSpotKlassOop klassOop();
 }

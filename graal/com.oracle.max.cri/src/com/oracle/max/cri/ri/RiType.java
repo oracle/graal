@@ -50,13 +50,7 @@ public interface RiType {
          * The runtime representation of the "hub" of this type--that is, the closest part of the type
          * representation which is typically stored in the object header.
          */
-        ObjectHub,
-
-        /**
-         * The runtime representation of the type information for an object, which is typically used
-         * for subtype tests.
-         */
-        TypeInfo
+        ObjectHub
     }
 
     /**

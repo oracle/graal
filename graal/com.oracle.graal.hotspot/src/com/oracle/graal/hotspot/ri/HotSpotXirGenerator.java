@@ -288,7 +288,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         @Override
         protected XirTemplate create(CiXirAssembler asm, long flags, int size) {
             XirOperand result = asm.restart(target.wordKind);
-            XirOperand type = asm.createInputParameter("type", CiKind.Object);
+            XirOperand hub = asm.createInputParameter("hub", CiKind.Object);
 
             XirOperand temp1 = asm.createRegisterTemp("temp1", target.wordKind, AMD64.rcx);
             XirOperand temp1o = asm.createRegister("temp1o", CiKind.Object, AMD64.rcx);
@@ -299,7 +299,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             XirLabel resume = asm.createInlineLabel("resume");
 
             // check if the class is already initialized
-            asm.pload(CiKind.Int, temp2i, type, asm.i(config.klassStateOffset), false);
+            asm.pload(CiKind.Int, temp2i, hub, asm.i(config.klassStateOffset), false);
             asm.jneq(tlabFull, temp2i, asm.i(config.klassStateFullyInitialized));
 
             XirOperand thread = asm.createRegisterTemp("thread", target.wordKind, AMD64.r15);
@@ -312,9 +312,9 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
             asm.bindInline(resume);
 
-            asm.pload(target.wordKind, temp1, type, asm.i(config.instanceHeaderPrototypeOffset), false);
+            asm.pload(target.wordKind, temp1, hub, asm.i(config.instanceHeaderPrototypeOffset), false);
             asm.pstore(target.wordKind, result, temp1, false);
-            asm.mov(temp1o, type); // need a temporary register since Intel cannot store 64-bit constants to memory
+            asm.mov(temp1o, hub); // need a temporary register since Intel cannot store 64-bit constants to memory
             asm.pstore(CiKind.Object, result, asm.i(config.hubOffset), temp1o, false);
 
             if (size > 2 * target.wordSize) {
@@ -327,7 +327,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             // -- out of line -------------------------------------------------------
             asm.bindOutOfLine(tlabFull);
             XirOperand arg = asm.createRegisterTemp("runtime call argument", CiKind.Object, AMD64.rdx);
-            asm.mov(arg, type);
+            asm.mov(arg, hub);
             useRegisters(asm, AMD64.rax);
             asm.callRuntime(config.newInstanceStub, result);
             asm.jmp(resume);
@@ -871,26 +871,27 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     @Override
     public XirSnippet genNewInstance(XirSite site, RiType type) {
-        int instanceSize = ((HotSpotTypeResolved) type).instanceSize();
-        return new XirSnippet(newInstanceTemplates.get(site, instanceSize), XirArgument.forObject(type));
+        HotSpotTypeResolved resolvedType = (HotSpotTypeResolved) type;
+        int instanceSize = resolvedType.instanceSize();
+        return new XirSnippet(newInstanceTemplates.get(site, instanceSize), XirArgument.forObject(resolvedType.klassOop()));
     }
 
     @Override
     public XirSnippet genNewArray(XirSite site, XirArgument length, CiKind elementKind, RiType componentType, RiType arrayType) {
         if (elementKind == CiKind.Object) {
             assert arrayType instanceof RiResolvedType;
-            return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(arrayType));
+            return new XirSnippet(newObjectArrayTemplates.get(site), length, XirArgument.forObject(((HotSpotType) arrayType).klassOop()));
         } else {
             assert arrayType == null;
             RiType primitiveArrayType = compiler.getCompilerToVM().getPrimitiveArrayType(elementKind);
-            return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(primitiveArrayType));
+            return new XirSnippet(newTypeArrayTemplates.get(site, elementKind), length, XirArgument.forObject(((HotSpotType) primitiveArrayType).klassOop()));
         }
     }
 
     @Override
     public XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type) {
         XirArgument[] params = Arrays.copyOf(lengths, lengths.length + 1);
-        params[lengths.length] = XirArgument.forObject(type);
+        params[lengths.length] = XirArgument.forObject(((HotSpotType) type).klassOop());
         return new XirSnippet(multiNewArrayTemplate.get(site, lengths.length), params);
     }
 
@@ -906,9 +907,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 params[i++] = hub;
             }
             for (RiResolvedType hint : hints) {
-                // The Graal C++ code auto-magically converts HotSpotTypeResolvedImpl into the corresponding klassOop.
-                // See CodeInstaller::site_DataPatch in graalCodeInstaller.cpp.
-                params[i++] = XirArgument.forObject(hint);
+                params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
             XirTemplate template = hintsExact ? checkCastTemplates.get(site, hints.length, EXACT_HINTS) : checkCastTemplates.get(site, hints.length);
             return new XirSnippet(template, params);
@@ -927,9 +926,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 params[i++] = hub;
             }
             for (RiResolvedType hint : hints) {
-                // The Graal C++ code auto-magically converts HotSpotTypeResolvedImpl into the corresponding klassOop.
-                // See CodeInstaller::site_DataPatch in graalCodeInstaller.cpp.
-                params[i++] = XirArgument.forObject(hint);
+                params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
             XirTemplate template = hintsExact ? instanceOfTemplates.get(site, hints.length, EXACT_HINTS) : instanceOfTemplates.get(site, hints.length);
             return new XirSnippet(template, params);
@@ -950,9 +947,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             params[i++] = trueValue;
             params[i++] = falseValue;
             for (RiResolvedType hint : hints) {
-                // The Graal C++ code auto-magically converts HotSpotTypeResolvedImpl into the corresponding klassOop.
-                // See CodeInstaller::site_DataPatch in graalCodeInstaller.cpp.
-                params[i++] = XirArgument.forObject(hint);
+                params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
             XirTemplate template = hintsExact ? materializeInstanceOfTemplates.get(site, hints.length, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hints.length);
             return new XirSnippet(template, params);

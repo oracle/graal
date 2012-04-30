@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.ri;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.Compiler;
 
 /**
@@ -118,5 +119,10 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     @Override
     public RiResolvedType resolve(RiResolvedType accessingClass) {
         return (RiResolvedType) compiler.lookupType(name, (HotSpotTypeResolved) accessingClass, true);
+    }
+
+    @Override
+    public HotSpotKlassOop klassOop() {
+        throw GraalInternalError.shouldNotReachHere("HotSpotTypeUnresolved.klassOop");
     }
 }

@@ -118,11 +118,9 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
             case JavaClass:
                 return CiConstant.forObject(javaMirror);
             case ObjectHub:
-                return CiConstant.forObject(this);
+                return CiConstant.forObject(klassOop());
             case StaticFields:
                 return CiConstant.forObject(javaMirror);
-            case TypeInfo:
-                return CiConstant.forObject(this);
             default:
                 return null;
         }
@@ -220,7 +218,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
 
         long id = offset + ((long) flags << 32);
 
-        // (thomaswue) Must cache the fields, because the local load elimination only works if the objects from two field lookups are equal.
+        // (thomaswue) Must cache the fields, because the local load elimination only works if the objects from two field lookups are identical.
         if (fieldCache == null) {
             fieldCache = new HashMap<>(8);
         } else {
@@ -264,5 +262,16 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public RiResolvedType resolve(RiResolvedType accessingClass) {
         return this;
+    }
+
+    // (dnsimon) this value may require identity semantics
+    private HotSpotKlassOop klassOopCache;
+
+    @Override
+    public synchronized HotSpotKlassOop klassOop() {
+        if (klassOopCache == null) {
+            klassOopCache = new HotSpotKlassOop(compiler, javaMirror);
+        }
+        return klassOopCache;
     }
 }

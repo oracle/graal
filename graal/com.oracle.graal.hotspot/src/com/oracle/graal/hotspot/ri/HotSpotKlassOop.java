@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,26 @@
  */
 package com.oracle.graal.hotspot.ri;
 
-import com.oracle.max.cri.ri.*;
-import com.oracle.graal.hotspot.server.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.Compiler;
 
-public interface HotSpotTypeResolved extends RiResolvedType, Remote {
+/**
+ * A mechanism for safely conveying a HotSpot klassOop value from the compiler to the C++ code.
+ * Such values should not be directly exposed to Java code as they are not real Java
+ * objects. For instance, invoking a method on them or using them in an <code>instanceof</code>
+ * expression will most likely crash the VM.
+ */
+public class HotSpotKlassOop extends CompilerObject {
 
-    String toString();
+    private static final long serialVersionUID = -5445542223575839143L;
 
-    RiConstantPool constantPool();
+    /**
+     * The Java object from which the klassOop value can be derived (by the C++ code).
+     */
+    public final Class javaMirror;
 
-    int instanceSize();
-
-    RiField createRiField(String name, RiType type, int offset, int flags);
-
-    HotSpotKlassOop klassOop();
+    HotSpotKlassOop(Compiler compiler, Class javaMirror) {
+        super(compiler);
+        this.javaMirror = javaMirror;
+    }
 }
