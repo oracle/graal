@@ -914,11 +914,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(RiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
 
     @Override
-    public Variable emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {
+    public Variable emitCall(@SuppressWarnings("hiding") Object target, CiKind result, CiKind[] arguments, boolean canTrap, CiValue... args) {
         LIRDebugInfo info = canTrap ? state() : null;
 
-        CiKind result = runtimeCall.resultKind;
-        CiKind[] arguments = runtimeCall.arguments;
         CiValue physReg = resultOperandFor(result);
 
         List<CiValue> argumentList;
@@ -939,7 +937,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             argumentList = Collections.emptyList();
         }
 
-        emitCall(runtimeCall, physReg, argumentList, CiConstant.forLong(0), info, null);
+        emitCall(target, physReg, argumentList, CiConstant.forLong(0), info, null);
 
         if (isLegal(physReg)) {
             return emitMove(physReg);

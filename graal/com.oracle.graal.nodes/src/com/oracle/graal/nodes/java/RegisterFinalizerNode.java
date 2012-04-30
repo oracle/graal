@@ -46,7 +46,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitCallToRuntime(CiRuntimeCall.RegisterFinalizer, true, gen.operand(object()));
+        gen.emitCall(CiRuntimeCall.RegisterFinalizer, true, gen.operand(object()));
     }
 
     @Override

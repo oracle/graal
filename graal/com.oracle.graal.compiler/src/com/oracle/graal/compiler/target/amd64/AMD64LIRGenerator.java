@@ -339,7 +339,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitRem(CiValue a, CiValue b) {
+    public CiValue emitRem(CiValue a, CiValue b) {
         switch(a.kind) {
             case Int:
                 emitMove(a, RAX_I);
@@ -350,9 +350,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new DivOp(LREM, RDX_L, RAX_L, load(b), state()));
                 return emitMove(RDX_L);
             case Float:
-                return emitCallToRuntime(CiRuntimeCall.ArithmeticFrem, false, a, b);
+                return emitCall(CiRuntimeCall.ArithmeticFrem, false, a, b);
             case Double:
-                return emitCallToRuntime(CiRuntimeCall.ArithmeticDrem, false, a, b);
+                return emitCall(CiRuntimeCall.ArithmeticDrem, false, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

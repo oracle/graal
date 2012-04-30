@@ -81,7 +81,10 @@ public abstract class LIRGeneratorTool {
     public abstract void emitMembar(int barriers);
     public abstract void emitDeoptimizeOn(Condition cond, RiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
     public abstract void emitDeoptimize(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId);
-    public abstract CiValue emitCallToRuntime(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args);
+    public abstract CiValue emitCall(Object target, CiKind result, CiKind[] arguments, boolean canTrap, CiValue... args);
+    public final CiValue emitCall(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {
+        return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
+    }
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);

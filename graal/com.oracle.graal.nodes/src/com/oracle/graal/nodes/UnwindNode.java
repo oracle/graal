@@ -46,6 +46,6 @@ public final class UnwindNode extends FixedNode implements LIRLowerable, Node.It
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitCallToRuntime(CiRuntimeCall.UnwindException, false, gen.operand(exception()));
+        gen.emitCall(CiRuntimeCall.UnwindException, false, gen.operand(exception()));
     }
 }
