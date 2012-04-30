@@ -27,12 +27,15 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
- * Snippets for {@link NodeClass} methods.
+ * Snippets for improving the performance of some critical methods in {@link NodeClass} methods.
+ * These snippets improve the performance by forcing the relevant methods to be inlined
+ * (intrinsification being a special form of inlining) and removing a checked cast.
+ * The latter cannot be done directly in Java code as {@link UnsafeCastNode}
+ * is not available to the project containing {@link NodeClass}.
  */
 @SuppressWarnings("unused")
 @ClassSubstitution(NodeClass.class)
 public class NodeClassSnippets implements SnippetsInterface {
-
 
     private static Node getNode(Node node, long offset) {
         return UnsafeCastNode.cast(UnsafeLoadNode.load(node, 0, offset, CiKind.Object), Node.class);
