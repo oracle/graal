@@ -34,18 +34,12 @@ import com.oracle.max.cri.ri.*;
  */
 public class CiTargetMethod implements Serializable {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -1319947729753702434L;
 
     /**
      * Represents a code position with associated additional information.
      */
     public abstract static class Site implements Serializable {
-        /**
-         *
-         */
         private static final long serialVersionUID = -8214214947651979102L;
         /**
          * The position (or offset) of this site with respect to the start of the target method.
@@ -61,9 +55,6 @@ public class CiTargetMethod implements Serializable {
      * Represents a safepoint with associated debug info.
      */
     public static class Safepoint extends Site implements Comparable<Safepoint> {
-        /**
-         *
-         */
         private static final long serialVersionUID = 2479806696381720162L;
         public final CiDebugInfo debugInfo;
 
@@ -96,9 +87,6 @@ public class CiTargetMethod implements Serializable {
      * Represents a call in the code.
      */
     public static final class Call extends Safepoint {
-        /**
-         *
-         */
         private static final long serialVersionUID = 1440741241631046954L;
 
         /**
@@ -145,9 +133,6 @@ public class CiTargetMethod implements Serializable {
      * Represents a reference to data from the code. The associated data can be any constant.
      */
     public static final class DataPatch extends Site {
-        /**
-         *
-         */
         private static final long serialVersionUID = 5771730331604867476L;
         public final CiConstant constant;
         public final int alignment;
@@ -169,9 +154,6 @@ public class CiTargetMethod implements Serializable {
      * This is optional information that can be used to enhance a disassembly of the code.
      */
     public abstract static class CodeAnnotation implements Serializable {
-        /**
-         *
-         */
         private static final long serialVersionUID = -7903959680749520748L;
         public final int position;
 
@@ -204,9 +186,6 @@ public class CiTargetMethod implements Serializable {
      * Labels some inline data in the code.
      */
     public static final class InlineData extends CodeAnnotation {
-        /**
-         *
-         */
         private static final long serialVersionUID = 305997507263827108L;
         public final int size;
         public InlineData(int position, int size) {
@@ -228,9 +207,6 @@ public class CiTargetMethod implements Serializable {
      * The table is indexed by the contiguous range of integers from {@link #low} to {@link #high} inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
-        /**
-         *
-         */
         private static final long serialVersionUID = 2222194398353801831L;
 
         /**
@@ -267,9 +243,6 @@ public class CiTargetMethod implements Serializable {
      * based on a key value from a sparse value set (e.g. the {@code lookupswitch} JVM instruction).
      */
     public static final class LookupTable extends CodeAnnotation {
-        /**
-         *
-         */
         private static final long serialVersionUID = 8367952567559116160L;
 
         /**
@@ -305,9 +278,6 @@ public class CiTargetMethod implements Serializable {
      * well as the caught exception type.
      */
     public static final class ExceptionHandler extends Site {
-        /**
-         *
-         */
         private static final long serialVersionUID = 4897339464722665281L;
         public final int handlerPos;
 
@@ -323,9 +293,6 @@ public class CiTargetMethod implements Serializable {
     }
 
     public static final class Mark extends Site {
-        /**
-         *
-         */
         private static final long serialVersionUID = 3612943150662354844L;
         public final Object id;
         public final Mark[] references;

@@ -28,9 +28,6 @@ package com.oracle.graal.graph;
  */
 public class VerificationError extends GraalInternalError {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = 8459607567446819822L;
 
     /**

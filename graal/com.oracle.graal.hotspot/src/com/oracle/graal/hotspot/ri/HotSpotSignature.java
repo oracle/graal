@@ -35,9 +35,6 @@ import com.oracle.graal.java.*;
  */
 public class HotSpotSignature extends CompilerObject implements RiSignature {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -2890917956072366116L;
     private final List<String> arguments = new ArrayList<>();
     private final String returnType;

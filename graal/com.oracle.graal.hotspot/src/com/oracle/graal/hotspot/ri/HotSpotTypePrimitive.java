@@ -35,9 +35,6 @@ import com.oracle.graal.hotspot.Compiler;
  */
 public final class HotSpotTypePrimitive extends HotSpotType implements RiResolvedType {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -6208552348908071473L;
     private CiKind kind;
 

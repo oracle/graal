@@ -74,9 +74,6 @@ public class ReplacingStreams {
 
     public static class Placeholder implements Serializable {
 
-        /**
-         *
-         */
         private static final long serialVersionUID = 6071894297788156945L;
         public final int id;
 
@@ -92,9 +89,6 @@ public class ReplacingStreams {
 
     public static class NewRemoteCallPlaceholder implements Serializable {
 
-        /**
-         *
-         */
         private static final long serialVersionUID = 3084101671389500206L;
         public final Class<?>[] interfaces;
 
@@ -104,10 +98,6 @@ public class ReplacingStreams {
     }
 
     public static class NewDummyPlaceholder implements Serializable {
-
-        /**
-         *
-         */
         private static final long serialVersionUID = 2692666726573532288L;
     }
 

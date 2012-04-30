@@ -28,9 +28,6 @@ import com.oracle.graal.hotspot.Compiler;
 
 public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 7167491397941960839L;
     protected String name;
 

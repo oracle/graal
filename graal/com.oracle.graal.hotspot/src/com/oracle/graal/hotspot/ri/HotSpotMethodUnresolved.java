@@ -29,9 +29,6 @@ import com.oracle.graal.hotspot.Compiler;
  * Implementation of RiMethod for unresolved HotSpot methods.
  */
 public final class HotSpotMethodUnresolved extends HotSpotMethod {
-    /**
-     * 
-     */
     private static final long serialVersionUID = 5610263481791970079L;
     private final RiSignature signature;
     protected RiType holder;

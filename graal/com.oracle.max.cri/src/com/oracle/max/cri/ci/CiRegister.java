@@ -30,9 +30,6 @@ import java.util.*;
  */
 public final class CiRegister implements Comparable<CiRegister>, Serializable {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = -7213269157816016300L;
 
     /**

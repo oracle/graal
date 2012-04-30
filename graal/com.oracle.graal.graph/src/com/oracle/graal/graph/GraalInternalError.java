@@ -29,9 +29,6 @@ import java.util.*;
  */
 public class GraalInternalError extends Error {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 8776065085829593278L;
     private Node node;
     private Graph graph;

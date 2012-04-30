@@ -30,9 +30,7 @@ import java.io.*;
  * decisions like speculative inlining, etc.
  */
 public final class RiTypeProfile implements Serializable {
-    /**
-     *
-     */
+
     private static final long serialVersionUID = -6877016333706838441L;
 
     private final RiResolvedType[] types;

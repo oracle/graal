@@ -30,9 +30,6 @@ import com.oracle.graal.hotspot.Compiler;
 
 public final class HotSpotProfilingInfo extends CompilerObject implements RiProfilingInfo {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -8307682725047864875L;
     private static final DebugMetric metricInsufficentSpace = Debug.metric("InsufficientSpaceForProfilingData");
 

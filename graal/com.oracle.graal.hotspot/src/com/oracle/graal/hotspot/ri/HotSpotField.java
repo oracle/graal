@@ -38,9 +38,6 @@ import com.oracle.graal.hotspot.Compiler;
  */
 public class HotSpotField extends CompilerObject implements RiResolvedField {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 7692985878836955683L;
     private final RiResolvedType holder;
     private final String name;

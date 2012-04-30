@@ -34,9 +34,6 @@ import com.oracle.max.cri.ri.*;
 
 public final class HotSpotMethodData extends CompilerObject {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -8873133496591225071L;
 
     static {

@@ -30,9 +30,6 @@ import java.io.*;
  */
 public class CiDebugInfo implements Serializable {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = -6047206624915812516L;
 
     /**
