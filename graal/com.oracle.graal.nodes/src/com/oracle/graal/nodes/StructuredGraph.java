@@ -73,6 +73,27 @@ public class StructuredGraph extends Graph {
         this(null, method);
     }
 
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder(getClass().getSimpleName() + ":" + graphId);
+        String sep = "{";
+        if (name != null) {
+            buf.append(sep);
+            buf.append(name);
+            sep = ", ";
+        }
+        if (method != null) {
+            buf.append(sep);
+            buf.append(method);
+            sep = ", ";
+        }
+
+        if (!sep.equals("{")) {
+            buf.append("}");
+        }
+        return buf.toString();
+    }
+
     public BeginNode start() {
         return start;
     }
