@@ -28,8 +28,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
@@ -37,7 +35,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.target.amd64.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -495,10 +492,8 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph) {
-        final PhasePlan plan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-        plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), plan, OptimisticOptimizations.ALL);
+        OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
+        return compiler.getCompiler().compileMethod(method, graph, -1, compiler.getCache(), compiler.getVMToCompiler().createPhasePlan(optimisticOpts), optimisticOpts);
     }
 
     @Override

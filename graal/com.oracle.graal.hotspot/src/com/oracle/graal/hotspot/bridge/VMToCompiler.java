@@ -23,9 +23,11 @@
 
 package com.oracle.graal.hotspot.bridge;
 
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.hotspot.ri.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.graal.hotspot.ri.*;
 
 /**
  * Calls from HotSpot into Java.
@@ -59,4 +61,6 @@ public interface VMToCompiler {
     CiConstant createCiConstantDouble(double value);
 
     CiConstant createCiConstantObject(Object object);
+
+    PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts);
 }

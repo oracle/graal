@@ -352,7 +352,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
             final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
             int id = compileTaskIds.incrementAndGet();
-            CompilationTask task = CompilationTask.create(compiler, createHotSpotSpecificPhasePlan(optimisticOpts), optimisticOpts, method, id, priority);
+            CompilationTask task = CompilationTask.create(compiler, createPhasePlan(optimisticOpts), optimisticOpts, method, id, priority);
             if (blocking) {
                 task.runCompilation();
             } else {
@@ -464,7 +464,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
 
-    private PhasePlan createHotSpotSpecificPhasePlan(OptimisticOptimizations optimisticOpts) {
+    public PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts) {
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(compiler.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
