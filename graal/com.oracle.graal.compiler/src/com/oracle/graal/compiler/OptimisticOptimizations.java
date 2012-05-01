@@ -82,7 +82,7 @@ public final class OptimisticOptimizations {
         return GraalOptions.RemoveNeverExecutedCode && enabledOpts.contains(Optimization.RemoveNeverExecutedCode);
     }
 
-    public boolean useUseTypeCheckHints() {
+    public boolean useTypeCheckHints() {
         return GraalOptions.UseTypeCheckHints && enabledOpts.contains(Optimization.UseTypeCheckHints);
     }
 

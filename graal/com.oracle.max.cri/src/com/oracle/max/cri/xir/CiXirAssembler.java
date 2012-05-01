@@ -871,7 +871,7 @@ public abstract class CiXirAssembler {
         return createConstant(CiConstant.forInt(v));
     }
 
-    public XirConstant l(int v) {
+    public XirConstant l(long v) {
         return createConstant(CiConstant.forLong(v));
     }
 

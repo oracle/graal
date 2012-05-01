@@ -591,7 +591,7 @@ public final class GraphBuilderPhase extends Phase {
     private static final RiResolvedType[] EMPTY_TYPE_ARRAY = new RiResolvedType[0];
 
     private RiResolvedType[] getTypeCheckHints(RiResolvedType type, int maxHints) {
-        if (!optimisticOpts.useUseTypeCheckHints() || Util.isFinalClass(type)) {
+        if (!optimisticOpts.useTypeCheckHints() || Util.isFinalClass(type)) {
             return new RiResolvedType[] {type};
         } else {
             RiResolvedType uniqueSubtype = type.uniqueConcreteSubtype();

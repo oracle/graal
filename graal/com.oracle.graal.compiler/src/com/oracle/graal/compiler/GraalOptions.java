@@ -225,6 +225,11 @@ public final class GraalOptions {
      */
     public static boolean PrintFlags                           = false;
 
+    /**
+     * Counts the various paths taken through a compiled checkcast.
+     */
+    public static boolean CheckcastCounters = false;
+
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
         assert (DetailedAsserts = true) == true;

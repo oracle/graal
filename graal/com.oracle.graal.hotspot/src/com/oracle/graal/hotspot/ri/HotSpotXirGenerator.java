@@ -25,10 +25,14 @@ package com.oracle.graal.hotspot.ri;
 import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.max.asm.target.amd64.*;
@@ -460,56 +464,141 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         }
     };
 
+    private static final CheckcastCounters checkcastCounters = GraalOptions.CheckcastCounters ? new CheckcastCounters() : null;
+
+    public static class CheckcastCounters {
+        long hintsHits;
+        long hintsMisses;
+        long exact;
+        long noHints;
+        long isNull;
+        long exceptions;
+
+        static final int hintsHitsOffset;
+        static final int hintsMissesOffset;
+        static final int exactOffset;
+        static final int noHintsOffset;
+        static final int isNullOffset;
+        static final int exceptionsOffset;
+
+        static {
+            Unsafe unsafe = Unsafe.getUnsafe();
+            try {
+                hintsHitsOffset = (int) unsafe.objectFieldOffset(CheckcastCounters.class.getDeclaredField("hintsHits"));
+                hintsMissesOffset = (int) unsafe.objectFieldOffset(CheckcastCounters.class.getDeclaredField("hintsMisses"));
+                exactOffset = (int) unsafe.objectFieldOffset(CheckcastCounters.class.getDeclaredField("exact"));
+                noHintsOffset = (int) unsafe.objectFieldOffset(CheckcastCounters.class.getDeclaredField("noHints"));
+                isNullOffset = (int) unsafe.objectFieldOffset(CheckcastCounters.class.getDeclaredField("isNull"));
+                exceptionsOffset = (int) unsafe.objectFieldOffset(CheckcastCounters.class.getDeclaredField("exceptions"));
+            } catch (Exception e) {
+                throw new GraalInternalError(e);
+            }
+        }
+
+        private static void printCounter(PrintStream out, String label, long count, long total) {
+            double percent = ((double) (count * 100)) / total;
+            out.println(String.format("%16s: %5.2f%%%10d", label, percent, count));
+        }
+
+        public void printCounters(PrintStream out) {
+            long total = hintsHits + hintsMisses + exact + noHints + isNull + exceptions;
+            out.println();
+            out.println("** Checkcast counters **");
+            printCounter(out, "hintsHits", hintsHits, total);
+            printCounter(out, "hintsMisses", hintsMisses, total);
+            printCounter(out, "exact", exact, total);
+            printCounter(out, "noHints", noHints, total);
+            printCounter(out, "isNull", isNull, total);
+            printCounter(out, "exceptions", exceptions, total);
+        }
+    }
+
     private IndexTemplates checkCastTemplates = new IndexTemplates(NULL_CHECK, EXACT_HINTS) {
+
+        private void incCounter(CiXirAssembler asm, XirOperand counter, XirParameter counters, int offset) {
+            XirConstant offsetOp = asm.i(offset);
+            asm.pload(CiKind.Long, counter, counters, offsetOp, false);
+            asm.add(counter, counter, asm.i(1));
+            asm.pstore(CiKind.Long, counters, offsetOp, counter, false);
+        }
 
         @Override
         protected XirTemplate create(CiXirAssembler asm, long flags, int hintCount) {
             asm.restart(CiKind.Void);
+            boolean exact = is(EXACT_HINTS, flags);
+            XirParameter counters = GraalOptions.CheckcastCounters ? asm.createConstantInputParameter("counters", CiKind.Object) : null;
             XirParameter object = asm.createInputParameter("object", CiKind.Object);
-            final XirOperand hub = is(EXACT_HINTS, flags) ? null : asm.createConstantInputParameter("hub", CiKind.Object);
+            final XirOperand hub = exact ? null : asm.createConstantInputParameter("hub", CiKind.Object);
 
             XirOperand objHub = asm.createTemp("objHub", CiKind.Object);
+            XirOperand counter = counters != null ? asm.createTemp("counter", CiKind.Long) : null;
 
-            XirLabel end = asm.createInlineLabel("end");
+            XirLabel success = asm.createInlineLabel("success");
             XirLabel slowPath = asm.createOutOfLineLabel("slow path");
 
             if (is(NULL_CHECK, flags)) {
                 // null can be cast to anything
-                asm.jeq(end, object, asm.o(null));
+                if (counters != null) {
+                    XirLabel isNotNull = asm.createInlineLabel("isNull");
+                    asm.jneq(isNotNull, object, asm.o(null));
+                    incCounter(asm, counter, counters, CheckcastCounters.isNullOffset);
+                    asm.jmp(success);
+                    asm.bindInline(isNotNull);
+                } else {
+                    asm.jeq(success, object, asm.o(null));
+                }
+
             }
 
             asm.pload(CiKind.Object, objHub, object, asm.i(config.hubOffset), false);
             if (hintCount == 0) {
-                assert !is(EXACT_HINTS, flags);
+                assert !exact;
+                if (counters != null) {
+                    incCounter(asm, counter, counters, CheckcastCounters.noHintsOffset);
+                }
+
                 checkSubtype(asm, objHub, objHub, hub);
                 asm.jeq(slowPath, objHub, asm.o(null));
-                asm.bindInline(end);
+                asm.bindInline(success);
 
                 // -- out of line -------------------------------------------------------
                 asm.bindOutOfLine(slowPath);
             } else {
+                XirLabel hintsSuccess = counters == null ? success : asm.createInlineLabel("hintsSuccess");
                 XirOperand scratchObject = asm.createRegisterTemp("scratch", CiKind.Object, AMD64.r10);
                 // if we get an exact match: succeed immediately
                 for (int i = 0; i < hintCount; i++) {
                     XirParameter hintHub = asm.createConstantInputParameter("hintHub" + i, CiKind.Object);
                     asm.mov(scratchObject, hintHub);
                     if (i < hintCount - 1) {
-                        asm.jeq(end, objHub, scratchObject);
+                        asm.jeq(hintsSuccess, objHub, scratchObject);
                     } else {
                         asm.jneq(slowPath, objHub, scratchObject);
                     }
                 }
-                asm.bindInline(end);
+
+                if (counters != null) {
+                    asm.bindInline(hintsSuccess);
+                    incCounter(asm, counter, counters, exact ? CheckcastCounters.exactOffset : CheckcastCounters.hintsHitsOffset);
+                }
+
+                asm.bindInline(success);
 
                 // -- out of line -------------------------------------------------------
                 asm.bindOutOfLine(slowPath);
-                if (!is(EXACT_HINTS, flags)) {
+                if (!exact) {
+                    if (counters != null) {
+                        incCounter(asm, counter, counters, CheckcastCounters.hintsMissesOffset);
+                    }
                     checkSubtype(asm, objHub, objHub, hub);
-                    asm.jneq(end, objHub, asm.o(null));
+                    asm.jneq(success, objHub, asm.o(null));
                 }
             }
 
-            RiDeoptReason deoptReason = is(EXACT_HINTS, flags) ? RiDeoptReason.OptimizedTypeCheckViolated : RiDeoptReason.ClassCastException;
+            if (counters != null) {
+                incCounter(asm, counter, counters, CheckcastCounters.exceptionsOffset);
+            }
+            RiDeoptReason deoptReason = exact ? RiDeoptReason.OptimizedTypeCheckViolated : RiDeoptReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
             asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.InvalidateReprofile, deoptReason)));
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
@@ -737,11 +826,19 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     @Override
     public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiType type, RiResolvedType[] hints, boolean hintsExact) {
+        final boolean useCounters = GraalOptions.CheckcastCounters;
         if (hints == null || hints.length == 0) {
-            return new XirSnippet(checkCastTemplates.get(site, 0), receiver, hub);
+            if (useCounters) {
+                return new XirSnippet(checkCastTemplates.get(site, 0), XirArgument.forObject(checkcastCounters), receiver, hub);
+            } else {
+                return new XirSnippet(checkCastTemplates.get(site, 0), receiver, hub);
+            }
         } else {
-            XirArgument[] params = new XirArgument[hints.length + (hintsExact ? 1 : 2)];
+            XirArgument[] params = new XirArgument[(useCounters ? 1 : 0) + hints.length + (hintsExact ? 1 : 2)];
             int i = 0;
+            if (useCounters) {
+                params[i++] = XirArgument.forObject(checkcastCounters);
+            }
             params[i++] = receiver;
             if (!hintsExact) {
                 params[i++] = hub;
@@ -915,6 +1012,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
         public XirTemplate get(XirSite site, CiKind kind, TemplateFlag... flags) {
             return getInternal(getBits(kind.ordinal(), site, flags));
+        }
+    }
+
+    public static void printCounters(PrintStream out) {
+        if (GraalOptions.CheckcastCounters) {
+            checkcastCounters.printCounters(out);
         }
     }
 }
