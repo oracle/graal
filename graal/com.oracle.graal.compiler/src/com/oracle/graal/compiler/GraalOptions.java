@@ -230,6 +230,9 @@ public final class GraalOptions {
      */
     public static boolean CheckcastCounters = false;
 
+    public static int CheckcastMaxHints = 2;
+    public static int InstanceOfMaxHints = 1;
+
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
         assert (DetailedAsserts = true) == true;

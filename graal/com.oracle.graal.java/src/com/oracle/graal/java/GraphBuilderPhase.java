@@ -629,7 +629,7 @@ public final class GraphBuilderPhase extends Phase {
             AnchorNode anchor = currentGraph.add(new AnchorNode());
             append(anchor);
             CheckCastNode checkCast;
-            RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, 2);
+            RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, GraalOptions.CheckcastMaxHints);
             checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
             append(currentGraph.add(new ValueAnchorNode(checkCast)));
             frameState.apush(checkCast);
@@ -648,7 +648,7 @@ public final class GraphBuilderPhase extends Phase {
             RiResolvedType resolvedType = (RiResolvedType) type;
             ConstantNode hub = appendConstant(resolvedType.getEncoding(RiType.Representation.ObjectHub));
 
-            RiResolvedType[] hints = getTypeCheckHints(resolvedType, 1);
+            RiResolvedType[] hints = getTypeCheckHints(resolvedType, GraalOptions.InstanceOfMaxHints);
             InstanceOfNode instanceOfNode = new InstanceOfNode(hub, (RiResolvedType) type, object, hints, Util.isFinalClass(resolvedType), false);
             frameState.ipush(append(MaterializeNode.create(currentGraph.unique(instanceOfNode), currentGraph)));
         } else {
