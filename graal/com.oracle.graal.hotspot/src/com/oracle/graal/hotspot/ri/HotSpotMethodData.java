@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiTypeProfile.*;
 
 
 public final class HotSpotMethodData extends CompilerObject {
@@ -332,8 +333,8 @@ public final class HotSpotMethodData extends CompilerObject {
         public RiTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
             int typeProfileWidth = config.typeProfileWidth;
 
-            RiResolvedType[] sparseTypes = new RiResolvedType[typeProfileWidth];
-            double[] counts = new double[typeProfileWidth];
+            RiResolvedType[] types = new RiResolvedType[typeProfileWidth];
+            long[] counts = new long[typeProfileWidth];
             long totalCount = 0;
             int entries = 0;
 
@@ -346,7 +347,9 @@ public final class HotSpotMethodData extends CompilerObject {
                         graalMirror = CompilerImpl.getInstance().getCompilerToVM().getType(javaClass);
                         assert graalMirror != null : "must not return null";
                     }
-                    sparseTypes[entries] = (RiResolvedType) graalMirror;
+
+
+                    types[entries] = (RiResolvedType) graalMirror;
 
                     long count = data.readUnsignedInt(position, getCountOffset(i));
                     totalCount += count;
@@ -357,7 +360,7 @@ public final class HotSpotMethodData extends CompilerObject {
             }
 
             totalCount += getTypesNotRecordedExecutionCount(data, position);
-            return createRiTypeProfile(sparseTypes, counts, totalCount, entries);
+            return createRiTypeProfile(types, counts, totalCount, entries);
         }
 
         protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
@@ -366,29 +369,24 @@ public final class HotSpotMethodData extends CompilerObject {
             return getCounterValue(data, position);
         }
 
-        private static RiTypeProfile createRiTypeProfile(RiResolvedType[] sparseTypes, double[] counts, long totalCount, int entries) {
-            RiResolvedType[] types;
-            double[] probabilities;
-
+        private static RiTypeProfile createRiTypeProfile(RiResolvedType[] types, long[] counts, long totalCount, int entries) {
             if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
                 return null;
-            } else if (entries < sparseTypes.length) {
-                types = Arrays.copyOf(sparseTypes, entries);
-                probabilities = new double[entries];
-            } else {
-                types = sparseTypes;
-                probabilities = counts;
             }
 
+            ProfiledType[] ptypes = new ProfiledType[entries];
             double totalProbability = 0.0;
             for (int i = 0; i < entries; i++) {
-                double p = counts[i] / totalCount;
-                probabilities[i] = p;
+                double p = counts[i];
+                p = p / totalCount;
                 totalProbability += p;
+                ptypes[i] = new ProfiledType(types[i], p);
             }
 
+            Arrays.sort(ptypes);
+
             double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
-            return new RiTypeProfile(types, notRecordedTypeProbability, probabilities);
+            return new RiTypeProfile(ptypes, notRecordedTypeProbability);
         }
 
         private static int getReceiverOffset(int row) {
