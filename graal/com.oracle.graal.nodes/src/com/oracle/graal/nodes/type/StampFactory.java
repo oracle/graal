@@ -232,7 +232,7 @@ public class StampFactory {
     public static Stamp declared(final RiResolvedType type) {
         assert type != null;
         assert type.kind(false) == CiKind.Object;
-        return new BasicValueStamp(CiKind.Object, false, type, null);
+        return new BasicValueStamp(CiKind.Object, false, type, type.exactType());
     }
 
     public static Stamp declaredNonNull(final RiResolvedType type) {
