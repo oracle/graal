@@ -85,7 +85,7 @@ public final class GraalOptions {
 
     // comilation queue
     public static int     TimedBootstrap                     = -1;
-    public static boolean PriorityCompileQueue               = true;
+    public static boolean PriorityCompileQueue               = ____;
     public static int     SlowQueueCutoff                    = 100000;
     public static boolean SlowCompileThreads                 = ____;
     public static boolean DynamicCompilePriority             = ____;
