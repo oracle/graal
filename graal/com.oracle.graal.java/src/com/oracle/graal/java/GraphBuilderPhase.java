@@ -604,7 +604,7 @@ public final class GraphBuilderPhase extends Phase {
                 if (typeProfile != null) {
                     double notRecordedTypes = typeProfile.getNotRecordedProbability();
                     ProfiledType[] ptypes = typeProfile.getTypes();
-                    if (notRecordedTypes < GraalOptions.CheckcastMinHintHitProbability && ptypes != null && ptypes.length > 0) {
+                    if (notRecordedTypes < (1D - GraalOptions.CheckcastMinHintHitProbability) && ptypes != null && ptypes.length > 0) {
                         RiResolvedType[] hints = new RiResolvedType[ptypes.length];
                         int hintCount = 0;
                         double totalHintProbability = 0.0d;
