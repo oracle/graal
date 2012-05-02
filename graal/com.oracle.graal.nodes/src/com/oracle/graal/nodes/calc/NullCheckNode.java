@@ -28,6 +28,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 
+/**
+ * A NullCheckNode will be true if the supplied value is non-null, and false if it is null.
+ * This behavior can be inverted by setting {@link #expectedNull} to true.
+ */
 public final class NullCheckNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
     @Input private ValueNode object;

@@ -26,9 +26,6 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.cri.*;
@@ -40,7 +37,10 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class InliningUtil {
 
@@ -193,8 +193,8 @@ public class InliningUtil {
             AnchorNode anchor = graph.add(new AnchorNode());
             assert invoke.predecessor() != null;
 
-            CheckCastNode checkCast = createAnchoredReceiver(graph, runtime, anchor, type, receiver);
-            invoke.callTarget().replaceFirstInput(receiver, checkCast);
+            ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver);
+            invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
             graph.addBeforeFixed(invoke.node(), objectClass);
             graph.addBeforeFixed(invoke.node(), guard);
@@ -348,8 +348,8 @@ public class InliningUtil {
 
                 RiResolvedType commonType = getLeastCommonType(i);
                 ValueNode receiver = invokeForInlining.callTarget().receiver();
-                CheckCastNode checkCast = createAnchoredReceiver(graph, runtime, node, commonType, receiver);
-                invokeForInlining.callTarget().replaceFirstInput(receiver, checkCast);
+                ValueNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver);
+                invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
                 RiResolvedMethod concrete = concretes.get(i);
                 StructuredGraph calleeGraph = getGraph(concrete, callback);
@@ -693,11 +693,9 @@ public class InliningUtil {
         }
     }
 
-    private static CheckCastNode createAnchoredReceiver(StructuredGraph graph, GraalRuntime runtime, FixedNode anchor, RiResolvedType commonType, ValueNode receiver) {
+    private static ValueNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, RiResolvedType commonType, ValueNode receiver) {
         // to avoid that floating reads on receiver fields float above the type check
-        ConstantNode typeConst = graph.unique(ConstantNode.forCiConstant(commonType.getEncoding(Representation.ObjectHub), runtime, graph));
-        CheckCastNode checkCast = graph.unique(new CheckCastNode(anchor, typeConst, commonType, receiver, false));
-        return checkCast;
+        return graph.unique(new PiNode(receiver, anchor, StampFactory.declaredNonNull(commonType)));
     }
 
     private static boolean checkInvokeConditions(Invoke invoke) {

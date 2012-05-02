@@ -40,14 +40,9 @@ import com.oracle.max.cri.ri.*;
 public final class CheckCastNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, TypeFeedbackProvider, TypeCanonicalizable {
 
     @Input(notDataflow = true) protected final FixedNode anchor;
-    protected final boolean emitCode;
 
     public FixedNode anchor() {
         return anchor;
-    }
-
-    public boolean emitCode() {
-        return emitCode;
     }
 
     /**
@@ -61,18 +56,9 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
         this(anchor, targetClassInstruction, targetClass, object, EMPTY_HINTS, false);
     }
 
-    public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, boolean emitCode) {
-        this(anchor, targetClassInstruction, targetClass, object, EMPTY_HINTS, false, emitCode);
-    }
-
     public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact) {
-        this(anchor, targetClassInstruction, targetClass, object, hints, hintsExact, true);
-    }
-
-    private CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact, boolean emitCode) {
         super(targetClassInstruction, targetClass, object, hints, hintsExact, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
         this.anchor = anchor;
-        this.emitCode = emitCode;
     }
 
     @Override
@@ -82,12 +68,16 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        assert object() != null : this;
+
         RiResolvedType objectDeclaredType = object().declaredType();
         RiResolvedType targetClass = targetClass();
         if (objectDeclaredType != null && targetClass != null && objectDeclaredType.isSubtypeOf(targetClass)) {
+            // we don't have to check for null types here because they will also pass the checkcast.
             freeAnchor();
             return object();
         }
+
         CiConstant constant = object().asConstant();
         if (constant != null) {
             assert constant.kind == CiKind.Object;
