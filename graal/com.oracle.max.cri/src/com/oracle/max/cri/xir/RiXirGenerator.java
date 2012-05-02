@@ -49,7 +49,7 @@ public interface RiXirGenerator {
 
     XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type);
 
-    XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiType type, RiResolvedType[] hints, boolean hintsExact);
+    XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiResolvedType type, RiResolvedType[] hints, boolean hintsExact);
 
     XirSnippet genInstanceOf(XirSite site, XirArgument receiver, XirArgument hub, RiType type, RiResolvedType[] hints, boolean hintsExact);
 
