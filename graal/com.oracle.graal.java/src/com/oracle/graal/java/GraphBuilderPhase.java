@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
 import com.oracle.max.criutils.*;
 
 /**
@@ -601,12 +602,14 @@ public final class GraphBuilderPhase extends Phase {
                 RiTypeProfile typeProfile = profilingInfo.getTypeProfile(bci());
                 if (typeProfile != null) {
                     double notRecordedTypes = typeProfile.getNotRecordedProbability();
-                    RiResolvedType[] types = typeProfile.getTypes();
+                    ProfiledType[] ptypes = typeProfile.getTypes();
 
-                    if (notRecordedTypes == 0 && types != null && types.length > 0 && types.length <= maxHints) {
-                        RiResolvedType[] hints = new RiResolvedType[types.length];
+                    if (notRecordedTypes == 0 && ptypes != null && ptypes.length > 0 && ptypes.length <= maxHints) {
+                    //if (notRecordedTypes < 0.1d && ptypes != null && ptypes.length > 0) {
+                        RiResolvedType[] hints = new RiResolvedType[ptypes.length];
                         int hintCount = 0;
-                        for (RiResolvedType hint : types) {
+                        for (ProfiledType ptype : ptypes) {
+                            RiResolvedType hint = ptype.type;
                             if (hint.isSubtypeOf(type)) {
                                 hints[hintCount++] = hint;
                             }

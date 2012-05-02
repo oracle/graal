@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
 import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
@@ -265,14 +266,14 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             }
 
             if (profilingInfo.getBranchTakenProbability(i) != -1) {
-                TTY.println("  branchProbability@%d: %f", i, profilingInfo.getBranchTakenProbability(i));
+                TTY.println("  branchProbability@%d: %.3f", i, profilingInfo.getBranchTakenProbability(i));
             }
 
             double[] switchProbabilities = profilingInfo.getSwitchProbabilities(i);
             if (switchProbabilities != null) {
                 TTY.print("  switchProbabilities@%d:", i);
                 for (int j = 0; j < switchProbabilities.length; j++) {
-                    TTY.print(" %f", switchProbabilities[j]);
+                    TTY.print(" %.3f", switchProbabilities[j]);
                 }
                 TTY.println();
             }
@@ -283,15 +284,14 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
             RiTypeProfile typeProfile = profilingInfo.getTypeProfile(i);
             if (typeProfile != null) {
-                RiResolvedType[] types = typeProfile.getTypes();
-                double[] probabilities = typeProfile.getProbabilities();
-                if (types != null && probabilities != null) {
-                    assert types.length == probabilities.length : "length must match";
-                    TTY.print("  types@%d:", i);
-                    for (int j = 0; j < types.length; j++) {
-                        TTY.print(" %s (%f)", types[j], probabilities[j]);
+                ProfiledType[] ptypes = typeProfile.getTypes();
+                if (ptypes != null) {
+                    TTY.println("  types@%d:", i);
+                    for (int j = 0; j < ptypes.length; j++) {
+                        ProfiledType ptype = ptypes[j];
+                        TTY.println("    %.3f %s", ptype.probability, ptype.type);
                     }
-                    TTY.println(" not recorded (%f)", typeProfile.getNotRecordedProbability());
+                    TTY.println("    %.3f <not recorded>", typeProfile.getNotRecordedProbability());
                 }
             }
         }

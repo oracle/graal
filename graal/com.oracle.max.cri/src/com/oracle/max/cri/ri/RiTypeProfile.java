@@ -33,22 +33,49 @@ public final class RiTypeProfile implements Serializable {
 
     private static final long serialVersionUID = -6877016333706838441L;
 
-    private final RiResolvedType[] types;
-    private final double notRecordedProbability;
-    private final double[] probabilities;
+    /**
+     * A profiled type that has a probability. Profiled types are naturally sorted in
+     * descending order of their probabilities.
+     */
+    public static class ProfiledType implements Comparable<ProfiledType> {
+        public final RiResolvedType type;
+        public final double probability;
 
-    public RiTypeProfile(RiResolvedType[] types, double notRecordedProbability, double[] probabilites) {
-        this.types = types;
-        this.notRecordedProbability = notRecordedProbability;
-        this.probabilities = probabilites;
+        public ProfiledType(RiResolvedType type, double probability) {
+            this.type = type;
+            this.probability = probability;
+        }
+
+        @Override
+        public int compareTo(ProfiledType o) {
+            if (probability > o.probability) {
+                return -1;
+            } else if (probability < o.probability) {
+                return 1;
+            }
+            return 0;
+        }
     }
 
+    private final double notRecordedProbability;
+    private final ProfiledType[] ptypes;
+
     /**
-     * The estimated probabilities of the different receivers. This array needs to have the same length as the array returned by
-     * {@link RiTypeProfile#types}.
+     * Determines if an array of profiled types are sorted in descending order of their probabilities.
      */
-    public double[] getProbabilities() {
-        return probabilities;
+    public static boolean isSorted(ProfiledType[] ptypes) {
+        for (int i = 1; i < ptypes.length; i++) {
+            if (ptypes[i - 1].probability < ptypes[i].probability) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public RiTypeProfile(ProfiledType[] ptypes, double notRecordedProbability) {
+        this.ptypes = ptypes;
+        this.notRecordedProbability = notRecordedProbability;
+        assert isSorted(ptypes);
     }
 
     /**
@@ -60,10 +87,9 @@ public final class RiTypeProfile implements Serializable {
     }
 
     /**
-     * A list of receivers for which the runtime has recorded probability information. This array needs to have the same
-     * length as {@link RiTypeProfile#probabilities}.
+     * A list of types for which the runtime has recorded probability information.
      */
-    public RiResolvedType[] getTypes() {
-        return types;
+    public ProfiledType[] getTypes() {
+        return ptypes;
     }
 }
