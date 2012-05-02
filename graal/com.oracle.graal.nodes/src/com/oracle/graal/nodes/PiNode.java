@@ -30,17 +30,17 @@ import com.oracle.graal.nodes.type.*;
 public class PiNode extends FloatingNode implements LIRLowerable {
 
     @Input private ValueNode object;
-    @Input private BeginNode anchor;
+    @Input(notDataflow = true) private final FixedNode anchor;
 
     public ValueNode object() {
         return object;
     }
 
-    public BeginNode anchor() {
+    public FixedNode anchor() {
         return anchor;
     }
 
-    public PiNode(ValueNode object, BeginNode anchor, Stamp stamp) {
+    public PiNode(ValueNode object, FixedNode anchor, Stamp stamp) {
         super(stamp);
         this.object = object;
         this.anchor = anchor;
