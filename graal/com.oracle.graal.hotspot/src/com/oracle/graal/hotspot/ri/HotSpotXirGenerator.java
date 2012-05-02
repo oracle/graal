@@ -464,12 +464,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     };
 
     enum CheckcastCounter {
-        hintsHit("hit one of the hint types"),
-        hintsMissed("missed all of the hint types"),
+        hintsHit("hit a hint type"),
+        hintsMissed("missed the hint types"),
         exact("tested type is (statically) final"),
-        noHints_class("profile information is not available for tested class"),
-        noHints_iface("profile information is not available for tested interface"),
-        noHints_unknown("tested type is not a compile-time constant"),
+        noHints_class("profile information is not used (test type is a class)"),
+        noHints_iface("profile information is not used (test type is an interface)"),
+        noHints_unknown("test type is not a compile-time constant"),
         isNull("object tested is null"),
         exception("type test failed with a ClassCastException");
 

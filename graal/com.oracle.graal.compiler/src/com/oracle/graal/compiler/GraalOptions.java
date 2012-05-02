@@ -230,7 +230,19 @@ public final class GraalOptions {
      */
     public static boolean CheckcastCounters = false;
 
+    /**
+     * If the probability that a checkcast will hit one the profiled types (up to {@link #CheckcastMaxHints})
+     * is below this value, the checkcast will be compiled without hints.
+     */
+    public static double CheckcastMinHintHitProbability = 0.5;
+
+    /**
+     * The maximum number of hint types that will be used when compiling a checkcast for which
+     * profiling information is available. Note that {@link #CheckcastMinHintHitProbability}
+     * also influences whether hints are used.
+     */
     public static int CheckcastMaxHints = 2;
+
     public static int InstanceOfMaxHints = 1;
 
     static {

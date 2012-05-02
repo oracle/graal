@@ -603,18 +603,23 @@ public final class GraphBuilderPhase extends Phase {
                 if (typeProfile != null) {
                     double notRecordedTypes = typeProfile.getNotRecordedProbability();
                     ProfiledType[] ptypes = typeProfile.getTypes();
-
-                    if (notRecordedTypes == 0 && ptypes != null && ptypes.length > 0 && ptypes.length <= maxHints) {
-                    //if (notRecordedTypes < 0.1d && ptypes != null && ptypes.length > 0) {
+                    if (notRecordedTypes < GraalOptions.CheckcastMinHintHitProbability && ptypes != null && ptypes.length > 0) {
                         RiResolvedType[] hints = new RiResolvedType[ptypes.length];
                         int hintCount = 0;
+                        double totalHintProbability = 0.0d;
                         for (ProfiledType ptype : ptypes) {
                             RiResolvedType hint = ptype.type;
                             if (hint.isSubtypeOf(type)) {
                                 hints[hintCount++] = hint;
+                                totalHintProbability += ptype.probability;
                             }
                         }
-                        return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
+                        if (totalHintProbability >= GraalOptions.CheckcastMinHintHitProbability) {
+                            if (hints.length == hintCount && hintCount <= maxHints) {
+                                return hints;
+                            }
+                            return Arrays.copyOf(hints, Math.min(maxHints, hintCount));
+                        }
                     }
                 }
                 return EMPTY_TYPE_ARRAY;
