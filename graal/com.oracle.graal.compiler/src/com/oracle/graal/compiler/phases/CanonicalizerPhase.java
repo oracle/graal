@@ -70,7 +70,6 @@ public class CanonicalizerPhase extends Phase {
             METRIC_PROCESSED_NODES.increment();
             if (node instanceof Canonicalizable) {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
-                Debug.log("Canonicalizer: work on %s", node);
                 graph.mark();
                 ValueNode canonical = ((Canonicalizable) node).canonical(tool);
 //     cases:                                           original node:
@@ -85,7 +84,11 @@ public class CanonicalizerPhase extends Phase {
 //                          Fixed-connected|   2    |        X        |       6       |
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
-                if (canonical != node) {
+                if (canonical == node) {
+                    Debug.log("Canonicalizer: work on %s", node);
+                } else {
+                    Debug.log("Canonicalizer: replacing %s with %s", node, canonical);
+
                     METRIC_CANONICALIZED_NODES.increment();
                     if (node instanceof FloatingNode) {
                         if (canonical == null) {
@@ -122,6 +125,7 @@ public class CanonicalizerPhase extends Phase {
                     nodeWorkList.addAll(graph.getNewNodes());
                 }
             } else if (node instanceof Simplifiable) {
+                Debug.log("Canonicalizer: simplifying %s", node);
                 METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 ((Simplifiable) node).simplify(tool);
             }
