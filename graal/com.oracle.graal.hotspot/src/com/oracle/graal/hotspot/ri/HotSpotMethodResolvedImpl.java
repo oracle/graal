@@ -27,14 +27,13 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.java.bytecode.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Implementation of RiMethod for resolved HotSpot methods.
@@ -252,61 +251,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     @Override
     public RiConstantPool getConstantPool() {
         return ((HotSpotTypeResolvedImpl) holder()).constantPool();
-    }
-
-    @Override
-    public void dumpProfile() {
-        TTY.println("profile info for %s", this);
-        TTY.println("canBeStaticallyBound: " + canBeStaticallyBound());
-        TTY.println("invocationCount: " + invocationCount());
-        RiProfilingInfo profilingInfo = this.profilingInfo();
-        for (int i = 0; i < codeSize(); i++) {
-            if (profilingInfo.getExecutionCount(i) != -1) {
-                TTY.println("  executionCount@%d: %d", i, profilingInfo.getExecutionCount(i));
-            }
-
-            if (profilingInfo.getBranchTakenProbability(i) != -1) {
-                TTY.println("  branchProbability@%d: %.3f", i, profilingInfo.getBranchTakenProbability(i));
-            }
-
-            double[] switchProbabilities = profilingInfo.getSwitchProbabilities(i);
-            if (switchProbabilities != null) {
-                TTY.print("  switchProbabilities@%d:", i);
-                for (int j = 0; j < switchProbabilities.length; j++) {
-                    TTY.print(" %.3f", switchProbabilities[j]);
-                }
-                TTY.println();
-            }
-
-            if (profilingInfo.getExceptionSeen(i) != RiExceptionSeen.FALSE) {
-                TTY.println("  exceptionSeen@%d: %s", i, profilingInfo.getExceptionSeen(i).name());
-            }
-
-            RiTypeProfile typeProfile = profilingInfo.getTypeProfile(i);
-            if (typeProfile != null) {
-                ProfiledType[] ptypes = typeProfile.getTypes();
-                if (ptypes != null) {
-                    TTY.println("  types@%d:", i);
-                    for (int j = 0; j < ptypes.length; j++) {
-                        ProfiledType ptype = ptypes[j];
-                        TTY.println("    %.3f %s", ptype.probability, ptype.type);
-                    }
-                    TTY.println("    %.3f <not recorded>", typeProfile.getNotRecordedProbability());
-                }
-            }
-        }
-
-        boolean firstDeoptReason = true;
-        for (RiDeoptReason reason: RiDeoptReason.values()) {
-            int count = profilingInfo.getDeoptimizationCount(reason);
-            if (count > 0) {
-                if (firstDeoptReason) {
-                    TTY.println("Deopt History");
-                    firstDeoptReason = false;
-                }
-                TTY.println("  %s: %d", reason.name(), count);
-            }
-        }
     }
 
     @Override
