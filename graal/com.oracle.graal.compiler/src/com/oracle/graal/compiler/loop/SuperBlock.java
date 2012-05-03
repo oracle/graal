@@ -316,6 +316,8 @@ public class SuperBlock {
                     }
                 }
                 currentField = ((VirtualObjectFieldNode) currentField).lastState();
+            } else if (currentField instanceof ValueProxyNode) {
+                currentField = ((ValueProxyNode) currentField).value();
             } else {
                 assert currentField instanceof PhiNode && ((PhiNode) currentField).type() == PhiType.Virtual : currentField;
                 currentField = ((PhiNode) currentField).valueAt(0);
