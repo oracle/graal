@@ -30,6 +30,12 @@ package com.oracle.max.cri.ri;
  * as the profiling information may be changed by other Java threads at any time.
  */
 public interface RiProfilingInfo {
+
+    /**
+     * Gets the length of the code associated with this profile.
+     */
+    int codeSize();
+
     /**
      * Returns an estimate of how often the branch at the given byte code was taken.
      * @return The estimated probability, with 0.0 meaning never and 1.0 meaning always, or -1 if this information is not available.
@@ -52,8 +58,8 @@ public interface RiProfilingInfo {
 
     /**
      * Returns information if the given BCI did ever throw an exception.
-     * @return @link{RiExceptionSeen.TRUE} if the instruction has thrown an exception at least once,
-     * @link{RiExceptionSeen.FALSE} if it never threw an exception, and @link{RiExceptionSeen.UNKNOWN}
+     * @return {@link RiExceptionSeen#TRUE} if the instruction has thrown an exception at least once,
+     * {@link RiExceptionSeen#FALSE} if it never threw an exception, and {@link RiExceptionSeen#NOT_SUPPORTED}
      * if this information was not recorded.
      */
     RiExceptionSeen getExceptionSeen(int bci);

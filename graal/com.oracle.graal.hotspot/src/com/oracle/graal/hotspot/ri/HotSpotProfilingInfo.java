@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.ri;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -38,12 +39,19 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     private int hintBCI;
     private HotSpotMethodDataAccessor dataAccessor;
     private HotSpotMethodData methodData;
+    private final int codeSize;
 
-    public HotSpotProfilingInfo(Compiler compiler, HotSpotMethodData methodData) {
+    public HotSpotProfilingInfo(Compiler compiler, HotSpotMethodData methodData, int codeSize) {
         super(compiler);
         this.methodData = methodData;
+        this.codeSize = codeSize;
         hintPosition = 0;
         hintBCI = -1;
+    }
+
+    @Override
+    public int codeSize() {
+        return codeSize;
     }
 
     @Override
@@ -139,5 +147,10 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     private void setCurrentData(HotSpotMethodDataAccessor dataAccessor, int position) {
         this.dataAccessor = dataAccessor;
         this.position = position;
+    }
+
+    @Override
+    public String toString() {
+        return "HotSpotProfilingInfo<" + CiUtil.profileToString(this, null, "; ") + ">";
     }
 }
