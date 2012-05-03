@@ -22,6 +22,7 @@
  */
 package com.oracle.max.criutils;
 
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 
@@ -40,6 +41,11 @@ public final class BaseProfilingInfo implements RiProfilingInfo {
 
     BaseProfilingInfo(RiExceptionSeen exceptionSeen) {
         this.exceptionSeen = exceptionSeen;
+    }
+
+    @Override
+    public int codeSize() {
+        return 0;
     }
 
     @Override
@@ -74,5 +80,10 @@ public final class BaseProfilingInfo implements RiProfilingInfo {
     @Override
     public int getDeoptimizationCount(RiDeoptReason reason) {
         return 0;
+    }
+
+    @Override
+    public String toString() {
+        return "BaseProfilingInfo<" + CiUtil.profileToString(this, null, "; ") + ">";
     }
 }

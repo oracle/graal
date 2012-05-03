@@ -739,62 +739,70 @@ public class CiUtil {
     }
 
     /**
-     * Formats the profiling information associated with a given method to a string.
+     * Formats some profiling information associated as a string.
+     *
+     * @param info the profiling info to format
+     * @param method an optional method that augments the profile string returned
+     * @param sep the separator to use for each separate profile record
      */
-    public static String profileAsString(RiResolvedMethod method) {
+    public static String profileToString(RiProfilingInfo info, RiResolvedMethod method, String sep) {
         StringBuilder buf = new StringBuilder(100);
-        buf.append(String.format("canBeStaticallyBound: %b%n", method.canBeStaticallyBound())).
-            append(String.format("invocationCount: %d%n", method.invocationCount()));
-        RiProfilingInfo profilingInfo = method.profilingInfo();
-        if (profilingInfo != null) {
-            for (int i = 0; i < method.codeSize(); i++) {
-                if (profilingInfo.getExecutionCount(i) != -1) {
-                    buf.append(String.format("executionCount@%d: %d%n", i, profilingInfo.getExecutionCount(i)));
-                }
-
-                if (profilingInfo.getBranchTakenProbability(i) != -1) {
-                    buf.append(String.format("branchProbability@%d: %.3f%n", i, profilingInfo.getBranchTakenProbability(i)));
-                }
-
-                double[] switchProbabilities = profilingInfo.getSwitchProbabilities(i);
-                if (switchProbabilities != null) {
-                    buf.append(String.format("switchProbabilities@%d:", i));
-                    for (int j = 0; j < switchProbabilities.length; j++) {
-                        buf.append(String.format(" %.3f", switchProbabilities[j]));
-                    }
-                    buf.append(NEW_LINE);
-                }
-
-                if (profilingInfo.getExceptionSeen(i) != RiExceptionSeen.FALSE) {
-                    buf.append(String.format("exceptionSeen@%d: %s%n", i, profilingInfo.getExceptionSeen(i).name()));
-                }
-
-                RiTypeProfile typeProfile = profilingInfo.getTypeProfile(i);
-                if (typeProfile != null) {
-                    ProfiledType[] ptypes = typeProfile.getTypes();
-                    if (ptypes != null) {
-                        buf.append(String.format("types@%d:%n", i));
-                        for (int j = 0; j < ptypes.length; j++) {
-                            ProfiledType ptype = ptypes[j];
-                            buf.append(String.format("  %.3f %s%n", ptype.probability, ptype.type));
-                        }
-                        buf.append(String.format("  %.3f <not recorded>%n", typeProfile.getNotRecordedProbability()));
-                    }
-                }
+        if (method != null) {
+            buf.append(String.format("canBeStaticallyBound: %b%s", method.canBeStaticallyBound(), sep)).
+            append(String.format("invocationCount: %d%s", method.invocationCount(), sep));
+        }
+        for (int i = 0; i < info.codeSize(); i++) {
+            if (info.getExecutionCount(i) != -1) {
+                buf.append(String.format("executionCount@%d: %d%s", i, info.getExecutionCount(i), sep));
             }
 
-            boolean firstDeoptReason = true;
-            for (RiDeoptReason reason: RiDeoptReason.values()) {
-                int count = profilingInfo.getDeoptimizationCount(reason);
-                if (count > 0) {
-                    if (firstDeoptReason) {
-                        buf.append("deoptimization history").append(NEW_LINE);
-                        firstDeoptReason = false;
+            if (info.getBranchTakenProbability(i) != -1) {
+                buf.append(String.format("branchProbability@%d: %.3f%s", i, info.getBranchTakenProbability(i), sep));
+            }
+
+            double[] switchProbabilities = info.getSwitchProbabilities(i);
+            if (switchProbabilities != null) {
+                buf.append(String.format("switchProbabilities@%d:", i));
+                for (int j = 0; j < switchProbabilities.length; j++) {
+                    buf.append(String.format(" %.3f", switchProbabilities[j]));
+                }
+                buf.append(sep);
+            }
+
+            if (info.getExceptionSeen(i) != RiExceptionSeen.FALSE) {
+                buf.append(String.format("exceptionSeen@%d: %s%s", i, info.getExceptionSeen(i).name(), sep));
+            }
+
+            RiTypeProfile typeProfile = info.getTypeProfile(i);
+            if (typeProfile != null) {
+                ProfiledType[] ptypes = typeProfile.getTypes();
+                if (ptypes != null) {
+                    buf.append(String.format("types@%d:", i));
+                    for (int j = 0; j < ptypes.length; j++) {
+                        ProfiledType ptype = ptypes[j];
+                        buf.append(String.format(" %.3f (%s)%s", ptype.probability, ptype.type, sep));
                     }
-                    buf.append(String.format("  %s: %d%n", reason.name(), count));
+                    buf.append(String.format(" %.3f <not recorded>%s", typeProfile.getNotRecordedProbability(), sep));
                 }
             }
         }
-        return buf.toString();
+
+        boolean firstDeoptReason = true;
+        for (RiDeoptReason reason: RiDeoptReason.values()) {
+            int count = info.getDeoptimizationCount(reason);
+            if (count > 0) {
+                if (firstDeoptReason) {
+                    buf.append("deoptimization history").append(sep);
+                    firstDeoptReason = false;
+                }
+                buf.append(String.format(" %s: %d%s", reason.name(), count, sep));
+            }
+        }
+        if (buf.length() == 0) {
+            return "";
+        }
+        String s = buf.toString();
+        assert s.endsWith(sep);
+        return s.substring(0, s.length() - sep.length());
     }
 }

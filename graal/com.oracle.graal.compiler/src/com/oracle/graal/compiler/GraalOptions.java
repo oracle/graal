@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.max.criutils.TTY.Filter;
+
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
  * The help message for each option is specified by a {@linkplain #helpMap help map}.
@@ -244,6 +246,16 @@ public final class GraalOptions {
     public static int CheckcastMaxHints = 2;
 
     public static int InstanceOfMaxHints = 1;
+
+    /**
+     * The profiling info cache directory.
+     */
+    public static String PICache = null;
+
+    /**
+     * Filters the methods for which profiling info is loaded from/saved to the {@link #PICache}.
+     */
+    public static String PIFilter = null;
 
     static {
         // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)

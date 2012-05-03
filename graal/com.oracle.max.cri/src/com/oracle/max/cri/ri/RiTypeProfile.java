@@ -37,7 +37,8 @@ public final class RiTypeProfile implements Serializable {
      * A profiled type that has a probability. Profiled types are naturally sorted in
      * descending order of their probabilities.
      */
-    public static class ProfiledType implements Comparable<ProfiledType> {
+    public static class ProfiledType implements Comparable<ProfiledType>, Serializable {
+        private static final long serialVersionUID = 7838575753661305744L;
         public final RiResolvedType type;
         public final double probability;
 
