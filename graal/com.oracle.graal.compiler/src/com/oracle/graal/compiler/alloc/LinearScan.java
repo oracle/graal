@@ -846,7 +846,7 @@ public final class LinearScan {
             TTY.println("startBlock-ID: " + startBlock.getId());
 
             // bailout of if this occurs in product mode.
-            throw new CiBailout("liveIn set of first block must be empty");
+            throw new GraalInternalError("liveIn set of first block must be empty");
         }
     }
 

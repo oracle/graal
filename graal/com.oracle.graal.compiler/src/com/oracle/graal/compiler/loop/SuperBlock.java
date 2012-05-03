@@ -185,8 +185,8 @@ public class SuperBlock {
                         replaceWith = phi;
                     } else {
                         assert vpn.type() == PhiType.Virtual;
-                        VirtualObjectFieldNode vof = (VirtualObjectFieldNode) GraphUtil.unProxify(vpn);
-                        VirtualObjectFieldNode newVof = (VirtualObjectFieldNode) GraphUtil.unProxify(newVpn);
+                        ValueNode vof = GraphUtil.unProxify(vpn);
+                        ValueNode newVof = GraphUtil.unProxify(newVpn);
                         replaceWith = mergeVirtualChain(graph, vof, newVof, phi, earlyExit, newEarlyExit, merge);
                     }
                 } else {
@@ -217,14 +217,14 @@ public class SuperBlock {
 
     private static ValueNode mergeVirtualChain(
                     StructuredGraph graph,
-                    VirtualObjectFieldNode vof,
-                    VirtualObjectFieldNode newVof,
+                    ValueNode vof,
+                    ValueNode newVof,
                     PhiNode vPhi,
                     BeginNode earlyExit,
                     BeginNode newEarlyExit,
                     MergeNode merge) {
-        VirtualObjectNode vObject = vof.object();
-        assert newVof.object() == vObject;
+        VirtualObjectNode vObject = virtualObject(vof);
+        assert virtualObject(newVof) == vObject;
         ValueNode[] virtualState = virtualState(vof);
         ValueNode[] newVirtualState = virtualState(newVof);
         ValueNode chain = vPhi;
@@ -250,8 +250,57 @@ public class SuperBlock {
         return chain;
     }
 
-    private static ValueNode[] virtualState(VirtualObjectFieldNode vof) {
-        VirtualObjectNode vObj = vof.object();
+    public static ValueNode mergeVirtualChain(
+                    StructuredGraph graph,
+                    PhiNode vPhi,
+                    MergeNode merge) {
+        NodeInputList<ValueNode> virtuals = vPhi.values();
+        VirtualObjectNode vObject = virtualObject(virtuals.first());
+        List<ValueNode[]> virtualStates = new ArrayList<>(virtuals.size());
+        for (ValueNode virtual : virtuals) {
+            virtualStates.add(virtualState(GraphUtil.unProxify(virtual)));
+        }
+        ValueNode chain = vPhi;
+        int stateLength = virtualStates.get(0).length;
+        for (int i = 0; i < stateLength; i++) {
+            ValueNode v = null;
+            boolean reconcile = false;
+            for (ValueNode[] state : virtualStates) {
+                if (v == null) {
+                    v = state[i];
+                } else if (v != state[i]) {
+                    reconcile = true;
+                    break;
+                }
+                assert v.kind() == state[i].kind();
+            }
+            if (reconcile) {
+                PhiNode valuePhi = graph.add(new PhiNode(v.kind(), merge, PhiType.Value));
+                for (ValueNode[] state : virtualStates) {
+                    valuePhi.addInput(state[i]);
+                }
+                chain = graph.add(new VirtualObjectFieldNode(vObject, chain, valuePhi, i));
+            }
+        }
+        return chain;
+    }
+
+    private static VirtualObjectNode virtualObject(ValueNode vof) {
+        assert vof instanceof VirtualObjectFieldNode || (vof instanceof PhiNode && ((PhiNode) vof).type() == PhiType.Virtual) : vof;
+        ValueNode currentField = vof;
+        do {
+            if (currentField instanceof VirtualObjectFieldNode) {
+               return ((VirtualObjectFieldNode) currentField).object();
+            } else {
+                assert currentField instanceof PhiNode && ((PhiNode) currentField).type() == PhiType.Virtual : currentField;
+                currentField = ((PhiNode) currentField).valueAt(0);
+            }
+        } while (currentField != null);
+        throw new GraalInternalError("Invalid virtual chain : cound not find virtual object from %s", vof);
+    }
+
+    private static ValueNode[] virtualState(ValueNode vof) {
+        VirtualObjectNode vObj = virtualObject(vof);
         int fieldsCount = vObj.fieldsCount();
         int dicovered = 0;
         ValueNode[] state = new ValueNode[fieldsCount];
