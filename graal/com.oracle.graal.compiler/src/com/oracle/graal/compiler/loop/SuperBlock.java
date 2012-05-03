@@ -255,7 +255,7 @@ public class SuperBlock {
                     PhiNode vPhi,
                     MergeNode merge) {
         NodeInputList<ValueNode> virtuals = vPhi.values();
-        VirtualObjectNode vObject = virtualObject(virtuals.first());
+        VirtualObjectNode vObject = virtualObject(GraphUtil.unProxify(virtuals.first()));
         List<ValueNode[]> virtualStates = new ArrayList<>(virtuals.size());
         for (ValueNode virtual : virtuals) {
             virtualStates.add(virtualState(GraphUtil.unProxify(virtual)));

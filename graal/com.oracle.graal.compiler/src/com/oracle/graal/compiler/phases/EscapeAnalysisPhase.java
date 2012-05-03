@@ -188,9 +188,12 @@ public class EscapeAnalysisPhase extends Phase {
             FixedNode next = node.next();
             graph.removeFixed(node);
 
-            for (ValueProxyNode vpn : virtual.usages().filter(ValueProxyNode.class).snapshot()) {
-                assert vpn.value() == virtual;
-                graph.replaceFloating(vpn, virtual);
+            List<ValueProxyNode> proxies;
+            while (!(proxies = virtual.usages().filter(ValueProxyNode.class).snapshot()).isEmpty()) {
+                for (ValueProxyNode vpn : proxies) {
+                    assert vpn.value() == virtual;
+                    graph.replaceFloating(vpn, virtual);
+                }
             }
 
             if (virtual.fieldsCount() > 0) {
