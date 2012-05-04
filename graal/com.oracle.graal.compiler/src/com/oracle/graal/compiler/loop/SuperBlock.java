@@ -174,6 +174,11 @@ public class SuperBlock {
             FrameState exitState = earlyExit.stateAfter();
             FrameState state = exitState.duplicate();
             merge.setStateAfter(state);
+
+            for (Node anchored : earlyExit.anchored().snapshot()) {
+                anchored.replaceFirstInput(earlyExit, merge);
+            }
+
             for (ValueProxyNode vpn : earlyExit.proxies().snapshot()) {
                 ValueNode replaceWith;
                 ValueProxyNode newVpn = (ValueProxyNode) duplicates.get(vpn);
