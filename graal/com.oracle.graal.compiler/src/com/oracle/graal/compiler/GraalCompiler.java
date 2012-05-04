@@ -170,7 +170,7 @@ public class GraalCompiler {
 
         graph.mark();
         new LoweringPhase(runtime).apply(graph);
-        new CanonicalizerPhase(target, runtime, true, assumptions).apply(graph);
+        new CanonicalizerPhase(target, runtime, assumptions, true, null).apply(graph);
 
         if (GraalOptions.Lower) {
             new FloatingReadPhase().apply(graph);

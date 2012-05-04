@@ -41,16 +41,18 @@ public class CanonicalizerPhase extends Phase {
     private final CiTarget target;
     private final CiAssumptions assumptions;
     private final RiRuntime runtime;
+    private final IsImmutablePredicate immutabilityPredicate;
 
     public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions) {
-        this(target, runtime, false, assumptions);
+        this(target, runtime, assumptions, false, null);
     }
 
-    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, boolean newNodes, CiAssumptions assumptions) {
+    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions, boolean newNodes, IsImmutablePredicate immutabilityPredicate) {
         this.newNodes = newNodes;
         this.target = target;
         this.assumptions = assumptions;
         this.runtime = runtime;
+        this.immutabilityPredicate = immutabilityPredicate;
     }
 
     @Override
@@ -60,12 +62,20 @@ public class CanonicalizerPhase extends Phase {
             nodeWorkList.addAll(graph.getNewNodes());
         }
 
-        canonicalize(graph, nodeWorkList, runtime, target, assumptions);
+        canonicalize(graph, nodeWorkList, runtime, target, assumptions, immutabilityPredicate);
     }
 
-    public static void canonicalize(StructuredGraph graph, NodeWorkList nodeWorkList, RiRuntime runtime, CiTarget target, CiAssumptions assumptions) {
+    public interface IsImmutablePredicate {
+        /**
+         * Determines if a given constant is an object/array whose current
+         * fields/elements will never change.
+         */
+        boolean apply(CiConstant constant);
+    }
+
+    public static void canonicalize(StructuredGraph graph, NodeWorkList nodeWorkList, RiRuntime runtime, CiTarget target, CiAssumptions assumptions, IsImmutablePredicate immutabilityPredicate) {
         graph.trackInputChange(nodeWorkList);
-        Tool tool = new Tool(nodeWorkList, runtime, target, assumptions);
+        Tool tool = new Tool(nodeWorkList, runtime, target, assumptions, immutabilityPredicate);
         for (Node node : nodeWorkList) {
             METRIC_PROCESSED_NODES.increment();
             if (node instanceof Canonicalizable) {
@@ -146,12 +156,14 @@ public class CanonicalizerPhase extends Phase {
         private final RiRuntime runtime;
         private final CiTarget target;
         private final CiAssumptions assumptions;
+        private final IsImmutablePredicate immutabilityPredicate;
 
-        public Tool(NodeWorkList nodeWorkList, RiRuntime runtime, CiTarget target, CiAssumptions assumptions) {
+        public Tool(NodeWorkList nodeWorkList, RiRuntime runtime, CiTarget target, CiAssumptions assumptions, IsImmutablePredicate immutabilityPredicate) {
             this.nodeWorkList = nodeWorkList;
             this.runtime = runtime;
             this.target = target;
             this.assumptions = assumptions;
+            this.immutabilityPredicate = immutabilityPredicate;
         }
 
         @Override
@@ -184,6 +196,11 @@ public class CanonicalizerPhase extends Phase {
         @Override
         public void addToWorkList(Node node) {
             nodeWorkList.add(node);
+        }
+
+        @Override
+        public boolean isImmutable(CiConstant objectConstant) {
+            return immutabilityPredicate != null && immutabilityPredicate.apply(objectConstant);
         }
     }
 }

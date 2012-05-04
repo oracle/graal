@@ -30,4 +30,10 @@ public interface CanonicalizerTool {
     CiTarget target();
     CiAssumptions assumptions();
     RiRuntime runtime();
+
+    /**
+     * Determines if a given constant is an object/array whose current
+     * fields/elements will never change.
+     */
+    boolean isImmutable(CiConstant objectConstant);
 }

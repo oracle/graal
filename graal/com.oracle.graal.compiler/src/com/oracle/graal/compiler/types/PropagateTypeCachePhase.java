@@ -124,7 +124,7 @@ public class PropagateTypeCachePhase extends Phase {
 //            out.println(graph.method() + ": " + changes + " changes");
         }
 
-        CanonicalizerPhase.canonicalize(graph, changedNodes, runtime, target, assumptions);
+        CanonicalizerPhase.canonicalize(graph, changedNodes, runtime, target, assumptions, null);
 // outputGraph(graph);
     }
 
