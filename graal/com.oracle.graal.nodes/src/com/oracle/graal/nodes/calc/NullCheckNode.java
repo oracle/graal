@@ -61,6 +61,7 @@ public final class NullCheckNode extends BooleanNode implements Canonicalizable,
 
     @Override
     public boolean verify() {
+        assertTrue(object() != null, "null check input must not be null");
         assertTrue(object().kind().isObject(), "null check input must be an object");
         return super.verify();
     }

@@ -100,4 +100,10 @@ public abstract class AccessFieldNode extends AbstractStateSplit implements Lowe
         debugProperties.put("field", CiUtil.format("%h.%n", field));
         return debugProperties;
     }
+
+    @Override
+    public boolean verify() {
+        assertTrue(object != null, "Access object can not be null");
+        return super.verify();
+    }
 }

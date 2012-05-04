@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.util.*;
-
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
@@ -60,13 +58,6 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
     @Override
     public void generate(LIRGeneratorTool gen) {
         // nothing to do
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> properties = super.getDebugProperties();
-        properties.put("type", type);
-        return properties;
     }
 
     @Override
