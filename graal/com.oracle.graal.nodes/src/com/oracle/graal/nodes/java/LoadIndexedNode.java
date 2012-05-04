@@ -22,17 +22,21 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.max.cri.ci.*;
+import java.lang.reflect.*;
+
+import sun.misc.*;
+
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-public final class LoadIndexedNode extends AccessIndexedNode implements Lowerable, Node.IterableNodeType {
+public final class LoadIndexedNode extends AccessIndexedNode implements Canonicalizable, Lowerable, Node.IterableNodeType {
 
     /**
      * Creates a new LoadIndexedNode.
@@ -61,5 +65,22 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Lowerabl
     @Override
     public void lower(CiLoweringTool tool) {
         tool.getRuntime().lower(this, tool);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (index().isConstant() && array().isConstant() && !array().isNullConstant()) {
+            CiConstant arrayConst = array().asConstant();
+            if (tool.isImmutable(arrayConst)) {
+                int index = index().asConstant().asInt();
+                Object array = arrayConst.asObject();
+                int length = Array.getLength(array);
+                if (index >= 0 && index < length) {
+                    return ConstantNode.forCiConstant(elementKind().readUnsafeConstant(array,
+                                    Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE), tool.runtime(), graph());
+                }
+            }
+        }
+        return this;
     }
 }
