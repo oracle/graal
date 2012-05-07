@@ -34,7 +34,7 @@ import com.oracle.graal.graph.iterators.*;
  */
 public class Graph {
 
-    protected final String name;
+    public final String name;
 
     private static final boolean TIME_TRAVEL = false;
 
@@ -220,6 +220,9 @@ public class Graph {
         return true;
     }
 
+    /**
+     * @see #getNewNodes()
+     */
     public void mark() {
         this.mark = nodeIdCount();
     }

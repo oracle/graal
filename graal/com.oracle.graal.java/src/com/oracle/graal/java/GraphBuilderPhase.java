@@ -639,7 +639,8 @@ public final class GraphBuilderPhase extends Phase {
             append(anchor);
             CheckCastNode checkCast;
             RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, GraalOptions.CheckcastMaxHints);
-            checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
+            boolean hintsExact = Util.isFinalClass((RiResolvedType) type);
+            checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, hintsExact));
             append(currentGraph.add(new ValueAnchorNode(checkCast)));
             frameState.apush(checkCast);
         } else {

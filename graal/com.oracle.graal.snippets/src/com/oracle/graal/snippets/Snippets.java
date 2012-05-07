@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 /**
  * Utilities for snippet installation and management.
@@ -53,16 +54,18 @@ public class Snippets {
         }
     }
 
-    private static void installSnippets(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz,
-                    BoxingMethodPool pool) {
-        for (Method snippet : clazz.getDeclaredMethods()) {
-            int modifiers = snippet.getModifiers();
-            if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                throw new RuntimeException("Snippet must not be abstract or native");
-            }
-            RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
-            if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
-                buildSnippetGraph(snippetRiMethod, runtime, target, pool);
+    private static void installSnippets(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz, BoxingMethodPool pool) {
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getAnnotation(Snippet.class) != null) {
+                Method snippet = method;
+                int modifiers = snippet.getModifiers();
+                if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+                    throw new RuntimeException("Snippet must not be abstract or native");
+                }
+                RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
+                if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
+                    buildSnippetGraph(snippetRiMethod, runtime, target, method.getAnnotation(Snippet.class).atomic(), pool);
+                }
             }
         }
     }
@@ -80,7 +83,7 @@ public class Snippets {
                     throw new RuntimeException("Snippet must not be abstract or native");
                 }
                 RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
-                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, pool);
+                StructuredGraph graph = buildSnippetGraph(snippetRiMethod, runtime, target, false, pool);
                 runtime.getRiMethod(method).compilerStorage().put(Graph.class, graph);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException("Could not resolve method to substitute with: " + snippet.getName(), e);
@@ -88,7 +91,7 @@ public class Snippets {
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
+    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final boolean atomic, final BoxingMethodPool pool) {
         return Debug.scope("BuildSnippetGraph", snippetRiMethod, new Callable<StructuredGraph>() {
 
             @Override
@@ -109,7 +112,7 @@ public class Snippets {
                     if (holder.isSubtypeOf(runtime.getType(SnippetsInterface.class))) {
                         StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
                         if (targetGraph == null) {
-                            targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool);
+                            targetGraph = buildSnippetGraph(targetMethod, runtime, target, atomic, pool);
                         }
                         InliningUtil.inline(invoke, targetGraph, true);
                         if (GraalOptions.OptCanonicalizer) {
@@ -124,6 +127,18 @@ public class Snippets {
                 new DeadCodeEliminationPhase().apply(graph);
                 if (GraalOptions.OptCanonicalizer) {
                     new CanonicalizerPhase(target, runtime, null).apply(graph);
+                }
+
+                if (atomic) {
+                    for (Node n : graph.getNodes()) {
+                        if (n instanceof StateSplit) {
+                            StateSplit stateSplit = (StateSplit) n;
+                            if (stateSplit.stateAfter() != null) {
+                                TTY.println(graph +  ": " + stateSplit);
+                                stateSplit.setStateAfter(null);
+                            }
+                        }
+                    }
                 }
 
                 for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
