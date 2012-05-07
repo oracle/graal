@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
+import java.util.concurrent.*;
 
 import junit.framework.*;
 
@@ -33,6 +34,7 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 /**
@@ -40,7 +42,7 @@ import com.oracle.max.cri.ri.*;
  * for Graal compiler transformations. The general pattern for a test is:
  * <ol>
  * <li>Create a graph by {@linkplain #parse(String) parsing} a method.</li>
- * <li>Manually modify the graph (e.g. replace a paramter node with a constant).</li>
+ * <li>Manually modify the graph (e.g. replace a parameter node with a constant).</li>
  * <li>Apply a transformation to the graph.</li>
  * <li>Assert that the transformed graph is equal to an expected graph.</li>
  * </ol>
@@ -53,11 +55,13 @@ import com.oracle.max.cri.ri.*;
  */
 public abstract class GraphTest {
 
+    protected final GraalCompiler graalCompiler;
     protected final GraalRuntime runtime;
 
     public GraphTest() {
         Debug.enable();
-        this.runtime = GraalRuntimeAccess.getGraalRuntime();
+        this.graalCompiler = GraalAccess.getGraalCompiler();
+        this.runtime = graalCompiler.runtime;
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
@@ -94,6 +98,21 @@ public abstract class GraphTest {
         } else {
             throw new RuntimeException("method not found: " + methodName);
         }
+    }
+
+    protected RiCompiledMethod addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
+        Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<RiCompiledMethod>() {
+            @Override
+            public RiCompiledMethod call() throws Exception {
+                final RiCodeInfo[] info = Debug.isDumpEnabled() ? new RiCodeInfo[1] : null;
+                RiCompiledMethod installedMethod = runtime.addMethod(method, tm, info);
+                if (info != null) {
+                    Debug.dump(info[0], "After code installation");
+                }
+                return installedMethod;
+            }
+        });
+        return runtime.addMethod(method, tm, null);
     }
 
     /**

@@ -24,11 +24,13 @@ package com.oracle.graal.hotspot;
 
 import java.io.*;
 
+import com.oracle.max.cri.ci.CiKind.FormatWithToString;
+
 
 /**
  * Parent class for all HotSpot Ri... types.
  */
-public abstract class CompilerObject implements Serializable {
+public abstract class CompilerObject implements Serializable, FormatWithToString {
     private static final long serialVersionUID = -4551670987101214877L;
     protected final Compiler compiler;
 

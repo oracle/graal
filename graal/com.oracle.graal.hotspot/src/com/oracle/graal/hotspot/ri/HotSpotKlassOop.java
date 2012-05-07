@@ -44,4 +44,9 @@ public class HotSpotKlassOop extends CompilerObject {
         super(compiler);
         this.javaMirror = javaMirror;
     }
+
+    @Override
+    public String toString() {
+        return "HotSpotKlassOop<" + javaMirror.getName() + ">";
+    }
 }

@@ -25,58 +25,58 @@ package com.oracle.graal.compiler.tests;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.cri.*;
+import com.oracle.graal.compiler.*;
 
 /**
- * Utility for getting a {@link GraalRuntime} instance from the current execution environment.
+ * Utility for getting a Graal objects from the current execution environment.
  */
-class GraalRuntimeAccess {
+class GraalAccess {
 
     /**
-     * The known classes declaring a {@code getGraalRuntime()} method. These class names
-     * have aliases that can be used with the {@code "graal.runtime"} system property to
-     * specify the VM environment to try first when getting a Graal runtime instance.
+     * The known classes declaring a {@code getGraalCompiler()} method. These class names
+     * have aliases that can be used with the {@code "graal.access"} system property to
+     * specify the VM environment to try first when getting a Graal compiler instance.
      */
-    private static Map<String, String> graalRuntimeFactoryClasses = new LinkedHashMap<>();
+    private static Map<String, String> graalAccessClasses = new LinkedHashMap<>();
     static {
-        graalRuntimeFactoryClasses.put("HotSpot", "com.oracle.graal.hotspot.CompilerImpl");
-        graalRuntimeFactoryClasses.put("Maxine", "com.oracle.max.vm.ext.maxri.MaxRuntime");
+        graalAccessClasses.put("HotSpot", "com.oracle.graal.hotspot.CompilerImpl");
+        graalAccessClasses.put("Maxine", "com.oracle.max.vm.ext.maxri.MaxRuntime");
     }
 
     /**
-     * Gets a Graal runtime instance from the current execution environment.
+     * Gets a {@link GraalCompiler} instance from the current execution environment.
      */
-    static GraalRuntime getGraalRuntime() {
-        String vm = System.getProperty("graal.runtime");
+    static GraalCompiler getGraalCompiler() {
+        String vm = System.getProperty("graal.access");
         if (vm != null) {
-            String cn = graalRuntimeFactoryClasses.get(vm);
+            String cn = graalAccessClasses.get(vm);
             if (cn != null) {
-                GraalRuntime graal = getGraalRuntime(cn);
-                if (graal != null) {
-                    return graal;
+                GraalCompiler graalCompiler = getGraalCompiler(cn);
+                if (graalCompiler != null) {
+                    return graalCompiler;
                 }
             }
         }
 
-        for (String className : graalRuntimeFactoryClasses.values()) {
-            GraalRuntime graal = getGraalRuntime(className);
-            if (graal != null) {
-                return graal;
+        for (String className : graalAccessClasses.values()) {
+            GraalCompiler graalCompiler = getGraalCompiler(className);
+            if (graalCompiler != null) {
+                return graalCompiler;
             }
         }
         throw new InternalError("Could not create a GraalRuntime instance");
     }
 
     /**
-     * Calls {@code getGraalRuntime()} via reflection on a given class.
+     * Calls {@code getGraalCompiler()} via reflection on a given class.
      *
-     * @return {@code null} if there was an error invoking the methodor if the method return {@code null} itself
+     * @return {@code null} if there was an error invoking the method or if the method returns {@code null} itself
      */
-    private static GraalRuntime getGraalRuntime(String className) {
+    private static GraalCompiler getGraalCompiler(String className) {
         try {
             Class<?> c = Class.forName(className);
-            Method m = c.getDeclaredMethod("getGraalRuntime");
-            return (GraalRuntime) m.invoke(null);
+            Method m = c.getDeclaredMethod("getGraalCompiler");
+            return (GraalCompiler) m.invoke(null);
         } catch (Exception e) {
             //e.printStackTrace();
             System.err.println(e);

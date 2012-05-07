@@ -475,14 +475,25 @@ public class HotSpotRuntime implements GraalRuntime {
         return (RiResolvedMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
     }
 
-    @Override
-    public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo info) {
-        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, (HotSpotCodeInfo) info);
+    private HotSpotCodeInfo makeInfo(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+        HotSpotCodeInfo hsInfo = null;
+        if (info != null && info.length > 0) {
+            hsInfo = new HotSpotCodeInfo(compiler, code, (HotSpotMethodResolved) method);
+            info[0] = hsInfo;
+        }
+        return hsInfo;
     }
 
     @Override
-    public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code) {
-        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false, null);
+    public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+        HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
+        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, hsInfo);
+    }
+
+    @Override
+    public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+        HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
+        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false, hsInfo);
     }
 
     @Override

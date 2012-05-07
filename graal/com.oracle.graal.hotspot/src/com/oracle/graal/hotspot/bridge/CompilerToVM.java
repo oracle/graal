@@ -63,7 +63,7 @@ public interface CompilerToVM {
 
     void RiConstantPool_loadReferencedType(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
-    HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean installCode, HotSpotCodeInfo info);
+    HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean makeDefault, HotSpotCodeInfo info);
 
     long installStub(HotSpotTargetMethod targetMethod, HotSpotCodeInfo info);
 
