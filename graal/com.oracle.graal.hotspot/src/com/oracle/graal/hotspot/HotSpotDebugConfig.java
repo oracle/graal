@@ -60,7 +60,7 @@ public class HotSpotDebugConfig implements DebugConfig {
 
         // Report the filters that have been configured so the user can verify it's what they expect
         if (logFilter != null || meterFilter != null || timerFilter != null || dumpFilter != null || methodFilter != null) {
-            TTY.println(this.toString());
+            TTY.println(Thread.currentThread().getName() + ": " + toString());
         }
 
         if (GraalOptions.PrintIdealGraphFile) {
