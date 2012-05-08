@@ -29,7 +29,7 @@ import com.oracle.max.cri.ri.*;
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
-public final class StoreFieldNode extends AccessFieldNode {
+public final class StoreFieldNode extends AccessFieldNode implements StateSplit {
 
     @Input private ValueNode value;
 

@@ -169,11 +169,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
-    public boolean needsStateAfter() {
-        return true;
-    }
-
-    @Override
     public void intrinsify(Node node) {
         MethodCallTargetNode call = callTarget;
         FrameState state = stateAfter();

@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 
-public abstract class SafeAccessNode extends AbstractStateSplit {
+public abstract class SafeAccessNode extends FixedWithNextNode {
 
     @Input private ValueNode object;
     @Input private LocationNode location;

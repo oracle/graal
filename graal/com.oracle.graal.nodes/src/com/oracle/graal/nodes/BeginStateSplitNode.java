@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +23,7 @@
 package com.oracle.graal.nodes;
 
 /**
- * A state split is a node that has a side effect. Execution of such a node changes
- * state visible to other threads. These nodes denote boundaries across which deoptimization
- * points cannot be moved.
+ * Base class for {@link BeginNode}s that are associated with a frame state.
  */
-public interface StateSplit {
-
-    /**
-     * Gets the state of the JVM frame after execution of this node.
-     */
-    FrameState stateAfter();
-
-    /**
-     * Sets the state of the JVM frame after execution of this node.
-     */
-    void setStateAfter(FrameState x);
+public class BeginStateSplitNode extends BeginNode implements StateSplit {
 }

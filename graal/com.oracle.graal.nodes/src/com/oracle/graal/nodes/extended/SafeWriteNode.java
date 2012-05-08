@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ri.*;
 
 
-public class SafeWriteNode extends SafeAccessNode implements Lowerable{
+public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerable{
 
     @Input private ValueNode value;
 

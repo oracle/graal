@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class AccessNode extends AbstractStateSplit implements Access {
+public abstract class AccessNode extends FixedWithNextNode implements Access {
 
     @Input private ValueNode object;
     @Input private GuardNode guard;

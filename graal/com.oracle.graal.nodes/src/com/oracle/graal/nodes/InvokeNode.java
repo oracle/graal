@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
  */
-public final class InvokeNode extends AbstractStateSplit implements Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint  {
+public final class InvokeNode extends FixedWithNextNode implements StateSplit, Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint  {
 
     @Input private final MethodCallTargetNode callTarget;
     private final int bci;

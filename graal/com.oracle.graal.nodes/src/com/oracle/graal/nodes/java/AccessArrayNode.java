@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * This the base class of all array operations.
  */
-public abstract class AccessArrayNode extends AbstractStateSplit {
+public abstract class AccessArrayNode extends FixedWithNextNode {
 
     @Input private ValueNode array;
 

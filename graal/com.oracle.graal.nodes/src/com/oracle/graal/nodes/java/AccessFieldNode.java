@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The base class of all instructions that access fields.
  */
-public abstract class AccessFieldNode extends AbstractStateSplit implements Lowerable {
+public abstract class AccessFieldNode extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
 

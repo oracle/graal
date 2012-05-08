@@ -165,7 +165,7 @@ public final class GraphBuilderPhase extends Phase {
         frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
 
         // finish the start block
-        ((AbstractStateSplit) lastInstr).setStateAfter(frameState.create(0));
+        lastInstr.setStateAfter(frameState.create(0));
         if (blockMap.startBlock.isLoopHeader) {
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
@@ -255,7 +255,7 @@ public final class GraphBuilderPhase extends Phase {
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
-        BeginNode dispatchBegin = currentGraph.add(new BeginNode());
+        BeginNode dispatchBegin = currentGraph.add(new BeginStateSplitNode());
         dispatchBegin.setStateAfter(dispatchState.create(bci));
 
         if (exceptionObject == null) {
@@ -1502,7 +1502,7 @@ public final class GraphBuilderPhase extends Phase {
             }
             if (lastInstr instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) lastInstr;
-                if (stateSplit.stateAfter() == null && stateSplit.needsStateAfter()) {
+                if (stateSplit.stateAfter() == null) {
                     stateSplit.setStateAfter(frameState.create(bci));
                 }
             }

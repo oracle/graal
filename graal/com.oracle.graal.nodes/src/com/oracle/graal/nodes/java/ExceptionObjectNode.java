@@ -31,7 +31,7 @@ import com.oracle.max.cri.ci.*;
 /**
  * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
  */
-public class ExceptionObjectNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
+public class ExceptionObjectNode extends FixedWithNextNode implements StateSplit, LIRLowerable, MemoryCheckpoint {
 
     /**
      * Constructs a new ExceptionObject instruction.

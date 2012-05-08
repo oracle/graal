@@ -30,7 +30,7 @@ import com.oracle.max.cri.util.*;
 /**
  * Creates a memory barrier.
  */
-public class MembarNode extends AbstractStateSplit implements LIRLowerable, MemoryCheckpoint {
+public class MembarNode extends FixedWithNextNode implements StateSplit, LIRLowerable, MemoryCheckpoint {
 
     private final int barriers;
 

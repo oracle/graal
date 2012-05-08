@@ -31,7 +31,7 @@ import com.oracle.max.cri.ci.*;
 /**
  * Store of a value at a location specified as an offset relative to an object.
  */
-public class UnsafeStoreNode extends AbstractStateSplit implements Lowerable {
+public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;

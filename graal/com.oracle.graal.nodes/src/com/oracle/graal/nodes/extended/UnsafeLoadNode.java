@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Load of a value from a location specified as an offset relative to an object.
  */
-public class UnsafeLoadNode extends AbstractStateSplit implements Lowerable {
+public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;

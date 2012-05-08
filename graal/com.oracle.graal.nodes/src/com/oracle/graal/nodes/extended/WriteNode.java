@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 
-public final class WriteNode extends AccessNode implements LIRLowerable {
+public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable {
     @Input private ValueNode value;
 
     public ValueNode value() {

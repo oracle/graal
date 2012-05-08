@@ -33,7 +33,7 @@ import com.oracle.max.cri.ci.*;
  * Represents an atomic compare-and-swap operation
  * The result is a boolean that contains whether the value matched the expected value.
  */
-public class CompareAndSwapNode extends AbstractStateSplit implements LIRLowerable, Lowerable, MemoryCheckpoint {
+public class CompareAndSwapNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Lowerable, MemoryCheckpoint {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;

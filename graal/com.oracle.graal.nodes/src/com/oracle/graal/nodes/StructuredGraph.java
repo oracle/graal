@@ -64,7 +64,7 @@ public class StructuredGraph extends Graph {
 
     private StructuredGraph(String name, RiResolvedMethod method, long graphId) {
         super(name);
-        this.start = add(new BeginNode());
+        this.start = add(new BeginStateSplitNode());
         this.method = method;
         this.graphId = graphId;
     }
