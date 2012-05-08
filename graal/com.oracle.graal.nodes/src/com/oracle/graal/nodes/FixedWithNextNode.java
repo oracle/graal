@@ -45,6 +45,11 @@ public abstract class FixedWithNextNode extends FixedNode {
         stateAfter = x;
     }
 
+    // Subclasses that implement StateSplit but do not represent side-effecting instructions must override this.
+    public boolean hasSideEffect() {
+        return true;
+    }
+
     @Override
     public Map<Object, Object> getDebugProperties() {
         Map<Object, Object> debugProperties = super.getDebugProperties();
