@@ -23,6 +23,9 @@
 package com.oracle.max.cri.ci;
 
 import static com.oracle.max.cri.ci.CiKind.Flags.*;
+
+import java.lang.reflect.*;
+
 import sun.misc.*;
 
 import com.oracle.max.cri.ri.*;
@@ -297,6 +300,8 @@ public enum CiKind {
                     return String.valueOf(value);
                 } else if (value instanceof Class< ? >) {
                     return ((Class< ? >) value).getName() + ".class";
+                } else if (value.getClass().isArray()) {
+                    return formatArray(value);
                 } else {
                     return CiUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
                 }
@@ -304,6 +309,35 @@ public enum CiKind {
         } else {
             return value.toString();
         }
+    }
+
+    private static final int MAX_FORMAT_ARRAY_LENGTH = Integer.getInteger("maxFormatArrayLength", 5);
+
+    private static String formatArray(Object array) {
+        Class< ? > componentType = array.getClass().getComponentType();
+        assert componentType != null;
+        int arrayLength = Array.getLength(array);
+        StringBuilder buf = new StringBuilder(CiUtil.getSimpleName(componentType, true)).
+                        append('[').
+                        append(arrayLength).
+                        append("]{");
+        int length = Math.min(MAX_FORMAT_ARRAY_LENGTH, arrayLength);
+        boolean primitive = componentType.isPrimitive();
+        for (int i = 0; i < length; i++) {
+            if (primitive) {
+                buf.append(Array.get(array, i));
+            } else {
+                Object o = ((Object[]) array)[i];
+                buf.append(CiKind.Object.format(o));
+            }
+            if (i != length - 1) {
+                buf.append(", ");
+            }
+        }
+        if (arrayLength != length) {
+            buf.append(", ...");
+        }
+        return buf.append('}').toString();
     }
 
     public final char signatureChar() {
