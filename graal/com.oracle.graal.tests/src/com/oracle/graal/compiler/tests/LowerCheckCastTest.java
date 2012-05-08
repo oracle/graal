@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.tests;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import org.junit.*;
 
@@ -32,27 +31,18 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
-/**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
- * Then canonicalization is applied and it is verified that the resulting graph is equal to the
- * graph of the method that just has a "return 1" statement in it.
- */
 public class LowerCheckCastTest extends GraphTest {
 
-    static int warmup() {
-        Object[] numbers = {76L, (short) 34};
-        int result = 0;
-        for (int i = 0; i < 20; i++) {
-            Object num = numbers[i % numbers.length];
-            result += result + asNumber(num).intValue();
-        }
-        return result;
+    static {
+        // Ensure that the methods to be compiled and executed are fully resolved
+        asNumber(0);
+        asString("0");
+        asNumberExt(0);
+        asStringExt("0");
     }
 
     private RiCompiledMethod compile(String name, Class[] hintClasses, boolean exact) {
-        System.out.println("compiling: " + name + ", hints=" + Arrays.toString(hintClasses) + ", exact=" + exact);
-        // Ensure that the method is fully resolved
-        asNumber(0);
+        //System.out.println("compiling: " + name + ", hints=" + Arrays.toString(hintClasses) + ", exact=" + exact);
 
         Method method = getMethod(name);
         final StructuredGraph graph = parse(method);
@@ -72,46 +62,57 @@ public class LowerCheckCastTest extends GraphTest {
         return addMethod(riMethod, targetMethod);
     }
 
-    //@Test
+    private static final boolean EXACT = true;
+    private static final boolean NOT_EXACT = false;
+
+    private static Class[] hints(Class... classes) {
+        return classes;
+    }
+
+    private void test(String name, Class[] hints, boolean exact, Object expected, Object... args) {
+        RiCompiledMethod compiledMethod = compile(name, hints, exact);
+        Assert.assertEquals(expected, compiledMethod.executeVarargs(args));
+    }
+
+    @Test
     public void test1() {
-        Class[] hints = {};
-        RiCompiledMethod compiledMethod = compile("asNumber", hints, false);
-        Assert.assertEquals(Integer.valueOf(111), compiledMethod.executeVarargs(111));
+        test("asNumber",    hints(),                        NOT_EXACT, 111, 111);
+        test("asNumber",    hints(Integer.class),           NOT_EXACT, 111, 111);
+        test("asNumber",    hints(Long.class, Short.class), NOT_EXACT, 111, 111);
+        test("asNumberExt", hints(),                        NOT_EXACT, 121, 111);
+        test("asNumberExt", hints(Integer.class),           NOT_EXACT, 121, 111);
+        test("asNumberExt", hints(Long.class, Short.class), NOT_EXACT, 121, 111);
     }
 
-    //@Test
+    @Test
     public void test2() {
-        Class[] hints = {Integer.class};
-        RiCompiledMethod compiledMethod = compile("asNumber", hints, false);
-        Assert.assertEquals(Integer.valueOf(111), compiledMethod.executeVarargs(111));
+        test("asString",    hints(),             NOT_EXACT, "111", "111");
+        test("asString",    hints(String.class), EXACT,     "111", "111");
+        test("asString",    hints(String.class), NOT_EXACT, "111", "111");
+
+        test("asStringExt", hints(),             NOT_EXACT, "#111", "111");
+        test("asStringExt", hints(String.class), EXACT,     "#111", "111");
+        test("asStringExt", hints(String.class), NOT_EXACT, "#111", "111");
     }
 
-    @Test
+    @Test(expected = ClassCastException.class)
     public void test3() {
-        Class[] hints = {Long.class, Short.class};
-        RiCompiledMethod compiledMethod = compile("asNumber", hints, false);
-        Assert.assertEquals(Integer.valueOf(111), compiledMethod.executeVarargs(111));
+        test("asNumber", hints(), NOT_EXACT, 111, "111");
     }
 
-    //@Test
+    @Test(expected = ClassCastException.class)
     public void test4() {
-        Class[] hints = {};
-        RiCompiledMethod compiledMethod = compile("asString", hints, true);
-        Assert.assertEquals("111", compiledMethod.executeVarargs("111"));
+        test("asString", hints(String.class), EXACT, "111", 111);
     }
 
-    @Test
+    @Test(expected = ClassCastException.class)
     public void test5() {
-        Class[] hints = {String.class};
-        RiCompiledMethod compiledMethod = compile("asString", hints, true);
-        Assert.assertEquals("111", compiledMethod.executeVarargs("111"));
+        test("asNumberExt", hints(), NOT_EXACT, 111, "111");
     }
 
-    //@Test(expected = ClassCastException.class)
-    public void test100() {
-        Class[] hints = {};
-        RiCompiledMethod compiledMethod = compile("asNumber", hints, false);
-        compiledMethod.executeVarargs("number");
+    @Test(expected = ClassCastException.class)
+    public void test6() {
+        test("asStringExt", hints(String.class), EXACT, "111", 111);
     }
 
     public static Number asNumber(Object o) {
@@ -120,5 +121,15 @@ public class LowerCheckCastTest extends GraphTest {
 
     public static String asString(Object o) {
         return (String) o;
+    }
+
+    public static Number asNumberExt(Object o) {
+        Number n = (Number) o;
+        return n.intValue() + 10;
+    }
+
+    public static String asStringExt(Object o) {
+        String s = (String) o;
+        return "#" + s;
     }
 }

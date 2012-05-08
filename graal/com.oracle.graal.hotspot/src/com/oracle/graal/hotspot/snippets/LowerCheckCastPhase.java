@@ -36,6 +36,9 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
+/**
+ * Lowers a {@link CheckCastNode} by replacing it with the graph of a {@linkplain CheckCastSnippets checkcast snippet}.
+ */
 public class LowerCheckCastPhase extends Phase {
     private final GraalRuntime runtime;
     private final RiResolvedMethod checkcast;
@@ -49,41 +52,33 @@ public class LowerCheckCastPhase extends Phase {
         }
     }
 
-    private static HotSpotKlassOop klassOop(RiResolvedType resolvedType) {
-        return ((HotSpotType) resolvedType).klassOop();
-    }
-
     @Override
     protected void run(StructuredGraph graph) {
-        // TODO (dnsimon) remove this once lowering works in general
-        if (graph.method() == null || !graph.method().holder().name().contains("LowerCheckCastTest")) {
-            return;
-        }
-
-        int hits = 0;
-        graph.mark();
-        IsImmutablePredicate immutabilityPredicate = null;
-        for (CheckCastNode ccn : graph.getNodes(CheckCastNode.class)) {
-            ValueNode hub = ccn.targetClassInstruction();
-            ValueNode object = ccn.object();
-            RiResolvedType[] hints = ccn.hints();
+        final Map<CiConstant, CiConstant> hintHubsSet = new IdentityHashMap<>();
+        IsImmutablePredicate immutabilityPredicate = new IsImmutablePredicate() {
+            public boolean apply(CiConstant constant) {
+                return hintHubsSet.containsKey(constant);
+            }
+        };
+        for (CheckCastNode node : graph.getNodes(CheckCastNode.class)) {
+            ValueNode hub = node.targetClassInstruction();
+            ValueNode object = node.object();
+            RiResolvedType[] hints = node.hints();
             StructuredGraph snippetGraph = (StructuredGraph) checkcast.compilerStorage().get(Graph.class);
-            hits++;
+            assert snippetGraph != null : CheckCastSnippets.class.getSimpleName() + " should be installed";
             HotSpotKlassOop[] hintHubs = new HotSpotKlassOop[hints.length];
             for (int i = 0; i < hintHubs.length; i++) {
-                hintHubs[i] = klassOop(hints[i]);
+                hintHubs[i] = ((HotSpotType) hints[i]).klassOop();
             }
+            assert !node.hintsExact() || hints.length > 0 : "cannot have 0 exact hints!";
             final CiConstant hintHubsConst = CiConstant.forObject(hintHubs);
-            immutabilityPredicate = new IsImmutablePredicate() {
-                public boolean apply(CiConstant constant) {
-                    return constant == hintHubsConst;
-                }
-            };
-            Debug.log("Lowering checkcast in %s: ccn=%s, hintsHubs=%s, exact=%b", graph, ccn, Arrays.toString(hints), ccn.hintsExact());
-            InliningUtil.snippetInline(runtime, ccn, ccn.anchor(), snippetGraph, true, hub, object, hintHubsConst, CiConstant.forBoolean(ccn.hintsExact()));
+            hintHubsSet.put(hintHubsConst, hintHubsConst);
+            Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, node, Arrays.toString(hints), node.hintsExact());
+
+            InliningUtil.inlineSnippet(runtime, node, (FixedWithNextNode) node.anchor(), snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(node.hintsExact()));
         }
-        if (hits != 0) {
-            Debug.log("Lowered %d checkcasts in %s ", hits, graph);
+        if (!hintHubsSet.isEmpty()) {
+            Debug.log("Lowered %d checkcasts in %s ", hintHubsSet.size(), graph);
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase(null, runtime, null, false, immutabilityPredicate).apply(graph);
         }

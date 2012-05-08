@@ -46,7 +46,7 @@ public class CheckCastSnippets implements SnippetsInterface {
                 return object;
             }
         }
-        if (!hintsAreExact && TypeCheckSlowPath.check(objectHub, hub) == null) {
+        if (hintsAreExact || TypeCheckSlowPath.check(objectHub, hub) == null) {
             DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         return object;
@@ -55,10 +55,5 @@ public class CheckCastSnippets implements SnippetsInterface {
     @Fold
     private static int hubOffset() {
         return CompilerImpl.getInstance().getConfig().hubOffset;
-    }
-
-    @Fold
-    private static int klassOopOffset() {
-        return CompilerImpl.getInstance().getConfig().klassOopOffset;
     }
 }

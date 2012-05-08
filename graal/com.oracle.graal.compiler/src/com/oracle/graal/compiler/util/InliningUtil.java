@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.CanonicalizerPhase.IsImmutablePredicate;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -909,12 +910,32 @@ public class InliningUtil {
      * Performs replacement of a node with a snippet graph.
      *
      * @param replacee the node that will be replaced
-     * @param anchor if non-null, then this fixed node is control flow replacee. This is required iff replacee is not a fixed node.
+     * @param anchor the control flow replacee
      * @param snippetGraph the graph that the replacee will be replaced with
      * @param explodeLoops specifies if all the loops in the snippet graph are counted loops that must be completely unrolled
      * @param args
      */
-    public static void snippetInline(RiRuntime runtime, Node replacee, FixedNode anchor, StructuredGraph snippetGraph, boolean explodeLoops, Object... args) {
+    public static void inlineSnippet(final RiRuntime runtime,
+                    final Node replacee,
+                    final FixedWithNextNode anchor,
+                    final StructuredGraph snippetGraph,
+                    final boolean explodeLoops,
+                    final IsImmutablePredicate immutabilityPredicate,
+                    final Object... args) {
+        Debug.scope("InliningSnippet", snippetGraph.method(), new Runnable() {
+            @Override
+            public void run() {
+                inlineSnippet0(runtime, replacee, anchor, snippetGraph, explodeLoops, immutabilityPredicate, args);
+            }
+        });
+    }
+    private static void inlineSnippet0(RiRuntime runtime,
+                    Node replacee,
+                    FixedWithNextNode anchor,
+                    StructuredGraph snippetGraph,
+                    boolean explodeLoops,
+                    IsImmutablePredicate immutabilityPredicate,
+                    Object... args) {
         // Copy snippet graph, replacing parameters with given args in the process
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
@@ -935,6 +956,9 @@ public class InliningUtil {
         }
         assert localCount == args.length : "snippet argument count mismatch";
         snippetCopy.addDuplicates(snippetGraph.getNodes(), replacements);
+        if (!replacements.isEmpty()) {
+            new CanonicalizerPhase(null, runtime, null, false, immutabilityPredicate).apply(snippetCopy);
+        }
 
         // Explode all loops in the snippet if requested
         if (explodeLoops && snippetCopy.hasLoops()) {
@@ -942,15 +966,17 @@ public class InliningUtil {
             for (Loop loop : cfg.getLoops()) {
                 LoopBeginNode loopBegin = loop.loopBegin();
                 SuperBlock wholeLoop = LoopTransformUtil.wholeLoop(loop);
+                Debug.dump(snippetCopy, "Before exploding loop %s", loopBegin);
                 while (!loopBegin.isDeleted()) {
                     snippetCopy.mark();
                     LoopTransformUtil.peel(loop, wholeLoop);
-                    new CanonicalizerPhase(null, runtime, null, true, null).apply(snippetCopy);
+                    new CanonicalizerPhase(null, runtime, null, true, immutabilityPredicate).apply(snippetCopy);
                 }
+                Debug.dump(snippetCopy, "After exploding loop %s", loopBegin);
             }
         }
 
-        // Inline snippet
+        // Gather the nodes in the snippets that are to be inlined
         ArrayList<Node> nodes = new ArrayList<>();
         ReturnNode returnNode = null;
         BeginNode entryPointNode = snippetCopy.start();
@@ -975,18 +1001,30 @@ public class InliningUtil {
             }
         }
 
+        // Inline the gathered snippet nodes
         StructuredGraph graph = (StructuredGraph) replacee.graph();
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
-        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        if (anchor != null) {
-            assert !(replacee instanceof FixedNode) : "anchor not required when replacing fixed node " + replacee;
-            anchor.replaceAtPredecessors(firstCFGNodeDuplicate);
-        } else {
-            assert replacee.successors().first() != null;
-            assert replacee.predecessor() != null;
-            replacee.replaceAtPredecessors(firstCFGNodeDuplicate);
+
+        // Remove all frame states from the inlined snippet graph. Snippets must be atomic (i.e. free
+        // of side-effects that prevent deoptimizing to a point before the snippet).
+        for (Node node : duplicates.values()) {
+            if (node instanceof StateSplit) {
+                StateSplit stateSplit = (StateSplit) node;
+                FrameState frameState = stateSplit.stateAfter();
+                assert !stateSplit.hasSideEffect() : "snippets cannot contain side-effecting node " + node;
+                if (frameState != null) {
+                    stateSplit.setStateAfter(null);
+                }
+            }
         }
 
+        // Rewire the control flow graph around the replacee
+        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
+        anchor.replaceAtPredecessors(firstCFGNodeDuplicate);
+        FixedNode next = anchor.next();
+        anchor.setNext(null);
+
+        // Replace all usages of the replacee with the value returned by the snippet
         Node returnValue = null;
         if (returnNode != null) {
             if (returnNode.result() instanceof LocalNode) {
@@ -996,8 +1034,13 @@ public class InliningUtil {
             }
             assert returnValue != null || replacee.usages().isEmpty();
             replacee.replaceAtUsages(returnValue);
+
+            Node returnDuplicate = duplicates.get(returnNode);
+            returnDuplicate.clearInputs();
+            returnDuplicate.replaceAndDelete(next);
         }
 
+        // Remove the replacee from its graph
         replacee.clearInputs();
         replacee.replaceAtUsages(null);
         if (replacee instanceof FixedNode) {
