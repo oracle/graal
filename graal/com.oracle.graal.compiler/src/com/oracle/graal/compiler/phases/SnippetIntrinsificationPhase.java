@@ -255,7 +255,10 @@ public class SnippetIntrinsificationPhase extends Phase {
                         assert false : "unexpected checkcast usage: " + checkCastUsage;
                     }
                 }
-                checkCastNode.safeDelete();
+                FixedNode next = checkCastNode.next();
+                checkCastNode.setNext(null);
+                checkCastNode.replaceAtPredecessors(next);
+                GraphUtil.killCFG(checkCastNode);
             }
         }
     }

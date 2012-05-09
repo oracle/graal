@@ -610,11 +610,8 @@ public final class GraphBuilderPhase extends Phase {
         if (initialized) {
             ConstantNode typeInstruction = genTypeOrDeopt(RiType.Representation.ObjectHub, type, true);
             ValueNode object = frameState.apop();
-            AnchorNode anchor = currentGraph.add(new AnchorNode());
-            append(anchor);
-            CheckCastNode checkCast;
-            checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, getProfileForTypeCheck((RiResolvedType) type)));
-            append(currentGraph.add(new ValueAnchorNode(checkCast)));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode(typeInstruction, (RiResolvedType) type, object, getProfileForTypeCheck((RiResolvedType) type)));
+            append(checkCast);
             frameState.apush(checkCast);
         } else {
             ValueNode object = frameState.apop();

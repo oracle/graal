@@ -336,21 +336,21 @@ public class HotSpotRuntime implements GraalRuntime {
                 if (array.exactType() != null) {
                     RiResolvedType elementType = array.exactType().componentType();
                     if (elementType.superType() != null) {
-                        AnchorNode anchor = graph.add(new AnchorNode());
-                        graph.addBeforeFixed(storeIndexed, anchor);
                         ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
-                        value = graph.unique(new CheckCastNode(anchor, type, elementType, value));
+                        CheckCastNode checkcast = graph.add(new CheckCastNode(type, elementType, value));
+                        graph.addBeforeFixed(storeIndexed, checkcast);
+                        value = checkcast;
                     } else {
                         assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
                     }
                 } else {
-                    AnchorNode anchor = graph.add(new AnchorNode());
-                    graph.addBeforeFixed(storeIndexed, anchor);
                     GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID);
                     FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), StampFactory.objectNonNull()));
                     arrayClass.setGuard(guard);
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), StampFactory.objectNonNull()));
-                    value = graph.unique(new CheckCastNode(anchor, arrayElementKlass, null, value));
+                    CheckCastNode checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
+                    graph.addBeforeFixed(storeIndexed, checkcast);
+                    value = checkcast;
                 }
             }
             WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation));

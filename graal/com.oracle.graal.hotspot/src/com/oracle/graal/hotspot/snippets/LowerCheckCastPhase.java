@@ -77,7 +77,7 @@ public class LowerCheckCastPhase extends Phase {
             hintHubsSet.put(hintHubsConst, hintHubsConst);
             Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, node, Arrays.toString(hints.types), hints.exact);
 
-            InliningUtil.inlineSnippet(runtime, node, (FixedWithNextNode) node.anchor(), snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
+            InliningUtil.inlineSnippet(runtime, node, node, snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
         }
         if (!hintHubsSet.isEmpty()) {
             Debug.log("Lowered %d checkcasts in %s ", hintHubsSet.size(), graph);

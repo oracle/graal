@@ -50,8 +50,8 @@ public class LowerCheckCastTest extends GraphTest {
 
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         assert ccn != null;
-        CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.anchor(), ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
-        graph.replaceFloating(ccn, ccnNew);
+        CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
+        graph.replaceFixedWithFixed(ccn, ccnNew);
 
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
         CiTargetMethod targetMethod = runtime.compile(riMethod, graph);

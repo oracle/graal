@@ -228,7 +228,12 @@ public class PropagateTypeCachePhase extends Phase {
                                 }
                             }
                             ValueNode replacement = canonical.replacement;
-                            currentGraph.replaceFloating((FloatingNode) node, replacement);
+                            if (node instanceof FloatingNode) {
+                                currentGraph.replaceFloating((FloatingNode) node, replacement);
+                            } else {
+                                assert node instanceof FixedWithNextNode;
+                                currentGraph.replaceFixed((FixedWithNextNode) node, replacement);
+                            }
                             changedNodes.addAll(replacement.usages());
                         }
                     }
