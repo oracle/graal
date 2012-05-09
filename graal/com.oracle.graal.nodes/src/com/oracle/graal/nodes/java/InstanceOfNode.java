@@ -33,9 +33,13 @@ import com.oracle.max.cri.ri.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-public final class InstanceOfNode extends TypeCheckNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
+public final class InstanceOfNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
     private final boolean negated;
+    @Input private ValueNode object;
+    @Input private ValueNode targetClassInstruction;
+    private final RiResolvedType targetClass;
+    private final RiTypeProfile profile;
 
     public boolean negated() {
         return negated;
@@ -53,7 +57,11 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
     }
 
     public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile, boolean negated) {
-        super(targetClassInstruction, targetClass, object, profile, StampFactory.illegal());
+        super(StampFactory.illegal());
+        this.targetClassInstruction = targetClassInstruction;
+        this.targetClass = targetClass;
+        this.object = object;
+        this.profile = profile;
         this.negated = negated;
         assert targetClass != null;
     }
@@ -112,12 +120,6 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
                 assert false : "non-null constants are always expected to provide an exactType";
             }
         }
-//        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
-//            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
-//                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
-//                return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), hints(), true, negated));
-//            }
-//        }
         return this;
     }
 
@@ -160,5 +162,25 @@ public final class InstanceOfNode extends TypeCheckNode implements Canonicalizab
             }
         }
         return null;
+    }
+
+    public ValueNode object() {
+        return object;
+    }
+
+    public ValueNode targetClassInstruction() {
+        return targetClassInstruction;
+    }
+
+    /**
+     * Gets the target class, i.e. the class being cast to, or the class being tested against.
+     * @return the target class
+     */
+    public RiResolvedType targetClass() {
+        return targetClass;
+    }
+
+    public RiTypeProfile profile() {
+        return profile;
     }
 }
