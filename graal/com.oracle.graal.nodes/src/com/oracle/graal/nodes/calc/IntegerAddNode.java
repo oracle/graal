@@ -60,6 +60,20 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
                     return x();
                 }
             }
+            // canonicalize expressions like "(a + 1) + 2"
+            if (x() instanceof IntegerAddNode) {
+                IntegerAddNode other = (IntegerAddNode) x();
+                if (other.y().isConstant()) {
+                    ConstantNode sum;
+                    if (kind() == CiKind.Int) {
+                        sum = ConstantNode.forInt(y().asConstant().asInt() + other.y().asConstant().asInt(), graph());
+                    } else {
+                        assert kind() == CiKind.Long;
+                        sum = ConstantNode.forLong(y().asConstant().asLong() + other.y().asConstant().asLong(), graph());
+                    }
+                    return graph().unique(new IntegerAddNode(kind(), other.x(), sum));
+                }
+            }
         }
         return this;
     }
