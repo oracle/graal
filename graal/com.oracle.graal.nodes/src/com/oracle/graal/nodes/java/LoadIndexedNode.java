@@ -58,11 +58,6 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
     }
 
     @Override
-    public boolean needsStateAfter() {
-        return false;
-    }
-
-    @Override
     public void lower(CiLoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }

@@ -20,36 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
-
-import com.oracle.graal.cri.*;
+package com.oracle.graal.hotspot.snippets;
+import com.oracle.graal.graph.Node.Fold;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.snippets.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ri.*;
 
 
-public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerable{
+public class CheckCastSnippets implements SnippetsInterface {
 
-    @Input private ValueNode value;
-
-    public SafeWriteNode(ValueNode object, ValueNode value, LocationNode location, long leafGraphId) {
-        super(object, location, StampFactory.forKind(CiKind.Void), leafGraphId);
-        this.value = value;
+    @Snippet
+    public static Object checkcast(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact) {
+        if (object == null) {
+            return object;
+        }
+        Object objectHub = UnsafeLoadNode.load(object, 0, hubOffset(), CiKind.Object);
+        // if we get an exact match: succeed immediately
+        for (int i = 0; i < hintHubs.length; i++) {
+            Object hintHub = hintHubs[i];
+            if (hintHub == objectHub) {
+                return object;
+            }
+        }
+        if (hintsAreExact || TypeCheckSlowPath.check(objectHub, hub) == null) {
+            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+        }
+        return object;
     }
 
-    public ValueNode value() {
-        return value;
-    }
-
-    @Override
-    public void lower(CiLoweringTool tool) {
-        StructuredGraph graph = (StructuredGraph) graph();
-        GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId());
-        WriteNode write = graph.add(new WriteNode(object(), value(), location()));
-        write.setGuard(guard);
-        graph.replaceFixedWithFixed(this, write);
+    @Fold
+    private static int hubOffset() {
+        return CompilerImpl.getInstance().getConfig().hubOffset;
     }
 }

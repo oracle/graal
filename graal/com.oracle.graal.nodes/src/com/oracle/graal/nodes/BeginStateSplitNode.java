@@ -20,38 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+/**
+ * Base class for {@link BeginNode}s that are associated with a frame state.
+ */
+public class BeginStateSplitNode extends BeginNode implements StateSplit {
 
-public class InsertStateAfterPlaceholderPhase extends Phase {
-
-    private static class PlaceholderNode extends FixedWithNextNode implements StateSplit, Node.IterableNodeType, LIRLowerable {
-        public PlaceholderNode() {
-            super(StampFactory.illegal());
-        }
-
-        @Override
-        public void generate(LIRGeneratorTool gen) {
-            // nothing to do
-        }
-
-        @Override
-        public boolean hasSideEffect() {
-            return false;
-        }
-    }
-
+    /**
+     * A begin node has no side effect.
+     */
     @Override
-    protected void run(StructuredGraph graph) {
-        for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
-            PlaceholderNode p = graph.add(new PlaceholderNode());
-            p.setStateAfter(graph.add(new FrameState(null, FrameState.AFTER_BCI, 0, 0, false, false)));
-            graph.addBeforeFixed(ret, p);
-        }
+    public boolean hasSideEffect() {
+        return false;
     }
-
 }

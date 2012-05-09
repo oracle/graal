@@ -31,7 +31,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class BeginNode extends AbstractStateSplit implements LIRLowerable, Simplifiable, Node.IterableNodeType {
+public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Node.IterableNodeType {
     public BeginNode() {
         super(StampFactory.illegal());
     }

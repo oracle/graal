@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
 import com.oracle.graal.nodes.type.*;
 
 
-public final class BoxNode extends AbstractStateSplit implements Node.IterableNodeType {
+public final class BoxNode extends FixedWithNextNode implements StateSplit, Node.IterableNodeType {
 
     @Input private ValueNode source;
     private int bci;

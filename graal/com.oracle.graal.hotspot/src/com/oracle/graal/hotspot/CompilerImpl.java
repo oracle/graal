@@ -157,10 +157,17 @@ public final class CompilerImpl implements Compiler, Remote {
     }
 
     /**
-     * Factory method for getting a Graal compiler instance. This method is called via reflection.
+     * Factory method for getting a {@link GraalRuntime} instance. This method is called via reflection.
      */
     public static GraalRuntime getGraalRuntime() {
         return getInstance().getRuntime();
+    }
+
+    /**
+     * Factory method for getting a {@link GraalCompiler} instance. This method is called via reflection.
+     */
+    public static GraalCompiler getGraalCompiler() {
+        return getInstance().getCompiler();
     }
 
     @Override
@@ -238,19 +245,6 @@ public final class CompilerImpl implements Compiler, Remote {
     @Override
     public HotSpotRuntime getRuntime() {
         if (runtime == null) {
-            if (GraalOptions.PrintCFGToFile) {
-//                context.addCompilationObserver(new CFGPrinterObserver());
-            }
-           // if (GraalOptions.PrintIdealGraphLevel != 0 || GraalOptions.Plot || GraalOptions.PlotOnError) {
-             //   CompilationObserver observer;
-               // if (GraalOptions.PrintIdealGraphFile) {
-              //      observer = new IdealGraphPrinterObserver();
-              //  } else {
-              //      observer = new IdealGraphPrinterObserver(GraalOptions.PrintIdealGraphAddress, GraalOptions.PrintIdealGraphPort);
-              //  }
-//                context.addCompilationObserver(observer);
-                // TODO (thomaswue): Install observer.
-           // }
             runtime = new HotSpotRuntime(config, this);
         }
         return runtime;

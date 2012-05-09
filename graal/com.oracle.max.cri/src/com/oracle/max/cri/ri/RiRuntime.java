@@ -176,17 +176,20 @@ public interface RiRuntime {
      *
      * @param method a method whose executable code is being modified
      * @param code the code to be executed when {@code method} is called
-     * @param info the object into which details of the installed code will be written (ignored if null)
+     * @param info the object into which details of the installed code will be written.
+     *        Ignored if null, otherwise the info is written to index 0 of this array.
      */
-    void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo info);
+    void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info);
 
     /**
      * Adds the given machine code as an implementation of the given method without making it the default implementation.
      * @param method a method to which the executable code is begin added
      * @param code the code to be added
+     * @param info the object into which details of the installed code will be written.
+     *        Ignored if null, otherwise the info is written to index 0 of this array.
      * @return a reference to the compiled and ready-to-run code
      */
-    RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code);
+    RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

@@ -160,7 +160,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void openScope(String name) {
-        printer.beginGroup(name, name, Debug.contextLookup(RiResolvedMethod.class), -1);
+        printer.beginGroup(Thread.currentThread().getName() + ":" + name, name, Debug.contextLookup(RiResolvedMethod.class), -1);
     }
 
     private void closeScope() {

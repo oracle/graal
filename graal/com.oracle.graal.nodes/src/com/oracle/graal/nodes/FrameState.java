@@ -282,7 +282,7 @@ public final class FrameState extends Node implements Node.IterableNodeType, LIR
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        // Nothing to do, frame states are processed as part of the handling of AbstractStateSplit nodes.
+        // Nothing to do, frame states are processed as part of the handling of StateSplit nodes.
     }
 
     private static String toString(FrameState frameState) {

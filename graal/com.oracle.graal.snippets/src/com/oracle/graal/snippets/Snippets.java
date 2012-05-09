@@ -53,16 +53,18 @@ public class Snippets {
         }
     }
 
-    private static void installSnippets(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz,
-                    BoxingMethodPool pool) {
-        for (Method snippet : clazz.getDeclaredMethods()) {
-            int modifiers = snippet.getModifiers();
-            if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                throw new RuntimeException("Snippet must not be abstract or native");
-            }
-            RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
-            if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
-                buildSnippetGraph(snippetRiMethod, runtime, target, pool);
+    private static void installSnippets(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz, BoxingMethodPool pool) {
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getAnnotation(Snippet.class) != null) {
+                Method snippet = method;
+                int modifiers = snippet.getModifiers();
+                if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+                    throw new RuntimeException("Snippet must not be abstract or native");
+                }
+                RiResolvedMethod snippetRiMethod = runtime.getRiMethod(snippet);
+                if (snippetRiMethod.compilerStorage().get(Graph.class) == null) {
+                    buildSnippetGraph(snippetRiMethod, runtime, target, pool);
+                }
             }
         }
     }

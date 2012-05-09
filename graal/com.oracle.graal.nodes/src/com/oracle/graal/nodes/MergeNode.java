@@ -32,14 +32,9 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * Denotes the merging of multiple control-flow paths.
  */
-public class MergeNode extends BeginNode implements Node.IterableNodeType, LIRLowerable {
+public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeType, LIRLowerable {
 
     @Input(notDataflow = true) private final NodeInputList<EndNode> ends = new NodeInputList<>(this);
-
-    @Override
-    public boolean needsStateAfter() {
-        return false;
-    }
 
     @Override
     public void generate(LIRGeneratorTool gen) {

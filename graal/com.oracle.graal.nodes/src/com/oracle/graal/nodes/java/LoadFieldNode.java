@@ -55,11 +55,6 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     @Override
-    public boolean needsStateAfter() {
-        return false;
-    }
-
-    @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         CiConstant constant = null;
         if (isStatic()) {

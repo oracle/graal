@@ -555,6 +555,8 @@ public class NodeClass {
             if (type.isPrimitive()) {
                 if (type == Integer.TYPE) {
                     value = unsafe.getInt(node, dataOffsets[i]);
+                } else if (type == Long.TYPE) {
+                    value = unsafe.getLong(node, dataOffsets[i]);
                 } else if (type == Boolean.TYPE) {
                     value = unsafe.getBoolean(node, dataOffsets[i]);
                 } else if (type == Long.TYPE) {

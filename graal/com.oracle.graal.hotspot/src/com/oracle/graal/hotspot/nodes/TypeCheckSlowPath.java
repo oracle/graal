@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.util.*;
+import com.oracle.max.cri.ci.*;
 
 /**
- * Creates a memory barrier.
+ * A node for calling the HotSpot stub implementing the slow path of a type check.
+ * This stub does not use any registers.
  */
-public class MembarNode extends FixedWithNextNode implements StateSplit, LIRLowerable, MemoryCheckpoint {
+public final class TypeCheckSlowPath extends FloatingNode implements LIRGenLowerable {
 
-    private final int barriers;
+    @Input private ValueNode objectHub;
+    @Input private ValueNode hub;
 
-    /**
-     * @param barriers a mask of the barrier constants defined in {@link MemoryBarriers}
-     */
-    public MembarNode(int barriers) {
-        super(StampFactory.illegal());
-        this.barriers = barriers;
+    public ValueNode objectHub() {
+        return objectHub;
+    }
+
+    public ValueNode hub() {
+        return hub;
+    }
+
+    public TypeCheckSlowPath(ValueNode objectHub, ValueNode hub) {
+        super(StampFactory.forKind(CiKind.Object));
+        this.objectHub = objectHub;
+        this.hub = hub;
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitMembar(barriers);
+    public void generate(LIRGenerator gen) {
+        CiValue objectHubOpr = gen.operand(objectHub);
+        AMD64TypeCheckSlowPathOp op = new AMD64TypeCheckSlowPathOp(objectHubOpr, gen.operand(hub));
+        gen.append(op);
+        gen.setResult(this, objectHubOpr);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void get(@ConstantNodeParameter int barriers) {
+    public static Object check(Object objectHub, Object hub) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
+
+
 }

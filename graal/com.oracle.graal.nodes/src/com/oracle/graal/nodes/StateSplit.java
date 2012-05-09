@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
+/**
+ * A state split is a node that may have a frame state associated with it.
+ */
 public interface StateSplit {
 
     /**
@@ -35,9 +38,9 @@ public interface StateSplit {
     void setStateAfter(FrameState x);
 
     /**
-     * Determines if the caller should create an {@link #stateAfter() after}
-     * frame state for this node if it doesn't already have one.
+     * Determines if this node has a side-effect. Execution of such a node changes
+     * state visible to other threads. These nodes denote boundaries across which deoptimization
+     * points cannot be moved.
      */
-    boolean needsStateAfter();
-
+    boolean hasSideEffect();
 }

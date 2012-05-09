@@ -165,7 +165,7 @@ public final class GraphBuilderPhase extends Phase {
         frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
 
         // finish the start block
-        ((AbstractStateSplit) lastInstr).setStateAfter(frameState.create(0));
+        lastInstr.setStateAfter(frameState.create(0));
         if (blockMap.startBlock.isLoopHeader) {
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
@@ -255,7 +255,7 @@ public final class GraphBuilderPhase extends Phase {
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
-        BeginNode dispatchBegin = currentGraph.add(new BeginNode());
+        BeginNode dispatchBegin = currentGraph.add(new BeginStateSplitNode());
         dispatchBegin.setStateAfter(dispatchState.create(bci));
 
         if (exceptionObject == null) {
@@ -639,7 +639,8 @@ public final class GraphBuilderPhase extends Phase {
             append(anchor);
             CheckCastNode checkCast;
             RiResolvedType[] hints = getTypeCheckHints((RiResolvedType) type, GraalOptions.CheckcastMaxHints);
-            checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, Util.isFinalClass((RiResolvedType) type)));
+            boolean hintsExact = Util.isFinalClass((RiResolvedType) type);
+            checkCast = currentGraph.unique(new CheckCastNode(anchor, typeInstruction, (RiResolvedType) type, object, hints, hintsExact));
             append(currentGraph.add(new ValueAnchorNode(checkCast)));
             frameState.apush(checkCast);
         } else {
@@ -1501,7 +1502,7 @@ public final class GraphBuilderPhase extends Phase {
             }
             if (lastInstr instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) lastInstr;
-                if (stateSplit.stateAfter() == null && stateSplit.needsStateAfter()) {
+                if (stateSplit.stateAfter() == null) {
                     stateSplit.setStateAfter(frameState.create(bci));
                 }
             }

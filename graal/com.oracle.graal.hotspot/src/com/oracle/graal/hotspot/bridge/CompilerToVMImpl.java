@@ -78,7 +78,7 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native RiField RiConstantPool_lookupField(HotSpotTypeResolved pool, int cpi, byte byteCode);
 
     @Override
-    public native HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean installCode, HotSpotCodeInfo info);
+    public native HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean makeDefault, HotSpotCodeInfo info);
 
     @Override
     public native long installStub(HotSpotTargetMethod targetMethod, HotSpotCodeInfo info);
