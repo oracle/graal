@@ -141,7 +141,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     private LockScope curLocks;
 
 
-    public LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
+    public LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
         this.graph = graph;
         this.runtime = runtime;
         this.target = target;
@@ -150,7 +150,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         this.nodeOperands = graph.createNodeMap();
         this.lir = lir;
         this.xir = xir;
-        this.xirSupport = new XirSupport();
+        this.xirSupport = new XirSupport(assumptions);
         this.debugInfoBuilder = new DebugInfoBuilder(nodeOperands);
         this.blockLocks = new BlockMap<>(lir.cfg);
         this.blockLastState = new BlockMap<>(lir.cfg);
@@ -509,7 +509,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitCheckCast(CheckCastNode x) {
-        XirSnippet snippet = xir.genCheckCast(site(x, x.object()), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
+        XirSnippet snippet = xir.genCheckCast(site(x, x.object()), toXirArgument(x.object()), toXirArgument(x.targetClassInstruction()), x.targetClass(), x.profile());
         emitXir(snippet, x, state(), true);
         // The result of a checkcast is the unmodified object, so no need to allocate a new variable for it.
         setResult(x, operand(x.object()));
@@ -716,7 +716,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private void emitInstanceOfBranch(InstanceOfNode x, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         XirArgument obj = toXirArgument(x.object());
-        XirSnippet snippet = xir.genInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), x.hints(), x.hintsExact());
+        XirSnippet snippet = xir.genInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), x.targetClass(), x.profile());
         emitXir(snippet, x, info, null, false, x.negated() ? falseSuccessor : trueSuccessor, x.negated() ? trueSuccessor : falseSuccessor);
     }
 
@@ -767,7 +767,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirArgument obj = toXirArgument(x.object());
         XirArgument trueArg = toXirArgument(x.negated() ? falseValue : trueValue);
         XirArgument falseArg = toXirArgument(x.negated() ? trueValue : falseValue);
-        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass(), x.hints(), x.hintsExact());
+        XirSnippet snippet = xir.genMaterializeInstanceOf(site(x, x.object()), obj, toXirArgument(x.targetClassInstruction()), trueArg, falseArg, x.targetClass(), x.profile());
         return (Variable) emitXir(snippet, null, null, false);
     }
 
@@ -1358,8 +1358,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * Implements site-specific information for the XIR interface.
      */
     static class XirSupport implements XirSite {
+        final CiAssumptions assumptions;
         ValueNode current;
         ValueNode receiver;
+
+
+        public XirSupport(CiAssumptions assumptions) {
+            this.assumptions = assumptions;
+        }
 
         public boolean isNonNull(XirArgument argument) {
             return false;
@@ -1383,6 +1389,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         public boolean requiresArrayStoreCheck() {
             return true;
+        }
+
+        public CiAssumptions assumptions() {
+            return assumptions;
         }
 
         XirSupport site(ValueNode v, ValueNode r) {

@@ -43,6 +43,8 @@ public final class RiTypeProfile implements Serializable {
         public final double probability;
 
         public ProfiledType(RiResolvedType type, double probability) {
+            assert type != null;
+            assert probability >= 0.0D && probability <= 1.0D;
             this.type = type;
             this.probability = probability;
         }
@@ -73,7 +75,7 @@ public final class RiTypeProfile implements Serializable {
         return true;
     }
 
-    public RiTypeProfile(ProfiledType[] ptypes, double notRecordedProbability) {
+    public RiTypeProfile(double notRecordedProbability, ProfiledType... ptypes) {
         this.ptypes = ptypes;
         this.notRecordedProbability = notRecordedProbability;
         assert isSorted(ptypes);

@@ -53,11 +53,11 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
      * @param object the instruction producing the object
      */
     public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
-        this(anchor, targetClassInstruction, targetClass, object, EMPTY_HINTS, false);
+        this(anchor, targetClassInstruction, targetClass, object, null);
     }
 
-    public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact) {
-        super(targetClassInstruction, targetClass, object, hints, hintsExact, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
+    public CheckCastNode(FixedNode anchor, ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
+        super(targetClassInstruction, targetClass, object, profile, targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
         this.anchor = anchor;
     }
 
@@ -87,12 +87,12 @@ public final class CheckCastNode extends TypeCheckNode implements Canonicalizabl
             }
         }
 
-        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
-            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
-                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
-                return graph().unique(new CheckCastNode(anchor, targetClassInstruction(), targetClass(), object(), hints(), true));
-            }
-        }
+//        if (tool.assumptions() != null && hints() != null && targetClass() != null) {
+//            if (!hintsExact() && hints().length == 1 && hints()[0] == targetClass().uniqueConcreteSubtype()) {
+//                tool.assumptions().recordConcreteSubtype(targetClass(), hints()[0]);
+//                return graph().unique(new CheckCastNode(anchor, targetClassInstruction(), targetClass(), object(), hints(), true));
+//            }
+//        }
         return this;
     }
 

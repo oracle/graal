@@ -90,7 +90,7 @@ public class GraalCompiler {
                 });
                 final FrameMap frameMap = Debug.scope("BackEnd", lir, new Callable<FrameMap>() {
                     public FrameMap call() {
-                        return emitLIR(lir, graph, method);
+                        return emitLIR(lir, graph, method, assumptions);
                     }
                 });
                 return Debug.scope("CodeGen", frameMap, new Callable<CiTargetMethod>() {
@@ -232,9 +232,9 @@ public class GraalCompiler {
         });
     }
 
-    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final RiResolvedMethod method) {
+    public FrameMap emitLIR(final LIR lir, StructuredGraph graph, final RiResolvedMethod method, CiAssumptions assumptions) {
         final FrameMap frameMap = backend.newFrameMap(runtime.getRegisterConfig(method));
-        final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir);
+        final LIRGenerator lirGenerator = backend.newLIRGenerator(graph, frameMap, method, lir, xir, assumptions);
 
         Debug.scope("LIRGen", lirGenerator, new Runnable() {
             public void run() {

@@ -386,7 +386,7 @@ public final class HotSpotMethodData extends CompilerObject {
             Arrays.sort(ptypes);
 
             double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
-            return new RiTypeProfile(ptypes, notRecordedTypeProbability);
+            return new RiTypeProfile(notRecordedTypeProbability, ptypes);
         }
 
         private static int getReceiverOffset(int row) {

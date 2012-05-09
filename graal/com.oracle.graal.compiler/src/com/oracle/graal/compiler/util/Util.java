@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.compiler.util;
 
-import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.criutils.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.criutils.*;
 
 /**
  * The {@code Util} class contains a motley collection of utility methods used throughout the compiler.
@@ -356,9 +354,5 @@ public class Util {
 
     public static boolean isFloating(Node n) {
         return n instanceof FloatingNode;
-    }
-
-    public static boolean isFinalClass(RiResolvedType type) {
-        return Modifier.isFinal(type.accessFlags()) || (type.isArrayClass() && Modifier.isFinal(type.componentType().accessFlags()));
     }
 }

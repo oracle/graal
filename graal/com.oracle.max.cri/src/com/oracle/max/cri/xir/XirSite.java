@@ -22,6 +22,8 @@
  */
 package com.oracle.max.cri.xir;
 
+import com.oracle.max.cri.ci.*;
+
 /**
  * Encapsulates the notion of a site where XIR can be supplied. It is supplied to the {@link RiXirGenerator} by the
  * compiler for each place where XIR can be generated. This interface allows a number of queries, including the
@@ -65,4 +67,10 @@ public interface XirSite {
      * @return {@code true} if an array store check is required
      */
     boolean requiresArrayStoreCheck();
+
+    /**
+     * The object for recording speculations made during compilation.
+     * May be null.
+     */
+    CiAssumptions assumptions();
 }

@@ -96,8 +96,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
-        super(graph, runtime, target, frameMap, method, lir, xir);
+    public AMD64LIRGenerator(Graph graph, RiRuntime runtime, CiTarget target, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+        super(graph, runtime, target, frameMap, method, lir, xir, assumptions);
         lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
 

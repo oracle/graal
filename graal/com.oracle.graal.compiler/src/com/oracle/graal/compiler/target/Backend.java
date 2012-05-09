@@ -72,7 +72,7 @@ public abstract class Backend {
         return new FrameMap(runtime, target, registerConfig);
     }
 
-    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir);
+    public abstract LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions);
 
     public abstract TargetMethodAssembler newAssembler(FrameMap frameMap, LIR lir);
 

@@ -56,8 +56,8 @@ public class HotSpotAMD64Backend extends Backend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir) {
-        return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir) {
+    public LIRGenerator newLIRGenerator(Graph graph, FrameMap frameMap, RiResolvedMethod method, LIR lir, RiXirGenerator xir, CiAssumptions assumptions) {
+        return new AMD64LIRGenerator(graph, runtime, target, frameMap, method, lir, xir, assumptions) {
 
             @Override
             public void visitSafepointNode(SafepointNode i) {

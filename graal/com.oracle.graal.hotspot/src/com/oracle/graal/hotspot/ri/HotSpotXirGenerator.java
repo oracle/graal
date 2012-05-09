@@ -45,6 +45,7 @@ import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.CiXirAssembler.XirOperand;
 import com.oracle.max.cri.xir.CiXirAssembler.XirParameter;
+import com.oracle.max.criutils.*;
 
 public class HotSpotXirGenerator implements RiXirGenerator {
 
@@ -806,9 +807,11 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     @Override
-    public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiResolvedType type, RiResolvedType[] hints, boolean hintsExact) {
+    public XirSnippet genCheckCast(XirSite site, XirArgument receiver, XirArgument hub, RiResolvedType type, RiTypeProfile profile) {
         final boolean useCounters = GraalOptions.CheckcastCounters;
-        if (hints == null || hints.length == 0) {
+        TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+        int hintsLength = hints.types.length;
+        if (hintsLength == 0) {
             if (useCounters) {
                 if (type == null) {
                     return new XirSnippet(checkCastTemplates.get(site, 0, NULL_TYPE), XirArgument.forObject(checkcastCounters), receiver, hub);
@@ -821,59 +824,63 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 return new XirSnippet(checkCastTemplates.get(site, 0), receiver, hub);
             }
         } else {
-            XirArgument[] params = new XirArgument[(useCounters ? 1 : 0) + hints.length + (hintsExact ? 1 : 2)];
+            XirArgument[] params = new XirArgument[(useCounters ? 1 : 0) + hintsLength + (hints.exact ? 1 : 2)];
             int i = 0;
             if (useCounters) {
                 params[i++] = XirArgument.forObject(checkcastCounters);
             }
             params[i++] = receiver;
-            if (!hintsExact) {
+            if (!hints.exact) {
                 params[i++] = hub;
             }
-            for (RiResolvedType hint : hints) {
+            for (RiResolvedType hint : hints.types) {
                 params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
-            XirTemplate template = hintsExact ? checkCastTemplates.get(site, hints.length, EXACT_HINTS) : checkCastTemplates.get(site, hints.length);
+            XirTemplate template = hints.exact ? checkCastTemplates.get(site, hintsLength, EXACT_HINTS) : checkCastTemplates.get(site, hintsLength);
             return new XirSnippet(template, params);
         }
     }
 
     @Override
-    public XirSnippet genInstanceOf(XirSite site, XirArgument object, XirArgument hub, RiType type, RiResolvedType[] hints, boolean hintsExact) {
-        if (hints == null || hints.length == 0) {
+    public XirSnippet genInstanceOf(XirSite site, XirArgument object, XirArgument hub, RiResolvedType type, RiTypeProfile profile) {
+        TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
+        int hintsLength = hints.types.length;
+        if (hintsLength == 0) {
             return new XirSnippet(instanceOfTemplates.get(site, 0), object, hub);
         } else {
-            XirArgument[] params = new XirArgument[hints.length + (hintsExact ? 1 : 2)];
+            XirArgument[] params = new XirArgument[hintsLength + (hints.exact ? 1 : 2)];
             int i = 0;
             params[i++] = object;
-            if (!hintsExact) {
+            if (!hints.exact) {
                 params[i++] = hub;
             }
-            for (RiResolvedType hint : hints) {
+            for (RiResolvedType hint : hints.types) {
                 params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
-            XirTemplate template = hintsExact ? instanceOfTemplates.get(site, hints.length, EXACT_HINTS) : instanceOfTemplates.get(site, hints.length);
+            XirTemplate template = hints.exact ? instanceOfTemplates.get(site, hintsLength, EXACT_HINTS) : instanceOfTemplates.get(site, hintsLength);
             return new XirSnippet(template, params);
         }
     }
 
     @Override
-    public XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument object, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiType type, RiResolvedType[] hints, boolean hintsExact) {
-        if (hints == null || hints.length == 0) {
+    public XirSnippet genMaterializeInstanceOf(XirSite site, XirArgument object, XirArgument hub, XirArgument trueValue, XirArgument falseValue, RiResolvedType type, RiTypeProfile profile) {
+        TypeCheckHints hints = new TypeCheckHints(type, profile, site.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
+        int hintsLength = hints.types.length;
+        if (hintsLength == 0) {
             return new XirSnippet(materializeInstanceOfTemplates.get(site, 0), object, hub, trueValue, falseValue);
         } else {
-            XirArgument[] params = new XirArgument[hints.length + (hintsExact ? 3 : 4)];
+            XirArgument[] params = new XirArgument[hintsLength + (hints.exact ? 3 : 4)];
             int i = 0;
             params[i++] = object;
-            if (!hintsExact) {
+            if (!hints.exact) {
                 params[i++] = hub;
             }
             params[i++] = trueValue;
             params[i++] = falseValue;
-            for (RiResolvedType hint : hints) {
+            for (RiResolvedType hint : hints.types) {
                 params[i++] = XirArgument.forObject(((HotSpotType) hint).klassOop());
             }
-            XirTemplate template = hintsExact ? materializeInstanceOfTemplates.get(site, hints.length, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hints.length);
+            XirTemplate template = hints.exact ? materializeInstanceOfTemplates.get(site, hintsLength, EXACT_HINTS) : materializeInstanceOfTemplates.get(site, hintsLength);
             return new XirSnippet(template, params);
         }
     }

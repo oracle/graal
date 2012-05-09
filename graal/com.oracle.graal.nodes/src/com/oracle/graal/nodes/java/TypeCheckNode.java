@@ -35,23 +35,22 @@ public abstract class TypeCheckNode extends BooleanNode {
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
     private final RiResolvedType targetClass;
-    private final RiResolvedType[] hints;
-    private final boolean hintsExact;
+    private final RiTypeProfile profile;
 
     /**
      * Creates a new TypeCheckNode.
+     *
      * @param targetClassInstruction the instruction which produces the class which is being cast to or checked against
      * @param targetClass the class that is being casted to or checked against
      * @param object the node which produces the object
      * @param kind the result type of this node
      */
-    public TypeCheckNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiResolvedType[] hints, boolean hintsExact, Stamp stamp) {
+    public TypeCheckNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile, Stamp stamp) {
         super(stamp);
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
         this.object = object;
-        this.hints = hints;
-        this.hintsExact = hintsExact;
+        this.profile = profile;
     }
 
     public ValueNode object() {
@@ -70,11 +69,7 @@ public abstract class TypeCheckNode extends BooleanNode {
         return targetClass;
     }
 
-    public RiResolvedType[] hints() {
-        return hints;
-    }
-
-    public boolean hintsExact() {
-        return hintsExact;
+    public RiTypeProfile profile() {
+        return profile;
     }
 }

@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiTypeProfile.*;
 
 public class LowerCheckCastTest extends GraphTest {
 
@@ -41,20 +42,15 @@ public class LowerCheckCastTest extends GraphTest {
         asStringExt("0");
     }
 
-    private RiCompiledMethod compile(String name, Class[] hintClasses, boolean exact) {
+    private RiCompiledMethod compile(String name, RiTypeProfile profile) {
         //System.out.println("compiling: " + name + ", hints=" + Arrays.toString(hintClasses) + ", exact=" + exact);
 
         Method method = getMethod(name);
         final StructuredGraph graph = parse(method);
 
-        RiResolvedType[] hints = new RiResolvedType[hintClasses.length];
-        for (int i = 0; i < hintClasses.length; i++) {
-            hints[i] = runtime.getType(hintClasses[i]);
-        }
-
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         assert ccn != null;
-        CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.anchor(), ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), hints, exact));
+        CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.anchor(), ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
         graph.replaceFloating(ccn, ccnNew);
 
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
@@ -62,57 +58,61 @@ public class LowerCheckCastTest extends GraphTest {
         return addMethod(riMethod, targetMethod);
     }
 
-    private static final boolean EXACT = true;
-    private static final boolean NOT_EXACT = false;
-
-    private static Class[] hints(Class... classes) {
-        return classes;
+    private RiTypeProfile profile(Class... types) {
+        if (types.length == 0) {
+            return null;
+        }
+        ProfiledType[] ptypes = new ProfiledType[types.length];
+        for (int i = 0; i < types.length; i++) {
+            ptypes[i] = new ProfiledType(runtime.getType(types[i]), 1.0D / types.length);
+        }
+        return new RiTypeProfile(0.0D, ptypes);
     }
 
-    private void test(String name, Class[] hints, boolean exact, Object expected, Object... args) {
-        RiCompiledMethod compiledMethod = compile(name, hints, exact);
+    private void test(String name, RiTypeProfile profile, Object expected, Object... args) {
+        RiCompiledMethod compiledMethod = compile(name, profile);
         Assert.assertEquals(expected, compiledMethod.executeVarargs(args));
     }
 
     @Test
     public void test1() {
-        test("asNumber",    hints(),                        NOT_EXACT, 111, 111);
-        test("asNumber",    hints(Integer.class),           NOT_EXACT, 111, 111);
-        test("asNumber",    hints(Long.class, Short.class), NOT_EXACT, 111, 111);
-        test("asNumberExt", hints(),                        NOT_EXACT, 121, 111);
-        test("asNumberExt", hints(Integer.class),           NOT_EXACT, 121, 111);
-        test("asNumberExt", hints(Long.class, Short.class), NOT_EXACT, 121, 111);
+        test("asNumber",    profile(),                        111, 111);
+        test("asNumber",    profile(Integer.class),           111, 111);
+        test("asNumber",    profile(Long.class, Short.class), 111, 111);
+        test("asNumberExt", profile(),                        121, 111);
+        test("asNumberExt", profile(Integer.class),           121, 111);
+        test("asNumberExt", profile(Long.class, Short.class), 121, 111);
     }
 
     @Test
     public void test2() {
-        test("asString",    hints(),             NOT_EXACT, "111", "111");
-        test("asString",    hints(String.class), EXACT,     "111", "111");
-        test("asString",    hints(String.class), NOT_EXACT, "111", "111");
+        test("asString",    profile(),             "111", "111");
+        test("asString",    profile(String.class), "111", "111");
+        test("asString",    profile(String.class), "111", "111");
 
-        test("asStringExt", hints(),             NOT_EXACT, "#111", "111");
-        test("asStringExt", hints(String.class), EXACT,     "#111", "111");
-        test("asStringExt", hints(String.class), NOT_EXACT, "#111", "111");
+        test("asStringExt", profile(),             "#111", "111");
+        test("asStringExt", profile(String.class), "#111", "111");
+        test("asStringExt", profile(String.class), "#111", "111");
     }
 
     @Test(expected = ClassCastException.class)
     public void test3() {
-        test("asNumber", hints(), NOT_EXACT, 111, "111");
+        test("asNumber", profile(), 111, "111");
     }
 
     @Test(expected = ClassCastException.class)
     public void test4() {
-        test("asString", hints(String.class), EXACT, "111", 111);
+        test("asString", profile(String.class), "111", 111);
     }
 
     @Test(expected = ClassCastException.class)
     public void test5() {
-        test("asNumberExt", hints(), NOT_EXACT, 111, "111");
+        test("asNumberExt", profile(), 111, "111");
     }
 
     @Test(expected = ClassCastException.class)
     public void test6() {
-        test("asStringExt", hints(String.class), EXACT, "111", 111);
+        test("asStringExt", profile(String.class), "111", 111);
     }
 
     public static Number asNumber(Object o) {
