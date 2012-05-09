@@ -172,6 +172,9 @@ public class GraalCompiler {
         new LoweringPhase(runtime).apply(graph);
         new CanonicalizerPhase(target, runtime, assumptions, true, null).apply(graph);
 
+        if (GraalOptions.CullFrameStates) {
+            new CullFrameStatesPhase().apply(graph);
+        }
         if (GraalOptions.Lower) {
             new FloatingReadPhase().apply(graph);
             if (GraalOptions.OptGVN) {

@@ -209,6 +209,9 @@ public class InliningPhase extends Phase implements InliningCallback {
                 if (GraalOptions.Intrinsify) {
                     new IntrinsificationPhase(runtime).apply(newGraph);
                 }
+                if (GraalOptions.CullFrameStates) {
+                    new CullFrameStatesPhase().apply(newGraph);
+                }
                 if (GraalOptions.CacheGraphs && cache != null) {
                     cache.put(newGraph);
                 }
