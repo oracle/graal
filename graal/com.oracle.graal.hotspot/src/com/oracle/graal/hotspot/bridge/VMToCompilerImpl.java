@@ -160,8 +160,6 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         }
     }
 
-
-
     /**
      * This method is the first method compiled during bootstrapping. Put any code in there that warms up compiler paths
      * that are otherwise not exercised during bootstrapping and lead to later deoptimization when application code is
@@ -237,17 +235,26 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         compileMethod((HotSpotMethodResolved) riMethod, 0, false, 10);
     }
 
+    private static void shutdownCompileQueue(ThreadPoolExecutor queue) throws InterruptedException {
+        if (queue != null) {
+            queue.shutdown();
+            if (Debug.isEnabled() && GraalOptions.Dump != null) {
+                // Wait 5 seconds to try and flush out all graph dumps
+                queue.awaitTermination(5, TimeUnit.SECONDS);
+            }
+        }
+    }
+
     public void shutdownCompiler() throws Throwable {
         try {
             assert !CompilationTask.withinEnqueue.get();
             CompilationTask.withinEnqueue.set(Boolean.TRUE);
-            compileQueue.shutdown();
-            if (slowCompileQueue != null) {
-                slowCompileQueue.shutdown();
-            }
+            shutdownCompileQueue(compileQueue);
+            shutdownCompileQueue(slowCompileQueue);
         } finally {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
+
 
         if (Debug.isEnabled()) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
