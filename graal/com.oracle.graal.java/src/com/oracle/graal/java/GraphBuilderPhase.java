@@ -255,7 +255,7 @@ public final class GraphBuilderPhase extends Phase {
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
-        BeginNode dispatchBegin = currentGraph.add(new BeginStateSplitNode());
+        BeginNode dispatchBegin = currentGraph.add(new DispatchBeginNode());
         dispatchBegin.setStateAfter(dispatchState.create(bci));
 
         if (exceptionObject == null) {

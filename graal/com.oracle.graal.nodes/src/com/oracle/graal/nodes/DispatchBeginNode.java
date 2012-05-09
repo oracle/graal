@@ -23,15 +23,8 @@
 package com.oracle.graal.nodes;
 
 /**
- * Base class for {@link BeginNode}s that are associated with a frame state.
+ * The entry node of an exception dispatcher block.
  */
-public abstract class BeginStateSplitNode extends BeginNode implements StateSplit {
+public class DispatchBeginNode extends BeginStateSplitNode {
 
-    /**
-     * A begin node has no side effect.
-     */
-    @Override
-    public boolean hasSideEffect() {
-        return false;
-    }
 }
