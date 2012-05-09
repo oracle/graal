@@ -25,12 +25,12 @@ package com.oracle.graal.nodes.java;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * The base class of all instructions that access fields.
@@ -99,6 +99,15 @@ public abstract class AccessFieldNode extends AbstractStateSplit implements Lowe
         Map<Object, Object> debugProperties = super.getDebugProperties();
         debugProperties.put("field", CiUtil.format("%h.%n", field));
         return debugProperties;
+    }
+
+    @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(verbosity) + "#" + field.name();
+        } else {
+            return super.toString(verbosity);
+        }
     }
 
     @Override
