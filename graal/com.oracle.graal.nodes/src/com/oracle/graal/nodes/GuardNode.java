@@ -29,6 +29,17 @@ import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ri.*;
 
+/**
+ * A guard is a node that deoptimizes based on a conditional expression. Guards are not attached to a certain frame
+ * state, they can move around freely and will always use the correct frame state when the nodes are scheduled (i.e.,
+ * the last emitted frame state). The node that is guarded has a data dependency on the guard and the guard in turn has
+ * a data dependency on the condition. A guard may only be executed if it is guaranteed that the guarded node is
+ * executed too (if no exceptions are thrown). Therefore, an {@linkplain AnchorNode anchor} is placed after a control
+ * flow split and the guard has a data dependency to the anchor. The anchor is the most distant node that is
+ * post-dominated by the guarded node and the guard can be scheduled anywhere between those two nodes. This ensures
+ * maximum flexibility for the guard node and guarantees that deoptimization occurs only if the control flow would have
+ * reached the guarded node (without taking exceptions into account).
+ */
 public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType {
 
     @Input private BooleanNode condition;
