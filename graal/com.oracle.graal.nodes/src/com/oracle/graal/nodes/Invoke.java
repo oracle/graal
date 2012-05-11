@@ -55,9 +55,12 @@ public interface Invoke extends StateSplit {
 
     void setUseForInlining(boolean value);
 
-    boolean megamorph();
+    /**
+     * True if this invocation is almost certainly megamorphic, false when in doubt.
+     */
+    boolean isMegamorphic();
 
-    void setMegamorph(boolean megamorph);
+    void setMegamorphic(boolean value);
 
     long leafGraphId();
 }

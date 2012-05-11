@@ -39,7 +39,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Input private FrameState stateAfter;
     private final int bci;
     // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
-    private boolean megamorph;
+    private boolean megamorphic;
     private boolean useForInlining;
     private final long leafGraphId;
 
@@ -53,7 +53,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         this.bci = bci;
         this.callTarget = callTarget;
         this.leafGraphId = leafGraphId;
-        this.megamorph = true;
+        this.megamorphic = true;
         this.useForInlining = true;
     }
 
@@ -78,13 +78,13 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
-    public boolean megamorph() {
-        return megamorph;
+    public boolean isMegamorphic() {
+        return megamorphic;
     }
 
     @Override
-    public void setMegamorph(boolean megamorph) {
-        this.megamorph = megamorph;
+    public void setMegamorphic(boolean value) {
+        this.megamorphic = value;
     }
 
     @Override

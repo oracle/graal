@@ -38,8 +38,7 @@ public final class InvokeNode extends FixedWithNextNode implements StateSplit, N
 
     @Input private final MethodCallTargetNode callTarget;
     private final int bci;
-    // megamorph should only be true when the compiler is sure that the call site is megamorph, and false when in doubt
-    private boolean megamorph;
+    private boolean megamorphic;
     private boolean useForInlining;
     private final long leafGraphId;
 
@@ -56,7 +55,7 @@ public final class InvokeNode extends FixedWithNextNode implements StateSplit, N
         this.callTarget = callTarget;
         this.bci = bci;
         this.leafGraphId = leafGraphId;
-        this.megamorph = false;
+        this.megamorphic = false;
         this.useForInlining = true;
     }
 
@@ -65,13 +64,13 @@ public final class InvokeNode extends FixedWithNextNode implements StateSplit, N
     }
 
     @Override
-    public boolean megamorph() {
-        return megamorph;
+    public boolean isMegamorphic() {
+        return megamorphic;
     }
 
     @Override
-    public void setMegamorph(boolean megamorph) {
-        this.megamorph = megamorph;
+    public void setMegamorphic(boolean value) {
+        this.megamorphic = value;
     }
 
     public boolean useForInlining() {
