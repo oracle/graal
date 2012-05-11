@@ -1263,7 +1263,7 @@ public final class GraphBuilderPhase extends Phase {
         FixedNode target = createTarget(probability, block, stateAfter);
         BeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin instanceof StateSplit) :
+        assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) :
             "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
@@ -1469,9 +1469,13 @@ public final class GraphBuilderPhase extends Phase {
                 frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
             }
             if (lastInstr instanceof StateSplit) {
-                StateSplit stateSplit = (StateSplit) lastInstr;
-                if (stateSplit.stateAfter() == null) {
-                    stateSplit.setStateAfter(frameState.create(bci));
+                if (lastInstr.getClass() == BeginNode.class) {
+                    // BeginNodes do not need a frame state
+                } else {
+                    StateSplit stateSplit = (StateSplit) lastInstr;
+                    if (stateSplit.stateAfter() == null) {
+                        stateSplit.setStateAfter(frameState.create(bci));
+                    }
                 }
             }
             if (bci < endBCI) {

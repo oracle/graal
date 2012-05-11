@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.cri.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
- * The {@code StoreIndexedNode} represents a write to an array element.
+ * Provides an implementation of {@link StateSplit}.
  */
-public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable {
+public abstract class AbstractStateSplit extends FixedWithNextNode implements StateSplit {
 
-    @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
 
     public FrameState stateAfter() {
@@ -50,25 +45,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         return true;
     }
 
-    public ValueNode value() {
-        return value;
-    }
-
-    /**
-     * Creates a new StoreIndexedNode.
-     * @param array the node producing the array
-     * @param index the node producing the index
-     * @param length the node producing the length
-     * @param elementKind the element type
-     * @param value the value to store into the array
-     */
-    public StoreIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, ValueNode value, long leafGraphId) {
-        super(StampFactory.illegal(), array, index, length, elementKind, leafGraphId);
-        this.value = value;
-    }
-
-    @Override
-    public void lower(CiLoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+    public AbstractStateSplit(Stamp stamp) {
+        super(stamp);
     }
 }

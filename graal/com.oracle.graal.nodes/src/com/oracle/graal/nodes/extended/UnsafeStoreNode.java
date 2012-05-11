@@ -38,6 +38,21 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
     @Input private ValueNode value;
     private final int displacement;
     private final CiKind storeKind;
+    @Input(notDataflow = true) private FrameState stateAfter;
+
+    public FrameState stateAfter() {
+        return stateAfter;
+    }
+
+    public void setStateAfter(FrameState x) {
+        assert x == null || x.isAlive() : "frame state must be in a graph";
+        updateUsages(stateAfter, x);
+        stateAfter = x;
+    }
+
+    public boolean hasSideEffect() {
+        return true;
+    }
 
     public UnsafeStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, CiKind kind) {
         super(StampFactory.illegal());

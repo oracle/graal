@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * This node is used to perform the finalizer registration at the end of the java.lang.Object constructor.
  */
-public final class RegisterFinalizerNode extends FixedWithNextNode implements StateSplit, Canonicalizable, LIRLowerable {
+public final class RegisterFinalizerNode extends AbstractStateSplit implements StateSplit, Canonicalizable, LIRLowerable {
 
     @Input private ValueNode object;
 
