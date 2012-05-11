@@ -164,7 +164,7 @@ public final class GraalOptions {
 
     // Code generator settings
     public static boolean PropagateTypes                     = ____;
-    public static boolean CullFrameStates                    = true;
+    public static boolean CullFrameStates                    = ____;
     public static boolean UseProfilingInformation            = true;
            static boolean RemoveNeverExecutedCode            = true;
            static boolean UseExceptionProbability            = true;
