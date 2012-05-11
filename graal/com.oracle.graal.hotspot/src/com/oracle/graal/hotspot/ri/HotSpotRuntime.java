@@ -412,7 +412,7 @@ public class HotSpotRuntime implements GraalRuntime {
             memoryRead.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         } else if (n instanceof CheckCastNode) {
-            if (GraalOptions.HIRLowerCheckcast != null && graph.method() != null && graph.method().holder().name().contains(GraalOptions.HIRLowerCheckcast)) {
+            if (GraalOptions.HIRLowerCheckcast != null && graph.method() != null && CiUtil.format("%H.%n", graph.method()).contains(GraalOptions.HIRLowerCheckcast)) {
                 final Map<CiConstant, CiConstant> hintHubsSet = new IdentityHashMap<>();
                 IsImmutablePredicate immutabilityPredicate = new IsImmutablePredicate() {
                     public boolean apply(CiConstant constant) {
