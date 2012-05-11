@@ -67,7 +67,7 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
         return count;
     }
     public boolean isEmpty() {
-        return count() == 0;
+        return !iterator().hasNext();
     }
     public boolean isNotEmpty() {
         return iterator().hasNext();
