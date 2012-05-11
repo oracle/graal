@@ -40,7 +40,7 @@ public class StructuredGraph extends Graph {
 
     public static final long INVALID_GRAPH_ID = -1;
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
-    private final BeginNode start;
+    private final StartNode start;
     private final RiResolvedMethod method;
     private final long graphId;
 
@@ -94,7 +94,7 @@ public class StructuredGraph extends Graph {
         return buf.toString();
     }
 
-    public BeginNode start() {
+    public StartNode start() {
         return start;
     }
 

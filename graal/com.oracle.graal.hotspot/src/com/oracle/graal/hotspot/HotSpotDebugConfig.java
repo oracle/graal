@@ -148,8 +148,7 @@ public class HotSpotDebugConfig implements DebugConfig {
             return null;
         }
         Debug.setConfig(Debug.fixedConfig(true, true, false, false, dumpHandlers, output));
-        // sync "Exception occured in scope: " with mx/sanitycheck.py::Test.__init__
-        Debug.log(String.format("Exception occured in scope: %s", Debug.currentScope()));
+        Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
         for (Object o : Debug.context()) {
             Debug.log("Context obj %s", o);
             if (o instanceof Graph) {

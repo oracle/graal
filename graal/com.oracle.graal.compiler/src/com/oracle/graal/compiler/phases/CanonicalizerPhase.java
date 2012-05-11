@@ -37,18 +37,22 @@ public class CanonicalizerPhase extends Phase {
     private static final DebugMetric METRIC_CANONICALIZATION_CONSIDERED_NODES = Debug.metric("CanonicalizationConsideredNodes");
     private static final DebugMetric METRIC_SIMPLIFICATION_CONSIDERED_NODES = Debug.metric("SimplificationConsideredNodes");
 
-    private boolean newNodes;
+    private int newNodesMark;
     private final CiTarget target;
     private final CiAssumptions assumptions;
     private final RiRuntime runtime;
     private final IsImmutablePredicate immutabilityPredicate;
 
     public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions) {
-        this(target, runtime, assumptions, false, null);
+        this(target, runtime, assumptions, -1, null);
     }
 
-    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions, boolean newNodes, IsImmutablePredicate immutabilityPredicate) {
-        this.newNodes = newNodes;
+    /**
+     * @param newNodesMark if non-negative, then only the {@linkplain Graph#getNewNodes(int) new nodes} specified by
+     *            this mark are processed otherwise all nodes in the graph are processed
+     */
+    public CanonicalizerPhase(CiTarget target, RiRuntime runtime, CiAssumptions assumptions, int newNodesMark, IsImmutablePredicate immutabilityPredicate) {
+        this.newNodesMark = newNodesMark;
         this.target = target;
         this.assumptions = assumptions;
         this.runtime = runtime;
@@ -57,9 +61,10 @@ public class CanonicalizerPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        boolean newNodes = newNodesMark >= 0;
         NodeWorkList nodeWorkList = graph.createNodeWorkList(!newNodes, MAX_ITERATION_PER_NODE);
         if (newNodes) {
-            nodeWorkList.addAll(graph.getNewNodes());
+            nodeWorkList.addAll(graph.getNewNodes(newNodesMark));
         }
 
         canonicalize(graph, nodeWorkList, runtime, target, assumptions, immutabilityPredicate);
@@ -80,7 +85,7 @@ public class CanonicalizerPhase extends Phase {
             METRIC_PROCESSED_NODES.increment();
             if (node instanceof Canonicalizable) {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
-                graph.mark();
+                int mark = graph.getMark();
                 ValueNode canonical = ((Canonicalizable) node).canonical(tool);
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
@@ -132,7 +137,7 @@ public class CanonicalizerPhase extends Phase {
                             }
                         }
                     }
-                    nodeWorkList.addAll(graph.getNewNodes());
+                    nodeWorkList.addAll(graph.getNewNodes(mark));
                 }
             } else if (node instanceof Simplifiable) {
                 Debug.log("Canonicalizer: simplifying %s", node);

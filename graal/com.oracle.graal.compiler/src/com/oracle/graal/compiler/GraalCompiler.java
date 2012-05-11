@@ -173,9 +173,9 @@ public class GraalCompiler {
             new GlobalValueNumberingPhase().apply(graph);
         }
 
-        graph.mark();
-        new LoweringPhase(runtime).apply(graph);
-        new CanonicalizerPhase(target, runtime, assumptions, true, null).apply(graph);
+        int mark = graph.getMark();
+        new LoweringPhase(runtime, assumptions).apply(graph);
+        new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
 
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);

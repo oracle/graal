@@ -28,18 +28,24 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.compiler.phases.CanonicalizerPhase.IsImmutablePredicate;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.Call;
 import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
@@ -58,6 +64,7 @@ public class HotSpotRuntime implements GraalRuntime {
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
     private final Compiler compiler;
+    private RiResolvedMethod checkcastSnippet;
 
     public HotSpotRuntime(HotSpotVMConfig config, Compiler compiler) {
         this.config = config;
@@ -67,6 +74,19 @@ public class HotSpotRuntime implements GraalRuntime {
 
         System.setProperty(Backend.BACKEND_CLASS_PROPERTY, HotSpotAMD64Backend.class.getName());
     }
+
+    public void installSnippets() {
+        Snippets.install(this, compiler.getTarget(), new SystemSnippets());
+        Snippets.install(this, compiler.getTarget(), new UnsafeSnippets());
+        Snippets.install(this, compiler.getTarget(), new ArrayCopySnippets());
+        Snippets.install(this, compiler.getTarget(), new CheckCastSnippets());
+        try {
+            checkcastSnippet = getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcast", Object.class, Object.class, Object[].class, boolean.class));
+        } catch (NoSuchMethodException e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
 
     @Override
     public int codeOffset() {
@@ -330,6 +350,7 @@ public class HotSpotRuntime implements GraalRuntime {
             CiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
+            CheckCastNode checkcast = null;
             ValueNode array = storeIndexed.array();
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 // Store check!
@@ -337,7 +358,7 @@ public class HotSpotRuntime implements GraalRuntime {
                     RiResolvedType elementType = array.exactType().componentType();
                     if (elementType.superType() != null) {
                         ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
-                        CheckCastNode checkcast = graph.add(new CheckCastNode(type, elementType, value));
+                        checkcast = graph.add(new CheckCastNode(type, elementType, value));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;
                     } else {
@@ -348,7 +369,7 @@ public class HotSpotRuntime implements GraalRuntime {
                     FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
                     arrayClass.dependencies().add(guard);
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
-                    CheckCastNode checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
+                    checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     value = checkcast;
                 }
@@ -361,6 +382,9 @@ public class HotSpotRuntime implements GraalRuntime {
 
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
+            }
+            if (checkcast != null) {
+                checkcast.lower(tool);
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
@@ -387,6 +411,31 @@ public class HotSpotRuntime implements GraalRuntime {
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
             memoryRead.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
+        } else if (n instanceof CheckCastNode) {
+            if (GraalOptions.HIRLowerCheckcast != null && graph.method() != null && graph.method().holder().name().contains(GraalOptions.HIRLowerCheckcast)) {
+                final Map<CiConstant, CiConstant> hintHubsSet = new IdentityHashMap<>();
+                IsImmutablePredicate immutabilityPredicate = new IsImmutablePredicate() {
+                    public boolean apply(CiConstant constant) {
+                        return hintHubsSet.containsKey(constant);
+                    }
+                };
+                CheckCastNode checkcast = (CheckCastNode) n;
+                ValueNode hub = checkcast.targetClassInstruction();
+                ValueNode object = checkcast.object();
+                TypeCheckHints hints = new TypeCheckHints(checkcast.targetClass(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+                StructuredGraph snippetGraph = (StructuredGraph) checkcastSnippet.compilerStorage().get(Graph.class);
+                assert snippetGraph != null : CheckCastSnippets.class.getSimpleName() + " should be installed";
+                HotSpotKlassOop[] hintHubs = new HotSpotKlassOop[hints.types.length];
+                for (int i = 0; i < hintHubs.length; i++) {
+                    hintHubs[i] = ((HotSpotType) hints.types[i]).klassOop();
+                }
+                final CiConstant hintHubsConst = CiConstant.forObject(hintHubs);
+                hintHubsSet.put(hintHubsConst, hintHubsConst);
+                Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, checkcast, Arrays.toString(hints.types), hints.exact);
+
+                InliningUtil.inlineSnippet(this, checkcast, checkcast, snippetGraph, true, immutabilityPredicate, tool, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
+                new DeadCodeEliminationPhase().apply(graph);
+            }
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }

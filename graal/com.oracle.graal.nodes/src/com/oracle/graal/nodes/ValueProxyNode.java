@@ -27,8 +27,11 @@ import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 
-
-
+/**
+ * A value proxy that is inserted in the frame state of a loop exit for any value that is
+ * created inside the loop (i.e. was not live on entry to the loop) and is (potentially)
+ * used after the loop.
+ */
 public class ValueProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable {
     @Input(notDataflow = true) private BeginNode proxyPoint;
     @Input private ValueNode value;

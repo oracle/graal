@@ -45,7 +45,6 @@ public class Graph {
     private final ArrayList<Node> nodeCacheFirst;
     private final ArrayList<Node> nodeCacheLast;
     private int deletedNodeCount;
-    private int mark;
     private GraphEventLog eventLog;
 
     ArrayList<Node> usagesDropped = new ArrayList<>();
@@ -221,10 +220,10 @@ public class Graph {
     }
 
     /**
-     * @see #getNewNodes()
+     * Gets a mark that can be used with {@link #getNewNodes()}.
      */
-    public void mark() {
-        this.mark = nodeIdCount();
+    public int getMark() {
+        return nodeIdCount();
     }
 
     private class NodeIterator implements Iterator<Node> {
@@ -277,11 +276,10 @@ public class Graph {
     }
 
     /**
-     * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#mark() mark}.
-     * @return an {@link Iterable} providing the new nodes
+     * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#getMark() mark}.
      */
-    public NodeIterable<Node> getNewNodes() {
-        final int index = this.mark;
+    public NodeIterable<Node> getNewNodes(int mark) {
+        final int index = mark;
         return new NodeIterable<Node>() {
             @Override
             public Iterator<Node> iterator() {
