@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -30,21 +32,11 @@ import com.oracle.graal.nodes.type.*;
 public abstract class FloatingAccessNode extends FloatingNode implements Access {
 
     @Input private ValueNode object;
-    @Input private GuardNode guard;
     @Input private LocationNode location;
     private boolean nullCheck;
 
     public ValueNode object() {
         return object;
-    }
-
-    public GuardNode guard() {
-        return guard;
-    }
-
-    public void setGuard(GuardNode x) {
-        updateUsages(guard, x);
-        guard = x;
     }
 
     public LocationNode location() {
@@ -59,17 +51,21 @@ public abstract class FloatingAccessNode extends FloatingNode implements Access 
         this.nullCheck = check;
     }
 
-    public FloatingAccessNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp) {
+    public FloatingAccessNode(ValueNode object, LocationNode location, Stamp stamp) {
         super(stamp);
         this.object = object;
-        this.guard = guard;
         this.location = location;
     }
 
-    public FloatingAccessNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp, Node... dependencies) {
+    public FloatingAccessNode(ValueNode object, LocationNode location, Stamp stamp, Node... dependencies) {
         super(stamp, dependencies);
         this.object = object;
-        this.guard = guard;
+        this.location = location;
+    }
+
+    public FloatingAccessNode(ValueNode object, LocationNode location, Stamp stamp, List<Node> dependencies) {
+        super(stamp, dependencies);
+        this.object = object;
         this.location = location;
     }
 }

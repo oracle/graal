@@ -145,9 +145,9 @@ public class FloatingReadPhase extends Phase {
             Debug.log("Register read to node %s.", readNode);
             FloatingReadNode floatingRead;
             if (readNode.location().locationIdentity() == LocationNode.FINAL_LOCATION) {
-                floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.guard(), readNode.location(), readNode.stamp()));
+                floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), null, readNode.stamp(), readNode.dependencies()));
             } else {
-                floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.guard(), readNode.location(), readNode.stamp(), getLocationForRead(readNode)));
+                floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), getLocationForRead(readNode), readNode.stamp(), readNode.dependencies()));
             }
             graph.replaceFixedWithFloating(readNode, floatingRead);
         }

@@ -22,18 +22,32 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import java.util.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 
 public final class FloatingReadNode extends FloatingAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable {
 
-    public FloatingReadNode(ValueNode object, GuardNode guard, LocationNode location, Stamp stamp, Node... dependencies) {
-        super(object, guard, location, stamp, dependencies);
+    @Input private Node lastLocationAccess;
+
+    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, Node... dependencies) {
+        super(object, location, stamp, dependencies);
+        this.lastLocationAccess = lastLocationAccess;
+    }
+
+    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, List<Node> dependencies) {
+        super(object, location, stamp, dependencies);
+        this.lastLocationAccess = lastLocationAccess;
+    }
+
+    public Node lastLocationAccess() {
+        return lastLocationAccess;
     }
 
     @Override

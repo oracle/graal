@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.cri.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -47,9 +48,9 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
     @Override
     public void lower(CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
-        GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId());
+        Node guard = tool.createGuard(graph.unique(new NullCheckNode(object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId());
         WriteNode write = graph.add(new WriteNode(object(), value(), location()));
-        write.setGuard(guard);
+        write.dependencies().add(guard);
         graph.replaceFixedWithFixed(this, write);
     }
 }

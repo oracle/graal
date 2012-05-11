@@ -24,10 +24,10 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and
@@ -41,8 +41,11 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     private Stamp stamp;
 
-    @Input private NodeInputList<Node> dependencies;
+    @Input(notDataflow = true) private NodeInputList<Node> dependencies;
 
+    /**
+     * This collection keeps dependencies that should be observed while scheduling (guards, etc.).
+     */
     public NodeInputList<Node> dependencies() {
         return dependencies;
     }
@@ -54,6 +57,12 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
     }
 
     public ValueNode(Stamp stamp, Node... dependencies) {
+        this.stamp = stamp;
+        this.dependencies = new NodeInputList<>(this, dependencies);
+        assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();
+    }
+
+    public ValueNode(Stamp stamp, List<Node> dependencies) {
         this.stamp = stamp;
         this.dependencies = new NodeInputList<>(this, dependencies);
         assert kind() != null && kind() == kind().stackKind() : kind() + " != " + kind().stackKind();

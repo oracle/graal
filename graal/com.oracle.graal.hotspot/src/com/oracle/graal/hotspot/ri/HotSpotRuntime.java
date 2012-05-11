@@ -270,7 +270,7 @@ public class HotSpotRuntime implements GraalRuntime {
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind() != CiKind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph), field.stamp()));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, field.leafGraphId()));
+            memoryRead.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(field.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, field.leafGraphId()));
             graph.replaceFixedWithFixed(field, memoryRead);
             if (field.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
@@ -282,7 +282,7 @@ public class HotSpotRuntime implements GraalRuntime {
             StoreFieldNode storeField = (StoreFieldNode) n;
             HotSpotField field = (HotSpotField) storeField.field();
             WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(true), field.offset(), graph)));
-            memoryWrite.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, storeField.leafGraphId()));
+            memoryWrite.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(storeField.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, storeField.leafGraphId()));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
@@ -316,16 +316,16 @@ public class HotSpotRuntime implements GraalRuntime {
             }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
-            GuardNode boundsCheck = createBoundsCheck(loadIndexed, tool, loadIndexed.leafGraphId());
+            Node boundsCheck = createBoundsCheck(loadIndexed, tool, loadIndexed.leafGraphId());
 
             CiKind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
             ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp()));
-            memoryRead.setGuard(boundsCheck);
+            memoryRead.dependencies().add(boundsCheck);
             graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
-            GuardNode boundsCheck = createBoundsCheck(storeIndexed, tool, storeIndexed.leafGraphId());
+            Node boundsCheck = createBoundsCheck(storeIndexed, tool, storeIndexed.leafGraphId());
 
             CiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
@@ -344,17 +344,17 @@ public class HotSpotRuntime implements GraalRuntime {
                         assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
                     }
                 } else {
-                    GuardNode guard = (GuardNode) tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID);
-                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), StampFactory.objectNonNull()));
-                    arrayClass.setGuard(guard);
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), StampFactory.objectNonNull()));
+                    Node guard = tool.createGuard(graph.unique(new NullCheckNode(array, false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID);
+                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
+                    arrayClass.dependencies().add(guard);
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
                     CheckCastNode checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     value = checkcast;
                 }
             }
             WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation));
-            memoryWrite.setGuard(boundsCheck);
+            memoryWrite.dependencies().add(boundsCheck);
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
 
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
@@ -368,7 +368,7 @@ public class HotSpotRuntime implements GraalRuntime {
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph);
             location.setIndexScalingEnabled(false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(load.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
+            memoryRead.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(load.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
@@ -385,7 +385,7 @@ public class HotSpotRuntime implements GraalRuntime {
             ReadHubNode objectClassNode = (ReadHubNode) n;
             LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
-            memoryRead.setGuard((GuardNode) tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
+            memoryRead.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
@@ -396,8 +396,8 @@ public class HotSpotRuntime implements GraalRuntime {
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph);
     }
 
-    private static GuardNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool, long leafGraphId) {
-        return (GuardNode) tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId);
+    private static Node createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool, long leafGraphId) {
+        return tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId);
     }
 
     @Override
@@ -418,7 +418,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(CiKind.Object, 0));
                 SafeReadNode klassOop = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), StampFactory.objectNonNull()));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), null, StampFactory.objectNonNull()));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(klassOop);
                 klassOop.setNext(ret);
@@ -431,7 +431,7 @@ public class HotSpotRuntime implements GraalRuntime {
                 SafeReadNode klassOop = safeRead(graph, CiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
                 graph.start().setNext(klassOop);
                 // TODO(thomaswue): Care about primitive classes! Crashes for primitive classes at the moment (klassOop == null)
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, null, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), StampFactory.forKind(CiKind.Int)));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.forKind(CiKind.Int)));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 klassOop.setNext(ret);
                 return graph;

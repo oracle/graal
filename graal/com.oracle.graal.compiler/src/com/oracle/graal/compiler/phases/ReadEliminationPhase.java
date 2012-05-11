@@ -32,9 +32,8 @@ public class ReadEliminationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (FloatingReadNode n : graph.getNodes(FloatingReadNode.class)) {
-            if (n.dependencies().size() > 0) {
-                assert n.dependencies().size() == 1;
-                Node memoryInput = n.dependencies().get(0);
+            if (n.lastLocationAccess() != null) {
+                Node memoryInput = n.lastLocationAccess();
                 if (memoryInput instanceof WriteNode) {
                     WriteNode other = (WriteNode) memoryInput;
                     if (other.object() == n.object() && other.location() == n.location()) {

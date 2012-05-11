@@ -22,28 +22,22 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code AnchorNode} can be used a lower bound for a Guard. It can also be used as an upper bound if no other FixedNode can be used for that purpose.
+ * The {@code AnchorNode} can be used a lower bound for a guard. It can also be used as an upper bound if no other FixedNode can be used for that purpose.
+ * The guards that should be kept above this node need to be added to the {@link #dependencies()} collection.
  */
 public final class AnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
-
-    @Input(notDataflow = true) private final NodeInputList<GuardNode> guards = new NodeInputList<>(this);
 
     public AnchorNode() {
         super(StampFactory.illegal());
     }
 
-    public void addGuard(GuardNode x) {
-        guards.add(x);
-    }
-
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (this.usages().size() == 0 && guards.size() == 0) {
+        if (this.usages().size() == 0 && dependencies().isEmpty()) {
             return null;
         }
         return this;
