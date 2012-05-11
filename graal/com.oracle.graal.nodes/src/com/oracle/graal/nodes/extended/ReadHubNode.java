@@ -26,9 +26,11 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.*;
 
 // TODO (chaeubl) this should be a FloatingNode but Lowering is not possible in that case
-public final class ReadHubNode extends FixedWithNextNode implements Lowerable {
+public final class ReadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
     @Input private ValueNode object;
 
     public ValueNode object() {
@@ -43,5 +45,21 @@ public final class ReadHubNode extends FixedWithNextNode implements Lowerable {
     @Override
     public void lower(CiLoweringTool tool) {
         tool.getRuntime().lower(this, tool);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        RiResolvedType exactType = object.exactType();
+
+        if (exactType == null && tool.assumptions() != null && object.declaredType() != null) {
+            exactType = object.declaredType().uniqueConcreteSubtype();
+            if (exactType != null) {
+                tool.assumptions().recordConcreteSubtype(object.declaredType(), exactType);
+            }
+        }
+        if (exactType != null) {
+            return ConstantNode.forCiConstant(exactType.getEncoding(Representation.ObjectHub), tool.runtime(), graph());
+        }
+        return this;
     }
 }
