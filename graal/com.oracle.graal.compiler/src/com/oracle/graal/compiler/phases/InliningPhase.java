@@ -84,10 +84,10 @@ public class InliningPhase extends Phase implements InliningCallback {
         graph.createNodeMap();
 
         if (hints != null) {
-            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints), -1, graph);
+            scanInvokes((Iterable<? extends Node>) Util.uncheckedCast(this.hints), -1);
         } else {
-            scanInvokes(graph.getNodes(InvokeNode.class), 0, graph);
-            scanInvokes(graph.getNodes(InvokeWithExceptionNode.class), 0, graph);
+            scanInvokes(graph.getNodes(InvokeNode.class), 0);
+            scanInvokes(graph.getNodes(InvokeWithExceptionNode.class), 0);
         }
 
         while (!inlineCandidates.isEmpty() && graph.getNodeCount() < GraalOptions.MaximumDesiredSize) {
@@ -101,14 +101,14 @@ public class InliningPhase extends Phase implements InliningCallback {
             });
 
             if (inline) {
+                int mark = graph.getMark();
                 Iterable<Node> newNodes = null;
                 try {
                     info.inline(graph, runtime, this);
                     Debug.dump(graph, "after %s", info);
-                    // get the new nodes here, the canonicalizer phase will reset the mark
-                    newNodes = graph.getNewNodes();
+                    newNodes = graph.getNewNodes(mark);
                     if (GraalOptions.OptCanonicalizer) {
-                        new CanonicalizerPhase(target, runtime, assumptions, true, null).apply(graph);
+                        new CanonicalizerPhase(target, runtime, assumptions, mark, null).apply(graph);
                     }
 //                    if (GraalOptions.Intrinsify) {
 //                        new IntrinsificationPhase(runtime).apply(graph);
@@ -126,7 +126,7 @@ public class InliningPhase extends Phase implements InliningCallback {
                 }
 
                 if (newNodes != null && info.level < GraalOptions.MaximumInlineLevel) {
-                    scanInvokes(newNodes, info.level + 1, graph);
+                    scanInvokes(newNodes, info.level + 1);
                 }
             }
         }
@@ -144,11 +144,10 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
     }
 
-    private void scanInvokes(final Iterable<? extends Node> newNodes, final int level, final StructuredGraph graph) {
+    private void scanInvokes(final Iterable<? extends Node> nodes, final int level) {
         Debug.scope("InliningDecisions", new Runnable() {
             public void run() {
-                graph.mark();
-                for (Node node : newNodes) {
+                for (Node node : nodes) {
                     if (node != null) {
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
