@@ -287,7 +287,7 @@ public class InliningUtil {
             PhiNode exceptionObjectPhi = null;
             if (invoke instanceof InvokeWithExceptionNode) {
                 InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-                BeginNode exceptionEdge = invokeWithException.exceptionEdge();
+                DispatchBeginNode exceptionEdge = invokeWithException.exceptionEdge();
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge.next();
 
                 exceptionMerge = graph.add(new MergeNode());
@@ -785,7 +785,7 @@ public class InliningUtil {
         ArrayList<Node> nodes = new ArrayList<>();
         ReturnNode returnNode = null;
         UnwindNode unwindNode = null;
-        BeginNode entryPointNode = inlineGraph.start();
+        StartNode entryPointNode = inlineGraph.start();
         FixedNode firstCFGNode = entryPointNode.next();
         for (Node node : inlineGraph.getNodes()) {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
@@ -979,7 +979,7 @@ public class InliningUtil {
         // Gather the nodes in the snippets that are to be inlined
         ArrayList<Node> nodes = new ArrayList<>();
         ReturnNode returnNode = null;
-        BeginNode entryPointNode = snippetCopy.start();
+        StartNode entryPointNode = snippetCopy.start();
         FixedNode firstCFGNode = entryPointNode.next();
         replacements.clear();
         for (Node node : snippetCopy.getNodes()) {

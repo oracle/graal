@@ -48,7 +48,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
      * @param blockSuccessors
      * @param branchProbability
      */
-    public InvokeWithExceptionNode(MethodCallTargetNode callTarget, BeginNode exceptionEdge, int bci, long leafGraphId) {
+    public InvokeWithExceptionNode(MethodCallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci, long leafGraphId) {
         super(callTarget.returnStamp(), new BeginNode[]{null, exceptionEdge}, new double[]{1.0, 0.0});
         this.bci = bci;
         this.callTarget = callTarget;
@@ -57,8 +57,8 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         this.useForInlining = true;
     }
 
-    public BeginNode exceptionEdge() {
-        return blockSuccessor(EXCEPTION_EDGE);
+    public DispatchBeginNode exceptionEdge() {
+        return (DispatchBeginNode) blockSuccessor(EXCEPTION_EDGE);
     }
 
     public void setExceptionEdge(BeginNode x) {

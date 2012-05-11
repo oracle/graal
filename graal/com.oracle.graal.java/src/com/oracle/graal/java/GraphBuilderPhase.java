@@ -165,7 +165,7 @@ public final class GraphBuilderPhase extends Phase {
         frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
 
         // finish the start block
-        lastInstr.setStateAfter(frameState.create(0));
+        ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
         if (blockMap.startBlock.isLoopHeader) {
             appendGoto(createTarget(blockMap.startBlock, frameState));
         } else {
@@ -241,7 +241,7 @@ public final class GraphBuilderPhase extends Phase {
         return handler.catchTypeCPI() == 0;
     }
 
-    private BeginNode handleException(ValueNode exceptionObject, int bci) {
+    private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == FrameState.BEFORE_BCI || bci == bci() : "invalid bci";
         Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
 
@@ -255,7 +255,7 @@ public final class GraphBuilderPhase extends Phase {
         FrameStateBuilder dispatchState = frameState.copy();
         dispatchState.clearStack();
 
-        BeginNode dispatchBegin = currentGraph.add(new DispatchBeginNode());
+        DispatchBeginNode dispatchBegin = currentGraph.add(new DispatchBeginNode());
         dispatchBegin.setStateAfter(dispatchState.create(bci));
 
         if (exceptionObject == null) {
@@ -948,7 +948,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.pushReturn(resultType, result);
 
         } else {
-            BeginNode exceptionEdge = handleException(null, bci());
+            DispatchBeginNode exceptionEdge = handleException(null, bci());
             InvokeWithExceptionNode invoke = currentGraph.add(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci(), graphId));
             ValueNode result = append(invoke);
             frameState.pushReturn(resultType, result);
@@ -1263,7 +1263,7 @@ public final class GraphBuilderPhase extends Phase {
         FixedNode target = createTarget(probability, block, stateAfter);
         BeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) :
+        assert !(target instanceof DeoptimizeNode && begin instanceof StateSplit) :
             "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
