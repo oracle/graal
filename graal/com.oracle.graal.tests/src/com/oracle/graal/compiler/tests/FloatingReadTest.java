@@ -52,7 +52,7 @@ public class FloatingReadTest extends GraphScheduleTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        new LoweringPhase(runtime()).apply(graph);
+        new LoweringPhase(runtime(), null).apply(graph);
         new FloatingReadPhase().apply(graph);
 
         ReturnNode returnNode = null;

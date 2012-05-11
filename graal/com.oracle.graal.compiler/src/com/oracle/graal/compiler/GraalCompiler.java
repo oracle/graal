@@ -169,7 +169,7 @@ public class GraalCompiler {
         }
 
         graph.mark();
-        new LoweringPhase(runtime).apply(graph);
+        new LoweringPhase(runtime, assumptions).apply(graph);
         new CanonicalizerPhase(target, runtime, assumptions, true, null).apply(graph);
 
         if (GraalOptions.Lower) {

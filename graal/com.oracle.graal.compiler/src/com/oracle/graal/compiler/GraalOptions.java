@@ -256,6 +256,13 @@ public final class GraalOptions {
     public static int InstanceOfMaxHints = 1;
 
     /**
+     * Use HIR lowering instead of LIR lowering for checkcast instructions.
+     * Only checkcasts in methods in a class whose name contains this option will be HIR lowered.
+     * TDOD (dnsimon) remove once HIR checkcast lowering works reliably
+     */
+    public static String HIRLowerCheckcast;
+
+    /**
      * The profiling info cache directory.
      */
     public static String PICache = null;

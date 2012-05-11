@@ -108,7 +108,7 @@ public class Snippets {
                     MethodCallTargetNode callTarget = invoke.callTarget();
                     RiResolvedMethod targetMethod = callTarget.targetMethod();
                     RiResolvedType holder = targetMethod.holder();
-                    if (holder.isSubtypeOf(runtime.getType(SnippetsInterface.class))) {
+                    if (enclosedInSnippetsClass(holder)) {
                         StructuredGraph targetGraph = (StructuredGraph) targetMethod.compilerStorage().get(Graph.class);
                         if (targetGraph == null) {
                             targetGraph = buildSnippetGraph(targetMethod, runtime, target, pool);
@@ -139,6 +139,17 @@ public class Snippets {
                 snippetRiMethod.compilerStorage().put(Graph.class, graph);
 
                 return graph;
+            }
+
+            private boolean enclosedInSnippetsClass(RiResolvedType holder) {
+                Class enclosingClass = holder.toJava();
+                while (enclosingClass != null) {
+                    if (SnippetsInterface.class.isAssignableFrom(enclosingClass)) {
+                        return true;
+                    }
+                    enclosingClass = enclosingClass.getEnclosingClass();
+                }
+                return false;
             }
         });
 
