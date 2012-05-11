@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.graph.*;
@@ -48,19 +47,9 @@ public class CheckCastEliminationPhase extends Phase {
 
     private StructuredGraph graph;
 
-    static PrintStream out = System.out;
-
     @Override
     protected void run(StructuredGraph inputGraph) {
         graph = inputGraph;
-//        if (!graph.method().holder().name().contains("DiskIndex")) {
-//            return;
-//        }
-//        if (!graph.method().name().equals("writeCategoryTable")) {
-//            return;
-//        }
-//        out.println("checkcast " + graph.method());
-
         new EliminateCheckCasts(graph.start(), new State()).apply();
     }
 
