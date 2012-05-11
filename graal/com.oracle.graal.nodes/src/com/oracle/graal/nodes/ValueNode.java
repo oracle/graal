@@ -130,7 +130,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         if (!dependencies.isEmpty()) {
             StringBuilder str = new StringBuilder();
             for (int i = 0; i < dependencies.size(); i++) {
-                str.append(i == 0 ? "" : ", ").append(dependencies.get(i).toString(Verbosity.Id));
+                str.append(i == 0 ? "" : ", ").append(dependencies.get(i) == null ? "null" : dependencies.get(i).toString(Verbosity.Id));
             }
             properties.put("dependencies", str.toString());
         }
