@@ -44,9 +44,56 @@ public class LoweringPhase extends Phase {
         this.runtime = runtime;
         this.assumptions = assumptions;
     }
-
     @Override
     protected void run(final StructuredGraph graph) {
+        // Step 1: repeatedly lower fixed nodes until no new ones are created
+        NodeBitMap processed = graph.createNodeBitMap();
+        while (true) {
+            int mark = graph.getMark();
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
+            processBlock(cfg.getStartBlock(), graph.createNodeBitMap(), processed, null);
+
+            if (graph.getNewNodes(mark).filter(FixedNode.class).isEmpty()) {
+                break;
+            }
+            graph.verify();
+            processed.grow();
+        }
+
+        // Step 2: lower the floating nodes
+        processed.negate();
+        final CiLoweringTool loweringTool = new CiLoweringTool() {
+
+            @Override
+            public Node getGuardAnchor() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public GraalRuntime getRuntime() {
+                return runtime;
+            }
+
+            @Override
+            public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+                // TODO (thomaswue): Document why this must not be called on floating nodes.
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CiAssumptions assumptions() {
+                return assumptions;
+            }
+        };
+        for (Node node : processed) {
+            if (node instanceof Lowerable) {
+                assert !(node instanceof FixedNode) || node.predecessor() == null : node;
+                ((Lowerable) node).lower(loweringTool);
+            }
+        }
+    }
+
+    protected void run0(final StructuredGraph graph) {
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
 
         NodeBitMap processed = graph.createNodeBitMap();
@@ -138,7 +185,7 @@ public class LoweringPhase extends Phase {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {
-                        if (activeGuards.isMarked(usage)) {
+                        if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage)) {
                             return usage;
                         }
                     }
@@ -157,9 +204,11 @@ public class LoweringPhase extends Phase {
 
         // Lower the instructions of this block.
         for (Node node : b.getNodes()) {
-            processed.mark(node);
-            if (node instanceof Lowerable) {
-                ((Lowerable) node).lower(loweringTool);
+            if (!processed.isMarked(node)) {
+                processed.mark(node);
+                if (node instanceof Lowerable) {
+                    ((Lowerable) node).lower(loweringTool);
+                }
             }
         }
     }
