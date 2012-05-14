@@ -38,8 +38,8 @@ import com.oracle.max.cri.ci.*;
  */
 public class AMD64TypeCheckSlowPathOp extends AMD64LIRInstruction {
 
-    public AMD64TypeCheckSlowPathOp(CiValue objectHub, CiValue hub) {
-        super("TYPECHECK_SLOW", new CiValue[] {objectHub}, null, new CiValue[] {objectHub, hub}, NO_OPERANDS, NO_OPERANDS);
+    public AMD64TypeCheckSlowPathOp(CiValue result, CiValue objectHub, CiValue hub) {
+        super("TYPECHECK_SLOW", new CiValue[] {result}, null, new CiValue[] {objectHub, hub}, NO_OPERANDS, NO_OPERANDS);
     }
 
     @Override

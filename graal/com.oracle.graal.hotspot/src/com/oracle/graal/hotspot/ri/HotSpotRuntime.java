@@ -412,7 +412,7 @@ public class HotSpotRuntime implements GraalRuntime {
             memoryRead.dependencies().add(tool.createGuard(graph.unique(new NullCheckNode(objectClassNode.object(), false)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
         } else if (n instanceof CheckCastNode) {
-            if (GraalOptions.HIRLowerCheckcast != null && graph.method() != null && CiUtil.format("%H.%n", graph.method()).contains(GraalOptions.HIRLowerCheckcast)) {
+            if (shouldLowerCheckcast(graph)) {
                 final Map<CiConstant, CiConstant> hintHubsSet = new IdentityHashMap<>();
                 IsImmutablePredicate immutabilityPredicate = new IsImmutablePredicate() {
                     public boolean apply(CiConstant constant) {
@@ -433,12 +433,24 @@ public class HotSpotRuntime implements GraalRuntime {
                 hintHubsSet.put(hintHubsConst, hintHubsConst);
                 Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, checkcast, Arrays.toString(hints.types), hints.exact);
 
-                InliningUtil.inlineSnippet(this, checkcast, checkcast, snippetGraph, true, immutabilityPredicate, tool, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
+                InliningUtil.inlineSnippet(this, checkcast, checkcast, snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
                 new DeadCodeEliminationPhase().apply(graph);
             }
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
         }
+    }
+
+    private static boolean shouldLowerCheckcast(StructuredGraph graph) {
+        String option = GraalOptions.HIRLowerCheckcast;
+        if (option != null) {
+            if (option.length() == 0) {
+                return true;
+            }
+            RiResolvedMethod method = graph.method();
+            return method != null && CiUtil.format("%H.%n", method).contains(option);
+        }
+        return false;
     }
 
     private IndexedLocationNode createArrayLocation(Graph graph, CiKind elementKind, ValueNode index) {

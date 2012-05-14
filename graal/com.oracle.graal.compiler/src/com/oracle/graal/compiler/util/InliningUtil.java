@@ -40,7 +40,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.max.cri.ci.*;
@@ -909,7 +908,6 @@ public class InliningUtil {
 
     /**
      * Performs replacement of a node with a snippet graph.
-     *
      * @param replacee the node that will be replaced
      * @param anchor the control flow replacee
      * @param snippetGraph the graph that the replacee will be replaced with
@@ -922,12 +920,11 @@ public class InliningUtil {
                     final StructuredGraph snippetGraph,
                     final boolean explodeLoops,
                     final IsImmutablePredicate immutabilityPredicate,
-                    final CiLoweringTool tool,
                     final Object... args) {
         Debug.scope("InliningSnippet", snippetGraph.method(), new Runnable() {
             @Override
             public void run() {
-                inlineSnippet0(runtime, replacee, anchor, snippetGraph, explodeLoops, immutabilityPredicate, tool, args);
+                inlineSnippet0(runtime, replacee, anchor, snippetGraph, explodeLoops, immutabilityPredicate, args);
             }
         });
     }
@@ -937,7 +934,7 @@ public class InliningUtil {
                     StructuredGraph snippetGraph,
                     boolean explodeLoops,
                     IsImmutablePredicate immutabilityPredicate,
-                    CiLoweringTool tool, Object... args) {
+                    Object... args) {
 
         Debug.dump(replacee.graph(), "Before lowering %s", replacee);
 
@@ -1016,22 +1013,22 @@ public class InliningUtil {
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
         Debug.dump(graph, "After inlining snippet %s", snippetCopy.method());
 
+//        if (tool != null) {
+//            boolean innerLowering = false;
+//            for (Node node : duplicates.values()) {
+//                if (node instanceof Lowerable) {
+//                    innerLowering = true;
+//                    ((Lowerable) node).lower(tool);
+//
+//                }
+//            }
+//            if (innerLowering) {
+//                Debug.dump(graph, "After inner lowering");
+//            }
+//        }
+
         // Remove all frame states from the inlined snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).
-        if (tool != null) {
-            boolean innerLowering = false;
-            for (Node node : duplicates.values()) {
-                if (node instanceof Lowerable) {
-                    innerLowering = true;
-                    ((Lowerable) node).lower(tool);
-
-                }
-            }
-            if (innerLowering) {
-                Debug.dump(graph, "After inner lowering");
-            }
-        }
-
         for (Node node : graph.getNewNodes(mark)) {
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;

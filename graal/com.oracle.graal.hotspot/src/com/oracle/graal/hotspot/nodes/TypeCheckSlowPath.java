@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.target.amd64.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
@@ -48,7 +49,7 @@ public final class TypeCheckSlowPath extends FloatingNode implements LIRGenLower
     }
 
     public TypeCheckSlowPath(ValueNode objectHub, ValueNode hub) {
-        super(StampFactory.forKind(CiKind.Object));
+        super(StampFactory.forKind(CiKind.Boolean));
         this.objectHub = objectHub;
         this.hub = hub;
     }
@@ -56,14 +57,20 @@ public final class TypeCheckSlowPath extends FloatingNode implements LIRGenLower
     @Override
     public void generate(LIRGenerator gen) {
         CiValue objectHubOpr = gen.operand(objectHub);
-        AMD64TypeCheckSlowPathOp op = new AMD64TypeCheckSlowPathOp(objectHubOpr, gen.operand(hub));
+        Variable result = gen.newVariable(CiKind.Boolean);
+        AMD64TypeCheckSlowPathOp op = new AMD64TypeCheckSlowPathOp(result, objectHubOpr, gen.operand(hub));
         gen.append(op);
-        gen.setResult(this, objectHubOpr);
+        gen.setResult(this, result);
     }
 
+    /**
+     * Checks if {@code objectHub} is a subclass of {@code hub}.
+     *
+     * @return {@code true} if {@code objectHub} is a subclass of {@code hub}, {@code false} otherwise
+     */
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static Object check(Object objectHub, Object hub) {
+    public static boolean check(Object objectHub, Object hub) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 
