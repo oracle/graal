@@ -79,8 +79,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         cancelled = true;
     }
 
-//    private static PrintStream out = System.out;
-
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {

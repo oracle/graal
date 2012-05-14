@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ri.RiType.Representation;
 
 public final class IsTypeNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
@@ -62,6 +63,13 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (objectClass().isConstant()) {
+            CiConstant constant = objectClass().asConstant();
+            CiConstant typeHub = type.getEncoding(Representation.ObjectHub);
+            assert constant.kind == typeHub.kind;
+            return ConstantNode.forBoolean(constant.equivalent(typeHub), graph());
+        }
+        // TODO(ls) since a ReadHubNode with an exactType should canonicalize itself to a constant this should actually never happen, maybe turn into an assertion?
         RiResolvedType exactType = objectClass() instanceof ReadHubNode ? ((ReadHubNode) objectClass()).object().exactType() : null;
         if (exactType != null) {
             return ConstantNode.forBoolean(exactType == type(), graph());
