@@ -30,28 +30,18 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.*;
+import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
 
 public class LowerCheckCastTest extends GraphTest {
 
-    static {
-        // Ensure that the methods to be compiled and executed are fully resolved
-        asNumber(0);
-        asString("0");
-        asNumberExt(0);
-        asStringExt("0");
-    }
-
-    private RiCompiledMethod compile(String name, RiTypeProfile profile) {
-        //System.out.println("compiling: " + name + ", hints=" + Arrays.toString(hintClasses) + ", exact=" + exact);
-
-        Method method = getMethod(name);
+    private RiCompiledMethod compile(Method method, RiTypeProfile profile) {
         final StructuredGraph graph = parse(method);
 
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
-        assert ccn != null;
-        CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
-        graph.replaceFixedWithFixed(ccn, ccnNew);
+        if (ccn != null) {
+            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
+            graph.replaceFixedWithFixed(ccn, ccnNew);
+        }
 
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
         CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
@@ -69,50 +59,78 @@ public class LowerCheckCastTest extends GraphTest {
         return new RiTypeProfile(0.0D, ptypes);
     }
 
-    private void test(String name, RiTypeProfile profile, Object expected, Object... args) {
-        RiCompiledMethod compiledMethod = compile(name, profile);
-        Assert.assertEquals(expected, compiledMethod.executeVarargs(args));
+    private void test(String name, RiTypeProfile profile, Object... args) {
+        Method method = getMethod(name);
+        Object expect = null;
+        Throwable exception = null;
+        try {
+            // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
+            expect = method.invoke(null, args);
+        } catch (InvocationTargetException e) {
+            exception = e.getTargetException();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        RiCompiledMethod compiledMethod = compile(method, profile);
+        compiledMethod.method();
+
+        if (exception != null) {
+            try {
+                compiledMethod.executeVarargs(args);
+                Assert.fail("expected " + exception);
+            } catch (Throwable e) {
+                Assert.assertEquals(exception.getClass(), e.getClass());
+            }
+        } else {
+            Object actual = compiledMethod.executeVarargs(args);
+            Assert.assertEquals(expect, actual);
+        }
     }
 
     @Test
     public void test1() {
-        test("asNumber",    profile(),                        111, 111);
-        test("asNumber",    profile(Integer.class),           111, 111);
-        test("asNumber",    profile(Long.class, Short.class), 111, 111);
-        test("asNumberExt", profile(),                        121, 111);
-        test("asNumberExt", profile(Integer.class),           121, 111);
-        test("asNumberExt", profile(Long.class, Short.class), 121, 111);
+        test("asNumber",    profile(),                        111);
+        test("asNumber",    profile(Integer.class),           111);
+        test("asNumber",    profile(Long.class, Short.class), 111);
+        test("asNumberExt", profile(),                        111);
+        test("asNumberExt", profile(Integer.class),           111);
+        test("asNumberExt", profile(Long.class, Short.class), 111);
     }
 
     @Test
     public void test2() {
-        test("asString",    profile(),             "111", "111");
-        test("asString",    profile(String.class), "111", "111");
-        test("asString",    profile(String.class), "111", "111");
+        test("asString",    profile(),             "111");
+        test("asString",    profile(String.class), "111");
+        test("asString",    profile(String.class), "111");
 
-        test("asStringExt", profile(),             "#111", "111");
-        test("asStringExt", profile(String.class), "#111", "111");
-        test("asStringExt", profile(String.class), "#111", "111");
+        final String nullString = null;
+        test("asString",    profile(),             nullString);
+        test("asString",    profile(String.class), nullString);
+        test("asString",    profile(String.class), nullString);
+
+        test("asStringExt", profile(),             "111");
+        test("asStringExt", profile(String.class), "111");
+        test("asStringExt", profile(String.class), "111");
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test
     public void test3() {
-        test("asNumber", profile(), 111, "111");
+        test("asNumber", profile(), "111");
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test
     public void test4() {
-        test("asString", profile(String.class), "111", 111);
+        test("asString", profile(String.class), 111);
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test
     public void test5() {
-        test("asNumberExt", profile(), 111, "111");
+        test("asNumberExt", profile(), "111");
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test
     public void test6() {
-        test("asStringExt", profile(String.class), "111", 111);
+        test("asStringExt", profile(String.class), 111);
     }
 
     public static Number asNumber(Object o) {
@@ -131,5 +149,17 @@ public class LowerCheckCastTest extends GraphTest {
     public static String asStringExt(Object o) {
         String s = (String) o;
         return "#" + s;
+    }
+
+    @Test
+    public void test7() {
+        test("arrayFill", profile(), new Object[100], "111");
+    }
+
+    public static Object[] arrayFill(Object[] arr, Object value) {
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = value;
+        }
+        return arr;
     }
 }
