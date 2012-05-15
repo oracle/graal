@@ -42,11 +42,10 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
      * Creates a new LoadIndexedNode.
      * @param array the instruction producing the array
      * @param index the instruction producing the index
-     * @param length the instruction producing the length
      * @param elementKind the element type
      */
-    public LoadIndexedNode(ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, long leafGraphId) {
-        super(createStamp(array, elementKind), array, index, length, elementKind, leafGraphId);
+    public LoadIndexedNode(ValueNode array, ValueNode index, CiKind elementKind, long leafGraphId) {
+        super(createStamp(array, elementKind), array, index, elementKind, leafGraphId);
     }
 
     private static Stamp createStamp(ValueNode array, CiKind kind) {

@@ -287,7 +287,7 @@ public class HotSpotRuntime implements GraalRuntime {
 
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
-            SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.graph(), arrayLengthNode.array(), arrayLengthNode.stamp(), StructuredGraph.INVALID_GRAPH_ID);
+            SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
             safeReadArrayLength.lower(tool);
         } else if (n instanceof LoadFieldNode) {
@@ -341,7 +341,8 @@ public class HotSpotRuntime implements GraalRuntime {
             }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
-            Node boundsCheck = createBoundsCheck(loadIndexed, tool, loadIndexed.leafGraphId());
+
+            Node boundsCheck = createBoundsCheck(loadIndexed, tool);
 
             CiKind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
@@ -350,7 +351,7 @@ public class HotSpotRuntime implements GraalRuntime {
             graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
-            Node boundsCheck = createBoundsCheck(storeIndexed, tool, storeIndexed.leafGraphId());
+            Node boundsCheck = createBoundsCheck(storeIndexed, tool);
 
             CiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
@@ -466,8 +467,17 @@ public class HotSpotRuntime implements GraalRuntime {
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph);
     }
 
-    private static Node createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool, long leafGraphId) {
-        return tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, n.length())), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, leafGraphId);
+    private SafeReadNode safeReadArrayLength(ValueNode array, long leafGraphId) {
+        return safeRead(array.graph(), CiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
+    }
+
+    private Node createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
+        SafeReadNode arrayLength = safeReadArrayLength(n.array(), n.leafGraphId());
+        Node guard = tool.createGuard(n.graph().unique(new CompareNode(n.index(), Condition.BT, arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
+
+        ((StructuredGraph) n.graph()).addBeforeFixed(n, arrayLength);
+        arrayLength.lower(tool);
+        return guard;
     }
 
     @Override
@@ -519,10 +529,6 @@ public class HotSpotRuntime implements GraalRuntime {
 
     private SafeReadNode safeReadHub(Graph graph, ValueNode value, long leafGraphId) {
         return safeRead(graph, CiKind.Object, value, config.hubOffset, StampFactory.objectNonNull(), leafGraphId);
-    }
-
-    private SafeReadNode safeReadArrayLength(Graph graph, ValueNode value, Stamp stamp, long leafGraphId) {
-        return safeRead(graph, CiKind.Int, value, config.arrayLengthOffset, stamp, leafGraphId);
     }
 
     private static SafeReadNode safeRead(Graph graph, CiKind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {

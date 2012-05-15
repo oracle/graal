@@ -302,8 +302,7 @@ public final class GraphBuilderPhase extends Phase {
 
         ValueNode index = frameState.ipop();
         ValueNode array = frameState.apop();
-        ValueNode length = append(currentGraph.add(new ArrayLengthNode(array)));
-        ValueNode v = append(currentGraph.add(new LoadIndexedNode(array, index, length, kind, graphId)));
+        ValueNode v = append(currentGraph.add(new LoadIndexedNode(array, index, kind, graphId)));
         frameState.push(kind.stackKind(), v);
     }
 
@@ -313,8 +312,7 @@ public final class GraphBuilderPhase extends Phase {
         ValueNode value = frameState.pop(kind.stackKind());
         ValueNode index = frameState.ipop();
         ValueNode array = frameState.apop();
-        ValueNode length = append(currentGraph.add(new ArrayLengthNode(array)));
-        StoreIndexedNode result = currentGraph.add(new StoreIndexedNode(array, index, length, kind, value, graphId));
+        StoreIndexedNode result = currentGraph.add(new StoreIndexedNode(array, index, kind, value, graphId));
         append(result);
     }
 

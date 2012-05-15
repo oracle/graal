@@ -35,7 +35,6 @@ import com.oracle.max.cri.ci.*;
 public abstract class AccessIndexedNode extends AccessArrayNode implements TypeFeedbackProvider {
 
     @Input private ValueNode index;
-    @Input private ValueNode length;
     private final CiKind elementType;
     private final long leafGraphId;
 
@@ -43,22 +42,16 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
         return index;
     }
 
-    public ValueNode length() {
-        return length;
-    }
-
     /**
      * Create an new AccessIndexedNode.
      * @param kind the result kind of the access
      * @param array the instruction producing the array
      * @param index the instruction producing the index
-     * @param length the instruction producing the length
      * @param elementKind the type of the elements of the array
      */
-    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, ValueNode length, CiKind elementKind, long leafGraphId) {
+    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, CiKind elementKind, long leafGraphId) {
         super(stamp, array);
         this.index = index;
-        this.length = length;
         this.elementType = elementKind;
         this.leafGraphId = leafGraphId;
     }
@@ -78,6 +71,5 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
         tool.addScalar(index()).constantBound(Condition.GE, CiConstant.INT_0);
-        tool.addScalar(index()).valueBound(Condition.LT, length, tool.queryScalar(length));
     }
 }
