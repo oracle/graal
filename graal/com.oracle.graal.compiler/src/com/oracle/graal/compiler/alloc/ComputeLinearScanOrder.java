@@ -304,13 +304,21 @@ public final class ComputeLinearScanOrder {
             Block cur = workList.remove(workList.size() - 1);
             appendBlock(cur);
 
-            int i;
-            int numSux = cur.numberOfSux();
-            // changed loop order to get "intuitive" order of if- and else-blocks
-            for (i = 0; i < numSux; i++) {
-                Block sux = cur.suxAt(i);
-                if (readyForProcessing(sux)) {
-                    sortIntoWorkList(sux);
+            // make the most successor with the highest probability the immediate successor
+            Node endNode = cur.getEndNode();
+            if (endNode instanceof IfNode && ((IfNode) endNode).probability() < 0.5) {
+                assert cur.numberOfSux() == 2;
+                if (readyForProcessing(cur.suxAt(1))) {
+                    sortIntoWorkList(cur.suxAt(1));
+                }
+                if (readyForProcessing(cur.suxAt(0))) {
+                    sortIntoWorkList(cur.suxAt(0));
+                }
+            } else {
+                for (Block sux : cur.getSuccessors()) {
+                    if (readyForProcessing(sux)) {
+                        sortIntoWorkList(sux);
+                    }
                 }
             }
         } while (workList.size() > 0);
