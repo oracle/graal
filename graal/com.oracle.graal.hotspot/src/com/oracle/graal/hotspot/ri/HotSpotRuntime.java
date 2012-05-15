@@ -28,8 +28,8 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.CanonicalizerPhase.IsImmutablePredicate;
+import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.cri.*;
@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
+import com.oracle.graal.hotspot.snippets.CheckCastSnippets.Counter;
 import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -81,7 +82,11 @@ public class HotSpotRuntime implements GraalRuntime {
         Snippets.install(this, compiler.getTarget(), new ArrayCopySnippets());
         Snippets.install(this, compiler.getTarget(), new CheckCastSnippets());
         try {
-            checkcastSnippet = getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcast", Object.class, Object.class, Object[].class, boolean.class));
+            if (GraalOptions.CheckcastCounters) {
+                checkcastSnippet = getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastWithCounters", Object.class, Object.class, Object[].class, boolean.class, Counter.class));
+            } else {
+                checkcastSnippet = getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcast", Object.class, Object.class, Object[].class, boolean.class));
+            }
         } catch (NoSuchMethodException e) {
             throw new GraalInternalError(e);
         }
@@ -432,8 +437,12 @@ public class HotSpotRuntime implements GraalRuntime {
                 final CiConstant hintHubsConst = CiConstant.forObject(hintHubs);
                 hintHubsSet.put(hintHubsConst, hintHubsConst);
                 Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, checkcast, Arrays.toString(hints.types), hints.exact);
-
-                InliningUtil.inlineSnippet(this, checkcast, checkcast, snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
+                if (GraalOptions.CheckcastCounters) {
+                    Counter noHintsCounter = checkcast.targetClass() == null ? Counter.noHints_unknown : checkcast.targetClass().isInterface() ? Counter.noHints_iface : Counter.noHints_class;
+                    InliningUtil.inlineSnippet(this, checkcast, checkcast, snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact), CiConstant.forObject(noHintsCounter));
+                } else {
+                    InliningUtil.inlineSnippet(this, checkcast, checkcast, snippetGraph, true, immutabilityPredicate, hub, object, hintHubsConst, CiConstant.forBoolean(hints.exact));
+                }
                 new DeadCodeEliminationPhase().apply(graph);
             }
         } else {

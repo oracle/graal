@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.phases.CanonicalizerPhase.IsImmutablePredicate;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
@@ -1013,27 +1014,13 @@ public class InliningUtil {
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
         Debug.dump(graph, "After inlining snippet %s", snippetCopy.method());
 
-//        if (tool != null) {
-//            boolean innerLowering = false;
-//            for (Node node : duplicates.values()) {
-//                if (node instanceof Lowerable) {
-//                    innerLowering = true;
-//                    ((Lowerable) node).lower(tool);
-//
-//                }
-//            }
-//            if (innerLowering) {
-//                Debug.dump(graph, "After inner lowering");
-//            }
-//        }
-
         // Remove all frame states from the inlined snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).
         for (Node node : graph.getNewNodes(mark)) {
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState frameState = stateSplit.stateAfter();
-                assert !stateSplit.hasSideEffect() : "snippets cannot contain side-effecting node " + node + "\n    " + replacee.graph();
+                assert !stateSplit.hasSideEffect() : "snippets cannot contain side-effecting node " + node + "\n    " + frameState.toString(Verbosity.Debugger);
                 if (frameState != null) {
                     stateSplit.setStateAfter(null);
                 }

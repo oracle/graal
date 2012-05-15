@@ -1010,7 +1010,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     }
 
     private static void printCounter(PrintStream out, CheckcastCounter name, long count, long total) {
-        double percent = ((double) (count * 100)) / total;
+        double percent = total == 0D ? 0D : ((double) (count * 100)) / total;
         out.println(String.format("%16s: %5.2f%%%10d  // %s", name, percent, count, name.desc));
     }
 
@@ -1036,7 +1036,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
         Arrays.sort(counters);
 
         out.println();
-        out.println("** Checkcast counters **");
+        out.println("** XIR checkcast counters **");
         for (Count c : counters) {
             printCounter(out, c.name, c.c, total);
         }

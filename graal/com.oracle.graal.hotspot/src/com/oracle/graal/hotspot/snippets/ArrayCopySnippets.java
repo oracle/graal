@@ -21,8 +21,7 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
-import com.oracle.graal.cri.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -32,6 +31,7 @@ import com.oracle.graal.snippets.*;
 import com.oracle.max.cri.ci.*;
 
 
+@SuppressWarnings("unused")
 public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
@@ -346,92 +346,13 @@ public class ArrayCopySnippets implements SnippetsInterface{
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
     }
-    private static class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
-        @Input private ValueNode object;
-
-        public GetObjectAddressNode(ValueNode obj) {
-            super(StampFactory.forKind(CiKind.Long));
-            this.object = obj;
-        }
-
-        @SuppressWarnings("unused")
-        @NodeIntrinsic
-        public static long get(Object array) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void generate(LIRGeneratorTool gen) {
-            CiValue obj = gen.newVariable(gen.target().wordKind);
-            gen.emitMove(gen.operand(object), obj);
-            gen.setResult(this, obj);
-        }
-    }
-    private static class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
-        @Input private ValueNode address;
-        @Input private ValueNode value;
-
-        public DirectStoreNode(ValueNode address, ValueNode value) {
-            super(StampFactory.illegal());
-            this.address = address;
-            this.value = value;
-        }
-
-        @SuppressWarnings("unused")
-        @NodeIntrinsic
-        public static void store(long address, long value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("unused")
-        @NodeIntrinsic
-        public static void store(long address, boolean value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void generate(LIRGeneratorTool gen) {
-            CiValue v = gen.operand(value);
-            gen.emitStore(new CiAddress(v.kind, gen.operand(address)), v, false);
-        }
-    }
-
-    private static class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
-        @Input private ValueNode object;
-        @Input private ValueNode value;
-        @Input private ValueNode offset;
-        private final int displacement;
-
-        public DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value) {
-            super(StampFactory.illegal());
-            this.object = object;
-            this.value = value;
-            this.offset = offset;
-            this.displacement = displacement;
-        }
-
-        @SuppressWarnings("unused")
-        @NodeIntrinsic
-        public static void store(Object obj, @ConstantNodeParameter int displacement, long offset, Object value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void lower(CiLoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) this.graph();
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, value.kind(), displacement, offset, graph, false);
-            WriteNode write = graph.add(new WriteNode(object, value, location));
-            graph.replaceFixedWithFixed(this, write);
-        }
-    }
-
     @Fold
     private static int wordSize() {
         return CompilerImpl.getInstance().getTarget().wordSize;
     }
 
     @Fold
-    private static int arrayHeaderSizeFor(CiKind elementKind) {
+    static int arrayHeaderSizeFor(CiKind elementKind) {
         return CompilerImpl.getInstance().getConfig().getArrayOffset(elementKind);
     }
 

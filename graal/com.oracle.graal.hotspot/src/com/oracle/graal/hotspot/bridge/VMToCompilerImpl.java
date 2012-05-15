@@ -289,6 +289,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
         CiCompilationStatistics.clear("final");
         MethodEntryCounters.printCounters(compiler);
         HotSpotXirGenerator.printCounters(TTY.out().out());
+        CheckCastSnippets.printCounters(TTY.out().out());
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
