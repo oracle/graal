@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.graph.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.util.*;
@@ -124,6 +125,46 @@ public enum Condition {
     }
 
     /**
+     * Returns true if the condition needs to be mirrored to get to a canonical condition.
+     * The result of the mirroring operation might still need to be negated to achieve a canonical form.
+     */
+    public boolean canonicalMirror() {
+        switch (this) {
+            case EQ: return false;
+            case NE: return false;
+            case LT: return false;
+            case LE: return true;
+            case GT: return true;
+            case GE: return false;
+            case BT: return false;
+            case BE: return true;
+            case AT: return true;
+            case AE: return false;
+        }
+        throw new IllegalArgumentException(this.toString());
+    }
+
+    /**
+     * Returns true if the condition needs to be negated to get to a canonical condition.
+     * The result of the negation might still need to be mirrored to achieve a canonical form.
+     */
+    public boolean canonicalNegate() {
+        switch (this) {
+            case EQ: return false;
+            case NE: return true;
+            case LT: return false;
+            case LE: return true;
+            case GT: return false;
+            case GE: return true;
+            case BT: return false;
+            case BE: return true;
+            case AT: return false;
+            case AE: return true;
+        }
+        throw new IllegalArgumentException(this.toString());
+    }
+
+    /**
      * Negate this conditional.
      * @return the condition that represents the negation
      */
@@ -196,9 +237,9 @@ public enum Condition {
      * @param rt the constant on the right side of the comparison
      * @param runtime the RiRuntime (might be needed to compare runtime-specific types)
      * @return {@link Boolean#TRUE} if the comparison is known to be true,
-     * {@link Boolean#FALSE} if the comparison is known to be false, {@code null} otherwise.
+     * {@link Boolean#FALSE} if the comparison is known to be false
      */
-    public Boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime, boolean unorderedIsTrue) {
+    public boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime, boolean unorderedIsTrue) {
         switch (lt.kind) {
             case Boolean:
             case Byte:
@@ -219,8 +260,8 @@ public enum Condition {
                     case BE: return UnsignedMath.belowOrEqual(x, y);
                     case AT: return UnsignedMath.aboveThan(x, y);
                     case BT: return UnsignedMath.belowThan(x, y);
+                    default: throw new GraalInternalError("expected condition: %s", this);
                 }
-                break;
             }
             case Long: {
                 long x = lt.asLong();
@@ -236,15 +277,15 @@ public enum Condition {
                     case BE: return UnsignedMath.belowOrEqual(x, y);
                     case AT: return UnsignedMath.aboveThan(x, y);
                     case BT: return UnsignedMath.belowThan(x, y);
+                    default: throw new GraalInternalError("expected condition: %s", this);
                 }
-                break;
             }
             case Object: {
                 switch (this) {
                     case EQ: return runtime.areConstantObjectsEqual(lt, rt);
                     case NE: return !runtime.areConstantObjectsEqual(lt, rt);
+                    default: throw new GraalInternalError("expected condition: %s", this);
                 }
-                break;
             }
             case Float: {
                 float x = lt.asFloat();
@@ -259,6 +300,7 @@ public enum Condition {
                     case LE: return x <= y;
                     case GT: return x > y;
                     case GE: return x >= y;
+                    default: throw new GraalInternalError("expected condition: %s", this);
                 }
             }
             case Double: {
@@ -274,11 +316,11 @@ public enum Condition {
                     case LE: return x <= y;
                     case GT: return x > y;
                     case GE: return x >= y;
+                    default: throw new GraalInternalError("expected condition: %s", this);
                 }
             }
+            default: throw new GraalInternalError("expected value kind %s while folding condition: %s", lt.kind, this);
         }
-        assert false : "missed folding of constant operands: " + lt + " " + this + " " + rt;
-        return null;
     }
 
     public Condition join(Condition other) {
