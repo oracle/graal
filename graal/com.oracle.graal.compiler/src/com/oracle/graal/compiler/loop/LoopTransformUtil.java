@@ -55,7 +55,7 @@ public class LoopTransformUtil {
         for (Block b : loop.exits) {
             earlyExits.add(b.getBeginNode());
         }
-        return new SuperBlock(loop.loopBegin(), loop.loopBegin(), blocks, earlyExits, loop.loopBegin());
+        return new SuperBlock(loop.loopBegin(), loop.loopBegin(), blocks, earlyExits);
     }
 
     public static int estimateSize(Loop loop) {
