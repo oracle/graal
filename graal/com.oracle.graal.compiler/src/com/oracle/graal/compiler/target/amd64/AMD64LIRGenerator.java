@@ -31,6 +31,7 @@ import java.util.*;
 
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
+import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ri.*;
@@ -499,11 +500,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimizeOn(Condition cond, RiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
-        assert cond != null;
+    public void emitDeoptimizeOnOverflow(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
-        append(new BranchOp(cond, stubEntry, info));
+        append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
     }
 
 

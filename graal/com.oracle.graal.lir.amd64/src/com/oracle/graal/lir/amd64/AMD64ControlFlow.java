@@ -63,10 +63,14 @@ public class AMD64ControlFlow {
 
 
     public static class BranchOp extends AMD64LIRInstruction implements StandardOp.BranchOp {
-        protected Condition condition;
+        protected ConditionFlag condition;
         protected LabelRef destination;
 
         public BranchOp(Condition condition, LabelRef destination, LIRDebugInfo info) {
+            this(intCond(condition), destination, info);
+        }
+
+        public BranchOp(ConditionFlag condition, LabelRef destination, LIRDebugInfo info) {
             super("BRANCH", LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
             this.condition = condition;
             this.destination = destination;
@@ -74,7 +78,7 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.jcc(intCond(condition), destination.label());
+            masm.jcc(condition, destination.label());
         }
 
         @Override
@@ -168,11 +172,11 @@ public class AMD64ControlFlow {
 
 
     public static class CondMoveOp extends AMD64LIRInstruction {
-        private final Condition condition;
+        private final ConditionFlag condition;
 
         public CondMoveOp(Variable result, Condition condition, Variable trueValue, CiValue falseValue) {
             super("CMOVE", new CiValue[] {result}, null, new CiValue[] {falseValue}, new CiValue[] {trueValue}, LIRInstruction.NO_OPERANDS);
-            this.condition = condition;
+            this.condition = intCond(condition);
         }
 
         @Override
@@ -200,12 +204,12 @@ public class AMD64ControlFlow {
 
 
     public static class FloatCondMoveOp extends AMD64LIRInstruction {
-        private final Condition condition;
+        private final ConditionFlag condition;
         private final boolean unorderedIsTrue;
 
         public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
             super("FLOAT_CMOVE", new CiValue[] {result}, null, LIRInstruction.NO_OPERANDS, new CiValue[] {trueValue, falseValue}, LIRInstruction.NO_OPERANDS);
-            this.condition = condition;
+            this.condition = floatCond(condition);
             this.unorderedIsTrue = unorderedIsTrue;
         }
 
@@ -289,30 +293,28 @@ public class AMD64ControlFlow {
         tasm.targetMethod.addAnnotation(jt);
     }
 
-    private static void floatJcc(AMD64MacroAssembler masm, Condition condition, boolean unorderedIsTrue, Label label) {
-        ConditionFlag cond = floatCond(condition);
+    private static void floatJcc(AMD64MacroAssembler masm, ConditionFlag condition, boolean unorderedIsTrue, Label label) {
         Label endLabel = new Label();
-        if (unorderedIsTrue && !trueOnUnordered(cond)) {
+        if (unorderedIsTrue && !trueOnUnordered(condition)) {
             masm.jcc(ConditionFlag.parity, label);
-        } else if (!unorderedIsTrue && trueOnUnordered(cond)) {
+        } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
             masm.jcc(ConditionFlag.parity, endLabel);
         }
-        masm.jcc(cond, label);
+        masm.jcc(condition, label);
         masm.bind(endLabel);
     }
 
-    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, boolean isFloat, Condition condition, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue) {
-        ConditionFlag cond = isFloat ? floatCond(condition) : intCond(condition);
+    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue) {
         // check that we don't overwrite an input operand before it is used.
         assert !result.equals(trueValue);
 
         AMD64Move.move(tasm, masm, result, falseValue);
-        cmove(tasm, masm, result, cond, trueValue);
+        cmove(tasm, masm, result, condition, trueValue);
 
         if (isFloat) {
-            if (unorderedIsTrue && !trueOnUnordered(cond)) {
+            if (unorderedIsTrue && !trueOnUnordered(condition)) {
                 cmove(tasm, masm, result, ConditionFlag.parity, trueValue);
-            } else if (!unorderedIsTrue && trueOnUnordered(cond)) {
+            } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
                 cmove(tasm, masm, result, ConditionFlag.parity, falseValue);
             }
         }
@@ -347,8 +349,6 @@ public class AMD64ControlFlow {
             case AE: return ConditionFlag.aboveEqual;
             case AT: return ConditionFlag.above;
             case BT: return ConditionFlag.below;
-            case OF: return ConditionFlag.overflow;
-            case NOF: return ConditionFlag.noOverflow;
             default: throw GraalInternalError.shouldNotReachHere();
         }
     }

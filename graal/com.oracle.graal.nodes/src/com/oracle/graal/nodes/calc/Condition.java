@@ -78,17 +78,7 @@ public enum Condition {
     /**
      * Unsigned less than ("below than").
      */
-    BT("|<|"),
-
-    /**
-     * Operation produced an overflow.
-     */
-    OF("overflow"),
-
-    /**
-     * Operation did not produce an overflow.
-     */
-    NOF("noOverflow");
+    BT("|<|");
 
     public final String operator;
 
@@ -109,7 +99,28 @@ public enum Condition {
             case AT: return UnsignedMath.aboveThan(left, right);
             case BT: return UnsignedMath.belowThan(left, right);
         }
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException(this.toString());
+    }
+
+    /**
+     * Given a condition and its negation, this method returns true for one of the two and false for the other one.
+     * This can be used to keep comparisons in a canonical form.
+     * @return true if this condition is considered to be the canonical form, false otherwise.
+     */
+    public boolean isCanonical() {
+        switch (this) {
+            case EQ: return true;
+            case NE: return false;
+            case LT: return true;
+            case LE: return false;
+            case GT: return false;
+            case GE: return false;
+            case BT: return true;
+            case BE: return false;
+            case AT: return false;
+            case AE: return false;
+        }
+        throw new IllegalArgumentException(this.toString());
     }
 
     /**
@@ -128,8 +139,6 @@ public enum Condition {
             case BE: return AT;
             case AT: return BE;
             case AE: return BT;
-            case OF: return NOF;
-            case NOF: return OF;
         }
         throw new IllegalArgumentException(this.toString());
     }
@@ -149,8 +158,6 @@ public enum Condition {
             case BE: return false;
             case AT: return other == AE || other == NE;
             case AE: return false;
-            case OF: return false;
-            case NOF: return false;
         }
         throw new IllegalArgumentException(this.toString());
     }
@@ -278,9 +285,6 @@ public enum Condition {
         if (other == this) {
             return this;
         }
-        if (this == OF || this == NOF || other == OF || other == NOF) {
-            return null;
-        }
         switch (this) {
             case EQ:
                 if (other == LE || other == GE || other == BE || other == AE) {
@@ -365,9 +369,6 @@ public enum Condition {
     public Condition meet(Condition other) {
         if (other == this) {
             return this;
-        }
-        if (this == OF || this == NOF || other == OF || other == NOF) {
-            return null;
         }
         switch (this) {
             case EQ:

@@ -216,7 +216,6 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
                 // both are constant, this should be canonicalized...
             }
         } else if (kind == CiKind.Int || kind == CiKind.Long) {
-            assert condition != Condition.NOF && condition != Condition.OF;
             if (y().isConstant() && !x().isConstant()) {
                 tool.addScalar(x()).constantBound(condition, y().asConstant());
             } else if (x().isConstant() && !y().isConstant()) {
@@ -236,7 +235,6 @@ public final class CompareNode extends BooleanNode implements Canonicalizable, L
     public Result canonical(TypeFeedbackTool tool) {
         CiKind kind = x().kind();
         if (kind == CiKind.Int || kind == CiKind.Long) {
-            assert condition != Condition.NOF && condition != Condition.OF;
             ScalarTypeQuery queryX = tool.queryScalar(x());
             if (y().isConstant() && !x().isConstant()) {
                 if (queryX.constantBound(condition, y().asConstant())) {

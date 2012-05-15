@@ -40,7 +40,7 @@ public class ConditionTest {
         for (Condition c1 : Condition.values()) {
             for (Condition c2 : Condition.values()) {
                 boolean implies = c1.implies(c2);
-                if (implies && c1 != Condition.OF && c2 != Condition.OF && c1 != Condition.NOF && c2 != Condition.NOF) {
+                if (implies) {
                     for (int i = 0; i < 10000; i++) {
                         CiConstant a = CiConstant.forInt(rand.nextInt());
                         CiConstant b = CiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
@@ -62,7 +62,7 @@ public class ConditionTest {
             for (Condition c2 : Condition.values()) {
                 Condition join = c1.join(c2);
                 assertTrue(join == c2.join(c1));
-                if (join != null && c1 != Condition.OF && c2 != Condition.OF && c1 != Condition.NOF && c2 != Condition.NOF) {
+                if (join != null) {
                     for (int i = 0; i < 10000; i++) {
                         CiConstant a = CiConstant.forInt(rand.nextInt());
                         CiConstant b = CiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
@@ -85,7 +85,7 @@ public class ConditionTest {
             for (Condition c2 : Condition.values()) {
                 Condition meet = c1.meet(c2);
                 assertTrue(meet == c2.meet(c1));
-                if (meet != null && c1 != Condition.OF && c2 != Condition.OF && c1 != Condition.NOF && c2 != Condition.NOF) {
+                if (meet != null) {
                     for (int i = 0; i < 10000; i++) {
                         CiConstant a = CiConstant.forInt(rand.nextInt());
                         CiConstant b = CiConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
