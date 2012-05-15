@@ -36,17 +36,15 @@ public class SuperBlock {
     protected BeginNode exit;
     protected List<BeginNode> blocks;
     protected List<BeginNode> earlyExits;
-    protected LoopBeginNode loop;
     protected Map<Node, Node> duplicationMapping;
     protected SuperBlock original;
     protected NodeBitMap loopNodes;
 
-    public SuperBlock(BeginNode entry, BeginNode exit, List<BeginNode> blocks, List<BeginNode> earlyExits, LoopBeginNode loop) {
+    public SuperBlock(BeginNode entry, BeginNode exit, List<BeginNode> blocks, List<BeginNode> earlyExits) {
         this.entry = entry;
         this.exit = exit;
         this.blocks = blocks;
         this.earlyExits = earlyExits;
-        this.loop = loop;
         assert blocks.contains(entry);
         assert !blocks.contains(exit) || exit == entry;
     }
@@ -83,8 +81,8 @@ public class SuperBlock {
             newEarlyExits.add(newEarlyExit);
             replacements.put(earlyExit, newEarlyExit);
         }
-        if (loop != null) {
-            for (LoopEndNode end : loop.loopEnds()) {
+        if (exit instanceof LoopBeginNode) {
+            for (LoopEndNode end : ((LoopBeginNode) exit).loopEnds()) {
                 if (nodes.isMarked(end)) {
                     replacements.put(end, graph.add(new EndNode()));
                 }
@@ -92,7 +90,7 @@ public class SuperBlock {
         }
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
         if (exit instanceof MergeNode) {
-            newExit = mergeExits(replacements, graph, duplicates, (MergeNode) exit);
+            newExit = mergeExits(replacements, duplicates);
         }
 
         List<BeginNode> newBlocks = new ArrayList<>(blocks.size());
@@ -107,16 +105,20 @@ public class SuperBlock {
         for (Entry<Node, Node> e : replacements.entrySet()) {
             duplicates.put(e.getKey(), e.getValue());
         }
-        SuperBlock superBlock = new SuperBlock(newEntry, newExit, newBlocks, newEarlyExits, loop);
+        SuperBlock superBlock = new SuperBlock(newEntry, newExit, newBlocks, newEarlyExits);
         superBlock.duplicationMapping = duplicates;
         superBlock.original = this;
         return superBlock;
     }
 
-    private BeginNode mergeExits(Map<Node, Node> replacements, StructuredGraph graph, Map<Node, Node> duplicates, MergeNode mergeExit) {
-        BeginNode newExit;
+    protected StructuredGraph graph() {
+        return (StructuredGraph) entry.graph();
+    }
+
+    private BeginNode mergeExits(Map<Node, Node> replacements, Map<Node, Node> duplicates) {
         List<EndNode> endsToMerge = new LinkedList<>();
-        if (mergeExit == loop) {
+        MergeNode mergeExit = (MergeNode) exit;
+        if (mergeExit instanceof LoopBeginNode) {
             LoopBeginNode loopBegin = (LoopBeginNode) mergeExit;
             for (LoopEndNode le : loopBegin.loopEnds()) {
                 Node duplicate = replacements.get(le);
@@ -132,7 +134,12 @@ public class SuperBlock {
                 }
             }
         }
+        return mergeEnds(mergeExit, endsToMerge);
+    }
 
+    private BeginNode mergeEnds(MergeNode mergeExit, List<EndNode> endsToMerge) {
+        BeginNode newExit;
+        StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
             EndNode end = endsToMerge.get(0);
             assert end.usages().count() == 0;
@@ -143,8 +150,12 @@ public class SuperBlock {
             assert endsToMerge.size() > 1;
             MergeNode newExitMerge = graph.add(new MergeNode());
             newExit = newExitMerge;
-            FrameState state = mergeExit.stateAfter().duplicate();
-            newExitMerge.setStateAfter(state); // this state is wrong (incudes phis from the loop begin) needs to be fixed while resolving data
+            FrameState state = mergeExit.stateAfter();
+            if (state != null) {
+                FrameState duplicateState = state.duplicate();
+                // this state is wrong (incudes phis from the loop begin) needs to be fixed while resolving data
+                newExitMerge.setStateAfter(duplicateState);
+            }
             for (EndNode end : endsToMerge) {
                 newExitMerge.addForwardEnd(end);
             }
@@ -360,7 +371,7 @@ public class SuperBlock {
         for (BeginNode b : blocks) {
             for (Node n : b.getBlockNodes()) {
                 for (Node usage : n.usages()) {
-                    markFloating(usage, nodes, "");
+                    markFloating(usage, nodes);
                 }
             }
         }
@@ -374,8 +385,7 @@ public class SuperBlock {
         return nodes;
     }
 
-    private static boolean markFloating(Node n, NodeBitMap loopNodes, String ind) {
-        //System.out.println(ind + "markFloating(" + n + ")");
+    private static boolean markFloating(Node n, NodeBitMap loopNodes) {
         if (loopNodes.isMarked(n)) {
             return true;
         }
@@ -384,7 +394,8 @@ public class SuperBlock {
         }
         boolean mark = false;
         if (n instanceof PhiNode) {
-            mark = loopNodes.isMarked(((PhiNode) n).merge());
+            PhiNode phi = (PhiNode) n;
+            mark = loopNodes.isMarked(phi.merge());
             if (mark) {
                 loopNodes.mark(n);
             } else {
@@ -392,7 +403,7 @@ public class SuperBlock {
             }
         }
         for (Node usage : n.usages()) {
-            if (markFloating(usage, loopNodes, " " + ind)) {
+            if (markFloating(usage, loopNodes)) {
                 mark = true;
             }
         }
