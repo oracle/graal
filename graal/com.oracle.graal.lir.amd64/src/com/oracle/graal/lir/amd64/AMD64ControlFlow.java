@@ -108,7 +108,7 @@ public class AMD64ControlFlow {
         protected boolean unorderedIsTrue;
 
         public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef destination, LIRDebugInfo info) {
-            super(condition, destination, info);
+            super(floatCond(condition), destination, info);
             this.unorderedIsTrue = unorderedIsTrue;
         }
 
