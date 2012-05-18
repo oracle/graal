@@ -74,10 +74,15 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public ValueNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        RiResolvedType objectDeclaredType = object().declaredType();
-        if (objectDeclaredType != null && targetClass != null && objectDeclaredType.isSubtypeOf(targetClass)) {
-            // we don't have to check for null types here because they will also pass the checkcast.
-            return object();
+        if (targetClass != null) {
+            RiResolvedType objectType = object().exactType();
+            if (objectType == null) {
+                objectType = object().declaredType();
+            }
+            if (objectType != null && objectType.isSubtypeOf(targetClass)) {
+                // we don't have to check for null types here because they will also pass the checkcast.
+                return object();
+            }
         }
 
         CiConstant constant = object().asConstant();
