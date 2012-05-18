@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.phases;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
@@ -48,10 +49,13 @@ public class LoweringPhase extends Phase {
     protected void run(final StructuredGraph graph) {
         // Step 1: repeatedly lower fixed nodes until no new ones are created
         NodeBitMap processed = graph.createNodeBitMap();
+        int  i = 0;
         while (true) {
             int mark = graph.getMark();
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
             processBlock(cfg.getStartBlock(), graph.createNodeBitMap(), processed, null);
+            Debug.dump(graph, "Lowering iteration %d", i++);
+            new CanonicalizerPhase(null, runtime, assumptions, mark, null).apply(graph);
 
             if (graph.getNewNodes(mark).filter(FixedNode.class).isEmpty()) {
                 break;
@@ -159,7 +163,7 @@ public class LoweringPhase extends Phase {
             }
         }
 
-        if (parentAnchor == null) {
+        if (parentAnchor == null && GraalOptions.OptEliminateGuards) {
             for (GuardNode guard : anchor.usages().filter(GuardNode.class)) {
                 activeGuards.clear(guard);
             }
@@ -191,8 +195,10 @@ public class LoweringPhase extends Phase {
                     }
                 }
                 GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor, deoptReason, action, leafGraphId));
-                activeGuards.grow();
-                activeGuards.mark(newGuard);
+                if (GraalOptions.OptEliminateGuards) {
+                    activeGuards.grow();
+                    activeGuards.mark(newGuard);
+                }
                 return newGuard;
             }
 
