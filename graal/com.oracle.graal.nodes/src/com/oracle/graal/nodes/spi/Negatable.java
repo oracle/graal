@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
 
-
-public abstract class BooleanNode extends FloatingNode {
-
-    public BooleanNode(Stamp stamp) {
-        super(stamp);
-    }
-
-    public BooleanNode(Stamp stamp, Node... dependencies) {
-        super(stamp, dependencies);
-    }
+/**
+ * This interface marks a node as being able to negate its effect, this is intended for nodes that depend on a
+ * BooleanNode condition. The canonical representation of has, for example, no way to represent a != b. If such an
+ * expression appears during canonicalization the negated expression will be created (a == b) and the usages will be
+ * negated, using this interface's {@link #negate()} method.
+ */
+public interface Negatable {
 
     /**
-     * Tells all usages of this node to negate their effect. For example, IfNodes should switch their true and false successors.
+     * Tells this node that a condition it depends has been negated, and that it thus needs to invert its own effect.
+     * For example, an {@link IfNode} would switch its true and false successors.
      */
-    public void negateUsages() {
-        for (Node n : usages().snapshot()) {
-            assert n instanceof Negatable;
-            ((Negatable) n).negate();
-        }
-    }
+    void negate();
 }

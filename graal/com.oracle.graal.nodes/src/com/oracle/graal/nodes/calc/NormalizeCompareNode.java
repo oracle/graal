@@ -28,7 +28,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Returns -1, 0, or 1 if either x < y, x == y, or x > y.
+ * Returns -1, 0, or 1 if either x < y, x == y, or x > y. If the comparison is undecided (one of the inputs is NaN), the
+ * result is 1 if isUnorderedLess is false and -1 if isUnorderedLess is true.
  */
 public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
     public final boolean isUnorderedLess;
@@ -48,10 +49,17 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     public void lower(CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
 
-        CompareNode equalComp = graph.unique(new CompareNode(x(), Condition.EQ, false, y()));
-        MaterializeNode equalValue = MaterializeNode.create(equalComp, graph, ConstantNode.forInt(0, graph), ConstantNode.forInt(1, graph));
+        BooleanNode equalComp;
+        BooleanNode lessComp;
+        if (x().kind().isFloatOrDouble()) {
+            equalComp = graph.unique(new FloatEqualsNode(x(), y()));
+            lessComp = graph.unique(new FloatLessThanNode(x(), y(), isUnorderedLess));
+        } else {
+            equalComp = graph.unique(new IntegerEqualsNode(x(), y()));
+            lessComp = graph.unique(new IntegerLessThanNode(x(), y()));
+        }
 
-        CompareNode lessComp = graph.unique(new CompareNode(x(), Condition.LT, isUnorderedLess, y()));
+        MaterializeNode equalValue = MaterializeNode.create(equalComp, graph, ConstantNode.forInt(0, graph), ConstantNode.forInt(1, graph));
         MaterializeNode value =  MaterializeNode.create(lessComp, graph, ConstantNode.forInt(-1, graph), equalValue);
 
         graph.replaceFloating(this, value);

@@ -99,15 +99,13 @@ public class PropagateTypeCachePhase extends Phase {
             }
         }
         for (FixedGuardNode guard : graph.getNodes(FixedGuardNode.class)) {
-            for (int i = 0; i < guard.conditions().size(); i++) {
-                BooleanNode condition = guard.conditions().get(i);
-                if (condition != null && condition.usages().size() > 1) {
-                    BooleanNode clone = (BooleanNode) condition.copyWithInputs();
-                    if (DUMP) {
-                        out.println("replaced!! " + clone);
-                    }
-                    guard.conditions().set(i, clone);
+            BooleanNode condition = guard.condition();
+            if (condition != null && condition.usages().size() > 1) {
+                BooleanNode clone = (BooleanNode) condition.copyWithInputs();
+                if (DUMP) {
+                    out.println("replaced!! " + clone);
                 }
+                guard.setCondition(clone);
             }
         }
 

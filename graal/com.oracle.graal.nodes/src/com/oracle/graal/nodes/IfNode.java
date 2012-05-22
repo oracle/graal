@@ -33,11 +33,9 @@ import com.oracle.graal.nodes.type.*;
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome of a
  * comparison.
  */
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, SplitTypeFeedbackProvider {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, SplitTypeFeedbackProvider, Negatable {
     public static final int TRUE_EDGE = 0;
     public static final int FALSE_EDGE = 1;
-
-    private static final BeginNode[] EMPTY_IF_SUCCESSORS = new BeginNode[] {null, null};
 
     @Input private BooleanNode compare;
 
@@ -52,11 +50,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     public IfNode(BooleanNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double takenProbability) {
         super(StampFactory.illegal(), new BeginNode[] {BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor)}, new double[] {takenProbability, 1 - takenProbability});
-        this.compare = condition;
-    }
-
-    public IfNode(BooleanNode condition, double probability) {
-        super(StampFactory.illegal(), EMPTY_IF_SUCCESSORS, new double[] {probability, 1 - probability});
         this.compare = condition;
     }
 
@@ -192,5 +185,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (compare instanceof ConditionalTypeFeedbackProvider) {
             ((ConditionalTypeFeedbackProvider) compare).typeFeedback(blockSuccessor == TRUE_EDGE ? tool : tool.negate());
         }
+    }
+
+    @Override
+    public void negate() {
+        BeginNode trueSucc = trueSuccessor();
+        BeginNode falseSucc = falseSuccessor();
+        setTrueSuccessor(null);
+        setFalseSuccessor(null);
+        setTrueSuccessor(falseSucc);
+        setFalseSuccessor(trueSucc);
+        double prop = branchProbability[TRUE_EDGE];
+        branchProbability[TRUE_EDGE] = branchProbability[FALSE_EDGE];
+        branchProbability[FALSE_EDGE] = prop;
     }
 }

@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note that these nodes are not
  * built directly from the bytecode but are introduced by canonicalization.
  */
-public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable {
+public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable, Negatable {
 
     @Input private BooleanNode condition;
 
@@ -71,5 +71,10 @@ public class ConditionalNode extends BinaryNode implements Canonicalizable, LIRL
     @Override
     public void generate(LIRGeneratorTool generator) {
         generator.emitConditional(this);
+    }
+
+    @Override
+    public void negate() {
+        ((StructuredGraph) graph()).replaceFloating(this, graph().unique(new ConditionalNode(condition, falseValue(), trueValue())));
     }
 }

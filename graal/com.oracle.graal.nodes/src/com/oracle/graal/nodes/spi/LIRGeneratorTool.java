@@ -88,7 +88,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, RiDeoptAction deoptAction, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, RiDeoptAction deoptAction, boolean negated, long leafGraphId);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);
