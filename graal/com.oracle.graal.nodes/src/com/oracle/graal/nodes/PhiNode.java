@@ -93,6 +93,18 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
         return values.get(i);
     }
 
+    /**
+     * Sets the value at the given index and makes sure that the values list is large enough.
+     * @param i the index at which to set the value
+     * @param x the new phi input value for the given location
+     */
+    public void initializeValueAt(int i, ValueNode x) {
+        while (values().size() <= i) {
+            values.add(null);
+        }
+        values.set(i, x);
+    }
+
     public void setValueAt(int i, ValueNode x) {
         values.set(i, x);
     }
