@@ -36,8 +36,7 @@ import com.oracle.max.cri.ci.*;
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
     public ValueAnchorNode(ValueNode... values) {
-        super(StampFactory.illegal());
-        this.dependencies().addAll(values);
+        super(StampFactory.illegal(), values);
     }
 
     @Override
