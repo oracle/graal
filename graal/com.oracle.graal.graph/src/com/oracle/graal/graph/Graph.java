@@ -48,7 +48,7 @@ public class Graph {
     private GraphEventLog eventLog;
 
     ArrayList<Node> usagesDropped = new ArrayList<>();
-    NodeWorkList inputChanged;
+    InputChangedListener inputChanged;
     private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
 
     private static final class CacheEntry {
@@ -159,8 +159,12 @@ public class Graph {
         return result;
     }
 
-    public void trackInputChange(NodeWorkList worklist) {
-        this.inputChanged = worklist;
+    public interface InputChangedListener {
+        void inputChanged(Node node);
+    }
+
+    public void trackInputChange(InputChangedListener inputChangedListener) {
+        this.inputChanged = inputChangedListener;
     }
 
     public void stopTrackingInputChange() {
@@ -386,7 +390,11 @@ public class Graph {
     }
 
     public NodeBitMap createNodeBitMap() {
-        return new NodeBitMap(this);
+        return createNodeBitMap(false);
+    }
+
+    public NodeBitMap createNodeBitMap(boolean autoGrow) {
+        return new NodeBitMap(this, autoGrow);
     }
 
     public <T> NodeMap<T> createNodeMap() {

@@ -153,6 +153,16 @@ public class FloatingReadPhase extends Phase {
             } else {
                 floatingRead = graph.unique(new FloatingReadNode(readNode.object(), readNode.location(), getLocationForRead(readNode), readNode.stamp(), readNode.dependencies()));
             }
+            ValueAnchorNode anchor = null;
+            for (GuardNode guard : readNode.dependencies().filter(GuardNode.class)) {
+                if (anchor == null) {
+                    anchor = graph.add(new ValueAnchorNode());
+                }
+                anchor.addAnchoredValue(guard);
+            }
+            if (anchor != null) {
+                graph.addAfterFixed(readNode, anchor);
+            }
             graph.replaceFixedWithFloating(readNode, floatingRead);
         }
 

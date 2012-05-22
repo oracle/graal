@@ -289,7 +289,6 @@ public class HotSpotRuntime implements GraalRuntime {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             SafeReadNode safeReadArrayLength = safeReadArrayLength(arrayLengthNode.array(), StructuredGraph.INVALID_GRAPH_ID);
             graph.replaceFixedWithFixed(arrayLengthNode, safeReadArrayLength);
-            safeReadArrayLength.lower(tool);
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotField) field.field()).offset();
@@ -389,9 +388,6 @@ public class HotSpotRuntime implements GraalRuntime {
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
             }
-            if (checkcast != null) {
-                checkcast.lower(tool);
-            }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != CiKind.Illegal;
@@ -471,12 +467,12 @@ public class HotSpotRuntime implements GraalRuntime {
         return safeRead(array.graph(), CiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
     }
 
-    private Node createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
-        SafeReadNode arrayLength = safeReadArrayLength(n.array(), n.leafGraphId());
-        Node guard = tool.createGuard(n.graph().unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
+    private static Node createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
+        StructuredGraph graph = (StructuredGraph) n.graph();
+        ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
+        Node guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
 
-        ((StructuredGraph) n.graph()).addBeforeFixed(n, arrayLength);
-        arrayLength.lower(tool);
+        graph.addBeforeFixed(n, arrayLength);
         return guard;
     }
 

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
@@ -35,15 +35,8 @@ import com.oracle.graal.nodes.type.*;
 
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
-    @Input private ValueNode object;
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public ValueAnchorNode(ValueNode object) {
-        super(StampFactory.illegal());
-        this.object = object;
+    public ValueAnchorNode(ValueNode... values) {
+        super(StampFactory.illegal(), values);
     }
 
     @Override
@@ -51,23 +44,36 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         // Nothing to emit, since this node is used for structural purposes only.
     }
 
+    public void addAnchoredValue(ValueNode value) {
+        this.dependencies().add(value);
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object == null) {
+        if (this.predecessor() instanceof ValueAnchorNode) {
+            // transfer values and remove
+            ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
+            for (Node node : dependencies().nonNull()) {
+                previousAnchor.dependencies().add(node);
+            }
             return null;
         }
-        if (object instanceof ConstantNode) {
-            return null;
-        }
-        if (object instanceof IntegerDivNode || object instanceof IntegerRemNode) {
-            if (((ArithmeticNode) object).y().isConstant()) {
-                CiConstant  constant = ((ArithmeticNode) object).y().asConstant();
-                assert constant.kind == object.kind() : constant.kind + " != " + object.kind();
-                if (constant.asLong() != 0) {
-                    return null;
+        for (Node node : dependencies().nonNull()) {
+            if (node instanceof ConstantNode) {
+                continue;
+            }
+            if (node instanceof IntegerDivNode || node instanceof IntegerRemNode) {
+                ArithmeticNode arithmeticNode = (ArithmeticNode) node;
+                if (arithmeticNode.y().isConstant()) {
+                    CiConstant  constant = arithmeticNode.y().asConstant();
+                    assert constant.kind == arithmeticNode.kind() : constant.kind + " != " + arithmeticNode.kind();
+                    if (constant.asLong() != 0) {
+                        continue;
+                    }
                 }
             }
+            return this; // still necessary
         }
-        return this;
+        return null; // no node which require an anchor found
     }
 }

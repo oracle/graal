@@ -72,7 +72,10 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
         CiConstant constantIndex = index.asConstant();
         if (constantIndex != null && constantIndex.kind.stackKind().isInt()) {
             long constantIndexLong = constantIndex.asInt();
-            if (indexScalingEnabled && tool.target() != null) {
+            if (indexScalingEnabled) {
+                if (tool.target() == null) {
+                    return this;
+                }
                 constantIndexLong *= tool.target().sizeInBytes(getValueKind());
             }
             constantIndexLong += displacement();

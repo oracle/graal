@@ -25,17 +25,18 @@ package com.oracle.graal.compiler.types;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.Graph.InputChangedListener;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.spi.types.TypeCanonicalizable.Result;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class PropagateTypeCachePhase extends Phase {
 
@@ -45,7 +46,6 @@ public class PropagateTypeCachePhase extends Phase {
     private final RiRuntime runtime;
     private final CiAssumptions assumptions;
 
-    private NodeWorkList changedNodes;
     private StructuredGraph currentGraph;
     private SchedulePhase schedule;
 
@@ -109,12 +109,21 @@ public class PropagateTypeCachePhase extends Phase {
             }
         }
 
-        changedNodes = graph.createNodeWorkList(false, 10);
 
         schedule = new SchedulePhase();
         schedule.apply(graph);
 
+        final NodeBitMap changedNodes = graph.createNodeBitMap(true);
+        graph.trackInputChange(new InputChangedListener() {
+            @Override
+            public void inputChanged(Node node) {
+                changedNodes.mark(node);
+            }
+        });
+
         new Iterator().apply(schedule.getCFG().getStartBlock());
+
+        graph.stopTrackingInputChange();
 
         Debug.dump(graph, "After PropagateType iteration");
         if (changes > 0) {
@@ -122,7 +131,8 @@ public class PropagateTypeCachePhase extends Phase {
 //            out.println(graph.method() + ": " + changes + " changes");
         }
 
-        CanonicalizerPhase.canonicalize(graph, changedNodes, runtime, target, assumptions, null);
+        new CanonicalizerPhase(target, runtime, assumptions, changedNodes, null).apply(graph);
+
 // outputGraph(graph);
     }
 
@@ -232,7 +242,6 @@ public class PropagateTypeCachePhase extends Phase {
                                 assert node instanceof FixedWithNextNode;
                                 currentGraph.replaceFixed((FixedWithNextNode) node, replacement);
                             }
-                            changedNodes.addAll(replacement.usages());
                         }
                     }
                     if (node.isAlive() && node instanceof TypeFeedbackProvider) {

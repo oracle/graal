@@ -960,7 +960,7 @@ public class InliningUtil {
         assert localCount == args.length : "snippet argument count mismatch";
         snippetCopy.addDuplicates(snippetGraph.getNodes(), replacements);
         if (!replacements.isEmpty()) {
-            new CanonicalizerPhase(null, runtime, null, -1, immutabilityPredicate).apply(snippetCopy);
+            new CanonicalizerPhase(null, runtime, null, 0, immutabilityPredicate).apply(snippetCopy);
         }
 
         // Explode all loops in the snippet if requested

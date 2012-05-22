@@ -22,18 +22,22 @@
  */
 package com.oracle.graal.graph;
 
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.*;
 
 
 
 public final class NodeBitMap implements Iterable<Node>{
-
+    private final boolean autoGrow;
     private final BitMap bitMap;
     private final Graph graph;
 
     public NodeBitMap(Graph graph) {
+        this(graph, false);
+    }
+
+    public NodeBitMap(Graph graph, boolean autoGrow) {
         this.graph = graph;
+        this.autoGrow = autoGrow;
         bitMap = new BitMap(graph.nodeIdCount());
     }
 
@@ -63,6 +67,9 @@ public final class NodeBitMap implements Iterable<Node>{
     }
 
     public boolean isMarked(Node node) {
+        if (autoGrow && isNew(node)) {
+            return false;
+        }
         assert check(node);
         return bitMap.get(node.id());
     }
@@ -72,11 +79,17 @@ public final class NodeBitMap implements Iterable<Node>{
     }
 
     public void mark(Node node) {
+        if (autoGrow && isNew(node)) {
+            grow();
+        }
         assert check(node);
         bitMap.set(node.id());
     }
 
     public void clear(Node node) {
+        if (autoGrow && isNew(node)) {
+            return;
+        }
         assert check(node);
         bitMap.clear(node.id());
     }
@@ -105,7 +118,7 @@ public final class NodeBitMap implements Iterable<Node>{
         return bitMap.toBinaryString();
     }
 
-    public <T extends Node> void markAll(Collection<T> nodes) {
+    public <T extends Node> void markAll(Iterable<T> nodes) {
         for (Node node : nodes) {
             mark(node);
         }
