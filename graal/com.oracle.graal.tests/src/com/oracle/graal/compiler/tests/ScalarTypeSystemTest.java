@@ -27,7 +27,6 @@ import junit.framework.AssertionFailedError;
 import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.compiler.types.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
@@ -44,7 +43,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test1() {
         test("test1Snippet", "referenceSnippet1");
     }
@@ -61,7 +60,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test2() {
         test("test2Snippet", "referenceSnippet1");
     }
@@ -78,7 +77,7 @@ public class ScalarTypeSystemTest extends GraphTest {
         }
     }
 
-    @Test
+    @Test(expected = AssertionFailedError.class)
     public void test3() {
         test("test3Snippet", "referenceSnippet2");
     }
@@ -163,12 +162,12 @@ public class ScalarTypeSystemTest extends GraphTest {
     }
 
     private void test(String snippet, String referenceSnippet) {
-
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
-        System.out.println("==================== " + snippet);
+//        TypeSystemTest.outputGraph(graph);
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        new PropagateTypeCachePhase(null, null, null).apply(graph);
+        new CheckCastEliminationPhase().apply(graph);
+        new CanonicalizerPhase(null, runtime(), null).apply(graph);
         StructuredGraph referenceGraph = parse(referenceSnippet);
         assertEquals(referenceGraph, graph);
     }

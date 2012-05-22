@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
 import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -42,7 +39,7 @@ public class DegeneratedLoopsTest extends GraphTest {
 
     @SuppressWarnings("all")
     public static int referenceSnippet(int a) {
-        return 1;
+        return a;
     }
 
     @Test
@@ -79,16 +76,12 @@ public class DegeneratedLoopsTest extends GraphTest {
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
-        LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
-        ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
-            n.replaceFirstInput(local, constant);
-        }
         for (Invoke invoke : graph.getInvokes()) {
             invoke.intrinsify(null);
         }
         new CanonicalizerPhase(null, runtime(), null).apply(graph);
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET); Debug.dump(referenceGraph, "Graph");
+        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+        Debug.dump(referenceGraph, "Graph");
         assertEquals(referenceGraph, graph);
     }
 }

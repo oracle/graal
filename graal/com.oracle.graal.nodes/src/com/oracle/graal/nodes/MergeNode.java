@@ -81,7 +81,7 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
         int predIndex = phiPredecessorIndex(pred);
         assert predIndex != -1;
         deleteEnd(pred);
-        for (PhiNode phi : phis()) {
+        for (PhiNode phi : phis().snapshot()) {
             ValueNode removedValue = phi.valueAt(predIndex);
             phi.removeInput(predIndex);
             if (removedValue != null && removedValue.isAlive() && removedValue.usages().isEmpty() && GraphUtil.isFloatingNode().apply(removedValue)) {

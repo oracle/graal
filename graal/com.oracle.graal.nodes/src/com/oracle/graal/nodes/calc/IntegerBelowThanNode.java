@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
 
-public class SafeReadNode extends SafeAccessNode implements Lowerable {
+@NodeInfo(shortName = "|<|")
+public final class IntegerBelowThanNode extends CompareNode {
 
-    public SafeReadNode(ValueNode object, LocationNode location, Stamp stamp, long leafGraphId) {
-        super(object, location, stamp, leafGraphId);
-        assert object != null && location != null;
+    /**
+     * Constructs a new unsigned integer comparison node.
+     *
+     * @param x the instruction producing the first input to the instruction
+     * @param y the instruction that produces the second input to this instruction
+     */
+    public IntegerBelowThanNode(ValueNode x, ValueNode y) {
+        super(x, y);
+        assert !x.kind().isFloatOrDouble() && x.kind() != CiKind.Object;
+        assert !y.kind().isFloatOrDouble() && y.kind() != CiKind.Object;
     }
 
     @Override
-    public void lower(CiLoweringTool tool) {
-        StructuredGraph graph = (StructuredGraph) graph();
-        Node guard = tool.createNullCheckGuard(object(), leafGraphId());
-        ReadNode read = graph.add(new ReadNode(object(), location(), stamp()));
-        read.dependencies().add(guard);
+    public Condition condition() {
+        return Condition.BT;
+    }
 
-        graph.replaceFixedWithFixed(this, read);
+    @Override
+    public boolean unorderedIsTrue() {
+        return false;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (x() == y()) {
+            return ConstantNode.forBoolean(false, graph());
+        }
+        return super.canonical(tool);
     }
 }

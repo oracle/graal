@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
 import java.util.*;
 
 import org.junit.*;
@@ -32,22 +30,26 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
- * In the following tests, the usages of local variable "a" are replaced with the integer constant 0.
- * Then boxing elimination is applied and it is verified that the resulting graph is equal to the
- * graph of the method that just has a "return 1" statement in it.
+ * In the following tests, the usages of local variable "a" are replaced with the integer constant 0. Then boxing
+ * elimination is applied and it is verified that the resulting graph is equal to the graph of the method that just has
+ * a "return 1" statement in it.
  */
 public class BoxingEliminationTest extends GraphTest {
+
     private static final Short s = 2;
-    private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
     @SuppressWarnings("all")
-    public static short referenceSnippet(short a) {
+    public static short referenceSnippet1() {
         return 1;
+    }
+
+    @SuppressWarnings("all")
+    public static short referenceSnippet2() {
+        return 2;
     }
 
     public static Short boxedShort() {
@@ -64,30 +66,31 @@ public class BoxingEliminationTest extends GraphTest {
 
     @Test
     public void test1() {
-        test("test1Snippet");
+        test("test1Snippet", "referenceSnippet1");
     }
 
     @SuppressWarnings("all")
-    public static short test1Snippet(short a) {
+    public static short test1Snippet() {
         return boxedShort();
     }
 
     @Test
     public void test2() {
-        test("test2Snippet");
+        test("test2Snippet", "referenceSnippet1");
     }
 
     @SuppressWarnings("all")
-    public static short test2Snippet(short a) {
+    public static short test2Snippet() {
         return (Short) boxedObject();
     }
+
     @Test
     public void test3() {
-        test("test3Snippet");
+        test("test3Snippet", "referenceSnippet1");
     }
 
     @SuppressWarnings("all")
-    public static short test3Snippet(short a) {
+    public static short test3Snippet() {
         short b = boxedShort();
         if (b < 0) {
             b = boxedShort();
@@ -97,15 +100,15 @@ public class BoxingEliminationTest extends GraphTest {
 
     @Test
     public void test4() {
-        test("test4Snippet");
+        test("test4Snippet", "referenceSnippet2");
     }
 
     @SuppressWarnings("all")
-    public static short test4Snippet(short a) {
+    public static short test4Snippet() {
         return constantBoxedShort();
     }
 
-    private void test(final String snippet) {
+    private void test(final String snippet, final String referenceSnippet) {
         Debug.scope("BoxingEliminationTest", new DebugDumpScope(snippet), new Runnable() {
             @Override
             public void run() {
@@ -115,11 +118,6 @@ public class BoxingEliminationTest extends GraphTest {
                 PhasePlan phasePlan = getDefaultPhasePlan();
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, identifyBoxingPhase);
                 identifyBoxingPhase.apply(graph);
-                LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
-                ConstantNode constant = ConstantNode.forShort((short) 0, graph);
-                for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
-                    n.replaceFirstInput(local, constant);
-                }
                 Collection<Invoke> hints = new ArrayList<>();
                 for (Invoke invoke : graph.getInvokes()) {
                     hints.add(invoke);
@@ -133,7 +131,7 @@ public class BoxingEliminationTest extends GraphTest {
                 new ExpandBoxingNodesPhase(pool).apply(graph);
                 new CanonicalizerPhase(null, runtime(), null).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+                StructuredGraph referenceGraph = parse(referenceSnippet);
                 assertEquals(referenceGraph, graph);
             }
         });

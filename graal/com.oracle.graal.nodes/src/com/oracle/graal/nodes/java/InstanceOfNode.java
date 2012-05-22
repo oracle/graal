@@ -35,15 +35,10 @@ import com.oracle.max.cri.ri.*;
  */
 public final class InstanceOfNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
 
-    private final boolean negated;
     @Input private ValueNode object;
     @Input private ValueNode targetClassInstruction;
     private final RiResolvedType targetClass;
     private final RiTypeProfile profile;
-
-    public boolean negated() {
-        return negated;
-    }
 
     /**
      * Constructs a new InstanceOfNode.
@@ -52,17 +47,16 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
      * @param targetClass the class which is the target of the instanceof check
      * @param object the instruction producing the object input to this instruction
      */
-    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, boolean negated) {
-        this(targetClassInstruction, targetClass, object, null, negated);
+    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object) {
+        this(targetClassInstruction, targetClass, object, null);
     }
 
-    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile, boolean negated) {
+    public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
         super(StampFactory.illegal());
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
         this.object = object;
         this.profile = profile;
-        this.negated = negated;
         assert targetClass != null;
     }
 
@@ -81,16 +75,17 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             if (subType) {
                 if (object().stamp().nonNull()) {
                     // the instanceOf matches, so return true (or false, for the negated case)
-                    return ConstantNode.forBoolean(!negated, graph());
+                    return ConstantNode.forBoolean(true, graph());
                 } else {
                     // the instanceof matches if the object is non-null, so return true (or false, for the negated case) depending on the null-ness.
-                    return graph().unique(new NullCheckNode(object(), negated));
+                    negateUsages();
+                    return graph().unique(new IsNullNode(object()));
                 }
             } else {
                 // since this type check failed for an exact type we know that it can never succeed at run time.
                 // we also don't care about null values, since they will also make the check fail.
                 // so return false (or true, for the negated case)
-                return ConstantNode.forBoolean(negated, graph());
+                return ConstantNode.forBoolean(false, graph());
             }
         } else {
             RiResolvedType declared = object().declaredType();
@@ -100,10 +95,11 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
                 if (subType) {
                     if (object().stamp().nonNull()) {
                         // the instanceOf matches, so return true (or false, for the negated case)
-                        return ConstantNode.forBoolean(!negated, graph());
+                        return ConstantNode.forBoolean(true, graph());
                     } else {
                         // the instanceof matches if the object is non-null, so return true (or false, for the negated case) depending on the null-ness.
-                        return graph().unique(new NullCheckNode(object(), negated));
+                        negateUsages();
+                        return graph().unique(new IsNullNode(object()));
                     }
                 } else {
                     // since the subtype comparison was only performed on a declared type we don't really know if it might be true at run time...
@@ -115,7 +111,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
         if (constant != null) {
             assert constant.kind == CiKind.Object;
             if (constant.isNull()) {
-                return ConstantNode.forBoolean(negated, graph());
+                return ConstantNode.forBoolean(false, graph());
             } else {
                 assert false : "non-null constants are always expected to provide an exactType";
             }
@@ -124,40 +120,22 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     }
 
     @Override
-    public BooleanNode negate() {
-        return graph().unique(new InstanceOfNode(targetClassInstruction(), targetClass(), object(), profile(), !negated));
-    }
-
-    @Override
     public void typeFeedback(TypeFeedbackTool tool) {
-        if (negated) {
-            tool.addObject(object()).notDeclaredType(targetClass(), true);
-        } else {
-            tool.addObject(object()).declaredType(targetClass(), true);
-        }
-    }
-
-    @Override
-    public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Name && negated) {
-            return "!" + super.toString(Verbosity.Name);
-        } else {
-            return super.toString(verbosity);
-        }
+        tool.addObject(object()).declaredType(targetClass(), true);
     }
 
     @Override
     public Result canonical(TypeFeedbackTool tool) {
         ObjectTypeQuery query = tool.queryObject(object());
         if (query.constantBound(Condition.EQ, CiConstant.NULL_OBJECT)) {
-            return new Result(ConstantNode.forBoolean(negated, graph()), query);
+            return new Result(ConstantNode.forBoolean(false, graph()), query);
         } else if (targetClass() != null) {
             if (query.notDeclaredType(targetClass())) {
-                return new Result(ConstantNode.forBoolean(negated, graph()), query);
+                return new Result(ConstantNode.forBoolean(false, graph()), query);
             }
             if (query.constantBound(Condition.NE, CiConstant.NULL_OBJECT)) {
                 if (query.declaredType(targetClass())) {
-                    return new Result(ConstantNode.forBoolean(!negated, graph()), query);
+                    return new Result(ConstantNode.forBoolean(true, graph()), query);
                 }
             }
         }

@@ -578,8 +578,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitNullCheckGuard(NullCheckNode node, long leafGraphId) {
-        Variable value = load(operand(node.object()));
+    protected void emitNullCheckGuard(ValueNode object, long leafGraphId) {
+        Variable value = load(operand(object));
         LIRDebugInfo info = state(leafGraphId);
         append(new NullCheckOp(value, info));
     }

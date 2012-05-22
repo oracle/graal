@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
 
-
-public abstract class BooleanNode extends FloatingNode {
-
-    public BooleanNode(Stamp stamp) {
-        super(stamp);
-    }
-
-    public BooleanNode(Stamp stamp, Node... dependencies) {
-        super(stamp, dependencies);
-    }
+@NodeInfo(shortName = "==")
+public final class FloatEqualsNode extends CompareNode {
 
     /**
-     * Tells all usages of this node to negate their effect. For example, IfNodes should switch their true and false successors.
+     * Constructs a new floating point equality comparison node.
+     *
+     * @param x the instruction producing the first input to the instruction
+     * @param y the instruction that produces the second input to this instruction
      */
-    public void negateUsages() {
-        for (Node n : usages().snapshot()) {
-            assert n instanceof Negatable;
-            ((Negatable) n).negate();
-        }
+    public FloatEqualsNode(ValueNode x, ValueNode y) {
+        super(x, y);
+        assert x.kind().isFloatOrDouble();
+        assert y.kind().isFloatOrDouble();
+    }
+
+    @Override
+    public Condition condition() {
+        return Condition.EQ;
+    }
+
+    @Override
+    public boolean unorderedIsTrue() {
+        return false;
     }
 }

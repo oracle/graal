@@ -22,36 +22,31 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
 
 /**
- * A NullCheckNode will be true if the supplied value is non-null, and false if it is null.
- * This behavior can be inverted by setting {@link #expectedNull} to true.
+ * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
-public final class NullCheckNode extends BooleanNode implements Canonicalizable, LIRLowerable, ConditionalTypeFeedbackProvider, TypeCanonicalizable {
+public final class IsNullNode extends BooleanNode implements Canonicalizable, LIRLowerable {
 
     @Input private ValueNode object;
-    public final boolean expectedNull;
 
     public ValueNode object() {
         return object;
     }
 
     /**
-     * Constructs a new NullCheck instruction.
+     * Constructs a new IsNullNode instruction.
      *
      * @param object the instruction producing the object to check against null
-     * @param expectedNull True when this node checks that the value is null, false when this node checks for non-null
      */
-    public NullCheckNode(ValueNode object, boolean expectedNull) {
+    public IsNullNode(ValueNode object) {
         super(StampFactory.illegal());
         assert object.kind() == CiKind.Object : object.kind();
         this.object = object;
-        this.expectedNull = expectedNull;
     }
 
     @Override
@@ -61,8 +56,8 @@ public final class NullCheckNode extends BooleanNode implements Canonicalizable,
 
     @Override
     public boolean verify() {
-        assertTrue(object() != null, "null check input must not be null");
-        assertTrue(object().kind().isObject(), "null check input must be an object");
+        assertTrue(object() != null, "is null input must not be null");
+        assertTrue(object().kind().isObject(), "is null input must be an object");
         return super.verify();
     }
 
@@ -71,34 +66,11 @@ public final class NullCheckNode extends BooleanNode implements Canonicalizable,
         CiConstant constant = object().asConstant();
         if (constant != null) {
             assert constant.kind == CiKind.Object;
-            return ConstantNode.forBoolean(constant.isNull() == expectedNull, graph());
+            return ConstantNode.forBoolean(constant.isNull(), graph());
         }
         if (object.stamp().nonNull()) {
-            return ConstantNode.forBoolean(!expectedNull, graph());
+            return ConstantNode.forBoolean(false, graph());
         }
         return this;
-    }
-
-    @Override
-    public BooleanNode negate() {
-        return graph().unique(new NullCheckNode(object(), !expectedNull));
-    }
-
-    @Override
-    public void typeFeedback(TypeFeedbackTool tool) {
-        Condition expectedCondition = expectedNull ? Condition.EQ : Condition.NE;
-        tool.addObject(object()).constantBound(expectedCondition, CiConstant.NULL_OBJECT);
-    }
-
-    @Override
-    public Result canonical(TypeFeedbackTool tool) {
-        Condition expectedCondition = expectedNull ? Condition.EQ : Condition.NE;
-        ObjectTypeQuery query = tool.queryObject(object());
-        if (query.constantBound(expectedCondition, CiConstant.NULL_OBJECT)) {
-            return new Result(ConstantNode.forBoolean(true, graph()), query);
-        } else if (query.constantBound(expectedCondition.negate(), CiConstant.NULL_OBJECT)) {
-            return new Result(ConstantNode.forBoolean(false, graph()), query);
-        }
-        return null;
     }
 }

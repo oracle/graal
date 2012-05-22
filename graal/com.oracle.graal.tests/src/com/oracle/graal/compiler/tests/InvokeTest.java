@@ -22,15 +22,12 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
 import java.util.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -42,13 +39,17 @@ public class InvokeTest extends GraphTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
 
-    @SuppressWarnings("all")
-    public static int referenceSnippet(int a) {
+    public static int const1() {
         return 1;
     }
 
-    public static int const1() {
-        return 1;
+    public static int const7() {
+        return 7;
+    }
+
+    @SuppressWarnings("all")
+    public static int referenceSnippet() {
+        return 7;
     }
 
     @Test
@@ -57,8 +58,8 @@ public class InvokeTest extends GraphTest {
     }
 
     @SuppressWarnings("all")
-    public static int test1Snippet(int a) {
-        return const1();
+    public static int test1Snippet() {
+        return const7();
     }
 
     @Test
@@ -67,17 +68,12 @@ public class InvokeTest extends GraphTest {
     }
 
     @SuppressWarnings("all")
-    public static int test2Snippet(int a) {
+    public static int test2Snippet() {
         return const1() + const1() + const1() + const1() + const1() + const1() + const1();
     }
 
     private void test(String snippet) {
         StructuredGraph graph = parse(snippet);
-        LocalNode local = graph.getNodes(LocalNode.class).iterator().next();
-        ConstantNode constant = ConstantNode.forInt(0, graph);
-        for (Node n : local.usages().filter(isNotA(FrameState.class)).snapshot()) {
-            n.replaceFirstInput(local, constant);
-        }
         Collection<Invoke> hints = new ArrayList<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.add(invoke);
