@@ -40,7 +40,7 @@ public class HotSpotKlassOop extends CompilerObject {
      */
     public final Class javaMirror;
 
-    HotSpotKlassOop(Compiler compiler, Class javaMirror) {
+    public HotSpotKlassOop(Compiler compiler, Class javaMirror) {
         super(compiler);
         this.javaMirror = javaMirror;
     }

@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Counter.*;
+import static com.oracle.graal.snippets.SnippetTemplate.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import sun.misc.*;
 
@@ -33,6 +35,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -52,11 +55,12 @@ public class CheckCastSnippets implements SnippetsInterface {
      * @param object the object whose type is being checked against {@code hub}
      * @param hintHubs the hubs of objects that have been profiled during previous executions
      * @param hintsAreExact specifies if {@code hintHubs} contains all subtypes of {@code hub}
+     * @param checkNull specifies if {@code object} may be null
      * @return {@code object} if the type check succeeds
      * @throws ClassCastException if the type check fails
      */
     @Snippet
-    public static Object checkcast(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact) {
+    public static Object checkcast(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull, @SuppressWarnings("unused") Counter ignore) {
         if (object == null) {
             return object;
         }
@@ -108,7 +112,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         /**
          * Increments this counter if counters are enabled. The body of this method has been carefully crafted
          * such that it contains no safepoints and no calls, neither of which are permissible in a snippet.
-         * Also, increments are not guaranteed to be atomic but that's acceptable for a counter like this.
+         * Also, increments are not guaranteed to be atomic which is acceptable for a counter.
          */
         void inc() {
             if (ENABLED) {
@@ -120,11 +124,8 @@ public class CheckCastSnippets implements SnippetsInterface {
         static final boolean ENABLED = GraalOptions.CheckcastCounters;
     }
 
-    /**
-     * @see #checkcast(Object, Object, Object[], boolean)
-     */
     @Snippet
-    public static Object checkcastWithCounters(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, Counter noHintsCounter) {
+    public static Object checkcastWithCounters(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, @SuppressWarnings("unused") boolean checkNull, Counter noHintsCounter) {
         if (object == null) {
             isNull.inc();
             return object;
@@ -169,11 +170,6 @@ public class CheckCastSnippets implements SnippetsInterface {
         return CompilerImpl.getInstance().getConfig().hubOffset;
     }
 
-    @Fold
-    private static boolean isInterface(RiResolvedType type) {
-        return type.isInterface();
-    }
-
     public static void printCounter(PrintStream out, Counter c, long total) {
         double percent = total == 0D ? 0D : ((double) (c.count * 100)) / total;
         out.println(String.format("%16s: %5.2f%%%10d  // %s", c.name(), percent, c.count, c.description));
@@ -206,6 +202,57 @@ public class CheckCastSnippets implements SnippetsInterface {
         out.println("** Checkcast counters **");
         for (Counter c : counters) {
             printCounter(out, c, total);
+        }
+    }
+
+    /**
+     * Templates for partially specialized checkcast snippet graphs.
+     */
+    public static class Templates {
+
+        private final ConcurrentHashMap<Integer, SnippetTemplate> templates;
+        private final RiResolvedMethod method;
+        private final RiRuntime runtime;
+
+        public Templates(RiRuntime runtime) {
+            this.runtime = runtime;
+            this.templates = new ConcurrentHashMap<>();
+            try {
+                Class[] parameterTypes = {Object.class, Object.class, Object[].class, boolean.class, boolean.class, Counter.class};
+                String name = GraalOptions.CheckcastCounters ? "checkcastWithCounters" : "checkcast";
+                method = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod(name, parameterTypes));
+            } catch (NoSuchMethodException e) {
+                throw new GraalInternalError(e);
+            }
+        }
+
+        /**
+         * Gets a checkcast snippet specialized for a given set od inputs.
+         */
+        public SnippetTemplate get(int nHints, boolean isExact, boolean checkNull, Counter noHintsCounter) {
+            Integer key = key(nHints, isExact, checkNull);
+            SnippetTemplate result = templates.get(key);
+            if (result == null) {
+                HotSpotKlassOop[] hints = new HotSpotKlassOop[nHints];
+                Arrays.fill(hints, new HotSpotKlassOop(null, Templates.class));
+                result = SnippetTemplate.create(runtime, method, _, _, hints, isExact, checkNull, noHintsCounter);
+                templates.put(key, result);
+            }
+            return result;
+        }
+
+        /**
+         * Creates a canonical key for a combination of specialization parameters.
+         */
+        private static Integer key(int nHints, boolean isExact, boolean checkNull) {
+            int key = nHints << 2;
+            if (isExact) {
+                key |= 2;
+            }
+            if (checkNull) {
+                key |= 1;
+            }
+            return key;
         }
     }
 }
