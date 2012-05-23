@@ -28,6 +28,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.ci.*;
@@ -38,6 +39,40 @@ import com.oracle.max.cri.ri.*;
  */
 public class LoweringPhase extends Phase {
 
+    private class LoweringToolBase implements CiLoweringTool {
+
+        @Override
+        public GraalRuntime getRuntime() {
+            return runtime;
+        }
+
+        @Override
+        public Node getGuardAnchor() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Node createNullCheckGuard(ValueNode object, long leafGraphId) {
+            return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, true, leafGraphId);
+        }
+
+        @Override
+        public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+            return createGuard(condition, deoptReason, action, false, leafGraphId);
+        }
+
+        @Override
+        public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+            // TODO (thomaswue): Document why this must not be called on floating nodes.
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public CiAssumptions assumptions() {
+            return assumptions;
+        }
+    }
+
     private final GraalRuntime runtime;
     private final CiAssumptions assumptions;
 
@@ -45,6 +80,7 @@ public class LoweringPhase extends Phase {
         this.runtime = runtime;
         this.assumptions = assumptions;
     }
+
     @Override
     protected void run(final StructuredGraph graph) {
         // Step 1: repeatedly lower fixed nodes until no new ones are created
@@ -66,29 +102,7 @@ public class LoweringPhase extends Phase {
 
         // Step 2: lower the floating nodes
         processed.negate();
-        final CiLoweringTool loweringTool = new CiLoweringTool() {
-
-            @Override
-            public Node getGuardAnchor() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public GraalRuntime getRuntime() {
-                return runtime;
-            }
-
-            @Override
-            public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
-                // TODO (thomaswue): Document why this must not be called on floating nodes.
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CiAssumptions assumptions() {
-                return assumptions;
-            }
-        };
+        final CiLoweringTool loweringTool = new LoweringToolBase();
         for (Node node : processed) {
             if (node instanceof Lowerable) {
                 assert !(node instanceof FixedNode) || node.predecessor() == null : node;
@@ -105,29 +119,7 @@ public class LoweringPhase extends Phase {
         processBlock(cfg.getStartBlock(), activeGuards, processed, null);
 
         processed.negate();
-        final CiLoweringTool loweringTool = new CiLoweringTool() {
-
-            @Override
-            public Node getGuardAnchor() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public GraalRuntime getRuntime() {
-                return runtime;
-            }
-
-            @Override
-            public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
-                // TODO (thomaswue): Document why this must not be called on floating nodes.
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CiAssumptions assumptions() {
-                return assumptions;
-            }
-        };
+        final CiLoweringTool loweringTool = new LoweringToolBase();
         for (Node node : processed) {
             if (node instanceof CheckCastNode) {
                 // This is a checkcast that was created while lowering some other node (e.g. StoreIndexed).
@@ -172,7 +164,7 @@ public class LoweringPhase extends Phase {
 
     private void process(final Block b, final NodeBitMap activeGuards, NodeBitMap processed, final Node anchor) {
 
-        final CiLoweringTool loweringTool = new CiLoweringTool() {
+        final CiLoweringTool loweringTool = new LoweringToolBase() {
 
             @Override
             public Node getGuardAnchor() {
@@ -180,12 +172,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public GraalRuntime getRuntime() {
-                return runtime;
-            }
-
-            @Override
-            public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+            public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {
@@ -194,17 +181,12 @@ public class LoweringPhase extends Phase {
                         }
                     }
                 }
-                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor, deoptReason, action, leafGraphId));
+                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor, deoptReason, action, negated, leafGraphId));
                 if (GraalOptions.OptEliminateGuards) {
                     activeGuards.grow();
                     activeGuards.mark(newGuard);
                 }
                 return newGuard;
-            }
-
-            @Override
-            public CiAssumptions assumptions() {
-                return assumptions;
             }
         };
 

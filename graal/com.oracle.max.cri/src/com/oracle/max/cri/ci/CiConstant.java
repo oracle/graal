@@ -473,6 +473,8 @@ public final class CiConstant extends CiValue {
      */
     public static CiConstant forBoxed(CiKind kind, Object value) {
         switch (kind) {
+            case Boolean:
+                return forBoolean((Boolean) value);
             case Byte:
                 return forByte((Byte) value);
             case Char:

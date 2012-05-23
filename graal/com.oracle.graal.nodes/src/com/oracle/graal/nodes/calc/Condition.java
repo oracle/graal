@@ -224,6 +224,13 @@ public enum Condition {
     }
 
     /**
+     * Returns true if this condition represents an unsigned comparison. EQ and NE are not considered to be unsigned.
+     */
+    public final boolean isUnsigned() {
+        return this == Condition.BT || this == Condition.BE || this == Condition.AT || this == Condition.AE;
+    }
+
+    /**
      * Checks if this conditional operation is commutative.
      * @return {@code true} if this operation is commutative
      */
@@ -238,6 +245,19 @@ public enum Condition {
      * @param runtime the RiRuntime (might be needed to compare runtime-specific types)
      * @return {@link Boolean#TRUE} if the comparison is known to be true,
      * {@link Boolean#FALSE} if the comparison is known to be false
+     */
+    public boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime) {
+        assert !lt.kind.isFloatOrDouble() && !rt.kind.isFloatOrDouble();
+        return foldCondition(lt, rt, runtime, false);
+    }
+
+    /**
+     * Attempts to fold a comparison between two constants and return the result.
+     * @param lt the constant on the left side of the comparison
+     * @param rt the constant on the right side of the comparison
+     * @param runtime the RiRuntime (might be needed to compare runtime-specific types)
+     * @param unorderedIsTrue true if an undecided float comparison should result in "true"
+     * @return true if the comparison is known to be true, false if the comparison is known to be false
      */
     public boolean foldCondition(CiConstant lt, CiConstant rt, RiRuntime runtime, boolean unorderedIsTrue) {
         switch (lt.kind) {

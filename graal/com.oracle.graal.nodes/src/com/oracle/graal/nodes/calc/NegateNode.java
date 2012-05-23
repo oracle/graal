@@ -31,8 +31,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class NegateNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
-    @Input
-    private ValueNode x;
+    @Input private ValueNode x;
 
     public ValueNode x() {
         return x;

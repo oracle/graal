@@ -40,12 +40,13 @@ import com.oracle.max.cri.ri.*;
  * maximum flexibility for the guard node and guarantees that deoptimization occurs only if the control flow would have
  * reached the guarded node (without taking exceptions into account).
  */
-public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType {
+public final class GuardNode extends FloatingNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider, Node.IterableNodeType, Negatable {
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
     private final RiDeoptReason reason;
     private final RiDeoptAction action;
+    private boolean negated;
     private final long leafGraphId;
 
     public FixedNode anchor() {
@@ -69,6 +70,10 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         condition = x;
     }
 
+    public boolean negated() {
+        return negated;
+    }
+
     public RiDeoptReason reason() {
         return reason;
     }
@@ -77,25 +82,35 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return action;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, RiDeoptAction action, long leafGraphId) {
+    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, RiDeoptAction action, boolean negated, long leafGraphId) {
         super(StampFactory.illegal());
         this.condition = condition;
         this.anchor = anchor;
         this.reason = reason;
         this.action = action;
+        this.negated = negated;
         this.leafGraphId = leafGraphId;
     }
 
     @Override
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name && negated) {
+            return "!" + super.toString(verbosity);
+        } else {
+            return super.toString(verbosity);
+        }
+    }
+
+    @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitGuardCheck(condition(), reason(), action(), leafGraphId);
+        gen.emitGuardCheck(condition(), reason(), action(), negated(), leafGraphId);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (condition() instanceof ConstantNode) {
             ConstantNode c = (ConstantNode) condition();
-            if (c.asConstant().asBoolean()) {
+            if (c.asConstant().asBoolean() != negated) {
                 if (!dependencies().isEmpty()) {
                     for (Node usage : usages()) {
                         if (usage instanceof ValueNode) {
@@ -115,5 +130,10 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         if (condition instanceof ConditionalTypeFeedbackProvider) {
             ((ConditionalTypeFeedbackProvider) condition).typeFeedback(tool);
         }
+    }
+
+    @Override
+    public void negate() {
+        negated = !negated;
     }
 }

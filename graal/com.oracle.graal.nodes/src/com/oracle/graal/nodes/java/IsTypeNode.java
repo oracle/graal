@@ -77,9 +77,4 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
         // constants return the correct exactType, so they are handled by the code above
         return this;
     }
-
-    @Override
-    public BooleanNode negate() {
-        throw new Error("unimplemented");
-    }
 }

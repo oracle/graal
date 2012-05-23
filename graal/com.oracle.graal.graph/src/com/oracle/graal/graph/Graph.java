@@ -509,7 +509,11 @@ public class Graph {
      * @param replacements the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
+    @SuppressWarnings("all")
     public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, Map<Node, Node> replacements) {
+        if (replacements == null) {
+            replacements = Collections.emptyMap();
+        }
         return NodeClass.addGraphDuplicate(this, newNodes, replacements);
     }
 }

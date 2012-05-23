@@ -227,9 +227,4 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
             return super.toString(verbosity);
         }
     }
-
-    @Override
-    public BooleanNode negate() {
-        return ConstantNode.forBoolean(!value.asBoolean(), graph());
-    }
 }
