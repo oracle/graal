@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,22 +26,34 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 
-public class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T> {
-    private final Iterator<T> iterator;
-    private final NodePredicate predicate;
-    private final NodePredicate until;
-    public PredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {
-        this.until = until;
-        this.iterator = iterator;
-        this.predicate = predicate;
+
+public class DistinctPredicatedProxyNodeIterator<T extends Node> extends PredicatedProxyNodeIterator<T> {
+    private NodeBitMap visited;
+
+    public DistinctPredicatedProxyNodeIterator(NodePredicate until, Iterator<T> iterator, NodePredicate predicate) {
+        super(until, iterator, predicate);
     }
+
     @Override
     protected void forward() {
-        while ((current == null || !current.isAlive() || !predicate.apply(current)) && iterator.hasNext()) {
-            current = iterator.next();
+        if (current == null) {
+            super.forward();
+            while (!accept(current)) {
+                current = null;
+                super.forward();
+            }
         }
-        if (current != null && (!current.isAlive() || !predicate.apply(current) || until.apply(current))) {
-            current = null;
+    }
+
+    private boolean accept(T n) {
+        if (n == null) {
+            return true;
         }
+        if (visited == null) {
+            visited = n.graph().createNodeBitMap(true);
+        }
+        boolean accept = !visited.isMarked(n);
+        visited.mark(n);
+        return accept;
     }
 }
