@@ -227,7 +227,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         }
 
         /**
-         * Gets a checkcast snippet specialized for a given set od inputs.
+         * Gets a checkcast snippet specialized for a given set of inputs.
          */
         public SnippetTemplate get(int nHints, boolean isExact, boolean checkNull, Counter noHintsCounter) {
             Integer key = key(nHints, isExact, checkNull);
