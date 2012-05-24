@@ -270,9 +270,6 @@ public class HotSpotRuntime implements GraalRuntime {
 
     @Override
     public void lower(Node n, CiLoweringTool tool) {
-        if (!GraalOptions.Lower) {
-            return;
-        }
         StructuredGraph graph = (StructuredGraph) n.graph();
 
         if (n instanceof ArrayLengthNode) {
