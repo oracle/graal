@@ -372,4 +372,44 @@ public enum CiKind {
         }
     }
 
+    public long minValue() {
+        switch (this) {
+            case Boolean:
+                return 0;
+            case Byte:
+                return java.lang.Byte.MIN_VALUE;
+            case Char:
+                return java.lang.Character.MIN_VALUE;
+            case Short:
+                return java.lang.Short.MIN_VALUE;
+            case Jsr:
+            case Int:
+                return java.lang.Integer.MIN_VALUE;
+            case Long:
+                return java.lang.Long.MIN_VALUE;
+            default:
+                throw new IllegalArgumentException("illegal call to minValue on " + this);
+        }
+    }
+
+    public long maxValue() {
+        switch (this) {
+            case Boolean:
+                return 1;
+            case Byte:
+                return java.lang.Byte.MAX_VALUE;
+            case Char:
+                return java.lang.Character.MAX_VALUE;
+            case Short:
+                return java.lang.Short.MAX_VALUE;
+            case Jsr:
+            case Int:
+                return java.lang.Integer.MAX_VALUE;
+            case Long:
+                return java.lang.Long.MAX_VALUE;
+            default:
+                throw new IllegalArgumentException("illegal call to maxValue on " + this);
+        }
+    }
+
 }
