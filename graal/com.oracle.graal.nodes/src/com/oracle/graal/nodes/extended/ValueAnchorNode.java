@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -60,7 +62,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             }
             return null;
         }
-        for (Node node : dependencies().nonNull()) {
+        for (Node node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
             if (node instanceof ConstantNode) {
                 continue;
             }
