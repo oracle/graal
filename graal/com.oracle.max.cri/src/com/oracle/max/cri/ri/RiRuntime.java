@@ -33,32 +33,9 @@ s */
 public interface RiRuntime {
 
     /**
-     * Offset of the lock within the lock object on the stack.
-
-     * Note: superseded by sizeOfLockData() in Graal.
-     *
-     * @return the offset in bytes
-     */
-    int basicObjectLockOffsetInBytes();
-
-    /**
-     * Get the size in bytes of a lock object on the stack.
-     *
-     * Note: superseded by sizeOfLockData() in Graal.
-     */
-    int sizeOfBasicObjectLock();
-
-    /**
      * Get the size in bytes for locking information on the stack.
      */
     int sizeOfLockData();
-
-    /**
-     * The offset of the normal entry to the code. The compiler inserts NOP instructions to satisfy this constraint.
-     *
-     * @return the code offset in bytes
-     */
-    int codeOffset();
 
     /**
      * Returns a disassembly of the given installed code.
@@ -75,17 +52,6 @@ public interface RiRuntime {
      * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
      */
     String disassemble(RiResolvedMethod method);
-
-    /**
-     * Registers the given compiler stub and returns an object that can be used to identify it in the relocation
-     * information.
-     *
-     * @param targetMethod the target method representing the code of the compiler stub
-     * @param name the name of the stub, used for debugging purposes only
-     * @param info the object into which details of the installed code will be written (ignored if null)
-     * @return the identification object
-     */
-    Object registerCompilerStub(CiTargetMethod targetMethod, String name, RiCodeInfo info);
 
     /**
      * Returns the RiType object representing the base type for the given kind.

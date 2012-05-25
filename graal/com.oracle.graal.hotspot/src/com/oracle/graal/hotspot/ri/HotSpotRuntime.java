@@ -83,12 +83,6 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
 
-    @Override
-    public int codeOffset() {
-        return 0;
-    }
-
-
     public Compiler getCompiler() {
         return compiler;
     }
@@ -208,24 +202,8 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public Object registerCompilerStub(CiTargetMethod targetMethod, String name, RiCodeInfo info) {
-        return HotSpotTargetMethod.installStub(compiler, targetMethod, name, (HotSpotCodeInfo) info);
-    }
-
-    @Override
     public int sizeOfLockData() {
         // TODO shouldn't be hard coded
-        return 8;
-    }
-
-    @Override
-    public int sizeOfBasicObjectLock() {
-        // TODO shouldn't be hard coded
-        return 2 * 8;
-    }
-
-    @Override
-    public int basicObjectLockOffsetInBytes() {
         return 8;
     }
 

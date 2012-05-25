@@ -65,8 +65,6 @@ public interface CompilerToVM {
 
     HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean makeDefault, HotSpotCodeInfo info);
 
-    long installStub(HotSpotTargetMethod targetMethod, HotSpotCodeInfo info);
-
     HotSpotVMConfig getConfiguration();
 
     RiMethod RiType_resolveMethodImpl(HotSpotTypeResolved klass, String name, String signature);
