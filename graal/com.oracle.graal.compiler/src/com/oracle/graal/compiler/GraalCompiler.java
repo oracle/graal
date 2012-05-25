@@ -175,14 +175,12 @@ public class GraalCompiler {
         if (GraalOptions.CullFrameStates) {
             new CullFrameStatesPhase().apply(graph);
         }
-        if (GraalOptions.Lower) {
-            new FloatingReadPhase().apply(graph);
-            if (GraalOptions.OptGVN) {
-                new GlobalValueNumberingPhase().apply(graph);
-            }
-            if (GraalOptions.OptReadElimination) {
-                new ReadEliminationPhase().apply(graph);
-            }
+        new FloatingReadPhase().apply(graph);
+        if (GraalOptions.OptGVN) {
+            new GlobalValueNumberingPhase().apply(graph);
+        }
+        if (GraalOptions.OptReadElimination) {
+            new ReadEliminationPhase().apply(graph);
         }
 
         if (GraalOptions.PropagateTypes) {

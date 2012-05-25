@@ -37,7 +37,6 @@ public final class GraalOptions {
     // Checkstyle: resume
 
     public static int     Threads                            = 4;
-    public static boolean Lower                              = true;
 
     // inlining settings
     public static boolean Inline                             = true;

@@ -209,11 +209,22 @@ public class Graph {
                             return usage;
                         }
                     }
-                    break;
+                    return null;
                 }
             }
         }
-        return null;
+        CacheEntry key = new CacheEntry(node);
+        Node cachedNode = cachedNodes.get(key);
+        if (cachedNode != null) {
+            if (!cachedNode.isAlive()) {
+                cachedNodes.remove(key);
+                return null;
+            }
+            return cachedNode != node ? cachedNode : null;
+        } else {
+            cachedNodes.put(key, node);
+            return null;
+        }
     }
 
     private static boolean checkValueNumberable(Node node) {
