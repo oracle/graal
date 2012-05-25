@@ -65,6 +65,10 @@ public class CiFrame extends CiCodePos implements Serializable {
      */
     public final int numLocks;
 
+    /**
+     * In case this frame state belongs to a deoptimization, the leafGraphId will contain the StructuredGraph.graphId() of the graph that originally introduced this deoptimization point.
+     * This id is later on used by the runtime system to evict graphs from the graph cache when deoptimizations originating from them have been hit.
+     */
     public final long leafGraphId;
 
     public final boolean rethrowException;
