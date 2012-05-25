@@ -49,70 +49,66 @@ public class InstanceOfTest extends TypeCheckTest {
     public void test1() {
         test("isString",    profile(),                        "object");
         test("isString",    profile(String.class),            "object");
-        test("isString",    profile(Long.class, Short.class), "object");
 
         test("isString",    profile(),                        Object.class);
         test("isString",    profile(String.class),            Object.class);
-        test("isString",    profile(Long.class, Short.class), Object.class);
     }
 
     @Test
     public void test2() {
         test("isStringInt",    profile(),                        "object");
         test("isStringInt",    profile(String.class),            "object");
-        test("isStringInt",    profile(Long.class, Short.class), "object");
 
         test("isStringInt",    profile(),                        Object.class);
         test("isStringInt",    profile(String.class),            Object.class);
-        test("isStringInt",    profile(Long.class, Short.class), Object.class);
     }
 
     @Test
     public void test3() {
         Throwable throwable = new Exception();
-        test("isThrowable",    profile(),                        throwable);
-        test("isThrowable",    profile(String.class),            throwable);
-        test("isThrowable",    profile(Long.class, Short.class), throwable);
+        test("isThrowable",    profile(),                             throwable);
+        test("isThrowable",    profile(Throwable.class),              throwable);
+        test("isThrowable",    profile(Exception.class, Error.class), throwable);
 
-        test("isThrowable",    profile(),                        Object.class);
-        test("isThrowable",    profile(String.class),            Object.class);
-        test("isThrowable",    profile(Long.class, Short.class), Object.class);
+        test("isThrowable",    profile(),                             Object.class);
+        test("isThrowable",    profile(Throwable.class),              Object.class);
+        test("isThrowable",    profile(Exception.class, Error.class), Object.class);
     }
 
     @Test
     public void test4() {
         Throwable throwable = new Exception();
-        test("isThrowableInt",    profile(),                        throwable);
-        test("isThrowableInt",    profile(String.class),            throwable);
-        test("isThrowableInt",    profile(Long.class, Short.class), throwable);
+        test("isThrowableInt",    profile(),                             throwable);
+        test("isThrowableInt",    profile(Throwable.class),              throwable);
+        test("isThrowableInt",    profile(Exception.class, Error.class), throwable);
 
-        test("isThrowableInt",    profile(),                        Object.class);
-        test("isThrowableInt",    profile(String.class),            Object.class);
-        test("isThrowableInt",    profile(Long.class, Short.class), Object.class);
+        test("isThrowableInt",    profile(),                             Object.class);
+        test("isThrowableInt",    profile(Throwable.class),              Object.class);
+        test("isThrowableInt",    profile(Exception.class, Error.class), Object.class);
     }
 
     @Test
     public void test5() {
         Map map = new HashMap<>();
-        test("isMap",    profile(),                        map);
-        test("isMap",    profile(String.class),            map);
-        test("isMap",    profile(Long.class, Short.class), map);
+        test("isMap",    profile(),                             map);
+        test("isMap",    profile(HashMap.class),                map);
+        test("isMap",    profile(TreeMap.class, HashMap.class), map);
 
-        test("isMap",    profile(),                        Object.class);
-        test("isMap",    profile(String.class),            Object.class);
-        test("isMap",    profile(Long.class, Short.class), Object.class);
+        test("isMap",    profile(),                             Object.class);
+        test("isMap",    profile(HashMap.class),                Object.class);
+        test("isMap",    profile(TreeMap.class, HashMap.class), Object.class);
     }
 
     @Test
     public void test6() {
         Map map = new HashMap<>();
-        test("isMapInt",    profile(),                        map);
-        test("isMapInt",    profile(String.class),            map);
-        test("isMapInt",    profile(Long.class, Short.class), map);
+        test("isMapInt",    profile(),                             map);
+        test("isMapInt",    profile(HashMap.class),                map);
+        test("isMapInt",    profile(TreeMap.class, HashMap.class), map);
 
-        test("isMapInt",    profile(),                        Object.class);
-        test("isMapInt",    profile(String.class),            Object.class);
-        test("isMapInt",    profile(Long.class, Short.class), Object.class);
+        test("isMapInt",    profile(),                             Object.class);
+        test("isMapInt",    profile(HashMap.class),                Object.class);
+        test("isMapInt",    profile(TreeMap.class, HashMap.class), Object.class);
     }
 
     public static boolean isString(Object o) {

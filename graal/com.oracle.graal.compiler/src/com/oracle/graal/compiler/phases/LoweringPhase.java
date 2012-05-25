@@ -29,7 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -105,27 +104,6 @@ public class LoweringPhase extends Phase {
         final CiLoweringTool loweringTool = new LoweringToolBase();
         for (Node node : processed) {
             if (node instanceof Lowerable) {
-                assert !(node instanceof FixedNode) || node.predecessor() == null : node;
-                ((Lowerable) node).lower(loweringTool);
-            }
-        }
-    }
-
-    protected void run0(final StructuredGraph graph) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
-
-        NodeBitMap processed = graph.createNodeBitMap();
-        NodeBitMap activeGuards = graph.createNodeBitMap();
-        processBlock(cfg.getStartBlock(), activeGuards, processed, null);
-
-        processed.negate();
-        final CiLoweringTool loweringTool = new LoweringToolBase();
-        for (Node node : processed) {
-            if (node instanceof CheckCastNode) {
-                // This is a checkcast that was created while lowering some other node (e.g. StoreIndexed).
-                // This checkcast must now be LIR lowered.
-                // TODO (dnsimon) this is temp workaround that will be removed
-            } else if (node instanceof Lowerable) {
                 assert !(node instanceof FixedNode) || node.predecessor() == null : node;
                 ((Lowerable) node).lower(loweringTool);
             }
