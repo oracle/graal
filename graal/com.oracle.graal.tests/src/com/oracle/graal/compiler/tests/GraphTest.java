@@ -146,6 +146,17 @@ public abstract class GraphTest {
         }
     }
 
+    private static int compilationId = 0;
+
+    protected RiCompiledMethod compile(final RiResolvedMethod method, final StructuredGraph graph) {
+        return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<RiCompiledMethod>() {
+            public RiCompiledMethod call() throws Exception {
+                CiTargetMethod targetMethod = runtime.compile(method, graph);
+                return addMethod(method, targetMethod);
+            }
+        });
+    }
+
     protected RiCompiledMethod addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
         Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<RiCompiledMethod>() {
             @Override

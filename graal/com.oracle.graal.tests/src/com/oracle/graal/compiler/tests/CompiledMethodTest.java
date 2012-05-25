@@ -68,8 +68,7 @@ public class CompiledMethodTest extends GraphTest {
         }
 
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
-        RiCompiledMethod compiledMethod = addMethod(riMethod, targetMethod);
+        RiCompiledMethod compiledMethod = compile(riMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
             Assert.assertEquals("1-2-3", result);
@@ -83,8 +82,7 @@ public class CompiledMethodTest extends GraphTest {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
-        RiCompiledMethod compiledMethod = addMethod(riMethod, targetMethod);
+        RiCompiledMethod compiledMethod = compile(riMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
             Assert.assertEquals("1 2 3", result);
@@ -98,8 +96,7 @@ public class CompiledMethodTest extends GraphTest {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
-        RiCompiledMethod compiledMethod = addMethod(riMethod, targetMethod);
+        RiCompiledMethod compiledMethod = compile(riMethod, graph);
         try {
             f1 = "0";
             Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
@@ -127,9 +124,7 @@ public class CompiledMethodTest extends GraphTest {
             }
         }
 
-        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
-        final RiCompiledMethod compiledMethod = addMethod(riMethod, targetMethod);
-
+        RiCompiledMethod compiledMethod = compile(riMethod, graph);
         final CompilableObject compilableObject = new CompilableObjectImpl(0);
 
         Object result;

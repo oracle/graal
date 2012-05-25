@@ -123,7 +123,7 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
                 for (int i = 0; i < inlineContext.size(); ++i) {
                     if (i >= previousInlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
                         for (int j = i; j < inlineContext.size(); ++j) {
-                            openScope(inlineContext.get(j));
+                            openScope(inlineContext.get(j), j == 0);
                         }
                         break;
                     }
@@ -153,14 +153,19 @@ public class IdealGraphPrinterDumpHandler implements DebugDumpHandler {
                 result.add(CiUtil.format("%H::%n(%p)", method));
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
-                result.add(debugDumpScope.getName());
+                if (debugDumpScope.decorator && !result.isEmpty()) {
+                    result.set(result.size() - 1, debugDumpScope.name + ":" + result.get(result.size() - 1));
+                } else {
+                    result.add(debugDumpScope.name);
+                }
             }
         }
         return result;
     }
 
-    private void openScope(String name) {
-        printer.beginGroup(Thread.currentThread().getName() + ":" + name, name, Debug.contextLookup(RiResolvedMethod.class), -1);
+    private void openScope(String name, boolean showThread) {
+        String prefix = showThread ? Thread.currentThread().getName() + ":" : "";
+        printer.beginGroup(prefix + name, name, Debug.contextLookup(RiResolvedMethod.class), -1);
     }
 
     private void closeScope() {

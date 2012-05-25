@@ -111,7 +111,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             CiTargetMethod result = null;
             TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
             try {
-                result = Debug.scope("Compiling", new Callable<CiTargetMethod>() {
+                result = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<CiTargetMethod>() {
 
                     @Override
                     public CiTargetMethod call() throws Exception {
@@ -148,7 +148,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     }
 
     private void installMethod(final CiTargetMethod tm) {
-        Debug.scope("CodeInstall", new Object[] {compiler.getCompiler(), method}, new Runnable() {
+        Debug.scope("CodeInstall", new Object[] {new DebugDumpScope(String.valueOf(id), true), compiler.getCompiler(), method}, new Runnable() {
             @Override
             public void run() {
                 final RiCodeInfo[] info = Debug.isDumpEnabled() ? new RiCodeInfo[1] : null;

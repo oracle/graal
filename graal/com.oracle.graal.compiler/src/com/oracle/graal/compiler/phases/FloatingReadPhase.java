@@ -157,7 +157,7 @@ public class FloatingReadPhase extends Phase {
                 if (anchor == null) {
                     anchor = graph.add(new ValueAnchorNode());
                 }
-                anchor.addAnchoredValue(guard);
+                anchor.addAnchoredNode(guard);
             }
             if (anchor != null) {
                 graph.addAfterFixed(readNode, anchor);

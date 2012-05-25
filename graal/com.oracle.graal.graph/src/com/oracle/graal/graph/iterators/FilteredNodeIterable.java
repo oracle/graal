@@ -30,6 +30,7 @@ public class FilteredNodeIterable<T extends Node> extends NodeIterable<T> {
     private final NodeIterable<T> nodeIterable;
     private NodePredicate predicate = NodePredicates.alwaysTrue();
     private NodePredicate until = NodePredicates.isNull();
+    private boolean distinct;
     public FilteredNodeIterable(NodeIterable<T> nodeIterable) {
         this.nodeIterable = nodeIterable;
     }
@@ -52,9 +53,23 @@ public class FilteredNodeIterable<T extends Node> extends NodeIterable<T> {
         return this;
     }
     @Override
+    public FilteredNodeIterable<T> nonNull() {
+        this.predicate = this.predicate.or(NodePredicates.isNotNull());
+        return this;
+    }
+    @Override
+    public FilteredNodeIterable<T> distinct() {
+        distinct = true;
+        return this;
+    }
+    @Override
     public Iterator<T> iterator() {
         final Iterator<T> iterator = nodeIterable.iterator();
-        return new PredicatedProxyNodeIterator<>(until, iterator, predicate);
+        if (distinct) {
+            return new DistinctPredicatedProxyNodeIterator<>(until, iterator, predicate);
+        } else {
+            return new PredicatedProxyNodeIterator<>(until, iterator, predicate);
+        }
     }
 
     @SuppressWarnings("unchecked")

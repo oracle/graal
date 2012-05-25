@@ -47,6 +47,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     private CFGPrinter cfgPrinter;
     private RiResolvedMethod curMethod;
+    private List<String> curDecorators = Collections.emptyList();
 
     @Override
     public void dump(Object object, String message) {
@@ -57,14 +58,37 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         }
     }
 
-    private static RiResolvedMethod lookupMethod() {
-        RiResolvedMethod method = Debug.contextLookup(RiResolvedMethod.class);
-        if (method != null) {
-            return method;
+    /**
+     * Looks for the outer most method and its {@link DebugDumpScope#decorator}s
+     * in the current debug scope and opens a new compilation scope if this pair
+     * does not match the current method and decorator pair.
+     */
+    private void checkMethodScope() {
+        RiResolvedMethod method = null;
+        ArrayList<String> decorators = new ArrayList<>();
+        for (Object o : Debug.context()) {
+            if (o instanceof RiResolvedMethod) {
+                method = (RiResolvedMethod) o;
+                decorators.clear();
+            } else if (o instanceof StructuredGraph) {
+                StructuredGraph graph = (StructuredGraph) o;
+                assert graph != null && graph.method() != null : "cannot find method context for CFG dump";
+                method = graph.method();
+                decorators.clear();
+            } else if (o instanceof DebugDumpScope) {
+                DebugDumpScope debugDumpScope = (DebugDumpScope) o;
+                if (debugDumpScope.decorator) {
+                    decorators.add(debugDumpScope.name);
+                }
+            }
         }
-        StructuredGraph graph = Debug.contextLookup(StructuredGraph.class);
-        assert graph != null && graph.method() != null : "cannot find method context for CFG dump";
-        return graph.method();
+
+        if (method != curMethod || !curDecorators.equals(decorators)) {
+            cfgPrinter.printCompilation(method);
+            TTY.println("CFGPrinter: Dumping method %s", method);
+            curMethod = method;
+            curDecorators = decorators;
+        }
     }
 
     public void dumpSandboxed(Object object, String message) {
@@ -84,13 +108,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             TTY.println("CFGPrinter: Output to file %s", file);
         }
 
-        RiResolvedMethod newMethod = lookupMethod();
-
-        if (newMethod != curMethod) {
-            cfgPrinter.printCompilation(newMethod);
-            TTY.println("CFGPrinter: Dumping method %s", newMethod);
-            curMethod = newMethod;
-        }
+        checkMethodScope();
 
         cfgPrinter.target = compiler.target;
         if (object instanceof LIR) {

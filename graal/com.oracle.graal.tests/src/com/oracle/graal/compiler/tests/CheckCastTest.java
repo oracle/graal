@@ -22,68 +22,24 @@
  */
 package com.oracle.graal.compiler.tests;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
 
-public class LowerCheckCastTest extends GraphTest {
+/**
+ * Tests the implementation of checkcast, allowing profiling information to
+ * be manually specified.
+ */
+public class CheckCastTest extends TypeCheckTest {
 
-    private RiCompiledMethod compile(Method method, RiTypeProfile profile) {
-        final StructuredGraph graph = parse(method);
-
+    @Override
+    protected void replaceProfile(StructuredGraph graph, RiTypeProfile profile) {
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         if (ccn != null) {
             CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
             graph.replaceFixedWithFixed(ccn, ccnNew);
-        }
-
-        final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        CiTargetMethod targetMethod = runtime.compile(riMethod, graph);
-        return addMethod(riMethod, targetMethod);
-    }
-
-    private RiTypeProfile profile(Class... types) {
-        if (types.length == 0) {
-            return null;
-        }
-        ProfiledType[] ptypes = new ProfiledType[types.length];
-        for (int i = 0; i < types.length; i++) {
-            ptypes[i] = new ProfiledType(runtime.getType(types[i]), 1.0D / types.length);
-        }
-        return new RiTypeProfile(0.0D, ptypes);
-    }
-
-    private void test(String name, RiTypeProfile profile, Object... args) {
-        Method method = getMethod(name);
-        Object expect = null;
-        Throwable exception = null;
-        try {
-            // This gives us both the expected return value as well as ensuring that the method to be compiled is fully resolved
-            expect = method.invoke(null, args);
-        } catch (InvocationTargetException e) {
-            exception = e.getTargetException();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        RiCompiledMethod compiledMethod = compile(method, profile);
-        compiledMethod.method();
-
-        if (exception != null) {
-            try {
-                compiledMethod.executeVarargs(args);
-                Assert.fail("expected " + exception);
-            } catch (Throwable e) {
-                Assert.assertEquals(exception.getClass(), e.getClass());
-            }
-        } else {
-            Object actual = compiledMethod.executeVarargs(args);
-            Assert.assertEquals(expect, actual);
         }
     }
 

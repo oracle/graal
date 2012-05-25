@@ -22,16 +22,24 @@
  */
 package com.oracle.graal.debug;
 
-public final class DebugDumpScope {
+public class DebugDumpScope {
 
-    private final String name;
+    public final String name;
+
+    /**
+     * Specifies if this scope decorates an inner scope.
+     * A hierarchical or tree representation of nested scopes may choose to represent
+     * a decorator scope at the same level as the scope it decorates.
+     */
+    public final boolean decorator;
 
     public DebugDumpScope(String name) {
-        this.name = name;
+        this(name, false);
     }
 
-    public String getName() {
-        return name;
+    public DebugDumpScope(String name, boolean decorator) {
+        this.name = name;
+        this.decorator = decorator;
     }
 
     @Override
