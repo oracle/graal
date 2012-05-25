@@ -37,7 +37,7 @@ class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode value;
 
     public DirectStoreNode(ValueNode address, ValueNode value) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         this.address = address;
         this.value = value;
     }

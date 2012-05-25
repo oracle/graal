@@ -75,10 +75,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         assert object() != null : this;
 
         if (targetClass != null) {
-            RiResolvedType objectType = object().exactType();
-            if (objectType == null) {
-                objectType = object().declaredType();
-            }
+            RiResolvedType objectType = object().objectStamp().type();
             if (objectType != null && objectType.isSubtypeOf(targetClass)) {
                 // we don't have to check for null types here because they will also pass the checkcast.
                 return object();

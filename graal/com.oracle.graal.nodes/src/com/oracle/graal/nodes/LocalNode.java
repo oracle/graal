@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
@@ -35,10 +34,6 @@ import com.oracle.graal.nodes.type.*;
 public final class LocalNode extends FloatingNode implements Node.IterableNodeType {
 
     private final int index;
-
-    public LocalNode(CiKind kind, int index) {
-        this(index, StampFactory.forKind(kind));
-    }
 
     public LocalNode(int index, Stamp stamp) {
         super(stamp);

@@ -98,7 +98,7 @@ public final class GraphBuilderPhase extends Phase {
      */
     private static class BlockPlaceholderNode extends FixedWithNextNode implements Node.IterableNodeType {
         public BlockPlaceholderNode() {
-            super(StampFactory.illegal());
+            super(StampFactory.forVoid());
         }
     }
 
@@ -259,7 +259,7 @@ public final class GraphBuilderPhase extends Phase {
         dispatchBegin.setStateAfter(dispatchState.create(bci));
 
         if (exceptionObject == null) {
-            ExceptionObjectNode newExceptionObject = currentGraph.add(new ExceptionObjectNode());
+            ExceptionObjectNode newExceptionObject = currentGraph.add(new ExceptionObjectNode(runtime));
             dispatchState.apush(newExceptionObject);
             dispatchState.setRethrowException(true);
             newExceptionObject.setStateAfter(dispatchState.create(bci));
@@ -937,7 +937,10 @@ public final class GraphBuilderPhase extends Phase {
             return;
         }
         // 1. check if the exact type of the receiver can be determined
-        RiResolvedType exact = getExactType(klass, receiver);
+        RiResolvedType exact = klass.exactType();
+        if (exact == null && receiver.objectStamp().isExactType()) {
+            exact = receiver.objectStamp().type();
+        }
         if (exact != null) {
             // either the holder class is exact, or the receiver object has an exact type
             invokeDirect(exact.resolveMethodImpl(target), args);
@@ -980,25 +983,6 @@ public final class GraphBuilderPhase extends Phase {
             invoke.setNext(createTarget(nextBlock, frameState));
             invoke.setStateAfter(frameState.create(nextBlock.startBci));
         }
-    }
-
-    private RiResolvedType getExactType(RiResolvedType staticType, ValueNode receiver) {
-        RiResolvedType exact = staticType.exactType();
-        if (exact == null) {
-            exact = receiver.exactType();
-            if (exact == null) {
-                if (receiver.isConstant()) {
-                    exact = runtime.getTypeOf(receiver.asConstant());
-                }
-                if (exact == null) {
-                    RiResolvedType declared = receiver.declaredType();
-                    if (declared != null) {
-                        exact = declared.exactType();
-                    }
-                }
-            }
-        }
-        return exact;
     }
 
     private void callRegisterFinalizer() {

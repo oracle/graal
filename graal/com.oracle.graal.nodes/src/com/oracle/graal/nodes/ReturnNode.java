@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -37,11 +36,18 @@ public final class ReturnNode extends FixedNode implements LIRLowerable, Node.It
 
     /**
      * Constructs a new Return instruction.
+     *
      * @param result the instruction producing the result for this return; {@code null} if this is a void return
      */
     public ReturnNode(ValueNode result) {
-        super(StampFactory.forKind(result == null ? CiKind.Void : result.kind()));
+        super(result == null ? StampFactory.forVoid() : result.stamp());
         this.result = result;
+    }
+
+    @Override
+    public boolean verify() {
+        assertTrue((result == null && stamp() == StampFactory.forVoid()) || (result != null && kind() == result.kind()), "invalid stamp");
+        return super.verify();
     }
 
     @Override

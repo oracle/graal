@@ -36,7 +36,7 @@ import com.oracle.max.cri.ci.*;
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType {
 
     public ValueAnchorNode(ValueNode... values) {
-        super(StampFactory.illegal(), values);
+        super(StampFactory.dependency(), values);
     }
 
     @Override
@@ -53,7 +53,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         if (this.predecessor() instanceof ValueAnchorNode) {
             // transfer values and remove
             ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
-            for (Node node : dependencies().nonNull()) {
+            for (ValueNode node : dependencies().nonNull()) {
                 previousAnchor.dependencies().add(node);
             }
             return null;

@@ -33,10 +33,9 @@ import com.oracle.graal.compiler.phases.CanonicalizerPhase.IsImmutablePredicate;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -281,7 +280,7 @@ public class InliningUtil {
 
             PhiNode returnValuePhi = null;
             if (hasReturnValue) {
-                returnValuePhi = graph.unique(new PhiNode(invoke.node().kind(), returnMerge, PhiType.Value));
+                returnValuePhi = graph.unique(new PhiNode(invoke.node().kind(), returnMerge));
             }
 
             MergeNode exceptionMerge = null;
@@ -296,7 +295,7 @@ public class InliningUtil {
 
                 FixedNode exceptionSux = exceptionObject.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
-                exceptionObjectPhi = graph.unique(new PhiNode(CiKind.Object, exceptionMerge, PhiType.Value));
+                exceptionObjectPhi = graph.unique(new PhiNode(CiKind.Object, exceptionMerge));
                 exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, CiKind.Void, exceptionObjectPhi));
             }
 
@@ -575,10 +574,11 @@ public class InliningUtil {
             }
             return null;
         }
-        if (callTarget.receiver().exactType() != null) {
-            RiResolvedType exact = callTarget.receiver().exactType();
-            assert exact.isSubtypeOf(targetMethod.holder()) : exact + " subtype of " + targetMethod.holder() + " for " + targetMethod;
-            RiResolvedMethod resolved = exact.resolveMethodImpl(targetMethod);
+        ObjectStamp receiverStamp = callTarget.receiver().objectStamp();
+        RiResolvedType receiverType = receiverStamp.type();
+        if (receiverStamp.isExactType()) {
+            assert receiverType.isSubtypeOf(targetMethod.holder()) : receiverType + " subtype of " + targetMethod.holder() + " for " + targetMethod;
+            RiResolvedMethod resolved = receiverType.resolveMethodImpl(targetMethod);
             if (checkTargetConditions(invoke, resolved, optimisticOpts)) {
                 double weight = callback == null ? 0 : callback.inliningWeight(parent, resolved, invoke);
                 return new ExactInlineInfo(invoke, weight, level, resolved);
@@ -587,12 +587,11 @@ public class InliningUtil {
         }
         RiResolvedType holder = targetMethod.holder();
 
-        if (callTarget.receiver().declaredType() != null) {
-            RiResolvedType declared = callTarget.receiver().declaredType();
+        if (receiverStamp.type() != null) {
             // the invoke target might be more specific than the holder (happens after inlining: locals lose their declared type...)
             // TODO (lstadler) fix this
-            if (declared != null && declared.isSubtypeOf(holder)) {
-                holder = declared;
+            if (receiverType != null && receiverType.isSubtypeOf(holder)) {
+                holder = receiverType;
             }
         }
         // TODO (thomaswue) fix this
@@ -1066,7 +1065,7 @@ public class InliningUtil {
         StructuredGraph graph = (StructuredGraph) invoke.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
-        if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.stamp().nonNull()) {
+        if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.objectStamp().nonNull()) {
             graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), RiDeoptReason.ClassCastException, RiDeoptAction.InvalidateReprofile, true, invoke.leafGraphId())));
         }
     }

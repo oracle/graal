@@ -66,7 +66,7 @@ public abstract class AccessMonitorNode extends AbstractStateSplit implements St
      * @param object the instruction producing the object
      */
     public AccessMonitorNode(ValueNode object) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         this.object = object;
     }
 }

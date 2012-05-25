@@ -61,7 +61,7 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
     }
 
     protected LocationNode(Object identity, CiKind kind, int displacement) {
-        super(StampFactory.illegal());
+        super(StampFactory.extension());
         assert kind != CiKind.Illegal && kind != CiKind.Void;
         this.displacement = displacement;
         this.valueKind = kind;

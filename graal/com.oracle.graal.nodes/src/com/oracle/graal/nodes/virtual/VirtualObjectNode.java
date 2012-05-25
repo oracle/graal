@@ -35,14 +35,14 @@ public class VirtualObjectNode extends ValueNode implements LIRLowerable {
     private int fieldsCount;
 
     public VirtualObjectNode(RiResolvedType type, EscapeField[] fields) {
-        super(StampFactory.illegal());
+        super(StampFactory.virtual());
         this.type = type;
         this.fields = fields;
         this.fieldsCount = fields.length;
     }
 
     public VirtualObjectNode(RiResolvedType type, int fieldCount) {
-        super(StampFactory.illegal());
+        super(StampFactory.virtual());
         this.type = type;
         this.fieldsCount = fieldCount;
     }

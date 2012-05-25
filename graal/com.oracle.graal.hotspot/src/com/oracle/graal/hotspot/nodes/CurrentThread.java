@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -32,8 +33,8 @@ public final class CurrentThread extends FloatingNode implements LIRLowerable {
 
     private int threadObjectOffset;
 
-    public CurrentThread(int threadObjectOffset) {
-        super(StampFactory.forKind(CiKind.Object));
+    public CurrentThread(int threadObjectOffset, RiRuntime runtime) {
+        super(StampFactory.declaredNonNull(runtime.getType(Thread.class)));
         this.threadObjectOffset = threadObjectOffset;
     }
 

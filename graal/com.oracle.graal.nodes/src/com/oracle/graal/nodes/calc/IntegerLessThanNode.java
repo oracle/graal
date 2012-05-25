@@ -72,6 +72,10 @@ public final class IntegerLessThanNode extends CompareNode {
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forBoolean(false, graph());
+        } else if (x().integerStamp().upperBound() < y().integerStamp().lowerBound()) {
+            return ConstantNode.forBoolean(true, graph());
+        } else if (x().integerStamp().lowerBound() >= y().integerStamp().upperBound()) {
+            return ConstantNode.forBoolean(false, graph());
         }
         return super.canonical(tool);
     }

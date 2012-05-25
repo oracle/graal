@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.type;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-/**
- * Unwind takes an exception object, destroys the current stack frame and passes the exception object to the system's exception dispatch code.
- */
-public final class UnwindNode extends FixedNode implements LIRLowerable, Node.IterableNodeType {
 
-    @Input private ValueNode exception;
+public class FloatStamp extends Stamp {
 
-    public ValueNode exception() {
-        return exception;
-    }
-
-    public UnwindNode(ValueNode exception) {
-        super(StampFactory.forVoid());
-        assert exception == null || exception.kind() == CiKind.Object;
-        this.exception = exception;
+    protected FloatStamp(CiKind kind) {
+        super(kind);
+        assert kind == CiKind.Float || kind == CiKind.Double;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitCall(CiRuntimeCall.UnwindException, false, gen.operand(exception()));
+    public String toString() {
+        return "" + kind().typeChar;
     }
+
+    @Override
+    public boolean alwaysDistinct(Stamp other) {
+        return false;
+    }
+
+    @Override
+    public Stamp meet(Stamp other) {
+        assert kind() == other.kind();
+        return this;
+    }
+
 }

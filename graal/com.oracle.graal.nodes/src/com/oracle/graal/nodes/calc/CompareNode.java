@@ -55,7 +55,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
      * @param y the instruction that produces the second input to this instruction
      */
     public CompareNode(ValueNode x, ValueNode y) {
-        super(StampFactory.illegal());
+        super(StampFactory.condition());
         assert (x == null && y == null) || x.kind() == y.kind();
         this.x = x;
         this.y = y;

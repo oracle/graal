@@ -50,7 +50,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     }
 
     public FixedGuardNode(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         this.action = action;
         this.negated = negated;
         this.leafGraphId = leafGraphId;

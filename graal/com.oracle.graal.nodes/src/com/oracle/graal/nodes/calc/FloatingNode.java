@@ -34,11 +34,11 @@ public abstract class FloatingNode extends ValueNode implements Node.ValueNumber
         super(stamp);
     }
 
-    public FloatingNode(Stamp stamp, Node... dependencies) {
+    public FloatingNode(Stamp stamp, ValueNode... dependencies) {
         super(stamp, dependencies);
     }
 
-    public FloatingNode(Stamp stamp, List<Node> dependencies) {
+    public FloatingNode(Stamp stamp, List<ValueNode> dependencies) {
         super(stamp, dependencies);
     }
 }

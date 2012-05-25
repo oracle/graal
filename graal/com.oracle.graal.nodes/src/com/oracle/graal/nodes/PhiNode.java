@@ -33,18 +33,42 @@ import com.oracle.graal.nodes.type.*;
  * and a variable.
  */
 public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
+
     public static enum PhiType {
-        Value, // normal value phis
-        Memory, // memory phis
-        Virtual // phis used for VirtualObjectField merges
+        Value(null), // normal value phis
+        Memory(StampFactory.dependency()), // memory phis
+        Virtual(StampFactory.virtual()); // phis used for VirtualObjectField merges
+
+        public final Stamp stamp;
+
+        PhiType(Stamp stamp) {
+            this.stamp = stamp;
+        }
     }
 
     @Input(notDataflow = true) private MergeNode merge;
     @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
     private final PhiType type;
 
-    public PhiNode(CiKind kind, MergeNode merge, PhiType type) {
+    /**
+     * Create a value phi ({@link PhiType#Value}) with the specified kind.
+     * @param kind the kind of the value
+     * @param merge the merge that the new phi belongs to
+     */
+    public PhiNode(CiKind kind, MergeNode merge) {
         super(StampFactory.forKind(kind));
+        this.type = PhiType.Value;
+        this.merge = merge;
+    }
+
+    /**
+     * Create a non-value phi ({@link PhiType#Memory} or {@link PhiType#Virtual}) with the specified kind.
+     * @param type the type of the new phi
+     * @param merge the merge that the new phi belongs to
+     */
+    public PhiNode(PhiType type, MergeNode merge) {
+        super(type.stamp);
+        assert type.stamp != null : merge + " " + type;
         this.type = type;
         this.merge = merge;
     }
@@ -62,7 +86,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
     }
 
     public boolean inferStamp() {
-        Stamp newStamp = StampFactory.or(values());
+        Stamp newStamp = StampFactory.meet(values());
         if (stamp().equals(newStamp)) {
             return false;
         } else {

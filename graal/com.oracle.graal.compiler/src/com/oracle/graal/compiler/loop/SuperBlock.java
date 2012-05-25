@@ -194,7 +194,7 @@ public class SuperBlock {
                 ValueNode replaceWith;
                 ValueProxyNode newVpn = (ValueProxyNode) duplicates.get(vpn);
                 if (newVpn != null) {
-                    PhiNode phi = graph.add(new PhiNode(vpn.kind(), merge, vpn.type()));
+                    PhiNode phi = graph.add(vpn.type() == PhiType.Value ? new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge));
                     phi.addInput(vpn);
                     phi.addInput(newVpn);
                     if (vpn.type() == PhiType.Value) {
@@ -249,7 +249,7 @@ public class SuperBlock {
             ValueNode newValue = newVirtualState[i];
             assert value.kind() == newValue.kind();
             if (value != newValue) {
-                PhiNode valuePhi = graph.add(new PhiNode(value.kind(), merge, PhiType.Value));
+                PhiNode valuePhi = graph.add(new PhiNode(value.kind(), merge));
                 ValueProxyNode inputProxy = findProxy(value, earlyExit);
                 if (inputProxy != null) {
                     ValueProxyNode newInputProxy = findProxy(newValue, newEarlyExit);
@@ -291,7 +291,7 @@ public class SuperBlock {
                 assert v.kind() == state[i].kind();
             }
             if (reconcile) {
-                PhiNode valuePhi = graph.add(new PhiNode(v.kind(), merge, PhiType.Value));
+                PhiNode valuePhi = graph.add(new PhiNode(v.kind(), merge));
                 for (ValueNode[] state : virtualStates) {
                     valuePhi.addInput(state[i]);
                 }

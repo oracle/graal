@@ -226,7 +226,7 @@ public class PropagateTypeCachePhase extends Phase {
                             if (canonical.dependencies.length > 0) {
                                 for (Node usage : node.usages()) {
                                     if (usage instanceof ValueNode) {
-                                        for (Node dependency : canonical.dependencies) {
+                                        for (ValueNode dependency : canonical.dependencies) {
                                             // TODO(lstadler) dead dependencies should be handled differently
                                             if (dependency.isAlive()) {
                                                 ((ValueNode) usage).dependencies().add(dependency);
@@ -245,7 +245,7 @@ public class PropagateTypeCachePhase extends Phase {
                         }
                     }
                     if (node.isAlive() && node instanceof TypeFeedbackProvider) {
-                        changed.node = node;
+                        changed.node = (ValueNode) node;
                         ((TypeFeedbackProvider) node).typeFeedback(cache);
                         if (DUMP) {
                             out.println("  " + cache);

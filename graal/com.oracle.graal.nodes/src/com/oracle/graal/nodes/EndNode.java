@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 public class EndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
     public EndNode() {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
     }
 
     @Override

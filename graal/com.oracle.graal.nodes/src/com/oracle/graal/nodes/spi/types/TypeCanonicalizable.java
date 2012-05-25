@@ -29,11 +29,11 @@ import com.oracle.graal.nodes.*;
 
 public interface TypeCanonicalizable {
 
-    Node[] EMPTY_ARRAY = new Node[0];
+    ValueNode[] EMPTY_ARRAY = new ValueNode[0];
 
     public static class Result {
         public final ValueNode replacement;
-        public final Node[] dependencies;
+        public final ValueNode[] dependencies;
 
         public Result(ValueNode replacement) {
             this.replacement = replacement;
@@ -44,7 +44,7 @@ public interface TypeCanonicalizable {
             assert query != null;
             this.replacement = replacement;
             if (query.dependency() != null) {
-                this.dependencies = new Node[] {query.dependency()};
+                this.dependencies = new ValueNode[] {query.dependency()};
             } else {
                 this.dependencies = EMPTY_ARRAY;
             }
@@ -58,7 +58,7 @@ public interface TypeCanonicalizable {
                     deps.add(query.dependency());
                 }
             }
-            this.dependencies = deps.toArray(new Node[deps.size()]);
+            this.dependencies = deps.toArray(new ValueNode[deps.size()]);
         }
 
         @Override

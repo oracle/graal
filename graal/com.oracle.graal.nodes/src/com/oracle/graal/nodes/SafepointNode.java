@@ -32,9 +32,8 @@ import com.oracle.graal.nodes.type.*;
 public final class SafepointNode extends FixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
 
     public SafepointNode() {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
     }
-
 
     @Override
     public void generate(LIRGeneratorTool gen) {

@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.cfg.*;
@@ -116,7 +115,7 @@ public class FloatingReadPhase extends Phase {
                 Debug.log("Add new input to %s: %s.", original, newValue);
                 assert phi.valueCount() <= phi.merge().forwardEndCount() : phi.merge();
             } else {
-                PhiNode phi = m.graph().unique(new PhiNode(CiKind.Illegal, m, PhiType.Memory));
+                PhiNode phi = m.graph().unique(new PhiNode(PhiType.Memory, m));
                 // TODO(ls) how does this work? add documentation ...
                 for (int i = 0; i < mergeOperationCount + 1; ++i) {
                     phi.addInput((ValueNode) original);
@@ -199,7 +198,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         private void createLoopEntryPhi(Object modifiedLocation, Node other, Loop loop) {
-            PhiNode phi = other.graph().unique(new PhiNode(CiKind.Illegal, (MergeNode) loop.header.getBeginNode(), PhiType.Memory));
+            PhiNode phi = other.graph().unique(new PhiNode(PhiType.Memory, (MergeNode) loop.header.getBeginNode()));
             phi.addInput((ValueNode) other);
             map.put(modifiedLocation, phi);
             loopEntryMap.put(modifiedLocation, phi);

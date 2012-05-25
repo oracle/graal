@@ -41,7 +41,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
     }
 
     public DeoptimizeNode(RiDeoptAction action, RiDeoptReason reason, long leafGraphId) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         this.action = action;
         this.reason = reason;
         this.leafGraphId = leafGraphId;

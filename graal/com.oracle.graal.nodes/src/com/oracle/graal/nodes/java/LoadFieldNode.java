@@ -47,8 +47,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     private static Stamp createStamp(RiResolvedField field) {
         CiKind kind = field.kind(false);
         if (kind == CiKind.Object && field.type() instanceof RiResolvedType) {
-            RiResolvedType resolvedType = (RiResolvedType) field.type();
-            return StampFactory.declared(resolvedType);
+            return StampFactory.declared((RiResolvedType) field.type());
         } else {
             return StampFactory.forKind(kind);
         }

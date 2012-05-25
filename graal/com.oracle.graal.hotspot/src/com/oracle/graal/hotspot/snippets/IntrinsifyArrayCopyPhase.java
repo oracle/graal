@@ -81,14 +81,14 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                 ValueNode src = methodCallTarget.arguments().get(0);
                 ValueNode dest = methodCallTarget.arguments().get(2);
                 assert src != null && dest != null;
-                RiResolvedType srcDeclaredType = src.declaredType();
-                RiResolvedType destDeclaredType = dest.declaredType();
-                if (srcDeclaredType != null
-                                && srcDeclaredType.isArrayClass()
-                                && destDeclaredType != null
-                                && destDeclaredType.isArrayClass()) {
-                    CiKind componentKind = srcDeclaredType.componentType().kind(false);
-                    if (srcDeclaredType.componentType() == destDeclaredType.componentType()) {
+                RiResolvedType srcType = src.objectStamp().type();
+                RiResolvedType destType = dest.objectStamp().type();
+                if (srcType != null
+                                && srcType.isArrayClass()
+                                && destType != null
+                                && destType.isArrayClass()) {
+                    CiKind componentKind = srcType.componentType().kind(false);
+                    if (srcType.componentType() == destType.componentType()) {
                         if (componentKind == CiKind.Int) {
                             snippetMethod = intArrayCopy;
                         } else if (componentKind == CiKind.Char) {
@@ -107,7 +107,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                             snippetMethod = objectArrayCopy;
                         }
                     } else if (componentKind == CiKind.Object
-                                    && srcDeclaredType.componentType().isSubtypeOf(destDeclaredType.componentType())) {
+                                    && srcType.componentType().isSubtypeOf(destType.componentType())) {
                         snippetMethod = objectArrayCopy;
                     }
                 }

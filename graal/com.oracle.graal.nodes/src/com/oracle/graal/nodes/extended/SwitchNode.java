@@ -43,7 +43,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      * @param stateAfter the state after the switch
      */
     public SwitchNode(ValueNode value, BeginNode[] successors, double[] probability) {
-        super(StampFactory.illegal(), successors, probability);
+        super(StampFactory.forVoid(), successors, probability);
         this.value = value;
     }
 

@@ -38,7 +38,7 @@ public class MembarNode extends AbstractStateSplit implements StateSplit, LIRLow
      * @param barriers a mask of the barrier constants defined in {@link MemoryBarriers}
      */
     public MembarNode(int barriers) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         this.barriers = barriers;
     }
 

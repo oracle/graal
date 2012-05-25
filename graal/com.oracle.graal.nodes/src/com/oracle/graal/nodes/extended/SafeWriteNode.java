@@ -23,11 +23,9 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.cri.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerable {
 
@@ -49,7 +47,7 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
     }
 
     public SafeWriteNode(ValueNode object, ValueNode value, LocationNode location, long leafGraphId) {
-        super(object, location, StampFactory.forKind(CiKind.Void), leafGraphId);
+        super(object, location, StampFactory.forVoid(), leafGraphId);
         this.value = value;
     }
 
@@ -60,7 +58,7 @@ public class SafeWriteNode extends SafeAccessNode implements StateSplit, Lowerab
     @Override
     public void lower(CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) graph();
-        Node guard = tool.createNullCheckGuard(object(), leafGraphId());
+        ValueNode guard = tool.createNullCheckGuard(object(), leafGraphId());
         WriteNode write = graph.add(new WriteNode(object(), value(), location()));
         write.dependencies().add(guard);
         graph.replaceFixedWithFixed(this, write);

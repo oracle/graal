@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,57 @@
  */
 package com.oracle.graal.nodes.type;
 
-import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
+public final class GenericStamp extends Stamp {
 
-public abstract class Stamp {
-
-    private final CiKind kind;
-
-    protected Stamp(CiKind kind) {
-        this.kind = kind;
+    public enum GenericStampType {
+        Dependency, Extension, Virtual, Condition, Void
     }
 
-    public CiKind kind() {
-        return kind;
+    private final GenericStampType type;
+
+    protected GenericStamp(GenericStampType type) {
+        super(CiKind.Void);
+        this.type = type;
     }
 
-    public ScalarTypeQuery scalarType() {
-        return null;
+    public GenericStampType type() {
+        return type;
     }
 
-    public ObjectTypeQuery objectType() {
-        return null;
+    @Override
+    public String toString() {
+        return type.toString();
     }
 
-    public boolean nonNull() {
+    @Override
+    public boolean alwaysDistinct(Stamp other) {
         return false;
     }
 
-    public RiResolvedType exactType() {
-        return null;
+    @Override
+    public Stamp meet(Stamp other) {
+        assert ((GenericStamp) other).type == type;
+        return this;
     }
 
-    public RiResolvedType declaredType() {
-        return null;
+    @Override
+    public int hashCode() {
+        return 31 + ((type == null) ? 0 : type.hashCode());
     }
 
-    public abstract boolean alwaysDistinct(Stamp other);
-
-    public abstract Stamp meet(Stamp other);
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        if (type != ((GenericStamp) obj).type) {
+            return false;
+        }
+        return true;
+    }
 }

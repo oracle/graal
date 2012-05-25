@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
@@ -577,7 +578,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void visitNewObjectArray(NewObjectArrayNode x) {
         XirArgument length = toXirArgument(x.length());
-        XirSnippet snippet = xir.genNewArray(site(x), length, CiKind.Object, x.elementType(), x.exactType());
+        XirSnippet snippet = xir.genNewArray(site(x), length, CiKind.Object, x.elementType(), x.elementType().arrayOf());
         emitXir(snippet, x, state(), true);
     }
 
@@ -1376,7 +1377,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
 
         public boolean requiresNullCheck() {
-            return receiver == null || !receiver.stamp().nonNull();
+            return receiver == null || !(receiver.stamp() instanceof ObjectStamp && ((ObjectStamp) receiver.stamp()).nonNull());
         }
 
         public boolean requiresBoundsCheck() {

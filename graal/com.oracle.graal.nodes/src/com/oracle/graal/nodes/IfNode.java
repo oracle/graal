@@ -49,7 +49,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     public IfNode(BooleanNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double takenProbability) {
-        super(StampFactory.illegal(), new BeginNode[] {BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor)}, new double[] {takenProbability, 1 - takenProbability});
+        super(StampFactory.forVoid(), new BeginNode[] {BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor)}, new double[] {takenProbability, 1 - takenProbability});
         this.compare = condition;
     }
 

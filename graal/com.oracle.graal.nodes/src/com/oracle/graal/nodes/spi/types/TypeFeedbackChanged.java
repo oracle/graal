@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.spi.types;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 
 public class TypeFeedbackChanged {
 
-    public Node node;
+    public ValueNode node;
 
 }

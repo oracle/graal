@@ -25,11 +25,10 @@ package com.oracle.graal.compiler.types;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.types.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
 
@@ -181,7 +180,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
                 ScalarTypeFeedbackStore scalar = ScalarTypeFeedbackStore.meet(types);
                 if (scalar != null && !scalar.isEmpty()) {
                     result.scalarTypeFeedback.put(phi, scalar);
-                    phi.setStamp(StampFactory.forKind(phi.kind(), scalar.query(), null));
+//                    phi.setStamp(StampFactory.forKind(phi.kind(), scalar.query(), null));
                 }
             } else if (phi.kind() == CiKind.Object) {
                 ObjectTypeFeedbackStore[] types = new ObjectTypeFeedbackStore[phi.valueCount()];
@@ -195,7 +194,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
                 ObjectTypeFeedbackStore object = ObjectTypeFeedbackStore.meet(types);
                 if (object != null && !object.isEmpty()) {
                     result.objectTypeFeedback.put(phi, object);
-                    phi.setStamp(StampFactory.forKind(phi.kind(), null, object.query()));
+//                    phi.setStamp(StampFactory.forKind(phi.kind(), null, object.query()));
                 }
             }
         }

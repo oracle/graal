@@ -47,22 +47,22 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
-        public Node getGuardAnchor() {
+        public ValueNode getGuardAnchor() {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public Node createNullCheckGuard(ValueNode object, long leafGraphId) {
+        public ValueNode createNullCheckGuard(ValueNode object, long leafGraphId) {
             return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, true, leafGraphId);
         }
 
         @Override
-        public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
             return createGuard(condition, deoptReason, action, false, leafGraphId);
         }
 
         @Override
-        public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
             // TODO (thomaswue): Document why this must not be called on floating nodes.
             throw new UnsupportedOperationException();
         }
@@ -162,26 +162,26 @@ public class LoweringPhase extends Phase {
         }
     }
 
-    private void process(final Block b, final NodeBitMap activeGuards, NodeBitMap processed, final Node anchor) {
+    private void process(final Block b, final NodeBitMap activeGuards, NodeBitMap processed, final ValueNode anchor) {
 
         final CiLoweringTool loweringTool = new LoweringToolBase() {
 
             @Override
-            public Node getGuardAnchor() {
+            public ValueNode getGuardAnchor() {
                 return anchor;
             }
 
             @Override
-            public Node createGuard(Node condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+            public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {
                         if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage)) {
-                            return usage;
+                            return (ValueNode) usage;
                         }
                     }
                 }
-                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode((BooleanNode) condition, guardAnchor, deoptReason, action, negated, leafGraphId));
+                GuardNode newGuard = guardAnchor.graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, leafGraphId));
                 if (GraalOptions.OptEliminateGuards) {
                     activeGuards.grow();
                     activeGuards.mark(newGuard);

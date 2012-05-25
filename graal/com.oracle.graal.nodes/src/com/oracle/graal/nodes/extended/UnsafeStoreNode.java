@@ -55,7 +55,7 @@ public class UnsafeStoreNode extends FixedWithNextNode implements StateSplit, Lo
     }
 
     public UnsafeStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, CiKind kind) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         assert kind != CiKind.Void && kind != CiKind.Illegal;
         this.object = object;
         this.displacement = displacement;

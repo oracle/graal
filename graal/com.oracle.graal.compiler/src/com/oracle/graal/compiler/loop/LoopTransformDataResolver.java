@@ -78,7 +78,7 @@ public class LoopTransformDataResolver {
                             }
                         }
                         if (merge != null) { // found values of interest (backedge values that exist in the peel)
-                            PhiNode firstPhi = graph.add(new PhiNode(phi.kind(), merge, phi.type()));
+                            PhiNode firstPhi = graph.add(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), merge) : new PhiNode(phi.type(), merge));
                             for (EndNode end : merge.forwardEnds()) {
                                 LoopEndNode loopEnd = reverseEnds.get(end);
                                 ValueNode prim = prim(phi.valueAt(loopEnd));
@@ -93,7 +93,7 @@ public class LoopTransformDataResolver {
                         }
                     }
                     if (first != null) { // create a new phi (we don't patch the old one since some usages of the old one may still be valid)
-                        PhiNode newPhi = graph.add(new PhiNode(phi.kind(), loopBegin, phi.type()));
+                        PhiNode newPhi = graph.add(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), loopBegin) : new PhiNode(phi.type(), loopBegin));
                         newPhi.addInput(first);
                         for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                             newPhi.addInput(phi.valueAt(end));

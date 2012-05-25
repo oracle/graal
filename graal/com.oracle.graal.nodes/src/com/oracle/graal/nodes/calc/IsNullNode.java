@@ -44,7 +44,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
      * @param object the instruction producing the object to check against null
      */
     public IsNullNode(ValueNode object) {
-        super(StampFactory.illegal());
+        super(StampFactory.condition());
         assert object.kind() == CiKind.Object : object.kind();
         this.object = object;
     }
@@ -68,7 +68,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
             assert constant.kind == CiKind.Object;
             return ConstantNode.forBoolean(constant.isNull(), graph());
         }
-        if (object.stamp().nonNull()) {
+        if (object.objectStamp().nonNull()) {
             return ConstantNode.forBoolean(false, graph());
         }
         return this;

@@ -97,7 +97,7 @@ public class CheckCastEliminationPhase extends Phase {
                         break;
                     }
                 }
-                if (type == null && type != node.declaredType()) {
+                if (type == null && type != node.objectStamp().type()) {
                     newKnownTypes.put(node, type);
                 }
             }
@@ -203,7 +203,7 @@ public class CheckCastEliminationPhase extends Phase {
 
         public RiResolvedType getNodeType(ValueNode node) {
             RiResolvedType result = knownTypes.get(node);
-            return result == null ? node.declaredType() : result;
+            return result == null ? node.objectStamp().type() : result;
         }
 
         @Override
@@ -338,11 +338,8 @@ public class CheckCastEliminationPhase extends Phase {
                 RiResolvedType type = state.getNodeType(checkCast.object());
                 if (checkCast.targetClass() != null && type != null && type.isSubtypeOf(checkCast.targetClass())) {
                     PiNode piNode;
-                    if (state.knownNotNull.contains(checkCast.object())) {
-                        piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, StampFactory.declaredNonNull(type)));
-                    } else {
-                        piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, StampFactory.declared(type)));
-                    }
+                    boolean nonNull = state.knownNotNull.contains(checkCast.object());
+                    piNode = graph.unique(new PiNode(checkCast.object(), lastBegin, nonNull ? StampFactory.declaredNonNull(type) : StampFactory.declared(type)));
                     checkCast.replaceAtUsages(piNode);
                     graph.removeFixed(checkCast);
                     metricCheckCastRemoved.increment();

@@ -49,7 +49,7 @@ public final class UnsafeCastNode extends FloatingNode implements Canonicalizabl
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object != null && object.declaredType() != null && object.declaredType().isSubtypeOf(toType)) {
+        if (object != null && object.objectStamp().type() != null && object.objectStamp().type().isSubtypeOf(toType)) {
             return object;
         }
         return this;

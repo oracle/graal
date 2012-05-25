@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 
 public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable {
@@ -51,7 +50,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     public WriteNode(ValueNode object, ValueNode value, LocationNode location) {
-        super(object, location, StampFactory.forKind(CiKind.Void));
+        super(object, location, StampFactory.forVoid());
         this.value = value;
     }
 

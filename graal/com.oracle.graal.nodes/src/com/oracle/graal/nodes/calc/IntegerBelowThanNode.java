@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
 
 @NodeInfo(shortName = "|<|")
@@ -56,7 +57,18 @@ public final class IntegerBelowThanNode extends CompareNode {
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forBoolean(false, graph());
+        } else {
+            IntegerStamp xStamp = x().integerStamp();
+            IntegerStamp yStamp = y().integerStamp();
+            if (yStamp.lowerBound() >= 0 && yStamp.upperBound() >= 0) {
+                if (xStamp.lowerBound() >= 0 && xStamp.upperBound() < yStamp.lowerBound()) {
+                    return ConstantNode.forBoolean(true, graph());
+                } else if (xStamp.upperBound() < 0 || xStamp.lowerBound() >= yStamp.upperBound()) {
+                    return ConstantNode.forBoolean(false, graph());
+                }
+            }
         }
+
         return super.canonical(tool);
     }
 }

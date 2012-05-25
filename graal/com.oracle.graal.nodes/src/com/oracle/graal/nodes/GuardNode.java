@@ -83,7 +83,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
     }
 
     public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, RiDeoptAction action, boolean negated, long leafGraphId) {
-        super(StampFactory.illegal());
+        super(StampFactory.dependency());
         this.condition = condition;
         this.anchor = anchor;
         this.reason = reason;

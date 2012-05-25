@@ -49,7 +49,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
     }
 
     public BeginNode() {
-        super(StampFactory.illegal());
+        super(StampFactory.dependency());
     }
 
     public static BeginNode begin(FixedNode with) {

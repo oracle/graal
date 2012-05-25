@@ -24,179 +24,85 @@ package com.oracle.graal.nodes.type;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.types.*;
 
 
 public class StampFactory {
 
-    private static class BasicValueStamp implements Stamp {
-
-        private final CiKind kind;
-        private final boolean nonNull;
-        private RiResolvedType declaredType;
-        private RiResolvedType exactType;
-        private final ScalarTypeQuery scalarType;
-        private final ObjectTypeQuery objectType;
-
-        public BasicValueStamp(CiKind kind) {
-            this(kind, false, null, null);
-        }
-
-        public BasicValueStamp(CiKind kind, boolean nonNull, RiResolvedType declaredType, RiResolvedType exactType) {
-            this(kind, nonNull, declaredType, exactType, null, null);
-        }
-
-        public BasicValueStamp(CiKind kind, boolean nonNull, RiResolvedType declaredType, RiResolvedType exactType, ScalarTypeQuery scalarType, ObjectTypeQuery objectType) {
-            this.kind = kind;
-            this.nonNull = nonNull;
-            this.declaredType = declaredType;
-            this.exactType = exactType;
-            this.scalarType = scalarType;
-            this.objectType = objectType;
-        }
-
-        @Override
-        public CiKind kind() {
-            return kind;
-        }
-
-        @Override
-        public boolean nonNull() {
-            return nonNull;
-        }
-
-        @Override
-        public RiResolvedType declaredType() {
-            return declaredType;
-        }
-
-        @Override
-        public RiResolvedType exactType() {
-            return exactType;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            }
-            if (obj instanceof Stamp) {
-                Stamp other = (Stamp) obj;
-                return kind == other.kind() && nonNull() == other.nonNull() && declaredType() == other.declaredType() && exactType() == other.exactType();
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return kind.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder str = new StringBuilder();
-            str.append(kind().typeChar);
-            if (nonNull || declaredType != null || exactType != null) {
-                str.append(nonNull ? "!" : "").append(' ').append(declaredType == null ? "-" : declaredType.name()).append(' ').append(exactType == null ? "-" : exactType.name());
-            }
-            if (scalarType != null) {
-                str.append(' ').append(scalarType);
-            }
-            if (objectType != null) {
-                str.append(' ').append(objectType);
-            }
-            return str.toString();
-        }
-
-        @Override
-        public boolean alwaysDistinct(Stamp other) {
-            if (other.kind() != kind()) {
-                return true;
-            } else if (kind() != CiKind.Object) {
-                return false;
-            } else if (other.declaredType() == null || declaredType() == null) {
-                // We have no type information for one of the values.
-                return false;
-            } else if (other.nonNull() || nonNull()) {
-                // One of the two values cannot be null.
-                return !other.declaredType().isInterface() && !declaredType().isInterface() && !other.declaredType().isSubtypeOf(declaredType()) && !declaredType().isSubtypeOf(other.declaredType());
-            } else {
-                // Both values may be null.
-                return false;
-            }
-        }
-
-        @Override
-        public ScalarTypeQuery scalarType() {
-            return scalarType;
-        }
-
-        @Override
-        public ObjectTypeQuery objectType() {
-            return objectType;
-        }
-    }
-
     private static final Stamp[] stampCache = new Stamp[CiKind.values().length];
-    static {
-        for (CiKind k : CiKind.values()) {
-            stampCache[k.ordinal()] = new BasicValueStamp(k);
-        }
+    private static final Stamp objectStamp = new ObjectStamp(null, false, false);
+    private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true);
+    private static final Stamp dependencyStamp = new GenericStamp(GenericStampType.Dependency);
+    private static final Stamp extensionStamp = new GenericStamp(GenericStampType.Extension);
+    private static final Stamp virtualStamp = new GenericStamp(GenericStampType.Virtual);
+    private static final Stamp conditionStamp = new GenericStamp(GenericStampType.Condition);
+    private static final Stamp voidStamp = new GenericStamp(GenericStampType.Void);
+
+    private static final Stamp positiveInt = forInt(0, Integer.MAX_VALUE);
+
+    private static void setCache(CiKind kind, Stamp stamp) {
+        stampCache[kind.ordinal()] = stamp;
     }
 
-    public static Stamp illegal() {
-        return forKind(CiKind.Illegal);
+    static {
+        setCache(CiKind.Boolean, new IntegerStamp(CiKind.Boolean));
+        setCache(CiKind.Byte, new IntegerStamp(CiKind.Byte));
+        setCache(CiKind.Short, new IntegerStamp(CiKind.Short));
+        setCache(CiKind.Char, new IntegerStamp(CiKind.Char));
+        setCache(CiKind.Int, new IntegerStamp(CiKind.Int));
+        setCache(CiKind.Long, new IntegerStamp(CiKind.Long));
+
+        setCache(CiKind.Float, new FloatStamp(CiKind.Float));
+        setCache(CiKind.Double, new FloatStamp(CiKind.Double));
+
+        setCache(CiKind.Jsr, new IntegerStamp(CiKind.Jsr));
+
+        setCache(CiKind.Object, objectStamp);
+        setCache(CiKind.Void, voidStamp);
+    }
+
+    public static Stamp forKind(CiKind kind) {
+        assert stampCache[kind.stackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
+        return stampCache[kind.stackKind().ordinal()];
+    }
+
+    public static Stamp forVoid() {
+        return voidStamp;
     }
 
     public static Stamp intValue() {
         return forKind(CiKind.Int);
     }
 
-    public static Stamp forKind(CiKind kind) {
-        return stampCache[kind.stackKind().ordinal()];
+    public static Stamp dependency() {
+        return dependencyStamp;
     }
 
-    public static Stamp forKind(CiKind kind, ScalarTypeQuery scalarTypeFeedback, ObjectTypeQuery objectTypeFeedback) {
-        if (scalarTypeFeedback == null && objectTypeFeedback == null) {
-            return forKind(kind);
-        } else {
-            return new BasicValueStamp(kind, false, null, null, scalarTypeFeedback, objectTypeFeedback);
-        }
+    public static Stamp extension() {
+        return extensionStamp;
     }
 
-    public static final Stamp positiveInt = forInt(0, Integer.MAX_VALUE);
+    public static Stamp virtual() {
+        return virtualStamp;
+    }
+
+    public static Stamp condition() {
+        return conditionStamp;
+    }
 
     public static Stamp positiveInt() {
         return positiveInt;
     }
 
     public static Stamp forInt(int lowerBound, int upperBound) {
-        ScalarTypeFeedbackStore scalarType = new ScalarTypeFeedbackStore(CiKind.Int, new TypeFeedbackChanged());
-        scalarType.constantBound(Condition.GE, CiConstant.forInt(lowerBound));
-        scalarType.constantBound(Condition.LE, CiConstant.forInt(upperBound));
-
-        return new BasicValueStamp(CiKind.Int, false, null, null, scalarType.query(), null);
+        return new IntegerStamp(CiKind.Int, lowerBound, upperBound);
     }
 
     public static Stamp forLong(long lowerBound, long upperBound) {
-        ScalarTypeFeedbackStore scalarType = new ScalarTypeFeedbackStore(CiKind.Long, new TypeFeedbackChanged());
-        scalarType.constantBound(Condition.GE, CiConstant.forLong(lowerBound));
-        scalarType.constantBound(Condition.LE, CiConstant.forLong(upperBound));
-
-        return new BasicValueStamp(CiKind.Long, false, null, null, scalarType.query(), null);
-    }
-
-    public static Stamp exactNonNull(final RiResolvedType type) {
-        // (cwimmer) type can be null for certain Maxine-internal objects such as the static hub. Is this a problem here?
-        assert type == null || type.kind(false) == CiKind.Object;
-        ObjectTypeFeedbackStore objectType = new ObjectTypeFeedbackStore(new TypeFeedbackChanged());
-        objectType.constantBound(Condition.NE, CiConstant.NULL_OBJECT);
-        objectType.exactType(type);
-        return new BasicValueStamp(CiKind.Object, true, type, type, null, objectType.query());
+        return new IntegerStamp(CiKind.Long, lowerBound, upperBound);
     }
 
     public static Stamp forConstant(CiConstant value) {
@@ -216,69 +122,59 @@ public class StampFactory {
     public static Stamp forConstant(CiConstant value, RiRuntime runtime) {
         assert value.kind == CiKind.Object;
         if (value.kind == CiKind.Object) {
-            ObjectTypeFeedbackStore objectType = new ObjectTypeFeedbackStore(new TypeFeedbackChanged());
-            objectType.constantBound(Condition.EQ, value);
             RiResolvedType type = value.isNull() ? null : runtime.getTypeOf(value);
-            return new BasicValueStamp(CiKind.Object, value.isNonNull(), type, type, null, objectType.query());
+            return new ObjectStamp(type, value.isNonNull(), value.isNonNull());
         } else {
             throw new GraalInternalError("CiKind.Object expected, actual kind: %s", value.kind);
         }
     }
 
+    public static Stamp object() {
+        return objectStamp;
+    }
+
     public static Stamp objectNonNull() {
-        return new BasicValueStamp(CiKind.Object, true, null, null);
+        return objectNonNullStamp;
     }
 
-    public static Stamp declared(final RiResolvedType type) {
+    public static Stamp declared(RiResolvedType type) {
+        return declared(type, false);
+    }
+
+    public static Stamp declaredNonNull(RiResolvedType type) {
+        return declared(type, true);
+    }
+
+    private static Stamp declared(RiResolvedType type, boolean nonNull) {
         assert type != null;
         assert type.kind(false) == CiKind.Object;
-        return new BasicValueStamp(CiKind.Object, false, type, type.exactType());
-    }
-
-    public static Stamp declaredNonNull(final RiResolvedType type) {
-        assert type != null;
-        assert type.kind(false) == CiKind.Object;
-        return new BasicValueStamp(CiKind.Object, true, type, type.exactType());
-    }
-
-    public static Stamp or(Collection<? extends StampProvider> values) {
-        if (values.size() == 0) {
-            return illegal();
+        RiResolvedType exact = type.exactType();
+        if (exact != null) {
+            return new ObjectStamp(exact, true, nonNull);
         } else {
-            Iterator< ? extends StampProvider> iterator = values.iterator();
-            Stamp first = iterator.next().stamp();
-            if (values.size() == 1) {
-                return first;
-            }
-
-            boolean nonNull = first.nonNull();
-            RiResolvedType declaredType = first.declaredType();
-            RiResolvedType exactType = first.exactType();
-            while (iterator.hasNext()) {
-                Stamp current = iterator.next().stamp();
-                assert current.kind() == first.kind() : values + " first=" + first + " current=" + current + " first kind=" + first.kind() + " current kind=" + current.kind();
-                nonNull &= current.nonNull();
-                declaredType = orTypes(declaredType, current.declaredType());
-                if (exactType != current.exactType()) {
-                    exactType = null;
-                }
-            }
-
-            if (nonNull != first.nonNull() || declaredType != first.declaredType() || exactType != first.exactType()) {
-                return new BasicValueStamp(first.kind(), nonNull, declaredType, exactType);
-            } else {
-                return first;
-            }
+            return new ObjectStamp(type, false, nonNull);
         }
     }
 
-    private static RiResolvedType orTypes(RiResolvedType a, RiResolvedType b) {
-        if (a == b) {
-            return a;
-        } else if (a == null || b == null) {
-            return null;
+    public static Stamp exactNonNull(RiResolvedType type) {
+        return new ObjectStamp(type, true, true);
+    }
+
+    public static Stamp or(Collection<? extends StampProvider> values) {
+        return meet(values);
+    }
+
+    public static Stamp meet(Collection<? extends StampProvider> values) {
+        if (values.size() == 0) {
+            return forVoid();
         } else {
-            return a.leastCommonAncestor(b);
+            Iterator< ? extends StampProvider> iterator = values.iterator();
+            Stamp stamp = iterator.next().stamp();
+
+            while (iterator.hasNext()) {
+                stamp = stamp.meet(iterator.next().stamp());
+            }
+            return stamp;
         }
     }
 }

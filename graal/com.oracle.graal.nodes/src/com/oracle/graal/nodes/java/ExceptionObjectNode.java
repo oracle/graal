@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * The {@code ExceptionObject} instruction represents the incoming exception object to an exception handler.
@@ -36,8 +36,8 @@ public class ExceptionObjectNode extends AbstractStateSplit implements StateSpli
     /**
      * Constructs a new ExceptionObject instruction.
      */
-    public ExceptionObjectNode() {
-        super(StampFactory.forKind(CiKind.Object));
+    public ExceptionObjectNode(RiRuntime runtime) {
+        super(StampFactory.declared(runtime.getType(Throwable.class)));
     }
 
     @Override

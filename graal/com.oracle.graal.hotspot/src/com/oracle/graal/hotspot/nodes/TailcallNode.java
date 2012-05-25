@@ -49,7 +49,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
      * @param frameState the parameters will be taken from this FrameState
      */
     public TailcallNode(ValueNode target, FrameState frameState) {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
         this.target = target;
         this.frameState = frameState;
     }

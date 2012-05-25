@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 public abstract class WriteBarrier extends FixedWithNextNode {
 
     public WriteBarrier() {
-        super(StampFactory.illegal());
+        super(StampFactory.forVoid());
     }
 
     protected void generateBarrier(CiValue adr, LIRGeneratorTool gen) {

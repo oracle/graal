@@ -31,7 +31,7 @@ public class InsertStateAfterPlaceholderPhase extends Phase {
 
     private static class PlaceholderNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, LIRLowerable {
         public PlaceholderNode() {
-            super(StampFactory.illegal());
+            super(StampFactory.forVoid());
         }
 
         @Override

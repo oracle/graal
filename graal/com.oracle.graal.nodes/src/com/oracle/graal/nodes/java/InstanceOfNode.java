@@ -52,7 +52,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     }
 
     public InstanceOfNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
-        super(StampFactory.illegal());
+        super(StampFactory.condition());
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
         this.object = object;
@@ -68,42 +68,40 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     public ValueNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        RiResolvedType exact = object().exactType();
-        if (exact != null) {
-            boolean subType = exact.isSubtypeOf(targetClass());
+        ObjectStamp stamp = object().objectStamp();
+        RiResolvedType type = stamp.type();
+
+        if (stamp.isExactType()) {
+            boolean subType = type.isSubtypeOf(targetClass());
 
             if (subType) {
-                if (object().stamp().nonNull()) {
-                    // the instanceOf matches, so return true (or false, for the negated case)
+                if (stamp.nonNull()) {
+                    // the instanceOf matches, so return true
                     return ConstantNode.forBoolean(true, graph());
                 } else {
-                    // the instanceof matches if the object is non-null, so return true (or false, for the negated case) depending on the null-ness.
+                    // the instanceof matches if the object is non-null, so return true depending on the null-ness.
                     negateUsages();
                     return graph().unique(new IsNullNode(object()));
                 }
             } else {
                 // since this type check failed for an exact type we know that it can never succeed at run time.
                 // we also don't care about null values, since they will also make the check fail.
-                // so return false (or true, for the negated case)
                 return ConstantNode.forBoolean(false, graph());
             }
-        } else {
-            RiResolvedType declared = object().declaredType();
-            if (declared != null) {
-                boolean subType = declared.isSubtypeOf(targetClass());
+        } else if (type != null) {
+            boolean subType = type.isSubtypeOf(targetClass());
 
-                if (subType) {
-                    if (object().stamp().nonNull()) {
-                        // the instanceOf matches, so return true (or false, for the negated case)
-                        return ConstantNode.forBoolean(true, graph());
-                    } else {
-                        // the instanceof matches if the object is non-null, so return true (or false, for the negated case) depending on the null-ness.
-                        negateUsages();
-                        return graph().unique(new IsNullNode(object()));
-                    }
+            if (subType) {
+                if (stamp.nonNull()) {
+                    // the instanceOf matches, so return true
+                    return ConstantNode.forBoolean(true, graph());
                 } else {
-                    // since the subtype comparison was only performed on a declared type we don't really know if it might be true at run time...
+                    // the instanceof matches if the object is non-null, so return true depending on the null-ness.
+                    negateUsages();
+                    return graph().unique(new IsNullNode(object()));
                 }
+            } else {
+                // since the subtype comparison was only performed on a declared type we don't really know if it might be true at run time...
             }
         }
 
@@ -113,7 +111,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             if (constant.isNull()) {
                 return ConstantNode.forBoolean(false, graph());
             } else {
-                assert false : "non-null constants are always expected to provide an exactType";
+                assert false : "non-null constants are always expected to provide an exact type";
             }
         }
         return this;

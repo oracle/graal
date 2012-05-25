@@ -39,7 +39,6 @@ public final class NewObjectArrayNode extends NewArrayNode implements LIRLowerab
      * Constructs a new NewObjectArrayNode.
      * @param elementClass the class of elements in this array
      * @param length the node producing the length of the array
-     * @param graph
      */
     public NewObjectArrayNode(RiResolvedType elementClass, ValueNode length) {
         super(StampFactory.exactNonNull(elementClass.arrayOf()), length);

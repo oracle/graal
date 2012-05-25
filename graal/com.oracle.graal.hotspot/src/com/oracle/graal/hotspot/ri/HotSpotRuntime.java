@@ -327,8 +327,8 @@ public class HotSpotRuntime implements GraalRuntime {
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
             if (expected.kind() == CiKind.Object && !cas.newValue().isNullConstant()) {
-                RiResolvedType declaredType = cas.object().declaredType();
-                if (declaredType != null && !declaredType.isArrayClass() && declaredType.toJava() != Object.class) {
+                RiResolvedType type = cas.object().objectStamp().type();
+                if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
                     // Use a field write barrier since it's not an array store
                     FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(cas.object()));
                     graph.addAfterFixed(cas, writeBarrier);
@@ -341,7 +341,7 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
 
-            Node boundsCheck = createBoundsCheck(loadIndexed, tool);
+            ValueNode boundsCheck = createBoundsCheck(loadIndexed, tool);
 
             CiKind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
@@ -350,7 +350,7 @@ public class HotSpotRuntime implements GraalRuntime {
             graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
-            Node boundsCheck = createBoundsCheck(storeIndexed, tool);
+            ValueNode boundsCheck = createBoundsCheck(storeIndexed, tool);
 
             CiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
@@ -359,8 +359,9 @@ public class HotSpotRuntime implements GraalRuntime {
             ValueNode array = storeIndexed.array();
             if (elementKind == CiKind.Object && !value.isNullConstant()) {
                 // Store check!
-                if (array.exactType() != null) {
-                    RiResolvedType elementType = array.exactType().componentType();
+                RiResolvedType arrayType = array.objectStamp().type();
+                if (arrayType != null && array.objectStamp().isExactType()) {
+                    RiResolvedType elementType = arrayType.componentType();
                     if (elementType.superType() != null) {
                         ConstantNode type = ConstantNode.forCiConstant(elementType.getEncoding(Representation.ObjectHub), this, graph);
                         checkcast = graph.add(new CheckCastNode(type, elementType, value));
@@ -370,7 +371,7 @@ public class HotSpotRuntime implements GraalRuntime {
                         assert elementType.name().equals("Ljava/lang/Object;") : elementType.name();
                     }
                 } else {
-                    Node guard = tool.createNullCheckGuard(array, StructuredGraph.INVALID_GRAPH_ID);
+                    ValueNode guard = tool.createNullCheckGuard(array, StructuredGraph.INVALID_GRAPH_ID);
                     FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
                     arrayClass.dependencies().add(guard);
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
@@ -467,10 +468,10 @@ public class HotSpotRuntime implements GraalRuntime {
         return safeRead(array.graph(), CiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
     }
 
-    private static Node createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
+    private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        Node guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
@@ -484,17 +485,19 @@ public class HotSpotRuntime implements GraalRuntime {
         if (holderName.equals("Ljava/lang/Object;")) {
             if (fullName.equals("getClass()Ljava/lang/Class;")) {
                 ValueNode obj = (ValueNode) parameters.get(0);
-                if (obj.stamp().nonNull() && obj.stamp().exactType() != null) {
+                ObjectStamp stamp = (ObjectStamp) obj.stamp();
+                if (stamp.nonNull() && stamp.isExactType()) {
                     StructuredGraph graph = new StructuredGraph();
-                    ValueNode result = ConstantNode.forObject(obj.stamp().exactType().toJava(), this, graph);
+                    ValueNode result = ConstantNode.forObject(stamp.type().toJava(), this, graph);
                     ReturnNode ret = graph.add(new ReturnNode(result));
                     graph.start().setNext(ret);
                     return graph;
                 }
                 StructuredGraph graph = new StructuredGraph();
-                LocalNode receiver = graph.unique(new LocalNode(CiKind.Object, 0));
+                LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
                 SafeReadNode klassOop = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), null, StampFactory.objectNonNull()));
+                Stamp resultStamp = StampFactory.declared(getType(Class.class));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), null, resultStamp));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(klassOop);
                 klassOop.setNext(ret);
@@ -503,11 +506,11 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (holderName.equals("Ljava/lang/Class;")) {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
-                LocalNode receiver = graph.unique(new LocalNode(CiKind.Object, 0));
+                LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
                 SafeReadNode klassOop = safeRead(graph, CiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
                 graph.start().setNext(klassOop);
                 // TODO(thomaswue): Care about primitive classes! Crashes for primitive classes at the moment (klassOop == null)
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.forKind(CiKind.Int)));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.intValue()));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 klassOop.setNext(ret);
                 return graph;
@@ -515,7 +518,7 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (holderName.equals("Ljava/lang/Thread;")) {
             if (fullName.equals("currentThread()Ljava/lang/Thread;")) {
                 StructuredGraph graph = new StructuredGraph();
-                ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset))));
+                ReturnNode ret = graph.add(new ReturnNode(graph.unique(new CurrentThread(config.threadObjectOffset, this))));
                 graph.start().setNext(ret);
                 return graph;
             }

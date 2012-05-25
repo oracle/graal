@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.spi.types;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 
 public interface TypeQuery {
 
-    Node dependency();
+    ValueNode dependency();
 }
 
