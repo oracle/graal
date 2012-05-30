@@ -38,7 +38,8 @@ public class SuperBlock {
     protected List<BeginNode> earlyExits;
     protected Map<Node, Node> duplicationMapping;
     protected SuperBlock original;
-    protected NodeBitMap loopNodes;
+    protected NodeBitMap allNodes;
+    protected NodeBitMap allNodesExcludeLoopPhi;
 
     public SuperBlock(BeginNode entry, BeginNode exit, List<BeginNode> blocks, List<BeginNode> earlyExits) {
         this.entry = entry;
@@ -57,31 +58,45 @@ public class SuperBlock {
         return entry;
     }
 
-    public NodeBitMap loopNodes() {
-        if (loopNodes == null) {
-            loopNodes = computeNodes();
+    public NodeBitMap nodes() {
+        if (allNodes == null) {
+            allNodes = computeNodes();
         }
-        return loopNodes;
+        return allNodes;
+    }
+
+    private NodeBitMap nodesExcludeLoopPhi() {
+        if (allNodesExcludeLoopPhi == null) {
+            allNodesExcludeLoopPhi = nodes().copy();
+            if (entry instanceof LoopBeginNode) {
+                for (PhiNode phi : ((LoopBeginNode) entry).phis()) {
+                    allNodesExcludeLoopPhi.clear(phi);
+                }
+            }
+        }
+        return allNodesExcludeLoopPhi;
     }
 
     public SuperBlock duplicate() {
-        NodeBitMap nodes = loopNodes();
+        return duplicate(false);
+    }
+
+    public SuperBlock duplicate(boolean excludeLoop) {
+        NodeBitMap nodes = nodes();
         Map<Node, Node> replacements = new HashMap<>();
         StructuredGraph graph = (StructuredGraph) entry.graph();
-        BeginNode newEntry = graph.add(new BeginNode());
-        BeginNode newExit = null;
-        List<BeginNode> newEarlyExits = new ArrayList<>(earlyExits.size());
-        if (!(exit instanceof MergeNode)) {
-            newExit = graph.add(new BeginNode());
-            replacements.put(exit, newExit);
+        if (excludeLoop || (entry instanceof MergeNode && !(entry instanceof LoopBeginNode))) {
+            replacements.put(entry, graph.add(new BeginNode())); // no merge/loop begin
         }
-        replacements.put(entry, newEntry); // no merge/loop begin
+        List<BeginNode> newEarlyExits = new ArrayList<>(earlyExits.size());
         for (BeginNode earlyExit : earlyExits) {
             BeginNode newEarlyExit = graph.add(new BeginNode());
             newEarlyExits.add(newEarlyExit);
             replacements.put(earlyExit, newEarlyExit);
         }
-        if (exit instanceof LoopBeginNode) {
+        if (exit instanceof LoopBeginNode && excludeLoop) {
+            assert entry == exit;
+            nodes = nodesExcludeLoopPhi();
             for (LoopEndNode end : ((LoopBeginNode) exit).loopEnds()) {
                 if (nodes.isMarked(end)) {
                     replacements.put(end, graph.add(new EndNode()));
@@ -89,8 +104,14 @@ public class SuperBlock {
             }
         }
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
-        if (exit instanceof MergeNode) {
+        BeginNode newExit;
+        if (excludeLoop || (exit instanceof MergeNode && !(exit instanceof LoopBeginNode))) {
             newExit = mergeExits(replacements, duplicates);
+        } else if (exit != entry) {
+            newExit = graph.add(new BeginNode());
+            replacements.put(exit, newExit);
+        } else {
+            newExit = (BeginNode) duplicates.get(exit);
         }
 
         List<BeginNode> newBlocks = new ArrayList<>(blocks.size());
@@ -105,7 +126,7 @@ public class SuperBlock {
         for (Entry<Node, Node> e : replacements.entrySet()) {
             duplicates.put(e.getKey(), e.getValue());
         }
-        SuperBlock superBlock = new SuperBlock(newEntry, newExit, newBlocks, newEarlyExits);
+        SuperBlock superBlock = new SuperBlock((BeginNode) duplicates.get(entry), newExit, newBlocks, newEarlyExits);
         superBlock.duplicationMapping = duplicates;
         superBlock.original = this;
         return superBlock;
@@ -163,7 +184,7 @@ public class SuperBlock {
         return newExit;
     }
 
-    public void finish() {
+    public void finishDuplication() {
         if (original != null) {
             mergeEarlyExits((StructuredGraph) entry.graph(), original.earlyExits, duplicationMapping);
         }
@@ -373,12 +394,6 @@ public class SuperBlock {
                 for (Node usage : n.usages()) {
                     markFloating(usage, nodes);
                 }
-            }
-        }
-
-        if (entry instanceof LoopBeginNode) {
-            for (PhiNode phi : ((LoopBeginNode) entry).phis()) {
-                nodes.clear(phi);
             }
         }
 

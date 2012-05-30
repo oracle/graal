@@ -35,7 +35,7 @@ public class LoopTransformUtil {
     }
 
     public static void peel(Loop loop, SuperBlock wholeLoop) {
-        SuperBlock peel = wholeLoop.duplicate(); // duplicates the nodes, merges early exits
+        SuperBlock peel = wholeLoop.duplicate(true); // duplicates the nodes, merges early exits
 
         peel.insertBefore(loop.loopBegin().forwardEnd()); // connects peeled part's CFG
 
@@ -43,7 +43,7 @@ public class LoopTransformUtil {
         resolver.wholeLoop(wholeLoop).peeled(peel); // block (comming from the loop) was peeled into peel
         resolver.resolve();
 
-        peel.finish();
+        peel.finishDuplication();
     }
 
     public static SuperBlock wholeLoop(Loop loop) {
