@@ -221,18 +221,19 @@ public class ArrayCopySnippets implements SnippetsInterface{
         if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
             throw new IndexOutOfBoundsException();
         }
+        final int scale = arrayIndexScale(CiKind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
-            copyObjectsDown(src, srcPos * 8L, dest, destPos * 8L, length);
+            copyObjectsDown(src, srcPos * scale, dest, destPos * scale, length);
         } else {
-            copyObjectsUp(src, srcPos * 8L, dest, destPos * 8L, length);
+            copyObjectsUp(src, srcPos * scale, dest, destPos * scale, length);
         }
         if (length > 0) {
-            int header = arrayHeaderSizeFor(CiKind.Object);
+            int header = arrayBaseOffset(CiKind.Object);
             int cardShift = cardTableShift();
             long cardStart = cardTableStart();
             long dstAddr = GetObjectAddressNode.get(dest);
-            long start = (dstAddr + header + destPos * 8L) >>> cardShift;
-            long end = (dstAddr + header + (destPos + length - 1) * 8L) >>> cardShift;
+            long start = (dstAddr + header + destPos * scale) >>> cardShift;
+            long end = (dstAddr + header + (destPos + length - 1) * scale) >>> cardShift;
             long count = end - start + 1;
             while (count-- > 0) {
                 DirectStoreNode.store((start + cardStart) + count, false);
@@ -242,7 +243,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyBytesDown(Object src, int srcPos, Object dest, int destPos, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Byte);
+        int header = arrayBaseOffset(CiKind.Byte);
         for (long i = length - 1; i >= 0; i--) {
             Byte a = UnsafeLoadNode.load(src, header, i + srcPos, CiKind.Byte);
             UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), CiKind.Byte);
@@ -251,7 +252,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyShortsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Short);
+        int header = arrayBaseOffset(CiKind.Short);
         for (long i = (length - 1) * 2; i >= 0; i -= 2) {
             Character a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Short);
             UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), CiKind.Short);
@@ -260,7 +261,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyIntsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Int);
+        int header = arrayBaseOffset(CiKind.Int);
         for (long i = (length - 1) * 4; i >= 0; i -= 4) {
             Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Int);
             UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), CiKind.Int);
@@ -269,7 +270,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyLongsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Long);
+        int header = arrayBaseOffset(CiKind.Long);
         for (long i = (length - 1) * 8; i >= 0; i -= 8) {
             Long a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Long);
             UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), CiKind.Long);
@@ -279,8 +280,9 @@ public class ArrayCopySnippets implements SnippetsInterface{
     // Does NOT perform store checks
     @Snippet
     public static void copyObjectsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Object);
-        for (long i = (length - 1) * wordSize(); i >= 0; i -= wordSize()) {
+        int header = arrayBaseOffset(CiKind.Object);
+        final int scale = arrayIndexScale(CiKind.Object);
+        for (long i = (length - 1) * scale; i >= 0; i -= scale) {
             Object a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Object);
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
@@ -295,7 +297,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
      */
     @Snippet
     public static void copyBytesUp(Object src, int srcPos, Object dest, int destPos, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Byte);
+        int header = arrayBaseOffset(CiKind.Byte);
         for (long i = 0; i < length; i++) {
             Byte a = UnsafeLoadNode.load(src, header, i + srcPos, CiKind.Byte);
             UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), CiKind.Byte);
@@ -312,7 +314,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
      */
     @Snippet
     public static void copyShortsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Short);
+        int header = arrayBaseOffset(CiKind.Short);
         for (long i = 0; i < length * 2L; i += 2) {
             Character a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Short);
             UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), CiKind.Short);
@@ -321,7 +323,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyIntsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Int);
+        int header = arrayBaseOffset(CiKind.Int);
         for (long i = 0; i < length * 4L; i += 4) {
             Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Int);
             UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), CiKind.Int);
@@ -330,7 +332,7 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyLongsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Long);
+        int header = arrayBaseOffset(CiKind.Long);
         for (long i = 0; i < length * 8L; i += 8) {
             Long a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Long);
             UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), CiKind.Long);
@@ -340,20 +342,33 @@ public class ArrayCopySnippets implements SnippetsInterface{
     // Does NOT perform store checks
     @Snippet
     public static void copyObjectsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayHeaderSizeFor(CiKind.Object);
-        for (long i = 0; i < length * wordSize(); i += wordSize()) {
+        int header = arrayBaseOffset(CiKind.Object);
+        final int scale = arrayIndexScale(CiKind.Object);
+        for (long i = 0; i < length * scale; i += scale) {
             Object a = UnsafeLoadNode.load(src, header, i + srcOffset, CiKind.Object);
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
     }
+
     @Fold
-    private static int wordSize() {
-        return CompilerImpl.getInstance().getTarget().wordSize;
+    static int arrayBaseOffset(CiKind elementKind) {
+        return elementKind.arrayBaseOffset();
     }
 
     @Fold
-    static int arrayHeaderSizeFor(CiKind elementKind) {
-        return CompilerImpl.getInstance().getConfig().getArrayOffset(elementKind);
+    static int arrayIndexScale(CiKind elementKind) {
+        return elementKind.arrayIndexScale();
+    }
+
+    static {
+        assert arrayIndexScale(CiKind.Byte) == 1;
+        assert arrayIndexScale(CiKind.Boolean) == 1;
+        assert arrayIndexScale(CiKind.Char) == 2;
+        assert arrayIndexScale(CiKind.Short) == 2;
+        assert arrayIndexScale(CiKind.Int) == 4;
+        assert arrayIndexScale(CiKind.Long) == 8;
+        assert arrayIndexScale(CiKind.Float) == 4;
+        assert arrayIndexScale(CiKind.Double) == 8;
     }
 
     @Fold
