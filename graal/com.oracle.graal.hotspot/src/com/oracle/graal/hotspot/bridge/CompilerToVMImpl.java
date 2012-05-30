@@ -81,9 +81,6 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native HotSpotCompiledMethod installMethod(HotSpotTargetMethod targetMethod, boolean makeDefault, HotSpotCodeInfo info);
 
     @Override
-    public native long installStub(HotSpotTargetMethod targetMethod, HotSpotCodeInfo info);
-
-    @Override
     public native HotSpotVMConfig getConfiguration();
 
     @Override
