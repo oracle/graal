@@ -52,11 +52,10 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             assert length != null;
             return length;
         }
-        CiConstant constantValue = null;
-        if (array().isConstant() && !array().isNullConstant()) {
-            constantValue = array().asConstant();
+        RiRuntime runtime = tool.runtime();
+        if (runtime != null && array().isConstant() && !array().isNullConstant()) {
+            CiConstant constantValue = array().asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
-                RiRuntime runtime = tool.runtime();
                 return ConstantNode.forInt(runtime.getArrayLength(constantValue), graph());
             }
         }

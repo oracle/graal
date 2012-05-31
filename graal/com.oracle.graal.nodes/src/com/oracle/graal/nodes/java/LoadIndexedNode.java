@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
@@ -63,7 +64,8 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (index().isConstant() && array().isConstant() && !array().isNullConstant()) {
+        RiRuntime runtime = tool.runtime();
+        if (runtime != null && index().isConstant() && array().isConstant() && !array().isNullConstant()) {
             CiConstant arrayConst = array().asConstant();
             if (tool.isImmutable(arrayConst)) {
                 int index = index().asConstant().asInt();
@@ -71,7 +73,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
                 int length = Array.getLength(array);
                 if (index >= 0 && index < length) {
                     return ConstantNode.forCiConstant(elementKind().readUnsafeConstant(array,
-                                    Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE), tool.runtime(), graph());
+                                    Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE), runtime, graph());
                 }
             }
         }

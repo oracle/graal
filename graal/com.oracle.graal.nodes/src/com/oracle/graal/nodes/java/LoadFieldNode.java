@@ -55,14 +55,17 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CiConstant constant = null;
-        if (isStatic()) {
-            constant = field().constantValue(null);
-        } else if (object().isConstant() && !object().isNullConstant()) {
-            constant = field().constantValue(object().asConstant());
-        }
-        if (constant != null) {
-            return ConstantNode.forCiConstant(constant, tool.runtime(), graph());
+        RiRuntime runtime = tool.runtime();
+        if (runtime != null) {
+            CiConstant constant = null;
+            if (isStatic()) {
+                constant = field().constantValue(null);
+            } else if (object().isConstant() && !object().isNullConstant()) {
+                constant = field().constantValue(object().asConstant());
+            }
+            if (constant != null) {
+                return ConstantNode.forCiConstant(constant, runtime, graph());
+            }
         }
         return this;
     }

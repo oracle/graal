@@ -57,12 +57,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object() != null && object().isConstant() && object().kind() == CiKind.Object) {
+        RiRuntime runtime = tool.runtime();
+        if (runtime != null && object() != null && object().isConstant() && object().kind() == CiKind.Object) {
             if (this.location() == LocationNode.FINAL_LOCATION && location().getClass() == LocationNode.class) {
                 Object value = object().asConstant().asObject();
                 long displacement = location().displacement();
                 CiKind kind = location().kind();
-                RiRuntime runtime = tool.runtime();
                 CiConstant constant = kind.readUnsafeConstant(value, displacement);
                 if (constant != null) {
                     return ConstantNode.forCiConstant(constant, runtime, graph());
