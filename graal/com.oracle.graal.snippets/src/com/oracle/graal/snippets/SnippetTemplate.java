@@ -35,6 +35,7 @@ import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.snippets.nodes.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
@@ -115,24 +116,41 @@ public class SnippetTemplate {
                     new CanonicalizerPhase(null, runtime, null, 0, immutabilityPredicate).apply(snippetCopy);
                 }
 
-                // Explode all loops in the snippet
-                if (snippetCopy.hasLoops()) {
-                    ControlFlowGraph cfg = ControlFlowGraph.compute(snippetCopy, true, true, false, false);
-                    for (Loop loop : cfg.getLoops()) {
-                        LoopBeginNode loopBegin = loop.loopBegin();
-                        SuperBlock wholeLoop = LoopTransformUtil.wholeLoop(loop);
-                        Debug.dump(snippetCopy, "Before exploding loop %s", loopBegin);
-                        int peel = 0;
-                        while (!loopBegin.isDeleted()) {
-                            int mark = snippetCopy.getMark();
-                            LoopTransformUtil.peel(loop, wholeLoop);
-                            Debug.dump(snippetCopy, "After peel %d", peel);
-                            new CanonicalizerPhase(null, runtime, null, mark, immutabilityPredicate).apply(snippetCopy);
-                            peel++;
+                boolean exploded = false;
+                do {
+                    exploded = false;
+                    for (Node node : snippetCopy.getNodes()) {
+                        if (node instanceof ExplodeLoopNode) {
+                            final ExplodeLoopNode explodeLoop = (ExplodeLoopNode) node;
+                            LoopBeginNode loopBegin = explodeLoop.findLoopBegin();
+                            ControlFlowGraph cfg = ControlFlowGraph.compute(snippetCopy, true, true, false, false);
+                            for (Loop loop : cfg.getLoops()) {
+                                if (loop.loopBegin() == loopBegin) {
+                                    SuperBlock wholeLoop = LoopTransformUtil.wholeLoop(loop);
+                                    Debug.dump(snippetCopy, "Before exploding loop %s", loopBegin);
+                                    int peel = 0;
+                                    while (!loopBegin.isDeleted()) {
+                                        int mark = snippetCopy.getMark();
+                                        LoopTransformUtil.peel(loop, wholeLoop);
+                                        Debug.dump(snippetCopy, "After peel %d", peel);
+                                        new CanonicalizerPhase(null, runtime, null, mark, immutabilityPredicate).apply(snippetCopy);
+                                        peel++;
+                                    }
+                                    Debug.dump(snippetCopy, "After exploding loop %s", loopBegin);
+                                    exploded = true;
+                                    break;
+                                }
+                            }
+
+                            FixedNode explodeLoopNext = explodeLoop.next();
+                            explodeLoop.clearSuccessors();
+                            explodeLoop.replaceAtPredecessors(explodeLoopNext);
+                            explodeLoop.replaceAtUsages(null);
+                            GraphUtil.killCFG(explodeLoop);
+                            break;
                         }
-                        Debug.dump(snippetCopy, "After exploding loop %s", loopBegin);
                     }
-                }
+                } while (exploded);
 
                 // Remove all frame states from inlined snippet graph. Snippets must be atomic (i.e. free
                 // of side-effects that prevent deoptimizing to a point before the snippet).
@@ -245,8 +263,13 @@ public class SnippetTemplate {
             } else if (arg instanceof ValueNode) {
                 assert param instanceof LocalNode;
                 replacements.put((LocalNode) param, (ValueNode) arg);
-            } else {
+            } else if (param instanceof ConstantNode) {
                 replacements.put((ConstantNode) param, ConstantNode.forObject(arg, runtime, replaceeGraph));
+            } else {
+                if (!param.equals(arg)) {
+                    System.exit(1);
+                }
+                assert param.equals(arg) : param + " != " + arg;
             }
         }
         return replacements;

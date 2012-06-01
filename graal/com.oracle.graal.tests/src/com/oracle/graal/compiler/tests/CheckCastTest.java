@@ -34,13 +34,27 @@ import com.oracle.max.cri.ri.*;
  */
 public class CheckCastTest extends TypeCheckTest {
 
+    /**
+     * Enables making the target type "unknown" at compile time.
+     */
+    boolean unknown;
+
     @Override
     protected void replaceProfile(StructuredGraph graph, RiTypeProfile profile) {
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         if (ccn != null) {
-            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), ccn.targetClass(), ccn.object(), profile));
+            RiResolvedType targetClass = unknown ? null : ccn.targetClass();
+            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.targetClassInstruction(), targetClass, ccn.object(), profile));
             graph.replaceFixedWithFixed(ccn, ccnNew);
         }
+        unknown = false;
+    }
+
+    @Override
+    protected void test(String name, RiTypeProfile profile, Object... args) {
+        super.test(name, profile, args);
+        unknown = true;
+        super.test(name, profile, args);
     }
 
     @Test
@@ -89,12 +103,33 @@ public class CheckCastTest extends TypeCheckTest {
         test("asStringExt", profile(String.class), 111);
     }
 
+    @Test
+    public void test7() {
+        Throwable throwable = new Exception();
+        test("asThrowable",   profile(),                             throwable);
+        test("asThrowable",   profile(Throwable.class),              throwable);
+        test("asThrowable",   profile(Exception.class, Error.class), throwable);
+    }
+
+    @Test
+    public void test8() {
+        test("arrayFill", profile(), new Object[100], "111");
+    }
+
     public static Number asNumber(Object o) {
         return (Number) o;
     }
 
     public static String asString(Object o) {
         return (String) o;
+    }
+
+    public static Throwable asThrowable(Object o) {
+        return (Throwable) o;
+    }
+
+    public static ValueNode asValueNode(Object o) {
+        return (ValueNode) o;
     }
 
     public static Number asNumberExt(Object o) {
@@ -107,15 +142,48 @@ public class CheckCastTest extends TypeCheckTest {
         return "#" + s;
     }
 
-    @Test
-    public void test7() {
-        test("arrayFill", profile(), new Object[100], "111");
-    }
-
     public static Object[] arrayFill(Object[] arr, Object value) {
         for (int i = 0; i < arr.length; i++) {
             arr[i] = value;
         }
         return arr;
+    }
+
+    static class Depth1 implements Cloneable {}
+    static class Depth2 extends Depth1 {}
+    static class Depth3 extends Depth2 {}
+    static class Depth4 extends Depth3 {}
+    static class Depth5 extends Depth4 {}
+    static class Depth6 extends Depth5 {}
+    static class Depth7 extends Depth6 {}
+    static class Depth8 extends Depth7 {}
+    static class Depth9 extends Depth8 {}
+    static class Depth10 extends Depth9 {}
+    static class Depth11 extends Depth10 {}
+    static class Depth12 extends Depth11 {}
+    static class Depth13 extends Depth12 {}
+
+    public static Depth12 asDepth12(Object o) {
+        return (Depth12) o;
+    }
+
+    public static Depth12[][] asDepth12Arr(Object o) {
+        return (Depth12[][]) o;
+    }
+
+    public static Cloneable asCloneable(Object o) {
+        return (Cloneable) o;
+    }
+
+    @Test
+    public void test9() {
+        Object o = new Depth13();
+        test("asDepth12",   profile(), o);
+    }
+
+    @Test
+    public void test10() {
+        Object o = new Depth13[3][];
+        test("asDepth12Arr",   profile(), o);
     }
 }

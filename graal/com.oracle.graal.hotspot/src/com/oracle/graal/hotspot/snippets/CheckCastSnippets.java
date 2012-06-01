@@ -21,7 +21,9 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
+import static com.oracle.graal.hotspot.snippets.ArrayCopySnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Counter.*;
+import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.TemplateFlag.*;
 import static com.oracle.graal.snippets.SnippetTemplate.*;
 
 import java.io.*;
@@ -31,51 +33,171 @@ import java.util.concurrent.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.phases.*;
+import com.oracle.graal.cri.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.snippets.*;
+import com.oracle.graal.snippets.nodes.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
+import com.oracle.max.criutils.*;
 
 /**
- * Snippets used for lowering {@link CheckCastNode}s.
+ * Snippets used for implementing the type test of a checkcast instruction.
+ *
+ * The test first checks against the profiled types (if any) and then implements the
+ * checks described in paper <a href="http://dl.acm.org/citation.cfm?id=583821">
+ * Fast subtype checking in the HotSpot JVM</a> by Cliff Click and John Rose.
  */
 public class CheckCastSnippets implements SnippetsInterface {
 
     /**
-     * Checks that a given object is null or is a subtype of a given type.
-     *
-     * @param hub the hub of the type being checked against
-     * @param object the object whose type is being checked against {@code hub}
-     * @param hintHubs the hubs of objects that have been profiled during previous executions
-     * @param hintsAreExact specifies if {@code hintHubs} contains all subtypes of {@code hub}
-     * @param checkNull specifies if {@code object} may be null
-     * @return {@code object} if the type check succeeds
-     * @throws ClassCastException if the type check fails
+     * Type test used when the type being tested against is a restricted primary type.
      */
     @Snippet
-    public static Object checkcast(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull, @SuppressWarnings("unused") Counter ignore) {
-        if (object == null) {
+    public static Object checkcastPrimary(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull, int superCheckOffset) {
+        if (checkNull && object == null) {
             return object;
         }
-        Object objectHub = UnsafeLoadNode.load(object, 0, hubOffset(), CiKind.Object);
+        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         // if we get an exact match: succeed immediately
+        ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hintHubs.length; i++) {
             Object hintHub = hintHubs[i];
             if (hintHub == objectHub) {
                 return object;
             }
         }
-        if (hintsAreExact || !TypeCheckSlowPath.check(objectHub, hub)) {
+        if (hintsAreExact) {
             DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+        } else {
+            if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
+                DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            }
         }
         return object;
+    }
+
+    /**
+     * Type test used when the type being tested against is a restricted secondary type.
+     */
+    @Snippet
+    public static Object checkcastSecondary(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull) {
+        if (checkNull && object == null) {
+            return object;
+        }
+        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        // if we get an exact match: succeed immediately
+        ExplodeLoopNode.explodeLoop();
+        for (int i = 0; i < hintHubs.length; i++) {
+            Object hintHub = hintHubs[i];
+            if (hintHub == objectHub) {
+                return object;
+            }
+        }
+        if (hintsAreExact) {
+            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+        } else {
+            if (!checkSecondarySubType(hub, objectHub)) {
+                DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            }
+        }
+        return object;
+    }
+
+    /**
+     * Type test used when the type being tested against is not known at compile time (e.g. the type test
+     * in an object array store check).
+     */
+    @Snippet
+    public static Object checkcastUnknown(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull) {
+        if (checkNull && object == null) {
+            return object;
+        }
+        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
+        // if we get an exact match: succeed immediately
+        ExplodeLoopNode.explodeLoop();
+        for (int i = 0; i < hintHubs.length; i++) {
+            Object hintHub = hintHubs[i];
+            if (hintHub == objectHub) {
+                return object;
+            }
+        }
+        if (hintsAreExact) {
+            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+        } else {
+            if (!checkUnknownSubType(hub, objectHub)) {
+                DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            }
+        }
+        return object;
+    }
+
+    //This is used instead of a Java array read to avoid the array bounds check.
+    static Object loadNonNullObjectElement(Object array, int index) {
+        return UnsafeLoadNode.loadObject(array, arrayBaseOffset(CiKind.Object), index * arrayIndexScale(CiKind.Object), true);
+    }
+
+    static boolean checkSecondarySubType(Object t, Object s) {
+        // if (S.cache == T) return true
+        if (UnsafeLoadNode.loadObject(s, 0, secondarySuperCacheOffset(), true) == t) {
+            return true;
+        }
+
+        // if (T == S) return true
+        if (s == t) {
+            return true;
+        }
+
+        // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
+        Object[] secondarySupers = UnsafeCastNode.cast(UnsafeLoadNode.loadObject(s, 0, secondarySupersOffset(), true), Object[].class);
+
+        for (int i = 0; i < secondarySupers.length; i++) {
+            if (t == loadNonNullObjectElement(secondarySupers, i)) {
+                DirectObjectStoreNode.store(s, secondarySuperCacheOffset(), 0, t);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static boolean checkUnknownSubType(Object t, Object s) {
+        // int off = T.offset
+        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), CiKind.Int);
+
+        // if (T = S[off]) return true
+        if (UnsafeLoadNode.loadObject(s, 0, superCheckOffset, true) == t) {
+            return true;
+        }
+
+        // if (off != &cache) return false
+        if (superCheckOffset != secondarySuperCacheOffset()) {
+            return false;
+        }
+
+        // if (T == S) return true
+        if (s == t) {
+            return true;
+        }
+
+        // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
+        Object[] secondarySupers = UnsafeCastNode.cast(UnsafeLoadNode.loadObject(s, 0, secondarySupersOffset(), true), Object[].class);
+        for (int i = 0; i < secondarySupers.length; i++) {
+            if (t == loadNonNullObjectElement(secondarySupers, i)) {
+                DirectObjectStoreNode.store(s, secondarySuperCacheOffset(), 0, t);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -85,9 +207,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         hintsHit("hit a hint type"),
         hintsMissed("missed the hint types"),
         exact("tested type is (statically) final"),
-        noHints_class("profile information is not used (test type is a class)"),
-        noHints_iface("profile information is not used (test type is an interface)"),
-        noHints_unknown("test type is not a compile-time constant"),
+        noHints("profile information is not used"),
         isNull("object tested is null"),
         exception("type test failed with a ClassCastException");
 
@@ -124,21 +244,25 @@ public class CheckCastSnippets implements SnippetsInterface {
         static final boolean ENABLED = GraalOptions.CheckcastCounters;
     }
 
+    /**
+     * Type test used when {@link GraalOptions#CheckcastCounters} is enabled.
+     */
     @Snippet
-    public static Object checkcastWithCounters(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, @SuppressWarnings("unused") boolean checkNull, Counter noHintsCounter) {
+    public static Object checkcastCounters(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact) {
         if (object == null) {
             isNull.inc();
             return object;
         }
-        Object objectHub = UnsafeLoadNode.load(object, 0, hubOffset(), CiKind.Object);
+        Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (hintHubs.length == 0) {
-            noHintsCounter.inc();
-            if (!TypeCheckSlowPath.check(objectHub, hub)) {
+            noHints.inc();
+            if (!checkUnknownSubType(hub, objectHub)) {
                 exception.inc();
                 DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
             }
         } else {
             // if we get an exact match: succeed immediately
+            ExplodeLoopNode.explodeLoop();
             for (int i = 0; i < hintHubs.length; i++) {
                 Object hintHub = hintHubs[i];
                 if (hintHub == objectHub) {
@@ -151,7 +275,7 @@ public class CheckCastSnippets implements SnippetsInterface {
                 }
             }
             if (!hintsAreExact) {
-                if (!TypeCheckSlowPath.check(objectHub, hub)) {
+                if (!checkUnknownSubType(hub, objectHub)) {
                     exception.inc();
                     DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
                 } else {
@@ -163,6 +287,21 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         return object;
+    }
+
+    @Fold
+    private static int superCheckOffsetOffset() {
+        return CompilerImpl.getInstance().getConfig().superCheckOffsetOffset;
+    }
+
+    @Fold
+    private static int secondarySuperCacheOffset() {
+        return CompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+    }
+
+    @Fold
+    private static int secondarySupersOffset() {
+        return CompilerImpl.getInstance().getConfig().secondarySupersOffset;
     }
 
     @Fold
@@ -205,54 +344,148 @@ public class CheckCastSnippets implements SnippetsInterface {
         }
     }
 
+    public enum TemplateFlag {
+        CHECK_NULL,
+        EXACT_HINTS,
+        COUNTERS,
+        PRIMARY_SUPER,
+        SECONDARY_SUPER,
+        UNKNOWN_SUPER;
+
+        public int bit(boolean value) {
+            if (value) {
+                return bit();
+            }
+            return 0;
+        }
+
+        public boolean bool(int flags) {
+            return (flags & bit()) != 0;
+        }
+
+        static final int FLAGS_BITS = values().length;
+        static final int FLAGS_MASK = (1 << FLAGS_BITS) - 1;
+
+        static final int NHINTS_SHIFT = FLAGS_BITS;
+        static final int NHINTS_BITS = 3;
+        static final int SUPER_CHECK_OFFSET_SHIFT = NHINTS_SHIFT + NHINTS_BITS;
+
+        public int bit() {
+            return 1 << ordinal();
+        }
+    }
+
     /**
      * Templates for partially specialized checkcast snippet graphs.
      */
     public static class Templates {
 
         private final ConcurrentHashMap<Integer, SnippetTemplate> templates;
-        private final RiResolvedMethod method;
+        private final RiResolvedMethod counters;
+        private final RiResolvedMethod primary;
+        private final RiResolvedMethod secondary;
+        private final RiResolvedMethod unknown;
         private final RiRuntime runtime;
 
         public Templates(RiRuntime runtime) {
             this.runtime = runtime;
             this.templates = new ConcurrentHashMap<>();
             try {
-                Class[] parameterTypes = {Object.class, Object.class, Object[].class, boolean.class, boolean.class, Counter.class};
-                String name = GraalOptions.CheckcastCounters ? "checkcastWithCounters" : "checkcast";
-                method = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod(name, parameterTypes));
+                primary = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastPrimary", Object.class, Object.class, Object[].class, boolean.class, boolean.class, int.class));
+                secondary = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastSecondary", Object.class, Object.class, Object[].class, boolean.class, boolean.class));
+                unknown = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastUnknown", Object.class, Object.class, Object[].class, boolean.class, boolean.class));
+                counters = runtime.getRiMethod(CheckCastSnippets.class.getDeclaredMethod("checkcastCounters", Object.class, Object.class, Object[].class, boolean.class));
             } catch (NoSuchMethodException e) {
                 throw new GraalInternalError(e);
             }
         }
 
         /**
-         * Gets a checkcast snippet specialized for a given set of inputs.
+         * Interface for lazily creating a snippet template.
          */
-        public SnippetTemplate get(int nHints, boolean isExact, boolean checkNull, Counter noHintsCounter) {
-            Integer key = key(nHints, isExact, checkNull);
+        abstract static class Factory {
+            abstract SnippetTemplate create(HotSpotKlassOop[] hints, int flags);
+        }
+
+        /**
+         * Gets a template from the template cache, creating and installing it first if necessary.
+         */
+        private SnippetTemplate getTemplate(int nHints, int flags, int superCheckOffset, Factory factory) {
+            assert (flags & ~FLAGS_MASK) == 0;
+            assert nHints >= 0 && nHints < (1 << NHINTS_BITS) - 1 : "nHints out of range";
+            assert superCheckOffset >= 0 && superCheckOffset == ((superCheckOffset << SUPER_CHECK_OFFSET_SHIFT) >>> SUPER_CHECK_OFFSET_SHIFT) : "superCheckOffset out of range";
+            Integer key = superCheckOffset << SUPER_CHECK_OFFSET_SHIFT | nHints << NHINTS_SHIFT | flags;
             SnippetTemplate result = templates.get(key);
             if (result == null) {
                 HotSpotKlassOop[] hints = new HotSpotKlassOop[nHints];
-                Arrays.fill(hints, new HotSpotKlassOop(null, Templates.class));
-                result = SnippetTemplate.create(runtime, method, _, _, hints, isExact, checkNull, noHintsCounter);
+                for (int i = 0; i < hints.length; i++) {
+                    hints[i] = new HotSpotKlassOop(null, Templates.class);
+                }
+                result = factory.create(hints, flags);
+                //System.err.println(result);
                 templates.put(key, result);
             }
             return result;
         }
 
         /**
-         * Creates a canonical key for a combination of specialization parameters.
+         * Lowers a checkcast node.
          */
-        private static Integer key(int nHints, boolean isExact, boolean checkNull) {
-            int key = nHints << 2;
-            if (isExact) {
-                key |= 2;
+        public void lower(CheckCastNode checkcast, CiLoweringTool tool) {
+            StructuredGraph graph = (StructuredGraph) checkcast.graph();
+            ValueNode hub = checkcast.targetClassInstruction();
+            ValueNode object = checkcast.object();
+            TypeCheckHints hints = new TypeCheckHints(checkcast.targetClass(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+            HotSpotKlassOop[] hintHubs = new HotSpotKlassOop[hints.types.length];
+            for (int i = 0; i < hintHubs.length; i++) {
+                hintHubs[i] = ((HotSpotType) hints.types[i]).klassOop();
             }
-            if (checkNull) {
-                key |= 1;
+            Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, checkcast, Arrays.toString(hints.types), hints.exact);
+
+            final HotSpotTypeResolvedImpl target = (HotSpotTypeResolvedImpl) checkcast.targetClass();
+            int flags = EXACT_HINTS.bit(hints.exact) | CHECK_NULL.bit(!object.stamp().nonNull());
+            if (GraalOptions.CheckcastCounters) {
+                SnippetTemplate template = getTemplate(hintHubs.length, flags | COUNTERS.bit(), 0, new Factory() {
+                    @SuppressWarnings("hiding")
+                    @Override
+                    SnippetTemplate create(HotSpotKlassOop[] hints, int flags) {
+                        // checkcastCounters(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact)
+                        return SnippetTemplate.create(runtime, counters, _, _, hints, EXACT_HINTS.bool(flags));
+                    }
+                });
+                template.instantiate(runtime, checkcast, checkcast, hub, object, hintHubs, hints.exact);
+            } else if (target == null) {
+                SnippetTemplate template = getTemplate(hintHubs.length, flags | UNKNOWN_SUPER.bit(), 0, new Factory() {
+                    @SuppressWarnings("hiding")
+                    @Override
+                    SnippetTemplate create(HotSpotKlassOop[] hints, int flags) {
+                        // checkcastUnknown(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull)
+                        return SnippetTemplate.create(runtime, unknown, _, _, hints, EXACT_HINTS.bool(flags), CHECK_NULL.bool(flags));
+                    }
+                });
+                template.instantiate(runtime, checkcast, checkcast, hub, object, hintHubs);
+            } else if (target.isPrimaryType()) {
+                SnippetTemplate template = getTemplate(hintHubs.length, flags | PRIMARY_SUPER.bit(), target.superCheckOffset(), new Factory() {
+                    @SuppressWarnings("hiding")
+                    @Override
+                    SnippetTemplate create(HotSpotKlassOop[] hints, int flags) {
+                        // checkcastPrimary(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull, int superCheckOffset)
+                        return SnippetTemplate.create(runtime, primary, _, _, hints, EXACT_HINTS.bool(flags), CHECK_NULL.bool(flags), target.superCheckOffset());
+                    }
+                });
+                template.instantiate(runtime, checkcast, checkcast, hub, object, hintHubs);
+            } else {
+                SnippetTemplate template = getTemplate(hintHubs.length, flags | SECONDARY_SUPER.bit(), 0, new Factory() {
+                    @SuppressWarnings("hiding")
+                    @Override
+                    SnippetTemplate create(HotSpotKlassOop[] hints, int flags) {
+                        // checkcastSecondary(Object hub, Object object, Object[] hintHubs, boolean hintsAreExact, boolean checkNull)
+                        return SnippetTemplate.create(runtime, secondary, _, _, hints, EXACT_HINTS.bool(flags), CHECK_NULL.bool(flags));
+                    }
+                });
+                template.instantiate(runtime, checkcast, checkcast, hub, object, hintHubs);
             }
-            return key;
+            new DeadCodeEliminationPhase().apply(graph);
         }
     }
 }

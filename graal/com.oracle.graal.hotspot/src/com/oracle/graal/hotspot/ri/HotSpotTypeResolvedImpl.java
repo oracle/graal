@@ -26,6 +26,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.hotspot.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
@@ -42,6 +43,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     private boolean hasFinalizer;
     private boolean hasSubclass;
     private boolean hasFinalizableSubclass;
+    private int superCheckOffset;
     private boolean isArrayClass;
     private boolean isInstanceClass;
     private boolean isInterface;
@@ -264,7 +266,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         return this;
     }
 
-    // (dnsimon) this value may require identity semantics
+    // this value may require identity semantics so cache it
     private HotSpotKlassOop klassOopCache;
 
     @Override
@@ -273,5 +275,15 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
             klassOopCache = new HotSpotKlassOop(compiler, javaMirror);
         }
         return klassOopCache;
+    }
+
+    private static final int SECONDARY_SUPER_CACHE_OFFSET = CompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+
+    public boolean isPrimaryType() {
+        return SECONDARY_SUPER_CACHE_OFFSET != superCheckOffset;
+    }
+
+    public int superCheckOffset() {
+        return superCheckOffset;
     }
 }
