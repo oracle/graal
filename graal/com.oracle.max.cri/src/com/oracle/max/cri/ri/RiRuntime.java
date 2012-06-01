@@ -119,16 +119,6 @@ public interface RiRuntime {
     RiResolvedMethod getRiMethod(Method reflectionMethod);
 
     /**
-     * Installs some given machine code as the implementation of a given method.
-     *
-     * @param method a method whose executable code is being modified
-     * @param code the code to be executed when {@code method} is called
-     * @param info the object into which details of the installed code will be written.
-     *        Ignored if null, otherwise the info is written to index 0 of this array.
-     */
-    void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info);
-
-    /**
      * Adds the given machine code as an implementation of the given method without making it the default implementation.
      * @param method a method to which the executable code is begin added
      * @param code the code to be added

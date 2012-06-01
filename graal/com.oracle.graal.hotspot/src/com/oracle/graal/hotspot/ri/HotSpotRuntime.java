@@ -479,7 +479,6 @@ public class HotSpotRuntime implements GraalRuntime {
         return hsInfo;
     }
 
-    @Override
     public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, hsInfo);
