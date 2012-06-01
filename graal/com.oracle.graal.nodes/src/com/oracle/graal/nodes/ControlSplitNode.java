@@ -105,4 +105,12 @@ public abstract class ControlSplitNode extends FixedNode {
         properties.put("branchProbability", str.toString());
         return properties;
     }
+
+    public int blockSuccessorIndex(BeginNode successor) {
+        int idx = blockSuccessors.indexOf(successor);
+        if (idx < 0) {
+            throw new IllegalArgumentException();
+        }
+        return idx;
+    }
 }

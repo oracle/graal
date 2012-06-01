@@ -24,12 +24,15 @@ package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
@@ -61,7 +64,8 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (index().isConstant() && array().isConstant() && !array().isNullConstant()) {
+        RiRuntime runtime = tool.runtime();
+        if (runtime != null && index().isConstant() && array().isConstant() && !array().isNullConstant()) {
             CiConstant arrayConst = array().asConstant();
             if (tool.isImmutable(arrayConst)) {
                 int index = index().asConstant().asInt();
@@ -69,7 +73,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
                 int length = Array.getLength(array);
                 if (index >= 0 && index < length) {
                     return ConstantNode.forCiConstant(elementKind().readUnsafeConstant(array,
-                                    elementKind().arrayBaseOffset() + index * elementKind().arrayIndexScale()), tool.runtime(), graph());
+                                    elementKind().arrayBaseOffset() + index * elementKind().arrayIndexScale()), runtime, graph());
                 }
             }
         }
