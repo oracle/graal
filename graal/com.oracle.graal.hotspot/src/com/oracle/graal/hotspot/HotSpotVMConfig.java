@@ -47,6 +47,9 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int vmPageSize;
     public int stackShadowPages;
     public int hubOffset;
+    public int superCheckOffsetOffset;
+    public int secondarySuperCacheOffset;
+    public int secondarySupersOffset;
     public int arrayLengthOffset;
     public int klassStateOffset;
     public int klassStateFullyInitialized;

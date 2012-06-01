@@ -28,16 +28,13 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
-import com.oracle.graal.hotspot.snippets.CheckCastSnippets.Counter;
 import com.oracle.graal.hotspot.target.amd64.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -357,15 +354,13 @@ public class HotSpotRuntime implements GraalRuntime {
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != CiKind.Illegal;
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph);
-            location.setIndexScalingEnabled(false);
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph, false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(load.object(), StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.storeKind(), store.displacement(), store.offset(), graph);
-            location.setIndexScalingEnabled(false);
+            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.storeKind(), store.displacement(), store.offset(), graph, false);
             WriteNode write = graph.add(new WriteNode(store.object(), store.value(), location));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
@@ -381,31 +376,7 @@ public class HotSpotRuntime implements GraalRuntime {
             graph.replaceFixed(objectClassNode, memoryRead);
         } else if (n instanceof CheckCastNode) {
             if (shouldLowerCheckcast(graph)) {
-                CheckCastNode checkcast = (CheckCastNode) n;
-                ValueNode hub = checkcast.targetClassInstruction();
-                ValueNode object = checkcast.object();
-                TypeCheckHints hints = new TypeCheckHints(checkcast.targetClass(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
-                HotSpotKlassOop[] hintHubs = new HotSpotKlassOop[hints.types.length];
-                for (int i = 0; i < hintHubs.length; i++) {
-                    hintHubs[i] = ((HotSpotType) hints.types[i]).klassOop();
-                }
-                Debug.log("Lowering checkcast in %s: node=%s, hintsHubs=%s, exact=%b", graph, checkcast, Arrays.toString(hints.types), hints.exact);
-
-                final Counter noHintsCounter;
-                if (GraalOptions.CheckcastCounters) {
-                    if (checkcast.targetClass() == null) {
-                        noHintsCounter = Counter.noHints_unknown;
-                    } else if (checkcast.targetClass().isInterface()) {
-                        noHintsCounter = Counter.noHints_iface;
-                    } else {
-                        noHintsCounter = Counter.noHints_class;
-                    }
-                } else {
-                    noHintsCounter = null;
-                }
-                boolean checkNull = !object.stamp().nonNull();
-                checkcasts.get(hintHubs.length, hints.exact, checkNull, noHintsCounter).instantiate(this, checkcast, checkcast, hub, object, hintHubs, noHintsCounter);
-                new DeadCodeEliminationPhase().apply(graph);
+                checkcasts.lower((CheckCastNode) n, tool);
             }
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
@@ -425,7 +396,7 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     private IndexedLocationNode createArrayLocation(Graph graph, CiKind elementKind, ValueNode index) {
-        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph);
+        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph, true);
     }
 
     private SafeReadNode safeReadArrayLength(ValueNode array, long leafGraphId) {

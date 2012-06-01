@@ -158,7 +158,7 @@ public abstract class GraphTest {
     }
 
     protected RiCompiledMethod addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
-        Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<RiCompiledMethod>() {
+        return Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<RiCompiledMethod>() {
             @Override
             public RiCompiledMethod call() throws Exception {
                 final RiCodeInfo[] info = Debug.isDumpEnabled() ? new RiCodeInfo[1] : null;
@@ -169,7 +169,6 @@ public abstract class GraphTest {
                 return installedMethod;
             }
         });
-        return runtime.addMethod(method, tm, null);
     }
 
     /**
