@@ -266,9 +266,6 @@ public class SnippetTemplate {
             } else if (param instanceof ConstantNode) {
                 replacements.put((ConstantNode) param, ConstantNode.forObject(arg, runtime, replaceeGraph));
             } else {
-                if (!param.equals(arg)) {
-                    System.exit(1);
-                }
                 assert param.equals(arg) : param + " != " + arg;
             }
         }
