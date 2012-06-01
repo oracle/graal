@@ -197,11 +197,6 @@ public class HotSpotRuntime implements GraalRuntime {
     }
 
     @Override
-    public boolean isExceptionType(RiResolvedType type) {
-        return type.isSubtypeOf((RiResolvedType) compiler.getCompilerToVM().getType(Throwable.class));
-    }
-
-    @Override
     public int sizeOfLockData() {
         // TODO shouldn't be hard coded
         return 8;
@@ -234,16 +229,6 @@ public class HotSpotRuntime implements GraalRuntime {
     @Override
     public int getArrayLength(CiConstant array) {
         return compiler.getCompilerToVM().getArrayLength(array);
-    }
-
-    @Override
-    public Class<?> asJavaClass(CiConstant c) {
-        return (Class<?>) c.asObject();
-    }
-
-    @Override
-    public Object asJavaObject(CiConstant c) {
-        return c.asObject();
     }
 
     @Override
