@@ -91,13 +91,12 @@ public class Snippets {
     }
 
     private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
-        return Debug.scope("BuildSnippetGraph", snippetRiMethod, new Callable<StructuredGraph>() {
-
+        final StructuredGraph graph = new StructuredGraph(snippetRiMethod);
+        return Debug.scope("BuildSnippetGraph", new Object[] {snippetRiMethod, graph}, new Callable<StructuredGraph>() {
             @Override
             public StructuredGraph call() throws Exception {
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
                 GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
-                StructuredGraph graph = new StructuredGraph(snippetRiMethod);
                 graphBuilder.apply(graph);
 
                 Debug.dump(graph, "%s: %s", snippetRiMethod.name(), GraphBuilderPhase.class.getSimpleName());
