@@ -520,10 +520,44 @@ public class Graph {
      * @param replacements the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
+    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, Map<Node, Node> replacementsMap) {
+        DuplicationReplacement replacements;
+        if (replacementsMap == null) {
+            replacements = null;
+        } else {
+            replacements = new MapReplacement(replacementsMap);
+        }
+        return addDuplicates(newNodes, replacements);
+    }
+
+    public interface DuplicationReplacement {
+        Node replacement(Node original);
+    }
+
+    private static final class MapReplacement implements DuplicationReplacement {
+        private final Map<Node, Node> map;
+        public MapReplacement(Map<Node, Node> map) {
+            this.map = map;
+        }
+        @Override
+        public Node replacement(Node original) {
+            Node replacement = map.get(original);
+            return replacement != null ? replacement : original;
+        }
+
+    }
+
+    private static final DuplicationReplacement NO_REPLACEMENT = new DuplicationReplacement() {
+        @Override
+        public Node replacement(Node original) {
+            return original;
+        }
+    };
+
     @SuppressWarnings("all")
-    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, Map<Node, Node> replacements) {
+    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, DuplicationReplacement replacements) {
         if (replacements == null) {
-            replacements = Collections.emptyMap();
+            replacements = NO_REPLACEMENT;
         }
         return NodeClass.addGraphDuplicate(this, newNodes, replacements);
     }
