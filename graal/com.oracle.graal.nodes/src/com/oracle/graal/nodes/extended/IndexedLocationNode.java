@@ -27,10 +27,20 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+/**
+ * Extension of a {@linkplain LocationNode location} to include a scaled index or an additional offset.
+ */
 public final class IndexedLocationNode extends LocationNode implements LIRLowerable, Canonicalizable {
-    @Input private ValueNode index;
-    private boolean indexScalingEnabled;
 
+    /**
+     * An offset or index depending on whether {@link #indexScalingEnabled} is true or false respectively.
+     */
+    @Input private ValueNode index;
+    private final boolean indexScalingEnabled;
+
+    /**
+     * Gets the index or offset of this location.
+     */
     public ValueNode index() {
         return index;
     }
@@ -44,17 +54,6 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
      */
     public boolean indexScalingEnabled() {
         return indexScalingEnabled;
-    }
-
-    /**
-     * Enables or disables scaling of the index by the value kind's size. Has no effect if the index input is not used.
-     */
-    public void setIndexScalingEnabled(boolean enable) {
-        this.indexScalingEnabled = enable;
-    }
-
-    public static IndexedLocationNode create(Object identity, CiKind kind, int displacement, ValueNode index, Graph graph) {
-        return create(identity, kind, displacement, index, graph, true);
     }
 
     public static IndexedLocationNode create(Object identity, CiKind kind, int displacement, ValueNode index, Graph graph, boolean indexScalingEnabled) {

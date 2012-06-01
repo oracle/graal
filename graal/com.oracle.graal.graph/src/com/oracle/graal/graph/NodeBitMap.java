@@ -36,9 +36,13 @@ public final class NodeBitMap implements Iterable<Node>{
     }
 
     public NodeBitMap(Graph graph, boolean autoGrow) {
+        this(graph, autoGrow, new BitMap(graph.nodeIdCount()));
+    }
+
+    private NodeBitMap(Graph graph, boolean autoGrow, BitMap bits) {
         this.graph = graph;
         this.autoGrow = autoGrow;
-        bitMap = new BitMap(graph.nodeIdCount());
+        bitMap = bits;
     }
 
     public Graph graph() {
@@ -177,5 +181,9 @@ public final class NodeBitMap implements Iterable<Node>{
 
     public int cardinality() {
         return bitMap.cardinality();
+    }
+
+    public NodeBitMap copy() {
+        return new NodeBitMap(graph, autoGrow, bitMap.copy());
     }
 }

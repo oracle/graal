@@ -352,9 +352,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             for (Block pred : block.getPredecessors()) {
                 if (fs == null) {
                     fs = blockLastState.get(pred);
-                } else if (fs != blockLastState.get(pred)) {
-                    fs = null;
-                    break;
+                } else {
+                    if (blockLastState.get(pred) == null) {
+                        // Only a back edge can have a null state for its enclosing block.
+                        assert pred.getEndNode() instanceof LoopEndNode;
+
+                        if (block.getBeginNode().stateAfter() == null) {
+                            // We'll assert later that the begin and end of a framestate-less loop
+                            // share the frame state that flowed into the loop
+                            blockLastState.put(pred, fs);
+                        }
+                    } else if (fs != blockLastState.get(pred)) {
+                        fs = null;
+                        break;
+                    }
                 }
             }
             if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
@@ -432,6 +443,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
         }
+
+        // Check that the begin and end of a framestate-less loop
+        // share the frame state that flowed into the loop
+        assert blockLastState.get(block) == null || blockLastState.get(block) == lastState;
 
         blockLocks.put(currentBlock, curLocks);
         blockLastState.put(block, lastState);
@@ -707,16 +722,24 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
-        emitBranch(operand(node.object()), CiConstant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
-        if (trueSuccessor != null) {
-            emitJump(trueSuccessor, null);
+        if (falseSuccessor != null) {
+            emitBranch(operand(node.object()), CiConstant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
+            if (trueSuccessor != null) {
+                emitJump(trueSuccessor, null);
+            }
+        } else {
+            emitBranch(operand(node.object()), CiConstant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
         }
     }
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRDebugInfo info) {
-        emitBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
-        if (trueSuccessorBlock != null) {
-            emitJump(trueSuccessorBlock, null);
+        if (falseSuccessorBlock != null) {
+            emitBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
+            if (trueSuccessorBlock != null) {
+                emitJump(trueSuccessorBlock, null);
+            }
+        } else {
+            emitBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessorBlock, info);
         }
     }
 
