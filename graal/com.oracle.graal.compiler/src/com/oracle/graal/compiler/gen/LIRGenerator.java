@@ -707,16 +707,24 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
-        emitBranch(operand(node.object()), CiConstant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
-        if (trueSuccessor != null) {
-            emitJump(trueSuccessor, null);
+        if (falseSuccessor != null) {
+            emitBranch(operand(node.object()), CiConstant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
+            if (trueSuccessor != null) {
+                emitJump(trueSuccessor, null);
+            }
+        } else {
+            emitBranch(operand(node.object()), CiConstant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
         }
     }
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessorBlock, LabelRef falseSuccessorBlock, LIRDebugInfo info) {
-        emitBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
-        if (trueSuccessorBlock != null) {
-            emitJump(trueSuccessorBlock, null);
+        if (falseSuccessorBlock != null) {
+            emitBranch(operand(compare.x()), operand(compare.y()), compare.condition().negate(), !compare.unorderedIsTrue(), falseSuccessorBlock, info);
+            if (trueSuccessorBlock != null) {
+                emitJump(trueSuccessorBlock, null);
+            }
+        } else {
+            emitBranch(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueSuccessorBlock, info);
         }
     }
 
