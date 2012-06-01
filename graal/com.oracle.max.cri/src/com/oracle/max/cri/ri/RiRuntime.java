@@ -69,11 +69,6 @@ public interface RiRuntime {
     RiResolvedType getType(Class<?> clazz);
 
     /**
-     * Returns true if the given type is a subtype of java/lang/Throwable.
-     */
-    boolean isExceptionType(RiResolvedType type);
-
-    /**
      * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to the compiler.
      *
      * @return true if the two parameters represent the same runtime object, false otherwise
@@ -106,20 +101,6 @@ public interface RiRuntime {
      * Gets the length of the array that is wrapped in a CiConstant object.
      */
     int getArrayLength(CiConstant array);
-
-    /**
-     * Converts the given CiConstant object to a object.
-     *
-     * @return {@code null} if the conversion is not possible <b>OR</b> {@code c.isNull() == true}
-     */
-    Object asJavaObject(CiConstant c);
-
-    /**
-     * Converts the given CiConstant object to a {@link Class} object.
-     *
-     * @return {@code null} if the conversion is not possible.
-     */
-    Class<?> asJavaClass(CiConstant c);
 
     /**
      * Performs any runtime-specific conversion on the object used to describe the target of a call.
