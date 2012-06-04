@@ -124,7 +124,7 @@ public abstract class Node implements Cloneable, Formattable {
     private NodeUsagesList usages;
     private Node predecessor;
     private int modCount;
-    private NodeClass nodeClass;
+    private final NodeClass nodeClass;
 
     public Node() {
         this.graph = null;
