@@ -941,7 +941,12 @@ public class NodeClass {
                     Node replacement = replacements.replacement(input);
                     if (replacement != input) {
                         replacementsMap.put(input, replacement);
-                        target = replacement;
+                        Class< ? > edgeType = node.getNodeClass().inputTypes[pos.index];
+                        if (edgeType != null && !edgeType.isAssignableFrom(replacement.getClass())) {
+                            target = null;
+                        } else {
+                            target = replacement;
+                        }
                     } else {
                         target = newNodes.get(input);
                     }
@@ -974,7 +979,12 @@ public class NodeClass {
                 Node replacement = replacements.replacement(succ);
                 if (replacement != succ) {
                     replacementsMap.put(succ, replacement);
-                    target = replacement;
+                    Class< ? > edgeType = node.getNodeClass().successorTypes[pos.index];
+                    if (edgeType != null && !edgeType.isAssignableFrom(replacement.getClass())) {
+                        target = null;
+                    } else {
+                        target = replacement;
+                    }
                 } else {
                     target = newNodes.get(succ);
                 }
