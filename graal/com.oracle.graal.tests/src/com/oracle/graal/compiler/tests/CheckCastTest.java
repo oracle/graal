@@ -162,6 +162,7 @@ public class CheckCastTest extends TypeCheckTest {
     static class Depth11 extends Depth10 {}
     static class Depth12 extends Depth11 {}
     static class Depth13 extends Depth12 {}
+    static class Depth14 extends Depth12 {}
 
     public static Depth12 asDepth12(Object o) {
         return (Depth12) o;
@@ -179,6 +180,8 @@ public class CheckCastTest extends TypeCheckTest {
     public void test9() {
         Object o = new Depth13();
         test("asDepth12",   profile(), o);
+        test("asDepth12",   profile(Depth13.class), o);
+        test("asDepth12",   profile(Depth13.class, Depth14.class), o);
     }
 
     @Test
