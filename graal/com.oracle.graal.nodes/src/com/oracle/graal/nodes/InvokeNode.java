@@ -147,7 +147,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
             if (node instanceof FixedWithNextNode) {
                 ((StructuredGraph) graph()).replaceFixedWithFixed(this, (FixedWithNextNode) node);
             } else if (node instanceof DeoptimizeNode) {
-                this.replaceAtPredecessors(node);
+                this.replaceAtPredecessor(node);
                 this.replaceAtUsages(null);
                 GraphUtil.killCFG(this);
                 return;

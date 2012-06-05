@@ -30,6 +30,7 @@ import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.util.*;
 
 
 
@@ -88,7 +89,7 @@ public class LoopTransformDataResolver {
                             first = firstPhi;
                             merge.stateAfter().replaceFirstInput(phi, firstPhi); // fix the merge's state after (see SuperBlock.mergeExits)
                             if (phi.type() == PhiType.Virtual) {
-                                first = SuperBlock.mergeVirtualChain(graph, firstPhi, merge);
+                                first = GraphUtil.mergeVirtualChain(graph, firstPhi, merge);
                             }
                         }
                     }

@@ -663,7 +663,7 @@ public class NodeClass {
             if (pos.input) {
                 node.updateUsages(old, x);
             } else {
-                node.updatePredecessors(old, x);
+                node.updatePredecessor(old, x);
             }
         } else {
             NodeList<Node> list = getNodeList(node, offset);

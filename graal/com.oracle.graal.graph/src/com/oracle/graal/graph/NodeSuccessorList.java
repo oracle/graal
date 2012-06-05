@@ -43,7 +43,7 @@ public final class NodeSuccessorList<T extends Node> extends NodeList<T> {
 
     @Override
     protected void update(T oldNode, T newNode) {
-        self.updatePredecessors(oldNode, newNode);
+        self.updatePredecessor(oldNode, newNode);
     }
 
     @Override

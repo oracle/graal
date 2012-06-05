@@ -35,7 +35,7 @@ public class ScheduledNode extends Node {
     }
 
     public void setScheduledNext(ScheduledNode x) {
-        updatePredecessors(scheduledNext, x);
+        updatePredecessor(scheduledNext, x);
         scheduledNext = x;
     }
 

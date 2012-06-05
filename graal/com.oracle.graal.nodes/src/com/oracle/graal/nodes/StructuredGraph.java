@@ -201,7 +201,7 @@ public class StructuredGraph extends Graph {
         assert node.usages().isEmpty() : node + " " + node.usages();
         FixedNode next = node.next();
         node.setNext(null);
-        node.replaceAtPredecessors(next);
+        node.replaceAtPredecessor(next);
         node.safeDelete();
     }
 
@@ -228,7 +228,7 @@ public class StructuredGraph extends Graph {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         FixedNode next = node.next();
         node.setNext(null);
-        node.replaceAtPredecessors(next);
+        node.replaceAtPredecessor(next);
         node.replaceAtUsages(replacement);
         node.safeDelete();
     }
@@ -241,7 +241,7 @@ public class StructuredGraph extends Graph {
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
             node.setBlockSuccessor(i, null);
         }
-        node.replaceAtPredecessors(begin);
+        node.replaceAtPredecessor(begin);
         node.safeDelete();
     }
 
@@ -258,7 +258,7 @@ public class StructuredGraph extends Graph {
             }
         }
         if (begin.isAlive()) {
-            node.replaceAtPredecessors(begin);
+            node.replaceAtPredecessor(begin);
             node.safeDelete();
         } else {
             assert node.isDeleted();
@@ -293,7 +293,7 @@ public class StructuredGraph extends Graph {
         for (int i = 0; i < node.blockSuccessorCount(); i++) {
             node.setBlockSuccessor(i, null);
         }
-        node.replaceAtPredecessors(begin);
+        node.replaceAtPredecessor(begin);
         node.replaceAtUsages(replacement);
         node.safeDelete();
     }
@@ -353,7 +353,7 @@ public class StructuredGraph extends Graph {
             stateAfter.safeDelete();
         }
         if (sux == null) {
-            singleEnd.replaceAtPredecessors(null);
+            singleEnd.replaceAtPredecessor(null);
             singleEnd.safeDelete();
         } else {
             singleEnd.replaceAndDelete(sux);

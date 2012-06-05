@@ -202,10 +202,10 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Updates the predecessor sets of the given nodes after a successor slot is changed from oldSuccessor to newSuccessor:
+     * Updates the predecessor of the given nodes after a successor slot is changed from oldSuccessor to newSuccessor:
      * removes this node from oldSuccessor's predecessors and adds this node to newSuccessor's predecessors.
      */
-    protected void updatePredecessors(Node oldSuccessor, Node newSuccessor) {
+    protected void updatePredecessor(Node oldSuccessor, Node newSuccessor) {
         assert assertTrue(usages != null, "usages == null while adding %s to %s", newSuccessor, this);
         if (oldSuccessor != newSuccessor) {
             if (oldSuccessor != null) {
@@ -228,7 +228,7 @@ public abstract class Node implements Cloneable, Formattable {
             updateUsages(null, input);
         }
         for (Node successor : successors()) {
-            updatePredecessors(null, successor);
+            updatePredecessor(null, successor);
         }
     }
 
@@ -262,12 +262,12 @@ public abstract class Node implements Cloneable, Formattable {
         usages.clear();
     }
 
-    public void replaceAtPredecessors(Node other) {
+    public void replaceAtPredecessor(Node other) {
         assert checkReplaceWith(other);
         if (predecessor != null) {
             boolean result = predecessor.getNodeClass().replaceFirstSuccessor(predecessor, this, other);
             assert assertTrue(result, "not found in successors, predecessor: %s", predecessor);
-            predecessor.updatePredecessors(this, other);
+            predecessor.updatePredecessor(this, other);
         }
     }
 
@@ -276,14 +276,14 @@ public abstract class Node implements Cloneable, Formattable {
         if (other != null) {
             clearSuccessors();
             replaceAtUsages(other);
-            replaceAtPredecessors(other);
+            replaceAtPredecessor(other);
         }
         safeDelete();
     }
 
     public void replaceFirstSuccessor(Node oldSuccessor, Node newSuccessor) {
         if (getNodeClass().replaceFirstSuccessor(this, oldSuccessor, newSuccessor)) {
-            updatePredecessors(oldSuccessor, newSuccessor);
+            updatePredecessor(oldSuccessor, newSuccessor);
         }
     }
 
