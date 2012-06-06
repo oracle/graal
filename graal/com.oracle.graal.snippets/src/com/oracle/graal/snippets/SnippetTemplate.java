@@ -32,7 +32,6 @@ import com.oracle.graal.compiler.phases.CanonicalizerPhase.IsImmutablePredicate;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
-import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.snippets.nodes.*;
@@ -119,36 +118,19 @@ public class SnippetTemplate {
                 boolean exploded = false;
                 do {
                     exploded = false;
-                    for (Node node : snippetCopy.getNodes()) {
-                        if (node instanceof ExplodeLoopNode) {
-                            final ExplodeLoopNode explodeLoop = (ExplodeLoopNode) node;
-                            LoopBeginNode loopBegin = explodeLoop.findLoopBegin();
-                            ControlFlowGraph cfg = ControlFlowGraph.compute(snippetCopy, true, true, false, false);
-                            for (Loop loop : cfg.getLoops()) {
-                                if (loop.loopBegin() == loopBegin) {
-                                    SuperBlock wholeLoop = LoopTransformUtil.wholeLoop(loop);
-                                    Debug.dump(snippetCopy, "Before exploding loop %s", loopBegin);
-                                    int peel = 0;
-                                    while (!loopBegin.isDeleted()) {
-                                        int mark = snippetCopy.getMark();
-                                        LoopTransformUtil.peel(loop, wholeLoop);
-                                        Debug.dump(snippetCopy, "After peel %d", peel);
-                                        new CanonicalizerPhase(null, runtime, null, mark, immutabilityPredicate).apply(snippetCopy);
-                                        peel++;
-                                    }
-                                    Debug.dump(snippetCopy, "After exploding loop %s", loopBegin);
-                                    exploded = true;
-                                    break;
-                                }
-                            }
-
-                            FixedNode explodeLoopNext = explodeLoop.next();
-                            explodeLoop.clearSuccessors();
-                            explodeLoop.replaceAtPredecessor(explodeLoopNext);
-                            explodeLoop.replaceAtUsages(null);
-                            GraphUtil.killCFG(explodeLoop);
-                            break;
-                        }
+                    ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
+                    if (explodeLoop != null) {
+                        LoopEx loop = new LoopsData(snippetCopy).loop(explodeLoop.findLoopBegin());
+                        int mark = snippetCopy.getMark();
+                        LoopTransformations.fullUnroll(loop);
+                        new CanonicalizerPhase(null, runtime, null, mark, immutabilityPredicate).apply(snippetCopy);
+                        FixedNode explodeLoopNext = explodeLoop.next();
+                        explodeLoop.clearSuccessors();
+                        explodeLoop.replaceAtPredecessor(explodeLoopNext);
+                        explodeLoop.replaceAtUsages(null);
+                        GraphUtil.killCFG(explodeLoop);
+                        exploded = true;
+                        break;
                     }
                 } while (exploded);
 
