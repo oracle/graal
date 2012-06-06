@@ -46,7 +46,7 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
     public FilteredNodeIterable<T> nonNull() {
         return new FilteredNodeIterable<>(this).and(NodePredicates.isNotNull());
     }
-    public FilteredNodeIterable<T> distinct() {
+    public NodeIterable<T> distinct() {
         return new FilteredNodeIterable<>(this).distinct();
     }
     public List<T> snapshot() {

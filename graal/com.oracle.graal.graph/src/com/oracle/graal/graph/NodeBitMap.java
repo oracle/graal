@@ -24,9 +24,11 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.iterators.*;
 
 
-public final class NodeBitMap implements Iterable<Node>{
+
+public final class NodeBitMap extends NodeIterable<Node>{
     private final boolean autoGrow;
     private final BitMap bitMap;
     private final Graph graph;
@@ -185,5 +187,20 @@ public final class NodeBitMap implements Iterable<Node>{
 
     public NodeBitMap copy() {
         return new NodeBitMap(graph, autoGrow, bitMap.copy());
+    }
+
+    @Override
+    public NodeIterable<Node> distinct() {
+        return this;
+    }
+
+    @Override
+    public int count() {
+        return bitMap.cardinality();
+    }
+
+    @Override
+    public boolean contains(Node node) {
+        return isMarked(node);
     }
 }

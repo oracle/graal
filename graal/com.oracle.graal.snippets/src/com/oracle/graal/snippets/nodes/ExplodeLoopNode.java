@@ -27,10 +27,13 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.snippets.Snippet.Parameter;
 
 /**
  * Placeholder node to denote to snippet preparation that the following loop
  * must be completely unrolled.
+ *
+ * @see Parameter#multiple()
  */
 public final class ExplodeLoopNode extends FixedWithNextNode {
 
@@ -40,12 +43,17 @@ public final class ExplodeLoopNode extends FixedWithNextNode {
 
     public LoopBeginNode findLoopBegin() {
         Node next = next();
+        ArrayList<Node> succs = new ArrayList<>();
         while (!(next instanceof LoopBeginNode)) {
             assert next != null : "cannot find loop after " + this;
-            Iterator< ? extends Node> successors = next.cfgSuccessors().iterator();
-            assert successors.hasNext() : "cannot find loop after " + this;
-            next = successors.next();
-            assert !successors.hasNext() : "should only be straight line code after " + this;
+            for (Node n : next.cfgSuccessors()) {
+                succs.add(n);
+            }
+            if (succs.size() == 1) {
+                next = succs.get(0);
+            } else {
+                return null;
+            }
         }
         return (LoopBeginNode) next;
     }
