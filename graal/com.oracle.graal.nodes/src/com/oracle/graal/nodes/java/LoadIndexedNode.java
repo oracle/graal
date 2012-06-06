@@ -24,8 +24,6 @@ package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.*;
 
-import sun.misc.*;
-
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
