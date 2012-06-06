@@ -35,6 +35,7 @@ import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.snippets.Snippet.Arguments;
 import com.oracle.graal.snippets.Snippet.Constant;
@@ -158,6 +159,7 @@ public class SnippetTemplate {
 
         int parameterCount = signature.argumentCount(false);
         Parameter[] parameterAnnotations = new Parameter[parameterCount];
+        ConstantNode[] placeholders = new ConstantNode[parameterCount];
         for (int i = 0; i < parameterCount; i++) {
             Constant c = CiUtil.getParameterAnnotation(Constant.class, i, method);
             if (c != null) {
@@ -176,7 +178,9 @@ public class SnippetTemplate {
                     assert multiple != null : method + ": requires a Multiple named " + name;
                     assert checkMultipleArgument(method, signature, i, name, multiple);
                     Object array = ((Multiple) multiple).array;
-                    replacements.put(snippetGraph.getLocal(i), ConstantNode.forObject(array, runtime, snippetCopy));
+                    ConstantNode placeholder = ConstantNode.forObject(array, runtime, snippetCopy);
+                    replacements.put(snippetGraph.getLocal(i), placeholder);
+                    placeholders[i] = placeholder;
                 }
                 parameterAnnotations[i] = p;
             }
@@ -193,28 +197,36 @@ public class SnippetTemplate {
         for (int i = 0; i < parameterCount; i++) {
             Parameter p = parameterAnnotations[i];
             if (p != null) {
-                ValueNode parameter;
                 if (p.multiple()) {
-                    parameter = null;
                     assert snippetCopy.getLocal(i) == null;
-                    ConstantNode array = (ConstantNode) replacements.get(snippetGraph.getLocal(i));
-                    for (LoadIndexedNode loadIndexed : snippetCopy.getNodes(LoadIndexedNode.class)) {
-                        if (loadIndexed.array() == array) {
+                    Object array = ((Multiple) key.get(p.value())).array;
+                    int length = Array.getLength(array);
+                    LocalNode[] locals = new LocalNode[length];
+                    Stamp stamp = StampFactory.forKind(runtime.getType(array.getClass().getComponentType()).kind(false));
+                    for (int j = 0; j < length; j++) {
+                        assert (parameterCount & 0xFFFF) == parameterCount;
+                        int idx = i << 16 | j;
+                        LocalNode local = snippetCopy.unique(new LocalNode(idx, stamp));
+                        locals[j] = local;
+                    }
+                    parameters.put(p.value(), locals);
+
+                    ConstantNode placeholder = placeholders[i];
+                    assert placeholder != null;
+                    for (Node usage : placeholder.usages().snapshot()) {
+                        if (usage instanceof LoadIndexedNode) {
+                            LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
                             Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
-                            LoadMultipleParameterNode lmp = new LoadMultipleParameterNode(array, i, loadIndexed.index(), loadIndexed.stamp());
-                            StructuredGraph g = (StructuredGraph) loadIndexed.graph();
-                            g.add(lmp);
-                            g.replaceFixedWithFixed(loadIndexed, lmp);
-                            parameter = lmp;
+                            LoadSnippetParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetParameterNode(locals, loadIndexed.index(), loadIndexed.stamp()));
+                            snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
                             Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
-                            break;
                         }
                     }
                 } else {
-                    parameter = snippetCopy.getLocal(i);
+                    LocalNode local = snippetCopy.getLocal(i);
+                    assert local != null;
+                    parameters.put(p.value(), local);
                 }
-                assert parameter != null;
-                parameters.put(p.value(), parameter);
             }
         }
 
@@ -274,6 +286,8 @@ public class SnippetTemplate {
 
         new DeadCodeEliminationPhase().apply(snippetCopy);
 
+        assert checkAllMultipleParameterPlaceholdersAreDeleted(parameterCount, placeholders);
+
         this.graph = snippetCopy;
         nodes = new ArrayList<>(graph.getNodeCount());
         ReturnNode retNode = null;
@@ -289,6 +303,15 @@ public class SnippetTemplate {
             }
         }
         this.returnNode = retNode;
+    }
+
+    private static boolean checkAllMultipleParameterPlaceholdersAreDeleted(int parameterCount, ConstantNode[] placeholders) {
+        for (int i = 0; i < parameterCount; i++) {
+            if (placeholders[i] != null) {
+                assert placeholders[i].isDeleted() : placeholders[i];
+            }
+        }
+        return true;
     }
 
     private static boolean checkConstantArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object arg, CiKind kind) {
@@ -320,9 +343,9 @@ public class SnippetTemplate {
 
     /**
      * The named parameters of this template that must be bound to values during instantiation.
-     * Each parameter is either a {@link LocalNode} or a {@link LoadMultipleParameterNode} instance.
+     * Each value in this map is either a {@link LocalNode} instance or a {@link LocalNode} array.
      */
-    private final Map<String, ValueNode> parameters;
+    private final Map<String, Object> parameters;
 
     /**
      * The return node (if any) of the snippet.
@@ -344,28 +367,28 @@ public class SnippetTemplate {
 
         for (Map.Entry<String, Object> e : args) {
             String name = e.getKey();
-            ValueNode parameter = parameters.get(name);
+            Object parameter = parameters.get(name);
             assert parameter != null : this + " has no parameter named " + name;
             Object argument = e.getValue();
             if (parameter instanceof LocalNode) {
                 if (argument instanceof ValueNode) {
-                    replacements.put(parameter, (ValueNode) argument);
+                    replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     CiKind kind = ((LocalNode) parameter).kind();
                     CiConstant constant = CiConstant.forBoxed(kind, argument);
-                    replacements.put(parameter, ConstantNode.forCiConstant(constant, runtime, replaceeGraph));
+                    replacements.put((LocalNode) parameter, ConstantNode.forCiConstant(constant, runtime, replaceeGraph));
                 }
             } else {
-                assert parameter instanceof LoadMultipleParameterNode;
+                assert parameter instanceof LocalNode[];
+                LocalNode[] locals = (LocalNode[]) parameter;
                 Object array = argument;
                 assert array != null && array.getClass().isArray();
-                int length = Array.getLength(array);
-                LoadMultipleParameterNode lmp = (LoadMultipleParameterNode) parameter;
-                assert length == lmp.getLocalCount() : length + " != " + lmp.getLocalCount();
+                int length = locals.length;
+                assert Array.getLength(array) == length : length + " != " + Array.getLength(array);
                 for (int j = 0; j < length; j++) {
-                    LocalNode local = lmp.getLocal(j);
+                    LocalNode local = locals[j];
                     assert local != null;
-                    CiConstant constant = CiConstant.forBoxed(lmp.kind(), Array.get(array, j));
+                    CiConstant constant = CiConstant.forBoxed(local.kind(), Array.get(array, j));
                     ConstantNode element = ConstantNode.forCiConstant(constant, runtime, replaceeGraph);
                     replacements.put(local, element);
                 }
@@ -434,16 +457,18 @@ public class SnippetTemplate {
     public String toString() {
         StringBuilder buf = new StringBuilder(graph.toString()).append('(');
         String sep = "";
-        for (Map.Entry<String, ValueNode> e : parameters.entrySet()) {
+        for (Map.Entry<String, Object> e : parameters.entrySet()) {
             String name = e.getKey();
-            ValueNode value = e.getValue();
+            Object value = e.getValue();
             buf.append(sep);
             sep = ", ";
             if (value instanceof LocalNode) {
-                buf.append(value.kind().name()).append(' ').append(name);
+                LocalNode local = (LocalNode) value;
+                buf.append(local.kind().name()).append(' ').append(name);
             } else {
-                LoadMultipleParameterNode lmp = (LoadMultipleParameterNode) value;
-                buf.append(value.kind().name()).append('[').append(lmp.getLocalCount()).append("] ").append(name);
+                LocalNode[] locals = (LocalNode[]) value;
+                String kind = locals.length == 0 ? "?" : locals[0].kind().name();
+                buf.append(kind).append('[').append(locals.length).append("] ").append(name);
             }
         }
         return buf.append(')').toString();
