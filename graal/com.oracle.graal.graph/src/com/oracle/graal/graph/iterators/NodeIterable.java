@@ -34,10 +34,10 @@ public abstract class NodeIterable<T extends Node> implements Iterable<T> {
         return new FilteredNodeIterable<>(this).until(clazz);
     }
     @SuppressWarnings("unchecked")
-    public <F extends T> FilteredNodeIterable<F> filter(Class<F> clazz) {
-        return (FilteredNodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
+    public <F extends T> NodeIterable<F> filter(Class<F> clazz) {
+        return (NodeIterable<F>) new FilteredNodeIterable<>(this).and(NodePredicates.isA(clazz));
     }
-    public FilteredNodeIterable<T> filterInterface(Class<?> iface) {
+    public NodeIterable<T> filterInterface(Class<?> iface) {
         return new FilteredNodeIterable<>(this).and(NodePredicates.isAInterface(iface));
     }
     public FilteredNodeIterable<T> filter(NodePredicate predicate) {

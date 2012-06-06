@@ -313,6 +313,15 @@ public class Graph {
             public Iterator<Node> iterator() {
                 return new NodeIterator();
             }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <F extends Node> NodeIterable<F> filter(Class<F> clazz) {
+                if (IterableNodeType.class.isAssignableFrom(clazz)) {
+                    return getNodes((Class) clazz);
+                }
+                return super.filter(clazz);
+            }
         };
     }
 
