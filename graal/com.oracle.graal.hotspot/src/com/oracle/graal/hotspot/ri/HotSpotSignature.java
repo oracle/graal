@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.java.*;
 
 /**
@@ -41,7 +41,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     private RiType[] argumentTypes;
     private RiType returnTypeCache;
 
-    public HotSpotSignature(Compiler compiler, String signature) {
+    public HotSpotSignature(HotSpotCompiler compiler, String signature) {
         super(compiler);
         assert signature.length() > 0;
         this.originalString = signature;

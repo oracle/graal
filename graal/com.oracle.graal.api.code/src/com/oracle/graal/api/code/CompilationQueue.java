@@ -20,22 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.api.code;
 
-import java.io.*;
-
-import com.oracle.graal.api.meta.RiKind.*;
+import com.oracle.graal.api.meta.*;
 
 
-/**
- * Parent class for all HotSpot Ri... types.
- */
-public abstract class CompilerObject implements Serializable, FormatWithToString {
-    private static final long serialVersionUID = -4551670987101214877L;
-    protected final HotSpotCompiler compiler;
-
-    protected CompilerObject(HotSpotCompiler compiler) {
-        this.compiler = compiler;
-    }
-
+public interface CompilationQueue {
+    boolean enqueue(final RiResolvedMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable;
 }

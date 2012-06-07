@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.ri.*;
 
-public abstract class WriteBarrier extends FixedWithNextNode {
+public interface HotSpotCompiler {
 
-    public WriteBarrier() {
-        super(StampFactory.forVoid());
-    }
+    CompilerToVM getCompilerToVM();
+    VMToCompiler getVMToCompiler();
+    GraalCompiler getCompiler();
+    RiType lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve);
+    HotSpotVMConfig getConfig();
+    HotSpotRuntime getRuntime();
+    CiTarget getTarget();
+    HotSpotGraphCache getCache();
+    void evictDeoptedGraphs();
 
-    protected void generateBarrier(RiValue adr, LIRGeneratorTool gen) {
-        HotSpotVMConfig config = HotSpotCompilerImpl.getInstance().getConfig();
-        RiValue base = gen.emitUShr(adr, RiConstant.forInt(config.cardtableShift));
-
-        long startAddress = config.cardtableStartAddress;
-        int displacement = 0;
-        if (((int) startAddress) == startAddress) {
-            displacement = (int) startAddress;
-        } else {
-            base = gen.emitAdd(base, RiConstant.forLong(config.cardtableStartAddress));
-        }
-        gen.emitStore(new CiAddress(RiKind.Boolean, base, displacement), RiConstant.FALSE, false);
-    }
 }

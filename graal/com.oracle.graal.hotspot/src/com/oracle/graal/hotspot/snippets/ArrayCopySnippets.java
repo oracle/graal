@@ -373,11 +373,11 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Fold
     private static int cardTableShift() {
-        return CompilerImpl.getInstance().getConfig().cardtableShift;
+        return HotSpotCompilerImpl.getInstance().getConfig().cardtableShift;
     }
 
     @Fold
     private static long cardTableStart() {
-        return CompilerImpl.getInstance().getConfig().cardtableStartAddress;
+        return HotSpotCompilerImpl.getInstance().getConfig().cardtableStartAddress;
     }
 }

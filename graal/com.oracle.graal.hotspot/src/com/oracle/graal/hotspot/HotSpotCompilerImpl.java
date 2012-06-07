@@ -41,11 +41,11 @@ import com.oracle.max.cri.xir.*;
 /**
  * Singleton class holding the instance of the GraalCompiler.
  */
-public final class CompilerImpl implements Compiler, Remote {
+public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
 
-    private static Compiler theInstance;
+    private static HotSpotCompiler theInstance;
 
-    public static Compiler getInstance() {
+    public static HotSpotCompiler getInstance() {
         if (theInstance == null) {
             initialize();
         }
@@ -66,7 +66,7 @@ public final class CompilerImpl implements Compiler, Remote {
                 ReplacingStreams streams = new ReplacingStreams(socket.getOutputStream(), socket.getInputStream());
                 streams.getInvocation().sendResult(new CompilerToVMImpl());
 
-                theInstance = (Compiler) streams.getInvocation().waitForResult(false);
+                theInstance = (HotSpotCompiler) streams.getInvocation().waitForResult(false);
             } catch (IOException e1) {
                 System.out.println("Connection to compilation server FAILED.");
                 throw new RuntimeException(e1);
@@ -76,13 +76,13 @@ public final class CompilerImpl implements Compiler, Remote {
             }
         } else {
             // ordinary local compilation
-            theInstance = new CompilerImpl(null);
+            theInstance = new HotSpotCompilerImpl(null);
         }
     }
 
-    public static Compiler initializeServer(CompilerToVM entries) {
+    public static HotSpotCompiler initializeServer(CompilerToVM entries) {
         assert theInstance == null;
-        theInstance = new CompilerImpl(entries);
+        theInstance = new HotSpotCompilerImpl(entries);
         return theInstance;
     }
 
@@ -100,7 +100,7 @@ public final class CompilerImpl implements Compiler, Remote {
         return config;
     }
 
-    private CompilerImpl(CompilerToVM initialEntries) {
+    private HotSpotCompilerImpl(CompilerToVM initialEntries) {
 
         CompilerToVM toVM = initialEntries;
         // initialize CompilerToVM

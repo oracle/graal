@@ -27,7 +27,7 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.Compiler;
+import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Implementation of RiCompiledMethod for HotSpot.
@@ -42,7 +42,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     private final RiResolvedMethod method;
     private long nmethod;
 
-    public HotSpotCompiledMethod(Compiler compiler, RiResolvedMethod method) {
+    public HotSpotCompiledMethod(HotSpotCompiler compiler, RiResolvedMethod method) {
         super(compiler);
         this.method = method;
     }

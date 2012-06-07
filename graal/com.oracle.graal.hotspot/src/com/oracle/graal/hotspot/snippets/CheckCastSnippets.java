@@ -276,22 +276,22 @@ public class CheckCastSnippets implements SnippetsInterface {
 
     @Fold
     private static int superCheckOffsetOffset() {
-        return CompilerImpl.getInstance().getConfig().superCheckOffsetOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().superCheckOffsetOffset;
     }
 
     @Fold
     private static int secondarySuperCacheOffset() {
-        return CompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
     }
 
     @Fold
     private static int secondarySupersOffset() {
-        return CompilerImpl.getInstance().getConfig().secondarySupersOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().secondarySupersOffset;
     }
 
     @Fold
     private static int hubOffset() {
-        return CompilerImpl.getInstance().getConfig().hubOffset;
+        return HotSpotCompilerImpl.getInstance().getConfig().hubOffset;
     }
 
     public static void printCounter(PrintStream out, Counter c, long total) {

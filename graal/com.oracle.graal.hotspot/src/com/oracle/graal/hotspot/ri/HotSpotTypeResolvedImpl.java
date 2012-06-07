@@ -276,7 +276,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         return klassOopCache;
     }
 
-    private static final int SECONDARY_SUPER_CACHE_OFFSET = CompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+    private static final int SECONDARY_SUPER_CACHE_OFFSET = HotSpotCompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
 
     public boolean isPrimaryType() {
         return SECONDARY_SUPER_CACHE_OFFSET != superCheckOffset;
