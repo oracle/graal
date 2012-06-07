@@ -23,6 +23,6 @@
 package com.oracle.graal.api.meta;
 
 
-public interface MetaAccessCapability {
+public interface MetaAccessProvider {
 
 }
