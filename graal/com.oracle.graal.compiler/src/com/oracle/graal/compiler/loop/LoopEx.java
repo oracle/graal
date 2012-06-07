@@ -56,11 +56,13 @@ public class LoopEx {
         return whole;
     }
 
+    @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
         // TODO (gd)
         return null;
     }
 
+    @SuppressWarnings("unused")
     public LoopFragmentInsideBefore insideBefore(FixedNode point) {
         // TODO (gd)
         return null;
