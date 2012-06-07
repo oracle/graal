@@ -78,7 +78,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public CiConstant getEncoding(Representation r) {
+    public RiConstant getEncoding(Representation r) {
         throw GraalInternalError.unimplemented("HotSpotTypePrimitive.getEncoding");
     }
 
@@ -113,7 +113,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public boolean isInstance(CiConstant obj) {
+    public boolean isInstance(RiConstant obj) {
         return false;
     }
 

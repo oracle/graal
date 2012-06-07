@@ -57,7 +57,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     public ValueNode canonical(CanonicalizerTool tool) {
         RiRuntime runtime = tool.runtime();
         if (runtime != null) {
-            CiConstant constant = null;
+            RiConstant constant = null;
             if (isStatic()) {
                 constant = field().constantValue(null);
             } else if (object().isConstant() && !object().isNullConstant()) {

@@ -84,7 +84,7 @@ public class MethodEntryCounters {
             int off = Unsafe.getUnsafe().arrayBaseOffset(long[].class);
             int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);
 
-            AMD64Move.move(tasm, masm, counterArr, CiConstant.forObject(counter.counts));
+            AMD64Move.move(tasm, masm, counterArr, RiConstant.forObject(counter.counts));
             AMD64Move.load(tasm, masm, callerPc, new CiAddress(CiKind.Long, AMD64.rbp.asValue(CiKind.Long), 8), null);
 
             Label done = new Label();

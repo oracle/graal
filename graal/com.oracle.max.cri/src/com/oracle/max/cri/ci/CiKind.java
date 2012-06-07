@@ -396,28 +396,28 @@ public enum CiKind {
         }
     }
 
-    public CiConstant readUnsafeConstant(Object value, long displacement) {
+    public RiConstant readUnsafeConstant(Object value, long displacement) {
         assert value != null;
         Unsafe u = Unsafe.getUnsafe();
         switch(this) {
             case Boolean:
-                return CiConstant.forBoolean(u.getBoolean(value, displacement));
+                return RiConstant.forBoolean(u.getBoolean(value, displacement));
             case Byte:
-                return CiConstant.forByte(u.getByte(value, displacement));
+                return RiConstant.forByte(u.getByte(value, displacement));
             case Char:
-                return CiConstant.forChar(u.getChar(value, displacement));
+                return RiConstant.forChar(u.getChar(value, displacement));
             case Short:
-                return CiConstant.forShort(u.getShort(value, displacement));
+                return RiConstant.forShort(u.getShort(value, displacement));
             case Int:
-                return CiConstant.forInt(u.getInt(value, displacement));
+                return RiConstant.forInt(u.getInt(value, displacement));
             case Long:
-                return CiConstant.forLong(u.getLong(value, displacement));
+                return RiConstant.forLong(u.getLong(value, displacement));
             case Float:
-                return CiConstant.forFloat(u.getFloat(value, displacement));
+                return RiConstant.forFloat(u.getFloat(value, displacement));
             case Double:
-                return CiConstant.forDouble(u.getDouble(value, displacement));
+                return RiConstant.forDouble(u.getDouble(value, displacement));
             case Object:
-                return CiConstant.forObject(u.getObject(value, displacement));
+                return RiConstant.forObject(u.getObject(value, displacement));
             default:
                 assert false : "unexpected kind: " + this;
                 return null;

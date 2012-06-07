@@ -63,7 +63,7 @@ public interface RiRuntime {
      *
      * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
-    RiResolvedType getTypeOf(CiConstant constant);
+    RiResolvedType getTypeOf(RiConstant constant);
 
 
     RiResolvedType getType(Class<?> clazz);
@@ -73,7 +73,7 @@ public interface RiRuntime {
      *
      * @return true if the two parameters represent the same runtime object, false otherwise
      */
-    boolean areConstantObjectsEqual(CiConstant x, CiConstant y);
+    boolean areConstantObjectsEqual(RiConstant x, RiConstant y);
 
     /**
      * Gets the register configuration to use when compiling a given method.
@@ -100,7 +100,7 @@ public interface RiRuntime {
     /**
      * Gets the length of the array that is wrapped in a CiConstant object.
      */
-    int getArrayLength(CiConstant array);
+    int getArrayLength(RiConstant array);
 
     /**
      * Performs any runtime-specific conversion on the object used to describe the target of a call.

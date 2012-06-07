@@ -80,9 +80,9 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
     }
 
 
-    private ValueNode optimizeMaterialize(CiConstant constant, MaterializeNode materializeNode, RiRuntime runtime, Condition cond) {
-        CiConstant trueConstant = materializeNode.trueValue().asConstant();
-        CiConstant falseConstant = materializeNode.falseValue().asConstant();
+    private ValueNode optimizeMaterialize(RiConstant constant, MaterializeNode materializeNode, RiRuntime runtime, Condition cond) {
+        RiConstant trueConstant = materializeNode.trueValue().asConstant();
+        RiConstant falseConstant = materializeNode.falseValue().asConstant();
 
         if (falseConstant != null && trueConstant != null) {
             Boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
@@ -109,7 +109,7 @@ public abstract class CompareNode extends BooleanNode implements Canonicalizable
         return this;
     }
 
-    protected ValueNode optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(RiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         throw new GraalInternalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
     }
 

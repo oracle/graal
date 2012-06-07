@@ -47,7 +47,7 @@ public interface RiResolvedField extends RiField {
      * @param receiver object from which this field's value is to be read. This value is ignored if this field is static.
      * @return the constant value of this field or {@code null} if the constant value is not available
      */
-    CiConstant constantValue(CiConstant receiver);
+    RiConstant constantValue(RiConstant receiver);
 
     /**
      * Gets the holder of this field as a compiler-runtime interface type.

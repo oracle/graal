@@ -38,7 +38,7 @@ public class NegateObjectTypeFeedback implements ObjectTypeFeedbackTool {
     }
 
     @Override
-    public void constantBound(Condition condition, CiConstant constant) {
+    public void constantBound(Condition condition, RiConstant constant) {
         delegate.constantBound(condition.negate(), constant);
     }
 

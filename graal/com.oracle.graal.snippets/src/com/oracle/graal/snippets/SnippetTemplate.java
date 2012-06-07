@@ -197,7 +197,7 @@ public class SnippetTemplate {
                 assert arg != null : method + ": requires a constant named " + name;
                 CiKind kind = signature.argumentKindAt(i, false);
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
-                replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(CiConstant.forBoxed(kind, arg), runtime, snippetCopy));
+                replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(RiConstant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
                 Parameter p = CiUtil.getParameterAnnotation(Parameter.class, i, method);
                 assert p != null : method + ": parameter " + i + " must be annotated with either @Constant or @Parameter";
@@ -385,7 +385,7 @@ public class SnippetTemplate {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     CiKind kind = ((LocalNode) parameter).kind();
-                    CiConstant constant = CiConstant.forBoxed(kind, argument);
+                    RiConstant constant = RiConstant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forCiConstant(constant, runtime, replaceeGraph));
                 }
             } else {
@@ -398,7 +398,7 @@ public class SnippetTemplate {
                 for (int j = 0; j < length; j++) {
                     LocalNode local = locals[j];
                     assert local != null;
-                    CiConstant constant = CiConstant.forBoxed(local.kind(), Array.get(array, j));
+                    RiConstant constant = RiConstant.forBoxed(local.kind(), Array.get(array, j));
                     ConstantNode element = ConstantNode.forCiConstant(constant, runtime, replaceeGraph);
                     replacements.put(local, element);
                 }

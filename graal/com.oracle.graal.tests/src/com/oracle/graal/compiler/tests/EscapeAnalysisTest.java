@@ -41,7 +41,7 @@ public class EscapeAnalysisTest extends GraphTest {
 
     @Test
     public void test1() {
-        test("test1Snippet", CiConstant.forInt(101));
+        test("test1Snippet", RiConstant.forInt(101));
     }
 
     @SuppressWarnings("all")
@@ -52,7 +52,7 @@ public class EscapeAnalysisTest extends GraphTest {
 
     @Test
     public void test2() {
-        test("test2Snippet", CiConstant.forInt(0));
+        test("test2Snippet", RiConstant.forInt(0));
     }
 
     @SuppressWarnings("all")
@@ -63,7 +63,7 @@ public class EscapeAnalysisTest extends GraphTest {
 
     @Test
     public void test3() {
-        test("test3Snippet", CiConstant.forObject(null));
+        test("test3Snippet", RiConstant.forObject(null));
     }
 
     @SuppressWarnings("all")
@@ -74,7 +74,7 @@ public class EscapeAnalysisTest extends GraphTest {
 
     @Test
     public void testMonitor() {
-        test("testMonitorSnippet", CiConstant.forInt(0));
+        test("testMonitorSnippet", RiConstant.forInt(0));
     }
 
     private static native void notInlineable();
@@ -95,7 +95,7 @@ public class EscapeAnalysisTest extends GraphTest {
     }
 
     public void testMonitor2() {
-        test("testMonitor2Snippet", CiConstant.forInt(0));
+        test("testMonitor2Snippet", RiConstant.forInt(0));
     }
 
     /**
@@ -116,7 +116,7 @@ public class EscapeAnalysisTest extends GraphTest {
         }
     }
 
-    private void test(String snippet, CiConstant expectedResult) {
+    private void test(String snippet, RiConstant expectedResult) {
         StructuredGraph graph = parse(snippet);
         for (Invoke n : graph.getInvokes()) {
             n.node().setProbability(100000);

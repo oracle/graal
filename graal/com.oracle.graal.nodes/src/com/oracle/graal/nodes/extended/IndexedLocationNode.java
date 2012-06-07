@@ -68,7 +68,7 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        CiConstant constantIndex = index.asConstant();
+        RiConstant constantIndex = index.asConstant();
         if (constantIndex != null && constantIndex.kind.stackKind().isInt()) {
             long constantIndexLong = constantIndex.asInt();
             if (indexScalingEnabled) {

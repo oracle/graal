@@ -38,7 +38,7 @@ public abstract class LIRGeneratorTool {
      * @param c The constant to check.
      * @return True if the constant can be used directly, false if the constant needs to be in a register.
      */
-    public abstract boolean canInlineConstant(CiConstant c);
+    public abstract boolean canInlineConstant(RiConstant c);
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register
@@ -46,7 +46,7 @@ public abstract class LIRGeneratorTool {
      * @param c The constant to check.
      * @return True if the constant can be used directly, false if the constant needs to be in a register.
      */
-    public abstract boolean canStoreConstant(CiConstant c);
+    public abstract boolean canStoreConstant(RiConstant c);
 
     public abstract CiValue operand(ValueNode object);
     public abstract CiValue newVariable(CiKind kind);

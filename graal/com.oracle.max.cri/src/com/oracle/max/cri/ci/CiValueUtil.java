@@ -44,12 +44,12 @@ public class CiValueUtil {
 
     public static boolean isConstant(CiValue value) {
         assert value != null;
-        return value instanceof CiConstant;
+        return value instanceof RiConstant;
     }
 
-    public static CiConstant asConstant(CiValue value) {
+    public static RiConstant asConstant(CiValue value) {
         assert value != null;
-        return (CiConstant) value;
+        return (RiConstant) value;
     }
 
 

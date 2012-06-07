@@ -454,37 +454,37 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     @Override
-    public CiConstant createCiConstant(CiKind kind, long value) {
+    public RiConstant createCiConstant(CiKind kind, long value) {
         if (kind == CiKind.Long) {
-            return CiConstant.forLong(value);
+            return RiConstant.forLong(value);
         } else if (kind == CiKind.Int) {
-            return CiConstant.forInt((int) value);
+            return RiConstant.forInt((int) value);
         } else if (kind == CiKind.Short) {
-            return CiConstant.forShort((short) value);
+            return RiConstant.forShort((short) value);
         } else if (kind == CiKind.Char) {
-            return CiConstant.forChar((char) value);
+            return RiConstant.forChar((char) value);
         } else if (kind == CiKind.Byte) {
-            return CiConstant.forByte((byte) value);
+            return RiConstant.forByte((byte) value);
         } else if (kind == CiKind.Boolean) {
-            return (value == 0) ? CiConstant.FALSE : CiConstant.TRUE;
+            return (value == 0) ? RiConstant.FALSE : RiConstant.TRUE;
         } else {
             throw new IllegalArgumentException();
         }
     }
 
     @Override
-    public CiConstant createCiConstantFloat(float value) {
-        return CiConstant.forFloat(value);
+    public RiConstant createCiConstantFloat(float value) {
+        return RiConstant.forFloat(value);
     }
 
     @Override
-    public CiConstant createCiConstantDouble(double value) {
-        return CiConstant.forDouble(value);
+    public RiConstant createCiConstantDouble(double value) {
+        return RiConstant.forDouble(value);
     }
 
     @Override
-    public CiConstant createCiConstantObject(Object object) {
-        return CiConstant.forObject(object);
+    public RiConstant createCiConstantObject(Object object) {
+        return RiConstant.forObject(object);
     }
 
 

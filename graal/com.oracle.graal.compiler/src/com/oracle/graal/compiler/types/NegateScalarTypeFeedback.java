@@ -37,7 +37,7 @@ public class NegateScalarTypeFeedback implements ScalarTypeFeedbackTool {
     }
 
     @Override
-    public void constantBound(Condition condition, CiConstant constant) {
+    public void constantBound(Condition condition, RiConstant constant) {
         delegate.constantBound(condition.negate(), constant);
     }
 
@@ -47,7 +47,7 @@ public class NegateScalarTypeFeedback implements ScalarTypeFeedbackTool {
     }
 
     @Override
-    public void setTranslated(CiConstant delta, ScalarTypeQuery old) {
+    public void setTranslated(RiConstant delta, ScalarTypeQuery old) {
         throw new UnsupportedOperationException();
     }
 }

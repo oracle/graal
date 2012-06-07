@@ -281,9 +281,9 @@ public class AMD64Move {
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
-                const2reg(tasm, masm, result, (CiConstant) input);
+                const2reg(tasm, masm, result, (RiConstant) input);
             } else if (isStackSlot(result)) {
-                const2stack(tasm, masm, result, (CiConstant) input);
+                const2stack(tasm, masm, result, (RiConstant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -331,7 +331,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant input) {
+    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, RiConstant input) {
         // Note: we use the kind of the input operand (and not the kind of the result operand) because they don't match
         // in all cases. For example, an object constant can be loaded to a long register when unsafe casts occurred (e.g.,
         // for a write barrier where arithmetic operations are then performed on the pointer).
@@ -383,7 +383,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, CiConstant input) {
+    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, RiConstant input) {
         switch (input.kind.stackKind()) {
             case Jsr:
             case Int:    masm.movl(tasm.asAddress(result), input.asInt()); break;
@@ -440,7 +440,7 @@ public class AMD64Move {
                 default:     throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
-            CiConstant c = (CiConstant) input;
+            RiConstant c = (RiConstant) input;
             switch (storeAddr.kind) {
                 case Boolean:
                 case Byte:   masm.movb(storeAddr, c.asInt() & 0xFF); break;

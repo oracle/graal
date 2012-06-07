@@ -39,7 +39,7 @@ public interface RiResolvedType extends RiType {
      * @param r the part of the this type
      * @return a constant representing a reference to the specified part of this type
      */
-    CiConstant getEncoding(Representation r);
+    RiConstant getEncoding(Representation r);
 
     /**
      * Checks whether this type has any subclasses so far. Any decisions
@@ -107,7 +107,7 @@ public interface RiResolvedType extends RiType {
      * @param obj the object to test
      * @return {@code true} if the object is an instance of this type
      */
-    boolean isInstance(CiConstant obj);
+    boolean isInstance(RiConstant obj);
 
     /**
      * Attempts to get an exact type for this type. Final classes,

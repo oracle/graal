@@ -72,8 +72,8 @@ public class HotSpotAMD64Backend extends Backend {
                 CiAddress exceptionAddress = new CiAddress(CiKind.Object, thread, config.threadExceptionOopOffset);
                 CiAddress pcAddress = new CiAddress(CiKind.Long, thread, config.threadExceptionPcOffset);
                 CiValue exception = emitLoad(exceptionAddress, false);
-                emitStore(exceptionAddress, CiConstant.NULL_OBJECT, false);
-                emitStore(pcAddress, CiConstant.LONG_0, false);
+                emitStore(exceptionAddress, RiConstant.NULL_OBJECT, false);
+                emitStore(pcAddress, RiConstant.LONG_0, false);
                 setResult(x, exception);
             }
 

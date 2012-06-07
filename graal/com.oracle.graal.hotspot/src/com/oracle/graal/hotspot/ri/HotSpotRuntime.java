@@ -189,7 +189,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public RiResolvedType getTypeOf(CiConstant constant) {
+    public RiResolvedType getTypeOf(RiConstant constant) {
         return (RiResolvedType) compiler.getCompilerToVM().getRiType(constant);
     }
 
@@ -200,7 +200,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public boolean areConstantObjectsEqual(CiConstant x, CiConstant y) {
+    public boolean areConstantObjectsEqual(RiConstant x, RiConstant y) {
         return compiler.getCompilerToVM().compareConstantObjects(x, y);
     }
 
@@ -224,7 +224,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int getArrayLength(CiConstant array) {
+    public int getArrayLength(RiConstant array) {
         return compiler.getCompilerToVM().getArrayLength(array);
     }
 

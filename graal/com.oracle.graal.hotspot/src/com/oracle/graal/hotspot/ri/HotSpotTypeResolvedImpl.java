@@ -115,14 +115,14 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public CiConstant getEncoding(Representation r) {
+    public RiConstant getEncoding(Representation r) {
         switch (r) {
             case JavaClass:
-                return CiConstant.forObject(javaMirror);
+                return RiConstant.forObject(javaMirror);
             case ObjectHub:
-                return CiConstant.forObject(klassOop());
+                return RiConstant.forObject(klassOop());
             case StaticFields:
-                return CiConstant.forObject(javaMirror);
+                return RiConstant.forObject(javaMirror);
             default:
                 return null;
         }
@@ -162,7 +162,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public boolean isInstance(CiConstant obj) {
+    public boolean isInstance(RiConstant obj) {
         return javaMirror.isInstance(obj);
     }
 

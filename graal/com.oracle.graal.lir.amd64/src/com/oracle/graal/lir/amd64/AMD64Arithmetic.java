@@ -503,7 +503,7 @@ public enum AMD64Arithmetic {
         tasm.stubs.add(slowPath);
         switch (result.kind) {
             case Int:  masm.cmpl(asIntReg(result),  Integer.MIN_VALUE); break;
-            case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(CiConstant.forLong(java.lang.Long.MIN_VALUE))); break;
+            case Long: masm.cmpq(asLongReg(result), tasm.asLongConstRef(RiConstant.forLong(java.lang.Long.MIN_VALUE))); break;
             default:   throw GraalInternalError.shouldNotReachHere();
         }
         masm.jcc(ConditionFlag.equal, slowPath.start);
@@ -525,8 +525,8 @@ public enum AMD64Arithmetic {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             masm.bind(start);
             switch (x.kind) {
-                case Float:  masm.ucomiss(asFloatReg(x),  tasm.asFloatConstRef(CiConstant.FLOAT_0)); break;
-                case Double: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(CiConstant.DOUBLE_0)); break;
+                case Float:  masm.ucomiss(asFloatReg(x),  tasm.asFloatConstRef(RiConstant.FLOAT_0)); break;
+                case Double: masm.ucomisd(asDoubleReg(x), tasm.asDoubleConstRef(RiConstant.DOUBLE_0)); break;
                 default:     throw GraalInternalError.shouldNotReachHere();
             }
             Label nan = new Label();

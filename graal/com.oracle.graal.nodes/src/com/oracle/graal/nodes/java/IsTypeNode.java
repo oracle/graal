@@ -64,8 +64,8 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (objectClass().isConstant()) {
-            CiConstant constant = objectClass().asConstant();
-            CiConstant typeHub = type.getEncoding(Representation.ObjectHub);
+            RiConstant constant = objectClass().asConstant();
+            RiConstant typeHub = type.getEncoding(Representation.ObjectHub);
             assert constant.kind == typeHub.kind;
             return ConstantNode.forBoolean(constant.equivalent(typeHub), graph());
         }

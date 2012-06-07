@@ -169,7 +169,7 @@ public class DebugInfoBuilder {
         } else if (value != null) {
             Debug.metric("StateVariables").increment();
             CiValue operand = nodeOperands.get(value);
-            assert operand != null && (operand instanceof Variable || operand instanceof CiConstant);
+            assert operand != null && (operand instanceof Variable || operand instanceof RiConstant);
             return operand;
 
         } else {

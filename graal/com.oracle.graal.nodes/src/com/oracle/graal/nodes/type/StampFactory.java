@@ -105,7 +105,7 @@ public class StampFactory {
         return new IntegerStamp(CiKind.Long, lowerBound, upperBound);
     }
 
-    public static Stamp forConstant(CiConstant value) {
+    public static Stamp forConstant(RiConstant value) {
         assert value.kind != CiKind.Object;
         if (value.kind == CiKind.Object) {
             throw new GraalInternalError("unexpected kind: %s", value.kind);
@@ -119,7 +119,7 @@ public class StampFactory {
         }
     }
 
-    public static Stamp forConstant(CiConstant value, RiRuntime runtime) {
+    public static Stamp forConstant(RiConstant value, RiRuntime runtime) {
         assert value.kind == CiKind.Object;
         if (value.kind == CiKind.Object) {
             RiResolvedType type = value.isNull() ? null : runtime.getTypeOf(value);

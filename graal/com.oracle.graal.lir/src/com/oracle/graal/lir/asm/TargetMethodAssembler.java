@@ -202,7 +202,7 @@ public class TargetMethodAssembler {
         targetMethod.recordSafepoint(pos, debugInfo);
     }
 
-    public CiAddress recordDataReferenceInCode(CiConstant data, int alignment) {
+    public CiAddress recordDataReferenceInCode(RiConstant data, int alignment) {
         assert data != null;
         int pos = asm.codeBuffer.position();
         Debug.log("Data reference in code: pos = %d, data = %s", pos, data.toString());
@@ -221,7 +221,7 @@ public class TargetMethodAssembler {
      */
     public int asIntConst(CiValue value) {
         assert (value.kind.stackKind() == CiKind.Int || value.kind == CiKind.Jsr || value.kind == CiKind.Long) && isConstant(value);
-        long c = ((CiConstant) value).asLong();
+        long c = ((RiConstant) value).asLong();
         if (!(NumUtil.isInt(c))) {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -237,7 +237,7 @@ public class TargetMethodAssembler {
 
     public CiAddress asFloatConstRef(CiValue value, int alignment) {
         assert value.kind == CiKind.Float && isConstant(value);
-        return recordDataReferenceInCode((CiConstant) value, alignment);
+        return recordDataReferenceInCode((RiConstant) value, alignment);
     }
 
     /**
@@ -249,7 +249,7 @@ public class TargetMethodAssembler {
 
     public CiAddress asDoubleConstRef(CiValue value, int alignment) {
         assert value.kind == CiKind.Double && isConstant(value);
-        return recordDataReferenceInCode((CiConstant) value, alignment);
+        return recordDataReferenceInCode((RiConstant) value, alignment);
     }
 
     /**
@@ -257,7 +257,7 @@ public class TargetMethodAssembler {
      */
     public CiAddress asLongConstRef(CiValue value) {
         assert value.kind == CiKind.Long && isConstant(value);
-        return recordDataReferenceInCode((CiConstant) value, 8);
+        return recordDataReferenceInCode((RiConstant) value, 8);
     }
 
     public CiAddress asIntAddr(CiValue value) {

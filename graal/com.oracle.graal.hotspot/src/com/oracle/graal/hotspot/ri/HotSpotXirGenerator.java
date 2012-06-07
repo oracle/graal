@@ -90,10 +90,10 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     private XirConstant wordConst(CiXirAssembler asm, long value) {
         if (target.wordKind == CiKind.Long) {
-            return asm.createConstant(CiConstant.forLong(value));
+            return asm.createConstant(RiConstant.forLong(value));
         } else {
             assert target.wordKind == CiKind.Int;
-            return asm.createConstant(CiConstant.forInt((int) value));
+            return asm.createConstant(RiConstant.forInt((int) value));
         }
     }
 
@@ -121,7 +121,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.pload(target.wordKind, temp, receiver, true);
             }
             asm.mark(MARK_INVOKEINTERFACE);
-            asm.mov(tempO, asm.createConstant(CiConstant.forObject(HotSpotProxy.DUMMY_CONSTANT_OBJ)));
+            asm.mov(tempO, asm.createConstant(RiConstant.forObject(HotSpotProxy.DUMMY_CONSTANT_OBJ)));
 
             return asm.finishTemplate(addr, "invokeinterface");
         }
@@ -142,7 +142,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
                 asm.pload(target.wordKind, temp, receiver, true);
             }
             asm.mark(MARK_INVOKEVIRTUAL);
-            asm.mov(tempO, asm.createConstant(CiConstant.forObject(HotSpotProxy.DUMMY_CONSTANT_OBJ)));
+            asm.mov(tempO, asm.createConstant(RiConstant.forObject(HotSpotProxy.DUMMY_CONSTANT_OBJ)));
 
             return asm.finishTemplate(addr, "invokevirtual");
         }

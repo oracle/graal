@@ -87,7 +87,7 @@ public enum AMD64Compare {
                 case ICMP: masm.cmpl(asIntReg(x), tasm.asIntConst(y)); break;
                 case LCMP: masm.cmpq(asLongReg(x), tasm.asIntConst(y)); break;
                 case ACMP:
-                    if (((CiConstant) y).isNull()) {
+                    if (((RiConstant) y).isNull()) {
                         masm.cmpq(asObjectReg(x), 0); break;
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");

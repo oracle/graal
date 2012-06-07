@@ -117,17 +117,17 @@ public class CompilerToVMImpl implements CompilerToVM, Remote {
     public native RiType getType(Class<?> javaClass);
 
     @Override
-    public int getArrayLength(CiConstant array) {
+    public int getArrayLength(RiConstant array) {
         return Array.getLength(array.asObject());
     }
 
     @Override
-    public boolean compareConstantObjects(CiConstant x, CiConstant y) {
+    public boolean compareConstantObjects(RiConstant x, RiConstant y) {
         return x.asObject() == y.asObject();
     }
 
     @Override
-    public RiType getRiType(CiConstant constant) {
+    public RiType getRiType(RiConstant constant) {
         Object o = constant.asObject();
         if (o == null) {
             return null;

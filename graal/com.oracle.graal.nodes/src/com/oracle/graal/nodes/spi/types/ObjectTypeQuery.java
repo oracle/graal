@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.calc.*;
 
 public interface ObjectTypeQuery extends TypeQuery {
 
-    boolean constantBound(Condition condition, CiConstant constant);
+    boolean constantBound(Condition condition, RiConstant constant);
 
     boolean valueBound(Condition condition, ValueNode otherValue);
 

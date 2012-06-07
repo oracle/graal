@@ -53,7 +53,7 @@ public final class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(CiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(RiConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         if (constant.kind == CiKind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();

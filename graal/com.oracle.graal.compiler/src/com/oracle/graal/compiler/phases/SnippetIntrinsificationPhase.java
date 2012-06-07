@@ -86,7 +86,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            CiConstant constant = callMethod(target.signature().returnKind(false), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
+            RiConstant constant = callMethod(target.signature().returnKind(false), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -120,7 +120,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             if (folding || CiUtil.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
                 assert argument instanceof ConstantNode : "parameter " + parameterIndex + " must be a compile time constant for calling " + invoke.callTarget().targetMethod() + ": " + argument;
                 ConstantNode constantNode = (ConstantNode) argument;
-                CiConstant constant = constantNode.asConstant();
+                RiConstant constant = constantNode.asConstant();
                 Object o = constant.boxedValue();
                 if (o instanceof Class< ? >) {
                     reflectionCallArguments[i] = runtime.getType((Class< ? >) o);
@@ -214,7 +214,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     /**
      * Calls a Java method via reflection.
      */
-    private static CiConstant callMethod(CiKind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
+    private static RiConstant callMethod(CiKind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
         Method method;
         try {
             method = holder.getDeclaredMethod(name, parameterTypes);
@@ -227,7 +227,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             if (result == null) {
                 return null;
             }
-            return CiConstant.forBoxed(returnKind, result);
+            return RiConstant.forBoxed(returnKind, result);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
