@@ -60,7 +60,8 @@ public abstract class LoopTransformations {
         IfNode newIf = graph.add(new IfNode(ifNode.compare(), duplicateLoop.loop().entryPoint(), loop.entryPoint(), takenProbability));
         tempBegin.setNext(newIf);
         ifNode.setCompare(graph.unique(ConstantNode.forBoolean(false, graph)));
-        duplicateLoop.getDuplicatedNode(ifNode).setCompare(graph.unique(ConstantNode.forBoolean(true, graph)));
+        IfNode duplicateIf = duplicateLoop.getDuplicatedNode(ifNode);
+        duplicateIf.setCompare(graph.unique(ConstantNode.forBoolean(true, graph)));
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
     }
 
