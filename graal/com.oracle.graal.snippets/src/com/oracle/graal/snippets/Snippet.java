@@ -24,8 +24,6 @@ package com.oracle.graal.snippets;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-import java.util.*;
-import java.util.Map.Entry;
 
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.snippets.nodes.*;
@@ -77,37 +75,6 @@ public @interface Snippet {
          * The name of this constant.
          */
         String value();
-    }
-
-    /**
-     * Arguments used to instantiate a template.
-     */
-    public static class Arguments implements Iterable<Map.Entry<String, Object>> {
-        private final HashMap<String, Object> map = new HashMap<>();
-
-        public static Arguments arguments(String name, Object value) {
-            return new Arguments().add(name, value);
-        }
-
-        public Arguments add(String name, Object value) {
-            assert !map.containsKey(name);
-            map.put(name, value);
-            return this;
-        }
-
-        public int length() {
-            return map.size();
-        }
-
-        @Override
-        public Iterator<Entry<String, Object>> iterator() {
-            return map.entrySet().iterator();
-        }
-
-        @Override
-        public String toString() {
-            return map.toString();
-        }
     }
 
     /**

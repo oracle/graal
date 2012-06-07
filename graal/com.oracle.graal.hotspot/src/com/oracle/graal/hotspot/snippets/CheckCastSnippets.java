@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.snippets;
 import static com.oracle.graal.hotspot.snippets.ArrayCopySnippets.*;
 import static com.oracle.graal.hotspot.snippets.CheckCastSnippets.Counter.*;
-import static com.oracle.graal.snippets.Snippet.Arguments.*;
 import static com.oracle.graal.snippets.Snippet.Multiple.*;
+import static com.oracle.graal.snippets.SnippetTemplate.Arguments.*;
 
 import java.io.*;
 import java.util.*;
@@ -43,10 +43,11 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.Snippet.Arguments;
 import com.oracle.graal.snippets.Snippet.Constant;
 import com.oracle.graal.snippets.Snippet.Parameter;
+import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
+import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -361,23 +362,23 @@ public class CheckCastSnippets implements SnippetsInterface {
             final HotSpotTypeResolvedImpl target = (HotSpotTypeResolvedImpl) checkcast.targetClass();
             boolean checkNull = !object.stamp().nonNull();
             Arguments arguments;
-            SnippetTemplate.Key key;
+            Key key;
 
             if (target == null) {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
-                key = new SnippetTemplate.Key(unknown).add("hints", multiple(Object.class, hints.length)).add("checkNull", checkNull);
+                key = new Key(unknown).add("hints", multiple(Object.class, hints.length)).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             } else if (hintInfo.exact) {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
                 assert hints.length == 1;
-                key = new SnippetTemplate.Key(exact).add("checkNull", checkNull);
+                key = new Key(exact).add("checkNull", checkNull);
                 arguments = arguments("object", object).add("exactHub", hints[0]);
             } else if (target.isPrimaryType()) {
-                key = new SnippetTemplate.Key(primary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
+                key = new Key(primary).add("checkNull", checkNull).add("superCheckOffset", target.superCheckOffset());
                 arguments = arguments("hub", hub).add("object", object);
             } else {
                 HotSpotKlassOop[] hints = createHints(hintInfo);
-                key = new SnippetTemplate.Key(secondary).add("hints", multiple(Object.class, hints.length)).add("checkNull", checkNull);
+                key = new Key(secondary).add("hints", multiple(Object.class, hints.length)).add("checkNull", checkNull);
                 arguments = arguments("hub", hub).add("object", object).add("hints", hints);
             }
 
