@@ -27,6 +27,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that
@@ -56,7 +57,7 @@ class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue v = gen.operand(value);
+        RiValue v = gen.operand(value);
         gen.emitStore(new CiAddress(v.kind, gen.operand(address)), v, false);
     }
 }

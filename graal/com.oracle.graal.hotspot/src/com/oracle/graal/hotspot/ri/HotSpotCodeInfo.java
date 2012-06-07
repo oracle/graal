@@ -64,11 +64,6 @@ public class HotSpotCodeInfo extends CompilerObject implements RiCodeInfo {
     }
 
     @Override
-    public CiTargetMethod targetMethod() {
-        return targetMethod;
-    }
-
-    @Override
     public RiResolvedMethod method() {
         return method;
     }

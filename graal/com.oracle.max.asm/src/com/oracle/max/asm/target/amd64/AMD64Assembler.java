@@ -136,7 +136,7 @@ public class AMD64Assembler extends AbstractAssembler {
      *            {@link CiRegister#CallerFrame} to physical registers. This value can be null if this assembler
      *            instance will not be used to assemble instructions using these logical registers.
      */
-    public AMD64Assembler(CiTarget target, RiRegisterConfig registerConfig) {
+    public AMD64Assembler(CiTarget target, CiRegisterConfig registerConfig) {
         super(target);
         this.frameRegister = registerConfig == null ? null : registerConfig.getFrameRegister();
     }
@@ -2217,7 +2217,7 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    private static boolean needsRex(CiValue value) {
+    private static boolean needsRex(RiValue value) {
         return isRegister(value) && asRegister(value).encoding >= MinEncodingNeedsRex;
     }
 

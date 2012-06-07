@@ -29,7 +29,7 @@ import com.oracle.max.cri.ri.*;
  * CiRegisterValue} for each ({@link CiRegister}, {@link RiKind}) pair. Use {@link CiRegister#asValue(RiKind)} to
  * retrieve the canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
  */
-public final class CiRegisterValue extends CiValue {
+public final class CiRegisterValue extends RiValue {
     private static final long serialVersionUID = 7999341472196897163L;
 
     /**

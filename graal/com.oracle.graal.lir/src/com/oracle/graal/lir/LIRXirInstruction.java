@@ -26,13 +26,13 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.graal.graph.*;
 
 public abstract class LIRXirInstruction extends LIRInstruction {
 
-    public final CiValue[] originalOperands;
+    public final RiValue[] originalOperands;
     public final int outputOperandIndex;
     public final int[] inputOperandIndices;
     public final int[] tempOperandIndices;
@@ -43,9 +43,9 @@ public abstract class LIRXirInstruction extends LIRInstruction {
 
     public LIRXirInstruction(Object opcode,
                              XirSnippet snippet,
-                             CiValue[] originalOperands,
-                             CiValue outputOperand,
-                             CiValue[] inputs, CiValue[] temps,
+                             RiValue[] originalOperands,
+                             RiValue outputOperand,
+                             RiValue[] inputs, RiValue[] temps,
                              int[] inputOperandIndices, int[] tempOperandIndices,
                              int outputOperandIndex,
                              LIRDebugInfo info,
@@ -54,7 +54,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
                              LabelRef falseSuccessor) {
         // Note that we register the XIR input operands as Alive, because the XIR specification allows that input operands
         // are used at any time, even when the temp operands and the actual output operands have already be assigned.
-        super(opcode, isLegal(outputOperand) ? new CiValue[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
+        super(opcode, isLegal(outputOperand) ? new RiValue[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
         this.infoAfter = infoAfter;
         this.snippet = snippet;
         this.inputOperandIndices = inputOperandIndices;
@@ -76,7 +76,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    public CiValue[] getOperands() {
+    public RiValue[] getOperands() {
         for (int i = 0; i < inputOperandIndices.length; i++) {
             originalOperands[inputOperandIndices[i]] = alive(i);
         }

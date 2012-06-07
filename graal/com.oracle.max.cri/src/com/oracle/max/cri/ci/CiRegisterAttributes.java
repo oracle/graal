@@ -20,18 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.max.cri.ci;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-
 /**
  * A collection of register attributes. The specific attribute values for a register may be
- * local to a compilation context. For example, a {@link RiRegisterConfig} in use during
+ * local to a compilation context. For example, a {@link CiRegisterConfig} in use during
  * a compilation will determine which registers are callee saved.
  */
-public class RiRegisterAttributes {
+public class CiRegisterAttributes {
 
     /**
      * Denotes a register whose value preservation (if required) across a call is the responsibility of the caller.
@@ -54,17 +52,17 @@ public class RiRegisterAttributes {
      */
     public boolean isNonZero;
 
-    public RiRegisterAttributes(boolean isCallerSave, boolean isCalleeSave, boolean isAllocatable) {
+    public CiRegisterAttributes(boolean isCallerSave, boolean isCalleeSave, boolean isAllocatable) {
         this.isCallerSave = isCallerSave;
         this.isCalleeSave = isCalleeSave;
         this.isAllocatable = isAllocatable;
     }
 
-    public static final RiRegisterAttributes NONE = new RiRegisterAttributes(false, false, false);
+    public static final CiRegisterAttributes NONE = new CiRegisterAttributes(false, false, false);
 
     /**
      * Creates a map from register {@linkplain CiRegister#number numbers} to register
-     * {@linkplain RiRegisterAttributes attributes} for a given register configuration and set of
+     * {@linkplain CiRegisterAttributes attributes} for a given register configuration and set of
      * registers.
      *
      * @param registerConfig a register configuration
@@ -72,12 +70,12 @@ public class RiRegisterAttributes {
      * @return an array whose length is the max register number in {@code registers} plus 1. An element at index i holds
      *         the attributes of the register whose number is i.
      */
-    public static RiRegisterAttributes[] createMap(RiRegisterConfig registerConfig, CiRegister[] registers) {
-        RiRegisterAttributes[] map = new RiRegisterAttributes[registers.length];
+    public static CiRegisterAttributes[] createMap(CiRegisterConfig registerConfig, CiRegister[] registers) {
+        CiRegisterAttributes[] map = new CiRegisterAttributes[registers.length];
         for (CiRegister reg : registers) {
             if (reg != null) {
                 CiCalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
-                RiRegisterAttributes attr = new RiRegisterAttributes(
+                CiRegisterAttributes attr = new CiRegisterAttributes(
                                 Arrays.asList(registerConfig.getCallerSaveRegisters()).contains(reg),
                                 csl == null ? false : Arrays.asList(csl.registers).contains(reg),
                                 Arrays.asList(registerConfig.getAllocatableRegisters()).contains(reg));

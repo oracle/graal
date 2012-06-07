@@ -43,7 +43,7 @@ public interface RiRuntime {
      * @param code the code that should be disassembled
      * @return a disassembly. This will be of length 0 if the runtime does not support disassembling.
      */
-    String disassemble(RiCodeInfo code);
+    String disassemble(RiCodeInfo code, CiTargetMethod tm);
 
     /**
      * Returns the disassembly of the given method in a {@code javap}-like format.
@@ -80,9 +80,9 @@ public interface RiRuntime {
      *
      * @param method the top level method of a compilation
      */
-    RiRegisterConfig getRegisterConfig(RiMethod method);
+    CiRegisterConfig getRegisterConfig(RiMethod method);
 
-    RiRegisterConfig getGlobalStubRegisterConfig();
+    CiRegisterConfig getGlobalStubRegisterConfig();
 
     /**
      * Custom area on the stack of each compiled method that the VM can use for its own purposes.
@@ -132,17 +132,17 @@ public interface RiRuntime {
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
      * @return the encoded value as an integer
      */
-    int encodeDeoptActionAndReason(RiDeoptAction action, RiDeoptReason reason);
+    int encodeDeoptActionAndReason(CiDeoptAction action, CiDeoptReason reason);
 
     /**
      * Converts a RiDeoptReason into an integer value.
      * @return An integer value representing the given RiDeoptReason.
      */
-    int convertDeoptReason(RiDeoptReason reason);
+    int convertDeoptReason(CiDeoptReason reason);
 
     /**
      * Converts a RiDeoptAction into an integer value.
      * @return An integer value representing the given RiDeoptAction.
      */
-    int convertDeoptAction(RiDeoptAction action);
+    int convertDeoptAction(CiDeoptAction action);
 }

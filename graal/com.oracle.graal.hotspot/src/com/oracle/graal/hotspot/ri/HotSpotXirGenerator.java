@@ -75,13 +75,13 @@ public class HotSpotXirGenerator implements RiXirGenerator {
 
     private final HotSpotVMConfig config;
     private final CiTarget target;
-    private final RiRegisterConfig registerConfig;
+    private final CiRegisterConfig registerConfig;
     private final Compiler compiler;
 
 
     private CiXirAssembler globalAsm;
 
-    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, RiRegisterConfig registerConfig, Compiler compiler) {
+    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, CiRegisterConfig registerConfig, Compiler compiler) {
         this.config = config;
         this.target = target;
         this.registerConfig = registerConfig;
@@ -580,9 +580,9 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (counters != null) {
                 incCounter(asm, counter, counters, CheckcastCounter.exception);
             }
-            RiDeoptReason deoptReason = exact ? RiDeoptReason.OptimizedTypeCheckViolated : RiDeoptReason.ClassCastException;
+            CiDeoptReason deoptReason = exact ? CiDeoptReason.OptimizedTypeCheckViolated : CiDeoptReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
-            asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(RiDeoptAction.InvalidateReprofile, deoptReason)));
+            asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(CiDeoptAction.InvalidateReprofile, deoptReason)));
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);
             asm.shouldNotReachHere();
 

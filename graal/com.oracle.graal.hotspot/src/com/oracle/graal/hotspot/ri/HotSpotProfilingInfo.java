@@ -85,7 +85,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public int getDeoptimizationCount(RiDeoptReason reason) {
+    public int getDeoptimizationCount(CiDeoptReason reason) {
         return methodData.getDeoptimizationCount(reason);
     }
 

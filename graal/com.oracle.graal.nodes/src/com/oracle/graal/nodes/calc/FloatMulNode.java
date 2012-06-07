@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -53,10 +52,10 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue op1 = gen.operand(x());
-        CiValue op2 = gen.operand(y());
+        RiValue op1 = gen.operand(x());
+        RiValue op2 = gen.operand(y());
         if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {
-            CiValue op = op1;
+            RiValue op = op1;
             op1 = op2;
             op2 = op;
         }

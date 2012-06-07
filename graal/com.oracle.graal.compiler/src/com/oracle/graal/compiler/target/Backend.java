@@ -68,7 +68,7 @@ public abstract class Backend {
         }
     }
 
-    public FrameMap newFrameMap(RiRegisterConfig registerConfig) {
+    public FrameMap newFrameMap(CiRegisterConfig registerConfig) {
         return new FrameMap(runtime, target, registerConfig);
     }
 

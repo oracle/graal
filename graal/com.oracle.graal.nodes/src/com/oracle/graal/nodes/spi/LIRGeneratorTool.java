@@ -48,47 +48,47 @@ public abstract class LIRGeneratorTool {
      */
     public abstract boolean canStoreConstant(RiConstant c);
 
-    public abstract CiValue operand(ValueNode object);
-    public abstract CiValue newVariable(RiKind kind);
-    public abstract CiValue setResult(ValueNode x, CiValue operand);
+    public abstract RiValue operand(ValueNode object);
+    public abstract RiValue newVariable(RiKind kind);
+    public abstract RiValue setResult(ValueNode x, RiValue operand);
 
     public abstract CiAddress makeAddress(LocationNode location, ValueNode object);
 
-    public abstract CiValue emitMove(CiValue input);
-    public abstract void emitMove(CiValue src, CiValue dst);
-    public abstract CiValue emitLoad(CiValue loadAddress, boolean canTrap);
-    public abstract void emitStore(CiValue storeAddress, CiValue input, boolean canTrap);
-    public abstract CiValue emitLea(CiValue address);
+    public abstract RiValue emitMove(RiValue input);
+    public abstract void emitMove(RiValue src, RiValue dst);
+    public abstract RiValue emitLoad(RiValue loadAddress, boolean canTrap);
+    public abstract void emitStore(RiValue storeAddress, RiValue input, boolean canTrap);
+    public abstract RiValue emitLea(RiValue address);
 
-    public abstract CiValue emitNegate(CiValue input);
-    public abstract CiValue emitAdd(CiValue a, CiValue b);
-    public abstract CiValue emitSub(CiValue a, CiValue b);
-    public abstract CiValue emitMul(CiValue a, CiValue b);
-    public abstract CiValue emitDiv(CiValue a, CiValue b);
-    public abstract CiValue emitRem(CiValue a, CiValue b);
-    public abstract CiValue emitUDiv(CiValue a, CiValue b);
-    public abstract CiValue emitURem(CiValue a, CiValue b);
+    public abstract RiValue emitNegate(RiValue input);
+    public abstract RiValue emitAdd(RiValue a, RiValue b);
+    public abstract RiValue emitSub(RiValue a, RiValue b);
+    public abstract RiValue emitMul(RiValue a, RiValue b);
+    public abstract RiValue emitDiv(RiValue a, RiValue b);
+    public abstract RiValue emitRem(RiValue a, RiValue b);
+    public abstract RiValue emitUDiv(RiValue a, RiValue b);
+    public abstract RiValue emitURem(RiValue a, RiValue b);
 
-    public abstract CiValue emitAnd(CiValue a, CiValue b);
-    public abstract CiValue emitOr(CiValue a, CiValue b);
-    public abstract CiValue emitXor(CiValue a, CiValue b);
+    public abstract RiValue emitAnd(RiValue a, RiValue b);
+    public abstract RiValue emitOr(RiValue a, RiValue b);
+    public abstract RiValue emitXor(RiValue a, RiValue b);
 
-    public abstract CiValue emitShl(CiValue a, CiValue b);
-    public abstract CiValue emitShr(CiValue a, CiValue b);
-    public abstract CiValue emitUShr(CiValue a, CiValue b);
+    public abstract RiValue emitShl(RiValue a, RiValue b);
+    public abstract RiValue emitShr(RiValue a, RiValue b);
+    public abstract RiValue emitUShr(RiValue a, RiValue b);
 
-    public abstract CiValue emitConvert(ConvertNode.Op opcode, CiValue inputVal);
+    public abstract RiValue emitConvert(ConvertNode.Op opcode, RiValue inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOnOverflow(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
-    public abstract void emitDeoptimize(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId);
-    public abstract CiValue emitCall(Object target, RiKind result, RiKind[] arguments, boolean canTrap, CiValue... args);
-    public final CiValue emitCall(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {
+    public abstract void emitDeoptimizeOnOverflow(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo);
+    public abstract void emitDeoptimize(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo, long leafGraphId);
+    public abstract RiValue emitCall(Object target, RiKind result, RiKind[] arguments, boolean canTrap, RiValue... args);
+    public final RiValue emitCall(CiRuntimeCall runtimeCall, boolean canTrap, RiValue... args) {
         return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
     }
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, RiDeoptAction deoptAction, boolean negated, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, CiDeoptReason deoptReason, CiDeoptAction deoptAction, boolean negated, long leafGraphId);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);

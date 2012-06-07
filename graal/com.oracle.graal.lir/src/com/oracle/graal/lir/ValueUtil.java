@@ -23,15 +23,16 @@
 package com.oracle.graal.lir;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class ValueUtil extends CiValueUtil {
 
-    public static boolean isVariable(CiValue value) {
+    public static boolean isVariable(RiValue value) {
         assert value != null;
         return value instanceof Variable;
     }
 
-    public static Variable asVariable(CiValue value) {
+    public static Variable asVariable(RiValue value) {
         assert value != null;
         return (Variable) value;
     }

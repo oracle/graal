@@ -82,7 +82,7 @@ import com.oracle.max.cri.ri.*;
 public final class FrameMap {
     public final RiRuntime runtime;
     public final CiTarget target;
-    public final RiRegisterConfig registerConfig;
+    public final CiRegisterConfig registerConfig;
 
     /**
      * The initial frame size, not including the size of the return address.
@@ -125,7 +125,7 @@ public final class FrameMap {
     /**
      * Creates a new frame map for the specified method.
      */
-    public FrameMap(RiRuntime runtime, CiTarget target, RiRegisterConfig registerConfig) {
+    public FrameMap(RiRuntime runtime, CiTarget target, CiRegisterConfig registerConfig) {
         this.runtime = runtime;
         this.target = target;
         this.registerConfig = registerConfig;
@@ -323,7 +323,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void setReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void setReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (isRegister(location)) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
@@ -347,7 +347,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void clearReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void clearReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (location instanceof CiRegisterValue) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;

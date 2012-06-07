@@ -25,4 +25,5 @@ package com.oracle.graal.api;
 
 public interface GraalRuntime {
     String getName();
+    <T> T getCapability(Class<T> clazz);
 }

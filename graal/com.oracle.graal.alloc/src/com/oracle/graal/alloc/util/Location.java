@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.alloc.util;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.lir.*;
 
-public class Location extends CiValue {
+public class Location extends RiValue {
     private static final long serialVersionUID = -1786677729152726126L;
 
     public final Variable variable;
-    public final CiValue location;
+    public final RiValue location;
 
-    public Location(Variable variable, CiValue location) {
+    public Location(Variable variable, RiValue location) {
         super(variable.kind);
         this.variable = variable;
         this.location = location;

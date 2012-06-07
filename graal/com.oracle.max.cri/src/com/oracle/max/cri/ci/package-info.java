@@ -33,8 +33,8 @@
  * {@link com.oracle.max.cri.ci.CiCodePos} and {@link com.oracle.max.cri.ci.CiDebugInfo} provide detailed information to the
  * runtime to support debugging and deoptimization of the compiled code.
  * <p>
- * The compiler manipulates {@link com.oracle.max.cri.ci.CiValue} instances that have a {@link com.oracle.max.cri.ri.RiKind}, and are
- * immutable. A concrete {@link com.oracle.max.cri.ci.CiValue value} is one of the following subclasses:
+ * The compiler manipulates {@link com.oracle.max.cri.ri.RiValue} instances that have a {@link com.oracle.max.cri.ri.RiKind}, and are
+ * immutable. A concrete {@link com.oracle.max.cri.ri.RiValue value} is one of the following subclasses:
  * <ul>
  * <li>{@link com.oracle.max.cri.ri.RiConstant}: a constant value.
  * <li>{@link com.oracle.max.cri.ci.CiRegisterValue}: a value stored in a {@linkplain com.oracle.max.cri.ci.CiRegister target machine register}.

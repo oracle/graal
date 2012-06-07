@@ -20,20 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ci;
+package com.oracle.max.cri.ri;
 
 import java.io.*;
-
-import com.oracle.max.cri.ri.*;
 
 /**
  * Abstract base class for values manipulated by the compiler. All values have a {@linkplain RiKind kind} and are immutable.
  */
-public abstract class CiValue implements Serializable {
+public abstract class RiValue implements Serializable {
     private static final long serialVersionUID = -6909397188697766469L;
 
     @SuppressWarnings("serial")
-    public static CiValue IllegalValue = new CiValue(RiKind.Illegal) {
+    public static RiValue IllegalValue = new RiValue(RiKind.Illegal) {
         @Override
         public String toString() {
             return "-";
@@ -49,7 +47,7 @@ public abstract class CiValue implements Serializable {
      * Initializes a new value of the specified kind.
      * @param kind the kind
      */
-    protected CiValue(RiKind kind) {
+    protected RiValue(RiKind kind) {
         this.kind = kind;
     }
 

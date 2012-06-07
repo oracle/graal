@@ -27,7 +27,6 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -37,14 +36,14 @@ public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 
     public static class CompareOp extends AMD64LIRInstruction {
-        public CompareOp(AMD64Compare opcode, CiValue x, CiValue y) {
-            super(opcode, LIRInstruction.NO_OPERANDS, null, new CiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public CompareOp(AMD64Compare opcode, RiValue x, RiValue y) {
+            super(opcode, LIRInstruction.NO_OPERANDS, null, new RiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            CiValue x = input(0);
-            CiValue y = input(1);
+            RiValue x = input(0);
+            RiValue y = input(1);
             emit(tasm, masm, (AMD64Compare) code, x, y);
         }
 
@@ -60,8 +59,8 @@ public enum AMD64Compare {
 
         @Override
         protected void verify() {
-            CiValue x = input(0);
-            CiValue y = input(1);
+            RiValue x = input(0);
+            RiValue y = input(1);
 
             super.verify();
             assert (name().startsWith("I") && x.kind == RiKind.Int && y.kind.stackKind() == RiKind.Int)
@@ -73,7 +72,7 @@ public enum AMD64Compare {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Compare opcode, CiValue x, CiValue y) {
+    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Compare opcode, RiValue x, RiValue y) {
         if (isRegister(y)) {
             switch (opcode) {
                 case ICMP: masm.cmpl(asIntReg(x), asIntReg(y)); break;

@@ -246,7 +246,7 @@ public abstract class CiXirAssembler {
     }
 
     public static class XirRegister extends XirTemp {
-        public final CiValue register;
+        public final RiValue register;
 
         XirRegister(CiXirAssembler asm, String name, CiRegisterValue register, boolean reserve) {
             super(asm, name, register.kind, reserve);

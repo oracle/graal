@@ -31,7 +31,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.
@@ -52,16 +51,16 @@ public class LoweringPhase extends Phase {
 
         @Override
         public ValueNode createNullCheckGuard(ValueNode object, long leafGraphId) {
-            return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, RiDeoptAction.InvalidateReprofile, true, leafGraphId);
+            return createGuard(object.graph().unique(new IsNullNode(object)), CiDeoptReason.NullCheckException, CiDeoptAction.InvalidateReprofile, true, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, CiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
             return createGuard(condition, deoptReason, action, false, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, CiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
             // TODO (thomaswue): Document why this must not be called on floating nodes.
             throw new UnsupportedOperationException();
         }
@@ -150,7 +149,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId) {
+            public ValueNode createGuard(BooleanNode condition, CiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {

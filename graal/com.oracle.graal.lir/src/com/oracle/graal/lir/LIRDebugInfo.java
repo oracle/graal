@@ -27,6 +27,7 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -78,9 +79,9 @@ public class LIRDebugInfo {
      */
     private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
 
-    private void processValues(CiValue[] values, ValueProcedure proc) {
+    private void processValues(RiValue[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
-            CiValue value = values[i];
+            RiValue value = values[i];
             if (value instanceof CiMonitorValue) {
                 CiMonitorValue monitor = (CiMonitorValue) value;
                 if (processed(monitor.owner)) {
@@ -93,7 +94,7 @@ public class LIRDebugInfo {
         }
     }
 
-    private boolean processed(CiValue value) {
+    private boolean processed(RiValue value) {
         if (isIllegal(value)) {
             // Ignore dead local variables.
             return false;

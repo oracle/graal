@@ -36,11 +36,11 @@ import com.oracle.max.cri.ri.*;
 public class AMD64DeoptimizationStub extends AMD64Code {
     public final Label label = new Label();
     public final LIRDebugInfo info;
-    public final RiDeoptAction action;
-    public final RiDeoptReason reason;
+    public final CiDeoptAction action;
+    public final CiDeoptReason reason;
     public final Object deoptInfo;
 
-    public AMD64DeoptimizationStub(RiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
+    public AMD64DeoptimizationStub(CiDeoptAction action, CiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
         this.action = action;
         this.reason = reason;
         this.info = info;

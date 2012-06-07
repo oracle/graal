@@ -25,106 +25,106 @@ package com.oracle.max.cri.ci;
 import com.oracle.max.cri.ri.*;
 
 public class CiValueUtil {
-    public static boolean isIllegal(CiValue value) {
+    public static boolean isIllegal(RiValue value) {
         assert value != null;
-        return value == CiValue.IllegalValue;
+        return value == RiValue.IllegalValue;
     }
 
-    public static boolean isLegal(CiValue value) {
+    public static boolean isLegal(RiValue value) {
         return !isIllegal(value);
     }
 
-    public static boolean isVirtualObject(CiValue value) {
+    public static boolean isVirtualObject(RiValue value) {
         assert value != null;
         return value instanceof CiVirtualObject;
     }
 
-    public static CiVirtualObject asVirtualObject(CiValue value) {
+    public static CiVirtualObject asVirtualObject(RiValue value) {
         assert value != null;
         return (CiVirtualObject) value;
     }
 
-    public static boolean isConstant(CiValue value) {
+    public static boolean isConstant(RiValue value) {
         assert value != null;
         return value instanceof RiConstant;
     }
 
-    public static RiConstant asConstant(CiValue value) {
+    public static RiConstant asConstant(RiValue value) {
         assert value != null;
         return (RiConstant) value;
     }
 
 
-    public static boolean isStackSlot(CiValue value) {
+    public static boolean isStackSlot(RiValue value) {
         assert value != null;
         return value instanceof CiStackSlot;
     }
 
-    public static CiStackSlot asStackSlot(CiValue value) {
+    public static CiStackSlot asStackSlot(RiValue value) {
         assert value != null;
         return (CiStackSlot) value;
     }
 
-    public static boolean isAddress(CiValue value) {
+    public static boolean isAddress(RiValue value) {
         assert value != null;
         return value instanceof CiAddress;
     }
 
-    public static CiAddress asAddress(CiValue value) {
+    public static CiAddress asAddress(RiValue value) {
         assert value != null;
         return (CiAddress) value;
     }
 
 
-    public static boolean isRegister(CiValue value) {
+    public static boolean isRegister(RiValue value) {
         assert value != null;
         return value instanceof CiRegisterValue;
     }
 
-    public static CiRegister asRegister(CiValue value) {
+    public static CiRegister asRegister(RiValue value) {
         assert value != null;
         return ((CiRegisterValue) value).reg;
     }
 
-    public static CiRegister asIntReg(CiValue value) {
+    public static CiRegister asIntReg(RiValue value) {
         assert value.kind == RiKind.Int || value.kind == RiKind.Jsr;
         return asRegister(value);
     }
 
-    public static CiRegister asLongReg(CiValue value) {
+    public static CiRegister asLongReg(RiValue value) {
         assert value.kind == RiKind.Long : value.kind;
         return asRegister(value);
     }
 
-    public static CiRegister asObjectReg(CiValue value) {
+    public static CiRegister asObjectReg(RiValue value) {
         assert value.kind == RiKind.Object;
         return asRegister(value);
     }
 
-    public static CiRegister asFloatReg(CiValue value) {
+    public static CiRegister asFloatReg(RiValue value) {
         assert value.kind == RiKind.Float;
         return asRegister(value);
     }
 
-    public static CiRegister asDoubleReg(CiValue value) {
+    public static CiRegister asDoubleReg(RiValue value) {
         assert value.kind == RiKind.Double;
         return asRegister(value);
     }
 
 
-    public static boolean sameRegister(CiValue v1, CiValue v2) {
+    public static boolean sameRegister(RiValue v1, RiValue v2) {
         return isRegister(v1) && isRegister(v2) && asRegister(v1) == asRegister(v2);
     }
 
-    public static boolean sameRegister(CiValue v1, CiValue v2, CiValue v3) {
+    public static boolean sameRegister(RiValue v1, RiValue v2, RiValue v3) {
         return sameRegister(v1, v2) && sameRegister(v1, v3);
     }
 
-    public static boolean differentRegisters(CiValue v1, CiValue v2) {
+    public static boolean differentRegisters(RiValue v1, RiValue v2) {
         return !isRegister(v1) || !isRegister(v2) || asRegister(v1) != asRegister(v2);
     }
 
-    public static boolean differentRegisters(CiValue v1, CiValue v2, CiValue v3) {
+    public static boolean differentRegisters(RiValue v1, RiValue v2, RiValue v3) {
         return differentRegisters(v1, v2) && differentRegisters(v1, v3) && differentRegisters(v2, v3);
     }
 }

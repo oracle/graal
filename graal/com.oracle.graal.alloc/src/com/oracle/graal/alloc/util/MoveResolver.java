@@ -28,6 +28,7 @@ import static com.oracle.graal.alloc.util.LocationUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -36,8 +37,8 @@ public abstract class MoveResolver {
     private final LIR lir;
     private final FrameMap frameMap;
     private final int[] registersBlocked;
-    private final Map<CiValue, Integer> valuesBlocked;
-    private final List<CiValue> mappingFrom;
+    private final Map<RiValue, Integer> valuesBlocked;
+    private final List<RiValue> mappingFrom;
     private final List<Location> mappingTo;
     private final LIRInsertionBuffer insertionBuffer;
     private int insertPos;
@@ -70,7 +71,7 @@ public abstract class MoveResolver {
         assert checkValid();
     }
 
-    public void add(CiValue from, Location to) {
+    public void add(RiValue from, Location to) {
         assert checkValid();
         assert isLocation(from) || isConstant(from);
         assert from != to;
@@ -120,14 +121,14 @@ public abstract class MoveResolver {
         // Block all registers and stack slots that are used as inputs of a move.
         // When a register is blocked, no move to this register is emitted.
         // This is necessary for detecting cycles in moves.
-        for (CiValue from : mappingFrom) {
+        for (RiValue from : mappingFrom) {
             block(from);
         }
 
         while (mappingFrom.size() > 0) {
             boolean processed = false;
             for (int i = mappingFrom.size() - 1; i >= 0; i--) {
-                CiValue from = mappingFrom.get(i);
+                RiValue from = mappingFrom.get(i);
                 Location to = mappingTo.get(i);
 
                 if (safeToProcessMove(from, to)) {
@@ -153,19 +154,19 @@ public abstract class MoveResolver {
         int exchangeOther = -1;
 
         for (int i = mappingFrom.size() - 1; i >= 0; i--) {
-            CiValue from = mappingFrom.get(i);
+            RiValue from = mappingFrom.get(i);
             Location to = mappingTo.get(i);
             assert !safeToProcessMove(from, to) : "would not be in this code otherwise";
 
             if (isConstant(from)) {
                 continue;
             }
-            CiValue fromLoc = asLocation(from).location;
+            RiValue fromLoc = asLocation(from).location;
 
             // Check if we can insert an exchange to save us from spilling.
             if (isRegister(fromLoc) && isRegister(to) && asRegister(fromLoc) != asRegister(to) && blockedCount(to) == 1) {
                 for (int j = mappingFrom.size() - 1; j >= 0; j--) {
-                    CiValue possibleOther = mappingFrom.get(j);
+                    RiValue possibleOther = mappingFrom.get(j);
                     if (isLocation(possibleOther)) {
                         if (asLocation(possibleOther).location == to.location) {
                             assert exchangeCandidate == -1 : "must not find twice because of blocked check above";
@@ -220,9 +221,9 @@ public abstract class MoveResolver {
         }
     }
 
-    private void block(CiValue value) {
+    private void block(RiValue value) {
         if (isLocation(value)) {
-            CiValue location = asLocation(value).location;
+            RiValue location = asLocation(value).location;
             if (isRegister(location)) {
                 registersBlocked[asRegister(location).number]++;
             } else {
@@ -232,10 +233,10 @@ public abstract class MoveResolver {
         }
     }
 
-    private void unblock(CiValue value) {
+    private void unblock(RiValue value) {
         if (isLocation(value)) {
             assert blockedCount(asLocation(value)) > 0;
-            CiValue location = asLocation(value).location;
+            RiValue location = asLocation(value).location;
             if (isRegister(location)) {
                 registersBlocked[asRegister(location).number]--;
             } else {
@@ -248,7 +249,7 @@ public abstract class MoveResolver {
     }
 
     private int blockedCount(Location value) {
-        CiValue location = asLocation(value).location;
+        RiValue location = asLocation(value).location;
         if (isRegister(location)) {
             return registersBlocked[asRegister(location).number];
         } else {
@@ -257,7 +258,7 @@ public abstract class MoveResolver {
         }
     }
 
-    private boolean safeToProcessMove(CiValue from, Location to) {
+    private boolean safeToProcessMove(RiValue from, Location to) {
         int count = blockedCount(to);
         return count == 0 || (count == 1 && isLocation(from) && asLocation(from).location == to.location);
     }
@@ -269,17 +270,17 @@ public abstract class MoveResolver {
         throw GraalInternalError.unimplemented();
     }
 
-    private void insertMove(CiValue src, Location dst) {
+    private void insertMove(RiValue src, Location dst) {
         if (isStackSlot(dst.location) && isLocation(src) && isStackSlot(asLocation(src).location)) {
             // Move between two stack slots. We need a temporary registers. If the allocator can give
             // us a free register, we need two moves: src->scratch, scratch->dst
             // If the allocator cannot give us a free register (it returns a Location in this case),
             // we need to spill the scratch register first, so we need four moves in total.
 
-            CiValue scratch = scratchRegister(dst.variable);
+            RiValue scratch = scratchRegister(dst.variable);
 
             Location scratchSaved = null;
-            CiValue scratchRegister = scratch;
+            RiValue scratchRegister = scratch;
             if (isLocation(scratch)) {
                 scratchSaved = new Location(asLocation(scratch).variable, frameMap.allocateSpillSlot(scratch.kind));
                 insertMove(scratch, scratchSaved);
@@ -306,7 +307,7 @@ public abstract class MoveResolver {
      * {@link CiRegisterValue}, the register can be overwritten without precautions. If the
      * returned value is a {@link Location}, it needs to be spilled and rescued itself.
      */
-    protected abstract CiValue scratchRegister(Variable spilled);
+    protected abstract RiValue scratchRegister(Variable spilled);
 
     private boolean checkEmpty() {
         assert insertPos == -1;
@@ -327,7 +328,7 @@ public abstract class MoveResolver {
         assert insertionBuffer.initialized() && insertPos != -1;
 
         for (int i = 0; i < mappingTo.size(); i++) {
-            CiValue from = mappingFrom.get(i);
+            RiValue from = mappingFrom.get(i);
             Location to = mappingTo.get(i);
 
             assert from.kind.stackKind() == to.kind;

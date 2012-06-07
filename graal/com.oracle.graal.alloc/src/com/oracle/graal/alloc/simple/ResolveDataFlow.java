@@ -26,7 +26,7 @@ import static com.oracle.graal.alloc.util.LocationUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.alloc.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -49,7 +49,7 @@ public abstract class ResolveDataFlow {
     private LocationMap curFromLocations;
 
     public void execute() {
-        ValueProcedure locMappingProc = new ValueProcedure() { @Override public CiValue doValue(CiValue value) { return locMapping(value); } };
+        ValueProcedure locMappingProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return locMapping(value); } };
 
         Debug.log("==== start resolve data flow ====");
         for (Block toBlock : lir.linearScanOrder()) {
@@ -87,7 +87,7 @@ public abstract class ResolveDataFlow {
         Debug.log("==== end resolve data flow ====");
     }
 
-    private CiValue locMapping(CiValue value) {
+    private RiValue locMapping(RiValue value) {
         Location to = asLocation(value);
         Location from = curFromLocations.get(to.variable);
         if (value != from && from != null) {
@@ -96,7 +96,7 @@ public abstract class ResolveDataFlow {
         return value;
     }
 
-    private void phiMapping(CiValue[] inputs, CiValue[] outputs) {
+    private void phiMapping(RiValue[] inputs, RiValue[] outputs) {
         assert inputs.length == outputs.length;
         for (int i = 0; i < inputs.length; i++) {
             if (inputs[i] != outputs[i]) {

@@ -22,6 +22,8 @@
  */
 package com.oracle.max.cri.ri;
 
+import com.oracle.max.cri.ci.*;
+
 
 /**
  * Provides access to the profiling information of one specific method.
@@ -77,5 +79,5 @@ public interface RiProfilingInfo {
      * @param reason the reason for which the number of deoptimizations should be queried
      * @return the number of times the compiled method deoptimized for the given reason.
      */
-    int getDeoptimizationCount(RiDeoptReason reason);
+    int getDeoptimizationCount(CiDeoptReason reason);
 }

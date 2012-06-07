@@ -22,14 +22,12 @@
  */
 package com.oracle.max.cri.ri;
 
-import com.oracle.max.cri.ci.*;
-
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number, or object reference,
  * within the compiler and across the compiler/runtime interface. Exports a set of {@code CiConstant}
  * instances that represent frequently used constant values, such as {@link #ZERO}.
  */
-public final class RiConstant extends CiValue {
+public final class RiConstant extends RiValue {
     private static final long serialVersionUID = -6355452536852663986L;
 
     private static final RiConstant[] INT_CONSTANT_CACHE = new RiConstant[100];

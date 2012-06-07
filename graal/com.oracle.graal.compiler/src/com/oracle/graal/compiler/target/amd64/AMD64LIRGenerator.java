@@ -87,12 +87,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public static class AMD64SpillMoveFactory implements LIR.SpillMoveFactory {
         @Override
-        public LIRInstruction createMove(CiValue result, CiValue input) {
+        public LIRInstruction createMove(RiValue result, RiValue input) {
             return new SpillMoveOp(result, input);
         }
 
         @Override
-        public LIRInstruction createExchange(CiValue input1, CiValue input2) {
+        public LIRInstruction createExchange(RiValue input1, RiValue input2) {
             // TODO (cwimmer) implement XCHG operation for LIR
             return null;
         }
@@ -134,8 +134,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public CiAddress makeAddress(LocationNode location, ValueNode object) {
-        CiValue base = operand(object);
-        CiValue index = CiValue.IllegalValue;
+        RiValue base = operand(object);
+        RiValue index = RiValue.IllegalValue;
         int scale = 1;
         long displacement = location.displacement();
 
@@ -143,7 +143,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             if (!asConstant(base).isNull()) {
                 displacement += asConstant(base).asLong();
             }
-            base = CiValue.IllegalValue;
+            base = RiValue.IllegalValue;
         }
 
         if (location instanceof IndexedLocationNode) {
@@ -158,10 +158,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 // only use the constant index if the resulting displacement fits into a 32 bit offset
                 if (NumUtil.isInt(newDisplacement)) {
                     displacement = newDisplacement;
-                    index = CiValue.IllegalValue;
+                    index = RiValue.IllegalValue;
                 } else {
                     // create a temporary variable for the index, the pointer load cannot handle a constant index
-                    CiValue newIndex = newVariable(RiKind.Long);
+                    RiValue newIndex = newVariable(RiKind.Long);
                     emitMove(index, newIndex);
                     index = newIndex;
                 }
@@ -172,14 +172,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitMove(CiValue input) {
+    public Variable emitMove(RiValue input) {
         Variable result = newVariable(input.kind);
         emitMove(input, result);
         return result;
     }
 
     @Override
-    public void emitMove(CiValue src, CiValue dst) {
+    public void emitMove(RiValue src, RiValue dst) {
         if (isRegister(src) || isStackSlot(dst)) {
             append(new MoveFromRegOp(dst, src));
         } else {
@@ -188,20 +188,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(CiValue loadAddress, boolean canTrap) {
+    public Variable emitLoad(RiValue loadAddress, boolean canTrap) {
         Variable result = newVariable(loadAddress.kind);
         append(new LoadOp(result, loadAddress, canTrap ? state() : null));
         return result;
     }
 
     @Override
-    public void emitStore(CiValue storeAddress, CiValue inputVal, boolean canTrap) {
-        CiValue input = loadForStore(inputVal, storeAddress.kind);
+    public void emitStore(RiValue storeAddress, RiValue inputVal, boolean canTrap) {
+        RiValue input = loadForStore(inputVal, storeAddress.kind);
         append(new StoreOp(storeAddress, input, canTrap ? state() : null));
     }
 
     @Override
-    public Variable emitLea(CiValue address) {
+    public Variable emitLea(RiValue address) {
         Variable result = newVariable(target().wordKind);
         append(new LeaOp(result, address));
         return result;
@@ -218,7 +218,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitBranch(CiValue left, CiValue right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info) {
+    public void emitBranch(RiValue left, RiValue right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         switch (left.kind.stackKind()) {
@@ -232,7 +232,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitCMove(CiValue left, CiValue right, Condition cond, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue) {
+    public Variable emitCMove(RiValue left, RiValue right, Condition cond, boolean unorderedIsTrue, RiValue trueValue, RiValue falseValue) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
 
@@ -255,9 +255,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
      * @param b the right operand of the comparison
      * @return true if the left and right operands were switched, false otherwise
      */
-    private boolean emitCompare(CiValue a, CiValue b) {
+    private boolean emitCompare(RiValue a, RiValue b) {
         Variable left;
-        CiValue right;
+        RiValue right;
         boolean mirrored;
         if (ValueUtil.isVariable(b)) {
             left = load(b);
@@ -281,7 +281,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitNegate(CiValue input) {
+    public Variable emitNegate(RiValue input) {
         Variable result = newVariable(input.kind);
         switch (input.kind) {
             case Int:    append(new Op1Stack(INEG, result, input)); break;
@@ -294,7 +294,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAdd(CiValue a, CiValue b) {
+    public Variable emitAdd(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(new Op2Stack(IADD, result, a, loadNonConst(b))); break;
@@ -307,7 +307,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitSub(CiValue a, CiValue b) {
+    public Variable emitSub(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(new Op2Stack(ISUB, result, a, loadNonConst(b))); break;
@@ -320,7 +320,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitMul(CiValue a, CiValue b) {
+    public Variable emitMul(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(new Op2Reg(IMUL, result, a, loadNonConst(b))); break;
@@ -333,7 +333,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitDiv(CiValue a, CiValue b) {
+    public Variable emitDiv(RiValue a, RiValue b) {
         switch(a.kind) {
             case Int:
                 emitMove(a, RAX_I);
@@ -359,7 +359,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public CiValue emitRem(CiValue a, CiValue b) {
+    public RiValue emitRem(RiValue a, RiValue b) {
         switch(a.kind) {
             case Int:
                 emitMove(a, RAX_I);
@@ -379,7 +379,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitUDiv(CiValue a, CiValue b) {
+    public Variable emitUDiv(RiValue a, RiValue b) {
         switch(a.kind) {
             case Int:
                 emitMove(a, RAX_I);
@@ -395,7 +395,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitURem(CiValue a, CiValue b) {
+    public Variable emitURem(RiValue a, RiValue b) {
         switch(a.kind) {
             case Int:
                 emitMove(a, RAX_I);
@@ -412,7 +412,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public Variable emitAnd(CiValue a, CiValue b) {
+    public Variable emitAnd(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(new Op2Stack(IAND, result, a, loadNonConst(b))); break;
@@ -423,7 +423,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitOr(CiValue a, CiValue b) {
+    public Variable emitOr(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(new Op2Stack(IOR, result, a, loadNonConst(b))); break;
@@ -434,7 +434,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitXor(CiValue a, CiValue b) {
+    public Variable emitXor(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch(a.kind) {
             case Int:    append(new Op2Stack(IXOR, result, a, loadNonConst(b))); break;
@@ -446,7 +446,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public Variable emitShl(CiValue a, CiValue b) {
+    public Variable emitShl(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
             case Int:    append(new ShiftOp(ISHL, result, a, loadShiftCount(b))); break;
@@ -457,7 +457,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitShr(CiValue a, CiValue b) {
+    public Variable emitShr(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
             case Int:    append(new ShiftOp(ISHR, result, a, loadShiftCount(b))); break;
@@ -468,7 +468,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitUShr(CiValue a, CiValue b) {
+    public Variable emitUShr(RiValue a, RiValue b) {
         Variable result = newVariable(a.kind);
         switch (a.kind) {
             case Int:    append(new ShiftOp(IUSHR, result, a, loadShiftCount(b))); break;
@@ -478,7 +478,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    private CiValue loadShiftCount(CiValue value) {
+    private RiValue loadShiftCount(RiValue value) {
         if (isConstant(value)) {
             return value;
         }
@@ -489,7 +489,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public Variable emitConvert(ConvertNode.Op opcode, CiValue inputVal) {
+    public Variable emitConvert(ConvertNode.Op opcode, RiValue inputVal) {
         Variable input = load(inputVal);
         Variable result = newVariable(opcode.to);
         switch (opcode) {
@@ -519,7 +519,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimizeOnOverflow(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
+    public void emitDeoptimizeOnOverflow(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo) {
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
@@ -527,7 +527,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimize(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId) {
+    public void emitDeoptimize(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo, long leafGraphId) {
         LIRDebugInfo info = state(leafGraphId);
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new JumpOp(stubEntry, info));
@@ -542,35 +542,35 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitCall(Object targetMethod, CiValue result, List<CiValue> arguments, CiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+    protected void emitCall(Object targetMethod, RiValue result, List<RiValue> arguments, RiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
         if (isConstant(targetAddress)) {
             assert asConstant(targetAddress).isDefaultValue() : "destination address should be zero";
-            append(new DirectCallOp(targetMethod, result, arguments.toArray(new CiValue[arguments.size()]), info, marks));
+            append(new DirectCallOp(targetMethod, result, arguments.toArray(new RiValue[arguments.size()]), info, marks));
         } else {
-            append(new IndirectCallOp(targetMethod, result, arguments.toArray(new CiValue[arguments.size()]), targetAddress, info, marks));
+            append(new IndirectCallOp(targetMethod, result, arguments.toArray(new RiValue[arguments.size()]), targetAddress, info, marks));
         }
     }
 
     @Override
-    protected void emitReturn(CiValue input) {
+    protected void emitReturn(RiValue input) {
         append(new ReturnOp(input));
     }
 
     @Override
-    protected void emitXir(XirSnippet snippet, CiValue[] operands, CiValue outputOperand, CiValue[] inputs, CiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
+    protected void emitXir(XirSnippet snippet, RiValue[] operands, RiValue outputOperand, RiValue[] inputs, RiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
                     LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor) {
         append(new AMD64XirOp(snippet, operands, outputOperand, inputs, temps, inputOperandIndices, tempOperandIndices, outputOperandIndex, info, infoAfter, trueSuccessor, falseSuccessor));
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, CiValue index) {
+    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, RiValue index) {
         // Making a copy of the switch value is necessary because jump table destroys the input value
         Variable tmp = emitMove(index);
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
     }
 
     @Override
-    protected LabelRef createDeoptStub(RiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(CiDeoptAction action, CiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
         assert info.topFrame.bci >= 0 : "invalid bci for deopt framestate";
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.stubs.add(stub);
@@ -589,12 +589,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RiKind kind = node.newValue().kind();
         assert kind == node.expected().kind();
 
-        CiValue expected = loadNonConst(operand(node.expected()));
+        RiValue expected = loadNonConst(operand(node.expected()));
         Variable newValue = load(operand(node.newValue()));
 
         CiAddress address;
         int displacement = node.displacement();
-        CiValue index = operand(node.offset());
+        RiValue index = operand(node.offset());
         if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong())) {
             displacement += (int) asConstant(index).asLong();
             address = new CiAddress(kind, load(operand(node.object())), displacement);

@@ -71,7 +71,7 @@ public class HotSpotAMD64Backend extends Backend {
                 CiRegisterValue thread = r15.asValue();
                 CiAddress exceptionAddress = new CiAddress(RiKind.Object, thread, config.threadExceptionOopOffset);
                 CiAddress pcAddress = new CiAddress(RiKind.Long, thread, config.threadExceptionPcOffset);
-                CiValue exception = emitLoad(exceptionAddress, false);
+                RiValue exception = emitLoad(exceptionAddress, false);
                 emitStore(exceptionAddress, RiConstant.NULL_OBJECT, false);
                 emitStore(pcAddress, RiConstant.LONG_0, false);
                 setResult(x, exception);
@@ -121,7 +121,7 @@ public class HotSpotAMD64Backend extends Backend {
             int frameSize = tasm.frameMap.frameSize();
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             CiCalleeSaveLayout csl = tasm.frameMap.registerConfig.getCalleeSaveLayout();
-            RiRegisterConfig regConfig = tasm.frameMap.registerConfig;
+            CiRegisterConfig regConfig = tasm.frameMap.registerConfig;
 
             if (csl != null && csl.size != 0) {
                 tasm.targetMethod.setRegisterRestoreEpilogueOffset(asm.codeBuffer.position());
@@ -178,7 +178,7 @@ public class HotSpotAMD64Backend extends Backend {
     public void emitCode(TargetMethodAssembler tasm, RiResolvedMethod method, LIR lir) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
-        RiRegisterConfig regConfig = frameMap.registerConfig;
+        CiRegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
         Label unverifiedStub = new Label();
 

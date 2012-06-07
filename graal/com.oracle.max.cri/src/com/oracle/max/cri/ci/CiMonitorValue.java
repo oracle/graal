@@ -24,14 +24,14 @@ package com.oracle.max.cri.ci;
 
 import com.oracle.max.cri.ri.*;
 
-public final class CiMonitorValue extends CiValue {
+public final class CiMonitorValue extends RiValue {
     private static final long serialVersionUID = 8241681800464483691L;
 
-    public CiValue owner;
-    public final CiValue lockData;
+    public RiValue owner;
+    public final RiValue lockData;
     public final boolean eliminated;
 
-    public CiMonitorValue(CiValue owner, CiValue lockData, boolean eliminated) {
+    public CiMonitorValue(RiValue owner, RiValue lockData, boolean eliminated) {
         super(RiKind.Illegal);
         this.owner = owner;
         this.lockData = lockData;

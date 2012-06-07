@@ -219,7 +219,7 @@ public class TargetMethodAssembler {
      * Returns the integer value of any constants that can be represented by a 32-bit integer value,
      * including long constants that fit into the 32-bit range.
      */
-    public int asIntConst(CiValue value) {
+    public int asIntConst(RiValue value) {
         assert (value.kind.stackKind() == RiKind.Int || value.kind == RiKind.Jsr || value.kind == RiKind.Long) && isConstant(value);
         long c = ((RiConstant) value).asLong();
         if (!(NumUtil.isInt(c))) {
@@ -231,11 +231,11 @@ public class TargetMethodAssembler {
     /**
      * Returns the address of a float constant that is embedded as a data references into the code.
      */
-    public CiAddress asFloatConstRef(CiValue value) {
+    public CiAddress asFloatConstRef(RiValue value) {
         return asFloatConstRef(value, 4);
     }
 
-    public CiAddress asFloatConstRef(CiValue value, int alignment) {
+    public CiAddress asFloatConstRef(RiValue value, int alignment) {
         assert value.kind == RiKind.Float && isConstant(value);
         return recordDataReferenceInCode((RiConstant) value, alignment);
     }
@@ -243,11 +243,11 @@ public class TargetMethodAssembler {
     /**
      * Returns the address of a double constant that is embedded as a data references into the code.
      */
-    public CiAddress asDoubleConstRef(CiValue value) {
+    public CiAddress asDoubleConstRef(RiValue value) {
         return asDoubleConstRef(value, 8);
     }
 
-    public CiAddress asDoubleConstRef(CiValue value, int alignment) {
+    public CiAddress asDoubleConstRef(RiValue value, int alignment) {
         assert value.kind == RiKind.Double && isConstant(value);
         return recordDataReferenceInCode((RiConstant) value, alignment);
     }
@@ -255,37 +255,37 @@ public class TargetMethodAssembler {
     /**
      * Returns the address of a long constant that is embedded as a data references into the code.
      */
-    public CiAddress asLongConstRef(CiValue value) {
+    public CiAddress asLongConstRef(RiValue value) {
         assert value.kind == RiKind.Long && isConstant(value);
         return recordDataReferenceInCode((RiConstant) value, 8);
     }
 
-    public CiAddress asIntAddr(CiValue value) {
+    public CiAddress asIntAddr(RiValue value) {
         assert value.kind == RiKind.Int;
         return asAddress(value);
     }
 
-    public CiAddress asLongAddr(CiValue value) {
+    public CiAddress asLongAddr(RiValue value) {
         assert value.kind == RiKind.Long;
         return asAddress(value);
     }
 
-    public CiAddress asObjectAddr(CiValue value) {
+    public CiAddress asObjectAddr(RiValue value) {
         assert value.kind == RiKind.Object;
         return asAddress(value);
     }
 
-    public CiAddress asFloatAddr(CiValue value) {
+    public CiAddress asFloatAddr(RiValue value) {
         assert value.kind == RiKind.Float;
         return asAddress(value);
     }
 
-    public CiAddress asDoubleAddr(CiValue value) {
+    public CiAddress asDoubleAddr(RiValue value) {
         assert value.kind == RiKind.Double;
         return asAddress(value);
     }
 
-    public CiAddress asAddress(CiValue value) {
+    public CiAddress asAddress(RiValue value) {
         if (isStackSlot(value)) {
             CiStackSlot slot = (CiStackSlot) value;
             return new CiAddress(slot.kind, frameMap.registerConfig.getFrameRegister().asValue(), frameMap.offsetForStackSlot(slot));

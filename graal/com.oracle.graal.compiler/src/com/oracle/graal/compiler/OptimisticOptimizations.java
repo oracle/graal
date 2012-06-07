@@ -49,16 +49,16 @@ public final class OptimisticOptimizations {
         this.enabledOpts = EnumSet.noneOf(Optimization.class);
 
         RiProfilingInfo profilingInfo = method.profilingInfo();
-        if (checkDeoptimizations(profilingInfo, RiDeoptReason.UnreachedCode)) {
+        if (checkDeoptimizations(profilingInfo, CiDeoptReason.UnreachedCode)) {
             enabledOpts.add(Optimization.RemoveNeverExecutedCode);
         }
-        if (checkDeoptimizations(profilingInfo, RiDeoptReason.TypeCheckedInliningViolated)) {
+        if (checkDeoptimizations(profilingInfo, CiDeoptReason.TypeCheckedInliningViolated)) {
             enabledOpts.add(Optimization.UseTypeCheckedInlining);
         }
-        if (checkDeoptimizations(profilingInfo, RiDeoptReason.OptimizedTypeCheckViolated)) {
+        if (checkDeoptimizations(profilingInfo, CiDeoptReason.OptimizedTypeCheckViolated)) {
             enabledOpts.add(Optimization.UseTypeCheckHints);
         }
-        if (checkDeoptimizations(profilingInfo, RiDeoptReason.NotCompiledExceptionHandler)) {
+        if (checkDeoptimizations(profilingInfo, CiDeoptReason.NotCompiledExceptionHandler)) {
             enabledOpts.add(Optimization.UseExceptionProbability);
         }
     }
@@ -111,7 +111,7 @@ public final class OptimisticOptimizations {
         return false;
     }
 
-    private static boolean checkDeoptimizations(RiProfilingInfo profilingInfo, RiDeoptReason reason) {
+    private static boolean checkDeoptimizations(RiProfilingInfo profilingInfo, CiDeoptReason reason) {
         return profilingInfo.getDeoptimizationCount(reason) < GraalOptions.DeoptsToDisableOptimisticOptimization;
     }
 }

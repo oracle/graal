@@ -788,7 +788,7 @@ public class CiUtil {
         }
 
         boolean firstDeoptReason = true;
-        for (RiDeoptReason reason: RiDeoptReason.values()) {
+        for (CiDeoptReason reason: CiDeoptReason.values()) {
             int count = info.getDeoptimizationCount(reason);
             if (count > 0) {
                 if (firstDeoptReason) {

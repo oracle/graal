@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.max.cri.ci;
 
 
-public enum RiDeoptAction {
+public enum CiDeoptAction {
     None,                           // just interpret, do not invalidate nmethod
     RecompileIfTooManyDeopts,       // recompile the nmethod; need not invalidate
     InvalidateReprofile,            // invalidate the nmethod, reset IC, maybe recompile

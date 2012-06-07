@@ -85,11 +85,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public String disassemble(RiCodeInfo info) {
+    public String disassemble(RiCodeInfo info, CiTargetMethod tm) {
         byte[] code = info.code();
         CiTarget target = compiler.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
-        CiTargetMethod tm = info.targetMethod();
         if (tm != null) {
             HexCodeFile.addAnnotations(hcf, tm.annotations());
             addExceptionHandlersComment(tm, hcf);
@@ -205,7 +204,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public RiRegisterConfig getRegisterConfig(RiMethod method) {
+    public CiRegisterConfig getRegisterConfig(RiMethod method) {
         return regConfig;
     }
 
@@ -391,7 +390,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, RiDeoptAction.InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), CiDeoptReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
@@ -491,7 +490,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public RiRegisterConfig getGlobalStubRegisterConfig() {
+    public CiRegisterConfig getGlobalStubRegisterConfig() {
         return globalStubRegConfig;
     }
 
@@ -502,7 +501,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int encodeDeoptActionAndReason(RiDeoptAction action, RiDeoptReason reason) {
+    public int encodeDeoptActionAndReason(CiDeoptAction action, CiDeoptReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
 
@@ -512,7 +511,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int convertDeoptAction(RiDeoptAction action) {
+    public int convertDeoptAction(CiDeoptAction action) {
         switch(action) {
             case None: return 0;
             case RecompileIfTooManyDeopts: return 1;
@@ -524,7 +523,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int convertDeoptReason(RiDeoptReason reason) {
+    public int convertDeoptReason(CiDeoptReason reason) {
         switch(reason) {
             case None: return 0;
             case NullCheckException: return 1;

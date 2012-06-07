@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -47,7 +47,7 @@ public final class ArrayWriteBarrier extends WriteBarrier implements LIRLowerabl
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue addr = gen.emitLea(gen.makeAddress(location(), object()));
+        RiValue addr = gen.emitLea(gen.makeAddress(location(), object()));
         generateBarrier(addr, gen);
     }
 }

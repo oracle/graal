@@ -41,8 +41,8 @@ import com.oracle.graal.nodes.calc.*;
 public class AMD64ControlFlow {
 
     public static class ReturnOp extends AMD64LIRInstruction {
-        public ReturnOp(CiValue input) {
-            super("RETURN", LIRInstruction.NO_OPERANDS, null, new CiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public ReturnOp(RiValue input) {
+            super("RETURN", LIRInstruction.NO_OPERANDS, null, new RiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
@@ -137,7 +137,7 @@ public class AMD64ControlFlow {
         private final LabelRef[] targets;
 
         public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
-            super("TABLE_SWITCH", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new CiValue[] {index}, new CiValue[] {scratch});
+            super("TABLE_SWITCH", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, new RiValue[] {index}, new RiValue[] {scratch});
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -175,8 +175,8 @@ public class AMD64ControlFlow {
     public static class CondMoveOp extends AMD64LIRInstruction {
         private final ConditionFlag condition;
 
-        public CondMoveOp(Variable result, Condition condition, Variable trueValue, CiValue falseValue) {
-            super("CMOVE", new CiValue[] {result}, null, new CiValue[] {falseValue}, new CiValue[] {trueValue}, LIRInstruction.NO_OPERANDS);
+        public CondMoveOp(Variable result, Condition condition, Variable trueValue, RiValue falseValue) {
+            super("CMOVE", new RiValue[] {result}, null, new RiValue[] {falseValue}, new RiValue[] {trueValue}, LIRInstruction.NO_OPERANDS);
             this.condition = intCond(condition);
         }
 
@@ -209,7 +209,7 @@ public class AMD64ControlFlow {
         private final boolean unorderedIsTrue;
 
         public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
-            super("FLOAT_CMOVE", new CiValue[] {result}, null, LIRInstruction.NO_OPERANDS, new CiValue[] {trueValue, falseValue}, LIRInstruction.NO_OPERANDS);
+            super("FLOAT_CMOVE", new RiValue[] {result}, null, LIRInstruction.NO_OPERANDS, new RiValue[] {trueValue, falseValue}, LIRInstruction.NO_OPERANDS);
             this.condition = floatCond(condition);
             this.unorderedIsTrue = unorderedIsTrue;
         }
@@ -305,7 +305,7 @@ public class AMD64ControlFlow {
         masm.bind(endLabel);
     }
 
-    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, CiValue trueValue, CiValue falseValue) {
+    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, RiValue trueValue, RiValue falseValue) {
         // check that we don't overwrite an input operand before it is used.
         assert !result.equals(trueValue);
 
@@ -321,7 +321,7 @@ public class AMD64ControlFlow {
         }
     }
 
-    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue result, ConditionFlag cond, CiValue other) {
+    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, ConditionFlag cond, RiValue other) {
         if (isRegister(other)) {
             assert asRegister(other) != asRegister(result) : "other already overwritten by previous move";
             switch (other.kind) {

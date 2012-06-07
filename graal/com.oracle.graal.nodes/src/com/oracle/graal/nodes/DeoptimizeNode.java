@@ -25,22 +25,22 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ci.*;
 
 @NodeInfo(shortName = "Deopt")
 public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
     private String message;
-    private final RiDeoptAction action;
-    private final RiDeoptReason reason;
+    private final CiDeoptAction action;
+    private final CiDeoptReason reason;
     private final long leafGraphId;
 
 
-    public DeoptimizeNode(RiDeoptAction action, RiDeoptReason reason) {
+    public DeoptimizeNode(CiDeoptAction action, CiDeoptReason reason) {
         this(action, reason, -1);
     }
 
-    public DeoptimizeNode(RiDeoptAction action, RiDeoptReason reason, long leafGraphId) {
+    public DeoptimizeNode(CiDeoptAction action, CiDeoptReason reason, long leafGraphId) {
         super(StampFactory.forVoid());
         this.action = action;
         this.reason = reason;
@@ -55,11 +55,11 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
         return message;
     }
 
-    public RiDeoptAction action() {
+    public CiDeoptAction action() {
         return action;
     }
 
-    public RiDeoptReason reason() {
+    public CiDeoptReason reason() {
         return reason;
     }
 
@@ -74,7 +74,7 @@ public class DeoptimizeNode extends FixedNode implements Node.IterableNodeType, 
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void deopt(@ConstantNodeParameter RiDeoptAction action, @ConstantNodeParameter RiDeoptReason reason) {
+    public static void deopt(@ConstantNodeParameter CiDeoptAction action, @ConstantNodeParameter CiDeoptReason reason) {
         throw new UnsupportedOperationException();
     }
 }

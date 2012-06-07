@@ -22,9 +22,6 @@
  */
 package com.oracle.max.cri.ri;
 
-import com.oracle.max.cri.ci.*;
-
-
 /**
  * Represents some code installed in the code cache of the runtime.
  * This encapsulated details are only for informational purposes.
@@ -41,11 +38,6 @@ public interface RiCodeInfo {
      * Gets a copy of this installed code.
      */
     byte[] code();
-
-    /**
-     * Gets the target method (if any) from which this installed code was produced.
-     */
-    CiTargetMethod targetMethod();
 
     /**
      * Gets the method (if any) from which this installed code was compiled.

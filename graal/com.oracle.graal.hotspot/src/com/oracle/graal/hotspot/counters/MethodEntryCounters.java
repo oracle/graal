@@ -69,8 +69,8 @@ public class MethodEntryCounters {
 
         protected final Counter counter;
 
-        protected AMD64MethodEntryOp(Counter counter, CiValue counterArr, CiValue callerPc) {
-            super("ENTRY_COUNTER", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, new CiValue[] {counterArr, callerPc});
+        protected AMD64MethodEntryOp(Counter counter, RiValue counterArr, RiValue callerPc) {
+            super("ENTRY_COUNTER", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, new RiValue[] {counterArr, callerPc});
             this.counter = counter;
         }
 
@@ -78,8 +78,8 @@ public class MethodEntryCounters {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             int start = masm.codeBuffer.position();
 
-            CiValue counterArr = temp(0);
-            CiValue callerPc = temp(1);
+            RiValue counterArr = temp(0);
+            RiValue callerPc = temp(1);
 
             int off = Unsafe.getUnsafe().arrayBaseOffset(long[].class);
             int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);

@@ -141,22 +141,19 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             final CiTargetMethod tm = (CiTargetMethod) object;
             final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
             RiCodeInfo info = new RiCodeInfo() {
-                public CiTargetMethod targetMethod() {
-                    return tm;
+                public RiResolvedMethod method() {
+                    return null;
                 }
                 public long start() {
                     return 0L;
-                }
-                public RiResolvedMethod method() {
-                    return null;
                 }
                 public byte[] code() {
                     return code;
                 }
             };
-            cfgPrinter.printMachineCode(runtime.disassemble(info), message);
+            cfgPrinter.printMachineCode(runtime.disassemble(info, tm), message);
         } else if (object instanceof RiCodeInfo) {
-            cfgPrinter.printMachineCode(runtime.disassemble((RiCodeInfo) object), message);
+            cfgPrinter.printMachineCode(runtime.disassemble((RiCodeInfo) object, null), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 

@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.snippets;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 /**
@@ -50,7 +49,7 @@ class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        CiValue obj = gen.newVariable(gen.target().wordKind);
+        RiValue obj = gen.newVariable(gen.target().wordKind);
         gen.emitMove(gen.operand(object), obj);
         gen.setResult(this, obj);
     }

@@ -31,7 +31,7 @@ import com.oracle.max.cri.ri.*;
  */
 public class AMD64MacroAssembler extends AMD64Assembler {
 
-    public AMD64MacroAssembler(CiTarget target, RiRegisterConfig registerConfig) {
+    public AMD64MacroAssembler(CiTarget target, CiRegisterConfig registerConfig) {
         super(target, registerConfig);
     }
 

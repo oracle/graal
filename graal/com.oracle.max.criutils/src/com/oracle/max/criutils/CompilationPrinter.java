@@ -170,7 +170,7 @@ public class CompilationPrinter {
         return sb.toString();
     }
 
-    protected String valueToString(CiValue value, List<CiVirtualObject> virtualObjects) {
+    protected String valueToString(RiValue value, List<CiVirtualObject> virtualObjects) {
         if (value == null) {
             return "-";
         }

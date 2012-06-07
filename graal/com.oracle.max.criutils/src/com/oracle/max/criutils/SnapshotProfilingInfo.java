@@ -48,7 +48,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
         typeProfiles = new RiTypeProfile[codeSize];
         exceptions = new RiExceptionSeen[codeSize];
         executions = new int[codeSize];
-        deopts = new int[RiDeoptReason.values().length];
+        deopts = new int[CiDeoptReason.values().length];
 
         for (int bci = 0; bci < codeSize; bci++) {
             executions[bci] = other.getExecutionCount(bci);
@@ -57,7 +57,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
             switches[bci] = other.getSwitchProbabilities(bci);
             typeProfiles[bci] = other.getTypeProfile(bci);
         }
-        for (RiDeoptReason reason: RiDeoptReason.values()) {
+        for (CiDeoptReason reason: CiDeoptReason.values()) {
             deopts[reason.ordinal()] = other.getDeoptimizationCount(reason);
         }
     }
@@ -82,7 +82,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
     public int getExecutionCount(int bci) {
         return bci < executions.length ? executions[bci] : -1;
     }
-    public int getDeoptimizationCount(RiDeoptReason reason) {
+    public int getDeoptimizationCount(CiDeoptReason reason) {
         return deopts[reason.ordinal()];
     }
 

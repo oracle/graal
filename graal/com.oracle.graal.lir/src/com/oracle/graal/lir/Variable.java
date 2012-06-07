@@ -29,7 +29,7 @@ import com.oracle.max.cri.ri.*;
  * Represents a value that is yet to be bound to a machine location (such as
  * a {@link CiRegisterValue} or {@link CiStackSlot}) by a register allocator.
  */
-public final class Variable extends CiValue {
+public final class Variable extends RiValue {
     private static final long serialVersionUID = 4507578431686109809L;
 
     /**

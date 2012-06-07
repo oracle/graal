@@ -78,7 +78,7 @@ public final class BaseProfilingInfo implements RiProfilingInfo {
     }
 
     @Override
-    public int getDeoptimizationCount(RiDeoptReason reason) {
+    public int getDeoptimizationCount(CiDeoptReason reason) {
         return 0;
     }
 

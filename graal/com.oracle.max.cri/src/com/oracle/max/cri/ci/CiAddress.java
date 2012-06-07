@@ -31,25 +31,25 @@ import com.oracle.max.cri.ri.*;
  * a displacement and a scale. Note that the base and index registers may be a variable that will get a register assigned
  * later by the register allocator.
  */
-public final class CiAddress extends CiValue {
+public final class CiAddress extends RiValue {
     private static final long serialVersionUID = -1003772042519945089L;
 
     /**
      * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
      */
-    public static final CiAddress Placeholder = new CiAddress(RiKind.Illegal, CiValue.IllegalValue);
+    public static final CiAddress Placeholder = new CiAddress(RiKind.Illegal, RiValue.IllegalValue);
 
     /**
      * Base register that defines the start of the address computation.
-     * If not present, is denoted by {@link CiValue#IllegalValue}.
+     * If not present, is denoted by {@link RiValue#IllegalValue}.
      */
-    public CiValue base;
+    public RiValue base;
 
     /**
      * Index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
-     * If not present, is denoted by {@link CiValue#IllegalValue}.
+     * If not present, is denoted by {@link RiValue#IllegalValue}.
      */
-    public CiValue index;
+    public RiValue index;
 
     /**
      * Scaling factor for indexing, dependent on target operand size.
@@ -66,7 +66,7 @@ public final class CiAddress extends CiValue {
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public CiAddress(RiKind kind, CiValue base) {
+    public CiAddress(RiKind kind, RiValue base) {
         this(kind, base, IllegalValue, Scale.Times1, 0);
     }
 
@@ -76,7 +76,7 @@ public final class CiAddress extends CiValue {
      * @param base the base register
      * @param displacement the displacement
      */
-    public CiAddress(RiKind kind, CiValue base, int displacement) {
+    public CiAddress(RiKind kind, RiValue base, int displacement) {
         this(kind, base, IllegalValue, Scale.Times1, displacement);
     }
 
@@ -89,7 +89,7 @@ public final class CiAddress extends CiValue {
      * @param scale the scaling factor
      * @param displacement the displacement
      */
-    public CiAddress(RiKind kind, CiValue base, CiValue index, Scale scale, int displacement) {
+    public CiAddress(RiKind kind, RiValue base, RiValue index, Scale scale, int displacement) {
         super(kind);
         this.base = base;
         this.index = index;

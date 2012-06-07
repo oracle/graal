@@ -49,6 +49,7 @@ import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
+import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
@@ -73,7 +74,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (objectHub != exactHub) {
             exactMiss.inc();
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
         }
         exactHit.inc();
         return object;
@@ -95,7 +96,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
             displayMiss.inc();
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
         }
         displayHit.inc();
         return object;
@@ -121,7 +122,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
         }
         return object;
     }
@@ -147,7 +148,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkUnknownSubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(RiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
         }
         return object;
     }
