@@ -157,9 +157,9 @@ public final class CompilerImpl implements Compiler, Remote {
     }
 
     /**
-     * Factory method for getting a {@link GraalRuntime} instance. This method is called via reflection.
+     * Factory method for getting a {@link ExtendedRiRuntime} instance. This method is called via reflection.
      */
-    public static GraalRuntime getGraalRuntime() {
+    public static ExtendedRiRuntime getGraalRuntime() {
         return getInstance().getRuntime();
     }
 

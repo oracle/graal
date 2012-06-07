@@ -55,7 +55,7 @@ import com.oracle.max.criutils.*;
 /**
  * CRI runtime implementation for the HotSpot VM.
  */
-public class HotSpotRuntime implements GraalRuntime {
+public class HotSpotRuntime implements ExtendedRiRuntime {
     public final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;

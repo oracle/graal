@@ -48,7 +48,7 @@ public class InliningPhase extends Phase implements InliningCallback {
      */
 
     private final CiTarget target;
-    private final GraalRuntime runtime;
+    private final ExtendedRiRuntime runtime;
 
     private final Collection<? extends Invoke> hints;
 
@@ -66,7 +66,7 @@ public class InliningPhase extends Phase implements InliningCallback {
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
 
-    public InliningPhase(CiTarget target, GraalRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+    public InliningPhase(CiTarget target, ExtendedRiRuntime runtime, Collection<? extends Invoke> hints, CiAssumptions assumptions, RiGraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
         this.target = target;
         this.runtime = runtime;
         this.hints = hints;

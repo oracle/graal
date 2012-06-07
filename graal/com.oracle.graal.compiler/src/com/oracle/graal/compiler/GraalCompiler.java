@@ -54,7 +54,7 @@ public class GraalCompiler {
     /**
      * The runtime that this compiler has been configured for.
      */
-    public final GraalRuntime runtime;
+    public final ExtendedRiRuntime runtime;
 
     /**
      * The XIR generator that lowers Java operations to machine operations.
@@ -66,7 +66,7 @@ public class GraalCompiler {
      */
     public final Backend backend;
 
-    public GraalCompiler(GraalRuntime runtime, CiTarget target, Backend backend, RiXirGenerator xirGen) {
+    public GraalCompiler(ExtendedRiRuntime runtime, CiTarget target, Backend backend, RiXirGenerator xirGen) {
         this.runtime = runtime;
         this.target = target;
         this.xir = xirGen;

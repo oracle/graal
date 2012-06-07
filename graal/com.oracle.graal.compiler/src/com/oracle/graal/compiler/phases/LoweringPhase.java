@@ -41,7 +41,7 @@ public class LoweringPhase extends Phase {
     private class LoweringToolBase implements CiLoweringTool {
 
         @Override
-        public GraalRuntime getRuntime() {
+        public ExtendedRiRuntime getRuntime() {
             return runtime;
         }
 
@@ -72,10 +72,10 @@ public class LoweringPhase extends Phase {
         }
     }
 
-    private final GraalRuntime runtime;
+    private final ExtendedRiRuntime runtime;
     private final CiAssumptions assumptions;
 
-    public LoweringPhase(GraalRuntime runtime, CiAssumptions assumptions) {
+    public LoweringPhase(ExtendedRiRuntime runtime, CiAssumptions assumptions) {
         this.runtime = runtime;
         this.assumptions = assumptions;
     }

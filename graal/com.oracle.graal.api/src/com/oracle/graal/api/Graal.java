@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.cri;
+package com.oracle.graal.api;
 
-import java.util.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+public class Graal {
 
-/**
- * Graal-specific extensions for the runtime interface that must be implemented by the VM.
- */
-public interface GraalRuntime extends RiRuntime {
+    private static GraalRuntime runtime;
+    private static volatile boolean initialized;
 
-    void lower(Node n, CiLoweringTool tool);
+    private static native GraalRuntime initializeRuntime();
 
-    StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters);
+    public static GraalRuntime getRuntime() {
+        ensureInitialized();
+        return runtime;
+    }
 
-    CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
+    public static boolean hasRuntime() {
+        return getRuntime() != null;
+    }
 
+    private static void ensureInitialized() {
+        boolean wasInitialized = initialized;
+        if (!wasInitialized) {
+            synchronized (Graal.class) {
+                if (!initialized) {
+                    try {
+                        runtime = initializeRuntime();
+                    } catch (UnsatisfiedLinkError e) {
+                        runtime = null;
+                    }
+                    initialized = true;
+                }
+            }
+        }
+    }
 }

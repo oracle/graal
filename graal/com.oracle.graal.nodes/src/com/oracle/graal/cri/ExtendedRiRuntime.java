@@ -22,16 +22,22 @@
  */
 package com.oracle.graal.cri;
 
+import java.util.*;
+
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
-public interface CiLoweringTool {
-    ExtendedRiRuntime getRuntime();
-    ValueNode getGuardAnchor();
-    ValueNode createNullCheckGuard(ValueNode object, long leafGraphId);
-    ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, long leafGraphId);
-    ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, RiDeoptAction action, boolean negated, long leafGraphId);
-    CiAssumptions assumptions();
-}
+/**
+ * Graal-specific extensions for the runtime interface that must be implemented by the VM.
+ */
+public interface ExtendedRiRuntime extends RiRuntime {
 
+    void lower(Node n, CiLoweringTool tool);
+
+    StructuredGraph intrinsicGraph(RiResolvedMethod caller, int bci, RiResolvedMethod method, List<? extends Node> parameters);
+
+    CiTargetMethod compile(RiResolvedMethod method, StructuredGraph graph);
+
+}

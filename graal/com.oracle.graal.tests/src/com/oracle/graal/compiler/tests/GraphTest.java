@@ -60,7 +60,7 @@ import com.oracle.max.cri.ri.*;
 public abstract class GraphTest {
 
     protected final GraalCompiler graalCompiler;
-    protected final GraalRuntime runtime;
+    protected final ExtendedRiRuntime runtime;
 
     public GraphTest() {
         Debug.enable();
@@ -118,7 +118,7 @@ public abstract class GraphTest {
         return result.toString();
     }
 
-    protected GraalRuntime runtime() {
+    protected ExtendedRiRuntime runtime() {
         return runtime;
     }
 

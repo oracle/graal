@@ -43,7 +43,7 @@ import com.oracle.max.cri.ri.*;
  */
 public class Snippets {
 
-    public static void install(GraalRuntime runtime, CiTarget target, SnippetsInterface obj) {
+    public static void install(ExtendedRiRuntime runtime, CiTarget target, SnippetsInterface obj) {
         Class<? extends SnippetsInterface> clazz = obj.getClass();
         BoxingMethodPool pool = new BoxingMethodPool(runtime);
         if (clazz.isAnnotationPresent(ClassSubstitution.class)) {
@@ -53,7 +53,7 @@ public class Snippets {
         }
     }
 
-    private static void installSnippets(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz, BoxingMethodPool pool) {
+    private static void installSnippets(ExtendedRiRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz, BoxingMethodPool pool) {
         for (Method method : clazz.getDeclaredMethods()) {
             if (method.getAnnotation(Snippet.class) != null) {
                 Method snippet = method;
@@ -69,7 +69,7 @@ public class Snippets {
         }
     }
 
-    private static void installSubstitution(GraalRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz,
+    private static void installSubstitution(ExtendedRiRuntime runtime, CiTarget target, Class< ? extends SnippetsInterface> clazz,
                     BoxingMethodPool pool, Class<?> original) throws GraalInternalError {
         for (Method snippet : clazz.getDeclaredMethods()) {
             try {
@@ -90,7 +90,7 @@ public class Snippets {
         }
     }
 
-    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final GraalRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
+    private static StructuredGraph buildSnippetGraph(final RiResolvedMethod snippetRiMethod, final ExtendedRiRuntime runtime, final CiTarget target, final BoxingMethodPool pool) {
         final StructuredGraph graph = new StructuredGraph(snippetRiMethod);
         return Debug.scope("BuildSnippetGraph", new Object[] {snippetRiMethod, graph}, new Callable<StructuredGraph>() {
             @Override
