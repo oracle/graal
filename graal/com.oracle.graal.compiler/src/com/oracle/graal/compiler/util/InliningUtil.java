@@ -806,7 +806,7 @@ public class InliningUtil {
         if (receiverNullCheck) {
             receiverNullCheck(invoke);
         }
-        invoke.node().replaceAtPredecessors(firstCFGNodeDuplicate);
+        invoke.node().replaceAtPredecessor(firstCFGNodeDuplicate);
 
         FrameState stateAtExceptionEdge = null;
         if (invoke instanceof InvokeWithExceptionNode) {

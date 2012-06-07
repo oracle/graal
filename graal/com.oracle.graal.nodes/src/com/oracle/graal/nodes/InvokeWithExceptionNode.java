@@ -185,7 +185,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
             assert kind() == CiKind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeSplit(this, NORMAL_EDGE);
         } else if (node instanceof DeoptimizeNode) {
-            this.replaceAtPredecessors(node);
+            this.replaceAtPredecessor(node);
             this.replaceAtUsages(null);
             GraphUtil.killCFG(this);
             return;

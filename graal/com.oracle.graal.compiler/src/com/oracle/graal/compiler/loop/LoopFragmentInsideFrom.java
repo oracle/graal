@@ -20,35 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
-
-import java.util.*;
+package com.oracle.graal.compiler.loop;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.*;
 
-public class ScheduledNode extends Node {
 
-    @Successor private ScheduledNode scheduledNext; // the immediate successor of the current node
+public class LoopFragmentInsideFrom extends LoopFragmentInside {
+    private final FixedNode point;
 
-    public ScheduledNode scheduledNext() {
-        return scheduledNext;
+    public LoopFragmentInsideFrom(LoopEx loop, FixedNode point) {
+        super(loop);
+        this.point = point;
     }
 
-    public void setScheduledNext(ScheduledNode x) {
-        updatePredecessor(scheduledNext, x);
-        scheduledNext = x;
+    // duplicates lazily
+    public LoopFragmentInsideFrom(LoopFragmentInsideFrom original) {
+        super(original);
+        this.point = original.point();
+    }
+
+    public FixedNode point() {
+        return point;
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> debugProperties = super.getDebugProperties();
-        if (this instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) this;
-            if (stateSplit.stateAfter() != null) {
-                debugProperties.put("stateAfter", stateSplit.stateAfter().toString(Verbosity.Debugger));
-            }
-        }
-        return debugProperties;
+    public LoopFragmentInsideFrom duplicate() {
+        return new LoopFragmentInsideFrom(this);
     }
 
+    @Override
+    public NodeIterable<Node> nodes() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

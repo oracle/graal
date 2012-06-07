@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.snippets.nodes;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -32,40 +30,23 @@ import com.oracle.graal.snippets.Snippet.Parameter;
 /**
  * Implements the semantics of a snippet {@link Parameter} whose {@link Parameter#multiple()} element is {@code true}.
  */
-public final class LoadMultipleParameterNode extends FixedWithNextNode implements Canonicalizable {
+public final class LoadSnippetParameterNode extends FixedWithNextNode implements Canonicalizable {
 
     @Input private ValueNode index;
 
     private final LocalNode[] locals;
 
-    public ValueNode index() {
-        return index;
-    }
-
-    public LoadMultipleParameterNode(ConstantNode array, int localIndex, ValueNode index, Stamp stamp) {
+    public LoadSnippetParameterNode(LocalNode[] locals, ValueNode index, Stamp stamp) {
         super(stamp);
-        int length = Array.getLength(array.asConstant().asObject());
         this.index = index;
-        locals = new LocalNode[length];
-        for (int i = 0; i < length; i++) {
-            int idx = localIndex << 16 | i;
-            LocalNode local = array.graph().unique(new LocalNode(idx, stamp()));
-            locals[i] = local;
-        }
-    }
-
-    public LocalNode getLocal(int idx) {
-        assert idx < locals.length;
-        return locals[idx];
-    }
-
-    public int getLocalCount() {
-        return locals.length;
+        this.locals = locals;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        assert index.isConstant();
-        return getLocal(index().asConstant().asInt());
+        if (index.isConstant()) {
+            return locals[index.asConstant().asInt()];
+        }
+        return this;
     }
 }

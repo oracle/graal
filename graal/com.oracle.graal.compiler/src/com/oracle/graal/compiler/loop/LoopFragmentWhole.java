@@ -20,35 +20,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
-
-import java.util.*;
+package com.oracle.graal.compiler.loop;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.DuplicationReplacement;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.lir.cfg.*;
 
-public class ScheduledNode extends Node {
 
-    @Successor private ScheduledNode scheduledNext; // the immediate successor of the current node
+public class LoopFragmentWhole extends LoopFragment {
 
-    public ScheduledNode scheduledNext() {
-        return scheduledNext;
-    }
-
-    public void setScheduledNext(ScheduledNode x) {
-        updatePredecessor(scheduledNext, x);
-        scheduledNext = x;
+    public LoopFragmentWhole(LoopEx loop) {
+        super(loop);
     }
 
     @Override
-    public Map<Object, Object> getDebugProperties() {
-        Map<Object, Object> debugProperties = super.getDebugProperties();
-        if (this instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) this;
-            if (stateSplit.stateAfter() != null) {
-                debugProperties.put("stateAfter", stateSplit.stateAfter().toString(Verbosity.Debugger));
-            }
-        }
-        return debugProperties;
+    public LoopFragmentWhole duplicate() {
+        // TODO (gd) do not forget to make a FULL loop : do not forget the forward end which is not part of the original loop stricto sensus
+        return null;
     }
 
+    @Override
+    public NodeIterable<Node> nodes() {
+        if (nodes == null) {
+            Loop lirLoop = loop().lirLoop();
+            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(lirLoop.blocks), LoopFragment.toHirBlocks(lirLoop.exits));
+        }
+        return nodes;
+    }
+
+    @Override
+    protected DuplicationReplacement getDuplicationReplacement() {
+        return null;
+    }
+
+    @Override
+    protected void finishDuplication() {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void insertBefore(LoopEx loop) {
+        // TODO Auto-generated method stub
+
+    }
 }

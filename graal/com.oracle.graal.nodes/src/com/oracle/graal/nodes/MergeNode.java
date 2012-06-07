@@ -177,7 +177,7 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
                     phi.addInput(newInput);
                 }
                 this.removeEnd(end);
-                end.replaceAtPredecessors(newEnd);
+                end.replaceAtPredecessor(newEnd);
                 end.safeDelete();
                 tool.addToWorkList(newEnd.predecessor()); // ?
             }
