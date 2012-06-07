@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 @NodeInfo(shortName = "==")
 public final class IntegerEqualsNode extends CompareNode {

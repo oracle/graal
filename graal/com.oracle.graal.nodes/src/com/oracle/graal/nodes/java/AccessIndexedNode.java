@@ -27,6 +27,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * The {@code AccessIndexedNode} class is the base class of instructions that read or write

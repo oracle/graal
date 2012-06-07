@@ -25,8 +25,6 @@ package com.oracle.max.cri.ri;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
-
 /**
  * Represents a reference to a resolved field. Fields, like methods and types, are
  * resolved through {@link RiConstantPool constant pools}, and their actual implementation is provided by the

@@ -37,6 +37,7 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.asm.target.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.Mark;
+import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.CiXirAssembler.RuntimeCallInformation;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;

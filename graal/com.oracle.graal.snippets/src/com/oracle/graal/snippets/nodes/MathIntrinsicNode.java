@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.target.amd64.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, LIRGenLowerable {
 

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;

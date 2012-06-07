@@ -22,6 +22,8 @@
  */
 package com.oracle.max.cri.ci;
 
+import com.oracle.max.cri.ri.*;
+
 public class CiValueUtil {
     public static boolean isIllegal(CiValue value) {
         assert value != null;

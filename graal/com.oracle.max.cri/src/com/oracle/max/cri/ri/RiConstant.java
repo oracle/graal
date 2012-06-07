@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ci;
+package com.oracle.max.cri.ri;
+
+import com.oracle.max.cri.ci.*;
 
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number, or object reference,

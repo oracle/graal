@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import static com.oracle.max.cri.ci.CiKind.*;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;

@@ -36,7 +36,7 @@
  * The compiler manipulates {@link com.oracle.max.cri.ci.CiValue} instances that have a {@link com.oracle.max.cri.ci.CiKind}, and are
  * immutable. A concrete {@link com.oracle.max.cri.ci.CiValue value} is one of the following subclasses:
  * <ul>
- * <li>{@link com.oracle.max.cri.ci.RiConstant}: a constant value.
+ * <li>{@link com.oracle.max.cri.ri.RiConstant}: a constant value.
  * <li>{@link com.oracle.max.cri.ci.CiRegisterValue}: a value stored in a {@linkplain com.oracle.max.cri.ci.CiRegister target machine register}.
  * <li>{@link com.oracle.max.cri.ci.CiStackSlot}: a spill slot or an outgoing stack-based argument in a method's frame.
  * <li>{@link com.oracle.max.cri.ci.CiAddress}: an address in target machine memory.
