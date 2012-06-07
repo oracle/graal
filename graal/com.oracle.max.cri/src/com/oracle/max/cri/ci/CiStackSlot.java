@@ -22,7 +22,9 @@
  */
 package com.oracle.max.cri.ci;
 
-import static com.oracle.max.cri.ci.RiKind.*;
+import static com.oracle.max.cri.ri.RiKind.*;
+
+import com.oracle.max.cri.ri.*;
 
 /**
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame

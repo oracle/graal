@@ -27,7 +27,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 

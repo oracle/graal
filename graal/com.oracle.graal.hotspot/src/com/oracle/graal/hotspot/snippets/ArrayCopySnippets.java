@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 
 @SuppressWarnings("unused")

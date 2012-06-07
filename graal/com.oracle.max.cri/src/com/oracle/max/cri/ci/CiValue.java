@@ -24,6 +24,8 @@ package com.oracle.max.cri.ci;
 
 import java.io.*;
 
+import com.oracle.max.cri.ri.*;
+
 /**
  * Abstract base class for values manipulated by the compiler. All values have a {@linkplain RiKind kind} and are immutable.
  */

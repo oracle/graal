@@ -23,6 +23,7 @@
 package com.oracle.graal.lir;
 
 import com.oracle.max.cri.ci.*;
+import com.oracle.max.cri.ri.*;
 
 /**
  * Represents a value that is yet to be bound to a machine location (such as

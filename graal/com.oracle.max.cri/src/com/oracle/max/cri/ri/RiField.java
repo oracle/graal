@@ -22,9 +22,6 @@
  */
 package com.oracle.max.cri.ri;
 
-
-import com.oracle.max.cri.ci.*;
-
 /**
  * Represents a reference to a field, including both resolved and unresolved fields. Fields, like methods and types, are
  * resolved through {@link RiConstantPool constant pools}, and their actual implementation is provided by the

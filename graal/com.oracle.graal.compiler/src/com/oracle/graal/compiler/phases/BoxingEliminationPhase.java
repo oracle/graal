@@ -32,7 +32,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 public class BoxingEliminationPhase extends Phase {

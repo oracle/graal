@@ -22,6 +22,8 @@
  */
 package com.oracle.max.cri.ci;
 
+import com.oracle.max.cri.ri.*;
+
 
 /**
  * Represents the target machine for a compiler, including the CPU architecture, the size of pointers and references,

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.type;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 

@@ -28,7 +28,6 @@ import java.io.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.hotspot.ri.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 /**

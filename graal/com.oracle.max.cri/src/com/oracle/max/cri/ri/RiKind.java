@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ci;
+package com.oracle.max.cri.ri;
 
-import static com.oracle.max.cri.ci.RiKind.Flags.*;
+import static com.oracle.max.cri.ri.RiKind.Flags.*;
 
 import java.lang.reflect.*;
 
 import sun.misc.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.max.cri.ci.*;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types,

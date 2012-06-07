@@ -22,6 +22,8 @@
  */
 package com.oracle.max.cri.ci;
 
+import com.oracle.max.cri.ri.*;
+
 /**
  * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@code
  * CiRegisterValue} for each ({@link CiRegister}, {@link RiKind}) pair. Use {@link CiRegister#asValue(RiKind)} to

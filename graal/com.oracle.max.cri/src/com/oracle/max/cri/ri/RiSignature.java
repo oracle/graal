@@ -22,8 +22,6 @@
  */
 package com.oracle.max.cri.ri;
 
-import com.oracle.max.cri.ci.*;
-
 /**
  * Represents a method signature provided by the runtime.
  *

@@ -22,8 +22,6 @@
  */
 package com.oracle.max.cri.ri;
 
-import com.oracle.max.cri.ci.*;
-
 /**
  * Represents a resolved or unresolved type in the compiler-runtime interface. Types include primitives, objects, {@code void},
  * and arrays thereof.

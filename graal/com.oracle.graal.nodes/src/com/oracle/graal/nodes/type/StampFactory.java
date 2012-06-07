@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
 

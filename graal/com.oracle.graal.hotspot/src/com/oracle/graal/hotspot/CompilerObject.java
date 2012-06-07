@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot;
 
 import java.io.*;
 
-import com.oracle.max.cri.ci.RiKind.FormatWithToString;
+import com.oracle.max.cri.ri.RiKind.*;
 
 
 /**

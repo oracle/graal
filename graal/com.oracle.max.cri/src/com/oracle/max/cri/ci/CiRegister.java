@@ -25,6 +25,8 @@ package com.oracle.max.cri.ci;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.max.cri.ri.*;
+
 /**
  * Represents a target machine register.
  */

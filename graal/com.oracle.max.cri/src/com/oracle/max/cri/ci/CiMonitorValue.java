@@ -22,6 +22,8 @@
  */
 package com.oracle.max.cri.ci;
 
+import com.oracle.max.cri.ri.*;
+
 public final class CiMonitorValue extends CiValue {
     private static final long serialVersionUID = 8241681800464483691L;
 
