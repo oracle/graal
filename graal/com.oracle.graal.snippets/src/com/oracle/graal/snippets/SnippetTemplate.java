@@ -37,7 +37,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.snippets.Snippet.Arguments;
 import com.oracle.graal.snippets.Snippet.Constant;
 import com.oracle.graal.snippets.Snippet.Multiple;
 import com.oracle.graal.snippets.Snippet.Parameter;
@@ -107,6 +106,37 @@ public class SnippetTemplate {
         @Override
         public String toString() {
             return CiUtil.format("%h.%n", method) + map.toString();
+        }
+    }
+
+    /**
+     * Arguments used to instantiate a template.
+     */
+    public static class Arguments implements Iterable<Map.Entry<String, Object>> {
+        private final HashMap<String, Object> map = new HashMap<>();
+
+        public static Arguments arguments(String name, Object value) {
+            return new Arguments().add(name, value);
+        }
+
+        public Arguments add(String name, Object value) {
+            assert !map.containsKey(name);
+            map.put(name, value);
+            return this;
+        }
+
+        public int length() {
+            return map.size();
+        }
+
+        @Override
+        public Iterator<Entry<String, Object>> iterator() {
+            return map.entrySet().iterator();
+        }
+
+        @Override
+        public String toString() {
+            return map.toString();
         }
     }
 
@@ -362,7 +392,7 @@ public class SnippetTemplate {
      *
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
-    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, RiRuntime runtime, Snippet.Arguments args) {
+    private IdentityHashMap<Node, Node> bind(StructuredGraph replaceeGraph, RiRuntime runtime, SnippetTemplate.Arguments args) {
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
 
         for (Map.Entry<String, Object> e : args) {
@@ -407,7 +437,7 @@ public class SnippetTemplate {
      */
     public void instantiate(RiRuntime runtime,
                     Node replacee,
-                    FixedWithNextNode anchor, Arguments args) {
+                    FixedWithNextNode anchor, SnippetTemplate.Arguments args) {
 
         // Inline the snippet nodes, replacing parameters with the given args in the process
         String name = graph.name == null ? "{copy}" : graph.name + "{copy}";
