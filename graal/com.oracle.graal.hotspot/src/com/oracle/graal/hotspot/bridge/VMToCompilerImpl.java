@@ -73,15 +73,15 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     public VMToCompilerImpl(Compiler compiler) {
         this.compiler = compiler;
 
-        typeBoolean = new HotSpotTypePrimitive(compiler, CiKind.Boolean);
-        typeChar = new HotSpotTypePrimitive(compiler, CiKind.Char);
-        typeFloat = new HotSpotTypePrimitive(compiler, CiKind.Float);
-        typeDouble = new HotSpotTypePrimitive(compiler, CiKind.Double);
-        typeByte = new HotSpotTypePrimitive(compiler, CiKind.Byte);
-        typeShort = new HotSpotTypePrimitive(compiler, CiKind.Short);
-        typeInt = new HotSpotTypePrimitive(compiler, CiKind.Int);
-        typeLong = new HotSpotTypePrimitive(compiler, CiKind.Long);
-        typeVoid = new HotSpotTypePrimitive(compiler, CiKind.Void);
+        typeBoolean = new HotSpotTypePrimitive(compiler, RiKind.Boolean);
+        typeChar = new HotSpotTypePrimitive(compiler, RiKind.Char);
+        typeFloat = new HotSpotTypePrimitive(compiler, RiKind.Float);
+        typeDouble = new HotSpotTypePrimitive(compiler, RiKind.Double);
+        typeByte = new HotSpotTypePrimitive(compiler, RiKind.Byte);
+        typeShort = new HotSpotTypePrimitive(compiler, RiKind.Short);
+        typeInt = new HotSpotTypePrimitive(compiler, RiKind.Int);
+        typeLong = new HotSpotTypePrimitive(compiler, RiKind.Long);
+        typeVoid = new HotSpotTypePrimitive(compiler, RiKind.Void);
     }
 
     public void startCompiler() throws Throwable {
@@ -454,18 +454,18 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
     }
 
     @Override
-    public RiConstant createCiConstant(CiKind kind, long value) {
-        if (kind == CiKind.Long) {
+    public RiConstant createCiConstant(RiKind kind, long value) {
+        if (kind == RiKind.Long) {
             return RiConstant.forLong(value);
-        } else if (kind == CiKind.Int) {
+        } else if (kind == RiKind.Int) {
             return RiConstant.forInt((int) value);
-        } else if (kind == CiKind.Short) {
+        } else if (kind == RiKind.Short) {
             return RiConstant.forShort((short) value);
-        } else if (kind == CiKind.Char) {
+        } else if (kind == RiKind.Char) {
             return RiConstant.forChar((char) value);
-        } else if (kind == CiKind.Byte) {
+        } else if (kind == RiKind.Byte) {
             return RiConstant.forByte((byte) value);
-        } else if (kind == CiKind.Boolean) {
+        } else if (kind == RiKind.Boolean) {
             return (value == 0) ? RiConstant.FALSE : RiConstant.TRUE;
         } else {
             throw new IllegalArgumentException();

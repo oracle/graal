@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import static com.oracle.max.cri.ci.CiKind.*;
+import static com.oracle.max.cri.ci.RiKind.*;
 
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
@@ -56,10 +56,10 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
         MOV_F2I(Float, Int),
         MOV_D2L(Double, Long);
 
-        public final CiKind from;
-        public final CiKind to;
+        public final RiKind from;
+        public final RiKind to;
 
-        private Op(CiKind from, CiKind to) {
+        private Op(RiKind from, RiKind to) {
             this.from = from;
             this.to = to;
         }

@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.ci;
 
-import static com.oracle.max.cri.ci.CiKind.*;
+import static com.oracle.max.cri.ci.RiKind.*;
 
 /**
  * Enumerates the calls that must be provided by the runtime system. The compiler
@@ -46,10 +46,10 @@ public enum CiRuntimeCall {
     ArithmeticSin(Double, Double),
     GenericCallback(Object, Object, Object);
 
-    public final CiKind resultKind;
-    public final CiKind[] arguments;
+    public final RiKind resultKind;
+    public final RiKind[] arguments;
 
-    private CiRuntimeCall(CiKind resultKind, CiKind... args) {
+    private CiRuntimeCall(RiKind resultKind, RiKind... args) {
         this.resultKind = resultKind;
         this.arguments = args;
     }

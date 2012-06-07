@@ -62,7 +62,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
     }
 
     public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
-        super(StampFactory.forKind(CiKind.Boolean.stackKind()));
+        super(StampFactory.forKind(RiKind.Boolean.stackKind()));
         assert expected.kind() == newValue.kind();
         this.object = object;
         this.offset = offset;

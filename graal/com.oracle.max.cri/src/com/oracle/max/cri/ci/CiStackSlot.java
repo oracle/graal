@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.ci;
 
-import static com.oracle.max.cri.ci.CiKind.*;
+import static com.oracle.max.cri.ci.RiKind.*;
 
 /**
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
@@ -43,7 +43,7 @@ public final class CiStackSlot extends CiValue {
      * @param inCallerFrame Specifies if the offset is relative to the stack pointer,
      *        or the beginning of the frame (stack pointer + total frame size).
      */
-    public static CiStackSlot get(CiKind kind, int offset, boolean addFrameSize) {
+    public static CiStackSlot get(RiKind kind, int offset, boolean addFrameSize) {
         assert kind.stackKind() == kind;
         assert addFrameSize || offset >= 0;
 
@@ -71,7 +71,7 @@ public final class CiStackSlot extends CiValue {
     /**
      * Private constructor to enforce use of {@link #get()} so that a cache can be used.
      */
-    private CiStackSlot(CiKind kind, int offset, boolean addFrameSize) {
+    private CiStackSlot(RiKind kind, int offset, boolean addFrameSize) {
         super(kind);
         this.offset = offset;
         this.addFrameSize = addFrameSize;
@@ -160,8 +160,8 @@ public final class CiStackSlot extends CiValue {
     private static final CiStackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
 
     private static CiStackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
-        CiStackSlot[][] cache = new CiStackSlot[CiKind.VALUES.length][];
-        for (CiKind kind : new CiKind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
+        CiStackSlot[][] cache = new CiStackSlot[RiKind.VALUES.length][];
+        for (RiKind kind : new RiKind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
             CiStackSlot[] slots = new CiStackSlot[cachePerKindSize];
             for (int i = 0; i < cachePerKindSize; i++) {
                 slots[i] = new CiStackSlot(kind, sign * i * CACHE_GRANULARITY, addFrameSize);

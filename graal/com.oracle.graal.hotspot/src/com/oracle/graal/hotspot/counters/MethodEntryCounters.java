@@ -85,12 +85,12 @@ public class MethodEntryCounters {
             int scale = Unsafe.getUnsafe().arrayIndexScale(long[].class);
 
             AMD64Move.move(tasm, masm, counterArr, RiConstant.forObject(counter.counts));
-            AMD64Move.load(tasm, masm, callerPc, new CiAddress(CiKind.Long, AMD64.rbp.asValue(CiKind.Long), 8), null);
+            AMD64Move.load(tasm, masm, callerPc, new CiAddress(RiKind.Long, AMD64.rbp.asValue(RiKind.Long), 8), null);
 
             Label done = new Label();
             for (int i = 0; i < counter.counts.length - 2; i += 2) {
-                CiAddress counterPcAddr = new CiAddress(CiKind.Long, counterArr, i * scale + off);
-                CiAddress counterValueAddr = new CiAddress(CiKind.Long, counterArr, (i + 1) * scale + off);
+                CiAddress counterPcAddr = new CiAddress(RiKind.Long, counterArr, i * scale + off);
+                CiAddress counterValueAddr = new CiAddress(RiKind.Long, counterArr, (i + 1) * scale + off);
 
                 Label skipClaim = new Label();
                 masm.cmpq(counterPcAddr, 0);
@@ -106,7 +106,7 @@ public class MethodEntryCounters {
                 masm.bind(skipInc);
             }
 
-            CiAddress counterValueAddr = new CiAddress(CiKind.Long, counterArr, (counter.counts.length - 1) * scale + off);
+            CiAddress counterValueAddr = new CiAddress(RiKind.Long, counterArr, (counter.counts.length - 1) * scale + off);
             masm.addq(counterValueAddr, 1);
             masm.bind(done);
 
@@ -131,7 +131,7 @@ public class MethodEntryCounters {
         if (!GraalOptions.MethodEntryCounters) {
             return;
         }
-        gen.append(new AMD64MethodEntryOp(new Counter(method), gen.newVariable(CiKind.Long), gen.newVariable(CiKind.Long)));
+        gen.append(new AMD64MethodEntryOp(new Counter(method), gen.newVariable(RiKind.Long), gen.newVariable(RiKind.Long)));
     }
 
     public static int getCodeSize() {

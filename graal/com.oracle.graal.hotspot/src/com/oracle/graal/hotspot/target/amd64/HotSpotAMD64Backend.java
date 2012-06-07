@@ -69,8 +69,8 @@ public class HotSpotAMD64Backend extends Backend {
             public void visitExceptionObject(ExceptionObjectNode x) {
                 HotSpotVMConfig config = ((HotSpotRuntime) runtime).config;
                 CiRegisterValue thread = r15.asValue();
-                CiAddress exceptionAddress = new CiAddress(CiKind.Object, thread, config.threadExceptionOopOffset);
-                CiAddress pcAddress = new CiAddress(CiKind.Long, thread, config.threadExceptionPcOffset);
+                CiAddress exceptionAddress = new CiAddress(RiKind.Object, thread, config.threadExceptionOopOffset);
+                CiAddress pcAddress = new CiAddress(RiKind.Long, thread, config.threadExceptionPcOffset);
                 CiValue exception = emitLoad(exceptionAddress, false);
                 emitStore(exceptionAddress, RiConstant.NULL_OBJECT, false);
                 emitStore(pcAddress, RiConstant.LONG_0, false);
@@ -105,7 +105,7 @@ public class HotSpotAMD64Backend extends Backend {
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
-                    asm.movl(new CiAddress(CiKind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
+                    asm.movl(new CiAddress(RiKind.Int, rsp.asValue(), i * intSize), 0xC1C1C1C1);
                 }
             }
             CiCalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
@@ -188,7 +188,7 @@ public class HotSpotAMD64Backend extends Backend {
         boolean isStatic = Modifier.isStatic(method.accessFlags());
         if (!isStatic) {
             tasm.recordMark(MARK_UNVERIFIED_ENTRY);
-            CiCallingConvention cc = regConfig.getCallingConvention(JavaCallee, new CiKind[] {CiKind.Object}, target, false);
+            CiCallingConvention cc = regConfig.getCallingConvention(JavaCallee, new RiKind[] {RiKind.Object}, target, false);
             CiRegister inlineCacheKlass = rax; // see definition of IC_Klass in c1_LIRAssembler_x86.cpp
             CiRegister receiver = asRegister(cc.locations[0]);
             CiAddress src = new CiAddress(target.wordKind, receiver.asValue(), config.hubOffset);

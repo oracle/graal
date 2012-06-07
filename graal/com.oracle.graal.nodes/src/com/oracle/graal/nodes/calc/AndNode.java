@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "&")
 public final class AndNode extends LogicNode implements Canonicalizable, LIRLowerable {
 
-    public AndNode(CiKind kind, ValueNode x, ValueNode y) {
+    public AndNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -43,14 +43,14 @@ public final class AndNode extends LogicNode implements Canonicalizable, LIRLowe
             return graph().unique(new AndNode(kind(), y(), x()));
         }
         if (x().isConstant()) {
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() & y().asConstant().asInt(), graph());
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() & y().asConstant().asLong(), graph());
             }
         } else if (y().isConstant()) {
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 int c = y().asConstant().asInt();
                 if (c == -1) {
                     return x();
@@ -59,7 +59,7 @@ public final class AndNode extends LogicNode implements Canonicalizable, LIRLowe
                     return ConstantNode.forInt(0, graph());
                 }
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 long c = y().asConstant().asLong();
                 if (c == -1) {
                     return x();

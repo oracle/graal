@@ -42,7 +42,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     public abstract RiType returnType();
 
-    public abstract CiKind returnKind();
+    public abstract RiKind returnKind();
 
     @Override
     public void generate(LIRGeneratorTool gen) {

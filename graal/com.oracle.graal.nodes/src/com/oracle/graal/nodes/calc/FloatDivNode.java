@@ -30,19 +30,19 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "/")
 public final class FloatDivNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public FloatDivNode(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatDivNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == CiKind.Float) {
+            if (kind() == RiKind.Float) {
                 if (y().asConstant().asFloat() != 0) {
                     return ConstantNode.forFloat(x().asConstant().asFloat() / y().asConstant().asFloat(), graph());
                 }
             } else {
-                assert kind() == CiKind.Double;
+                assert kind() == RiKind.Double;
                 if (y().asConstant().asDouble() != 0) {
                     return ConstantNode.forDouble(x().asConstant().asDouble() / y().asConstant().asDouble(), graph());
                 }

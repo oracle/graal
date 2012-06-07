@@ -462,7 +462,7 @@ class CFGPrinter extends CompilationPrinter {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
-            if (value.kind() == CiKind.Illegal) {
+            if (value.kind() == RiKind.Illegal) {
                 prefix = "v";
             } else {
                 prefix = String.valueOf(value.kind().typeChar);

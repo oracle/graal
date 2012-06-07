@@ -79,7 +79,7 @@ public abstract class NewArrayNode extends FixedWithNextNode implements EscapeAn
 
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
-        assert length.kind() == CiKind.Int;
+        assert length.kind() == RiKind.Int;
         tool.addScalar(length).constantBound(Condition.GE, RiConstant.INT_0);
     }
 

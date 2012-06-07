@@ -64,12 +64,12 @@ public enum AMD64Compare {
             CiValue y = input(1);
 
             super.verify();
-            assert (name().startsWith("I") && x.kind == CiKind.Int && y.kind.stackKind() == CiKind.Int)
-                || (name().startsWith("I") && x.kind == CiKind.Jsr && y.kind == CiKind.Jsr)
-                || (name().startsWith("L") && x.kind == CiKind.Long && y.kind == CiKind.Long)
-                || (name().startsWith("A") && x.kind == CiKind.Object && y.kind == CiKind.Object)
-                || (name().startsWith("F") && x.kind == CiKind.Float && y.kind == CiKind.Float)
-                || (name().startsWith("D") && x.kind == CiKind.Double && y.kind == CiKind.Double);
+            assert (name().startsWith("I") && x.kind == RiKind.Int && y.kind.stackKind() == RiKind.Int)
+                || (name().startsWith("I") && x.kind == RiKind.Jsr && y.kind == RiKind.Jsr)
+                || (name().startsWith("L") && x.kind == RiKind.Long && y.kind == RiKind.Long)
+                || (name().startsWith("A") && x.kind == RiKind.Object && y.kind == RiKind.Object)
+                || (name().startsWith("F") && x.kind == RiKind.Float && y.kind == RiKind.Float)
+                || (name().startsWith("D") && x.kind == RiKind.Double && y.kind == RiKind.Double);
         }
     }
 

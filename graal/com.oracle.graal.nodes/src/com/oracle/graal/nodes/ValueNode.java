@@ -37,8 +37,8 @@ import com.oracle.max.cri.ri.*;
 public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     /**
-     * The kind of this value. This is {@link CiKind#Void} for instructions that produce no value.
-     * This kind is guaranteed to be a {@linkplain CiKind#stackKind() stack kind}.
+     * The kind of this value. This is {@link RiKind#Void} for instructions that produce no value.
+     * This kind is guaranteed to be a {@linkplain RiKind#stackKind() stack kind}.
      */
     private Stamp stamp;
 
@@ -77,7 +77,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         this.stamp = stamp;
     }
 
-    public CiKind kind() {
+    public RiKind kind() {
         return stamp.kind();
     }
 

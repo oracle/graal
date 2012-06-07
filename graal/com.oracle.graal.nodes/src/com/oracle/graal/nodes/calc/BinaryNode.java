@@ -48,7 +48,7 @@ public abstract class BinaryNode extends FloatingNode {
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    public BinaryNode(CiKind kind, ValueNode x, ValueNode y) {
+    public BinaryNode(RiKind kind, ValueNode x, ValueNode y) {
         super(StampFactory.forKind(kind));
         this.x = x;
         this.y = y;

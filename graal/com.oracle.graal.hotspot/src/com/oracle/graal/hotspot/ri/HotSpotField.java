@@ -94,7 +94,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public CiKind kind(boolean architecture) {
+    public RiKind kind(boolean architecture) {
         return type().kind(architecture);
     }
 

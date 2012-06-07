@@ -49,7 +49,7 @@ public interface RiField {
      *        When false, the kind according to the Java specification is returned.
      * @return the kind
      */
-    CiKind kind(boolean architecture);
+    RiKind kind(boolean architecture);
 
     /**
      * Gets the holder of this field as a compiler-runtime interface type.

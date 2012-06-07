@@ -135,7 +135,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             if (trueValue.kind() != falseValue.kind()) {
                                 return;
                             }
-                            if (trueValue.kind() != CiKind.Int && trueValue.kind() != CiKind.Long) {
+                            if (trueValue.kind() != RiKind.Int && trueValue.kind() != RiKind.Long) {
                                 return;
                             }
                             if (trueValue.isConstant() && falseValue.isConstant()) {

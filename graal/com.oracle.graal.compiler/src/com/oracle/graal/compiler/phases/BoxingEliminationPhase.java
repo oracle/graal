@@ -63,7 +63,7 @@ public class BoxingEliminationPhase extends Phase {
         }
     }
 
-    private PhiNode getReplacementPhi(PhiNode phiNode, CiKind kind, Map<PhiNode, PhiNode> phiReplacements) {
+    private PhiNode getReplacementPhi(PhiNode phiNode, RiKind kind, Map<PhiNode, PhiNode> phiReplacements) {
         if (!phiReplacements.containsKey(phiNode)) {
             PhiNode result = null;
             ObjectStamp stamp = phiNode.objectStamp();
@@ -94,7 +94,7 @@ public class BoxingEliminationPhase extends Phase {
         return phiReplacements.get(phiNode);
     }
 
-    private ValueNode unboxedValue(ValueNode n, CiKind kind, Map<PhiNode, PhiNode> phiReplacements) {
+    private ValueNode unboxedValue(ValueNode n, RiKind kind, Map<PhiNode, PhiNode> phiReplacements) {
         if (n instanceof BoxNode) {
             BoxNode boxNode = (BoxNode) n;
             return boxNode.source();

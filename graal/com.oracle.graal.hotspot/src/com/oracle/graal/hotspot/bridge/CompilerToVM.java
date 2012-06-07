@@ -73,7 +73,7 @@ public interface CompilerToVM {
 
     RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
 
-    RiType getPrimitiveArrayType(CiKind kind);
+    RiType getPrimitiveArrayType(RiKind kind);
 
     RiType RiType_arrayOf(HotSpotTypeResolved klass);
 

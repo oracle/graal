@@ -193,8 +193,8 @@ public class CiUtil {
      * @return the Java name corresponding to {@code riType}
      */
     public static String toJavaName(RiType riType, boolean qualified) {
-        CiKind kind = riType.kind(false);
-        if (kind.isPrimitive() || kind == CiKind.Void) {
+        RiKind kind = riType.kind(false);
+        if (kind.isPrimitive() || kind == RiKind.Void) {
             return kind.javaName;
         }
         return internalNameToJava(riType.name(), qualified);
@@ -236,7 +236,7 @@ public class CiUtil {
                 if (name.length() != 1) {
                     throw new IllegalArgumentException("Illegal internal name: " + name);
                 }
-                return CiKind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).javaName;
+                return RiKind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).javaName;
         }
     }
 
@@ -263,7 +263,7 @@ public class CiUtil {
      * @param format a format specification
      * @param method the method to be formatted
      * @param kinds if {@code true} then the types in {@code method}'s signature are printed in the
-     *            {@linkplain CiKind#jniName JNI} form of their {@linkplain CiKind kind}
+     *            {@linkplain RiKind#jniName JNI} form of their {@linkplain RiKind kind}
      * @return the result of formatting this method according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
@@ -355,8 +355,8 @@ public class CiUtil {
      *
      * @param format a format specification
      * @param field the field to be formatted
-     * @param kinds if {@code true} then {@code field}'s type is printed in the {@linkplain CiKind#jniName JNI} form of
-     *            its {@linkplain CiKind kind}
+     * @param kinds if {@code true} then {@code field}'s type is printed in the {@linkplain RiKind#jniName JNI} form of
+     *            its {@linkplain RiKind kind}
      * @return the result of formatting this field according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
@@ -707,21 +707,21 @@ public class CiUtil {
         return sb;
     }
 
-    public static CiKind[] signatureToKinds(RiResolvedMethod method) {
-        CiKind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind(true);
+    public static RiKind[] signatureToKinds(RiResolvedMethod method) {
+        RiKind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind(true);
         return signatureToKinds(method.signature(), receiver);
     }
 
-    public static CiKind[] signatureToKinds(RiSignature signature, CiKind receiverKind) {
+    public static RiKind[] signatureToKinds(RiSignature signature, RiKind receiverKind) {
         int args = signature.argumentCount(false);
-        CiKind[] result;
+        RiKind[] result;
         int i = 0;
         if (receiverKind != null) {
-            result = new CiKind[args + 1];
+            result = new RiKind[args + 1];
             result[0] = receiverKind;
             i = 1;
         } else {
-            result = new CiKind[args];
+            result = new RiKind[args];
         }
         for (int j = 0; j < args; j++) {
             result[i + j] = signature.argumentKindAt(j, true);

@@ -107,7 +107,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
 
         RiConstant constant = object().asConstant();
         if (constant != null) {
-            assert constant.kind == CiKind.Object;
+            assert constant.kind == RiKind.Object;
             if (constant.isNull()) {
                 return ConstantNode.forBoolean(false, graph());
             } else {

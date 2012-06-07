@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.ci;
 
-import static com.oracle.max.cri.ci.CiKind.Flags.*;
+import static com.oracle.max.cri.ci.RiKind.Flags.*;
 
 import java.lang.reflect.*;
 
@@ -32,12 +32,12 @@ import com.oracle.max.cri.ri.*;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types,
- * for example, {@link CiKind#Int} for {@code int} and {@link CiKind#Object}
+ * for example, {@link RiKind#Int} for {@code int} and {@link RiKind#Object}
  * for all object types.
  * A kind has a single character short name, a Java name, and a set of flags
  * further describing its behavior.
  */
-public enum CiKind {
+public enum RiKind {
     Boolean('z', "boolean", FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
     Byte   ('b', "byte",    FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
     Short  ('s', "short",   FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
@@ -53,10 +53,10 @@ public enum CiKind {
     /** The non-type. */
     Illegal('-', "illegal", 0);
 
-    public static final CiKind[] VALUES = values();
-    public static final CiKind[] JAVA_VALUES = new CiKind[] {CiKind.Boolean, CiKind.Byte, CiKind.Short, CiKind.Char, CiKind.Int, CiKind.Float, CiKind.Long, CiKind.Double, CiKind.Object};
+    public static final RiKind[] VALUES = values();
+    public static final RiKind[] JAVA_VALUES = new RiKind[] {RiKind.Boolean, RiKind.Byte, RiKind.Short, RiKind.Char, RiKind.Int, RiKind.Float, RiKind.Long, RiKind.Double, RiKind.Object};
 
-    CiKind(char ch, String name, int flags) {
+    RiKind(char ch, String name, int flags) {
         this.typeChar = ch;
         this.javaName = name;
         this.flags = flags;
@@ -134,20 +134,20 @@ public enum CiKind {
      * Gets the kind that represents this kind when on the Java operand stack.
      * @return the kind used on the operand stack
      */
-    public CiKind stackKind() {
+    public RiKind stackKind() {
         if (isInt()) {
             return Int;
         }
         return this;
     }
 
-    public static CiKind fromTypeString(String typeString) {
+    public static RiKind fromTypeString(String typeString) {
         assert typeString.length() > 0;
         final char first = typeString.charAt(0);
         if (first == '[' || first == 'L') {
-            return CiKind.Object;
+            return RiKind.Object;
         }
-        return CiKind.fromPrimitiveOrVoidTypeChar(first);
+        return RiKind.fromPrimitiveOrVoidTypeChar(first);
     }
 
     /**
@@ -155,7 +155,7 @@ public enum CiKind {
      * @param ch the character
      * @return the kind
      */
-    public static CiKind fromPrimitiveOrVoidTypeChar(char ch) {
+    public static RiKind fromPrimitiveOrVoidTypeChar(char ch) {
         // Checkstyle: stop
         switch (ch) {
             case 'Z': return Boolean;
@@ -211,7 +211,7 @@ public enum CiKind {
      * @return {@code true} if this type is void
      */
     public final boolean isVoid() {
-        return this == CiKind.Void;
+        return this == RiKind.Void;
     }
 
     /**
@@ -219,7 +219,7 @@ public enum CiKind {
      * @return {@code true} if this type is long
      */
     public final boolean isLong() {
-        return this == CiKind.Long;
+        return this == RiKind.Long;
     }
 
     /**
@@ -227,7 +227,7 @@ public enum CiKind {
      * @return {@code true} if this type is float
      */
     public final boolean isFloat() {
-        return this == CiKind.Float;
+        return this == RiKind.Float;
     }
 
     /**
@@ -235,7 +235,7 @@ public enum CiKind {
      * @return {@code true} if this type is double
      */
     public final boolean isDouble() {
-        return this == CiKind.Double;
+        return this == RiKind.Double;
     }
 
     /**
@@ -243,7 +243,7 @@ public enum CiKind {
      * @return {@code true} if this type is float or double
      */
     public final boolean isFloatOrDouble() {
-        return this == CiKind.Double || this == CiKind.Float;
+        return this == RiKind.Double || this == RiKind.Float;
     }
 
    /**
@@ -251,7 +251,7 @@ public enum CiKind {
      * @return {@code true} if this type is an object
      */
     public final boolean isObject() {
-        return this == CiKind.Object;
+        return this == RiKind.Object;
     }
 
     /**
@@ -259,7 +259,7 @@ public enum CiKind {
      * @return {@code true} if this type is an address
      */
     public boolean isJsr() {
-        return this == CiKind.Jsr;
+        return this == RiKind.Jsr;
     }
 
     /**
@@ -271,7 +271,7 @@ public enum CiKind {
     }
 
     /**
-     * Marker interface for types that should be {@linkplain CiKind#format(Object) formatted}
+     * Marker interface for types that should be {@linkplain RiKind#format(Object) formatted}
      * with their {@link Object#toString()} value.
      */
     public interface FormatWithToString {}
@@ -328,7 +328,7 @@ public enum CiKind {
                 buf.append(Array.get(array, i));
             } else {
                 Object o = ((Object[]) array)[i];
-                buf.append(CiKind.Object.format(o));
+                buf.append(RiKind.Object.format(o));
             }
             if (i != length - 1) {
                 buf.append(", ");

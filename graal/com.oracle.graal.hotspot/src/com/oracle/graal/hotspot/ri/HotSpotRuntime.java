@@ -184,7 +184,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public RiResolvedType asRiType(CiKind kind) {
+    public RiResolvedType asRiType(RiKind kind) {
         return (RiResolvedType) compiler.getCompilerToVM().getType(kind.toJavaClass());
     }
 
@@ -239,7 +239,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         } else if (n instanceof LoadFieldNode) {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotField) field.field()).offset();
-            assert field.kind() != CiKind.Illegal;
+            assert field.kind() != RiKind.Illegal;
             ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph), field.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(field.object(), field.leafGraphId()));
             graph.replaceFixedWithFixed(field, memoryRead);
@@ -258,7 +258,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
             FixedWithNextNode last = memoryWrite;
-            if (field.kind(true) == CiKind.Object && !memoryWrite.value().isNullConstant()) {
+            if (field.kind(true) == RiKind.Object && !memoryWrite.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
                 graph.addAfterFixed(memoryWrite, writeBarrier);
                 last = writeBarrier;
@@ -273,7 +273,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             ValueNode expected = cas.expected();
-            if (expected.kind() == CiKind.Object && !cas.newValue().isNullConstant()) {
+            if (expected.kind() == RiKind.Object && !cas.newValue().isNullConstant()) {
                 RiResolvedType type = cas.object().objectStamp().type();
                 if (type != null && !type.isArrayClass() && type.toJava() != Object.class) {
                     // Use a field write barrier since it's not an array store
@@ -290,7 +290,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
 
             ValueNode boundsCheck = createBoundsCheck(loadIndexed, tool);
 
-            CiKind elementKind = loadIndexed.elementKind();
+            RiKind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
             ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp()));
             memoryRead.dependencies().add(boundsCheck);
@@ -299,12 +299,12 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
             ValueNode boundsCheck = createBoundsCheck(storeIndexed, tool);
 
-            CiKind elementKind = storeIndexed.elementKind();
+            RiKind elementKind = storeIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
             CheckCastNode checkcast = null;
             ValueNode array = storeIndexed.array();
-            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+            if (elementKind == RiKind.Object && !value.isNullConstant()) {
                 // Store check!
                 RiResolvedType arrayType = array.objectStamp().type();
                 if (arrayType != null && array.objectStamp().isExactType()) {
@@ -319,9 +319,9 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                     }
                 } else {
                     ValueNode guard = tool.createNullCheckGuard(array, StructuredGraph.INVALID_GRAPH_ID);
-                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
+                    FloatingReadNode arrayClass = graph.unique(new FloatingReadNode(array, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.hubOffset, graph), null, StampFactory.objectNonNull()));
                     arrayClass.dependencies().add(guard);
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.arrayClassElementOffset, graph), null, StampFactory.objectNonNull()));
                     checkcast = graph.add(new CheckCastNode(arrayElementKlass, null, value));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     value = checkcast;
@@ -333,12 +333,12 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
 
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
-            if (elementKind == CiKind.Object && !value.isNullConstant()) {
+            if (elementKind == RiKind.Object && !value.isNullConstant()) {
                 graph.addAfterFixed(memoryWrite, graph.add(new ArrayWriteBarrier(array, arrayLocation)));
             }
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
-            assert load.kind() != CiKind.Illegal;
+            assert load.kind() != RiKind.Illegal;
             IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.loadKind(), load.displacement(), load.offset(), graph, false);
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(load.object(), StructuredGraph.INVALID_GRAPH_ID));
@@ -349,13 +349,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             WriteNode write = graph.add(new WriteNode(store.object(), store.value(), location));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
-            if (write.value().kind() == CiKind.Object && !write.value().isNullConstant()) {
+            if (write.value().kind() == RiKind.Object && !write.value().isNullConstant()) {
                 FieldWriteBarrier barrier = graph.add(new FieldWriteBarrier(write.object()));
                 graph.addBeforeFixed(write, barrier);
             }
         } else if (n instanceof ReadHubNode) {
             ReadHubNode objectClassNode = (ReadHubNode) n;
-            LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.hubOffset, graph);
+            LocationNode location = LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.hubOffset, graph);
             ReadNode memoryRead = graph.add(new ReadNode(objectClassNode.object(), location, StampFactory.objectNonNull()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(objectClassNode.object(), StructuredGraph.INVALID_GRAPH_ID));
             graph.replaceFixed(objectClassNode, memoryRead);
@@ -380,12 +380,12 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return false;
     }
 
-    private IndexedLocationNode createArrayLocation(Graph graph, CiKind elementKind, ValueNode index) {
+    private IndexedLocationNode createArrayLocation(Graph graph, RiKind elementKind, ValueNode index) {
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, config.getArrayOffset(elementKind), index, graph, true);
     }
 
     private SafeReadNode safeReadArrayLength(ValueNode array, long leafGraphId) {
-        return safeRead(array.graph(), CiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
+        return safeRead(array.graph(), RiKind.Int, array, config.arrayLengthOffset, StampFactory.positiveInt(), leafGraphId);
     }
 
     private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
@@ -417,7 +417,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
                 SafeReadNode klassOop = safeReadHub(graph, receiver, StructuredGraph.INVALID_GRAPH_ID);
                 Stamp resultStamp = StampFactory.declaredNonNull(getType(Class.class));
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Object, config.classMirrorOffset, graph), null, resultStamp));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Object, config.classMirrorOffset, graph), null, resultStamp));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 graph.start().setNext(klassOop);
                 klassOop.setNext(ret);
@@ -427,10 +427,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             if (fullName.equals("getModifiers()I")) {
                 StructuredGraph graph = new StructuredGraph();
                 LocalNode receiver = graph.unique(new LocalNode(0, StampFactory.objectNonNull()));
-                SafeReadNode klassOop = safeRead(graph, CiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
+                SafeReadNode klassOop = safeRead(graph, RiKind.Object, receiver, config.klassOopOffset, StampFactory.objectNonNull(), StructuredGraph.INVALID_GRAPH_ID);
                 graph.start().setNext(klassOop);
                 // TODO(thomaswue): Care about primitive classes! Crashes for primitive classes at the moment (klassOop == null)
-                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, CiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.intValue()));
+                FloatingReadNode result = graph.unique(new FloatingReadNode(klassOop, LocationNode.create(LocationNode.FINAL_LOCATION, RiKind.Int, config.klassModifierFlagsOffset, graph), null, StampFactory.intValue()));
                 ReturnNode ret = graph.add(new ReturnNode(result));
                 klassOop.setNext(ret);
                 return graph;
@@ -447,10 +447,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     private SafeReadNode safeReadHub(Graph graph, ValueNode value, long leafGraphId) {
-        return safeRead(graph, CiKind.Object, value, config.hubOffset, StampFactory.objectNonNull(), leafGraphId);
+        return safeRead(graph, RiKind.Object, value, config.hubOffset, StampFactory.objectNonNull(), leafGraphId);
     }
 
-    private static SafeReadNode safeRead(Graph graph, CiKind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {
+    private static SafeReadNode safeRead(Graph graph, RiKind kind, ValueNode value, int offset, Stamp stamp, long leafGraphId) {
         return graph.add(new SafeReadNode(value, LocationNode.create(LocationNode.FINAL_LOCATION, kind, offset, graph), stamp, leafGraphId));
     }
 

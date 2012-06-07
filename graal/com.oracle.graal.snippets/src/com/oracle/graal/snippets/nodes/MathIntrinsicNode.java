@@ -56,7 +56,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
 
     public MathIntrinsicNode(ValueNode x, Operation op) {
         super(StampFactory.forKind(x.kind()));
-        assert x.kind() == CiKind.Double;
+        assert x.kind() == RiKind.Double;
         this.x = x;
         this.operation = op;
     }

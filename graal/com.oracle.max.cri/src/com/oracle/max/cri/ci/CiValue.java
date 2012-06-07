@@ -25,13 +25,13 @@ package com.oracle.max.cri.ci;
 import java.io.*;
 
 /**
- * Abstract base class for values manipulated by the compiler. All values have a {@linkplain CiKind kind} and are immutable.
+ * Abstract base class for values manipulated by the compiler. All values have a {@linkplain RiKind kind} and are immutable.
  */
 public abstract class CiValue implements Serializable {
     private static final long serialVersionUID = -6909397188697766469L;
 
     @SuppressWarnings("serial")
-    public static CiValue IllegalValue = new CiValue(CiKind.Illegal) {
+    public static CiValue IllegalValue = new CiValue(RiKind.Illegal) {
         @Override
         public String toString() {
             return "-";
@@ -41,13 +41,13 @@ public abstract class CiValue implements Serializable {
     /**
      * The kind of this value.
      */
-    public final CiKind kind;
+    public final RiKind kind;
 
     /**
      * Initializes a new value of the specified kind.
      * @param kind the kind
      */
-    protected CiValue(CiKind kind) {
+    protected CiValue(RiKind kind) {
         this.kind = kind;
     }
 

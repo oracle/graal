@@ -195,7 +195,7 @@ public class SnippetTemplate {
                 String name = c.value();
                 Object arg = key.get(name);
                 assert arg != null : method + ": requires a constant named " + name;
-                CiKind kind = signature.argumentKindAt(i, false);
+                RiKind kind = signature.argumentKindAt(i, false);
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(RiConstant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
@@ -324,7 +324,7 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkConstantArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object arg, CiKind kind) {
+    private static boolean checkConstantArgument(final RiResolvedMethod method, RiSignature signature, int i, String name, Object arg, RiKind kind) {
         if (kind.isObject()) {
             Class<?> type = signature.argumentTypeAt(i, method.holder()).resolve(method.holder()).toJava();
             assert type.isInstance(arg) :
@@ -384,7 +384,7 @@ public class SnippetTemplate {
                 if (argument instanceof ValueNode) {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
-                    CiKind kind = ((LocalNode) parameter).kind();
+                    RiKind kind = ((LocalNode) parameter).kind();
                     RiConstant constant = RiConstant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forCiConstant(constant, runtime, replaceeGraph));
                 }

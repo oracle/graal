@@ -241,7 +241,7 @@ public final class FrameMap {
         outgoingSize = Math.max(outgoingSize, argsSize);
     }
 
-    private CiStackSlot getSlot(CiKind kind, int additionalOffset) {
+    private CiStackSlot getSlot(RiKind kind, int additionalOffset) {
         return CiStackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
@@ -251,7 +251,7 @@ public final class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public CiStackSlot allocateSpillSlot(CiKind kind) {
+    public CiStackSlot allocateSpillSlot(RiKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = target.sizeInBytes(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
@@ -276,10 +276,10 @@ public final class FrameMap {
 
         if (refs) {
             assert size % target.wordSize == 0;
-            CiStackSlot result = getSlot(CiKind.Object, 0);
+            CiStackSlot result = getSlot(RiKind.Object, 0);
             objectStackBlocks.add(result);
             for (int i = target.wordSize; i < size; i += target.wordSize) {
-                objectStackBlocks.add(getSlot(CiKind.Object, i));
+                objectStackBlocks.add(getSlot(RiKind.Object, i));
             }
             return result;
 
@@ -324,7 +324,7 @@ public final class FrameMap {
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
     public void setReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
-        if (location.kind == CiKind.Object) {
+        if (location.kind == RiKind.Object) {
             if (isRegister(location)) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.set(asRegister(location).number);
@@ -348,7 +348,7 @@ public final class FrameMap {
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
     public void clearReference(CiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
-        if (location.kind == CiKind.Object) {
+        if (location.kind == RiKind.Object) {
             if (location instanceof CiRegisterValue) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
                 registerRefMap.clear(asRegister(location).number);

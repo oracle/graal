@@ -46,7 +46,7 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
         return index;
     }
 
-    public static Object getArrayLocation(CiKind elementKind) {
+    public static Object getArrayLocation(RiKind elementKind) {
         return elementKind;
     }
 
@@ -57,11 +57,11 @@ public final class IndexedLocationNode extends LocationNode implements LIRLowera
         return indexScalingEnabled;
     }
 
-    public static IndexedLocationNode create(Object identity, CiKind kind, int displacement, ValueNode index, Graph graph, boolean indexScalingEnabled) {
+    public static IndexedLocationNode create(Object identity, RiKind kind, int displacement, ValueNode index, Graph graph, boolean indexScalingEnabled) {
         return graph.unique(new IndexedLocationNode(identity, kind, index, displacement, indexScalingEnabled));
     }
 
-    private IndexedLocationNode(Object identity, CiKind kind, ValueNode index, int displacement, boolean indexScalingEnabled) {
+    private IndexedLocationNode(Object identity, RiKind kind, ValueNode index, int displacement, boolean indexScalingEnabled) {
         super(identity, kind, displacement);
         this.index = index;
         this.indexScalingEnabled = indexScalingEnabled;

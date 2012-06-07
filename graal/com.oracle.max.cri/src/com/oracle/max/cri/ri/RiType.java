@@ -83,14 +83,14 @@ public interface RiType {
      *        When false, the kind according to the Java specification is returned.
      * @return the kind
      */
-    CiKind kind(boolean architecture);
+    RiKind kind(boolean architecture);
 
     /**
      * Gets the kind used to represent the specified part of this type.
      * @param r the part of the this type
      * @return the kind of constants for the specified part of the type
      */
-    CiKind getRepresentationKind(Representation r);
+    RiKind getRepresentationKind(Representation r);
 
     RiResolvedType resolve(RiResolvedType accessingClass);
 }

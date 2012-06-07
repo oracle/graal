@@ -61,7 +61,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         RiResolvedMethod method = frameState.method();
         boolean isStatic = Modifier.isStatic(method.accessFlags());
 
-        CiKind[] signature = CiUtil.signatureToKinds(method.signature(), isStatic ? null : method.holder().kind(true));
+        RiKind[] signature = CiUtil.signatureToKinds(method.signature(), isStatic ? null : method.holder().kind(true));
         CiCallingConvention cc = gen.frameMap().registerConfig.getCallingConvention(CiCallingConvention.Type.JavaCall, signature, gen.target(), false);
         gen.frameMap().callsMethod(cc, CiCallingConvention.Type.JavaCall); // TODO (aw): I think this is unnecessary for a tail call.
         List<ValueNode> parameters = new ArrayList<>();
@@ -70,7 +70,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         }
         List<CiValue> argList = gen.visitInvokeArguments(cc, parameters);
 
-        CiValue entry = gen.emitLoad(new CiAddress(CiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
+        CiValue entry = gen.emitLoad(new CiAddress(RiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
 
         gen.append(new AMD64TailcallOp(argList, entry, cc.locations));
     }

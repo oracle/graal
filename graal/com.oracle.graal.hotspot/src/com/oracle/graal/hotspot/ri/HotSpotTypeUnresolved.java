@@ -92,8 +92,8 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     }
 
     @Override
-    public CiKind kind(boolean architecture) {
-        return CiKind.Object;
+    public RiKind kind(boolean architecture) {
+        return RiKind.Object;
     }
 
     @Override
@@ -112,8 +112,8 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     }
 
     @Override
-    public CiKind getRepresentationKind(RiType.Representation r) {
-        return CiKind.Object;
+    public RiKind getRepresentationKind(RiType.Representation r) {
+        return RiKind.Object;
     }
 
     @Override

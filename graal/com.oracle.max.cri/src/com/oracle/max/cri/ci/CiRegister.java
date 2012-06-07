@@ -74,7 +74,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
 
     /**
      * An array of {@link CiRegisterValue} objects, for this register, with one entry
-     * per {@link CiKind}, indexed by {@link CiKind#ordinal}.
+     * per {@link RiKind}, indexed by {@link RiKind#ordinal}.
      */
     private final CiRegisterValue[] values;
 
@@ -117,8 +117,8 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
         this.flags = createMask(flags);
         this.encoding = encoding;
 
-        values = new CiRegisterValue[CiKind.VALUES.length];
-        for (CiKind kind : CiKind.VALUES) {
+        values = new CiRegisterValue[RiKind.VALUES.length];
+        for (RiKind kind : RiKind.VALUES) {
             values[kind.ordinal()] = new CiRegisterValue(kind, this);
         }
     }
@@ -140,16 +140,16 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * @param kind the specified kind
      * @return the {@link CiRegisterValue}
      */
-    public CiRegisterValue asValue(CiKind kind) {
+    public CiRegisterValue asValue(RiKind kind) {
         return values[kind.ordinal()];
     }
 
     /**
      * Gets this register as a {@linkplain CiRegisterValue value} with no particular kind.
-     * @return a {@link CiRegisterValue} with {@link CiKind#Illegal} kind.
+     * @return a {@link CiRegisterValue} with {@link RiKind#Illegal} kind.
      */
     public CiRegisterValue asValue() {
-        return asValue(CiKind.Illegal);
+        return asValue(RiKind.Illegal);
     }
 
     /**

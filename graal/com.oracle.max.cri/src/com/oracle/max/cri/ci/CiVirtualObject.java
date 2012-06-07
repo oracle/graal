@@ -48,7 +48,7 @@ public final class CiVirtualObject extends CiValue {
     }
 
     private CiVirtualObject(RiType type, CiValue[] values, int id) {
-        super(CiKind.Object);
+        super(RiKind.Object);
         this.type = type;
         this.values = values;
         this.id = id;
@@ -124,7 +124,7 @@ public final class CiVirtualObject extends CiValue {
             this.runtime = runtime;
         }
 
-        public CiVirtualObject constantProxy(CiKind kind, CiValue objectValue, CiValue primitiveValue) {
+        public CiVirtualObject constantProxy(RiKind kind, CiValue objectValue, CiValue primitiveValue) {
             RiConstant cKind = RiConstant.forObject(kind);
             // TODO: here the ordering is hard coded... we should query RiType.fields() and act accordingly
             return new CiVirtualObject(runtime.getType(RiConstant.class), new CiValue[] {cKind, primitiveValue, CiValue.IllegalValue, objectValue}, nextId++);

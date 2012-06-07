@@ -41,7 +41,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
 
         @Override
         public boolean constantBound(Condition condition, RiConstant constant) {
-            if (constant.kind == CiKind.Int || constant.kind == CiKind.Long) {
+            if (constant.kind == RiKind.Int || constant.kind == RiKind.Long) {
                 switch (condition) {
                     case EQ:
                         return store.constantBounds.lowerBound == constant.asLong() && store.constantBounds.upperBound == constant.asLong();
@@ -118,7 +118,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         }
     }
 
-    private final CiKind kind;
+    private final RiKind kind;
     private final ConstantBound constantBounds;
     private final TypeFeedbackChanged changed;
     private ValueNode dependency;
@@ -128,11 +128,11 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         dependency = changed.node;
     }
 
-    public ScalarTypeFeedbackStore(CiKind kind, TypeFeedbackChanged changed) {
+    public ScalarTypeFeedbackStore(RiKind kind, TypeFeedbackChanged changed) {
         this.kind = kind;
-        if (kind == CiKind.Int) {
+        if (kind == RiKind.Int) {
             constantBounds = new ConstantBound(Integer.MIN_VALUE, Integer.MAX_VALUE);
-        } else if (kind == CiKind.Long) {
+        } else if (kind == RiKind.Long) {
             constantBounds = new ConstantBound(Long.MIN_VALUE, Long.MAX_VALUE);
         } else {
             constantBounds = null;
@@ -168,7 +168,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
 
     private static ConstantBound createBounds(Condition condition, RiConstant constant) {
         ConstantBound newBound;
-        if (constant.kind == CiKind.Int || constant.kind == CiKind.Long) {
+        if (constant.kind == RiKind.Int || constant.kind == RiKind.Long) {
             switch (condition) {
                 case EQ:
                     newBound = new ConstantBound(constant.asLong(), constant.asLong());
@@ -364,14 +364,14 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         assert other.kind == kind;
         long lower = other.constantBounds.lowerBound;
         long upper = other.constantBounds.upperBound;
-        if (kind == CiKind.Int) {
+        if (kind == RiKind.Int) {
             int delta = deltaConstant.asInt();
             int newLower = (int) lower + delta;
             int newUpper = (int) upper + delta;
             if ((newLower <= lower && newUpper <= upper) || (newLower > lower && newUpper > upper)) {
                 constantBounds.join(new ConstantBound(newLower, newUpper));
             }
-        } else if (kind == CiKind.Long) {
+        } else if (kind == RiKind.Long) {
             long delta = deltaConstant.asLong();
             long newLower = lower + delta;
             long newUpper = upper + delta;
@@ -387,20 +387,20 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         return constantBounds.lowerBound == minValue(kind) && constantBounds.upperBound == maxValue(kind) && (valueBounds == null || valueBounds.isEmpty());
     }
 
-    private static long minValue(CiKind kind) {
-        if (kind == CiKind.Int) {
+    private static long minValue(RiKind kind) {
+        if (kind == RiKind.Int) {
             return Integer.MIN_VALUE;
-        } else if (kind == CiKind.Long) {
+        } else if (kind == RiKind.Long) {
             return Long.MIN_VALUE;
         } else {
             throw new UnsupportedOperationException();
         }
     }
 
-    private static long maxValue(CiKind kind) {
-        if (kind == CiKind.Int) {
+    private static long maxValue(RiKind kind) {
+        if (kind == RiKind.Int) {
             return Integer.MAX_VALUE;
-        } else if (kind == CiKind.Long) {
+        } else if (kind == RiKind.Long) {
             return Long.MAX_VALUE;
         } else {
             throw new UnsupportedOperationException();

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public final class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public IntegerMulNode(CiKind kind, ValueNode x, ValueNode y) {
+    public IntegerMulNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -40,10 +40,10 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
             return graph().unique(new IntegerMulNode(kind(), y(), x()));
         }
         if (x().isConstant()) {
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() * y().asConstant().asInt(), graph());
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() * y().asConstant().asLong(), graph());
             }
         } else if (y().isConstant()) {
@@ -62,10 +62,10 @@ public final class IntegerMulNode extends IntegerArithmeticNode implements Canon
                 IntegerMulNode other = (IntegerMulNode) x();
                 if (other.y().isConstant()) {
                     ConstantNode sum;
-                    if (kind() == CiKind.Int) {
+                    if (kind() == RiKind.Int) {
                         sum = ConstantNode.forInt(y().asConstant().asInt() * other.y().asConstant().asInt(), graph());
                     } else {
-                        assert kind() == CiKind.Long;
+                        assert kind() == RiKind.Long;
                         sum = ConstantNode.forLong(y().asConstant().asLong() * other.y().asConstant().asLong(), graph());
                     }
                     return graph().unique(new IntegerMulNode(kind(), other.x(), sum));

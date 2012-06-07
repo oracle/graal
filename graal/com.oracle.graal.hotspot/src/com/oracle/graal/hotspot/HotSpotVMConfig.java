@@ -112,7 +112,7 @@ public final class HotSpotVMConfig extends CompilerObject {
         assert stackShadowPages > 0;
     }
 
-    public int getArrayOffset(CiKind kind) {
+    public int getArrayOffset(RiKind kind) {
         return arrayOffsets[kind.ordinal()];
     }
 }

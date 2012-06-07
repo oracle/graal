@@ -168,7 +168,7 @@ public class ReplacingStreams {
             // is the object a constant of object type?
             if (obj.getClass() == RiConstant.class) {
                 RiConstant constant = (RiConstant) obj;
-                if (constant.kind != CiKind.Object) {
+                if (constant.kind != RiKind.Object) {
                     return obj;
                 }
                 Object contents = constant.asObject();

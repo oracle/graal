@@ -58,7 +58,7 @@ public interface RiSignature {
      *        When false, the kind according to the Java specification is returned.
      * @return the kind of the argument at the specified position
      */
-    CiKind argumentKindAt(int index, boolean architecture);
+    RiKind argumentKindAt(int index, boolean architecture);
 
     /**
      * Gets the return type of this signature. This method will return a
@@ -78,7 +78,7 @@ public interface RiSignature {
      *        When false, the kind according to the Java specification is returned.
      * @return the return kind
      */
-    CiKind returnKind(boolean architectureSpecific);
+    RiKind returnKind(boolean architectureSpecific);
 
     /**
      * Converts this signature to a string.

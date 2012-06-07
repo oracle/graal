@@ -94,7 +94,7 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     @Override
-    public CiKind returnKind() {
+    public RiKind returnKind() {
         return targetMethod().signature().returnKind(false);
     }
 
@@ -139,8 +139,8 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
     }
 
     public Stamp returnStamp() {
-        CiKind returnKind = targetMethod.signature().returnKind(false);
-        if (returnKind == CiKind.Object && returnType instanceof RiResolvedType) {
+        RiKind returnKind = targetMethod.signature().returnKind(false);
+        if (returnKind == RiKind.Object && returnType instanceof RiResolvedType) {
             return StampFactory.declared((RiResolvedType) returnType);
         } else {
             return StampFactory.forKind(returnKind);

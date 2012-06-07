@@ -49,7 +49,7 @@ public abstract class LIRGeneratorTool {
     public abstract boolean canStoreConstant(RiConstant c);
 
     public abstract CiValue operand(ValueNode object);
-    public abstract CiValue newVariable(CiKind kind);
+    public abstract CiValue newVariable(RiKind kind);
     public abstract CiValue setResult(ValueNode x, CiValue operand);
 
     public abstract CiAddress makeAddress(LocationNode location, ValueNode object);
@@ -81,7 +81,7 @@ public abstract class LIRGeneratorTool {
     public abstract void emitMembar(int barriers);
     public abstract void emitDeoptimizeOnOverflow(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
     public abstract void emitDeoptimize(RiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId);
-    public abstract CiValue emitCall(Object target, CiKind result, CiKind[] arguments, boolean canTrap, CiValue... args);
+    public abstract CiValue emitCall(Object target, RiKind result, RiKind[] arguments, boolean canTrap, CiValue... args);
     public final CiValue emitCall(CiRuntimeCall runtimeCall, boolean canTrap, CiValue... args) {
         return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
     }

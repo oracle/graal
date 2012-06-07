@@ -194,7 +194,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     CiAddress src;
                     if (isConstant(index)) {
-                        assert index.kind == CiKind.Int;
+                        assert index.kind == RiKind.Int;
                         RiConstant constantIndex = (RiConstant) index;
                         src = new CiAddress(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
                     } else {
@@ -217,7 +217,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     pointer = assureInRegister(tasm, masm, pointer);
                     assert isRegister(pointer);
-                    CiAddress src = new CiAddress(CiKind.Illegal, pointer, index, scale, displacement);
+                    CiAddress src = new CiAddress(RiKind.Illegal, pointer, index, scale, displacement);
                     masm.leaq(asRegister(result), src);
                     break;
                 }
@@ -238,7 +238,7 @@ public class AMD64XirOp extends LIRXirInstruction {
 
                     CiAddress dst;
                     if (isConstant(index)) {
-                        assert index.kind == CiKind.Int;
+                        assert index.kind == RiKind.Int;
                         RiConstant constantIndex = (RiConstant) index;
                         dst = new CiAddress(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
                     } else {
@@ -279,7 +279,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     break;
 
                 case CallRuntime: {
-                    CiKind[] signature = new CiKind[inst.arguments.length];
+                    RiKind[] signature = new RiKind[inst.arguments.length];
                     for (int i = 0; i < signature.length; i++) {
                         signature[i] = inst.arguments[i].kind;
                     }
@@ -296,7 +296,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     RuntimeCallInformation runtimeCallInformation = (RuntimeCallInformation) inst.extra;
                     AMD64Call.directCall(tasm, masm, runtimeCallInformation.target, (runtimeCallInformation.useInfoAfter) ? infoAfter : info);
 
-                    if (inst.result != null && inst.result.kind != CiKind.Illegal && inst.result.kind != CiKind.Void) {
+                    if (inst.result != null && inst.result.kind != RiKind.Illegal && inst.result.kind != RiKind.Void) {
                         CiRegister returnRegister = tasm.frameMap.registerConfig.getReturnRegister(inst.result.kind);
                         CiValue resultLocation = returnRegister.asValue(inst.result.kind.stackKind());
                         AMD64Move.move(tasm, masm, operands[inst.result.index], resultLocation);
@@ -315,10 +315,10 @@ public class AMD64XirOp extends LIRXirInstruction {
                 case DecAndJumpNotZero: {
                     Label label = labels[((XirLabel) inst.extra).index];
                     CiValue value = operands[inst.x().index];
-                    if (value.kind == CiKind.Long) {
+                    if (value.kind == RiKind.Long) {
                         masm.decq(asRegister(value));
                     } else {
-                        assert value.kind == CiKind.Int;
+                        assert value.kind == RiKind.Int;
                         masm.decl(asRegister(value));
                     }
                     masm.jcc(ConditionFlag.notZero, label);
@@ -475,7 +475,7 @@ public class AMD64XirOp extends LIRXirInstruction {
     }
 
     private static CiValue assureNot64BitConstant(TargetMethodAssembler tasm, AMD64MacroAssembler masm, CiValue value) {
-        if (isConstant(value) && (value.kind == CiKind.Long || value.kind == CiKind.Object)) {
+        if (isConstant(value) && (value.kind == RiKind.Long || value.kind == RiKind.Object)) {
             CiRegisterValue register = tasm.frameMap.registerConfig.getScratchRegister().asValue(value.kind);
             AMD64Move.move(tasm, masm, register, value);
             return register;

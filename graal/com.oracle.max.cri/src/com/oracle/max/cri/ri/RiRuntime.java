@@ -56,7 +56,7 @@ public interface RiRuntime {
     /**
      * Returns the RiType object representing the base type for the given kind.
      */
-    RiResolvedType asRiType(CiKind kind);
+    RiResolvedType asRiType(RiKind kind);
 
     /**
      * Returns the type of the given constant object.

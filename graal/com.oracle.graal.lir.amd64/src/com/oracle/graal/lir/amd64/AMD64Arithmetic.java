@@ -254,7 +254,7 @@ public enum AMD64Arithmetic {
             assert isConstant(y) || asRegister(y) == AMD64.rcx;
             assert differentRegisters(result, y) || sameRegister(x, y);
             verifyKind((AMD64Arithmetic) code, result, x, x);
-            assert y.kind.stackKind() == CiKind.Int;
+            assert y.kind.stackKind() == RiKind.Int;
         }
     }
 
@@ -557,9 +557,9 @@ public enum AMD64Arithmetic {
 
 
     private static void verifyKind(AMD64Arithmetic opcode, CiValue result, CiValue x, CiValue y) {
-        assert (opcode.name().startsWith("I") && result.kind == CiKind.Int && x.kind.stackKind() == CiKind.Int && y.kind.stackKind() == CiKind.Int)
-            || (opcode.name().startsWith("L") && result.kind == CiKind.Long && x.kind == CiKind.Long && y.kind == CiKind.Long)
-            || (opcode.name().startsWith("F") && result.kind == CiKind.Float && x.kind == CiKind.Float && y.kind == CiKind.Float)
-            || (opcode.name().startsWith("D") && result.kind == CiKind.Double && x.kind == CiKind.Double && y.kind == CiKind.Double);
+        assert (opcode.name().startsWith("I") && result.kind == RiKind.Int && x.kind.stackKind() == RiKind.Int && y.kind.stackKind() == RiKind.Int)
+            || (opcode.name().startsWith("L") && result.kind == RiKind.Long && x.kind == RiKind.Long && y.kind == RiKind.Long)
+            || (opcode.name().startsWith("F") && result.kind == RiKind.Float && x.kind == RiKind.Float && y.kind == RiKind.Float)
+            || (opcode.name().startsWith("D") && result.kind == RiKind.Double && x.kind == RiKind.Double && y.kind == RiKind.Double);
     }
 }

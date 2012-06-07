@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public final class FloatMulNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public FloatMulNode(CiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatMulNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 
@@ -40,10 +40,10 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
             return graph().unique(new FloatMulNode(kind(), y(), x(), isStrictFP()));
         }
         if (x().isConstant()) {
-            if (kind() == CiKind.Float) {
+            if (kind() == RiKind.Float) {
                 return ConstantNode.forFloat(x().asConstant().asFloat() * y().asConstant().asFloat(), graph());
             } else {
-                assert kind() == CiKind.Double;
+                assert kind() == RiKind.Double;
                 return ConstantNode.forDouble(x().asConstant().asDouble() * y().asConstant().asDouble(), graph());
             }
         }

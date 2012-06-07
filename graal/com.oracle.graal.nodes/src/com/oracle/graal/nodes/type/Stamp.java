@@ -29,13 +29,13 @@ import com.oracle.max.cri.ri.*;
 
 public abstract class Stamp {
 
-    private final CiKind kind;
+    private final RiKind kind;
 
-    protected Stamp(CiKind kind) {
+    protected Stamp(RiKind kind) {
         this.kind = kind;
     }
 
-    public CiKind kind() {
+    public RiKind kind() {
         return kind;
     }
 

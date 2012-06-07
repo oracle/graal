@@ -211,7 +211,7 @@ public final class CompilerImpl implements Compiler, Remote {
     public RiType lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve) {
         if (returnType.length() == 1 && vmToCompiler instanceof VMToCompilerImpl) {
             VMToCompilerImpl exitsNative = (VMToCompilerImpl) vmToCompiler;
-            CiKind kind = CiKind.fromPrimitiveOrVoidTypeChar(returnType.charAt(0));
+            RiKind kind = RiKind.fromPrimitiveOrVoidTypeChar(returnType.charAt(0));
             switch(kind) {
                 case Boolean:
                     return exitsNative.typeBoolean;

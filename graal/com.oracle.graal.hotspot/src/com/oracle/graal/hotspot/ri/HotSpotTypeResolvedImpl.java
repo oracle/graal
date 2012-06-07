@@ -129,8 +129,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public CiKind getRepresentationKind(Representation r) {
-        return CiKind.Object;
+    public RiKind getRepresentationKind(Representation r) {
+        return RiKind.Object;
     }
 
     @Override
@@ -186,8 +186,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public CiKind kind(boolean architecture) {
-        return CiKind.Object;
+    public RiKind kind(boolean architecture) {
+        return RiKind.Object;
     }
 
     @Override

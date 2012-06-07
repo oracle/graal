@@ -258,7 +258,7 @@ public class AMD64ControlFlow {
         int afterLea = buf.position();
 
         // Load jump table entry into scratch and jump to it
-        masm.movslq(value, new CiAddress(CiKind.Int, scratch.asValue(), value.asValue(), Scale.Times4, 0));
+        masm.movslq(value, new CiAddress(RiKind.Int, scratch.asValue(), value.asValue(), Scale.Times4, 0));
         masm.addq(scratch, value);
         masm.jmp(scratch);
 

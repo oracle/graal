@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = ">>>")
 public final class UnsignedRightShiftNode extends ShiftNode implements Canonicalizable, LIRLowerable {
 
-    public UnsignedRightShiftNode(CiKind kind, ValueNode x, ValueNode y) {
+    public UnsignedRightShiftNode(RiKind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -40,18 +40,18 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
             int mask;
-            if (kind() == CiKind.Int) {
+            if (kind() == RiKind.Int) {
                 mask = 0x1f;
             } else {
-                assert kind() == CiKind.Long;
+                assert kind() == RiKind.Long;
                 mask = 0x3f;
             }
             amount &= mask;
             if (x().isConstant()) {
-                if (kind() == CiKind.Int) {
+                if (kind() == RiKind.Int) {
                     return ConstantNode.forInt(x().asConstant().asInt() >>> amount, graph());
                 } else {
-                    assert kind() == CiKind.Long;
+                    assert kind() == RiKind.Long;
                     return ConstantNode.forLong(x().asConstant().asLong() >>> amount, graph());
                 }
             }
@@ -69,10 +69,10 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
                         }
                         return graph().unique(new UnsignedRightShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {
-                        if (kind() == CiKind.Long) {
+                        if (kind() == RiKind.Long) {
                             return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forLong(-1L >>> amount, graph())));
                         } else {
-                            assert kind() == CiKind.Int;
+                            assert kind() == RiKind.Int;
                             return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forInt(-1 >>> amount, graph())));
                         }
                     }

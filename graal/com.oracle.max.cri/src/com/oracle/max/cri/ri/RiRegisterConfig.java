@@ -37,7 +37,7 @@ public interface RiRegisterConfig {
     /**
      * Gets the register to be used for returning a value of a given kind.
      */
-    CiRegister getReturnRegister(CiKind kind);
+    CiRegister getReturnRegister(RiKind kind);
 
     /**
      * Gets the register to which {@link CiRegister#Frame} and {@link CiRegister#CallerFrame} are bound.
@@ -54,7 +54,7 @@ public interface RiRegisterConfig {
      * @param target the target platform
      * @param stackOnly ignore registers
      */
-    CiCallingConvention getCallingConvention(Type type, CiKind[] parameters, CiTarget target, boolean stackOnly);
+    CiCallingConvention getCallingConvention(Type type, RiKind[] parameters, CiTarget target, boolean stackOnly);
 
     /**
      * Gets the ordered set of registers that are can be used to pass parameters

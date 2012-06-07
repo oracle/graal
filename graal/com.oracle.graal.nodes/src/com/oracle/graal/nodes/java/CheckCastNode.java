@@ -53,7 +53,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     public CheckCastNode(ValueNode targetClassInstruction, RiResolvedType targetClass, ValueNode object, RiTypeProfile profile) {
-        super(targetClass == null ? StampFactory.forKind(CiKind.Object) : StampFactory.declared(targetClass));
+        super(targetClass == null ? StampFactory.forKind(RiKind.Object) : StampFactory.declared(targetClass));
         this.targetClassInstruction = targetClassInstruction;
         this.targetClass = targetClass;
         this.object = object;
@@ -84,7 +84,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
         RiConstant constant = object().asConstant();
         if (constant != null) {
-            assert constant.kind == CiKind.Object;
+            assert constant.kind == RiKind.Object;
             if (constant.isNull()) {
                 return object();
             }

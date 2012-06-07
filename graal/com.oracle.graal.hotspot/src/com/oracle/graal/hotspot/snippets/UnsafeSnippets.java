@@ -47,7 +47,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public Object getObject(Object o, long offset) {
-        return UnsafeLoadNode.load(o, 0, offset, CiKind.Object);
+        return UnsafeLoadNode.load(o, 0, offset, RiKind.Object);
     }
 
     public Object getObjectVolatile(Object o, long offset) {
@@ -58,7 +58,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putObject(Object o, long offset, Object x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Object);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Object);
     }
 
     public void putObjectVolatile(Object o, long offset, Object x) {
@@ -68,7 +68,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public int getInt(Object o, long offset) {
-        Integer value = UnsafeLoadNode.load(o, 0, offset, CiKind.Int);
+        Integer value = UnsafeLoadNode.load(o, 0, offset, RiKind.Int);
         return value;
     }
 
@@ -80,7 +80,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putInt(Object o, long offset, int x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Int);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Int);
     }
 
     public void putIntVolatile(Object o, long offset, int x) {
@@ -91,7 +91,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public boolean getBoolean(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Boolean result = UnsafeLoadNode.load(o, 0, offset, CiKind.Boolean);
+        Boolean result = UnsafeLoadNode.load(o, 0, offset, RiKind.Boolean);
         return result;
     }
 
@@ -103,7 +103,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putBoolean(Object o, long offset, boolean x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Boolean);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Boolean);
     }
 
     public void putBooleanVolatile(Object o, long offset, boolean x) {
@@ -114,7 +114,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public byte getByte(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Byte result = UnsafeLoadNode.load(o, 0, offset, CiKind.Byte);
+        Byte result = UnsafeLoadNode.load(o, 0, offset, RiKind.Byte);
         return result;
     }
 
@@ -126,7 +126,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putByte(Object o, long offset, byte x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Byte);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Byte);
     }
 
     public void putByteVolatile(Object o, long offset, byte x) {
@@ -137,7 +137,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public short getShort(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Short result = UnsafeLoadNode.load(o, 0, offset, CiKind.Short);
+        Short result = UnsafeLoadNode.load(o, 0, offset, RiKind.Short);
         return result;
     }
 
@@ -149,7 +149,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putShort(Object o, long offset, short x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Short);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Short);
     }
 
     public void putShortVolatile(Object o, long offset, short x) {
@@ -160,7 +160,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public char getChar(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Character result = UnsafeLoadNode.load(o, 0, offset, CiKind.Char);
+        Character result = UnsafeLoadNode.load(o, 0, offset, RiKind.Char);
         return result;
     }
 
@@ -172,7 +172,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putChar(Object o, long offset, char x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Char);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Char);
     }
 
     public void putCharVolatile(Object o, long offset, char x) {
@@ -183,7 +183,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public long getLong(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Long result = UnsafeLoadNode.load(o, 0, offset, CiKind.Long);
+        Long result = UnsafeLoadNode.load(o, 0, offset, RiKind.Long);
         return result;
     }
 
@@ -195,7 +195,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putLong(Object o, long offset, long x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Long);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Long);
     }
 
     public void putLongVolatile(Object o, long offset, long x) {
@@ -206,7 +206,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public float getFloat(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Float result = UnsafeLoadNode.load(o, 0, offset, CiKind.Float);
+        Float result = UnsafeLoadNode.load(o, 0, offset, RiKind.Float);
         return result;
     }
 
@@ -218,7 +218,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putFloat(Object o, long offset, float x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Float);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Float);
     }
 
     public void putFloatVolatile(Object o, long offset, float x) {
@@ -229,7 +229,7 @@ public class UnsafeSnippets implements SnippetsInterface {
 
     public double getDouble(Object o, long offset) {
         @JavacBug(id = 6995200)
-        Double result = UnsafeLoadNode.load(o, 0, offset, CiKind.Double);
+        Double result = UnsafeLoadNode.load(o, 0, offset, RiKind.Double);
         return result;
     }
 
@@ -241,7 +241,7 @@ public class UnsafeSnippets implements SnippetsInterface {
     }
 
     public void putDouble(Object o, long offset, double x) {
-        UnsafeStoreNode.store(o, 0, offset, x, CiKind.Double);
+        UnsafeStoreNode.store(o, 0, offset, x, RiKind.Double);
     }
 
     public void putDoubleVolatile(Object o, long offset, double x) {

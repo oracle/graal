@@ -61,7 +61,7 @@ public class CompiledMethodTest extends GraphTest {
         for (Node node : graph.getNodes()) {
             if (node instanceof ConstantNode) {
                 ConstantNode constant = (ConstantNode) node;
-                if (constant.kind() == CiKind.Object && " ".equals(constant.value.asObject())) {
+                if (constant.kind() == RiKind.Object && " ".equals(constant.value.asObject())) {
                     graph.replaceFloating(constant, ConstantNode.forObject("-", runtime, graph));
                 }
             }
@@ -118,7 +118,7 @@ public class CompiledMethodTest extends GraphTest {
         for (Node node : graph.getNodes()) {
             if (node instanceof ConstantNode) {
                 ConstantNode constant = (ConstantNode) node;
-                if (constant.kind() == CiKind.Object && "1 ".equals(constant.value.asObject())) {
+                if (constant.kind() == RiKind.Object && "1 ".equals(constant.value.asObject())) {
                     graph.replaceFloating(constant, ConstantNode.forObject("1-", runtime, graph));
                 }
             }

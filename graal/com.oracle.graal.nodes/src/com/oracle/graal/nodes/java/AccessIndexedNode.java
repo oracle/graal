@@ -36,7 +36,7 @@ import com.oracle.max.cri.ri.*;
 public abstract class AccessIndexedNode extends AccessArrayNode implements TypeFeedbackProvider {
 
     @Input private ValueNode index;
-    private final CiKind elementType;
+    private final RiKind elementType;
     private final long leafGraphId;
 
     public ValueNode index() {
@@ -50,7 +50,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * @param index the instruction producing the index
      * @param elementKind the type of the elements of the array
      */
-    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, CiKind elementKind, long leafGraphId) {
+    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, RiKind elementKind, long leafGraphId) {
         super(stamp, array);
         this.index = index;
         this.elementType = elementKind;
@@ -61,7 +61,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * Gets the element type of the array.
      * @return the element type
      */
-    public CiKind elementKind() {
+    public RiKind elementKind() {
         return elementType;
     }
 

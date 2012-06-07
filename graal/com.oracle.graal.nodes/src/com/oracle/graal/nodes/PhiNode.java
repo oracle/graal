@@ -55,7 +55,7 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
      * @param kind the kind of the value
      * @param merge the merge that the new phi belongs to
      */
-    public PhiNode(CiKind kind, MergeNode merge) {
+    public PhiNode(RiKind kind, MergeNode merge) {
         super(StampFactory.forKind(kind));
         this.type = PhiType.Value;
         this.merge = merge;

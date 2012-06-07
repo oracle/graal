@@ -33,7 +33,7 @@ public final class GenericStamp extends Stamp {
     private final GenericStampType type;
 
     protected GenericStamp(GenericStampType type) {
-        super(CiKind.Void);
+        super(RiKind.Void);
         this.type = type;
     }
 

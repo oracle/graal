@@ -251,7 +251,7 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph graph, ExtendedRiRuntime runtime, InliningCallback callback) {
             int numberOfMethods = concretes.size();
-            boolean hasReturnValue = invoke.node().kind() != CiKind.Void;
+            boolean hasReturnValue = invoke.node().kind() != RiKind.Void;
 
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
@@ -291,8 +291,8 @@ public class InliningUtil {
 
                 FixedNode exceptionSux = exceptionObject.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
-                exceptionObjectPhi = graph.unique(new PhiNode(CiKind.Object, exceptionMerge));
-                exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, CiKind.Void, exceptionObjectPhi));
+                exceptionObjectPhi = graph.unique(new PhiNode(RiKind.Object, exceptionMerge));
+                exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, RiKind.Void, exceptionObjectPhi));
             }
 
             // create one separate block for each invoked method
@@ -460,7 +460,7 @@ public class InliningUtil {
             result.setUseForInlining(useForInlining);
             result.setProbability(probability);
 
-            CiKind kind = invoke.node().kind();
+            RiKind kind = invoke.node().kind();
             if (!kind.isVoid()) {
                 FrameState stateAfter = invoke.stateAfter();
                 stateAfter = stateAfter.duplicate(stateAfter.bci);
@@ -479,7 +479,7 @@ public class InliningUtil {
                 BeginNode newExceptionEdge = (BeginNode) exceptionEdge.copyWithInputs();
                 ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) exceptionObject.copyWithInputs();
                 // set new state (pop old exception object, push new one)
-                newExceptionObject.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), CiKind.Object, newExceptionObject));
+                newExceptionObject.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), RiKind.Object, newExceptionObject));
                 newExceptionEdge.setNext(newExceptionObject);
 
                 EndNode endNode = graph.add(new EndNode());
@@ -907,7 +907,7 @@ public class InliningUtil {
         StructuredGraph graph = (StructuredGraph) invoke.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
-        if (!callTarget.isStatic() && firstParam.kind() == CiKind.Object && !firstParam.objectStamp().nonNull()) {
+        if (!callTarget.isStatic() && firstParam.kind() == RiKind.Object && !firstParam.objectStamp().nonNull()) {
             graph.addBeforeFixed(invoke.node(), graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), RiDeoptReason.ClassCastException, RiDeoptAction.InvalidateReprofile, true, invoke.leafGraphId())));
         }
     }

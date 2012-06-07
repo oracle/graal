@@ -58,7 +58,7 @@ public interface VMToCompiler {
 
     RiType createRiTypeUnresolved(String name);
 
-    RiConstant createCiConstant(CiKind kind, long value);
+    RiConstant createCiConstant(RiKind kind, long value);
 
     RiConstant createCiConstantFloat(float value);
 
