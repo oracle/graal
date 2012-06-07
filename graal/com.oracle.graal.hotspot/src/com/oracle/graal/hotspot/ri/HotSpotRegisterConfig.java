@@ -27,9 +27,9 @@ import static com.oracle.max.asm.target.amd64.AMD64.*;
 import java.util.*;
 
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.Type;
-import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiCallingConvention.*;
+import com.oracle.graal.api.code.CiRegister.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;

@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.ri.*;
 

@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.compiler.phases.*;
@@ -41,8 +42,6 @@ import com.oracle.graal.snippets.Snippet.Constant;
 import com.oracle.graal.snippets.Snippet.Multiple;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then

@@ -24,9 +24,8 @@ package com.oracle.max.criutils;
 
 import java.io.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * A profiling info snapshot that can be {@linkplain #save(File, File) saved} to

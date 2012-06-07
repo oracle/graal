@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * This node is used to perform the finalizer registration at the end of the java.lang.Object constructor.

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -30,8 +31,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 public class CanonicalizerPhase extends Phase {
     private static final int MAX_ITERATION_PER_NODE = 10;

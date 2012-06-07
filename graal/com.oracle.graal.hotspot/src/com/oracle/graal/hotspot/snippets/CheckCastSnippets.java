@@ -31,6 +31,7 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -50,8 +51,6 @@ import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
 import com.oracle.graal.snippets.SnippetTemplate.Key;
 import com.oracle.graal.snippets.nodes.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 /**

@@ -24,8 +24,8 @@ package com.oracle.max.cri.xir;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.CiTargetMethod.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ci.CiTargetMethod.*;
 import com.oracle.max.cri.xir.CiXirAssembler.*;
 
 /**

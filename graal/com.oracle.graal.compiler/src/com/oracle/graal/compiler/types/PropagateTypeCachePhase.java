@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.types;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.schedule.*;
 import com.oracle.graal.debug.*;
@@ -35,8 +36,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.types.*;
 import com.oracle.graal.nodes.spi.types.TypeCanonicalizable.Result;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 public class PropagateTypeCachePhase extends Phase {
 

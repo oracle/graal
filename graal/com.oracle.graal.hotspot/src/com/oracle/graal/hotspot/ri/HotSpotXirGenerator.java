@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.ri;
 
+import static com.oracle.graal.api.code.CiValueUtil.*;
 import static com.oracle.graal.hotspot.ri.TemplateFlag.*;
-import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.io.*;
 import java.util.*;
@@ -31,14 +31,14 @@ import java.util.concurrent.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiAddress.*;
+import com.oracle.graal.api.code.CiRegister.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.CiAddress.Scale;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
 import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;

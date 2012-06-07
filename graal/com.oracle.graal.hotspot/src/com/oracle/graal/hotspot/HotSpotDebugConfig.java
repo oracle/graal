@@ -25,12 +25,12 @@ package com.oracle.graal.hotspot;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.printer.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
 
 public class HotSpotDebugConfig implements DebugConfig {

@@ -25,9 +25,9 @@ package com.oracle.max.criutils;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.RiTypeProfile.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Utility for deriving hint types for a type check instruction (e.g. checkcast or instanceof)

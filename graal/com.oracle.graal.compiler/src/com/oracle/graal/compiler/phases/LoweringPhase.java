@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.cri.*;
@@ -31,7 +32,6 @@ import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.

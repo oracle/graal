@@ -26,13 +26,13 @@ import static com.oracle.graal.java.bytecode.Bytecodes.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.bytecode.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph (CFG).

@@ -24,8 +24,8 @@ package com.oracle.graal.compiler.phases;
 
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.graph.*;
 import com.oracle.graal.compiler.util.*;

@@ -22,9 +22,9 @@
  */
 package com.oracle.max.asm.target.amd64;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * This class implements commonly used X86 code patterns.

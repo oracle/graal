@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 
 public interface CanonicalizerTool {

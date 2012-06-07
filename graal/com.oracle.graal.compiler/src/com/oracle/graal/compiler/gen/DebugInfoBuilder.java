@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.gen;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.LIRGenerator.LockScope;
 import com.oracle.graal.debug.*;

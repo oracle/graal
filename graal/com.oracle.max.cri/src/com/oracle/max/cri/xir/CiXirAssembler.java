@@ -26,9 +26,9 @@ import static com.oracle.max.cri.xir.CiXirAssembler.XirOp.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiAddress.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiAddress.*;
 
 /**
  * Represents an assembler that allows a client such as the runtime system to

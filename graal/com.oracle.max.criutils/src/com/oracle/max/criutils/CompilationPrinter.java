@@ -22,13 +22,13 @@
  */
 package com.oracle.max.criutils;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases.

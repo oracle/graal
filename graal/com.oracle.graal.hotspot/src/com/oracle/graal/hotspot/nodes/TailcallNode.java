@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;

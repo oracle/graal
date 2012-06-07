@@ -24,10 +24,10 @@ package com.oracle.graal.nodes.type;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
-import com.oracle.max.cri.ri.*;
 
 
 public class StampFactory {

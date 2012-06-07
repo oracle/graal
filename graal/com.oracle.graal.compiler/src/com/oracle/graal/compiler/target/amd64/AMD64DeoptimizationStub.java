@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.target.amd64;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.lir.*;
@@ -31,7 +32,6 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.asm.target.amd64.*;
-import com.oracle.max.cri.ci.*;
 
 public class AMD64DeoptimizationStub extends AMD64Code {
     public final Label label = new Label();

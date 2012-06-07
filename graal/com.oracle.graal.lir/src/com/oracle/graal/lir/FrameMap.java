@@ -22,15 +22,14 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.max.cri.ci.CiValueUtil.*;
+import static com.oracle.graal.api.code.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiCallingConvention.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiCallingConvention.Type;
-import com.oracle.max.cri.ri.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.

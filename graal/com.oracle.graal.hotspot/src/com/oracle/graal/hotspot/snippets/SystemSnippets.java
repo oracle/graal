@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.snippets.*;
 

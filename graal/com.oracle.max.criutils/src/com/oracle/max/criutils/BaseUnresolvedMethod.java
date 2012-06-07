@@ -22,8 +22,8 @@
  */
 package com.oracle.max.criutils;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * A implementation of {@link RiMethod} for an unresolved method.

@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.snippets;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;

@@ -26,7 +26,7 @@ package com.oracle.graal.hotspot.ri;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ci.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;

@@ -27,6 +27,9 @@ import static com.oracle.max.cri.util.MemoryBarriers.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
+import com.oracle.graal.api.code.CiUtil.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
@@ -44,12 +47,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Call;
-import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
-import com.oracle.max.cri.ci.CiTargetMethod.Mark;
-import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
-import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
 import com.oracle.max.criutils.*;
 
 /**

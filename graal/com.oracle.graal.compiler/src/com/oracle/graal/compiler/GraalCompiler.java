@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.alloc.simple.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
@@ -41,7 +42,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.xir.*;
 
 public class GraalCompiler {

@@ -25,6 +25,7 @@ package com.oracle.graal.snippets;
 import java.lang.reflect.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
@@ -36,7 +37,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.max.cri.ci.*;
 
 /**
  * Utilities for snippet installation and management.

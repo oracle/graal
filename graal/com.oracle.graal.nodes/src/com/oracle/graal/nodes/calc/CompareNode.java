@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
 
 /* TODO (thomaswue/gdub) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
  * But in the back-end the comparison should not always be materialized (for example in x86 the comparison result will not be in a register but in a flag)

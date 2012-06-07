@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import static com.oracle.graal.api.code.CiCallingConvention.Type.*;
 import static com.oracle.graal.api.meta.RiValue.*;
 import static com.oracle.graal.lir.ValueUtil.*;
-import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
 
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CiTargetMethod.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
@@ -51,9 +53,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.max.asm.*;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ci.CiTargetMethod.Mark;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;

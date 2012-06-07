@@ -24,8 +24,8 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.max.cri.ri.*;
 
 public class BoxingMethodPool {
 

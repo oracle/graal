@@ -25,10 +25,10 @@ package com.oracle.graal.compiler.types;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.types.*;
-import com.oracle.max.cri.ri.*;
 
 public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
 
