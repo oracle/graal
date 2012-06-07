@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 public abstract class LIRGeneratorTool {
     public abstract CiTarget target();
@@ -79,8 +79,8 @@ public abstract class LIRGeneratorTool {
 
     public abstract RiValue emitConvert(ConvertNode.Op opcode, RiValue inputVal);
     public abstract void emitMembar(int barriers);
-    public abstract void emitDeoptimizeOnOverflow(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo);
-    public abstract void emitDeoptimize(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo, long leafGraphId);
+    public abstract void emitDeoptimizeOnOverflow(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo);
+    public abstract void emitDeoptimize(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId);
     public abstract RiValue emitCall(Object target, RiKind result, RiKind[] arguments, boolean canTrap, RiValue... args);
     public final RiValue emitCall(CiRuntimeCall runtimeCall, boolean canTrap, RiValue... args) {
         return emitCall(runtimeCall, runtimeCall.resultKind, runtimeCall.arguments, canTrap, args);
@@ -88,7 +88,7 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitIf(IfNode i);
     public abstract void emitConditional(ConditionalNode i);
-    public abstract void emitGuardCheck(BooleanNode comp, CiDeoptReason deoptReason, CiDeoptAction deoptAction, boolean negated, long leafGraphId);
+    public abstract void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, CiDeoptAction deoptAction, boolean negated, long leafGraphId);
 
     public abstract void emitLookupSwitch(LookupSwitchNode i);
     public abstract void emitTableSwitch(TableSwitchNode i);

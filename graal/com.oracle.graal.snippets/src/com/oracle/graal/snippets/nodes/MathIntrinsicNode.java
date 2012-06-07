@@ -24,6 +24,7 @@ package com.oracle.graal.snippets.nodes;
 
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
@@ -34,7 +35,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.snippets.target.amd64.*;
-import com.oracle.max.cri.ri.*;
 
 public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, LIRGenLowerable {
 

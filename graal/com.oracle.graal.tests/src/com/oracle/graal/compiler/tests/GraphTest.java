@@ -27,6 +27,7 @@ import java.util.concurrent.*;
 
 import junit.framework.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
@@ -39,7 +40,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.cfg.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Base class for Graal compiler unit tests. These are white box tests

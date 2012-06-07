@@ -28,7 +28,7 @@ import static com.oracle.graal.alloc.util.LocationUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;

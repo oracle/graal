@@ -24,6 +24,7 @@ package com.oracle.max.criutils;
 
 import java.io.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ri.*;
 
@@ -48,7 +49,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
         typeProfiles = new RiTypeProfile[codeSize];
         exceptions = new RiExceptionSeen[codeSize];
         executions = new int[codeSize];
-        deopts = new int[CiDeoptReason.values().length];
+        deopts = new int[RiDeoptReason.values().length];
 
         for (int bci = 0; bci < codeSize; bci++) {
             executions[bci] = other.getExecutionCount(bci);
@@ -57,7 +58,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
             switches[bci] = other.getSwitchProbabilities(bci);
             typeProfiles[bci] = other.getTypeProfile(bci);
         }
-        for (CiDeoptReason reason: CiDeoptReason.values()) {
+        for (RiDeoptReason reason: RiDeoptReason.values()) {
             deopts[reason.ordinal()] = other.getDeoptimizationCount(reason);
         }
     }
@@ -82,7 +83,7 @@ public class SnapshotProfilingInfo implements RiProfilingInfo, Serializable {
     public int getExecutionCount(int bci) {
         return bci < executions.length ? executions[bci] : -1;
     }
-    public int getDeoptimizationCount(CiDeoptReason reason) {
+    public int getDeoptimizationCount(RiDeoptReason reason) {
         return deopts[reason.ordinal()];
     }
 

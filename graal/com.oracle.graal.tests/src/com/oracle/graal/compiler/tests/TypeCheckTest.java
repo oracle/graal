@@ -26,9 +26,9 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiTypeProfile.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
 
 /**
  * Base class for checkcast and instanceof test classes.

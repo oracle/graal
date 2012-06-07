@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.type;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.types.*;
-import com.oracle.max.cri.ri.*;
 
 
 public abstract class Stamp {

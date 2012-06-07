@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;
 
-/**
- * Represents a compiled instance of a method. It may have been invalidated or removed in the meantime.
- */
-public interface RiCompiledMethod {
 
-    public abstract class MethodInvalidatedException extends RuntimeException {
+public interface MetaAccessCapability {
 
-        private static final long serialVersionUID = -3540232440794244844L;
-    }
-
-    /**
-     * Returns the method to which the compiled code belongs.
-     * @return the method to which the compiled code belongs.
-     */
-    RiResolvedMethod method();
-
-    /**
-     * @return true if the code represented by this object is still valid, false otherwise (may happen due to deopt, etc.)
-     */
-    boolean isValid();
-
-    Object execute(Object arg1, Object arg2, Object arg3);
-
-    Object executeVarargs(Object... args);
 }

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
 
 
 public final class BoxNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType {

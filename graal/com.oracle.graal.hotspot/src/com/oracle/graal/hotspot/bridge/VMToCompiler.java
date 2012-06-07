@@ -25,10 +25,10 @@ package com.oracle.graal.hotspot.bridge;
 
 import java.io.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.hotspot.ri.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Calls from HotSpot into Java.

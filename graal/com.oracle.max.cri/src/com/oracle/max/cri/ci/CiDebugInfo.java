@@ -24,6 +24,8 @@ package com.oracle.max.cri.ci;
 
 import java.io.*;
 
+import com.oracle.graal.api.meta.*;
+
 /**
  * Represents the debugging information for a particular place in the code,
  * which includes the code position, a reference map, and deoptimization information.
@@ -43,13 +45,13 @@ public class CiDebugInfo implements Serializable {
      * for bit {@code k} in byte {@code n}, it refers to the register whose
      * {@linkplain CiRegister#number number} is {@code (k + n * 8)}.
      */
-    public final CiBitMap registerRefMap;
+    public final RiBitMap registerRefMap;
 
     /**
      * The reference map for the stack frame at this point. A set bit at {@code k} in the map
      * represents stack slot number {@code k}.
      */
-    public final CiBitMap frameRefMap;
+    public final RiBitMap frameRefMap;
 
     /**
      * Creates a new {@code CiDebugInfo} from the given values.
@@ -58,7 +60,7 @@ public class CiDebugInfo implements Serializable {
      * @param registerRefMap the register map
      * @param frameRefMap the reference map for {@code frame}, which may be {@code null}
      */
-    public CiDebugInfo(CiCodePos codePos, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public CiDebugInfo(CiCodePos codePos, RiBitMap registerRefMap, RiBitMap frameRefMap) {
         this.codePos = codePos;
         this.registerRefMap = registerRefMap;
         this.frameRefMap = frameRefMap;

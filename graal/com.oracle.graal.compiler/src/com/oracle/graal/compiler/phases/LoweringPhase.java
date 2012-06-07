@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;
@@ -51,16 +52,16 @@ public class LoweringPhase extends Phase {
 
         @Override
         public ValueNode createNullCheckGuard(ValueNode object, long leafGraphId) {
-            return createGuard(object.graph().unique(new IsNullNode(object)), CiDeoptReason.NullCheckException, CiDeoptAction.InvalidateReprofile, true, leafGraphId);
+            return createGuard(object.graph().unique(new IsNullNode(object)), RiDeoptReason.NullCheckException, CiDeoptAction.InvalidateReprofile, true, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, CiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, long leafGraphId) {
             return createGuard(condition, deoptReason, action, false, leafGraphId);
         }
 
         @Override
-        public ValueNode createGuard(BooleanNode condition, CiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+        public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
             // TODO (thomaswue): Document why this must not be called on floating nodes.
             throw new UnsupportedOperationException();
         }
@@ -149,7 +150,7 @@ public class LoweringPhase extends Phase {
             }
 
             @Override
-            public ValueNode createGuard(BooleanNode condition, CiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+            public ValueNode createGuard(BooleanNode condition, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
                 FixedNode guardAnchor = (FixedNode) getGuardAnchor();
                 if (GraalOptions.OptEliminateGuards) {
                     for (Node usage : condition.usages()) {

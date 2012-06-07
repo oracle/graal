@@ -37,6 +37,7 @@ import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
 import com.oracle.max.cri.xir.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.util.*;
@@ -519,7 +520,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimizeOnOverflow(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo) {
+    public void emitDeoptimizeOnOverflow(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo) {
         LIRDebugInfo info = state();
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new BranchOp(ConditionFlag.overflow, stubEntry, info));
@@ -527,7 +528,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
 
     @Override
-    public void emitDeoptimize(CiDeoptAction action, CiDeoptReason reason, Object deoptInfo, long leafGraphId) {
+    public void emitDeoptimize(CiDeoptAction action, RiDeoptReason reason, Object deoptInfo, long leafGraphId) {
         LIRDebugInfo info = state(leafGraphId);
         LabelRef stubEntry = createDeoptStub(action, reason, info, deoptInfo);
         append(new JumpOp(stubEntry, info));
@@ -570,7 +571,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected LabelRef createDeoptStub(CiDeoptAction action, CiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
+    protected LabelRef createDeoptStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo) {
         assert info.topFrame.bci >= 0 : "invalid bci for deopt framestate";
         AMD64DeoptimizationStub stub = new AMD64DeoptimizationStub(action, reason, info, deoptInfo);
         lir.stubs.add(stub);

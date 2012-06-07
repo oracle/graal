@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.xir;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents an argument to an {@link XirSnippet}.

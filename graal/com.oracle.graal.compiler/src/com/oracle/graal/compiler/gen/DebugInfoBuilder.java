@@ -26,7 +26,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.LIRGenerator.LockScope;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;

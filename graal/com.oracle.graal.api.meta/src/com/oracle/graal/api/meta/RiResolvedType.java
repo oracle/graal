@@ -20,12 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-
-import com.oracle.max.cri.ci.*;
 
 /**
  * Represents a resolved in the compiler-runtime interface. Types include primitives, objects, {@code void},

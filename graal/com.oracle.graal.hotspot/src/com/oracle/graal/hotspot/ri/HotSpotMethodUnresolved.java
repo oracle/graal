@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.ri;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.Compiler;
 
 /**

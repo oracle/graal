@@ -26,6 +26,7 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiCallingConvention.Type;
@@ -297,8 +298,8 @@ public final class FrameMap {
     /**
      * Initializes a reference map that covers all registers of the target architecture.
      */
-    public CiBitMap initRegisterRefMap() {
-        return new CiBitMap(target.arch.registerReferenceMapBitCount);
+    public RiBitMap initRegisterRefMap() {
+        return new RiBitMap(target.arch.registerReferenceMapBitCount);
     }
 
     /**
@@ -306,8 +307,8 @@ public final class FrameMap {
      * slots in the frame. If the method has incoming reference arguments on the stack,
      * the reference map might grow later when such a reference is set.
      */
-    public CiBitMap initFrameRefMap() {
-        CiBitMap frameRefMap = new CiBitMap(frameSize() / target.wordSize);
+    public RiBitMap initFrameRefMap() {
+        RiBitMap frameRefMap = new RiBitMap(frameSize() / target.wordSize);
         for (CiStackSlot slot : objectStackBlocks) {
             setReference(slot, null, frameRefMap);
         }
@@ -323,7 +324,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void setReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void setReference(RiValue location, RiBitMap registerRefMap, RiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (isRegister(location)) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
@@ -347,7 +348,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void clearReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void clearReference(RiValue location, RiBitMap registerRefMap, RiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (location instanceof CiRegisterValue) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;

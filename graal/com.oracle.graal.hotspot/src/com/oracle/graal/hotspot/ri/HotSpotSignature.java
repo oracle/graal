@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.ri;
 
 import java.util.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
 import com.oracle.graal.java.*;

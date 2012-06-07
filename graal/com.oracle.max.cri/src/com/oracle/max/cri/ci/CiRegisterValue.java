@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.ci;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@code

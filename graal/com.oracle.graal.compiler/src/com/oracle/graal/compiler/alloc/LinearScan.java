@@ -29,8 +29,8 @@ import static com.oracle.graal.alloc.util.LocationUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
@@ -1651,7 +1651,7 @@ public final class LinearScan {
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
     }
 
-    void computeOopMap(IntervalWalker iw, LIRInstruction op, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    void computeOopMap(IntervalWalker iw, LIRInstruction op, RiBitMap registerRefMap, RiBitMap frameRefMap) {
         if (GraalOptions.TraceLinearScanLevel >= 3) {
             TTY.println("creating oop map at opId %d", op.id());
         }
@@ -1711,8 +1711,8 @@ public final class LinearScan {
 
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRDebugInfo info) {
-        CiBitMap registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
-        CiBitMap frameRefMap = frameMap.initFrameRefMap();
+        RiBitMap registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
+        RiBitMap frameRefMap = frameMap.initFrameRefMap();
         computeOopMap(iw, op, registerRefMap, frameRefMap);
 
         info.forEachState(new ValueProcedure() {

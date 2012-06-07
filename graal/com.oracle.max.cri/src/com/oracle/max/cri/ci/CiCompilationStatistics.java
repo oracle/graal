@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ri.*;
 
 @SuppressWarnings("unused")

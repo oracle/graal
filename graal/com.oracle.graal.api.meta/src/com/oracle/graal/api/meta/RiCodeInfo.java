@@ -20,21 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ci;
+package com.oracle.graal.api.meta;
 
+/**
+ * Represents some code installed in the code cache of the runtime.
+ * This encapsulated details are only for informational purposes.
+ * At any time, the runtime may invalidate the underlying code (e.g. due to deopt etc).
+ */
+public interface RiCodeInfo {
 
-public enum CiDeoptReason {
-    None,
-    NullCheckException,
-    BoundsCheckException,
-    ClassCastException,
-    ArrayStoreException,
-    UnreachedCode,
-    TypeCheckedInliningViolated,
-    OptimizedTypeCheckViolated,
-    NotCompiledExceptionHandler,
-    Unresolved,
-    JavaSubroutineMismatch,
-    ArithmeticException,
-    RuntimeConstraint;
+    /**
+     * Gets the start address of this installed code.
+     */
+    long start();
+
+    /**
+     * Gets a copy of this installed code.
+     */
+    byte[] code();
+
+    /**
+     * Gets the method (if any) from which this installed code was compiled.
+     */
+    RiResolvedMethod method();
 }

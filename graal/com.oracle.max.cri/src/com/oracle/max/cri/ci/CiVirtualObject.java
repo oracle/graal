@@ -22,6 +22,7 @@
  */
 package com.oracle.max.cri.ci;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ri.*;
 
 /**

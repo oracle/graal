@@ -27,8 +27,8 @@ import static java.lang.reflect.Modifier.*;
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.ProfiledType;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiTypeProfile.*;
 
 /**
  * Miscellaneous collection of utility methods used in the {@code CRI} project.
@@ -56,42 +56,6 @@ public class CiUtil {
             }
         }
         return null;
-    }
-
-    /**
-     * Extends the functionality of {@link Class#getSimpleName()} to include a non-empty string for anonymous and local
-     * classes.
-     *
-     * @param clazz the class for which the simple name is being requested
-     * @param withEnclosingClass specifies if the returned name should be qualified with the name(s) of the enclosing
-     *            class/classes of {@code clazz} (if any). This option is ignored if {@code clazz} denotes an anonymous
-     *            or local class.
-     * @return the simple name
-     */
-    public static String getSimpleName(Class< ? > clazz, boolean withEnclosingClass) {
-        final String simpleName = clazz.getSimpleName();
-        if (simpleName.length() != 0) {
-            if (withEnclosingClass) {
-                String prefix = "";
-                Class< ? > enclosingClass = clazz;
-                while ((enclosingClass = enclosingClass.getEnclosingClass()) != null) {
-                    prefix = prefix + enclosingClass.getSimpleName() + ".";
-                }
-                return prefix + simpleName;
-            }
-            return simpleName;
-        }
-        // Must be an anonymous or local class
-        final String name = clazz.getName();
-        int index = name.indexOf('$');
-        if (index == -1) {
-            return name;
-        }
-        index = name.lastIndexOf('.', index);
-        if (index == -1) {
-            return name;
-        }
-        return name.substring(index + 1);
     }
 
     public static final int K = 1024;
@@ -174,73 +138,6 @@ public class CiUtil {
     }
 
     /**
-     * Converts a given type to its Java programming language name. The following are examples of strings returned by
-     * this method:
-     *
-     * <pre>
-     *     qualified == true:
-     *         java.lang.Object
-     *         int
-     *         boolean[][]
-     *     qualified == false:
-     *         Object
-     *         int
-     *         boolean[][]
-     * </pre>
-     *
-     * @param riType the type to be converted to a Java name
-     * @param qualified specifies if the package prefix of the type should be included in the returned name
-     * @return the Java name corresponding to {@code riType}
-     */
-    public static String toJavaName(RiType riType, boolean qualified) {
-        RiKind kind = riType.kind(false);
-        if (kind.isPrimitive() || kind == RiKind.Void) {
-            return kind.javaName;
-        }
-        return internalNameToJava(riType.name(), qualified);
-    }
-
-    /**
-     * Converts a given type to its Java programming language name. The following are examples of strings returned by
-     * this method:
-     *
-     * <pre>
-     *      java.lang.Object
-     *      int
-     *      boolean[][]
-     * </pre>
-     *
-     * @param riType the type to be converted to a Java name
-     * @return the Java name corresponding to {@code riType}
-     */
-    public static String toJavaName(RiType riType) {
-        return (riType == null) ? null : internalNameToJava(riType.name(), true);
-    }
-
-    public static String internalNameToJava(String name, boolean qualified) {
-        switch (name.charAt(0)) {
-            case 'L': {
-                String result = name.substring(1, name.length() - 1).replace('/', '.');
-                if (!qualified) {
-                    final int lastDot = result.lastIndexOf('.');
-                    if (lastDot != -1) {
-                        result = result.substring(lastDot + 1);
-                    }
-                }
-                return result;
-
-            }
-            case '[':
-                return internalNameToJava(name.substring(1), qualified) + "[]";
-            default:
-                if (name.length() != 1) {
-                    throw new IllegalArgumentException("Illegal internal name: " + name);
-                }
-                return RiKind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).javaName;
-        }
-    }
-
-    /**
      * Gets a string for a given method formatted according to a given format specification. A format specification is
      * composed of characters that are to be copied verbatim to the result and specifiers that denote an attribute of
      * the method that is to be copied to the result. A specifier is a single character preceded by a '%' character. The
@@ -287,14 +184,14 @@ public class CiUtil {
                         if (sig == null) {
                             sig = method.signature();
                         }
-                        sb.append(toJavaName(sig.returnType(null), qualified));
+                        sb.append(RiUtil.toJavaName(sig.returnType(null), qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(toJavaName(method.holder(), qualified));
+                        sb.append(RiUtil.toJavaName(method.holder(), qualified));
                         break;
                     }
                     case 'n': {
@@ -312,7 +209,7 @@ public class CiUtil {
                             if (i != 0) {
                                 sb.append(", ");
                             }
-                            sb.append(toJavaName(sig.argumentTypeAt(i, null), qualified));
+                            sb.append(RiUtil.toJavaName(sig.argumentTypeAt(i, null), qualified));
                         }
                         break;
                     }
@@ -377,14 +274,14 @@ public class CiUtil {
                         qualified = true;
                         // fall through
                     case 't': {
-                        sb.append(toJavaName(type, qualified));
+                        sb.append(RiUtil.toJavaName(type, qualified));
                         break;
                     }
                     case 'H':
                         qualified = true;
                         // fall through
                     case 'h': {
-                        sb.append(toJavaName(field.holder(), qualified));
+                        sb.append(RiUtil.toJavaName(field.holder(), qualified));
                         break;
                     }
                     case 'n': {
@@ -680,7 +577,7 @@ public class CiUtil {
         String nl = NEW_LINE;
         if (info.hasRegisterRefMap()) {
             sb.append("  reg-ref-map:");
-            CiBitMap bm = info.registerRefMap;
+            RiBitMap bm = info.registerRefMap;
             if (formatter != null) {
                 for (int reg = bm.nextSetBit(0); reg >= 0; reg = bm.nextSetBit(reg + 1)) {
                     sb.append(" " + formatter.formatRegister(reg));
@@ -690,7 +587,7 @@ public class CiUtil {
         }
         if (info.hasStackRefMap()) {
             sb.append("frame-ref-map:");
-            CiBitMap bm = info.frameRefMap;
+            RiBitMap bm = info.frameRefMap;
             if (formatter != null) {
                 for (int i = bm.nextSetBit(0); i >= 0; i = bm.nextSetBit(i + 1)) {
                     sb.append(" " + formatter.formatStackSlot(i));
@@ -788,7 +685,7 @@ public class CiUtil {
         }
 
         boolean firstDeoptReason = true;
-        for (CiDeoptReason reason: CiDeoptReason.values()) {
+        for (RiDeoptReason reason: RiDeoptReason.values()) {
             int count = info.getDeoptimizationCount(reason);
             if (count > 0) {
                 if (firstDeoptReason) {

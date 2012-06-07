@@ -24,13 +24,13 @@ package com.oracle.graal.hotspot;
 
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 

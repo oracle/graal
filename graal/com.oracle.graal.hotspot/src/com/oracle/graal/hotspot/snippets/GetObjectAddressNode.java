@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Intrinsification for getting the address of an object.

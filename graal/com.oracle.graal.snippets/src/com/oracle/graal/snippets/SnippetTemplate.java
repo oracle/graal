@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.loop.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.debug.*;

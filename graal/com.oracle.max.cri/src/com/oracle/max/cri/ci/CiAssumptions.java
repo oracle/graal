@@ -25,7 +25,7 @@ package com.oracle.max.cri.ci;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Class for recording optimistic assumptions made during compilation.

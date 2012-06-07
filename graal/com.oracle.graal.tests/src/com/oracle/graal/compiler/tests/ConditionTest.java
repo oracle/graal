@@ -28,7 +28,7 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.calc.*;
 
 

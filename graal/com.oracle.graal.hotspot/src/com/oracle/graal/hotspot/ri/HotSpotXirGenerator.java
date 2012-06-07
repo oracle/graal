@@ -31,6 +31,7 @@ import java.util.concurrent.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
@@ -38,7 +39,6 @@ import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.CiAddress.Scale;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiRegister.RegisterFlag;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
 import com.oracle.max.cri.xir.CiXirAssembler.XirLabel;
@@ -580,7 +580,7 @@ public class HotSpotXirGenerator implements RiXirGenerator {
             if (counters != null) {
                 incCounter(asm, counter, counters, CheckcastCounter.exception);
             }
-            CiDeoptReason deoptReason = exact ? CiDeoptReason.OptimizedTypeCheckViolated : CiDeoptReason.ClassCastException;
+            RiDeoptReason deoptReason = exact ? RiDeoptReason.OptimizedTypeCheckViolated : RiDeoptReason.ClassCastException;
             XirOperand scratch = asm.createRegisterTemp("scratch", target.wordKind, AMD64.r10);
             asm.mov(scratch, wordConst(asm, compiler.getRuntime().encodeDeoptActionAndReason(CiDeoptAction.InvalidateReprofile, deoptReason)));
             asm.callRuntime(CiRuntimeCall.Deoptimize, null);

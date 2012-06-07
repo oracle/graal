@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.alloc.util;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 
 public class Location extends RiValue {

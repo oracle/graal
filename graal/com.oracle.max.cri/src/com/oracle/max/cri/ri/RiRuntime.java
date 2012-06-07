@@ -24,6 +24,7 @@ package com.oracle.max.cri.ri;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ci.*;
 
 /**
@@ -132,13 +133,13 @@ public interface RiRuntime {
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
      * @return the encoded value as an integer
      */
-    int encodeDeoptActionAndReason(CiDeoptAction action, CiDeoptReason reason);
+    int encodeDeoptActionAndReason(CiDeoptAction action, RiDeoptReason reason);
 
     /**
      * Converts a RiDeoptReason into an integer value.
      * @return An integer value representing the given RiDeoptReason.
      */
-    int convertDeoptReason(CiDeoptReason reason);
+    int convertDeoptReason(RiDeoptReason reason);
 
     /**
      * Converts a RiDeoptAction into an integer value.

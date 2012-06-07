@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.InputChangedListener;

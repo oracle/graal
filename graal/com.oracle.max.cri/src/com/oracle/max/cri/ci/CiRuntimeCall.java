@@ -22,9 +22,9 @@
  */
 package com.oracle.max.cri.ci;
 
-import static com.oracle.max.cri.ri.RiKind.*;
+import static com.oracle.graal.api.meta.RiKind.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Enumerates the calls that must be provided by the runtime system. The compiler

@@ -29,6 +29,7 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;

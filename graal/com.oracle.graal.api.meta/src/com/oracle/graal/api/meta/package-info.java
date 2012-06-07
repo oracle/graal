@@ -29,9 +29,9 @@
  * <p>
  * {@link com.oracle.max.cri.ri.RiRuntime} encapsulates the main functionality of the runtime for the compiler.
  * <p>
- * Types (i.e., primitives, classes and interfaces}, fields and methods are represented by {@link com.oracle.max.cri.ri.RiType},
- * {@link com.oracle.max.cri.ri.RiField} and {@link com.oracle.max.cri.ri.RiMethod}, respectively, with additional support from
- * {@link com.oracle.max.cri.ri.RiSignature} and {@link com.oracle.max.cri.ri.RiExceptionHandler}. Access to the runtime constant pool
- * is through {@link com.oracle.max.cri.ri.RiConstantPool}.
+ * Types (i.e., primitives, classes and interfaces}, fields and methods are represented by {@link com.oracle.graal.api.meta.RiType},
+ * {@link com.oracle.graal.api.meta.RiField} and {@link com.oracle.graal.api.meta.RiMethod}, respectively, with additional support from
+ * {@link com.oracle.graal.api.meta.RiSignature} and {@link com.oracle.graal.api.meta.RiExceptionHandler}. Access to the runtime constant pool
+ * is through {@link com.oracle.graal.api.meta.RiConstantPool}.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;

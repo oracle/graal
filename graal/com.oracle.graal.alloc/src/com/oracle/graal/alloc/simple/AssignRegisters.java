@@ -24,9 +24,8 @@ package com.oracle.graal.alloc.simple;
 
 import static com.oracle.graal.alloc.util.LocationUtil.*;
 
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
@@ -41,8 +40,8 @@ public abstract class AssignRegisters {
         this.frameMap = frameMap;
     }
 
-    private CiBitMap curRegisterRefMap;
-    private CiBitMap curFrameRefMap;
+    private RiBitMap curRegisterRefMap;
+    private RiBitMap curFrameRefMap;
 
     public void execute() {
         ValueProcedure useProc =          new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return use(value); } };
@@ -71,12 +70,12 @@ public abstract class AssignRegisters {
 
                 if (op.info != null) {
                     Debug.log("    registerRefMap: %s  frameRefMap: %s", curRegisterRefMap, curFrameRefMap);
-                    op.info.finish(new CiBitMap(curRegisterRefMap), new CiBitMap(curFrameRefMap), frameMap);
+                    op.info.finish(new RiBitMap(curRegisterRefMap), new RiBitMap(curFrameRefMap), frameMap);
 
                     if (op instanceof LIRXirInstruction) {
                         LIRXirInstruction xir = (LIRXirInstruction) op;
                         if (xir.infoAfter != null) {
-                            xir.infoAfter.finish(new CiBitMap(curRegisterRefMap), new CiBitMap(curFrameRefMap), frameMap);
+                            xir.infoAfter.finish(new RiBitMap(curRegisterRefMap), new RiBitMap(curFrameRefMap), frameMap);
                         }
                     }
                 }

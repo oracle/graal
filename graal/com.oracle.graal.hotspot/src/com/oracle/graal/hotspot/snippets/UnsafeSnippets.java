@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.snippets;
 
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.util.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.snippets.*;

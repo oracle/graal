@@ -27,7 +27,7 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -110,7 +110,7 @@ public class LIRDebugInfo {
     }
 
 
-    public void finish(CiBitMap registerRefMap, CiBitMap frameRefMap, FrameMap frameMap) {
+    public void finish(RiBitMap registerRefMap, RiBitMap frameRefMap, FrameMap frameMap) {
         debugInfo = new CiDebugInfo(topFrame, registerRefMap, frameRefMap);
 
         // Add additional stack slots for outgoing method parameters.

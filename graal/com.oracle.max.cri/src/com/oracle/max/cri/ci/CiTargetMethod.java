@@ -25,6 +25,7 @@ package com.oracle.max.cri.ci;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ri.*;
 
 /**
@@ -547,7 +548,7 @@ public class CiTargetMethod implements Serializable {
         }
     }
 
-    private static void appendRefMap(StringBuilder sb, String name, CiBitMap map) {
+    private static void appendRefMap(StringBuilder sb, String name, RiBitMap map) {
         if (map != null) {
             sb.append(' ').append(name).append('[').append(map.toBinaryString()).append(']');
         }

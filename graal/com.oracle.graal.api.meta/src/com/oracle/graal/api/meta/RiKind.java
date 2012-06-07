@@ -20,15 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;
 
-import static com.oracle.max.cri.ri.RiKind.Flags.*;
+import static com.oracle.graal.api.meta.RiKind.Flags.*;
 
 import java.lang.reflect.*;
 
 import sun.misc.*;
-
-import com.oracle.max.cri.ci.*;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types,
@@ -295,7 +293,7 @@ public enum RiKind {
                         return " \"" + s + '"';
                     }
                 } else if (value instanceof RiType) {
-                    return "class " + CiUtil.toJavaName((RiType) value);
+                    return "class " + RiUtil.toJavaName((RiType) value);
                 } else if (value instanceof Enum || value instanceof FormatWithToString) {
                     return String.valueOf(value);
                 } else if (value instanceof Class< ? >) {
@@ -303,7 +301,7 @@ public enum RiKind {
                 } else if (value.getClass().isArray()) {
                     return formatArray(value);
                 } else {
-                    return CiUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
+                    return RiUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
                 }
             }
         } else {
@@ -317,7 +315,7 @@ public enum RiKind {
         Class< ? > componentType = array.getClass().getComponentType();
         assert componentType != null;
         int arrayLength = Array.getLength(array);
-        StringBuilder buf = new StringBuilder(CiUtil.getSimpleName(componentType, true)).
+        StringBuilder buf = new StringBuilder(RiUtil.getSimpleName(componentType, true)).
                         append('[').
                         append(arrayLength).
                         append("]{");

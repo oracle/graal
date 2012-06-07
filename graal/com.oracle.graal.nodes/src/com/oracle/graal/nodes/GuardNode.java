@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -44,7 +45,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
 
     @Input private BooleanNode condition;
     @Input(notDataflow = true) private FixedNode anchor;
-    private final CiDeoptReason reason;
+    private final RiDeoptReason reason;
     private final CiDeoptAction action;
     private boolean negated;
     private final long leafGraphId;
@@ -74,7 +75,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return negated;
     }
 
-    public CiDeoptReason reason() {
+    public RiDeoptReason reason() {
         return reason;
     }
 
@@ -82,7 +83,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, LI
         return action;
     }
 
-    public GuardNode(BooleanNode condition, FixedNode anchor, CiDeoptReason reason, CiDeoptAction action, boolean negated, long leafGraphId) {
+    public GuardNode(BooleanNode condition, FixedNode anchor, RiDeoptReason reason, CiDeoptAction action, boolean negated, long leafGraphId) {
         super(StampFactory.dependency());
         this.condition = condition;
         this.anchor = anchor;

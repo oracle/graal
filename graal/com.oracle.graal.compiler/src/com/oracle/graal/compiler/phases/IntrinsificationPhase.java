@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.debug.*;

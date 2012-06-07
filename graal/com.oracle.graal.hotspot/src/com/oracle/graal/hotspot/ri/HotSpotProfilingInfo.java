@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.ri;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
@@ -85,7 +85,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     }
 
     @Override
-    public int getDeoptimizationCount(CiDeoptReason reason) {
+    public int getDeoptimizationCount(RiDeoptReason reason) {
         return methodData.getDeoptimizationCount(reason);
     }
 

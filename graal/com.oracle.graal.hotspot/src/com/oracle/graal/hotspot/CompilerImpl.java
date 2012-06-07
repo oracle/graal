@@ -26,6 +26,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
@@ -35,7 +36,6 @@ import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
 
 /**

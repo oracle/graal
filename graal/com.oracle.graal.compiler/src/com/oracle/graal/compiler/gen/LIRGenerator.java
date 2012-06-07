@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import static com.oracle.graal.api.meta.RiValue.*;
 import static com.oracle.graal.lir.ValueUtil.*;
 import static com.oracle.max.cri.ci.CiCallingConvention.Type.*;
-import static com.oracle.max.cri.ri.RiValue.*;
 
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.util.*;
 import com.oracle.graal.debug.*;
@@ -52,7 +54,6 @@ import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
 import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
 import com.oracle.max.cri.xir.CiXirAssembler.XirInstruction;
 import com.oracle.max.cri.xir.CiXirAssembler.XirMark;
@@ -685,7 +686,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public void emitGuardCheck(BooleanNode comp, CiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
+    public void emitGuardCheck(BooleanNode comp, RiDeoptReason deoptReason, CiDeoptAction action, boolean negated, long leafGraphId) {
         if (comp instanceof IsNullNode && negated) {
             emitNullCheckGuard(((IsNullNode) comp).object(), leafGraphId);
         } else if (comp instanceof ConstantNode && (comp.asConstant().asBoolean() != negated)) {
@@ -937,7 +938,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    protected abstract LabelRef createDeoptStub(CiDeoptAction action, CiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
+    protected abstract LabelRef createDeoptStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
 
     @Override
     public Variable emitCall(@SuppressWarnings("hiding") Object target, RiKind result, RiKind[] arguments, boolean canTrap, RiValue... args) {

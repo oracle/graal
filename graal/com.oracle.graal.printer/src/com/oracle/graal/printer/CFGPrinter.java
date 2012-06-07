@@ -28,9 +28,9 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 import com.oracle.graal.alloc.util.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.graal.compiler.gen.*;

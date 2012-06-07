@@ -26,9 +26,9 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to

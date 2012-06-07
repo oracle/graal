@@ -24,7 +24,7 @@ package com.oracle.max.cri.ci;
 
 import java.io.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents a code position, that is, a chain of inlined methods with bytecode

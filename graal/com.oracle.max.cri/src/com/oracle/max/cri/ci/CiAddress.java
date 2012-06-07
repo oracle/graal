@@ -24,7 +24,7 @@ package com.oracle.max.cri.ci;
 
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base register, an index register,

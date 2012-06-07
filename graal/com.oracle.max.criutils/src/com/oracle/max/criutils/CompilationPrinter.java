@@ -27,8 +27,8 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases.
@@ -106,7 +106,7 @@ public class CompilationPrinter {
     /**
      * Formats a given {@linkplain FrameState JVM frame state} as a multi line string.
      */
-    protected String debugInfoToString(CiCodePos codePos, CiBitMap registerRefMap, CiBitMap frameRefMap, CiArchitecture arch) {
+    protected String debugInfoToString(CiCodePos codePos, RiBitMap registerRefMap, RiBitMap frameRefMap, CiArchitecture arch) {
         StringBuilder sb = new StringBuilder();
 
         if (registerRefMap != null) {

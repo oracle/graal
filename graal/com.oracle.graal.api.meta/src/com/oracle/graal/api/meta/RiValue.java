@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;
+
+import java.io.*;
 
 /**
- * Represents some code installed in the code cache of the runtime.
- * This encapsulated details are only for informational purposes.
- * At any time, the runtime may invalidate the underlying code (e.g. due to deopt etc).
+ * Abstract base class for values manipulated by the compiler. All values have a {@linkplain RiKind kind} and are immutable.
  */
-public interface RiCodeInfo {
+public abstract class RiValue implements Serializable {
+    private static final long serialVersionUID = -6909397188697766469L;
+
+    @SuppressWarnings("serial")
+    public static RiValue IllegalValue = new RiValue(RiKind.Illegal) {
+        @Override
+        public String toString() {
+            return "-";
+        }
+    };
 
     /**
-     * Gets the start address of this installed code.
+     * The kind of this value.
      */
-    long start();
+    public final RiKind kind;
 
     /**
-     * Gets a copy of this installed code.
+     * Initializes a new value of the specified kind.
+     * @param kind the kind
      */
-    byte[] code();
+    protected RiValue(RiKind kind) {
+        this.kind = kind;
+    }
 
     /**
-     * Gets the method (if any) from which this installed code was compiled.
+     * String representation of the kind, which should be the end of all {@link #toString()} implementation of subclasses.
      */
-    RiResolvedMethod method();
+    protected final String kindSuffix() {
+        return "|" + kind.typeChar;
+    }
 }

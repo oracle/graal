@@ -26,12 +26,11 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiTypeProfile.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.Compiler;
-import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiTypeProfile.*;
 
 
 public final class HotSpotMethodData extends CompilerObject {
@@ -79,7 +78,7 @@ public final class HotSpotMethodData extends CompilerObject {
         return position >= 0 && position < normalDataSize + extraDataSize;
     }
 
-    public int getDeoptimizationCount(CiDeoptReason reason) {
+    public int getDeoptimizationCount(RiDeoptReason reason) {
         int reasonIndex = compiler.getRuntime().convertDeoptReason(reason);
         return unsafe.getByte(hotspotMirror, (long) config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }

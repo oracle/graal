@@ -21,6 +21,7 @@
  * questions.
  */
 package com.oracle.graal.hotspot.snippets;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.Fold;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;

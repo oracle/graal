@@ -26,8 +26,8 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * Implementation of RiType for resolved non-primitive HotSpot classes.

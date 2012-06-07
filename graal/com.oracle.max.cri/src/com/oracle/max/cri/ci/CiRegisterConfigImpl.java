@@ -24,9 +24,9 @@ package com.oracle.max.cri.ci;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.cri.ci.CiCallingConvention.*;
 import com.oracle.max.cri.ci.CiRegister.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * A default implementation of {@link CiRegisterConfig}.

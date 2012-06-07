@@ -24,9 +24,9 @@ package com.oracle.graal.compiler;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.criutils.*;
 
 
@@ -49,16 +49,16 @@ public final class OptimisticOptimizations {
         this.enabledOpts = EnumSet.noneOf(Optimization.class);
 
         RiProfilingInfo profilingInfo = method.profilingInfo();
-        if (checkDeoptimizations(profilingInfo, CiDeoptReason.UnreachedCode)) {
+        if (checkDeoptimizations(profilingInfo, RiDeoptReason.UnreachedCode)) {
             enabledOpts.add(Optimization.RemoveNeverExecutedCode);
         }
-        if (checkDeoptimizations(profilingInfo, CiDeoptReason.TypeCheckedInliningViolated)) {
+        if (checkDeoptimizations(profilingInfo, RiDeoptReason.TypeCheckedInliningViolated)) {
             enabledOpts.add(Optimization.UseTypeCheckedInlining);
         }
-        if (checkDeoptimizations(profilingInfo, CiDeoptReason.OptimizedTypeCheckViolated)) {
+        if (checkDeoptimizations(profilingInfo, RiDeoptReason.OptimizedTypeCheckViolated)) {
             enabledOpts.add(Optimization.UseTypeCheckHints);
         }
-        if (checkDeoptimizations(profilingInfo, CiDeoptReason.NotCompiledExceptionHandler)) {
+        if (checkDeoptimizations(profilingInfo, RiDeoptReason.NotCompiledExceptionHandler)) {
             enabledOpts.add(Optimization.UseExceptionProbability);
         }
     }
@@ -111,7 +111,7 @@ public final class OptimisticOptimizations {
         return false;
     }
 
-    private static boolean checkDeoptimizations(RiProfilingInfo profilingInfo, CiDeoptReason reason) {
+    private static boolean checkDeoptimizations(RiProfilingInfo profilingInfo, RiDeoptReason reason) {
         return profilingInfo.getDeoptimizationCount(reason) < GraalOptions.DeoptsToDisableOptimisticOptimization;
     }
 }

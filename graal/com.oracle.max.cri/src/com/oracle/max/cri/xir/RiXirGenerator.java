@@ -22,8 +22,8 @@
  */
 package com.oracle.max.cri.xir;
 
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 
 /**
  * Represents the interface through which the compiler requests the XIR for a given bytecode from the runtime system.

@@ -24,7 +24,7 @@ package com.oracle.max.cri.ci;
 
 import java.io.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the Java bytecode frame state(s) at a given position

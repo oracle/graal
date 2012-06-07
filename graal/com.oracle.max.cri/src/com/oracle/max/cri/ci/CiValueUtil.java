@@ -22,7 +22,7 @@
  */
 package com.oracle.max.cri.ci;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 
 public class CiValueUtil {
     public static boolean isIllegal(RiValue value) {

@@ -26,8 +26,8 @@ import static com.oracle.max.cri.ci.CiValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ri.*;
 import com.oracle.max.cri.xir.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 
 public abstract class LIRXirInstruction extends LIRInstruction {

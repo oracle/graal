@@ -24,7 +24,7 @@ package com.oracle.graal.compiler.phases;
 
 import java.lang.reflect.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;

@@ -20,37 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;
+
+import java.lang.annotation.*;
+import java.lang.reflect.*;
 
 /**
- * Represents a reference to a field, including both resolved and unresolved fields. Fields, like methods and types, are
+ * Represents a reference to a resolved field. Fields, like methods and types, are
  * resolved through {@link RiConstantPool constant pools}, and their actual implementation is provided by the
  * {@link RiRuntime runtime} to the compiler.
  */
-public interface RiField {
-    /**
-     * Gets the name of this field as a string.
-     * @return the name of this field
-     */
-    String name();
+public interface RiResolvedField extends RiField {
 
     /**
-     * Gets the type of this field as a compiler-runtime interface type.
-     * @return the type of this field
+     * Gets the access flags for this field. Only the flags specified in the JVM specification
+     * will be included in the returned mask. The utility methods in the {@link Modifier} class
+     * should be used to query the returned mask for the presence/absence of individual flags.
+     * @return the mask of JVM defined field access flags defined for this field
      */
-    RiType type();
+    int accessFlags();
 
     /**
-     * Gets the kind of this field.
-     * @param architecture When true, the architecture-specific kind used for emitting machine code is returned.
-     *        When false, the kind according to the Java specification is returned.
-     * @return the kind
+     * Gets the constant value of this field if available.
+     * @param receiver object from which this field's value is to be read. This value is ignored if this field is static.
+     * @return the constant value of this field or {@code null} if the constant value is not available
      */
-    RiKind kind(boolean architecture);
+    RiConstant constantValue(RiConstant receiver);
 
     /**
      * Gets the holder of this field as a compiler-runtime interface type.
      * @return the holder of this field
      */
-    RiType holder();
+    RiResolvedType holder();
+
+    /**
+     * Returns this field's annotation of a specified type.
+     *
+     * @param annotationClass the Class object corresponding to the annotation type
+     * @return the annotation of type {@code annotationClass} for this field if present, else null
+     */
+    <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 }

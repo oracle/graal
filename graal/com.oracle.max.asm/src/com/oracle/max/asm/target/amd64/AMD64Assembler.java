@@ -27,9 +27,9 @@ import static com.oracle.max.asm.target.amd64.AMD64.*;
 import static com.oracle.max.cri.ci.CiValueUtil.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.max.asm.*;
 import com.oracle.max.cri.ci.*;
-import com.oracle.max.cri.ri.*;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.

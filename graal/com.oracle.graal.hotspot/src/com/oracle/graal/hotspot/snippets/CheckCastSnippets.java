@@ -31,6 +31,7 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.cri.*;
@@ -74,7 +75,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (objectHub != exactHub) {
             exactMiss.inc();
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         exactHit.inc();
         return object;
@@ -96,7 +97,7 @@ public class CheckCastSnippets implements SnippetsInterface {
         Object objectHub = UnsafeLoadNode.loadObject(object, 0, hubOffset(), true);
         if (UnsafeLoadNode.loadObject(objectHub, 0, superCheckOffset, true) != hub) {
             displayMiss.inc();
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         displayHit.inc();
         return object;
@@ -122,7 +123,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkSecondarySubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         return object;
     }
@@ -148,7 +149,7 @@ public class CheckCastSnippets implements SnippetsInterface {
             }
         }
         if (!checkUnknownSubType(hub, objectHub)) {
-            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, CiDeoptReason.ClassCastException);
+            DeoptimizeNode.deopt(CiDeoptAction.InvalidateReprofile, RiDeoptReason.ClassCastException);
         }
         return object;
     }

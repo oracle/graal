@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import static com.oracle.max.cri.ri.RiValue.*;
+import static com.oracle.graal.api.meta.RiValue.*;
 import static com.oracle.graal.lir.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.max.cri.ri.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**

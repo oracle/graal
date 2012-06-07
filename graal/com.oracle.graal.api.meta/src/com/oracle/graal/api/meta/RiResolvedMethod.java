@@ -20,14 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.max.cri.ri;
+package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
-
-import com.oracle.max.cri.ci.*;
-
 
 /**
  * Represents resolved methods. Methods, like fields and types, are resolved through
@@ -135,7 +132,7 @@ public interface RiResolvedMethod extends RiMethod {
      *
      * @return the liveness map if it is available; {@code null} otherwise
      */
-    CiBitMap[] livenessMap();
+    RiBitMap[] livenessMap();
 
     /**
      * Checks whether this method can be statically bound (that is, it is final or private or static).

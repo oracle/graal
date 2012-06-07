@@ -27,6 +27,8 @@ import static com.oracle.max.cri.util.MemoryBarriers.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
@@ -48,8 +50,6 @@ import com.oracle.max.cri.ci.CiTargetMethod.DataPatch;
 import com.oracle.max.cri.ci.CiTargetMethod.Mark;
 import com.oracle.max.cri.ci.CiTargetMethod.Safepoint;
 import com.oracle.max.cri.ci.CiUtil.RefMapFormatter;
-import com.oracle.max.cri.ri.*;
-import com.oracle.max.cri.ri.RiType.Representation;
 import com.oracle.max.criutils.*;
 
 /**
@@ -390,7 +390,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     private static ValueNode createBoundsCheck(AccessIndexedNode n, CiLoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), CiDeoptReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
+        ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), RiDeoptReason.BoundsCheckException, CiDeoptAction.InvalidateReprofile, n.leafGraphId());
 
         graph.addBeforeFixed(n, arrayLength);
         return guard;
@@ -501,7 +501,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int encodeDeoptActionAndReason(CiDeoptAction action, CiDeoptReason reason) {
+    public int encodeDeoptActionAndReason(CiDeoptAction action, RiDeoptReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
 
@@ -523,7 +523,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public int convertDeoptReason(CiDeoptReason reason) {
+    public int convertDeoptReason(RiDeoptReason reason) {
         switch(reason) {
             case None: return 0;
             case NullCheckException: return 1;
