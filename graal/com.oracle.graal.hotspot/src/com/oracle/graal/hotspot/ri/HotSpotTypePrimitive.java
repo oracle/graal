@@ -38,11 +38,10 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     private RiKind kind;
     private final HotSpotKlassOop klassOop;
 
-    public HotSpotTypePrimitive(HotSpotCompilerImpl compiler, RiKind kind) {
-        super(compiler);
+    public HotSpotTypePrimitive(RiKind kind) {
         this.kind = kind;
         this.name = String.valueOf(Character.toUpperCase(kind.typeChar));
-        this.klassOop = new HotSpotKlassOop(compiler, kind.toJavaClass());
+        this.klassOop = new HotSpotKlassOop(kind.toJavaClass());
     }
 
     @Override
@@ -53,7 +52,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
 
     @Override
     public RiResolvedType arrayOf() {
-        return (RiResolvedType) compiler.getCompilerToVM().getPrimitiveArrayType(kind);
+        return (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().getPrimitiveArrayType(kind);
     }
 
     @Override

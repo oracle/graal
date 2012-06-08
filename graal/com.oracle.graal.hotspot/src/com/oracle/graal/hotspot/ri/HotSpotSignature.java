@@ -40,8 +40,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     private RiType[] argumentTypes;
     private RiType returnTypeCache;
 
-    public HotSpotSignature(HotSpotCompilerImpl compiler, String signature) {
-        super(compiler);
+    public HotSpotSignature(String signature) {
         assert signature.length() > 0;
         this.originalString = signature;
 
@@ -118,7 +117,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
         }
         RiType type = argumentTypes[index];
         if (type == null || !(type instanceof RiResolvedType)) {
-            type = compiler.lookupType(arguments.get(index), (HotSpotTypeResolved) accessingClass, true);
+            type = HotSpotCompilerImpl.getInstance().lookupType(arguments.get(index), (HotSpotTypeResolved) accessingClass, true);
             argumentTypes[index] = type;
         }
         return type;
@@ -137,7 +136,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     @Override
     public RiType returnType(RiType accessingClass) {
         if (returnTypeCache == null) {
-            returnTypeCache = compiler.lookupType(returnType, (HotSpotTypeResolved) accessingClass, false);
+            returnTypeCache = HotSpotCompilerImpl.getInstance().lookupType(returnType, (HotSpotTypeResolved) accessingClass, false);
         }
         return returnTypeCache;
     }

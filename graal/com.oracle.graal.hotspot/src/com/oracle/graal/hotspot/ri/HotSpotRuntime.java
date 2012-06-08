@@ -465,10 +465,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return (RiResolvedMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
     }
 
-    private HotSpotCodeInfo makeInfo(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+    private static HotSpotCodeInfo makeInfo(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
         HotSpotCodeInfo hsInfo = null;
         if (info != null && info.length > 0) {
-            hsInfo = new HotSpotCodeInfo(compiler, code, (HotSpotMethodResolved) method);
+            hsInfo = new HotSpotCodeInfo(code, (HotSpotMethodResolved) method);
             info[0] = hsInfo;
         }
         return hsInfo;
@@ -476,13 +476,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
 
     public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
-        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), true, hsInfo);
+        compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), true, hsInfo);
     }
 
     @Override
     public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
-        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod(compiler, (HotSpotMethodResolved) method, code), false, hsInfo);
+        return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), false, hsInfo);
     }
 
     @Override

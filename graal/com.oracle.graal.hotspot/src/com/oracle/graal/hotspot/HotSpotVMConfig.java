@@ -32,7 +32,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     private static final long serialVersionUID = -4744897993263044184L;
 
     private HotSpotVMConfig() {
-        super(null);
     }
 
     // os information, register layout, code generation, ...

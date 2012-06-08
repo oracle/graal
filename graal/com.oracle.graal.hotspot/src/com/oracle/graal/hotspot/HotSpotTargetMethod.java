@@ -42,8 +42,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
 
-    public HotSpotTargetMethod(HotSpotCompilerImpl compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
-        super(compiler);
+    public HotSpotTargetMethod(HotSpotMethodResolved method, CiTargetMethod targetMethod) {
         this.method = method;
         this.targetMethod = targetMethod;
         this.name = null;
@@ -54,17 +53,6 @@ public final class HotSpotTargetMethod extends CompilerObject {
         } else {
             exceptionHandlers = targetMethod.exceptionHandlers.toArray(new ExceptionHandler[targetMethod.exceptionHandlers.size()]);
         }
-    }
-
-    private HotSpotTargetMethod(HotSpotCompilerImpl compiler, CiTargetMethod targetMethod, String name) {
-        super(compiler);
-        this.method = null;
-        this.targetMethod = targetMethod;
-        this.name = name;
-
-        sites = getSortedSites(targetMethod);
-        assert targetMethod.exceptionHandlers == null || targetMethod.exceptionHandlers.size() == 0;
-        exceptionHandlers = null;
     }
 
     private static Site[] getSortedSites(CiTargetMethod target) {

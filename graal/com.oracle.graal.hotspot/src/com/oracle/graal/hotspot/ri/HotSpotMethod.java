@@ -30,10 +30,6 @@ public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
     private static final long serialVersionUID = 7167491397941960839L;
     protected String name;
 
-    protected HotSpotMethod(HotSpotCompilerImpl compiler) {
-        super(compiler);
-    }
-
     @Override
     public final String name() {
         return name;

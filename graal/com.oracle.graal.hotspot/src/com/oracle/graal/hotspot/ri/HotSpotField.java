@@ -45,8 +45,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     private final int accessFlags;
     private RiConstant constant;                // Constant part only valid for static fields.
 
-    public HotSpotField(HotSpotCompilerImpl compiler, RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
-        super(compiler);
+    public HotSpotField(RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
         this.holder = holder;
         this.name = name;
         this.type = type;

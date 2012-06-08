@@ -35,7 +35,6 @@ public final class HotSpotExceptionHandler extends CompilerObject implements RiE
     private RiType catchClass;
 
     private HotSpotExceptionHandler() {
-        super(null);
     }
 
     @Override

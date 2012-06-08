@@ -38,8 +38,7 @@ public class HotSpotCodeInfo extends CompilerObject implements RiCodeInfo {
     public final CiTargetMethod targetMethod;
     private HotSpotMethodResolved method;
 
-    public HotSpotCodeInfo(HotSpotCompilerImpl compiler, CiTargetMethod targetMethod, HotSpotMethodResolved method) {
-        super(compiler);
+    public HotSpotCodeInfo(CiTargetMethod targetMethod, HotSpotMethodResolved method) {
         assert targetMethod != null;
         this.method = method;
         this.targetMethod = targetMethod;

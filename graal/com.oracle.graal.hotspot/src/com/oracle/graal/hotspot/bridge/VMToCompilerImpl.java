@@ -71,15 +71,15 @@ public class VMToCompilerImpl implements VMToCompiler {
     public VMToCompilerImpl(HotSpotCompilerImpl compiler) {
         this.compiler = compiler;
 
-        typeBoolean = new HotSpotTypePrimitive(compiler, RiKind.Boolean);
-        typeChar = new HotSpotTypePrimitive(compiler, RiKind.Char);
-        typeFloat = new HotSpotTypePrimitive(compiler, RiKind.Float);
-        typeDouble = new HotSpotTypePrimitive(compiler, RiKind.Double);
-        typeByte = new HotSpotTypePrimitive(compiler, RiKind.Byte);
-        typeShort = new HotSpotTypePrimitive(compiler, RiKind.Short);
-        typeInt = new HotSpotTypePrimitive(compiler, RiKind.Int);
-        typeLong = new HotSpotTypePrimitive(compiler, RiKind.Long);
-        typeVoid = new HotSpotTypePrimitive(compiler, RiKind.Void);
+        typeBoolean = new HotSpotTypePrimitive(RiKind.Boolean);
+        typeChar = new HotSpotTypePrimitive(RiKind.Char);
+        typeFloat = new HotSpotTypePrimitive(RiKind.Float);
+        typeDouble = new HotSpotTypePrimitive(RiKind.Double);
+        typeByte = new HotSpotTypePrimitive(RiKind.Byte);
+        typeShort = new HotSpotTypePrimitive(RiKind.Short);
+        typeInt = new HotSpotTypePrimitive(RiKind.Int);
+        typeLong = new HotSpotTypePrimitive(RiKind.Long);
+        typeVoid = new HotSpotTypePrimitive(RiKind.Void);
     }
 
     public void startCompiler() throws Throwable {
@@ -398,12 +398,12 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     @Override
     public RiMethod createRiMethodUnresolved(String name, String signature, RiType holder) {
-        return new HotSpotMethodUnresolved(compiler, name, signature, holder);
+        return new HotSpotMethodUnresolved(name, signature, holder);
     }
 
     @Override
     public RiSignature createRiSignature(String signature) {
-        return new HotSpotSignature(compiler, signature);
+        return new HotSpotSignature(signature);
     }
 
     @Override
@@ -448,7 +448,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     @Override
     public RiType createRiTypeUnresolved(String name) {
-        return new HotSpotTypeUnresolved(compiler, name);
+        return new HotSpotTypeUnresolved(name);
     }
 
     @Override

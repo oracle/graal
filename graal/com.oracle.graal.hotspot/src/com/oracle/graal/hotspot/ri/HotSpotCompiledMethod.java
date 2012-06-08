@@ -41,8 +41,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     private final RiResolvedMethod method;
     private long nmethod;
 
-    public HotSpotCompiledMethod(HotSpotCompilerImpl compiler, RiResolvedMethod method) {
-        super(compiler);
+    public HotSpotCompiledMethod(RiResolvedMethod method) {
         this.method = method;
     }
 
@@ -67,7 +66,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
         assert method.signature().argumentKindAt(0, false) == RiKind.Object;
         assert method.signature().argumentKindAt(1, false) == RiKind.Object;
         assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2, false) == RiKind.Object;
-        return compiler.getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
+        return HotSpotCompilerImpl.getInstance().getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
     }
 
     private boolean checkArgs(Object... args) {
@@ -87,6 +86,6 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     @Override
     public Object executeVarargs(Object... args) {
         assert checkArgs(args);
-        return compiler.getCompilerToVM().executeCompiledMethodVarargs(this, args);
+        return HotSpotCompilerImpl.getInstance().getCompilerToVM().executeCompiledMethodVarargs(this, args);
     }
 }

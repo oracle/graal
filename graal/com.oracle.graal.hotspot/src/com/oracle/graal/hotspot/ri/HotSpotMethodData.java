@@ -56,8 +56,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private int normalDataSize;
     private int extraDataSize;
 
-    private HotSpotMethodData(HotSpotCompilerImpl compiler) {
-        super(compiler);
+    private HotSpotMethodData() {
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
     }
 
@@ -78,7 +77,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     public int getDeoptimizationCount(RiDeoptReason reason) {
-        int reasonIndex = compiler.getRuntime().convertDeoptReason(reason);
+        int reasonIndex = HotSpotCompilerImpl.getInstance().getRuntime().convertDeoptReason(reason);
         return unsafe.getByte(hotspotMirror, (long) config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 

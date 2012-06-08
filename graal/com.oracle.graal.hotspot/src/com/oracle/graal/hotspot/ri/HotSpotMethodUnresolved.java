@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.ri;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of RiMethod for unresolved HotSpot methods.
@@ -33,11 +32,10 @@ public final class HotSpotMethodUnresolved extends HotSpotMethod {
     private final RiSignature signature;
     protected RiType holder;
 
-    public HotSpotMethodUnresolved(HotSpotCompilerImpl compiler, String name, String signature, RiType holder) {
-        super(compiler);
+    public HotSpotMethodUnresolved(String name, String signature, RiType holder) {
         this.name = name;
         this.holder = holder;
-        this.signature = new HotSpotSignature(compiler, signature);
+        this.signature = new HotSpotSignature(signature);
     }
 
     @Override

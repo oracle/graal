@@ -40,8 +40,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     private HotSpotMethodData methodData;
     private final int codeSize;
 
-    public HotSpotProfilingInfo(HotSpotCompilerImpl compiler, HotSpotMethodData methodData, int codeSize) {
-        super(compiler);
+    public HotSpotProfilingInfo(HotSpotMethodData methodData, int codeSize) {
         this.methodData = methodData;
         this.codeSize = codeSize;
         hintPosition = 0;
