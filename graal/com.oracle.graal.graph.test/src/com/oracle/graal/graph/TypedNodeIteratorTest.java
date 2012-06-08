@@ -20,14 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.test;
+package com.oracle.graal.graph;
 import static org.junit.Assert.*;
 
 import java.util.*;
 
 import org.junit.*;
-
-import com.oracle.graal.graph.*;
 
 
 

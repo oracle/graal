@@ -20,9 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.test;
-
-import com.oracle.graal.graph.*;
+package com.oracle.graal.graph;
 
 
 public class TestNode extends Node implements Node.IterableNodeType {
