@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api;
+package com.oracle.graal.hotspot;
+
+import com.oracle.graal.api.*;
 
 
-public class Graal {
+public class HotSpotGraalRuntime implements GraalRuntime {
 
-    private static GraalRuntime runtime;
-
-    private static native GraalRuntime initializeRuntime();
-
-    public static GraalRuntime getRuntime() {
-        return runtime;
+    @Override
+    public String getName() {
+        return "HotSpotGraalRuntime";
     }
 
-    static {
-        try {
-            runtime = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            runtime = new GraalRuntime() {
-                @Override
-                public String getName() {
-                    return "";
-                }
-                @Override
-                public <T> T getCapability(Class<T> clazz) {
-                    return null;
-                }
-            };
-        }
+    @Override
+    public <T> T getCapability(Class<T> clazz) {
+        return null;
     }
 }

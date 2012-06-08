@@ -22,31 +22,20 @@
  */
 package com.oracle.graal.api;
 
+import static org.junit.Assert.*;
 
-public class Graal {
+import org.junit.*;
 
-    private static GraalRuntime runtime;
 
-    private static native GraalRuntime initializeRuntime();
+public class GraalTest {
 
-    public static GraalRuntime getRuntime() {
-        return runtime;
+    @Test
+    public void testRuntimeAvailable() {
+        assertNotNull(Graal.getRuntime());
     }
 
-    static {
-        try {
-            runtime = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            runtime = new GraalRuntime() {
-                @Override
-                public String getName() {
-                    return "";
-                }
-                @Override
-                public <T> T getCapability(Class<T> clazz) {
-                    return null;
-                }
-            };
-        }
+    @Test
+    public void testRuntimeNamed() {
+        assertNotNull(Graal.getRuntime().getName());
     }
 }
