@@ -924,6 +924,7 @@ public class NodeClass {
                 assert !node.isDeleted() : "trying to duplicate deleted node";
                 Node replacement = replacements.replacement(node);
                 if (replacement != node) {
+                    assert replacement != null;
                     newNodes.put(node, replacement);
                 } else {
                     Node newNode = node.clone(graph);
