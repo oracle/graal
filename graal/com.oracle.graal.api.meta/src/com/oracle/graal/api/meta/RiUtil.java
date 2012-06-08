@@ -84,7 +84,7 @@ public class RiUtil {
      * @return the Java name corresponding to {@code riType}
      */
     public static String toJavaName(RiType riType, boolean qualified) {
-        RiKind kind = riType.kind(false);
+        RiKind kind = riType.kind();
         if (kind.isPrimitive() || kind == RiKind.Void) {
             return kind.javaName;
         }

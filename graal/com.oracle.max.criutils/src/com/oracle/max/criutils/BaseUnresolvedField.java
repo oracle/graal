@@ -48,8 +48,8 @@ public class BaseUnresolvedField implements RiField {
         return type;
     }
 
-    public RiKind kind(boolean architecture) {
-        return type.kind(architecture);
+    public RiKind kind() {
+        return type.kind();
     }
 
     public RiType holder() {

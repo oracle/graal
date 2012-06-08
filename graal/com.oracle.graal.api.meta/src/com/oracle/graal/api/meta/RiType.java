@@ -77,11 +77,9 @@ public interface RiType {
 
     /**
      * Gets the kind of this compiler interface type.
-     * @param architecture When true, the architecture-specific kind used for emitting machine code is returned.
-     *        When false, the kind according to the Java specification is returned.
      * @return the kind
      */
-    RiKind kind(boolean architecture);
+    RiKind kind();
 
     /**
      * Gets the kind used to represent the specified part of this type.

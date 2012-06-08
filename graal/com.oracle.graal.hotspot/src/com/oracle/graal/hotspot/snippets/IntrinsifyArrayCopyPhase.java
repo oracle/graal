@@ -87,7 +87,7 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                                 && srcType.isArrayClass()
                                 && destType != null
                                 && destType.isArrayClass()) {
-                    RiKind componentKind = srcType.componentType().kind(false);
+                    RiKind componentKind = srcType.componentType().kind();
                     if (srcType.componentType() == destType.componentType()) {
                         if (componentKind == RiKind.Int) {
                             snippetMethod = intArrayCopy;

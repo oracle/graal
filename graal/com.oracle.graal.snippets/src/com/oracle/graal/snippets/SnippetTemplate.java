@@ -195,7 +195,7 @@ public class SnippetTemplate {
                 String name = c.value();
                 Object arg = key.get(name);
                 assert arg != null : method + ": requires a constant named " + name;
-                RiKind kind = signature.argumentKindAt(i, false);
+                RiKind kind = signature.argumentKindAt(i);
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
                 replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(RiConstant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
@@ -231,7 +231,7 @@ public class SnippetTemplate {
                     Object array = ((Multiple) key.get(p.value())).array;
                     int length = Array.getLength(array);
                     LocalNode[] locals = new LocalNode[length];
-                    Stamp stamp = StampFactory.forKind(runtime.getType(array.getClass().getComponentType()).kind(false));
+                    Stamp stamp = StampFactory.forKind(runtime.getType(array.getClass().getComponentType()).kind());
                     for (int j = 0; j < length; j++) {
                         assert (parameterCount & 0xFFFF) == parameterCount;
                         int idx = i << 16 | j;

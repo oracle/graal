@@ -731,7 +731,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genGetField(RiField field) {
         emitExplicitExceptions(frameState.peek(0), null);
 
-        RiKind kind = field.kind(false);
+        RiKind kind = field.kind();
         ValueNode receiver = frameState.apop();
         if ((field instanceof RiResolvedField) && ((RiResolvedField) field).holder().isInitialized()) {
             LoadFieldNode load = currentGraph.add(new LoadFieldNode(receiver, (RiResolvedField) field, graphId));
@@ -808,7 +808,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genPutField(RiField field) {
         emitExplicitExceptions(frameState.peek(1), null);
 
-        ValueNode value = frameState.pop(field.kind(false).stackKind());
+        ValueNode value = frameState.pop(field.kind().stackKind());
         ValueNode receiver = frameState.apop();
         if (field instanceof RiResolvedField && ((RiResolvedField) field).holder().isInitialized()) {
             StoreFieldNode store = currentGraph.add(new StoreFieldNode(receiver, (RiResolvedField) field, value, graphId));
@@ -829,7 +829,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
             ValueNode container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
-            RiKind kind = field.kind(false);
+            RiKind kind = field.kind();
             if (container != null) {
                 LoadFieldNode load = currentGraph.add(new LoadFieldNode(container, (RiResolvedField) field, graphId));
                 appendOptimizedLoadField(kind, load);
@@ -843,7 +843,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genPutStatic(RiField field) {
         RiType holder = field.holder();
         ValueNode container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, field instanceof RiResolvedField && ((RiResolvedType) holder).isInitialized());
-        ValueNode value = frameState.pop(field.kind(false).stackKind());
+        ValueNode value = frameState.pop(field.kind().stackKind());
         if (container != null) {
             StoreFieldNode store = currentGraph.add(new StoreFieldNode(container, (RiResolvedField) field, value, graphId));
             appendOptimizedStoreField(store);
@@ -919,7 +919,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genInvokeDeopt(RiMethod unresolvedTarget, boolean withReceiver) {
         append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
         frameState.popArguments(unresolvedTarget.signature().argumentSlots(withReceiver), unresolvedTarget.signature().argumentCount(withReceiver));
-        RiKind kind = unresolvedTarget.signature().returnKind(false);
+        RiKind kind = unresolvedTarget.signature().returnKind();
         if (kind != RiKind.Void) {
             frameState.push(kind.stackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
         }
@@ -955,7 +955,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void appendInvoke(InvokeKind invokeKind, RiResolvedMethod targetMethod, ValueNode[] args) {
-        RiKind resultType = targetMethod.signature().returnKind(false);
+        RiKind resultType = targetMethod.signature().returnKind();
         if (GraalOptions.DeoptALot) {
             DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(CiDeoptAction.None, RiDeoptReason.RuntimeConstraint, graphId));
             deoptimize.setMessage("invoke " + targetMethod.name());
@@ -1345,7 +1345,7 @@ public final class GraphBuilderPhase extends Phase {
         if (method.isConstructor() && method.holder().superType() == null) {
             callRegisterFinalizer();
         }
-        RiKind returnKind = method.signature().returnKind(false).stackKind();
+        RiKind returnKind = method.signature().returnKind().stackKind();
         ValueNode x = returnKind == RiKind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 

@@ -72,7 +72,7 @@ public class BoxingMethodPool {
         // Get the field that contains the boxed value.
         RiResolvedField[] fields = runtime.getType(type).declaredFields();
         RiResolvedField boxField = fields[0];
-        assert fields.length == 1 && boxField.kind(false) == kind;
+        assert fields.length == 1 && boxField.kind() == kind;
         boxFields[kind.ordinal()] = boxField;
     }
 
@@ -81,11 +81,11 @@ public class BoxingMethodPool {
     }
 
     public boolean isBoxingMethod(RiResolvedMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind(false) == RiKind.Object;
+        return isSpecialMethod(method) && method.signature().returnKind() == RiKind.Object;
     }
 
     public boolean isUnboxingMethod(RiResolvedMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind(false) != RiKind.Object;
+        return isSpecialMethod(method) && method.signature().returnKind() != RiKind.Object;
     }
 
     public RiResolvedMethod getBoxingMethod(RiKind kind) {

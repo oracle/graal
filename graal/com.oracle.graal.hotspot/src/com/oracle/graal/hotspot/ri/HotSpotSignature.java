@@ -97,7 +97,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public RiKind argumentKindAt(int index, boolean architecture) {
+    public RiKind argumentKindAt(int index) {
         return RiKind.fromTypeString(arguments.get(index));
     }
 
@@ -105,7 +105,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     public int argumentSlots(boolean withReceiver) {
         int argSlots = 0;
         for (int i = 0; i < argumentCount(false); i++) {
-            argSlots += FrameStateBuilder.stackSlots(argumentKindAt(i, false));
+            argSlots += FrameStateBuilder.stackSlots(argumentKindAt(i));
         }
         return argSlots + (withReceiver ? 1 : 0);
     }
@@ -129,7 +129,7 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public RiKind returnKind(boolean architecture) {
+    public RiKind returnKind() {
         return RiKind.fromTypeString(returnType);
     }
 

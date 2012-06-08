@@ -45,7 +45,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     private static Stamp createStamp(RiResolvedField field) {
-        RiKind kind = field.kind(false);
+        RiKind kind = field.kind();
         if (kind == RiKind.Object && field.type() instanceof RiResolvedType) {
             return StampFactory.declared((RiResolvedType) field.type());
         } else {

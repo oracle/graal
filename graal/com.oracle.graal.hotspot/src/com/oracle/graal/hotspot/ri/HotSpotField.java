@@ -67,7 +67,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
                 if (holder.isInitialized() && holder.toJava() != System.class) {
                     if (Modifier.isFinal(accessFlags()) || assumeStaticFieldsFinal(holder.toJava())) {
                         RiConstant encoding = holder.getEncoding(Representation.StaticFields);
-                        constant = this.kind(false).readUnsafeConstant(encoding.asObject(), offset);
+                        constant = this.kind().readUnsafeConstant(encoding.asObject(), offset);
                     }
                 }
             }
@@ -76,7 +76,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
             assert !Modifier.isStatic(accessFlags);
             // TODO (chaeubl) HotSpot does not trust final non-static fields (see ciField.cpp)
             if (Modifier.isFinal(accessFlags())) {
-                return this.kind(false).readUnsafeConstant(receiver.asObject(), offset);
+                return this.kind().readUnsafeConstant(receiver.asObject(), offset);
             }
         }
         return null;
@@ -92,8 +92,8 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public RiKind kind(boolean architecture) {
-        return type().kind(architecture);
+    public RiKind kind() {
+        return type().kind();
     }
 
     @Override

@@ -184,7 +184,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiKind kind(boolean architecture) {
+    public RiKind kind() {
         return RiKind.Object;
     }
 

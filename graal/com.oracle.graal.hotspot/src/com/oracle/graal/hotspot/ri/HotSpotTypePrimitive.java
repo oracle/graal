@@ -131,7 +131,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     }
 
     @Override
-    public RiKind kind(boolean architecture) {
+    public RiKind kind() {
         return kind;
     }
 

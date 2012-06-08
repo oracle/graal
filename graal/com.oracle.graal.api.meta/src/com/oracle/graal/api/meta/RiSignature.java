@@ -52,11 +52,9 @@ public interface RiSignature {
     /**
      * Gets the argument kind at the specified position.
      * @param index the index into the parameters, with {@code 0} indicating the first parameter
-     * @param architecture When true, the architecture-specific kind used for emitting machine code is returned.
-     *        When false, the kind according to the Java specification is returned.
      * @return the kind of the argument at the specified position
      */
-    RiKind argumentKindAt(int index, boolean architecture);
+    RiKind argumentKindAt(int index);
 
     /**
      * Gets the return type of this signature. This method will return a
@@ -72,11 +70,9 @@ public interface RiSignature {
 
     /**
      * Gets the return kind of this signature.
-     * @param architectureSpecific When true, the architecture-specific kind used for emitting machine code is returned.
-     *        When false, the kind according to the Java specification is returned.
      * @return the return kind
      */
-    RiKind returnKind(boolean architectureSpecific);
+    RiKind returnKind();
 
     /**
      * Converts this signature to a string.

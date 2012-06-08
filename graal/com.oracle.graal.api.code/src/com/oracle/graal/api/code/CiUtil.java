@@ -605,7 +605,7 @@ public class CiUtil {
     }
 
     public static RiKind[] signatureToKinds(RiResolvedMethod method) {
-        RiKind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind(true);
+        RiKind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind();
         return signatureToKinds(method.signature(), receiver);
     }
 
@@ -621,7 +621,7 @@ public class CiUtil {
             result = new RiKind[args];
         }
         for (int j = 0; j < args; j++) {
-            result[i + j] = signature.argumentKindAt(j, true);
+            result[i + j] = signature.argumentKindAt(j);
         }
         return result;
     }

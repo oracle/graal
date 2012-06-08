@@ -86,7 +86,7 @@ public class SnippetIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            RiConstant constant = callMethod(target.signature().returnKind(false), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
+            RiConstant constant = callMethod(target.signature().returnKind(), target.holder().toJava(), target.name(), parameterTypes, receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call

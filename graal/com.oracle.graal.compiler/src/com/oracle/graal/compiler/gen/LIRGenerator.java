@@ -586,7 +586,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void visitNewTypeArray(NewTypeArrayNode x) {
         XirArgument length = toXirArgument(x.length());
-        XirSnippet snippet = xir.genNewArray(site(x), length, x.elementType().kind(true), null, null);
+        XirSnippet snippet = xir.genNewArray(site(x), length, x.elementType().kind(), null, null);
         emitXir(snippet, x, state(), true);
     }
 
@@ -829,7 +829,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 // Current argument is receiver.
                 stackIndex += stackSlots(RiKind.Object);
             } else {
-                stackIndex += stackSlots(signature.argumentKindAt(argumentIndex, false));
+                stackIndex += stackSlots(signature.argumentKindAt(argumentIndex));
                 argumentIndex++;
             }
         }
@@ -883,7 +883,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         RiValue resultOperand = resultOperandFor(x.node().kind());
 
-        RiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind(true));
+        RiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
         CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         frameMap.callsMethod(cc, JavaCall);
         List<RiValue> argList = visitInvokeArguments(cc, callTarget.arguments());

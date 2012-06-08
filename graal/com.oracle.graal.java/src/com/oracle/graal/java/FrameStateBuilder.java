@@ -70,7 +70,7 @@ public class FrameStateBuilder {
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
-            RiKind kind = type.kind(false).stackKind();
+            RiKind kind = type.kind().stackKind();
             Stamp stamp;
             if (kind == RiKind.Object && type instanceof RiResolvedType) {
                 stamp = StampFactory.declared((RiResolvedType) type);

@@ -235,7 +235,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
             LoadFieldNode field = (LoadFieldNode) n;
             int displacement = ((HotSpotField) field.field()).offset();
             assert field.kind() != RiKind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(true), displacement, graph), field.stamp()));
+            ReadNode memoryRead = graph.add(new ReadNode(field.object(), LocationNode.create(field.field(), field.field().kind(), displacement, graph), field.stamp()));
             memoryRead.dependencies().add(tool.createNullCheckGuard(field.object(), field.leafGraphId()));
             graph.replaceFixedWithFixed(field, memoryRead);
             if (field.isVolatile()) {
@@ -247,13 +247,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         } else if (n instanceof StoreFieldNode) {
             StoreFieldNode storeField = (StoreFieldNode) n;
             HotSpotField field = (HotSpotField) storeField.field();
-            WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(true), field.offset(), graph)));
+            WriteNode memoryWrite = graph.add(new WriteNode(storeField.object(), storeField.value(), LocationNode.create(storeField.field(), storeField.field().kind(), field.offset(), graph)));
             memoryWrite.dependencies().add(tool.createNullCheckGuard(storeField.object(), storeField.leafGraphId()));
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
 
             FixedWithNextNode last = memoryWrite;
-            if (field.kind(true) == RiKind.Object && !memoryWrite.value().isNullConstant()) {
+            if (field.kind() == RiKind.Object && !memoryWrite.value().isNullConstant()) {
                 FieldWriteBarrier writeBarrier = graph.add(new FieldWriteBarrier(memoryWrite.object()));
                 graph.addAfterFixed(memoryWrite, writeBarrier);
                 last = writeBarrier;

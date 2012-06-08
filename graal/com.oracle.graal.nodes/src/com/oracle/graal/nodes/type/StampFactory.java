@@ -147,7 +147,7 @@ public class StampFactory {
 
     public static Stamp declared(RiResolvedType type, boolean nonNull) {
         assert type != null;
-        assert type.kind(false) == RiKind.Object;
+        assert type.kind() == RiKind.Object;
         RiResolvedType exact = type.exactType();
         if (exact != null) {
             return new ObjectStamp(exact, true, nonNull);
