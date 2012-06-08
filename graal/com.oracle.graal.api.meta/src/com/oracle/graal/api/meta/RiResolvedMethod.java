@@ -127,14 +127,6 @@ public interface RiResolvedMethod extends RiMethod {
     boolean noSafepointPolls();
 
     /**
-     * Gets a map from bytecode indexes to bit maps denoting the live locals at that position.
-     * If a non-null array is return, its length is guaranteed to be equal to {@code code().length}.
-     *
-     * @return the liveness map if it is available; {@code null} otherwise
-     */
-    RiBitMap[] livenessMap();
-
-    /**
      * Checks whether this method can be statically bound (that is, it is final or private or static).
      * @return {@code true} if this method can be statically bound
      */

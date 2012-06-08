@@ -297,8 +297,8 @@ public final class FrameMap {
     /**
      * Initializes a reference map that covers all registers of the target architecture.
      */
-    public RiBitMap initRegisterRefMap() {
-        return new RiBitMap(target.arch.registerReferenceMapBitCount);
+    public CiBitMap initRegisterRefMap() {
+        return new CiBitMap(target.arch.registerReferenceMapBitCount);
     }
 
     /**
@@ -306,8 +306,8 @@ public final class FrameMap {
      * slots in the frame. If the method has incoming reference arguments on the stack,
      * the reference map might grow later when such a reference is set.
      */
-    public RiBitMap initFrameRefMap() {
-        RiBitMap frameRefMap = new RiBitMap(frameSize() / target.wordSize);
+    public CiBitMap initFrameRefMap() {
+        CiBitMap frameRefMap = new CiBitMap(frameSize() / target.wordSize);
         for (CiStackSlot slot : objectStackBlocks) {
             setReference(slot, null, frameRefMap);
         }
@@ -323,7 +323,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void setReference(RiValue location, RiBitMap registerRefMap, RiBitMap frameRefMap) {
+    public void setReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (isRegister(location)) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
@@ -347,7 +347,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void clearReference(RiValue location, RiBitMap registerRefMap, RiBitMap frameRefMap) {
+    public void clearReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (location instanceof CiRegisterValue) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;

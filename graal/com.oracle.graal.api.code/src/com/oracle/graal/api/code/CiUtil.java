@@ -577,7 +577,7 @@ public class CiUtil {
         String nl = NEW_LINE;
         if (info.hasRegisterRefMap()) {
             sb.append("  reg-ref-map:");
-            RiBitMap bm = info.registerRefMap;
+            CiBitMap bm = info.registerRefMap;
             if (formatter != null) {
                 for (int reg = bm.nextSetBit(0); reg >= 0; reg = bm.nextSetBit(reg + 1)) {
                     sb.append(" " + formatter.formatRegister(reg));
@@ -587,7 +587,7 @@ public class CiUtil {
         }
         if (info.hasStackRefMap()) {
             sb.append("frame-ref-map:");
-            RiBitMap bm = info.frameRefMap;
+            CiBitMap bm = info.frameRefMap;
             if (formatter != null) {
                 for (int i = bm.nextSetBit(0); i >= 0; i = bm.nextSetBit(i + 1)) {
                     sb.append(" " + formatter.formatStackSlot(i));

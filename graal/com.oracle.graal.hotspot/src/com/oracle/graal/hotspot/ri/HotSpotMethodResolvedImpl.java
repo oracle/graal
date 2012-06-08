@@ -140,10 +140,6 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         throw new UnsupportedOperationException("jniSymbol");
     }
 
-    public RiBitMap[] livenessMap() {
-        return null;
-    }
-
     @Override
     public int maxLocals() {
         return maxLocals;

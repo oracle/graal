@@ -110,7 +110,7 @@ public class LIRDebugInfo {
     }
 
 
-    public void finish(RiBitMap registerRefMap, RiBitMap frameRefMap, FrameMap frameMap) {
+    public void finish(CiBitMap registerRefMap, CiBitMap frameRefMap, FrameMap frameMap) {
         debugInfo = new CiDebugInfo(topFrame, registerRefMap, frameRefMap);
 
         // Add additional stack slots for outgoing method parameters.

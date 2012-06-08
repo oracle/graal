@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.api.code;
 
 import java.io.*;
 import java.util.*;
@@ -28,7 +28,7 @@ import java.util.*;
 /**
  * Implements a bitmap that stores a single bit for a range of integers (0-n).
  */
-public final class RiBitMap implements Serializable {
+public final class CiBitMap implements Serializable {
 
     private static final long serialVersionUID = 2471441272241401105L;
     private static final int ADDRESS_BITS_PER_WORD = 6;
@@ -48,7 +48,7 @@ public final class RiBitMap implements Serializable {
     /**
      * Constructs a new bit map with the {@linkplain #DEFAULT_LENGTH default length}.
      */
-    public RiBitMap() {
+    public CiBitMap() {
         this(DEFAULT_LENGTH);
     }
 
@@ -57,7 +57,7 @@ public final class RiBitMap implements Serializable {
      *
      * @param bitmap the bit map to convert
      */
-    public RiBitMap(byte[] bitmap) {
+    public CiBitMap(byte[] bitmap) {
         this(bitmap, 0, bitmap.length);
     }
 
@@ -66,7 +66,7 @@ public final class RiBitMap implements Serializable {
      *
      * @param bitmap the bit map to copy.
      */
-    public RiBitMap(RiBitMap bitmap) {
+    public CiBitMap(CiBitMap bitmap) {
         this.size = bitmap.size;
         this.low = bitmap.low;
         if (bitmap.extra != null) {
@@ -81,7 +81,7 @@ public final class RiBitMap implements Serializable {
      * @param off the byte index in {@code arr} at which the bit map starts
      * @param numberOfBytes the number of bytes worth of bits to copy from {@code arr}
      */
-    public RiBitMap(byte[] arr, int off, int numberOfBytes) {
+    public CiBitMap(byte[] arr, int off, int numberOfBytes) {
         this(numberOfBytes * 8);
         int byteIndex = off;
         int end = off + numberOfBytes;
@@ -108,10 +108,10 @@ public final class RiBitMap implements Serializable {
     }
 
     /**
-     * Converts a {@code long} to a {@link RiBitMap}.
+     * Converts a {@code long} to a {@link CiBitMap}.
      */
-    public static RiBitMap fromLong(long bitmap) {
-        RiBitMap bm = new RiBitMap(64);
+    public static CiBitMap fromLong(long bitmap) {
+        CiBitMap bm = new CiBitMap(64);
         bm.low = bitmap;
         return bm;
     }
@@ -121,7 +121,7 @@ public final class RiBitMap implements Serializable {
      *
      * @param length the length of the bitmap
      */
-    public RiBitMap(int length) {
+    public CiBitMap(int length) {
         assert length >= 0;
         this.size = length;
         if (length > BITS_PER_WORD) {
@@ -262,7 +262,7 @@ public final class RiBitMap implements Serializable {
      *
      * @param other the other bitmap for the union operation
      */
-    public void setUnion(RiBitMap other) {
+    public void setUnion(CiBitMap other) {
         low |= other.low;
         if (extra != null && other.extra != null) {
             for (int i = 0; i < extra.length && i < other.extra.length; i++) {
@@ -278,7 +278,7 @@ public final class RiBitMap implements Serializable {
      * @param other the other bitmap for this operation
      * @return {@code true} if any bits were cleared as a result of this operation
      */
-    public boolean setIntersect(RiBitMap other) {
+    public boolean setIntersect(CiBitMap other) {
         boolean same = true;
         long intx = low & other.low;
         if (low != intx) {
@@ -324,7 +324,7 @@ public final class RiBitMap implements Serializable {
         return i;
     }
 
-    public void setFrom(RiBitMap other) {
+    public void setFrom(CiBitMap other) {
         assert this.size == other.size : "must have same size";
 
         low = other.low;
@@ -335,7 +335,7 @@ public final class RiBitMap implements Serializable {
         }
     }
 
-    public void setDifference(RiBitMap other) {
+    public void setDifference(CiBitMap other) {
         assert this.size == other.size : "must have same size";
 
         low &= ~other.low;
@@ -346,7 +346,7 @@ public final class RiBitMap implements Serializable {
         }
     }
 
-    public boolean isSame(RiBitMap other) {
+    public boolean isSame(CiBitMap other) {
         if (this.size != other.size || this.low != other.low) {
             return false;
         }
@@ -469,8 +469,8 @@ public final class RiBitMap implements Serializable {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof RiBitMap) {
-            RiBitMap bm = (RiBitMap) obj;
+        if (obj instanceof CiBitMap) {
+            CiBitMap bm = (CiBitMap) obj;
             if (bm.low == low) {
                 if (bm.extra == null) {
                     if (extra == null) {
@@ -624,8 +624,8 @@ public final class RiBitMap implements Serializable {
         return sb.toString();
     }
 
-    public RiBitMap copy() {
-        RiBitMap n = new RiBitMap(BITS_PER_WORD);
+    public CiBitMap copy() {
+        CiBitMap n = new CiBitMap(BITS_PER_WORD);
         n.low = low;
         if (extra != null) {
             n.extra = Arrays.copyOf(extra, extra.length);
