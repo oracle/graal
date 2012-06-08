@@ -20,19 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ri;
+package com.oracle.graal.hotspot.logging;
 
-import com.oracle.graal.api.meta.*;
+import java.util.*;
 
-public interface HotSpotTypeResolved extends RiResolvedType {
 
-    String toString();
+public final class ProxyUtil {
+    public static Class<?>[] getAllInterfaces(Class<?> clazz) {
+        HashSet<Class< ? >> interfaces = new HashSet<>();
+        getAllInterfaces(clazz, interfaces);
+        return interfaces.toArray(new Class<?>[interfaces.size()]);
+    }
 
-    RiConstantPool constantPool();
-
-    int instanceSize();
-
-    RiField createRiField(String name, RiType type, int offset, int flags);
-
-    HotSpotKlassOop klassOop();
+    private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
+        for (Class< ? > iface : clazz.getInterfaces()) {
+            if (!interfaces.contains(iface)) {
+                interfaces.add(iface);
+                getAllInterfaces(iface, interfaces);
+            }
+        }
+        if (clazz.getSuperclass() != null) {
+            getAllInterfaces(clazz.getSuperclass(), interfaces);
+        }
+    }
 }

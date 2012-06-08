@@ -29,12 +29,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.ri.*;
-import com.oracle.graal.hotspot.server.*;
 
 /**
  * Entries into the HotSpot VM from Java code.
  */
-public class CompilerToVMImpl implements CompilerToVM, Remote {
+public class CompilerToVMImpl implements CompilerToVM {
 
     // Checkstyle: stop
 

@@ -27,8 +27,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.hotspot.server.*;
-
 /**
  * A java.lang.reflect proxy that hierarchically logs all method invocations along with their parameters and return
  * values.
@@ -73,7 +71,7 @@ public class CountingProxy<T> implements InvocationHandler {
     }
 
     public static <T> T getProxy(Class<T> interf, T delegate) {
-        Class<?>[] interfaces = ReplacingStreams.getAllInterfaces(delegate.getClass());
+        Class<?>[] interfaces = ProxyUtil.getAllInterfaces(delegate.getClass());
         Object obj = Proxy.newProxyInstance(interf.getClassLoader(), interfaces, new CountingProxy<>(delegate));
         return interf.cast(obj);
     }

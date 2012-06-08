@@ -39,7 +39,6 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.ri.*;
-import com.oracle.graal.hotspot.server.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.snippets.*;
@@ -48,7 +47,7 @@ import com.oracle.max.criutils.*;
 /**
  * Exits from the HotSpot VM into Java code.
  */
-public class VMToCompilerImpl implements VMToCompiler, Remote {
+public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotCompilerImpl compiler;
     private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;

@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.logging.*;
 
 public class ReplacingStreams {
 
@@ -191,29 +192,11 @@ public class ReplacingStreams {
         }
     }
 
-    public static Class<?>[] getAllInterfaces(Class<?> clazz) {
-        HashSet<Class< ? >> interfaces = new HashSet<>();
-        getAllInterfaces(clazz, interfaces);
-        return interfaces.toArray(new Class<?>[interfaces.size()]);
-    }
-
-    private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
-        for (Class< ? > iface : clazz.getInterfaces()) {
-            if (!interfaces.contains(iface)) {
-                interfaces.add(iface);
-                getAllInterfaces(iface, interfaces);
-            }
-        }
-        if (clazz.getSuperclass() != null) {
-            getAllInterfaces(clazz.getSuperclass(), interfaces);
-        }
-    }
-
     private Object createRemoteCallPlaceholder(Object obj) {
         // collect all interfaces that this object's class implements (proxies only support interfaces)
         objectMap.put(obj, new Placeholder(objectList.size()));
         objectList.add(obj);
-        return new NewRemoteCallPlaceholder(getAllInterfaces(obj.getClass()));
+        return new NewRemoteCallPlaceholder(ProxyUtil.getAllInterfaces(obj.getClass()));
     }
 
     public Object createDummyPlaceholder(Object obj) {
