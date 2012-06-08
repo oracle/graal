@@ -31,7 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.RiType.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Represents a field in a HotSpot type.
@@ -46,7 +45,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     private final int accessFlags;
     private RiConstant constant;                // Constant part only valid for static fields.
 
-    public HotSpotField(HotSpotCompiler compiler, RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
+    public HotSpotField(HotSpotCompilerImpl compiler, RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
         super(compiler);
         this.holder = holder;
         this.name = name;

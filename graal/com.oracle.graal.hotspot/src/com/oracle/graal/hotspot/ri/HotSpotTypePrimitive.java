@@ -27,7 +27,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
+import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of RiType for primitive HotSpot types.
@@ -38,7 +38,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
     private RiKind kind;
     private final HotSpotKlassOop klassOop;
 
-    public HotSpotTypePrimitive(HotSpotCompiler compiler, RiKind kind) {
+    public HotSpotTypePrimitive(HotSpotCompilerImpl compiler, RiKind kind) {
         super(compiler);
         this.kind = kind;
         this.name = String.valueOf(Character.toUpperCase(kind.typeChar));

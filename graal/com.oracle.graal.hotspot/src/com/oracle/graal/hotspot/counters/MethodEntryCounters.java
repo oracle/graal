@@ -33,7 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -142,7 +142,7 @@ public class MethodEntryCounters {
     }
 
 
-    public static void printCounters(HotSpotCompiler compiler) {
+    public static void printCounters(HotSpotCompilerImpl compiler) {
         if (!GraalOptions.MethodEntryCounters) {
             return;
         }

@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.ri;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * Implementation of {@link RiCodeInfo} for HotSpot.
@@ -39,7 +38,7 @@ public class HotSpotCodeInfo extends CompilerObject implements RiCodeInfo {
     public final CiTargetMethod targetMethod;
     private HotSpotMethodResolved method;
 
-    public HotSpotCodeInfo(HotSpotCompiler compiler, CiTargetMethod targetMethod, HotSpotMethodResolved method) {
+    public HotSpotCodeInfo(HotSpotCompilerImpl compiler, CiTargetMethod targetMethod, HotSpotMethodResolved method) {
         super(compiler);
         assert targetMethod != null;
         this.method = method;

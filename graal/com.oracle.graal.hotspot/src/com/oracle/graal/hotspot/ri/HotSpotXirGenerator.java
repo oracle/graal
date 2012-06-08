@@ -37,7 +37,6 @@ import com.oracle.graal.api.code.CiRegister.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.xir.*;
 import com.oracle.max.cri.xir.CiXirAssembler.XirConstant;
@@ -76,12 +75,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private final HotSpotVMConfig config;
     private final CiTarget target;
     private final CiRegisterConfig registerConfig;
-    private final HotSpotCompiler compiler;
+    private final HotSpotCompilerImpl compiler;
 
 
     private CiXirAssembler globalAsm;
 
-    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, CiRegisterConfig registerConfig, HotSpotCompiler compiler) {
+    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, CiRegisterConfig registerConfig, HotSpotCompilerImpl compiler) {
         this.config = config;
         this.target = target;
         this.registerConfig = registerConfig;

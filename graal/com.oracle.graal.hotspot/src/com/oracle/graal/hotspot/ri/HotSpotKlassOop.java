@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.ri;
 
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 
 /**
  * A mechanism for safely conveying a HotSpot klassOop value from the compiler to the C++ code.
@@ -40,7 +39,7 @@ public class HotSpotKlassOop extends CompilerObject {
      */
     public final Class javaMirror;
 
-    public HotSpotKlassOop(HotSpotCompiler compiler, Class javaMirror) {
+    public HotSpotKlassOop(HotSpotCompilerImpl compiler, Class javaMirror) {
         super(compiler);
         this.javaMirror = javaMirror;
     }

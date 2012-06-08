@@ -37,7 +37,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.cri.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.snippets.*;
 import com.oracle.graal.hotspot.target.amd64.*;
@@ -56,10 +55,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     public final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
-    private final HotSpotCompiler compiler;
+    private final HotSpotCompilerImpl compiler;
     private CheckCastSnippets.Templates checkcasts;
 
-    public HotSpotRuntime(HotSpotVMConfig config, HotSpotCompiler compiler) {
+    public HotSpotRuntime(HotSpotVMConfig config, HotSpotCompilerImpl compiler) {
         this.config = config;
         this.compiler = compiler;
         regConfig = new HotSpotRegisterConfig(config, false);
@@ -77,7 +76,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
 
-    public HotSpotCompiler getCompiler() {
+    public HotSpotCompilerImpl getCompiler() {
         return compiler;
     }
 

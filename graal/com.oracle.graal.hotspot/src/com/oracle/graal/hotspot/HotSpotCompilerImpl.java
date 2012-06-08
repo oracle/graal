@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.io.*;
 import java.lang.reflect.*;
-import java.net.*;
-
+import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -34,18 +32,17 @@ import com.oracle.graal.cri.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.ri.*;
-import com.oracle.graal.hotspot.server.*;
 import com.oracle.max.asm.target.amd64.*;
 import com.oracle.max.cri.xir.*;
 
 /**
  * Singleton class holding the instance of the GraalCompiler.
  */
-public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
+public final class HotSpotCompilerImpl implements GraalRuntime {
 
-    private static HotSpotCompiler theInstance;
+    private static HotSpotCompilerImpl theInstance;
 
-    public static HotSpotCompiler getInstance() {
+    public static HotSpotCompilerImpl getInstance() {
         if (theInstance == null) {
             initialize();
         }
@@ -57,30 +54,11 @@ public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
             return;
         }
 
-        String remote = System.getProperty("graal.remote");
-        if (remote != null) {
-            // remote compilation (will not create a local Compiler)
-            try {
-                System.out.println("Graal compiler started in client/server mode, server: " + remote);
-                Socket socket = new Socket(remote, 1199);
-                ReplacingStreams streams = new ReplacingStreams(socket.getOutputStream(), socket.getInputStream());
-                streams.getInvocation().sendResult(new CompilerToVMImpl());
-
-                theInstance = (HotSpotCompiler) streams.getInvocation().waitForResult(false);
-            } catch (IOException e1) {
-                System.out.println("Connection to compilation server FAILED.");
-                throw new RuntimeException(e1);
-            } catch (ClassNotFoundException e2) {
-                System.out.println("Connection to compilation server FAILED.");
-                throw new RuntimeException(e2);
-            }
-        } else {
-            // ordinary local compilation
-            theInstance = new HotSpotCompilerImpl(null);
-        }
+        // ordinary local compilation
+        theInstance = new HotSpotCompilerImpl(null);
     }
 
-    public static HotSpotCompiler initializeServer(CompilerToVM entries) {
+    public static HotSpotCompilerImpl initializeServer(CompilerToVM entries) {
         assert theInstance == null;
         theInstance = new HotSpotCompilerImpl(entries);
         return theInstance;
@@ -145,7 +123,6 @@ public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
         }
     }
 
-    @Override
     public CiTarget getTarget() {
         if (target == null) {
             final int wordSize = 8;
@@ -170,7 +147,6 @@ public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
         return getInstance().getCompiler();
     }
 
-    @Override
     public GraalCompiler getCompiler() {
         if (compiler == null) {
             // these options are important - graal will not generate correct code without them
@@ -192,22 +168,18 @@ public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
         return compiler;
     }
 
-    @Override
     public HotSpotGraphCache getCache() {
         return cache;
     }
 
-    @Override
     public CompilerToVM getCompilerToVM() {
         return compilerToVm;
     }
 
-    @Override
     public VMToCompiler getVMToCompiler() {
         return vmToCompiler;
     }
 
-    @Override
     public RiType lookupType(String returnType, HotSpotTypeResolved accessingClass, boolean eagerResolve) {
         if (returnType.length() == 1 && vmToCompiler instanceof VMToCompilerImpl) {
             VMToCompilerImpl exitsNative = (VMToCompilerImpl) vmToCompiler;
@@ -242,7 +214,6 @@ public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
         return compilerToVm.RiSignature_lookupType(returnType, accessingClass, eagerResolve);
     }
 
-    @Override
     public HotSpotRuntime getRuntime() {
         if (runtime == null) {
             runtime = new HotSpotRuntime(config, this);
@@ -261,5 +232,15 @@ public final class HotSpotCompilerImpl implements HotSpotCompiler, Remote {
                 }
             }
         }
+    }
+
+    @Override
+    public String getName() {
+        return "HotSpotGraalRuntime";
+    }
+
+    @Override
+    public <T> T getCapability(Class<T> clazz) {
+        return null;
     }
 }

@@ -26,7 +26,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 
 
 public final class HotSpotProfilingInfo extends CompilerObject implements RiProfilingInfo {
@@ -41,7 +40,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements RiProf
     private HotSpotMethodData methodData;
     private final int codeSize;
 
-    public HotSpotProfilingInfo(HotSpotCompiler compiler, HotSpotMethodData methodData, int codeSize) {
+    public HotSpotProfilingInfo(HotSpotCompilerImpl compiler, HotSpotMethodData methodData, int codeSize) {
         super(compiler);
         this.methodData = methodData;
         this.codeSize = codeSize;

@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.ri;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
+import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of RiType for unresolved HotSpot classes.
@@ -38,7 +38,7 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     /**
      * Creates a new unresolved type for a specified type descriptor.
      */
-    public HotSpotTypeUnresolved(HotSpotCompiler compiler, String name) {
+    public HotSpotTypeUnresolved(HotSpotCompilerImpl compiler, String name) {
         super(compiler);
         assert name.length() > 0 : "name cannot be empty";
 
@@ -62,7 +62,7 @@ public class HotSpotTypeUnresolved extends HotSpotType {
         this.dimensions = dims;
     }
 
-    public HotSpotTypeUnresolved(HotSpotCompiler compiler, String name, int dimensions) {
+    public HotSpotTypeUnresolved(HotSpotCompilerImpl compiler, String name, int dimensions) {
         super(compiler);
         assert dimensions >= 0;
         this.simpleName = name;

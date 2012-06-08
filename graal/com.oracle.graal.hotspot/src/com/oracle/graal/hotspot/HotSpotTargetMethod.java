@@ -42,7 +42,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
 
-    public HotSpotTargetMethod(HotSpotCompiler compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
+    public HotSpotTargetMethod(HotSpotCompilerImpl compiler, HotSpotMethodResolved method, CiTargetMethod targetMethod) {
         super(compiler);
         this.method = method;
         this.targetMethod = targetMethod;
@@ -56,7 +56,7 @@ public final class HotSpotTargetMethod extends CompilerObject {
         }
     }
 
-    private HotSpotTargetMethod(HotSpotCompiler compiler, CiTargetMethod targetMethod, String name) {
+    private HotSpotTargetMethod(HotSpotCompilerImpl compiler, CiTargetMethod targetMethod, String name) {
         super(compiler);
         this.method = null;
         this.targetMethod = targetMethod;

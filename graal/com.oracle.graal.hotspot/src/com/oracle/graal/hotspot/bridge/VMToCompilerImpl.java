@@ -37,7 +37,6 @@ import com.oracle.graal.compiler.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 import com.oracle.graal.hotspot.counters.*;
 import com.oracle.graal.hotspot.ri.*;
 import com.oracle.graal.hotspot.server.*;
@@ -51,7 +50,7 @@ import com.oracle.max.criutils.*;
  */
 public class VMToCompilerImpl implements VMToCompiler, Remote {
 
-    private final HotSpotCompiler compiler;
+    private final HotSpotCompilerImpl compiler;
     private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotTypePrimitive typeBoolean;
@@ -70,7 +69,7 @@ public class VMToCompilerImpl implements VMToCompiler, Remote {
 
     private PrintStream log = System.out;
 
-    public VMToCompilerImpl(HotSpotCompiler compiler) {
+    public VMToCompilerImpl(HotSpotCompilerImpl compiler) {
         this.compiler = compiler;
 
         typeBoolean = new HotSpotTypePrimitive(compiler, RiKind.Boolean);

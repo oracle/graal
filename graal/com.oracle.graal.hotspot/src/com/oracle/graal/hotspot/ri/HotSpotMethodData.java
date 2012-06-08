@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.RiTypeProfile.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 
 
 public final class HotSpotMethodData extends CompilerObject {
@@ -57,7 +56,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private int normalDataSize;
     private int extraDataSize;
 
-    private HotSpotMethodData(HotSpotCompiler compiler) {
+    private HotSpotMethodData(HotSpotCompilerImpl compiler) {
         super(compiler);
         throw new IllegalStateException("this constructor is never actually called, because the objects are allocated from within the VM");
     }

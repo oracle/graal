@@ -24,14 +24,13 @@ package com.oracle.graal.hotspot.ri;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotCompiler;
 
 public abstract class HotSpotMethod extends CompilerObject implements RiMethod {
 
     private static final long serialVersionUID = 7167491397941960839L;
     protected String name;
 
-    protected HotSpotMethod(HotSpotCompiler compiler) {
+    protected HotSpotMethod(HotSpotCompilerImpl compiler) {
         super(compiler);
     }
 
