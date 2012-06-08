@@ -27,6 +27,9 @@ import com.oracle.graal.api.*;
 
 public class HotSpotGraalRuntime implements GraalRuntime {
 
+    public HotSpotGraalRuntime() {
+    }
+
     @Override
     public String getName() {
         return "HotSpotGraalRuntime";
