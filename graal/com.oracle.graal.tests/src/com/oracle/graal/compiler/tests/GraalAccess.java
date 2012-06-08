@@ -39,7 +39,7 @@ class GraalAccess {
      */
     private static Map<String, String> graalAccessClasses = new LinkedHashMap<>();
     static {
-        graalAccessClasses.put("HotSpot", "com.oracle.graal.hotspot.CompilerImpl");
+        graalAccessClasses.put("HotSpot", "com.oracle.graal.hotspot.HotSpotCompilerImpl");
         graalAccessClasses.put("Maxine", "com.oracle.max.vm.ext.maxri.MaxRuntime");
     }
 
