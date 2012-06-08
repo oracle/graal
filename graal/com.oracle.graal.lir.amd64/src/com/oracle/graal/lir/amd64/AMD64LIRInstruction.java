@@ -32,7 +32,7 @@ import com.oracle.graal.lir.asm.*;
  */
 public abstract class AMD64LIRInstruction extends LIRInstruction {
 
-    public AMD64LIRInstruction(Object opcode, RiValue[] outputs, LIRDebugInfo info, RiValue[] inputs, RiValue[] alives, RiValue[] temps) {
+    public AMD64LIRInstruction(Object opcode, Value[] outputs, LIRDebugInfo info, Value[] inputs, Value[] alives, Value[] temps) {
         super(opcode, outputs, info, inputs, alives, temps);
     }
 

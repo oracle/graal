@@ -49,7 +49,7 @@ public abstract class ResolveDataFlow {
     private LocationMap curFromLocations;
 
     public void execute() {
-        ValueProcedure locMappingProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return locMapping(value); } };
+        ValueProcedure locMappingProc = new ValueProcedure() { @Override public Value doValue(Value value) { return locMapping(value); } };
 
         Debug.log("==== start resolve data flow ====");
         for (Block toBlock : lir.linearScanOrder()) {
@@ -87,7 +87,7 @@ public abstract class ResolveDataFlow {
         Debug.log("==== end resolve data flow ====");
     }
 
-    private RiValue locMapping(RiValue value) {
+    private Value locMapping(Value value) {
         Location to = asLocation(value);
         Location from = curFromLocations.get(to.variable);
         if (value != from && from != null) {
@@ -96,7 +96,7 @@ public abstract class ResolveDataFlow {
         return value;
     }
 
-    private void phiMapping(RiValue[] inputs, RiValue[] outputs) {
+    private void phiMapping(Value[] inputs, Value[] outputs) {
         assert inputs.length == outputs.length;
         for (int i = 0; i < inputs.length; i++) {
             if (inputs[i] != outputs[i]) {

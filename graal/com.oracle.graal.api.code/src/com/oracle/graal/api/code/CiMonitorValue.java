@@ -24,14 +24,14 @@ package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.meta.*;
 
-public final class CiMonitorValue extends RiValue {
+public final class CiMonitorValue extends Value {
     private static final long serialVersionUID = 8241681800464483691L;
 
-    public RiValue owner;
-    public final RiValue lockData;
+    public Value owner;
+    public final Value lockData;
     public final boolean eliminated;
 
-    public CiMonitorValue(RiValue owner, RiValue lockData, boolean eliminated) {
+    public CiMonitorValue(Value owner, Value lockData, boolean eliminated) {
         super(RiKind.Illegal);
         this.owner = owner;
         this.lockData = lockData;

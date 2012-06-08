@@ -71,7 +71,7 @@ public class HotSpotAMD64Backend extends Backend {
                 CiRegisterValue thread = r15.asValue();
                 CiAddress exceptionAddress = new CiAddress(RiKind.Object, thread, config.threadExceptionOopOffset);
                 CiAddress pcAddress = new CiAddress(RiKind.Long, thread, config.threadExceptionPcOffset);
-                RiValue exception = emitLoad(exceptionAddress, false);
+                Value exception = emitLoad(exceptionAddress, false);
                 emitStore(exceptionAddress, Constant.NULL_OBJECT, false);
                 emitStore(pcAddress, Constant.LONG_0, false);
                 setResult(x, exception);

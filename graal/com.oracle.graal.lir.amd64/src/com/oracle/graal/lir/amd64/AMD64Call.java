@@ -41,8 +41,8 @@ public class AMD64Call {
         private final Object targetMethod;
         private final Map<XirMark, Mark> marks;
 
-        public DirectCallOp(Object targetMethod, RiValue result, RiValue[] parameters, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-            super("CALL_DIRECT", new RiValue[] {result}, info, parameters, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public DirectCallOp(Object targetMethod, Value result, Value[] parameters, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+            super("CALL_DIRECT", new Value[] {result}, info, parameters, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
             this.targetMethod = targetMethod;
             this.marks = marks;
         }
@@ -71,19 +71,19 @@ public class AMD64Call {
         private final Object targetMethod;
         private final Map<XirMark, Mark> marks;
 
-        private static RiValue[] concat(RiValue[] parameters, RiValue targetAddress) {
-            RiValue[] result = Arrays.copyOf(parameters, parameters.length + 1);
+        private static Value[] concat(Value[] parameters, Value targetAddress) {
+            Value[] result = Arrays.copyOf(parameters, parameters.length + 1);
             result[result.length - 1] = targetAddress;
             return result;
         }
 
-        public IndirectCallOp(Object targetMethod, RiValue result, RiValue[] parameters, RiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
-            super("CALL_INDIRECT", new RiValue[] {result}, info, concat(parameters, targetAddress), LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public IndirectCallOp(Object targetMethod, Value result, Value[] parameters, Value targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks) {
+            super("CALL_INDIRECT", new Value[] {result}, info, concat(parameters, targetAddress), LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
             this.targetMethod = targetMethod;
             this.marks = marks;
         }
 
-        private RiValue targetAddress() {
+        private Value targetAddress() {
             return input(inputs.length - 1);
         }
 

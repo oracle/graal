@@ -78,9 +78,9 @@ public class CiCallingConvention {
     /**
      * The locations in which the arguments are placed. This array ordered by argument index.
      */
-    public final RiValue[] locations;
+    public final Value[] locations;
 
-    public CiCallingConvention(RiValue[] locations, int stackSize) {
+    public CiCallingConvention(Value[] locations, int stackSize) {
         this.locations = locations;
         this.stackSize = stackSize;
         assert verify();
@@ -90,7 +90,7 @@ public class CiCallingConvention {
     public String toString() {
         StringBuilder result = new StringBuilder();
         result.append("CallingConvention[");
-        for (RiValue op : locations) {
+        for (Value op : locations) {
             result.append(op.toString()).append(" ");
         }
         result.append("]");
@@ -99,7 +99,7 @@ public class CiCallingConvention {
 
     private boolean verify() {
         for (int i = 0; i < locations.length; i++) {
-            RiValue location = locations[i];
+            Value location = locations[i];
             assert isStackSlot(location) || isRegister(location);
         }
         return true;

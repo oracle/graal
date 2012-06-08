@@ -25,13 +25,13 @@ package com.oracle.graal.alloc.util;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 
-public class Location extends RiValue {
+public class Location extends Value {
     private static final long serialVersionUID = -1786677729152726126L;
 
     public final Variable variable;
-    public final RiValue location;
+    public final Value location;
 
-    public Location(Variable variable, RiValue location) {
+    public Location(Variable variable, Value location) {
         super(variable.kind);
         this.variable = variable;
         this.location = location;

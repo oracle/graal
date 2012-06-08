@@ -79,9 +79,9 @@ public class LIRDebugInfo {
      */
     private static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Stack);
 
-    private void processValues(RiValue[] values, ValueProcedure proc) {
+    private void processValues(Value[] values, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
-            RiValue value = values[i];
+            Value value = values[i];
             if (value instanceof CiMonitorValue) {
                 CiMonitorValue monitor = (CiMonitorValue) value;
                 if (processed(monitor.owner)) {
@@ -94,7 +94,7 @@ public class LIRDebugInfo {
         }
     }
 
-    private boolean processed(RiValue value) {
+    private boolean processed(Value value) {
         if (isIllegal(value)) {
             // Ignore dead local variables.
             return false;

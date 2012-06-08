@@ -189,7 +189,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
      * any stack slots to parameters.
      */
     public CiCallingConvention getCallingConvention(Type type, RiKind[] parameters, CiTarget target, boolean stackOnly) {
-        RiValue[] locations = new RiValue[parameters.length];
+        Value[] locations = new Value[parameters.length];
 
         int currentGeneral = 0;
         int currentXMM = 0;

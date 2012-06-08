@@ -27,12 +27,12 @@ import com.oracle.graal.lir.*;
 
 public class LocationUtil extends ValueUtil {
 
-    public static boolean isLocation(RiValue value) {
+    public static boolean isLocation(Value value) {
         assert value != null;
         return value instanceof Location;
     }
 
-    public static Location asLocation(RiValue value) {
+    public static Location asLocation(Value value) {
         assert value != null;
         return (Location) value;
     }

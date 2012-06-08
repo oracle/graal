@@ -36,7 +36,7 @@ import com.oracle.graal.lir.asm.*;
  */
 public abstract class LIRInstruction {
 
-    public static final RiValue[] NO_OPERANDS = {};
+    public static final Value[] NO_OPERANDS = {};
 
     /**
      * Iterator for iterating over a list of values. Subclasses must overwrite one of the doValue methods.
@@ -50,7 +50,7 @@ public abstract class LIRInstruction {
          * @param value The value that is iterated.
          * @return The new value to replace the value that was passed in.
          */
-        protected RiValue doValue(RiValue value) {
+        protected Value doValue(Value value) {
             throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
         }
 
@@ -63,7 +63,7 @@ public abstract class LIRInstruction {
          * @param flags A set of flags for the value.
          * @return The new value to replace the value that was passed in.
          */
-        public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
             return doValue(value);
         }
     }
@@ -164,22 +164,22 @@ public abstract class LIRInstruction {
     /**
      * The output operands for this instruction (modified by the register allocator).
      */
-    protected RiValue[] outputs;
+    protected Value[] outputs;
 
     /**
      * The input operands for this instruction (modified by the register allocator).
      */
-    protected RiValue[] inputs;
+    protected Value[] inputs;
 
     /**
      * The alive operands for this instruction (modified by the register allocator).
      */
-    protected RiValue[] alives;
+    protected Value[] alives;
 
     /**
      * The temp operands for this instruction (modified by the register allocator).
      */
-    protected RiValue[] temps;
+    protected Value[] temps;
 
     /**
      * Used to emit debug information.
@@ -200,7 +200,7 @@ public abstract class LIRInstruction {
      * @param inputs the input operands for the instruction.
      * @param temps the temp operands for the instruction.
      */
-    public LIRInstruction(Object opcode, RiValue[] outputs, LIRDebugInfo info, RiValue[] inputs, RiValue[] alives, RiValue[] temps) {
+    public LIRInstruction(Object opcode, Value[] outputs, LIRDebugInfo info, Value[] inputs, Value[] alives, Value[] temps) {
         this.code = opcode;
         this.outputs = outputs;
         this.inputs = inputs;
@@ -227,7 +227,7 @@ public abstract class LIRInstruction {
      * @param index the index of the operand requested.
      * @return the {@code index}'th input operand.
      */
-    protected final RiValue input(int index) {
+    protected final Value input(int index) {
         return inputs[index];
     }
 
@@ -237,7 +237,7 @@ public abstract class LIRInstruction {
      * @param index the index of the operand requested.
      * @return the {@code index}'th alive operand.
      */
-    protected final RiValue alive(int index) {
+    protected final Value alive(int index) {
         return alives[index];
     }
 
@@ -247,7 +247,7 @@ public abstract class LIRInstruction {
      * @param index the index of the operand requested.
      * @return the {@code index}'th temp operand.
      */
-    protected final RiValue temp(int index) {
+    protected final Value temp(int index) {
         return temps[index];
     }
 
@@ -256,7 +256,7 @@ public abstract class LIRInstruction {
      *
      * @return return the result operand
      */
-    protected final RiValue output(int index) {
+    protected final Value output(int index) {
         return outputs[index];
     }
 
@@ -273,11 +273,11 @@ public abstract class LIRInstruction {
 
     private static final EnumSet<OperandFlag> ADDRESS_FLAGS = EnumSet.of(OperandFlag.Register, OperandFlag.Illegal);
 
-    private void forEach(RiValue[] values, OperandMode mode, ValueProcedure proc) {
+    private void forEach(Value[] values, OperandMode mode, ValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
             assert ALLOWED_FLAGS.get(mode).containsAll(flagsFor(mode, i));
 
-            RiValue value = values[i];
+            Value value = values[i];
             if (isAddress(value)) {
                 assert flagsFor(mode, i).contains(OperandFlag.Address);
                 CiAddress address = asAddress(value);
@@ -338,8 +338,8 @@ public abstract class LIRInstruction {
      *             and the value is returned by this method, i.e., clients can stop the iteration once a suitable hint has been found.
      * @return The non-null value returned by the procedure, or null.
      */
-    public RiValue forEachRegisterHint(RiValue value, OperandMode mode, ValueProcedure proc) {
-        RiValue[] hints;
+    public Value forEachRegisterHint(Value value, OperandMode mode, ValueProcedure proc) {
+        Value[] hints;
         if (mode == OperandMode.Input) {
             hints = outputs;
         } else if (mode == OperandMode.Output) {
@@ -349,7 +349,7 @@ public abstract class LIRInstruction {
         }
 
         for (int i = 0; i < hints.length; i++) {
-            RiValue result = proc.doValue(hints[i], null, null);
+            Value result = proc.doValue(hints[i], null, null);
             if (result != null) {
                 return result;
             }
@@ -386,7 +386,7 @@ public abstract class LIRInstruction {
         if (outputs.length > 1) {
             buf.append("(");
         }
-        for (RiValue output : outputs) {
+        for (Value output : outputs) {
             buf.append(sep).append(output);
             sep = ", ";
         }
@@ -401,11 +401,11 @@ public abstract class LIRInstruction {
             buf.append("(");
         }
         sep = "";
-        for (RiValue input : inputs) {
+        for (Value input : inputs) {
             buf.append(sep).append(input);
             sep = ", ";
         }
-        for (RiValue input : alives) {
+        for (Value input : alives) {
             buf.append(sep).append(input).append(" ~");
             sep = ", ";
         }
@@ -417,7 +417,7 @@ public abstract class LIRInstruction {
             buf.append(" [");
         }
         sep = "";
-        for (RiValue temp : temps) {
+        for (Value temp : temps) {
             buf.append(sep).append(temp);
             sep = ", ";
         }

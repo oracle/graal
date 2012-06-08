@@ -98,11 +98,11 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RiValue op1 = gen.operand(x());
+        Value op1 = gen.operand(x());
         assert op1 != null : x() + ", this=" + this;
-        RiValue op2 = gen.operand(y());
+        Value op2 = gen.operand(y());
         if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {
-            RiValue op = op1;
+            Value op = op1;
             op1 = op2;
             op2 = op;
         }

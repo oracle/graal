@@ -36,9 +36,9 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.virtual.*;
 
 public class DebugInfoBuilder {
-    private final NodeMap<RiValue> nodeOperands;
+    private final NodeMap<Value> nodeOperands;
 
-    public DebugInfoBuilder(NodeMap<RiValue> nodeOperands) {
+    public DebugInfoBuilder(NodeMap<Value> nodeOperands) {
         this.nodeOperands = nodeOperands;
     }
 
@@ -81,9 +81,9 @@ public class DebugInfoBuilder {
                         VirtualObjectNode vobj = entry.getKey();
                         if (vobj instanceof BoxedVirtualObjectNode) {
                             BoxedVirtualObjectNode boxedVirtualObjectNode = (BoxedVirtualObjectNode) vobj;
-                            entry.getValue().setValues(new RiValue[]{toCiValue(boxedVirtualObjectNode.getUnboxedValue())});
+                            entry.getValue().setValues(new Value[]{toCiValue(boxedVirtualObjectNode.getUnboxedValue())});
                         } else {
-                            RiValue[] values = new RiValue[vobj.fieldsCount()];
+                            Value[] values = new Value[vobj.fieldsCount()];
                             entry.getValue().setValues(values);
                             if (values.length > 0) {
                                 changed = true;
@@ -119,7 +119,7 @@ public class DebugInfoBuilder {
         int numStack = state.stackSize();
         int numLocks = (locks != null && locks.callerState == state.outerFrameState()) ? locks.stateDepth + 1 : 0;
 
-        RiValue[] values = new RiValue[numLocals + numStack + numLocks];
+        Value[] values = new Value[numLocals + numStack + numLocks];
         for (int i = 0; i < numLocals; i++) {
             values[i] = toCiValue(state.localAt(i));
         }
@@ -131,8 +131,8 @@ public class DebugInfoBuilder {
         for (int i = numLocks - 1; i >= 0; i--) {
             assert locks != null && nextLock.callerState == state.outerFrameState() && nextLock.stateDepth == i;
 
-            RiValue owner = toCiValue(nextLock.monitor.object());
-            RiValue lockData = nextLock.lockData;
+            Value owner = toCiValue(nextLock.monitor.object());
+            Value lockData = nextLock.lockData;
             boolean eliminated = nextLock.monitor.eliminated();
             values[numLocals + numStack + nextLock.stateDepth] = new CiMonitorValue(owner, lockData, eliminated);
 
@@ -152,7 +152,7 @@ public class DebugInfoBuilder {
         return frame;
     }
 
-    private RiValue toCiValue(ValueNode value) {
+    private Value toCiValue(ValueNode value) {
         if (value instanceof VirtualObjectNode) {
             VirtualObjectNode obj = (VirtualObjectNode) value;
             CiVirtualObject ciObj = virtualObjects.get(value);
@@ -169,14 +169,14 @@ public class DebugInfoBuilder {
 
         } else if (value != null) {
             Debug.metric("StateVariables").increment();
-            RiValue operand = nodeOperands.get(value);
+            Value operand = nodeOperands.get(value);
             assert operand != null && (operand instanceof Variable || operand instanceof Constant);
             return operand;
 
         } else {
             // return a dummy value because real value not needed
             Debug.metric("StateIllegals").increment();
-            return RiValue.IllegalValue;
+            return Value.IllegalValue;
         }
     }
 }

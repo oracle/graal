@@ -35,7 +35,7 @@ import com.oracle.graal.lir.asm.*;
  */
 public class StandardOp {
 
-    private static RiValue[] EMPTY = new RiValue[0];
+    private static Value[] EMPTY = new Value[0];
 
     /**
      * LIR operation that defines the position of a label.
@@ -45,7 +45,7 @@ public class StandardOp {
         private final Label label;
         private final boolean align;
 
-        protected LabelOp(Object opcode, RiValue[] outputs, LIRDebugInfo info, RiValue[] inputs, RiValue[] alives, RiValue[] temps, Label label, boolean align) {
+        protected LabelOp(Object opcode, Value[] outputs, LIRDebugInfo info, Value[] inputs, Value[] alives, Value[] temps, Label label, boolean align) {
             super(opcode, outputs, info, inputs, alives, temps);
             this.label = label;
             this.align = align;
@@ -79,7 +79,7 @@ public class StandardOp {
     }
 
     public static class PhiLabelOp extends LabelOp {
-        public PhiLabelOp(Label label, boolean align, RiValue[] phiDefinitions) {
+        public PhiLabelOp(Label label, boolean align, Value[] phiDefinitions) {
             super("PHI_LABEL", phiDefinitions, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, label, align);
         }
 
@@ -95,7 +95,7 @@ public class StandardOp {
             outputs = EMPTY;
         }
 
-        public RiValue[] getPhiDefinitions() {
+        public Value[] getPhiDefinitions() {
             return outputs;
         }
     }
@@ -110,7 +110,7 @@ public class StandardOp {
     public static class JumpOp extends LIRInstruction {
         private final LabelRef destination;
 
-        protected JumpOp(Object opcode, RiValue[] outputs, LIRDebugInfo info, RiValue[] inputs, RiValue[] alives, RiValue[] temps, LabelRef destination) {
+        protected JumpOp(Object opcode, Value[] outputs, LIRDebugInfo info, Value[] inputs, Value[] alives, Value[] temps, LabelRef destination) {
             super(opcode, outputs, info, inputs, alives, temps);
             this.destination = destination;
         }
@@ -140,7 +140,7 @@ public class StandardOp {
     }
 
     public static class PhiJumpOp extends JumpOp {
-        public PhiJumpOp(LabelRef destination, RiValue[] phiInputs) {
+        public PhiJumpOp(LabelRef destination, Value[] phiInputs) {
             super("PHI_JUMP", LIRInstruction.NO_OPERANDS, null, LIRInstruction.NO_OPERANDS, phiInputs, LIRInstruction.NO_OPERANDS, destination);
         }
 
@@ -156,7 +156,7 @@ public class StandardOp {
             alives = EMPTY;
         }
 
-        public RiValue[] getPhiInputs() {
+        public Value[] getPhiInputs() {
             return alives;
         }
     }
@@ -174,8 +174,8 @@ public class StandardOp {
      * Marker interface for a LIR operation that moves a value from {@link #getInput()} to {@link #getResult()}.
      */
     public interface MoveOp {
-        RiValue getInput();
-        RiValue getResult();
+        Value getInput();
+        Value getResult();
     }
 
     /**
@@ -191,7 +191,7 @@ public class StandardOp {
      * In particular, it is not the actual method prologue.
      */
     public static final class ParametersOp extends LIRInstruction {
-        public ParametersOp(RiValue[] params) {
+        public ParametersOp(Value[] params) {
             super("PARAMS", params, null, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 

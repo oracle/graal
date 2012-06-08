@@ -47,7 +47,7 @@ public class ReplacingStreams {
         input = new ReplacingInputStream(new BufferedInputStream(inputStream));
         invocation = new InvocationSocket(output, input);
 
-        addStaticObject(RiValue.IllegalValue);
+        addStaticObject(Value.IllegalValue);
         addStaticObject(HotSpotProxy.DUMMY_CONSTANT_OBJ);
     }
 

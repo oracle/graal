@@ -2217,7 +2217,7 @@ public class AMD64Assembler extends AbstractAssembler {
         }
     }
 
-    private static boolean needsRex(RiValue value) {
+    private static boolean needsRex(Value value) {
         return isRegister(value) && asRegister(value).encoding >= MinEncodingNeedsRex;
     }
 

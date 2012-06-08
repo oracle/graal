@@ -40,15 +40,15 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         LOG, LOG10;
     }
 
-    public AMD64MathIntrinsicOp(Opcode opcode, RiValue result, RiValue input) {
-        super(opcode, new RiValue[] {result}, null, new RiValue[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+    public AMD64MathIntrinsicOp(Opcode opcode, Value result, Value input) {
+        super(opcode, new Value[] {result}, null, new Value[] {input}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         Opcode opcode = (Opcode) code;
-        RiValue result = output(0);
-        RiValue input = input(0);
+        Value result = output(0);
+        Value input = input(0);
 
         switch (opcode) {
             case SQRT:  masm.sqrtsd(asDoubleReg(result), asDoubleReg(input)); break;

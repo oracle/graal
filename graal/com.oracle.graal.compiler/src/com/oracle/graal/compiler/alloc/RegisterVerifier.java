@@ -45,7 +45,7 @@ final class RegisterVerifier {
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
-    Interval intervalAt(RiValue operand) {
+    Interval intervalAt(Value operand) {
         return allocator.intervalFor(operand);
     }
 
@@ -178,7 +178,7 @@ final class RegisterVerifier {
         return inputState.clone();
     }
 
-    static void statePut(Interval[] inputState, RiValue location, Interval interval) {
+    static void statePut(Interval[] inputState, Value location, Interval interval) {
         if (location != null && isRegister(location)) {
             CiRegister reg = asRegister(location);
             int regNum = reg.number;
@@ -196,7 +196,7 @@ final class RegisterVerifier {
         }
     }
 
-    static boolean checkState(Interval[] inputState, RiValue reg, Interval interval) {
+    static boolean checkState(Interval[] inputState, Value reg, Interval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
                 throw new GraalInternalError("!! Error in register allocation: register %s does not contain interval %s but interval %s", reg, interval.operand, inputState[asRegister(reg).number]);
@@ -216,7 +216,7 @@ final class RegisterVerifier {
 
             ValueProcedure useProc = new ValueProcedure() {
                 @Override
-                public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                         Interval interval = intervalAt(operand);
                         if (op.id() != -1) {
@@ -231,7 +231,7 @@ final class RegisterVerifier {
 
             ValueProcedure defProc = new ValueProcedure() {
                 @Override
-                public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                         Interval interval = intervalAt(operand);
                         if (op.id() != -1) {

@@ -111,7 +111,7 @@ public final class IntervalPrinter {
         this.intervals = new HashMap<>();
     }
 
-    private boolean isAllocatableRegister(RiValue value) {
+    private boolean isAllocatableRegister(Value value) {
         return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
@@ -119,7 +119,7 @@ public final class IntervalPrinter {
     private String curUseKind;
 
     public Interval[] execute() {
-        ValueProcedure varProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return var(value); } };
+        ValueProcedure varProc = new ValueProcedure() { @Override public Value doValue(Value value) { return var(value); } };
 
         for (Block block : lir.linearScanOrder()) {
             for (LIRInstruction op : block.lir) {
@@ -127,8 +127,8 @@ public final class IntervalPrinter {
             }
         }
 
-        ValueProcedure useProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
+        ValueProcedure useProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, flags); } };
 
         intervals.put("call", new Interval(-2, "call", "", "call", "hasCall"));
         intervals.put("st", new Interval(-1, "st", "", "st", "hasState"));
@@ -190,7 +190,7 @@ public final class IntervalPrinter {
         return intervalsArray;
     }
 
-    public RiValue var(RiValue value) {
+    public Value var(Value value) {
         if (isLocation(value)) {
             variables[asLocation(value).variable.index] = asLocation(value).variable;
         } else if (isVariable(value)) {
@@ -199,7 +199,7 @@ public final class IntervalPrinter {
         return value;
     }
 
-    private Interval findInterval(RiValue value) {
+    private Interval findInterval(Value value) {
         Interval interval;
         if (isLocation(value)) {
             Interval parent = findInterval(asLocation(value).variable);
@@ -235,7 +235,7 @@ public final class IntervalPrinter {
         }
     }
 
-    private RiValue use(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private Value use(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         Interval interval = findInterval(value);
         if (interval != null) {
             if (interval.uses.size() == 0 || interval.uses.get(interval.uses.size() - 1).pos != curOpId) {
@@ -248,7 +248,7 @@ public final class IntervalPrinter {
         return value;
     }
 
-    private RiValue def(RiValue value, EnumSet<OperandFlag> flags) {
+    private Value def(Value value, EnumSet<OperandFlag> flags) {
         Interval interval = findInterval(value);
         if (interval != null) {
             interval.uses.add(new UsePosition(curOpId, useKind(flags)));
@@ -262,7 +262,7 @@ public final class IntervalPrinter {
         return value;
     }
 
-    private RiValue out(RiValue value) {
+    private Value out(Value value) {
         Interval interval = findInterval(value);
         if (interval != null) {
             interval.lastTo = curOpId;

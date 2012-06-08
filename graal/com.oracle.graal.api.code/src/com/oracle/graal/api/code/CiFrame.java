@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the Java bytecode frame state(s) at a given position
- * including {@link RiValue locations} where to find the local variables,
+ * including {@link Value locations} where to find the local variables,
  * operand stack values and locked objects of the bytecode frame(s).
  */
 public class CiFrame extends CiCodePos implements Serializable {
@@ -48,7 +48,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * Note that the number of locals and the number of stack slots may be smaller than the
      * maximum number of locals and stack slots as specified in the compiled method.
      */
-    public final RiValue[] values;
+    public final Value[] values;
 
     /**
      * The number of locals in the values array.
@@ -87,7 +87,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, boolean duringCall, RiValue[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
+    public CiFrame(CiFrame caller, RiResolvedMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks, long leafGraphId) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -105,7 +105,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param i the local variable index
      * @return the value that can be used to reconstruct the local's current value
      */
-    public RiValue getLocalValue(int i) {
+    public Value getLocalValue(int i) {
         return values[i];
     }
 
@@ -114,7 +114,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param i the stack index
      * @return the value that can be used to reconstruct the stack slot's current value
      */
-    public RiValue getStackValue(int i) {
+    public Value getStackValue(int i) {
         return values[i + numLocals];
     }
 
@@ -123,7 +123,7 @@ public class CiFrame extends CiCodePos implements Serializable {
      * @param i the lock index
      * @return the value that can be used to reconstruct the lock's current value
      */
-    public RiValue getLockValue(int i) {
+    public Value getLockValue(int i) {
         return values[i + numLocals + numStack];
     }
 

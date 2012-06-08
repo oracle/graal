@@ -54,12 +54,12 @@ public final class LIRVerifier {
         return frameMap.target.arch.registers.length;
     }
 
-    private boolean isAllocatableRegister(RiValue value) {
+    private boolean isAllocatableRegister(Value value) {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
     public static boolean verify(final LIRInstruction op) {
-        ValueProcedure allowedProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return allowed(op, value, mode, flags); } };
+        ValueProcedure allowedProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return allowed(op, value, mode, flags); } };
 
         op.forEachInput(allowedProc);
         op.forEachAlive(allowedProc);
@@ -87,21 +87,21 @@ public final class LIRVerifier {
     }
 
     private BitSet curVariablesLive;
-    private RiValue[] curRegistersLive;
+    private Value[] curRegistersLive;
 
     private Block curBlock;
     private Object curInstruction;
     private BitSet curRegistersDefined;
 
     private void verify() {
-        ValueProcedure useProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
-        ValueProcedure defProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
+        ValueProcedure useProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, mode, flags); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return def(value, mode, flags); } };
 
         curRegistersDefined = new BitSet();
         for (Block block : lir.linearScanOrder()) {
             curBlock = block;
             curVariablesLive = new BitSet();
-            curRegistersLive = new RiValue[maxRegisterNum()];
+            curRegistersLive = new Value[maxRegisterNum()];
 
             if (block.getDominator() != null) {
                 curVariablesLive.or(liveOutFor(block.getDominator()));
@@ -110,7 +110,7 @@ public final class LIRVerifier {
             assert block.lir.get(0) instanceof StandardOp.LabelOp : "block must start with label";
             if (block.numberOfPreds() > 1) {
                 assert block.lir.get(0) instanceof StandardOp.PhiLabelOp : "phi mapping required for multiple predecessors";
-                RiValue[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
+                Value[] phiDefinitions = ((StandardOp.PhiLabelOp) block.lir.get(0)).getPhiDefinitions();
                 if (!beforeRegisterAllocation) {
                     assert phiDefinitions.length == 0;
                 }
@@ -118,7 +118,7 @@ public final class LIRVerifier {
                     assert pred.numberOfSux() == 1;
                     LIRInstruction last = pred.lir.get(pred.lir.size() - 1);
                     assert last instanceof StandardOp.PhiJumpOp : "phi mapping required for multiple successors";
-                    RiValue[] phiUses = ((StandardOp.PhiJumpOp) last).getPhiInputs();
+                    Value[] phiUses = ((StandardOp.PhiJumpOp) last).getPhiInputs();
                     if (!beforeRegisterAllocation) {
                         assert phiUses.length == 0;
                     }
@@ -152,7 +152,7 @@ public final class LIRVerifier {
         }
     }
 
-    private RiValue use(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private Value use(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
         if (isVariable(value)) {
@@ -185,7 +185,7 @@ public final class LIRVerifier {
         return value;
     }
 
-    private RiValue def(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private Value def(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
         if (isVariable(value)) {
@@ -226,7 +226,7 @@ public final class LIRVerifier {
         return value;
     }
 
-    private static RiValue allowed(Object op, RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private static Value allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         if ((isVariable(value)  && flags.contains(OperandFlag.Register)) ||
             (isRegister(value)  && flags.contains(OperandFlag.Register)) ||
             (isStackSlot(value) && flags.contains(OperandFlag.Stack)) ||

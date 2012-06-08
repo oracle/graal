@@ -27,7 +27,7 @@ package com.oracle.graal.api.meta;
  * within the compiler and across the compiler/runtime interface. Exports a set of {@code CiConstant}
  * instances that represent frequently used constant values, such as {@link #ZERO}.
  */
-public final class Constant extends RiValue {
+public final class Constant extends Value {
     private static final long serialVersionUID = -6355452536852663986L;
 
     private static final Constant[] INT_CONSTANT_CACHE = new Constant[100];

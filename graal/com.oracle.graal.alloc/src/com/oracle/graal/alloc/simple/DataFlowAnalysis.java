@@ -57,7 +57,7 @@ public class DataFlowAnalysis {
         return lir.numVariables();
     }
 
-    private boolean isAllocatableRegister(RiValue value) {
+    private boolean isAllocatableRegister(Value value) {
         return isRegister(value) && registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
@@ -93,14 +93,14 @@ public class DataFlowAnalysis {
         Object entry = killedValues(op.id() + (end ? 1 : 0));
         if (entry == null) {
             // Nothing to do
-        } else if (entry instanceof RiValue) {
-            RiValue newValue = proc.doValue((RiValue) entry, null, null);
+        } else if (entry instanceof Value) {
+            Value newValue = proc.doValue((Value) entry, null, null);
             assert newValue == entry : "procedure does not allow to change values";
         } else {
-            RiValue[] values = (RiValue[]) entry;
+            Value[] values = (Value[]) entry;
             for (int i = 0; i < values.length; i++) {
                 if (values[i] != null) {
-                    RiValue newValue = proc.doValue(values[i], null, null);
+                    Value newValue = proc.doValue(values[i], null, null);
                     assert newValue == values[i] : "procedure does not allow to change values";
                 }
             }
@@ -115,7 +115,7 @@ public class DataFlowAnalysis {
      * Numbers all instructions in all blocks. The numbering follows the {@linkplain ComputeLinearScanOrder linear scan order}.
      */
     private void numberInstructions() {
-        ValueProcedure defProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return setDef(value); } };
+        ValueProcedure defProc = new ValueProcedure() { @Override public Value doValue(Value value) { return setDef(value); } };
 
         int numInstructions = 0;
         for (Block block : blocks()) {
@@ -140,7 +140,7 @@ public class DataFlowAnalysis {
         assert curOpId == numInstructions << 1;
     }
 
-    private RiValue setDef(RiValue value) {
+    private Value setDef(Value value) {
         if (isVariable(value)) {
             assert definitions[asVariable(value).index] == 0 : "Variable defined twice";
             definitions[asVariable(value).index] = curOpId;
@@ -154,10 +154,10 @@ public class DataFlowAnalysis {
     private int curOpId;
 
     private void backwardDataFlow() {
-        ValueProcedure inputProc =    new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return use(value, curOpId); } };
-        ValueProcedure aliveProc =    new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return use(value, curOpId + 1); } };
-        ValueProcedure tempProc =     new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return def(value, true); } };
-        ValueProcedure outputProc =   new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return def(value, false); } };
+        ValueProcedure inputProc =    new ValueProcedure() { @Override public Value doValue(Value value) { return use(value, curOpId); } };
+        ValueProcedure aliveProc =    new ValueProcedure() { @Override public Value doValue(Value value) { return use(value, curOpId + 1); } };
+        ValueProcedure tempProc =     new ValueProcedure() { @Override public Value doValue(Value value) { return def(value, true); } };
+        ValueProcedure outputProc =   new ValueProcedure() { @Override public Value doValue(Value value) { return def(value, false); } };
 
         blockLiveIn = new BitSet[blocks().size()];
         registerLive = new BitSet();
@@ -211,7 +211,7 @@ public class DataFlowAnalysis {
         Debug.log("==== end backward data flow analysis ====");
     }
 
-    private RiValue use(RiValue value, int killOpId) {
+    private Value use(Value value, int killOpId) {
         Debug.log("    use %s", value);
         if (isVariable(value)) {
             int variableIdx = asVariable(value).index;
@@ -233,7 +233,7 @@ public class DataFlowAnalysis {
         return value;
     }
 
-    private RiValue def(RiValue value, boolean isTemp) {
+    private Value def(Value value, boolean isTemp) {
         Debug.log("    def %s", value);
         if (isVariable(value)) {
             int variableIdx = asVariable(value).index;
@@ -261,7 +261,7 @@ public class DataFlowAnalysis {
         return value;
     }
 
-    private void kill(RiValue value, int opId) {
+    private void kill(Value value, int opId) {
         if (opId < 0) {
             return;
         }
@@ -284,10 +284,10 @@ public class DataFlowAnalysis {
         Object entry = killedValues(opId);
         if (entry == null) {
             setKilledValues(opId, value);
-        } else if (entry instanceof RiValue) {
-            setKilledValues(opId, new RiValue[] {(RiValue) entry, value});
+        } else if (entry instanceof Value) {
+            setKilledValues(opId, new Value[] {(Value) entry, value});
         } else {
-            RiValue[] killed = (RiValue[]) entry;
+            Value[] killed = (Value[]) entry;
             for (int i = 0; i < killed.length; i++) {
                 if (killed[i] == null) {
                     killed[i] = value;

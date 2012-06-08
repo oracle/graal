@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
  * CiRegisterValue} for each ({@link CiRegister}, {@link RiKind}) pair. Use {@link CiRegister#asValue(RiKind)} to
  * retrieve the canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
  */
-public final class CiRegisterValue extends RiValue {
+public final class CiRegisterValue extends Value {
     private static final long serialVersionUID = 7999341472196897163L;
 
     /**

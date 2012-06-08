@@ -323,7 +323,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void setReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void setReference(Value location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (isRegister(location)) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;
@@ -347,7 +347,7 @@ public final class FrameMap {
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.
      */
-    public void clearReference(RiValue location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
+    public void clearReference(Value location, CiBitMap registerRefMap, CiBitMap frameRefMap) {
         if (location.kind == RiKind.Object) {
             if (location instanceof CiRegisterValue) {
                 assert registerRefMap.size() == target.arch.registerReferenceMapBitCount;

@@ -64,7 +64,7 @@ public final class LinearScan {
          * Bit map specifying which {@linkplain OperandPool operands} are live upon entry to this block.
          * These are values used in this block or any of its successors where such value are not defined
          * in this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.ri.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
         public BitMap liveIn;
 
@@ -72,20 +72,20 @@ public final class LinearScan {
          * Bit map specifying which {@linkplain OperandPool operands} are live upon exit from this block.
          * These are values used in a successor block that are either defined in this block or were live
          * upon entry to this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.ri.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
         public BitMap liveOut;
 
         /**
          * Bit map specifying which {@linkplain OperandPool operands} are used (before being defined) in this block.
          * That is, these are the values that are live upon entry to the block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.ri.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
         public BitMap liveGen;
 
         /**
          * Bit map specifying which {@linkplain OperandPool operands} are defined/overwritten in this block.
-         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.ri.RiValue.ci.CiValue) operand number}.
+         * The bit index of an operand is its {@linkplain OperandPool#operandNumber(com.oracle.max.cri.Value.RiValue.ci.CiValue) operand number}.
          */
         public BitMap liveKill;
     }
@@ -98,7 +98,7 @@ public final class LinearScan {
     final Block[] sortedBlocks;
 
     /**
-     * Map from {@linkplain #operandNumber(RiValue) operand numbers} to intervals.
+     * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
      */
     Interval[] intervals;
 
@@ -137,14 +137,14 @@ public final class LinearScan {
     BitMap2D intervalInLoop;
 
     /**
-     * The variable operands allocated from this pool. The {@linkplain #operandNumber(RiValue) number}
+     * The variable operands allocated from this pool. The {@linkplain #operandNumber(Value) number}
      * of the first variable operand in this pool is one greater than the number of the last
      * register operand in the pool.
      */
     private final ArrayList<Variable> variables;
 
     /**
-     * The {@linkplain #operandNumber(RiValue) number} of the first variable operand
+     * The {@linkplain #operandNumber(Value) number} of the first variable operand
      * {@linkplain #newVariable(RiKind) allocated} from this pool.
      */
     private final int firstVariableNumber;
@@ -165,7 +165,7 @@ public final class LinearScan {
         this.blockData = new BlockMap<>(ir.cfg);
     }
 
-    public static boolean isVariableOrRegister(RiValue value) {
+    public static boolean isVariableOrRegister(Value value) {
         return isVariable(value) || isRegister(value);
     }
 
@@ -175,7 +175,7 @@ public final class LinearScan {
      * {@linkplain Variable variables} and {@linkplain CiRegisterValue registers} being processed by this
      * allocator.
      */
-    private int operandNumber(RiValue operand) {
+    private int operandNumber(Value operand) {
         if (isRegister(operand)) {
             int number = asRegister(operand).number;
             assert number < firstVariableNumber;
@@ -188,7 +188,7 @@ public final class LinearScan {
     /**
      * Gets the operand denoted by a given operand number.
      */
-    private RiValue operandFor(int operandNumber) {
+    private Value operandFor(int operandNumber) {
         if (operandNumber < firstVariableNumber) {
             assert operandNumber >= 0;
             return registers[operandNumber].asValue();
@@ -260,7 +260,7 @@ public final class LinearScan {
      * @param operand the operand for the interval
      * @return the created interval
      */
-    Interval createInterval(RiValue operand) {
+    Interval createInterval(Value operand) {
         assert isProcessed(operand);
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
@@ -322,7 +322,7 @@ public final class LinearScan {
         return intervalInLoop.at(interval, loop);
     }
 
-    Interval intervalFor(RiValue operand) {
+    Interval intervalFor(Value operand) {
         int operandNumber = operandNumber(operand);
         assert operandNumber < intervalsSize;
         return intervals[operandNumber];
@@ -524,8 +524,8 @@ public final class LinearScan {
                             insertionBuffer.init(block.lir);
                         }
 
-                        RiValue fromLocation = interval.location();
-                        RiValue toLocation = canonicalSpillOpr(interval);
+                        Value fromLocation = interval.location();
+                        Value toLocation = canonicalSpillOpr(interval);
 
                         assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
                         assert isStackSlot(toLocation) : "to operand must be a stack slot";
@@ -580,7 +580,7 @@ public final class LinearScan {
     void numberInstructions() {
         ValueProcedure setVariableProc = new ValueProcedure() {
             @Override
-            public RiValue doValue(RiValue value) {
+            public Value doValue(Value value) {
                 if (isVariable(value)) {
                     int variableIdx = asVariable(value).index;
                     while (variables.size() <= variableIdx) {
@@ -664,7 +664,7 @@ public final class LinearScan {
 
                 ValueProcedure useProc = new ValueProcedure() {
                     @Override
-                    protected RiValue doValue(RiValue operand) {
+                    protected Value doValue(Value operand) {
                         if (isVariable(operand)) {
                             int operandNum = operandNumber(operand);
                             if (!liveKill.get(operandNum)) {
@@ -686,7 +686,7 @@ public final class LinearScan {
                 };
                 ValueProcedure stateProc = new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand) {
+                    public Value doValue(Value operand) {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
@@ -699,7 +699,7 @@ public final class LinearScan {
                 };
                 ValueProcedure defProc = new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand) {
+                    public Value doValue(Value operand) {
                         if (isVariable(operand)) {
                             int varNum = operandNumber(operand);
                             liveKill.set(varNum);
@@ -738,7 +738,7 @@ public final class LinearScan {
         } // end of block iteration
     }
 
-    private void verifyTemp(BitMap liveKill, RiValue operand) {
+    private void verifyTemp(BitMap liveKill, Value operand) {
         // fixed intervals are never live at block boundaries, so
         // they need not be processed in live sets
         // process them only in debug mode so that this can be checked
@@ -749,7 +749,7 @@ public final class LinearScan {
         }
     }
 
-    private void verifyInput(Block block, BitMap liveKill, RiValue operand) {
+    private void verifyInput(Block block, BitMap liveKill, Value operand) {
         // fixed intervals are never live at block boundaries, so
         // they need not be processed in live sets.
         // this is checked by these assertions to be sure about it.
@@ -857,7 +857,7 @@ public final class LinearScan {
         // print some additional information to simplify debugging
         for (int operandNum = 0; operandNum < blockData.get(ir.cfg.getStartBlock()).liveIn.size(); operandNum++) {
             if (blockData.get(ir.cfg.getStartBlock()).liveIn.get(operandNum)) {
-                RiValue operand = operandFor(operandNum);
+                Value operand = operandFor(operandNum);
                 TTY.println(" var %d; operand=%s; node=%s", operandNum, operand.toString(), gen.valueForOperand(operand));
 
                 for (int j = 0; j < numBlocks; j++) {
@@ -870,7 +870,7 @@ public final class LinearScan {
                             if (info != null) {
                                 info.forEachState(new ValueProcedure() {
                                     @Override
-                                    public RiValue doValue(RiValue liveStateOperand) {
+                                    public Value doValue(Value liveStateOperand) {
                                         TTY.println("   operand=" + liveStateOperand);
                                         return liveStateOperand;
                                     }
@@ -910,7 +910,7 @@ public final class LinearScan {
         TTY.println(blockData.get(block).liveOut.toString());
     }
 
-    void addUse(RiValue operand, int from, int to, RegisterPriority registerPriority, RiKind kind) {
+    void addUse(Value operand, int from, int to, RegisterPriority registerPriority, RiKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -933,7 +933,7 @@ public final class LinearScan {
         interval.addUsePos(to & ~1, registerPriority);
     }
 
-    void addTemp(RiValue operand, int tempPos, RegisterPriority registerPriority, RiKind kind) {
+    void addTemp(Value operand, int tempPos, RegisterPriority registerPriority, RiKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -953,11 +953,11 @@ public final class LinearScan {
         interval.addUsePos(tempPos, registerPriority);
     }
 
-    boolean isProcessed(RiValue operand) {
+    boolean isProcessed(Value operand) {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable;
     }
 
-    void addDef(RiValue operand, int defPos, RegisterPriority registerPriority, RiKind kind) {
+    void addDef(Value operand, int defPos, RegisterPriority registerPriority, RiKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1066,12 +1066,12 @@ public final class LinearScan {
         }
     }
 
-    void addRegisterHint(final LIRInstruction op, final RiValue targetValue, OperandMode mode, EnumSet<OperandFlag> flags) {
+    void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags) {
         if (flags.contains(OperandFlag.RegisterHint) && isVariableOrRegister(targetValue)) {
 
             op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
                 @Override
-                protected RiValue doValue(RiValue registerHint) {
+                protected Value doValue(Value registerHint) {
                     if (isVariableOrRegister(registerHint)) {
                         Interval from = intervalFor(registerHint);
                         Interval to = intervalFor(targetValue);
@@ -1110,7 +1110,7 @@ public final class LinearScan {
             BitMap live = blockData.get(block).liveOut;
             for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                 assert live.get(operandNum) : "should not stop here otherwise";
-                RiValue operand = operandFor(operandNum);
+                Value operand = operandFor(operandNum);
                 if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("live in %s to %d", operand, blockTo + 2);
                 }
@@ -1148,7 +1148,7 @@ public final class LinearScan {
 
                 op.forEachOutput(new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.kind.stackKind());
                             addRegisterHint(op, operand, mode, flags);
@@ -1158,7 +1158,7 @@ public final class LinearScan {
                 });
                 op.forEachTemp(new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.kind.stackKind());
                             addRegisterHint(op, operand, mode, flags);
@@ -1168,7 +1168,7 @@ public final class LinearScan {
                 });
                 op.forEachAlive(new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
                             addUse(operand, blockFrom, opId + 1, p, operand.kind.stackKind());
@@ -1179,7 +1179,7 @@ public final class LinearScan {
                 });
                 op.forEachInput(new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
                             addUse(operand, blockFrom, opId, p, operand.kind.stackKind());
@@ -1195,7 +1195,7 @@ public final class LinearScan {
                 // to a call site, the value would be in a register at the call otherwise)
                 op.forEachState(new ValueProcedure() {
                     @Override
-                    public RiValue doValue(RiValue operand) {
+                    public Value doValue(Value operand) {
                         addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.kind.stackKind());
                         return operand;
                     }
@@ -1396,21 +1396,21 @@ public final class LinearScan {
         throw new CiBailout("LinearScan: interval is null");
     }
 
-    Interval intervalAtBlockBegin(Block block, RiValue operand) {
+    Interval intervalAtBlockBegin(Block block, Value operand) {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
         return splitChildAtOpId(intervalFor(operand), block.getFirstLirInstructionId(), LIRInstruction.OperandMode.Output);
     }
 
-    Interval intervalAtBlockEnd(Block block, RiValue operand) {
+    Interval intervalAtBlockEnd(Block block, Value operand) {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
         return splitChildAtOpId(intervalFor(operand), block.getLastLirInstructionId() + 1, LIRInstruction.OperandMode.Output);
     }
 
-    Interval intervalAtOpId(RiValue operand, int opId) {
+    Interval intervalAtOpId(Value operand, int opId) {
         assert isVariable(operand) : "register number out of bounds";
         assert intervalFor(operand) != null : "no interval found";
 
@@ -1428,7 +1428,7 @@ public final class LinearScan {
             assert operandNum < numOperands : "live information set for not exisiting interval";
             assert blockData.get(fromBlock).liveOut.get(operandNum) && blockData.get(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
-            RiValue liveOperand = operandFor(operandNum);
+            Value liveOperand = operandFor(operandNum);
             Interval fromInterval = intervalAtBlockEnd(fromBlock, liveOperand);
             Interval toInterval = intervalAtBlockBegin(toBlock, liveOperand);
 
@@ -1549,7 +1549,7 @@ public final class LinearScan {
     // * Phase 7: assign register numbers back to LIR
     // (includes computation of debug information and oop maps)
 
-    boolean verifyAssignedLocation(Interval interval, RiValue location) {
+    boolean verifyAssignedLocation(Interval interval, Value location) {
         RiKind kind = interval.kind();
 
         assert isRegister(location) || isStackSlot(location);
@@ -1605,7 +1605,7 @@ public final class LinearScan {
      * @param mode the usage mode for {@code operand} by the instruction
      * @return the location assigned for the operand
      */
-    private RiValue colorLirOperand(Variable operand, int opId, OperandMode mode) {
+    private Value colorLirOperand(Variable operand, int opId, OperandMode mode) {
         Interval interval = intervalFor(operand);
         assert interval != null : "interval must exist";
 
@@ -1643,7 +1643,7 @@ public final class LinearScan {
         // intervals that have no oops inside need not to be processed.
         // to ensure a walking until the last instruction id, add a dummy interval
         // with a high operation id
-        nonOopIntervals = new Interval(RiValue.IllegalValue, -1);
+        nonOopIntervals = new Interval(Value.IllegalValue, -1);
         nonOopIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
 
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
@@ -1661,7 +1661,7 @@ public final class LinearScan {
 
         // Iterate through active intervals
         for (Interval interval = iw.activeLists.get(RegisterBinding.Fixed); interval != Interval.EndMarker; interval = interval.next) {
-            RiValue operand = interval.operand;
+            Value operand = interval.operand;
 
             assert interval.currentFrom() <= op.id() && op.id() <= interval.currentTo() : "interval should not be active otherwise";
             assert isVariable(interval.operand) : "fixed interval found";
@@ -1690,7 +1690,7 @@ public final class LinearScan {
         }
     }
 
-    private boolean isCallerSave(RiValue operand) {
+    private boolean isCallerSave(Value operand) {
         return attributes(asRegister(operand)).isCallerSave;
     }
 
@@ -1715,7 +1715,7 @@ public final class LinearScan {
 
         info.forEachState(new ValueProcedure() {
             @Override
-            public RiValue doValue(RiValue operand) {
+            public Value doValue(Value operand) {
                 int tempOpId = op.id();
                 OperandMode mode = OperandMode.Input;
                 Block block = blockForId(tempOpId);
@@ -1737,7 +1737,7 @@ public final class LinearScan {
                 // Get current location of operand
                 // The operand must be live because debug information is considered when building the intervals
                 // if the interval is not live, colorLirOperand will cause an assert on failure
-                RiValue result = colorLirOperand((Variable) operand, tempOpId, mode);
+                Value result = colorLirOperand((Variable) operand, tempOpId, mode);
                 assert !hasCall(tempOpId) || isStackSlot(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
                 return result;
             }
@@ -1759,7 +1759,7 @@ public final class LinearScan {
 
             ValueProcedure assignProc = new ValueProcedure() {
                 @Override
-                public RiValue doValue(RiValue operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (isVariable(operand)) {
                         return colorLirOperand((Variable) operand, op.id(), mode);
                     }
@@ -1998,8 +1998,8 @@ public final class LinearScan {
                 if (i2.from() == 1 && i2.to() == 2) {
                     continue;
                 }
-                RiValue l1 = i1.location();
-                RiValue l2 = i2.location();
+                Value l1 = i1.location();
+                Value l2 = i2.location();
                 if (i1.intersects(i2) && (l1.equals(l2))) {
                     if (GraalOptions.DetailedAsserts) {
                         TTY.println("Intervals %d and %d overlap and have the same register assigned", i1.operandNumber, i2.operandNumber);
@@ -2017,7 +2017,7 @@ public final class LinearScan {
         Interval curInterval;
 
         @Override
-        protected RiValue doValue(RiValue operand) {
+        protected Value doValue(Value operand) {
             if (isRegister(operand)) {
                 if (intervalFor(operand) == curInterval) {
                     ok = true;
@@ -2035,7 +2035,7 @@ public final class LinearScan {
         fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).first;
         // to ensure a walking until the last instruction id, add a dummy interval
         // with a high operation id
-        otherIntervals = new Interval(RiValue.IllegalValue, -1);
+        otherIntervals = new Interval(Value.IllegalValue, -1);
         otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
         IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
 
@@ -2088,7 +2088,7 @@ public final class LinearScan {
                 if (GraalOptions.TraceLinearScanLevel >= 4) {
                     TTY.println("checking interval %d of block B%d", operandNum, block.getId());
                 }
-                RiValue operand = operandFor(operandNum);
+                Value operand = operandFor(operandNum);
                 assert isVariable(operand) : "value must have variable operand";
                 // TKR assert value.asConstant() == null || value.isPinned() :
                 // "only pinned constants can be alive accross block boundaries";

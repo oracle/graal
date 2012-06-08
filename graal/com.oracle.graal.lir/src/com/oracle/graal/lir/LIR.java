@@ -65,8 +65,8 @@ public class LIR {
     public SpillMoveFactory spillMoveFactory;
 
     public interface SpillMoveFactory {
-        LIRInstruction createMove(RiValue result, RiValue input);
-        LIRInstruction createExchange(RiValue input1, RiValue input2);
+        LIRInstruction createMove(Value result, Value input);
+        LIRInstruction createExchange(Value input1, Value input2);
     }
 
     private boolean hasArgInCallerFrame;

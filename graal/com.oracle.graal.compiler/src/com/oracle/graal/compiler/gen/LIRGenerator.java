@@ -23,7 +23,7 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.api.code.CiCallingConvention.Type.*;
-import static com.oracle.graal.api.meta.RiValue.*;
+import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.ValueUtil.*;
 
 import java.util.*;
@@ -72,7 +72,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected final CiTarget target;
     protected final RiResolvedMethod method;
     protected final FrameMap frameMap;
-    public final NodeMap<RiValue> nodeOperands;
+    public final NodeMap<Value> nodeOperands;
 
     protected final LIR lir;
     protected final XirSupport xirSupport;
@@ -168,15 +168,15 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * @param node A node that produces a result value.
      */
     @Override
-    public RiValue operand(ValueNode node) {
+    public Value operand(ValueNode node) {
         if (nodeOperands == null) {
             return null;
         }
         return nodeOperands.get(node);
     }
 
-    public ValueNode valueForOperand(RiValue value) {
-        for (Entry<Node, RiValue> entry : nodeOperands.entries()) {
+    public ValueNode valueForOperand(Value value) {
+        for (Entry<Node, Value> entry : nodeOperands.entries()) {
             if (entry.getValue() == value) {
                 return (ValueNode) entry.getKey();
             }
@@ -207,7 +207,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public RiValue setResult(ValueNode x, RiValue operand) {
+    public Value setResult(ValueNode x, Value operand) {
         assert (isVariable(operand) && x.kind() == operand.kind) || (isConstant(operand) && x.kind() == operand.kind.stackKind()) : operand.kind + " for node " + x;
 
         assert operand(x) == null : "operand cannot be set twice";
@@ -219,23 +219,23 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     @Override
-    public abstract Variable emitMove(RiValue input);
+    public abstract Variable emitMove(Value input);
 
-    public Variable load(RiValue value) {
+    public Variable load(Value value) {
         if (!isVariable(value)) {
             return emitMove(value);
         }
         return (Variable) value;
     }
 
-    public RiValue loadNonConst(RiValue value) {
+    public Value loadNonConst(Value value) {
         if (isConstant(value) && !canInlineConstant((Constant) value)) {
             return emitMove(value);
         }
         return value;
     }
 
-    public RiValue loadForStore(RiValue value, RiKind storeKind) {
+    public Value loadForStore(Value value, RiKind storeKind) {
         if (isConstant(value) && canStoreConstant((Constant) value)) {
             return value;
         }
@@ -279,7 +279,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * @param kind the kind of value being returned
      * @return the operand representing the ABI defined location used return a value of kind {@code kind}
      */
-    public RiValue resultOperandFor(RiKind kind) {
+    public Value resultOperandFor(RiKind kind) {
         if (kind == RiKind.Void) {
             return IllegalValue;
         }
@@ -316,12 +316,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             MergeNode merge = (MergeNode) block.getBeginNode();
             for (PhiNode phi : merge.phis()) {
                 if (phi.type() == PhiType.Value) {
-                    RiValue phiValue = newVariable(phi.kind());
+                    Value phiValue = newVariable(phi.kind());
                     setResult(phi, phiValue);
                     phiValues.add(phiValue);
                 }
             }
-            append(new PhiLabelOp(new Label(), block.align, phiValues.toArray(new RiValue[phiValues.size()])));
+            append(new PhiLabelOp(new Label(), block.align, phiValues.toArray(new Value[phiValues.size()])));
             phiValues.clear();
         } else {
             append(new LabelOp(new Label(), block.align));
@@ -505,7 +505,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected void emitPrologue() {
         CiCallingConvention incomingArguments = frameMap.registerConfig.getCallingConvention(JavaCallee, CiUtil.signatureToKinds(method), target, false);
 
-        RiValue[] params = new RiValue[incomingArguments.locations.length];
+        Value[] params = new Value[incomingArguments.locations.length];
         for (int i = 0; i < params.length; i++) {
             params[i] = toStackKind(incomingArguments.locations[i]);
             if (CiValueUtil.isStackSlot(params[i])) {
@@ -519,7 +519,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         append(new ParametersOp(params));
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
-            RiValue param = params[local.index()];
+            Value param = params[local.index()];
             assert param.kind == local.kind().stackKind();
             setResult(local, emitMove(param));
         }
@@ -609,7 +609,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitReturn(ReturnNode x) {
-        RiValue operand = RiValue.IllegalValue;
+        Value operand = Value.IllegalValue;
         if (!x.kind().isVoid()) {
             operand = resultOperandFor(x.kind());
             emitMove(operand(x.result()), operand);
@@ -617,7 +617,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         emitReturn(operand);
     }
 
-    protected abstract void emitReturn(RiValue input);
+    protected abstract void emitReturn(Value input);
 
     @Override
     public void visitMerge(MergeNode x) {
@@ -635,7 +635,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private ArrayList<RiValue> phiValues = new ArrayList<>();
+    private ArrayList<Value> phiValues = new ArrayList<>();
 
     private void moveToPhi(MergeNode merge, EndNode pred) {
         if (GraalOptions.AllocSSA) {
@@ -645,7 +645,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                     phiValues.add(operand(phi.valueAt(pred)));
                 }
             }
-            append(new PhiJumpOp(getLIRBlock(merge), phiValues.toArray(new RiValue[phiValues.size()])));
+            append(new PhiJumpOp(getLIRBlock(merge), phiValues.toArray(new Value[phiValues.size()])));
             phiValues.clear();
             return;
         }
@@ -665,9 +665,9 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         append(new JumpOp(getLIRBlock(merge), null));
     }
 
-    private RiValue operandForPhi(PhiNode phi) {
+    private Value operandForPhi(PhiNode phi) {
         assert phi.type() == PhiType.Value : "wrong phi type: " + phi;
-        RiValue result = operand(phi);
+        Value result = operand(phi);
         if (result == null) {
             // allocate a variable for this phi
             Variable newOperand = newVariable(phi.kind());
@@ -768,12 +768,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitConditional(ConditionalNode conditional) {
-        RiValue tVal = operand(conditional.trueValue());
-        RiValue fVal = operand(conditional.falseValue());
+        Value tVal = operand(conditional.trueValue());
+        Value fVal = operand(conditional.falseValue());
         setResult(conditional, emitConditional(conditional.condition(), tVal, fVal));
     }
 
-    public Variable emitConditional(BooleanNode node, RiValue trueValue, RiValue falseValue) {
+    public Variable emitConditional(BooleanNode node, Value trueValue, Value falseValue) {
         if (node instanceof IsNullNode) {
             return emitNullCheckConditional((IsNullNode) node, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
@@ -787,11 +787,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private Variable emitNullCheckConditional(IsNullNode node, RiValue trueValue, RiValue falseValue) {
+    private Variable emitNullCheckConditional(IsNullNode node, Value trueValue, Value falseValue) {
         return emitCMove(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
     }
 
-    private Variable emitInstanceOfConditional(InstanceOfNode x, RiValue trueValue, RiValue falseValue) {
+    private Variable emitInstanceOfConditional(InstanceOfNode x, Value trueValue, Value falseValue) {
         XirArgument obj = toXirArgument(x.object());
         XirArgument trueArg = toXirArgument(trueValue);
         XirArgument falseArg = toXirArgument(falseValue);
@@ -799,19 +799,19 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return (Variable) emitXir(snippet, null, null, false);
     }
 
-    private Variable emitConstantConditional(boolean value, RiValue trueValue, RiValue falseValue) {
+    private Variable emitConstantConditional(boolean value, Value trueValue, Value falseValue) {
         return emitMove(value ? trueValue : falseValue);
     }
 
-    private Variable emitCompareConditional(CompareNode compare, RiValue trueValue, RiValue falseValue) {
+    private Variable emitCompareConditional(CompareNode compare, Value trueValue, Value falseValue) {
         return emitCMove(operand(compare.x()), operand(compare.y()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
     }
 
 
     public abstract void emitLabel(Label label, boolean align);
     public abstract void emitJump(LabelRef label, LIRDebugInfo info);
-    public abstract void emitBranch(RiValue left, RiValue right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info);
-    public abstract Variable emitCMove(RiValue leftVal, RiValue right, Condition cond, boolean unorderedIsTrue, RiValue trueValue, RiValue falseValue);
+    public abstract void emitBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label, LIRDebugInfo info);
+    public abstract Variable emitCMove(Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     protected FrameState stateBeforeCallWithArguments(FrameState stateAfter, MethodCallTargetNode call, int bci) {
         return stateAfter.duplicateModified(bci, stateAfter.rethrowException(), call.returnKind(), toJVMArgumentStack(call.targetMethod().signature(), call.isStatic(), call.arguments()));
@@ -873,7 +873,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 break;
         }
 
-        RiValue destinationAddress = null;
+        Value destinationAddress = null;
         if (!target().invokeSnippetAfterArguments) {
             // This is the version currently necessary for Maxine: since the invokeinterface-snippet uses a division, it
             // destroys rdx, which is also used to pass a parameter.  Therefore, the snippet must be before the parameters are assigned to their locations.
@@ -881,12 +881,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             destinationAddress = emitXir(snippet, x.node(), addrInfo, false);
         }
 
-        RiValue resultOperand = resultOperandFor(x.node().kind());
+        Value resultOperand = resultOperandFor(x.node().kind());
 
         RiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
         CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         frameMap.callsMethod(cc, JavaCall);
-        List<RiValue> argList = visitInvokeArguments(cc, callTarget.arguments());
+        List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
 
         if (target().invokeSnippetAfterArguments) {
             // This is the version currently active for HotSpot.
@@ -902,10 +902,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected abstract void emitCall(Object targetMethod, RiValue result, List<RiValue> arguments, RiValue targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks);
+    protected abstract void emitCall(Object targetMethod, Value result, List<Value> arguments, Value targetAddress, LIRDebugInfo info, Map<XirMark, Mark> marks);
 
 
-    private static RiValue toStackKind(RiValue value) {
+    private static Value toStackKind(Value value) {
         if (value.kind.stackKind() != value.kind) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the calling convention.
             if (isRegister(value)) {
@@ -919,13 +919,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return value;
     }
 
-    public List<RiValue> visitInvokeArguments(CiCallingConvention cc, Iterable<ValueNode> arguments) {
+    public List<Value> visitInvokeArguments(CiCallingConvention cc, Iterable<ValueNode> arguments) {
         // for each argument, load it into the correct location
-        List<RiValue> argList = new ArrayList<>();
+        List<Value> argList = new ArrayList<>();
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                RiValue operand = toStackKind(cc.locations[j++]);
+                Value operand = toStackKind(cc.locations[j++]);
                 emitMove(operand(arg), operand);
                 argList.add(operand);
 
@@ -940,20 +940,20 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
 
     @Override
-    public Variable emitCall(@SuppressWarnings("hiding") Object target, RiKind result, RiKind[] arguments, boolean canTrap, RiValue... args) {
+    public Variable emitCall(@SuppressWarnings("hiding") Object target, RiKind result, RiKind[] arguments, boolean canTrap, Value... args) {
         LIRDebugInfo info = canTrap ? state() : null;
 
-        RiValue physReg = resultOperandFor(result);
+        Value physReg = resultOperandFor(result);
 
-        List<RiValue> argumentList;
+        List<Value> argumentList;
         if (arguments.length > 0) {
             // move the arguments into the correct location
             CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
             frameMap.callsMethod(cc, RuntimeCall);
             assert cc.locations.length == args.length : "argument count mismatch";
             for (int i = 0; i < args.length; i++) {
-                RiValue arg = args[i];
-                RiValue loc = cc.locations[i];
+                Value arg = args[i];
+                Value loc = cc.locations[i];
                 emitMove(arg, loc);
             }
             argumentList = Arrays.asList(cc.locations);
@@ -976,10 +976,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     public void emitRuntimeCall(RuntimeCallNode x) {
         // TODO Merge with emitCallToRuntime() method above.
 
-        RiValue resultOperand = resultOperandFor(x.kind());
+        Value resultOperand = resultOperandFor(x.kind());
         CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, x.call().arguments, target(), false);
         frameMap.callsMethod(cc, RuntimeCall);
-        List<RiValue> argList = visitInvokeArguments(cc, x.arguments());
+        List<Value> argList = visitInvokeArguments(cc, x.arguments());
 
         LIRDebugInfo info = null;
         FrameState stateAfter = x.stateAfter();
@@ -1045,7 +1045,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, RiValue index);
+    protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value index);
 
     // the range of values in a lookupswitch or tableswitch statement
     private static final class SwitchRange {
@@ -1116,7 +1116,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    protected XirArgument toXirArgument(RiValue v) {
+    protected XirArgument toXirArgument(Value v) {
         if (v == null) {
             return null;
         }
@@ -1130,7 +1130,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return XirArgument.forInternalObject(loadNonConst(operand(i)));
     }
 
-    private RiValue allocateOperand(XirSnippet snippet, XirOperand op) {
+    private Value allocateOperand(XirSnippet snippet, XirOperand op) {
         if (op instanceof XirParameter)  {
             XirParameter param = (XirParameter) op;
             return allocateOperand(snippet.arguments[param.parameterIndex], op, param.canBeConstant);
@@ -1145,12 +1145,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         }
     }
 
-    private RiValue allocateOperand(XirArgument arg, XirOperand var, boolean canBeConstant) {
+    private Value allocateOperand(XirArgument arg, XirOperand var, boolean canBeConstant) {
         if (arg.constant != null) {
             return arg.constant;
         }
 
-        RiValue value = (RiValue) arg.object;
+        Value value = (Value) arg.object;
         if (canBeConstant) {
             return value;
         }
@@ -1163,23 +1163,23 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return variable;
     }
 
-    protected RiValue emitXir(XirSnippet snippet, ValueNode x, LIRDebugInfo info, boolean setInstructionResult) {
+    protected Value emitXir(XirSnippet snippet, ValueNode x, LIRDebugInfo info, boolean setInstructionResult) {
         return emitXir(snippet, x, info, null, setInstructionResult, null, null);
     }
 
-    protected RiValue emitXir(XirSnippet snippet, ValueNode instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, boolean setInstructionResult, LabelRef trueSuccessor, LabelRef falseSuccessor) {
+    protected Value emitXir(XirSnippet snippet, ValueNode instruction, LIRDebugInfo info, LIRDebugInfo infoAfter, boolean setInstructionResult, LabelRef trueSuccessor, LabelRef falseSuccessor) {
         if (GraalOptions.PrintXirTemplates) {
             TTY.println("Emit XIR template " + snippet.template.name);
         }
 
-        final RiValue[] operandsArray = new RiValue[snippet.template.variableCount];
+        final Value[] operandsArray = new Value[snippet.template.variableCount];
 
         frameMap.reserveOutgoing(snippet.template.outgoingStackSize);
 
         XirOperand resultOperand = snippet.template.resultOperand;
 
         if (snippet.template.allocateResultOperand) {
-            RiValue outputOperand = IllegalValue;
+            Value outputOperand = IllegalValue;
             // This snippet has a result that must be separately allocated
             // Otherwise it is assumed that the result is part of the inputs
             if (resultOperand.kind != RiKind.Void && resultOperand.kind != RiKind.Illegal) {
@@ -1214,13 +1214,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         XirOperand[] inputTempOperands = snippet.template.inputTempOperands;
         XirOperand[] tempOperands = snippet.template.tempOperands;
 
-        RiValue[] inputOperandArray = new RiValue[inputOperands.length + inputTempOperands.length];
-        RiValue[] tempOperandArray = new RiValue[tempOperands.length];
+        Value[] inputOperandArray = new Value[inputOperands.length + inputTempOperands.length];
+        Value[] tempOperandArray = new Value[tempOperands.length];
         int[] inputOperandIndicesArray = new int[inputOperands.length + inputTempOperands.length];
         int[] tempOperandIndicesArray = new int[tempOperands.length];
         for (int i = 0; i < inputOperands.length; i++) {
             XirOperand x = inputOperands[i];
-            RiValue op = allocateOperand(snippet, x);
+            Value op = allocateOperand(snippet, x);
             operandsArray[x.index] = op;
             inputOperandArray[i] = op;
             inputOperandIndicesArray[i] = x.index;
@@ -1233,7 +1233,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         for (int i = 0; i < tempOperands.length; i++) {
             XirOperand x = tempOperands[i];
-            RiValue op = allocateOperand(snippet, x);
+            Value op = allocateOperand(snippet, x);
             operandsArray[x.index] = op;
             tempOperandArray[i] = op;
             tempOperandIndicesArray[i] = x.index;
@@ -1242,17 +1242,17 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             }
         }
 
-        for (RiValue operand : operandsArray) {
+        for (Value operand : operandsArray) {
             assert operand != null;
         }
 
-        RiValue allocatedResultOperand = operandsArray[resultOperand.index];
+        Value allocatedResultOperand = operandsArray[resultOperand.index];
         if (!isVariable(allocatedResultOperand) && !isRegister(allocatedResultOperand)) {
             allocatedResultOperand = IllegalValue;
         }
 
         if (setInstructionResult && isLegal(allocatedResultOperand)) {
-            RiValue operand = operand(instruction);
+            Value operand = operand(instruction);
             if (operand == null) {
                 setResult(instruction, allocatedResultOperand);
             } else {
@@ -1274,25 +1274,25 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return operandsArray[resultOperand.index];
     }
 
-    protected abstract void emitXir(XirSnippet snippet, RiValue[] operands, RiValue outputOperand, RiValue[] inputs, RiValue[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
+    protected abstract void emitXir(XirSnippet snippet, Value[] operands, Value outputOperand, Value[] inputs, Value[] temps, int[] inputOperandIndices, int[] tempOperandIndices, int outputOperandIndex,
                     LIRDebugInfo info, LIRDebugInfo infoAfter, LabelRef trueSuccessor, LabelRef falseSuccessor);
 
-    protected final RiValue callRuntime(CiRuntimeCall runtimeCall, LIRDebugInfo info, RiValue... args) {
+    protected final Value callRuntime(CiRuntimeCall runtimeCall, LIRDebugInfo info, Value... args) {
         // get a result register
         RiKind result = runtimeCall.resultKind;
         RiKind[] arguments = runtimeCall.arguments;
 
-        RiValue physReg = result.isVoid() ? IllegalValue : resultOperandFor(result);
+        Value physReg = result.isVoid() ? IllegalValue : resultOperandFor(result);
 
-        List<RiValue> argumentList;
+        List<Value> argumentList;
         if (arguments.length > 0) {
             // move the arguments into the correct location
             CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(RuntimeCall, arguments, target(), false);
             frameMap.callsMethod(cc, RuntimeCall);
             assert cc.locations.length == args.length : "argument count mismatch";
             for (int i = 0; i < args.length; i++) {
-                RiValue arg = args[i];
-                RiValue loc = cc.locations[i];
+                Value arg = args[i];
+                Value loc = cc.locations[i];
                 emitMove(arg, loc);
             }
             argumentList = Arrays.asList(cc.locations);
@@ -1307,8 +1307,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return physReg;
     }
 
-    protected final Variable callRuntimeWithResult(CiRuntimeCall runtimeCall, LIRDebugInfo info, RiValue... args) {
-        RiValue location = callRuntime(runtimeCall, info, args);
+    protected final Variable callRuntimeWithResult(CiRuntimeCall runtimeCall, LIRDebugInfo info, Value... args) {
+        Value location = callRuntime(runtimeCall, info, args);
         return emitMove(location);
     }
 

@@ -35,9 +35,9 @@ public abstract class WriteBarrier extends FixedWithNextNode {
         super(StampFactory.forVoid());
     }
 
-    protected void generateBarrier(RiValue adr, LIRGeneratorTool gen) {
+    protected void generateBarrier(Value adr, LIRGeneratorTool gen) {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        RiValue base = gen.emitUShr(adr, Constant.forInt(config.cardtableShift));
+        Value base = gen.emitUShr(adr, Constant.forInt(config.cardtableShift));
 
         long startAddress = config.cardtableStartAddress;
         int displacement = 0;

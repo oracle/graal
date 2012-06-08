@@ -402,17 +402,17 @@ public final class Interval {
     /**
      * The {@linkplain CiRegisterValue register} or {@linkplain Variable variable} for this interval prior to register allocation.
      */
-    public final RiValue operand;
+    public final Value operand;
 
     /**
-     * The {@linkplain OperandPool#operandNumber(RiValue) operand number} for this interval's {@linkplain #operand operand}.
+     * The {@linkplain OperandPool#operandNumber(Value) operand number} for this interval's {@linkplain #operand operand}.
      */
     public final int operandNumber;
 
     /**
      * The {@linkplain CiRegisterValue register}, {@linkplain CiStackSlot spill slot} or {@linkplain CiAddress address} assigned to this interval.
      */
-    private RiValue location;
+    private Value location;
 
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
@@ -487,7 +487,7 @@ public final class Interval {
      */
     private Interval locationHint;
 
-    void assignLocation(RiValue newLocation) {
+    void assignLocation(Value newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
             if (newLocation.kind == RiKind.Illegal && kind != RiKind.Illegal) {
@@ -506,7 +506,7 @@ public final class Interval {
     /**
      * Gets the {@linkplain CiRegisterValue register}, {@linkplain CiStackSlot spill slot} or {@linkplain CiAddress address} assigned to this interval.
      */
-    public RiValue location() {
+    public Value location() {
         return location;
     }
 
@@ -659,9 +659,9 @@ public final class Interval {
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final Interval EndMarker = new Interval(RiValue.IllegalValue, -1);
+    static final Interval EndMarker = new Interval(Value.IllegalValue, -1);
 
-    Interval(RiValue operand, int operandNumber) {
+    Interval(Value operand, int operandNumber) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;

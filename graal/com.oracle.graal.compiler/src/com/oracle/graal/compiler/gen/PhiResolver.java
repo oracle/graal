@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import static com.oracle.graal.api.meta.RiValue.*;
+import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.ValueUtil.*;
 
 import java.util.*;
@@ -58,7 +58,7 @@ public class PhiResolver {
         /**
          * A source operand whose value flows into the {@linkplain #destinations destination} operands.
          */
-        final RiValue operand;
+        final Value operand;
 
         /**
          * The operands whose values are defined by the {@linkplain #operand source} operand.
@@ -80,7 +80,7 @@ public class PhiResolver {
          */
         boolean startNode;
 
-        PhiResolverNode(RiValue operand) {
+        PhiResolverNode(Value operand) {
             this.operand = operand;
             destinations = new ArrayList<>(4);
         }
@@ -105,7 +105,7 @@ public class PhiResolver {
      */
     private PhiResolverNode loop;
 
-    private RiValue temp;
+    private Value temp;
 
     private final ArrayList<PhiResolverNode> variableOperands = new ArrayList<>(3);
     private final ArrayList<PhiResolverNode> otherOperands = new ArrayList<>(3);
@@ -113,7 +113,7 @@ public class PhiResolver {
     /**
      * Maps operands to nodes.
      */
-    private final HashMap<RiValue, PhiResolverNode> operandToNodeMap = new HashMap<>();
+    private final HashMap<Value, PhiResolverNode> operandToNodeMap = new HashMap<>();
 
     public PhiResolver(LIRGenerator gen) {
         this.gen = gen;
@@ -141,7 +141,7 @@ public class PhiResolver {
         }
     }
 
-    public void move(RiValue src, RiValue dest) {
+    public void move(Value src, Value dest) {
         assert isVariable(dest) : "destination must be virtual";
         // tty.print("move "); src.print(); tty.print(" to "); dest.print(); tty.cr();
         assert isLegal(src) : "source for phi move is illegal";
@@ -151,7 +151,7 @@ public class PhiResolver {
         srcNode.destinations.add(destNode);
       }
 
-    private PhiResolverNode createNode(RiValue operand, boolean source) {
+    private PhiResolverNode createNode(Value operand, boolean source) {
         PhiResolverNode node;
         if (isVariable(operand)) {
             node = operandToNodeMap.get(operand);
@@ -175,11 +175,11 @@ public class PhiResolver {
         return node;
     }
 
-    private PhiResolverNode destinationNode(RiValue opr) {
+    private PhiResolverNode destinationNode(Value opr) {
         return createNode(opr, false);
     }
 
-    private void emitMove(RiValue src, RiValue dest) {
+    private void emitMove(Value src, Value dest) {
         assert isLegal(src);
         assert isLegal(dest);
         gen.emitMove(src, dest);
@@ -217,19 +217,19 @@ public class PhiResolver {
         }
     }
 
-    private void moveTempTo(RiValue dest) {
+    private void moveTempTo(Value dest) {
         assert isLegal(temp);
         emitMove(temp, dest);
         temp = IllegalValue;
     }
 
-    private void moveToTemp(RiValue src) {
+    private void moveToTemp(Value src) {
         assert isIllegal(temp);
         temp = gen.newVariable(src.kind);
         emitMove(src, temp);
     }
 
-    private PhiResolverNode sourceNode(RiValue opr) {
+    private PhiResolverNode sourceNode(Value opr) {
         return createNode(opr, true);
     }
 }

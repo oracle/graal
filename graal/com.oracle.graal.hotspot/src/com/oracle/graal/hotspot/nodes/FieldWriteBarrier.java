@@ -40,7 +40,7 @@ public final class FieldWriteBarrier extends WriteBarrier implements LIRLowerabl
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        RiValue obj = generator.newVariable(generator.target().wordKind);
+        Value obj = generator.newVariable(generator.target().wordKind);
         generator.emitMove(generator.operand(object()), obj);
         generateBarrier(obj, generator);
     }

@@ -56,7 +56,7 @@ public class SpillAllAllocator {
         }
 
         @Override
-        protected RiValue scratchRegister(Variable spilled) {
+        protected Value scratchRegister(Variable spilled) {
             EnumMap<RegisterFlag, CiRegister[]> categorizedRegs = frameMap.registerConfig.getCategorizedAllocatableRegisters();
             CiRegister[] availableRegs = categorizedRegs.get(spilled.flag);
             for (CiRegister reg : availableRegs) {
@@ -101,7 +101,7 @@ public class SpillAllAllocator {
         return frameMap.target.arch.registers.length;
     }
 
-    private boolean isAllocatableRegister(RiValue value) {
+    private boolean isAllocatableRegister(Value value) {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
@@ -148,14 +148,14 @@ public class SpillAllAllocator {
     }
 
     private void allocate() {
-        ValueProcedure killNonLiveProc =  new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return killNonLive(value); } };
-        ValueProcedure killBeginProc =    new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return kill(value, false); } };
-        ValueProcedure killEndProc =      new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return kill(value, true); } };
-        ValueProcedure killLocationProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return killLocation(value); } };
-        ValueProcedure blockProc =        new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return block(value); } };
-        ValueProcedure loadProc =         new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return load(value, mode, flags); } };
-        ValueProcedure spillProc =        new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return spill(value, mode, flags); } };
-        ValueProcedure useSlotProc =      new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return useSlot(value); } };
+        ValueProcedure killNonLiveProc =  new ValueProcedure() { @Override public Value doValue(Value value) { return killNonLive(value); } };
+        ValueProcedure killBeginProc =    new ValueProcedure() { @Override public Value doValue(Value value) { return kill(value, false); } };
+        ValueProcedure killEndProc =      new ValueProcedure() { @Override public Value doValue(Value value) { return kill(value, true); } };
+        ValueProcedure killLocationProc = new ValueProcedure() { @Override public Value doValue(Value value) { return killLocation(value); } };
+        ValueProcedure blockProc =        new ValueProcedure() { @Override public Value doValue(Value value) { return block(value); } };
+        ValueProcedure loadProc =         new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return load(value, mode, flags); } };
+        ValueProcedure spillProc =        new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return spill(value, mode, flags); } };
+        ValueProcedure useSlotProc =      new ValueProcedure() { @Override public Value doValue(Value value) { return useSlot(value); } };
 
         Debug.log("==== start spill all allocation ====");
         curInRegisterState = new Object[maxRegisterNum()];
@@ -223,7 +223,7 @@ public class SpillAllAllocator {
         Debug.log("==== end spill all allocation ====");
     }
 
-    private RiValue killNonLive(RiValue value) {
+    private Value killNonLive(Value value) {
         assert isLocation(value);
         if (!curLiveIn.get(asLocation(value).variable.index)) {
             return null;
@@ -231,7 +231,7 @@ public class SpillAllAllocator {
         return value;
     }
 
-    private RiValue kill(RiValue value, boolean end) {
+    private Value kill(Value value, boolean end) {
         if (isVariable(value)) {
             Debug.log("    kill variable %s", value);
 
@@ -267,7 +267,7 @@ public class SpillAllAllocator {
         return value;
     }
 
-    private RiValue killLocation(RiValue value) {
+    private Value killLocation(Value value) {
         Debug.log("    kill location %s", value);
         assert isAllocatableRegister(asLocation(value).location);
 
@@ -278,7 +278,7 @@ public class SpillAllAllocator {
         return null;
     }
 
-    private RiValue block(RiValue value) {
+    private Value block(Value value) {
         if (isAllocatableRegister(value)) {
             Debug.log("    block %s", value);
             int regNum = asRegister(value).number;
@@ -289,7 +289,7 @@ public class SpillAllAllocator {
         return value;
     }
 
-    private RiValue load(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private Value load(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         assert mode == OperandMode.Input || mode == OperandMode.Alive;
         if (flags.contains(OperandFlag.Stack)) {
             return useSlot(value);
@@ -313,7 +313,7 @@ public class SpillAllAllocator {
         }
     }
 
-    private RiValue spill(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private Value spill(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         assert mode == OperandMode.Temp || mode == OperandMode.Output;
         if (flags.contains(OperandFlag.Stack)) {
             return defSlot(value);
@@ -334,7 +334,7 @@ public class SpillAllAllocator {
         }
     }
 
-    private RiValue useSlot(RiValue value) {
+    private Value useSlot(Value value) {
         if (isVariable(value)) {
             Debug.log("    useSlot %s", value);
             Location stackLoc = curStackLocations.get(asVariable(value));
@@ -346,7 +346,7 @@ public class SpillAllAllocator {
         }
     }
 
-    private RiValue defSlot(RiValue value) {
+    private Value defSlot(Value value) {
         if (isVariable(value)) {
             Debug.log("    assignSlot %s", value);
             Location stackLoc = new Location(asVariable(value), frameMap.allocateSpillSlot(value.kind));
@@ -361,9 +361,9 @@ public class SpillAllAllocator {
 
     private Location allocateRegister(final Variable variable, final Object[] inRegisterState, final Object[] outRegisterState, OperandMode mode, EnumSet<OperandFlag> flags) {
         if (flags.contains(OperandFlag.RegisterHint)) {
-            RiValue result = curInstruction.forEachRegisterHint(variable, mode, new ValueProcedure() {
+            Value result = curInstruction.forEachRegisterHint(variable, mode, new ValueProcedure() {
                 @Override
-                public RiValue doValue(RiValue registerHint) {
+                public Value doValue(Value registerHint) {
                     Debug.log("      registerHint %s", registerHint);
                     CiRegister hint = null;
                     if (isRegister(registerHint)) {
@@ -417,7 +417,7 @@ public class SpillAllAllocator {
         final BitSet liveState = new BitSet();
         curStackLocations.forEachLocation(new ValueProcedure() {
             @Override
-            public RiValue doValue(RiValue value) {
+            public Value doValue(Value value) {
                 liveState.set(asLocation(value).variable.index);
 
                 for (Block pred : block.getPredecessors()) {
@@ -455,7 +455,7 @@ public class SpillAllAllocator {
         sb.append("  curVariableLocations: ");
         curStackLocations.forEachLocation(new ValueProcedure() {
             @Override
-            public RiValue doValue(RiValue value) {
+            public Value doValue(Value value) {
                 sb.append(value).append(" ");
                 return value;
             }

@@ -68,9 +68,9 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         for (int i = 0, slot = 0; i < cc.locations.length; i++, slot += FrameStateBuilder.stackSlots(frameState.localAt(slot).kind())) {
             parameters.add(frameState.localAt(slot));
         }
-        List<RiValue> argList = gen.visitInvokeArguments(cc, parameters);
+        List<Value> argList = gen.visitInvokeArguments(cc, parameters);
 
-        RiValue entry = gen.emitLoad(new CiAddress(RiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
+        Value entry = gen.emitLoad(new CiAddress(RiKind.Long, gen.operand(target), config.nmethodEntryOffset), false);
 
         gen.append(new AMD64TailcallOp(argList, entry, cc.locations));
     }

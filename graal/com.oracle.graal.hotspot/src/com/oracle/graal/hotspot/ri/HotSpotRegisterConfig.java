@@ -120,7 +120,7 @@ public class HotSpotRegisterConfig implements CiRegisterConfig {
     }
 
     private CiCallingConvention callingConvention(RiKind[] types, Type type, CiTarget target, boolean stackOnly) {
-        RiValue[] locations = new RiValue[types.length];
+        Value[] locations = new Value[types.length];
 
         int currentGeneral = 0;
         int currentXMM = 0;

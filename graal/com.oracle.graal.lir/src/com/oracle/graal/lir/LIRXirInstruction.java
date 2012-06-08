@@ -32,7 +32,7 @@ import com.oracle.graal.graph.*;
 
 public abstract class LIRXirInstruction extends LIRInstruction {
 
-    public final RiValue[] originalOperands;
+    public final Value[] originalOperands;
     public final int outputOperandIndex;
     public final int[] inputOperandIndices;
     public final int[] tempOperandIndices;
@@ -43,9 +43,9 @@ public abstract class LIRXirInstruction extends LIRInstruction {
 
     public LIRXirInstruction(Object opcode,
                              XirSnippet snippet,
-                             RiValue[] originalOperands,
-                             RiValue outputOperand,
-                             RiValue[] inputs, RiValue[] temps,
+                             Value[] originalOperands,
+                             Value outputOperand,
+                             Value[] inputs, Value[] temps,
                              int[] inputOperandIndices, int[] tempOperandIndices,
                              int outputOperandIndex,
                              LIRDebugInfo info,
@@ -54,7 +54,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
                              LabelRef falseSuccessor) {
         // Note that we register the XIR input operands as Alive, because the XIR specification allows that input operands
         // are used at any time, even when the temp operands and the actual output operands have already be assigned.
-        super(opcode, isLegal(outputOperand) ? new RiValue[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
+        super(opcode, isLegal(outputOperand) ? new Value[] {outputOperand} : LIRInstruction.NO_OPERANDS, info, LIRInstruction.NO_OPERANDS, inputs, temps);
         this.infoAfter = infoAfter;
         this.snippet = snippet;
         this.inputOperandIndices = inputOperandIndices;
@@ -76,7 +76,7 @@ public abstract class LIRXirInstruction extends LIRInstruction {
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    public RiValue[] getOperands() {
+    public Value[] getOperands() {
         for (int i = 0; i < inputOperandIndices.length; i++) {
             originalOperands[inputOperandIndices[i]] = alive(i);
         }

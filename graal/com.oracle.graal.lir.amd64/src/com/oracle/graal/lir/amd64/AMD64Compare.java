@@ -36,14 +36,14 @@ public enum AMD64Compare {
     ICMP, LCMP, ACMP, FCMP, DCMP;
 
     public static class CompareOp extends AMD64LIRInstruction {
-        public CompareOp(AMD64Compare opcode, RiValue x, RiValue y) {
-            super(opcode, LIRInstruction.NO_OPERANDS, null, new RiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public CompareOp(AMD64Compare opcode, Value x, Value y) {
+            super(opcode, LIRInstruction.NO_OPERANDS, null, new Value[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue x = input(0);
-            RiValue y = input(1);
+            Value x = input(0);
+            Value y = input(1);
             emit(tasm, masm, (AMD64Compare) code, x, y);
         }
 
@@ -59,8 +59,8 @@ public enum AMD64Compare {
 
         @Override
         protected void verify() {
-            RiValue x = input(0);
-            RiValue y = input(1);
+            Value x = input(0);
+            Value y = input(1);
 
             super.verify();
             assert (name().startsWith("I") && x.kind == RiKind.Int && y.kind.stackKind() == RiKind.Int)
@@ -72,7 +72,7 @@ public enum AMD64Compare {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Compare opcode, RiValue x, RiValue y) {
+    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Compare opcode, Value x, Value y) {
         if (isRegister(y)) {
             switch (opcode) {
                 case ICMP: masm.cmpl(asIntReg(x), asIntReg(y)); break;

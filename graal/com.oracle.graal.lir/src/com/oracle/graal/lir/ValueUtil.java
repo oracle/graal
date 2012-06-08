@@ -27,12 +27,12 @@ import com.oracle.graal.api.meta.*;
 
 public class ValueUtil extends CiValueUtil {
 
-    public static boolean isVariable(RiValue value) {
+    public static boolean isVariable(Value value) {
         assert value != null;
         return value instanceof Variable;
     }
 
-    public static Variable asVariable(RiValue value) {
+    public static Variable asVariable(Value value) {
         assert value != null;
         return (Variable) value;
     }

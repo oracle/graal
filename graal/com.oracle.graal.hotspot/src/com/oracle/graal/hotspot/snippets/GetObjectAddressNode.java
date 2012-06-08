@@ -49,7 +49,7 @@ class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RiValue obj = gen.newVariable(gen.target().wordKind);
+        Value obj = gen.newVariable(gen.target().wordKind);
         gen.emitMove(gen.operand(object), obj);
         gen.setResult(this, obj);
     }

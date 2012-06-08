@@ -27,11 +27,11 @@ import java.io.*;
 /**
  * Abstract base class for values manipulated by the compiler. All values have a {@linkplain RiKind kind} and are immutable.
  */
-public abstract class RiValue implements Serializable {
+public abstract class Value implements Serializable {
     private static final long serialVersionUID = -6909397188697766469L;
 
     @SuppressWarnings("serial")
-    public static RiValue IllegalValue = new RiValue(RiKind.Illegal) {
+    public static Value IllegalValue = new Value(RiKind.Illegal) {
         @Override
         public String toString() {
             return "-";
@@ -47,7 +47,7 @@ public abstract class RiValue implements Serializable {
      * Initializes a new value of the specified kind.
      * @param kind the kind
      */
-    protected RiValue(RiKind kind) {
+    protected Value(RiKind kind) {
         this.kind = kind;
     }
 

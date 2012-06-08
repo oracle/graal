@@ -48,14 +48,14 @@ public enum AMD64Arithmetic {
 
 
     public static class Op1Reg extends AMD64LIRInstruction {
-        public Op1Reg(AMD64Arithmetic opcode, RiValue result, RiValue x) {
-            super(opcode, new RiValue[] {result}, null, new RiValue[] {x}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public Op1Reg(AMD64Arithmetic opcode, Value result, Value x) {
+            super(opcode, new Value[] {result}, null, new Value[] {x}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue x = input(0);
+            Value result = output(0);
+            Value x = input(0);
 
             emit(tasm, masm, (AMD64Arithmetic) code, result, x, null);
         }
@@ -72,14 +72,14 @@ public enum AMD64Arithmetic {
     }
 
     public static class Op1Stack extends AMD64LIRInstruction {
-        public Op1Stack(AMD64Arithmetic opcode, RiValue result, RiValue x) {
-            super(opcode, new RiValue[] {result}, null, new RiValue[] {x}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public Op1Stack(AMD64Arithmetic opcode, Value result, Value x) {
+            super(opcode, new Value[] {result}, null, new Value[] {x}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue x = input(0);
+            Value result = output(0);
+            Value x = input(0);
 
             AMD64Move.move(tasm, masm, result, x);
             emit(tasm, masm, (AMD64Arithmetic) code, result);
@@ -97,15 +97,15 @@ public enum AMD64Arithmetic {
     }
 
     public static class Op2Stack extends AMD64LIRInstruction {
-        public Op2Stack(AMD64Arithmetic opcode, RiValue result, RiValue x, RiValue y) {
-            super(opcode, new RiValue[] {result}, null, new RiValue[] {x}, new RiValue[] {y}, LIRInstruction.NO_OPERANDS);
+        public Op2Stack(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+            super(opcode, new Value[] {result}, null, new Value[] {x}, new Value[] {y}, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             AMD64Move.move(tasm, masm, result, x);
             emit(tasm, masm, (AMD64Arithmetic) code, result, y, null);
@@ -125,9 +125,9 @@ public enum AMD64Arithmetic {
 
         @Override
         public void verify() {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             super.verify();
             assert differentRegisters(result, y) || sameRegister(x, y);
@@ -136,15 +136,15 @@ public enum AMD64Arithmetic {
     }
 
     public static class Op2Reg extends AMD64LIRInstruction {
-        public Op2Reg(AMD64Arithmetic opcode, RiValue result, RiValue x, RiValue y) {
-            super(opcode, new RiValue[] {result}, null, new RiValue[] {x}, new RiValue[] {y}, LIRInstruction.NO_OPERANDS);
+        public Op2Reg(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+            super(opcode, new Value[] {result}, null, new Value[] {x}, new Value[] {y}, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             AMD64Move.move(tasm, masm, result, x);
             emit(tasm, masm, (AMD64Arithmetic) code, result, y, null);
@@ -164,9 +164,9 @@ public enum AMD64Arithmetic {
 
         @Override
         public void verify() {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             super.verify();
             assert differentRegisters(result, y) || sameRegister(x, y);
@@ -175,15 +175,15 @@ public enum AMD64Arithmetic {
     }
 
     public static class Op2RegCommutative extends AMD64LIRInstruction {
-        public Op2RegCommutative(AMD64Arithmetic opcode, RiValue result, RiValue x, RiValue y) {
-            super(opcode, new RiValue[] {result}, null, new RiValue[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
+        public Op2RegCommutative(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+            super(opcode, new Value[] {result}, null, new Value[] {x, y}, LIRInstruction.NO_OPERANDS, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = input(1);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = input(1);
 
             if (sameRegister(result, y)) {
                 emit(tasm, masm, (AMD64Arithmetic) code, result, x, null);
@@ -207,9 +207,9 @@ public enum AMD64Arithmetic {
 
         @Override
         protected void verify() {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = input(1);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = input(1);
 
             super.verify();
             verifyKind((AMD64Arithmetic) code, result, x, y);
@@ -217,15 +217,15 @@ public enum AMD64Arithmetic {
     }
 
     public static class ShiftOp extends AMD64LIRInstruction {
-        public ShiftOp(AMD64Arithmetic opcode, RiValue result, RiValue x, RiValue y) {
-            super(opcode, new RiValue[] {result}, null, new RiValue[] {x}, new RiValue[] {y}, LIRInstruction.NO_OPERANDS);
+        public ShiftOp(AMD64Arithmetic opcode, Value result, Value x, Value y) {
+            super(opcode, new Value[] {result}, null, new Value[] {x}, new Value[] {y}, LIRInstruction.NO_OPERANDS);
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             AMD64Move.move(tasm, masm, result, x);
             emit(tasm, masm, (AMD64Arithmetic) code, result, y, null);
@@ -245,9 +245,9 @@ public enum AMD64Arithmetic {
 
         @Override
         public void verify() {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             super.verify();
             assert isConstant(y) || asRegister(y) == AMD64.rcx;
@@ -258,14 +258,14 @@ public enum AMD64Arithmetic {
     }
 
     public static class DivOp extends AMD64LIRInstruction {
-        public DivOp(AMD64Arithmetic opcode, RiValue result, RiValue x, RiValue y, LIRDebugInfo info) {
-            super(opcode, new RiValue[] {result}, info, new RiValue[] {x}, new RiValue[] {y}, new RiValue[] {asRegister(result) == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind)});
+        public DivOp(AMD64Arithmetic opcode, Value result, Value x, Value y, LIRDebugInfo info) {
+            super(opcode, new Value[] {result}, info, new Value[] {x}, new Value[] {y}, new Value[] {asRegister(result) == AMD64.rax ? AMD64.rdx.asValue(result.kind) : AMD64.rax.asValue(result.kind)});
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            RiValue result = output(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value y = alive(0);
 
             emit(tasm, masm, (AMD64Arithmetic) code, result, y, info);
         }
@@ -286,9 +286,9 @@ public enum AMD64Arithmetic {
 
         @Override
         protected void verify() {
-            RiValue result = output(0);
-            RiValue x = input(0);
-            RiValue y = alive(0);
+            Value result = output(0);
+            Value x = input(0);
+            Value y = alive(0);
 
             super.verify();
             // left input in rax, right input in any register but rax and rdx, result quotient in rax, result remainder in rdx
@@ -301,7 +301,7 @@ public enum AMD64Arithmetic {
 
 
     @SuppressWarnings("unused")
-    protected static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, RiValue result) {
+    protected static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, Value result) {
         switch (opcode) {
             case INEG: masm.negl(asIntReg(result)); break;
             case LNEG: masm.negq(asLongReg(result)); break;
@@ -313,7 +313,7 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, RiValue dst, RiValue src, LIRDebugInfo info) {
+    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, Value dst, Value src, LIRDebugInfo info) {
         int exceptionOffset = -1;
         if (isRegister(src)) {
             switch (opcode) {
@@ -498,7 +498,7 @@ public enum AMD64Arithmetic {
         }
     }
 
-    private static void emitConvertFixup(TargetMethodAssembler tasm, AMD64MacroAssembler masm, RiValue result, RiValue x) {
+    private static void emitConvertFixup(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value x) {
         ConvertSlowPath slowPath = new ConvertSlowPath(result, x);
         tasm.stubs.add(slowPath);
         switch (result.kind) {
@@ -513,10 +513,10 @@ public enum AMD64Arithmetic {
     private static class ConvertSlowPath extends AMD64Code {
         public final Label start = new Label();
         public final Label continuation = new Label();
-        private final RiValue result;
-        private final RiValue x;
+        private final Value result;
+        private final Value x;
 
-        public ConvertSlowPath(RiValue result, RiValue x) {
+        public ConvertSlowPath(Value result, Value x) {
             this.result = result;
             this.x = x;
         }
@@ -555,7 +555,7 @@ public enum AMD64Arithmetic {
     }
 
 
-    private static void verifyKind(AMD64Arithmetic opcode, RiValue result, RiValue x, RiValue y) {
+    private static void verifyKind(AMD64Arithmetic opcode, Value result, Value x, Value y) {
         assert (opcode.name().startsWith("I") && result.kind == RiKind.Int && x.kind.stackKind() == RiKind.Int && y.kind.stackKind() == RiKind.Int)
             || (opcode.name().startsWith("L") && result.kind == RiKind.Long && x.kind == RiKind.Long && y.kind == RiKind.Long)
             || (opcode.name().startsWith("F") && result.kind == RiKind.Float && x.kind == RiKind.Float && y.kind == RiKind.Float)

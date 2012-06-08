@@ -38,7 +38,7 @@ import com.oracle.graal.lir.asm.*;
  */
 public class AMD64TailcallOp extends AMD64LIRInstruction {
 
-    public AMD64TailcallOp(List<RiValue> parameters, RiValue target, RiValue[] callingConvention) {
+    public AMD64TailcallOp(List<Value> parameters, Value target, Value[] callingConvention) {
         super("TAILCALL", LIRInstruction.NO_OPERANDS, null, toArray(parameters, target), LIRInstruction.NO_OPERANDS, callingConvention.clone());
         assert inputs.length == temps.length + 1;
 
@@ -48,8 +48,8 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
         }
     }
 
-    private static RiValue[] toArray(List<RiValue> parameters, RiValue target) {
-        RiValue[] result = new RiValue[parameters.size() + 1];
+    private static Value[] toArray(List<Value> parameters, Value target) {
+        Value[] result = new Value[parameters.size() + 1];
         parameters.toArray(result);
         result[parameters.size()] = target;
         return result;

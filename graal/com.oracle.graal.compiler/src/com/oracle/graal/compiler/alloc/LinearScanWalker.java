@@ -95,7 +95,7 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     void excludeFromUse(Interval i) {
-        RiValue location = i.location();
+        Value location = i.location();
         int i1 = asRegister(location).number;
         if (i1 >= availableRegs[0].number && i1 <= availableRegs[availableRegs.length - 1].number) {
             usePos[i1] = 0;
@@ -675,7 +675,7 @@ final class LinearScanWalker extends IntervalWalker {
         return true;
     }
 
-    CiRegister findLockedRegister(int regNeededUntil, int intervalTo, RiValue ignoreReg, boolean[] needSplit) {
+    CiRegister findLockedRegister(int regNeededUntil, int intervalTo, Value ignoreReg, boolean[] needSplit) {
         int maxReg = -1;
         CiRegister ignore = isRegister(ignoreReg) ? asRegister(ignoreReg) : null;
 
@@ -906,7 +906,7 @@ final class LinearScanWalker extends IntervalWalker {
             TTY.println("      splitParent: %s, insertMoveWhenActivated: %b", interval.splitParent().operandNumber, interval.insertMoveWhenActivated());
         }
 
-        final RiValue operand = interval.operand;
+        final Value operand = interval.operand;
         if (interval.location() != null && isStackSlot(interval.location())) {
             // activating an interval that has a stack slot assigned . split it at first use position
             // used for method parameters

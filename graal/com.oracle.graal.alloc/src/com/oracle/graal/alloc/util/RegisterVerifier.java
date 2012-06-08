@@ -48,7 +48,7 @@ public final class RegisterVerifier {
      * value that is currently contained in there ({@link Location} for operands that were variables; {@link CiRegisterValue} or
      * {@link CiStackSlot} for operands that used fixed registers or stack slots).
      */
-    private final Map<Object, RiValue>[] blockStates;
+    private final Map<Object, Value>[] blockStates;
 
     private void addToWorkList(Block block) {
         if (!workList.contains(block)) {
@@ -56,15 +56,15 @@ public final class RegisterVerifier {
         }
     }
 
-    private Map<Object, RiValue> stateFor(Block block) {
+    private Map<Object, Value> stateFor(Block block) {
         return blockStates[block.getId()];
     }
 
-    private void setStateFor(Block block, Map<Object, RiValue> savedState) {
+    private void setStateFor(Block block, Map<Object, Value> savedState) {
         blockStates[block.getId()] = savedState;
     }
 
-    private static Map<Object, RiValue> copy(Map<Object, RiValue> inputState) {
+    private static Map<Object, Value> copy(Map<Object, Value> inputState) {
         return new HashMap<>(inputState);
     }
 
@@ -81,12 +81,12 @@ public final class RegisterVerifier {
         this.blockStates = new Map[lir.linearScanOrder().size()];
     }
 
-    private Map<Object, RiValue> curInputState;
+    private Map<Object, Value> curInputState;
 
     private void verify(Block startBlock) {
-        ValueProcedure useProc =    new ValueProcedure() { @Override public RiValue doValue(RiValue value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, flags); } };
-        ValueProcedure tempProc =   new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return temp(value); } };
-        ValueProcedure outputProc = new ValueProcedure() { @Override public RiValue doValue(RiValue value) { return output(value); } };
+        ValueProcedure useProc =    new ValueProcedure() { @Override public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) { return use(value, flags); } };
+        ValueProcedure tempProc =   new ValueProcedure() { @Override public Value doValue(Value value) { return temp(value); } };
+        ValueProcedure outputProc = new ValueProcedure() { @Override public Value doValue(Value value) { return output(value); } };
 
         curInputState = new HashMap<>();
         setStateFor(startBlock, curInputState);
@@ -124,7 +124,7 @@ public final class RegisterVerifier {
     }
 
     private void processSuccessor(Block succ) {
-        Map<Object, RiValue> savedState = stateFor(succ);
+        Map<Object, Value> savedState = stateFor(succ);
         if (savedState == null) {
             // Block was not processed before, so set initial inputState.
             Debug.log("  successor %s: initial visit", succ);
@@ -135,11 +135,11 @@ public final class RegisterVerifier {
             // This block was already processed before.
             // Check if new inputState is consistent with savedState.
             Debug.log("  successor %s: state present", succ);
-            Iterator<Map.Entry<Object, RiValue>> iter = savedState.entrySet().iterator();
+            Iterator<Map.Entry<Object, Value>> iter = savedState.entrySet().iterator();
             while (iter.hasNext()) {
-                Map.Entry<Object, RiValue> entry = iter.next();
-                RiValue savedValue = entry.getValue();
-                RiValue inputValue = curInputState.get(entry.getKey());
+                Map.Entry<Object, Value> entry = iter.next();
+                Value savedValue = entry.getValue();
+                Value inputValue = curInputState.get(entry.getKey());
 
                 if (savedValue != inputValue) {
                     // Current inputState and previous savedState assume a different value in this register.
@@ -170,7 +170,7 @@ public final class RegisterVerifier {
      * include the kind of the value because we do not want to distinguish between the same register with
      * different kinds.
      */
-    private Object key(RiValue value) {
+    private Object key(Value value) {
         if (isLocation(value)) {
             return key(asLocation(value).location);
         } else if (isRegister(value)) {
@@ -182,13 +182,13 @@ public final class RegisterVerifier {
         }
     }
 
-    private boolean isIgnoredRegister(RiValue value) {
+    private boolean isIgnoredRegister(Value value) {
         return isRegister(value) && !frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable;
     }
 
-    private RiValue use(RiValue value, EnumSet<OperandFlag> flags) {
-        if (!isConstant(value) && value != RiValue.IllegalValue && !isIgnoredRegister(value)) {
-            RiValue actual = curInputState.get(key(value));
+    private Value use(Value value, EnumSet<OperandFlag> flags) {
+        if (!isConstant(value) && value != Value.IllegalValue && !isIgnoredRegister(value)) {
+            Value actual = curInputState.get(key(value));
             if (actual == null && flags.contains(OperandFlag.Uninitialized)) {
                 // OK, since uninitialized values are allowed explicitly.
             } else if (value != actual) {
@@ -200,16 +200,16 @@ public final class RegisterVerifier {
         return value;
     }
 
-    private RiValue temp(RiValue value) {
-        if (!isConstant(value) && value != RiValue.IllegalValue && !isIgnoredRegister(value)) {
+    private Value temp(Value value) {
+        if (!isConstant(value) && value != Value.IllegalValue && !isIgnoredRegister(value)) {
             Debug.log("    temp %s -> remove key %s", value, key(value));
             curInputState.remove(key(value));
         }
         return value;
     }
 
-    private RiValue output(RiValue value) {
-        if (value != RiValue.IllegalValue && !isIgnoredRegister(value)) {
+    private Value output(Value value) {
+        if (value != Value.IllegalValue && !isIgnoredRegister(value)) {
             Debug.log("    output %s -> set key %s", value, key(value));
             curInputState.put(key(value), value);
         }
