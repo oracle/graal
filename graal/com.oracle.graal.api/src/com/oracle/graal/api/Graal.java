@@ -25,8 +25,7 @@ package com.oracle.graal.api;
 
 public class Graal {
 
-    private static GraalRuntime runtime;
-    private static volatile boolean initialized;
+    private static volatile GraalRuntime runtime;
 
     private static native GraalRuntime initializeRuntime();
 
@@ -35,21 +34,25 @@ public class Graal {
         return runtime;
     }
 
-    public static boolean hasRuntime() {
-        return getRuntime() != null;
-    }
-
     private static void ensureInitialized() {
-        boolean wasInitialized = initialized;
-        if (!wasInitialized) {
+        GraalRuntime oldValue = runtime;
+        if (oldValue == null) {
             synchronized (Graal.class) {
-                if (!initialized) {
+                if (runtime == null) {
                     try {
                         runtime = initializeRuntime();
                     } catch (UnsatisfiedLinkError e) {
-                        runtime = null;
+                        runtime = new GraalRuntime() {
+                            @Override
+                            public String getName() {
+                                return "";
+                            }
+                            @Override
+                            public <T> T getCapability(Class<T> clazz) {
+                                return null;
+                            }
+                        };
                     }
-                    initialized = true;
                 }
             }
         }
