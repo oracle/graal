@@ -52,7 +52,7 @@ public final class HotSpotTypePrimitive extends HotSpotType implements RiResolve
 
     @Override
     public RiResolvedType arrayOf() {
-        return (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().getPrimitiveArrayType(kind);
+        return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().getPrimitiveArrayType(kind);
     }
 
     @Override

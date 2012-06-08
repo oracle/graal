@@ -142,7 +142,7 @@ public class MethodEntryCounters {
     }
 
 
-    public static void printCounters(HotSpotCompilerImpl compiler) {
+    public static void printCounters(HotSpotGraalRuntime compiler) {
         if (!GraalOptions.MethodEntryCounters) {
             return;
         }

@@ -43,9 +43,9 @@ public class CompilationServer implements Runnable {
 
     public interface ConnectionObserver {
 
-        void connectionStarted(HotSpotCompilerImpl compiler);
+        void connectionStarted(HotSpotGraalRuntime compiler);
 
-        void connectionFinished(HotSpotCompilerImpl compiler);
+        void connectionFinished(HotSpotGraalRuntime compiler);
     }
 
     private final boolean multiple;
@@ -91,7 +91,7 @@ public class CompilationServer implements Runnable {
                 CompilerToVM toVM = (CompilerToVM) streams.getInvocation().waitForResult(false);
 
                 // return the initialized compiler to the client
-                HotSpotCompilerImpl compiler = initializeServer(toVM);
+                HotSpotGraalRuntime compiler = initializeServer(toVM);
                 compiler.getCompiler();
                 streams.getInvocation().sendResult(compiler);
 
@@ -120,7 +120,7 @@ public class CompilationServer implements Runnable {
     }
 
     @SuppressWarnings("unused")
-    private static HotSpotCompilerImpl initializeServer(CompilerToVM toVM) {
+    private static HotSpotGraalRuntime initializeServer(CompilerToVM toVM) {
         // TODO(thomaswue): Fix creation of compiler instances on server side.
         return null;
     }

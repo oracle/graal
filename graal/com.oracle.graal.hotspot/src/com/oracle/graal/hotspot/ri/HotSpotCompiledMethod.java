@@ -66,7 +66,7 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
         assert method.signature().argumentKindAt(0) == RiKind.Object;
         assert method.signature().argumentKindAt(1) == RiKind.Object;
         assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2) == RiKind.Object;
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
     }
 
     private boolean checkArgs(Object... args) {
@@ -86,6 +86,6 @@ public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledM
     @Override
     public Object executeVarargs(Object... args) {
         assert checkArgs(args);
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().executeCompiledMethodVarargs(this, args);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(this, args);
     }
 }

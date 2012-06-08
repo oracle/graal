@@ -66,7 +66,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public RiResolvedType arrayOf() {
         if (arrayOfType == null) {
-           arrayOfType = (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_arrayOf(this);
+           arrayOfType = (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_arrayOf(this);
         }
         return arrayOfType;
     }
@@ -74,7 +74,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public RiResolvedType componentType() {
         assert isArrayClass();
-        return (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_componentType(this);
+        return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_componentType(this);
     }
 
     @Override
@@ -82,14 +82,14 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         if (isArrayClass()) {
             return Modifier.isFinal(componentType().accessFlags()) ? this : null;
         } else {
-            return (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_uniqueConcreteSubtype(this);
+            return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_uniqueConcreteSubtype(this);
         }
     }
 
     @Override
     public RiResolvedType superType() {
         if (!superTypeSet) {
-            superType = (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_superType(this);
+            superType = (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_superType(this);
             superTypeSet = true;
         }
         return superType;
@@ -100,7 +100,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         if (otherType instanceof HotSpotTypePrimitive) {
             return null;
         } else {
-            return (RiResolvedType) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_leastCommonAncestor(this, (HotSpotTypeResolved) otherType);
+            return (RiResolvedType) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_leastCommonAncestor(this, (HotSpotTypeResolved) otherType);
         }
     }
 
@@ -154,7 +154,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public boolean isInitialized() {
         if (!isInitialized) {
-            isInitialized = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_isInitialized(this);
+            isInitialized = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_isInitialized(this);
         }
         return isInitialized;
     }
@@ -177,7 +177,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public boolean isSubtypeOf(RiResolvedType other) {
         if (other instanceof HotSpotTypeResolved) {
-            return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_isSubtypeOf(this, other);
+            return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_isSubtypeOf(this, other);
         }
         // No resolved type is a subtype of an unresolved type.
         return false;
@@ -191,7 +191,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public RiResolvedMethod resolveMethodImpl(RiResolvedMethod method) {
         assert method instanceof HotSpotMethod;
-        return (RiResolvedMethod) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_resolveMethodImpl(this, method.name(), method.signature().asString());
+        return (RiResolvedMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_resolveMethodImpl(this, method.name(), method.signature().asString());
     }
 
     @Override
@@ -244,7 +244,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     @Override
     public RiResolvedField[] declaredFields() {
         if (fields == null) {
-            fields = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiType_fields(this);
+            fields = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiType_fields(this);
         }
         return fields;
     }
@@ -275,7 +275,7 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
         return klassOopCache;
     }
 
-    private static final int SECONDARY_SUPER_CACHE_OFFSET = HotSpotCompilerImpl.getInstance().getConfig().secondarySuperCacheOffset;
+    private static final int SECONDARY_SUPER_CACHE_OFFSET = HotSpotGraalRuntime.getInstance().getConfig().secondarySuperCacheOffset;
 
     public boolean isPrimaryType() {
         return SECONDARY_SUPER_CACHE_OFFSET != superCheckOffset;

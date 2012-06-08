@@ -37,7 +37,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private static final long serialVersionUID = -8873133496591225071L;
 
     static {
-        config = HotSpotCompilerImpl.getInstance().getConfig();
+        config = HotSpotGraalRuntime.getInstance().getConfig();
     }
 
     // TODO (chaeubl) use same logic as in NodeClass?
@@ -77,7 +77,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     public int getDeoptimizationCount(RiDeoptReason reason) {
-        int reasonIndex = HotSpotCompilerImpl.getInstance().getRuntime().convertDeoptReason(reason);
+        int reasonIndex = HotSpotGraalRuntime.getInstance().getRuntime().convertDeoptReason(reason);
         return unsafe.getByte(hotspotMirror, (long) config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
@@ -342,7 +342,7 @@ public final class HotSpotMethodData extends CompilerObject {
                     Object graalMirror = unsafe.getObject(receiverKlassOop, (long) config.graalMirrorKlassOffset);
                     if (graalMirror == null) {
                         Class<?> javaClass = (Class<?>) unsafe.getObject(receiverKlassOop, (long) config.classMirrorOffset);
-                        graalMirror = HotSpotCompilerImpl.getInstance().getCompilerToVM().getType(javaClass);
+                        graalMirror = HotSpotGraalRuntime.getInstance().getCompilerToVM().getType(javaClass);
                         assert graalMirror != null : "must not return null";
                     }
 

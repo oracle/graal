@@ -40,7 +40,7 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object constant = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiConstantPool_lookupConstant(type, cpi);
+        Object constant = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupConstant(type, cpi);
         return constant;
     }
 
@@ -51,21 +51,21 @@ public class HotSpotConstantPool extends CompilerObject implements RiConstantPoo
 
     @Override
     public RiMethod lookupMethod(int cpi, int byteCode) {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiConstantPool_lookupMethod(type, cpi, (byte) byteCode);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupMethod(type, cpi, (byte) byteCode);
     }
 
     @Override
     public RiType lookupType(int cpi, int opcode) {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiConstantPool_lookupType(type, cpi);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupType(type, cpi);
     }
 
     @Override
     public RiField lookupField(int cpi, int opcode) {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiConstantPool_lookupField(type, cpi, (byte) opcode);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_lookupField(type, cpi, (byte) opcode);
     }
 
     @Override
     public void loadReferencedType(int cpi, int bytecode) {
-        HotSpotCompilerImpl.getInstance().getCompilerToVM().RiConstantPool_loadReferencedType(type, cpi, (byte) bytecode);
+        HotSpotGraalRuntime.getInstance().getCompilerToVM().RiConstantPool_loadReferencedType(type, cpi, (byte) bytecode);
     }
 }

@@ -49,7 +49,7 @@ import com.oracle.max.criutils.*;
  */
 public class VMToCompilerImpl implements VMToCompiler {
 
-    private final HotSpotCompilerImpl compiler;
+    private final HotSpotGraalRuntime compiler;
     private IntrinsifyArrayCopyPhase intrinsifyArrayCopy;
 
     public final HotSpotTypePrimitive typeBoolean;
@@ -68,7 +68,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private PrintStream log = System.out;
 
-    public VMToCompilerImpl(HotSpotCompilerImpl compiler) {
+    public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
         this.compiler = compiler;
 
         typeBoolean = new HotSpotTypePrimitive(RiKind.Boolean);

@@ -38,11 +38,11 @@ import com.oracle.max.cri.xir.*;
 /**
  * Singleton class holding the instance of the GraalCompiler.
  */
-public final class HotSpotCompilerImpl implements GraalRuntime {
+public final class HotSpotGraalRuntime implements GraalRuntime {
 
-    private static final HotSpotCompilerImpl instance = new HotSpotCompilerImpl();
+    private static final HotSpotGraalRuntime instance = new HotSpotGraalRuntime();
 
-    public static HotSpotCompilerImpl getInstance() {
+    public static HotSpotGraalRuntime getInstance() {
         return instance;
     }
 
@@ -60,7 +60,7 @@ public final class HotSpotCompilerImpl implements GraalRuntime {
         return config;
     }
 
-    private HotSpotCompilerImpl() {
+    private HotSpotGraalRuntime() {
 
         CompilerToVM toVM = new CompilerToVMImpl();
 

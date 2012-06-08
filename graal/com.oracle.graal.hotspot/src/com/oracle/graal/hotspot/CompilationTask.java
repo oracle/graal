@@ -47,18 +47,18 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     private volatile boolean cancelled;
 
-    private final HotSpotCompilerImpl compiler;
+    private final HotSpotGraalRuntime compiler;
     private final PhasePlan plan;
     private final HotSpotMethodResolved method;
     private final OptimisticOptimizations optimisticOpts;
     private final int id;
     private final int priority;
 
-    public static CompilationTask create(HotSpotCompilerImpl compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
+    public static CompilationTask create(HotSpotGraalRuntime compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
         return new CompilationTask(compiler, plan, optimisticOpts, method, id, priority);
     }
 
-    private CompilationTask(HotSpotCompilerImpl compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
+    private CompilationTask(HotSpotGraalRuntime compiler, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotMethodResolved method, int id, int priority) {
         this.compiler = compiler;
         this.plan = plan;
         this.method = method;

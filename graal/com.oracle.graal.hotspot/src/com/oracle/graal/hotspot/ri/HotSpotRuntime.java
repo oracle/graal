@@ -55,10 +55,10 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     public final HotSpotVMConfig config;
     final HotSpotRegisterConfig regConfig;
     private final HotSpotRegisterConfig globalStubRegConfig;
-    private final HotSpotCompilerImpl compiler;
+    private final HotSpotGraalRuntime compiler;
     private CheckCastSnippets.Templates checkcasts;
 
-    public HotSpotRuntime(HotSpotVMConfig config, HotSpotCompilerImpl compiler) {
+    public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime compiler) {
         this.config = config;
         this.compiler = compiler;
         regConfig = new HotSpotRegisterConfig(config, false);
@@ -76,7 +76,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
 
-    public HotSpotCompilerImpl getCompiler() {
+    public HotSpotGraalRuntime getCompiler() {
         return compiler;
     }
 

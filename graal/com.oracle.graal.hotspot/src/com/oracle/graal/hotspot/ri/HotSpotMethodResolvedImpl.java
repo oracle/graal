@@ -86,7 +86,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     @Override
     public byte[] code() {
         if (code == null) {
-            code = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_code(this);
+            code = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_code(this);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
         }
         return code;
@@ -99,13 +99,13 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public RiExceptionHandler[] exceptionHandlers() {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_exceptionHandlers(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_exceptionHandlers(this);
     }
 
     @Override
     public boolean hasBalancedMonitors() {
         if (hasBalancedMonitors == null) {
-            hasBalancedMonitors = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_hasBalancedMonitors(this);
+            hasBalancedMonitors = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_hasBalancedMonitors(this);
         }
         return hasBalancedMonitors;
     }
@@ -158,21 +158,21 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     public StackTraceElement toStackTraceElement(int bci) {
         if (bci < 0 || bci >= codeSize) {
             // HotSpot code can only construct stack trace elements for valid bcis
-            StackTraceElement ste = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_toStackTraceElement(this, 0);
+            StackTraceElement ste = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_toStackTraceElement(this, 0);
             return new StackTraceElement(ste.getClassName(), ste.getMethodName(), ste.getFileName(), -1);
         }
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_toStackTraceElement(this, bci);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_toStackTraceElement(this, bci);
     }
 
     @Override
     public RiResolvedMethod uniqueConcreteMethod() {
-        return (RiResolvedMethod) HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_uniqueConcreteMethod(this);
+        return (RiResolvedMethod) HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_uniqueConcreteMethod(this);
     }
 
     @Override
     public RiSignature signature() {
         if (signature == null) {
-            signature = new HotSpotSignature(HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_signature(this));
+            signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_signature(this));
         }
         return signature;
     }
@@ -183,11 +183,11 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
     }
 
     public boolean hasCompiledCode() {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_hasCompiledCode(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_hasCompiledCode(this);
     }
 
     public int compiledCodeSize() {
-        int result = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_getCompiledCodeSize(this);
+        int result = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_getCompiledCodeSize(this);
         if (result > 0) {
             assert result > MethodEntryCounters.getCodeSize();
             result =  result - MethodEntryCounters.getCodeSize();
@@ -207,7 +207,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public int invocationCount() {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_invocationCount(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_invocationCount(this);
     }
 
     @Override
@@ -243,7 +243,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
             File file = new File(GraalOptions.PICache, JniMangle.mangleMethod(holder, name, signature(), false));
             if (file.exists()) {
                 try {
-                    SnapshotProfilingInfo snapshot = SnapshotProfilingInfo.load(file, HotSpotCompilerImpl.getInstance().getRuntime());
+                    SnapshotProfilingInfo snapshot = SnapshotProfilingInfo.load(file, HotSpotGraalRuntime.getInstance().getRuntime());
                     if (snapshot.codeSize() != codeSize) {
                         // The class file was probably changed - ignore the saved profile
                         return null;
@@ -281,7 +281,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
         }
 
         if (GraalOptions.UseProfilingInformation && methodData == null) {
-            methodData = HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_methodData(this);
+            methodData = HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_methodData(this);
         }
 
         if (methodData == null || (!methodData.hasNormalData() && !methodData.hasExtraData())) {
@@ -369,7 +369,7 @@ public final class HotSpotMethodResolvedImpl extends HotSpotMethod implements Ho
 
     @Override
     public int vtableEntryOffset() {
-        return HotSpotCompilerImpl.getInstance().getCompilerToVM().RiMethod_vtableEntryOffset(this);
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().RiMethod_vtableEntryOffset(this);
     }
 
     @Override

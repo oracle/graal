@@ -75,12 +75,12 @@ public class HotSpotXirGenerator implements RiXirGenerator {
     private final HotSpotVMConfig config;
     private final CiTarget target;
     private final CiRegisterConfig registerConfig;
-    private final HotSpotCompilerImpl compiler;
+    private final HotSpotGraalRuntime compiler;
 
 
     private CiXirAssembler globalAsm;
 
-    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, CiRegisterConfig registerConfig, HotSpotCompilerImpl compiler) {
+    public HotSpotXirGenerator(HotSpotVMConfig config, CiTarget target, CiRegisterConfig registerConfig, HotSpotGraalRuntime compiler) {
         this.config = config;
         this.target = target;
         this.registerConfig = registerConfig;
