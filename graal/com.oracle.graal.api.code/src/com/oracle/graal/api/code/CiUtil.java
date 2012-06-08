@@ -160,7 +160,7 @@ public class CiUtil {
      * @param format a format specification
      * @param method the method to be formatted
      * @param kinds if {@code true} then the types in {@code method}'s signature are printed in the
-     *            {@linkplain RiKind#jniName JNI} form of their {@linkplain RiKind kind}
+     *            {@linkplain Kind#jniName JNI} form of their {@linkplain Kind kind}
      * @return the result of formatting this method according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
@@ -252,8 +252,8 @@ public class CiUtil {
      *
      * @param format a format specification
      * @param field the field to be formatted
-     * @param kinds if {@code true} then {@code field}'s type is printed in the {@linkplain RiKind#jniName JNI} form of
-     *            its {@linkplain RiKind kind}
+     * @param kinds if {@code true} then {@code field}'s type is printed in the {@linkplain Kind#jniName JNI} form of
+     *            its {@linkplain Kind kind}
      * @return the result of formatting this field according to {@code format}
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
@@ -604,21 +604,21 @@ public class CiUtil {
         return sb;
     }
 
-    public static RiKind[] signatureToKinds(RiResolvedMethod method) {
-        RiKind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind();
+    public static Kind[] signatureToKinds(RiResolvedMethod method) {
+        Kind receiver = isStatic(method.accessFlags()) ? null : method.holder().kind();
         return signatureToKinds(method.signature(), receiver);
     }
 
-    public static RiKind[] signatureToKinds(RiSignature signature, RiKind receiverKind) {
+    public static Kind[] signatureToKinds(RiSignature signature, Kind receiverKind) {
         int args = signature.argumentCount(false);
-        RiKind[] result;
+        Kind[] result;
         int i = 0;
         if (receiverKind != null) {
-            result = new RiKind[args + 1];
+            result = new Kind[args + 1];
             result[0] = receiverKind;
             i = 1;
         } else {
-            result = new RiKind[args];
+            result = new Kind[args];
         }
         for (int j = 0; j < args; j++) {
             result[i + j] = signature.argumentKindAt(j);

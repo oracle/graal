@@ -127,8 +127,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiKind getRepresentationKind(Representation r) {
-        return RiKind.Object;
+    public Kind getRepresentationKind(Representation r) {
+        return Kind.Object;
     }
 
     @Override
@@ -184,8 +184,8 @@ public final class HotSpotTypeResolvedImpl extends HotSpotType implements HotSpo
     }
 
     @Override
-    public RiKind kind() {
-        return RiKind.Object;
+    public Kind kind() {
+        return Kind.Object;
     }
 
     @Override

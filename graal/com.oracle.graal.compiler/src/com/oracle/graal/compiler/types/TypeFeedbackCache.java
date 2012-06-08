@@ -62,7 +62,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
 
     @Override
     public ScalarTypeFeedbackTool addScalar(ValueNode value) {
-        assert value.kind() == RiKind.Int || value.kind() == RiKind.Long || value.kind() == RiKind.Float || value.kind() == RiKind.Double;
+        assert value.kind() == Kind.Int || value.kind() == Kind.Long || value.kind() == Kind.Float || value.kind() == Kind.Double;
         ScalarTypeFeedbackStore result = scalarTypeFeedback.get(value);
         if (result == null) {
             if (value.stamp().scalarType() != null) {
@@ -77,7 +77,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
 
     @Override
     public ObjectTypeFeedbackTool addObject(ValueNode value) {
-        assert value.kind() == RiKind.Object;
+        assert value.kind() == Kind.Object;
         ObjectTypeFeedbackStore result = objectTypeFeedback.get(value);
         if (result == null) {
             if (value.stamp().objectType() != null) {
@@ -168,7 +168,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
         // meet the phi nodes
         for (PhiNode phi : phis) {
             assert phi.valueCount() == cacheList.length;
-            if (phi.kind() == RiKind.Int || phi.kind() == RiKind.Long) {
+            if (phi.kind() == Kind.Int || phi.kind() == Kind.Long) {
                 ScalarTypeFeedbackStore[] types = new ScalarTypeFeedbackStore[phi.valueCount()];
                 for (int i = 0; i < phi.valueCount(); i++) {
                     ScalarTypeFeedbackStore other = cacheList[i].scalarTypeFeedback.get(phi.valueAt(i));
@@ -182,7 +182,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
                     result.scalarTypeFeedback.put(phi, scalar);
 //                    phi.setStamp(StampFactory.forKind(phi.kind(), scalar.query(), null));
                 }
-            } else if (phi.kind() == RiKind.Object) {
+            } else if (phi.kind() == Kind.Object) {
                 ObjectTypeFeedbackStore[] types = new ObjectTypeFeedbackStore[phi.valueCount()];
                 for (int i = 0; i < phi.valueCount(); i++) {
                     ObjectTypeFeedbackStore other = cacheList[i].objectTypeFeedback.get(phi.valueAt(i));
@@ -203,7 +203,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
 
     @Override
     public ScalarTypeQuery queryScalar(ValueNode value) {
-        assert value.kind() == RiKind.Int || value.kind() == RiKind.Long || value.kind() == RiKind.Float || value.kind() == RiKind.Double;
+        assert value.kind() == Kind.Int || value.kind() == Kind.Long || value.kind() == Kind.Float || value.kind() == Kind.Double;
         if (NO_SCALAR_TYPES) {
             return new ScalarTypeFeedbackStore(value.kind(), changed).query();
         }
@@ -221,7 +221,7 @@ public class TypeFeedbackCache implements TypeFeedbackTool, Cloneable {
     @Override
     public ObjectTypeQuery queryObject(ValueNode value) {
         assert value != null;
-        assert value.kind() == RiKind.Object;
+        assert value.kind() == Kind.Object;
         if (NO_OBJECT_TYPES) {
             return new ObjectTypeFeedbackStore(changed).query();
         }

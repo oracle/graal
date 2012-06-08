@@ -30,17 +30,17 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "%")
 public final class FloatRemNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public FloatRemNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatRemNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == RiKind.Float) {
+            if (kind() == Kind.Float) {
                 return ConstantNode.forFloat(x().asConstant().asFloat() % y().asConstant().asFloat(), graph());
             } else {
-                assert kind() == RiKind.Double;
+                assert kind() == Kind.Double;
                 return ConstantNode.forDouble(x().asConstant().asDouble() % y().asConstant().asDouble(), graph());
             }
         }

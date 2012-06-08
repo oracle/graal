@@ -58,7 +58,7 @@ public class XirSnippet {
     }
 
     private static boolean assertArgumentCorrect(XirParameter param, XirArgument arg) {
-        if (param.kind == RiKind.Illegal || param.kind == RiKind.Void) {
+        if (param.kind == Kind.Illegal || param.kind == Kind.Void) {
             if (arg != null) {
                 return false;
             }

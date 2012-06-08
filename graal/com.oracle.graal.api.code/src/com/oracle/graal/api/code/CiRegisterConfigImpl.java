@@ -167,7 +167,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
         System.arraycopy(src.stackArg0Offsets, 0, stackArg0Offsets, 0, stackArg0Offsets.length);
     }
 
-    public CiRegister getReturnRegister(RiKind kind) {
+    public CiRegister getReturnRegister(Kind kind) {
         if (kind.isDouble() || kind.isFloat()) {
             return floatingPointReturn;
         }
@@ -188,7 +188,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
      * This implementation assigns all available registers to parameters before assigning
      * any stack slots to parameters.
      */
-    public CiCallingConvention getCallingConvention(Type type, RiKind[] parameters, CiTarget target, boolean stackOnly) {
+    public CiCallingConvention getCallingConvention(Type type, Kind[] parameters, CiTarget target, boolean stackOnly) {
         Value[] locations = new Value[parameters.length];
 
         int currentGeneral = 0;
@@ -196,7 +196,7 @@ public class CiRegisterConfigImpl implements CiRegisterConfig {
         int currentStackOffset = stackArg0Offsets[type.ordinal()];
 
         for (int i = 0; i < parameters.length; i++) {
-            final RiKind kind = parameters[i];
+            final Kind kind = parameters[i];
 
             switch (kind) {
                 case Byte:

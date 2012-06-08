@@ -87,27 +87,27 @@ public class CiValueUtil {
     }
 
     public static CiRegister asIntReg(Value value) {
-        assert value.kind == RiKind.Int || value.kind == RiKind.Jsr;
+        assert value.kind == Kind.Int || value.kind == Kind.Jsr;
         return asRegister(value);
     }
 
     public static CiRegister asLongReg(Value value) {
-        assert value.kind == RiKind.Long : value.kind;
+        assert value.kind == Kind.Long : value.kind;
         return asRegister(value);
     }
 
     public static CiRegister asObjectReg(Value value) {
-        assert value.kind == RiKind.Object;
+        assert value.kind == Kind.Object;
         return asRegister(value);
     }
 
     public static CiRegister asFloatReg(Value value) {
-        assert value.kind == RiKind.Float;
+        assert value.kind == Kind.Float;
         return asRegister(value);
     }
 
     public static CiRegister asDoubleReg(Value value) {
-        assert value.kind == RiKind.Double;
+        assert value.kind == Kind.Double;
         return asRegister(value);
     }
 

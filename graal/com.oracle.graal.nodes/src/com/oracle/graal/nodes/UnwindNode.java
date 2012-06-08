@@ -41,7 +41,7 @@ public final class UnwindNode extends FixedNode implements LIRLowerable, Node.It
 
     public UnwindNode(ValueNode exception) {
         super(StampFactory.forVoid());
-        assert exception == null || exception.kind() == RiKind.Object;
+        assert exception == null || exception.kind() == Kind.Object;
         this.exception = exception;
     }
 

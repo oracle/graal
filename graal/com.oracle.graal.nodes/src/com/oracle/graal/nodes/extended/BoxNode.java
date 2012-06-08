@@ -34,14 +34,14 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
 
     @Input private ValueNode source;
     private int bci;
-    private RiKind sourceKind;
+    private Kind sourceKind;
 
-    public BoxNode(ValueNode value, RiResolvedType type, RiKind sourceKind, int bci) {
+    public BoxNode(ValueNode value, RiResolvedType type, Kind sourceKind, int bci) {
         super(StampFactory.exactNonNull(type));
         this.source = value;
         this.bci = bci;
         this.sourceKind = sourceKind;
-        assert value.kind() != RiKind.Object : "can only box from primitive type";
+        assert value.kind() != Kind.Object : "can only box from primitive type";
     }
 
     public ValueNode source() {
@@ -49,7 +49,7 @@ public final class BoxNode extends AbstractStateSplit implements StateSplit, Nod
     }
 
 
-    public RiKind getSourceKind() {
+    public Kind getSourceKind() {
         return sourceKind;
     }
 

@@ -423,7 +423,7 @@ public final class Interval {
      * The kind of this interval.
      * Only valid if this is a {@linkplain #xxisVariable() variable}.
      */
-    private RiKind kind;
+    private Kind kind;
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by {@linkplain LIRInstruction#id instruction ids}.
@@ -490,14 +490,14 @@ public final class Interval {
     void assignLocation(Value newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.kind == RiKind.Illegal && kind != RiKind.Illegal) {
+            if (newLocation.kind == Kind.Illegal && kind != Kind.Illegal) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.kind != RiKind.Illegal;
+            assert newLocation.kind != Kind.Illegal;
             assert newLocation.kind == this.kind;
         }
         this.location = newLocation;
@@ -510,14 +510,14 @@ public final class Interval {
         return location;
     }
 
-    public RiKind kind() {
+    public Kind kind() {
         assert !isRegister(operand) : "cannot access type for fixed interval";
         return kind;
     }
 
-    void setKind(RiKind kind) {
-        assert isRegister(operand) || this.kind() == RiKind.Illegal || this.kind() == kind : "overwriting existing type";
-        assert kind == kind.stackKind() || kind == RiKind.Short : "these kinds should have int type registers";
+    void setKind(Kind kind) {
+        assert isRegister(operand) || this.kind() == Kind.Illegal || this.kind() == kind : "overwriting existing type";
+        assert kind == kind.stackKind() || kind == Kind.Short : "these kinds should have int type registers";
         this.kind = kind;
     }
 
@@ -670,7 +670,7 @@ public final class Interval {
         } else {
             assert isIllegal(operand) || isVariable(operand);
         }
-        this.kind = RiKind.Illegal;
+        this.kind = Kind.Illegal;
         this.first = Range.EndMarker;
         this.usePosList = new UsePosList(4);
         this.current = Range.EndMarker;

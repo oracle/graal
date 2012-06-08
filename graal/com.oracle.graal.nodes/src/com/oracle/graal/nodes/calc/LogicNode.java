@@ -35,7 +35,7 @@ public abstract class LogicNode extends BinaryNode {
      * @param x the first input into this node
      * @param y the second input into this node
      */
-    public LogicNode(RiKind kind, ValueNode x, ValueNode y) {
+    public LogicNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 }

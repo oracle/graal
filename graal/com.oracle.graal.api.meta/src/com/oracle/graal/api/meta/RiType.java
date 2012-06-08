@@ -79,14 +79,14 @@ public interface RiType {
      * Gets the kind of this compiler interface type.
      * @return the kind
      */
-    RiKind kind();
+    Kind kind();
 
     /**
      * Gets the kind used to represent the specified part of this type.
      * @param r the part of the this type
      * @return the kind of constants for the specified part of the type
      */
-    RiKind getRepresentationKind(Representation r);
+    Kind getRepresentationKind(Representation r);
 
     RiResolvedType resolve(RiResolvedType accessingClass);
 }

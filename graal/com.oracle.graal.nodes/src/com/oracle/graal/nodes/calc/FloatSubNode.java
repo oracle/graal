@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "-")
 public final class FloatSubNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public FloatSubNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatSubNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 
@@ -40,21 +40,21 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
             return ConstantNode.forFloatingKind(kind(), 0.0f, graph());
         }
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == RiKind.Float) {
+            if (kind() == Kind.Float) {
                 return ConstantNode.forFloat(x().asConstant().asFloat() - y().asConstant().asFloat(), graph());
             } else {
-                assert kind() == RiKind.Double;
+                assert kind() == Kind.Double;
                 return ConstantNode.forDouble(x().asConstant().asDouble() - y().asConstant().asDouble(), graph());
             }
         } else if (y().isConstant()) {
-            if (kind() == RiKind.Float) {
+            if (kind() == Kind.Float) {
                 float c = y().asConstant().asFloat();
                 if (c == 0.0f) {
                     return x();
                 }
                 return graph().unique(new FloatAddNode(kind(), x(), ConstantNode.forFloat(-c, graph()), isStrictFP()));
             } else {
-                assert kind() == RiKind.Double;
+                assert kind() == Kind.Double;
                 double c = y().asConstant().asDouble();
                 if (c == 0.0) {
                     return x();

@@ -33,7 +33,7 @@
  * {@link com.oracle.graal.api.code.CiCodePos} and {@link com.oracle.graal.api.code.CiDebugInfo} provide detailed information to the
  * runtime to support debugging and deoptimization of the compiled code.
  * <p>
- * The compiler manipulates {@link com.oracle.graal.api.meta.Value} instances that have a {@link com.oracle.graal.api.meta.RiKind}, and are
+ * The compiler manipulates {@link com.oracle.graal.api.meta.Value} instances that have a {@link com.oracle.graal.api.meta.Kind}, and are
  * immutable. A concrete {@link com.oracle.graal.api.meta.Value value} is one of the following subclasses:
  * <ul>
  * <li>{@link com.oracle.graal.api.meta.Constant}: a constant value.

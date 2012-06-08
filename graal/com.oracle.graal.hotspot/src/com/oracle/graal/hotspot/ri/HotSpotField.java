@@ -92,7 +92,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public RiKind kind() {
+    public Kind kind() {
         return type().kind();
     }
 

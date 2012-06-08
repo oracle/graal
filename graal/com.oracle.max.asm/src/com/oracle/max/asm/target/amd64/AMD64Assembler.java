@@ -38,7 +38,7 @@ public class AMD64Assembler extends AbstractAssembler {
     /**
      * The kind for pointers and raw registers.  Since we know we are 64 bit here, we can hardcode it.
      */
-    private static final RiKind Word = RiKind.Long;
+    private static final Kind Word = Kind.Long;
 
     private static final int MinEncodingNeedsRex = 8;
 

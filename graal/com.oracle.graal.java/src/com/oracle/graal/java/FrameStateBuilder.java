@@ -70,9 +70,9 @@ public class FrameStateBuilder {
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
-            RiKind kind = type.kind().stackKind();
+            Kind kind = type.kind().stackKind();
             Stamp stamp;
-            if (kind == RiKind.Object && type instanceof RiResolvedType) {
+            if (kind == Kind.Object && type instanceof RiResolvedType) {
                 stamp = StampFactory.declared((RiResolvedType) type);
             } else {
                 stamp = StampFactory.forKind(kind);
@@ -342,14 +342,14 @@ public class FrameStateBuilder {
     }
 
     /**
-     * Stores a given local variable at the specified index. If the value is a {@linkplain RiKind#isDoubleWord() double word},
+     * Stores a given local variable at the specified index. If the value is a {@linkplain Kind#isDoubleWord() double word},
      * then the next local variable index is also overwritten.
      *
      * @param i the index at which to store
      * @param x the instruction which produces the value for the local
      */
     public void storeLocal(int i, ValueNode x) {
-        assert x == null || x.kind() != RiKind.Void && x.kind() != RiKind.Illegal : "unexpected value: " + x;
+        assert x == null || x.kind() != Kind.Void && x.kind() != Kind.Illegal : "unexpected value: " + x;
         locals[i] = x;
         if (x != null && isTwoSlot(x.kind())) {
             // if this is a double word, then kill i+1
@@ -374,8 +374,8 @@ public class FrameStateBuilder {
      * @param kind the type expected for this instruction
      * @param x the instruction to push onto the stack
      */
-    public void push(RiKind kind, ValueNode x) {
-        assert !x.isDeleted() && x.kind() != RiKind.Void && x.kind() != RiKind.Illegal;
+    public void push(Kind kind, ValueNode x) {
+        assert !x.isDeleted() && x.kind() != Kind.Void && x.kind() != Kind.Illegal;
         xpush(assertKind(kind, x));
         if (isTwoSlot(kind)) {
             xpush(null);
@@ -387,7 +387,7 @@ public class FrameStateBuilder {
      * @param x the instruction to push onto the stack
      */
     public void xpush(ValueNode x) {
-        assert x == null || (!x.isDeleted() && x.kind() != RiKind.Void && x.kind() != RiKind.Illegal);
+        assert x == null || (!x.isDeleted() && x.kind() != Kind.Void && x.kind() != Kind.Illegal);
         stack[stackSize++] = x;
     }
 
@@ -442,8 +442,8 @@ public class FrameStateBuilder {
         xpush(null);
     }
 
-    public void pushReturn(RiKind kind, ValueNode x) {
-        if (kind != RiKind.Void) {
+    public void pushReturn(Kind kind, ValueNode x) {
+        if (kind != Kind.Void) {
             push(kind.stackKind(), x);
         }
     }
@@ -453,8 +453,8 @@ public class FrameStateBuilder {
      * @param kind the expected type
      * @return the instruction on the top of the stack
      */
-    public ValueNode pop(RiKind kind) {
-        assert kind != RiKind.Void;
+    public ValueNode pop(Kind kind) {
+        assert kind != Kind.Void;
         if (isTwoSlot(kind)) {
             xpop();
         }
@@ -566,13 +566,13 @@ public class FrameStateBuilder {
         stackSize = 0;
     }
 
-    public static int stackSlots(RiKind kind) {
+    public static int stackSlots(Kind kind) {
         return isTwoSlot(kind) ? 2 : 1;
     }
 
-    public static boolean isTwoSlot(RiKind kind) {
-        assert kind != RiKind.Void && kind != RiKind.Illegal;
-        return kind == RiKind.Long || kind == RiKind.Double;
+    public static boolean isTwoSlot(Kind kind) {
+        assert kind != Kind.Void && kind != Kind.Illegal;
+        return kind == Kind.Long || kind == Kind.Double;
     }
 
     public boolean contains(ValueNode value) {

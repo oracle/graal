@@ -23,7 +23,7 @@
 package com.oracle.max.asm.target.amd64;
 
 import static com.oracle.graal.api.code.CiRegister.RegisterFlag.*;
-import static com.oracle.graal.api.meta.RiKind.*;
+import static com.oracle.graal.api.meta.Kind.*;
 import static com.oracle.max.cri.util.MemoryBarriers.*;
 
 import com.oracle.graal.api.code.*;

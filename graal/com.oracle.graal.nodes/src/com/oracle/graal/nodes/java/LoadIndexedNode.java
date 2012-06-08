@@ -43,12 +43,12 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
      * @param index the instruction producing the index
      * @param elementKind the element type
      */
-    public LoadIndexedNode(ValueNode array, ValueNode index, RiKind elementKind, long leafGraphId) {
+    public LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind, long leafGraphId) {
         super(createStamp(array, elementKind), array, index, elementKind, leafGraphId);
     }
 
-    private static Stamp createStamp(ValueNode array, RiKind kind) {
-        if (kind == RiKind.Object && array.objectStamp().type() != null) {
+    private static Stamp createStamp(ValueNode array, Kind kind) {
+        if (kind == Kind.Object && array.objectStamp().type() != null) {
             return StampFactory.declared(array.objectStamp().type().componentType());
         } else {
             return StampFactory.forKind(kind);

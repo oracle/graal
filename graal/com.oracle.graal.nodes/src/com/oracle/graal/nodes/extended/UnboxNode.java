@@ -33,21 +33,21 @@ import com.oracle.graal.nodes.type.*;
 public final class UnboxNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable {
 
     @Input private ValueNode source;
-    private RiKind destinationKind;
+    private Kind destinationKind;
 
-    public UnboxNode(RiKind kind, ValueNode source) {
+    public UnboxNode(Kind kind, ValueNode source) {
         super(StampFactory.forKind(kind));
         this.source = source;
         this.destinationKind = kind;
-        assert kind != RiKind.Object : "can only unbox to primitive";
-        assert source.kind() == RiKind.Object : "can only unbox objects";
+        assert kind != Kind.Object : "can only unbox to primitive";
+        assert source.kind() == Kind.Object : "can only unbox objects";
     }
 
     public ValueNode source() {
         return source;
     }
 
-    public RiKind destinationKind() {
+    public Kind destinationKind() {
         return destinationKind;
     }
 

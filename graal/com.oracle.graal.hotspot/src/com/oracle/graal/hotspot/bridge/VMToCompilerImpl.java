@@ -71,15 +71,15 @@ public class VMToCompilerImpl implements VMToCompiler {
     public VMToCompilerImpl(HotSpotGraalRuntime compiler) {
         this.compiler = compiler;
 
-        typeBoolean = new HotSpotTypePrimitive(RiKind.Boolean);
-        typeChar = new HotSpotTypePrimitive(RiKind.Char);
-        typeFloat = new HotSpotTypePrimitive(RiKind.Float);
-        typeDouble = new HotSpotTypePrimitive(RiKind.Double);
-        typeByte = new HotSpotTypePrimitive(RiKind.Byte);
-        typeShort = new HotSpotTypePrimitive(RiKind.Short);
-        typeInt = new HotSpotTypePrimitive(RiKind.Int);
-        typeLong = new HotSpotTypePrimitive(RiKind.Long);
-        typeVoid = new HotSpotTypePrimitive(RiKind.Void);
+        typeBoolean = new HotSpotTypePrimitive(Kind.Boolean);
+        typeChar = new HotSpotTypePrimitive(Kind.Char);
+        typeFloat = new HotSpotTypePrimitive(Kind.Float);
+        typeDouble = new HotSpotTypePrimitive(Kind.Double);
+        typeByte = new HotSpotTypePrimitive(Kind.Byte);
+        typeShort = new HotSpotTypePrimitive(Kind.Short);
+        typeInt = new HotSpotTypePrimitive(Kind.Int);
+        typeLong = new HotSpotTypePrimitive(Kind.Long);
+        typeVoid = new HotSpotTypePrimitive(Kind.Void);
     }
 
     public void startCompiler() throws Throwable {
@@ -452,18 +452,18 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public Constant createCiConstant(RiKind kind, long value) {
-        if (kind == RiKind.Long) {
+    public Constant createCiConstant(Kind kind, long value) {
+        if (kind == Kind.Long) {
             return Constant.forLong(value);
-        } else if (kind == RiKind.Int) {
+        } else if (kind == Kind.Int) {
             return Constant.forInt((int) value);
-        } else if (kind == RiKind.Short) {
+        } else if (kind == Kind.Short) {
             return Constant.forShort((short) value);
-        } else if (kind == RiKind.Char) {
+        } else if (kind == Kind.Char) {
             return Constant.forChar((char) value);
-        } else if (kind == RiKind.Byte) {
+        } else if (kind == Kind.Byte) {
             return Constant.forByte((byte) value);
-        } else if (kind == RiKind.Boolean) {
+        } else if (kind == Kind.Boolean) {
             return (value == 0) ? Constant.FALSE : Constant.TRUE;
         } else {
             throw new IllegalArgumentException();

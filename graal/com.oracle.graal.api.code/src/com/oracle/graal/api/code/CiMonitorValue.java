@@ -32,7 +32,7 @@ public final class CiMonitorValue extends Value {
     public final boolean eliminated;
 
     public CiMonitorValue(Value owner, Value lockData, boolean eliminated) {
-        super(RiKind.Illegal);
+        super(Kind.Illegal);
         this.owner = owner;
         this.lockData = lockData;
         this.eliminated = eliminated;

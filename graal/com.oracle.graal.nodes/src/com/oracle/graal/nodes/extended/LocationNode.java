@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 public class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 
     private int displacement;
-    private RiKind valueKind;
+    private Kind valueKind;
     private Object locationIdentity;
 
     public static final Object ANY_LOCATION = new Object() {
@@ -52,7 +52,7 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
         }
     };
 
-    public static Object getArrayLocation(RiKind elementKind) {
+    public static Object getArrayLocation(Kind elementKind) {
         return elementKind;
     }
 
@@ -60,19 +60,19 @@ public class LocationNode extends FloatingNode implements LIRLowerable, ValueNum
         return displacement;
     }
 
-    public static LocationNode create(Object identity, RiKind kind, int displacement, Graph graph) {
+    public static LocationNode create(Object identity, Kind kind, int displacement, Graph graph) {
         return graph.unique(new LocationNode(identity, kind, displacement));
     }
 
-    protected LocationNode(Object identity, RiKind kind, int displacement) {
+    protected LocationNode(Object identity, Kind kind, int displacement) {
         super(StampFactory.extension());
-        assert kind != RiKind.Illegal && kind != RiKind.Void;
+        assert kind != Kind.Illegal && kind != Kind.Void;
         this.displacement = displacement;
         this.valueKind = kind;
         this.locationIdentity = identity;
     }
 
-    public RiKind getValueKind() {
+    public Kind getValueKind() {
         return valueKind;
     }
 

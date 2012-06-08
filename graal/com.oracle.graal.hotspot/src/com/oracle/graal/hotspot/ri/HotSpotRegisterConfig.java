@@ -108,7 +108,7 @@ public class HotSpotRegisterConfig implements CiRegisterConfig {
     }
 
     @Override
-    public CiCallingConvention getCallingConvention(Type type, RiKind[] parameters, CiTarget target, boolean stackOnly) {
+    public CiCallingConvention getCallingConvention(Type type, Kind[] parameters, CiTarget target, boolean stackOnly) {
         if (type == Type.NativeCall) {
             throw new UnsupportedOperationException();
         }
@@ -119,7 +119,7 @@ public class HotSpotRegisterConfig implements CiRegisterConfig {
         return allParameterRegisters;
     }
 
-    private CiCallingConvention callingConvention(RiKind[] types, Type type, CiTarget target, boolean stackOnly) {
+    private CiCallingConvention callingConvention(Kind[] types, Type type, CiTarget target, boolean stackOnly) {
         Value[] locations = new Value[types.length];
 
         int currentGeneral = 0;
@@ -127,7 +127,7 @@ public class HotSpotRegisterConfig implements CiRegisterConfig {
         int currentStackOffset = 0;
 
         for (int i = 0; i < types.length; i++) {
-            final RiKind kind = types[i];
+            final Kind kind = types[i];
 
             switch (kind) {
                 case Byte:
@@ -163,7 +163,7 @@ public class HotSpotRegisterConfig implements CiRegisterConfig {
     }
 
     @Override
-    public CiRegister getReturnRegister(RiKind kind) {
+    public CiRegister getReturnRegister(Kind kind) {
         switch (kind) {
             case Boolean:
             case Byte:

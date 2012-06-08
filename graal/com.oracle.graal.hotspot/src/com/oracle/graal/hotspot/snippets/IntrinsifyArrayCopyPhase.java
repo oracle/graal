@@ -87,26 +87,26 @@ public class IntrinsifyArrayCopyPhase extends Phase {
                                 && srcType.isArrayClass()
                                 && destType != null
                                 && destType.isArrayClass()) {
-                    RiKind componentKind = srcType.componentType().kind();
+                    Kind componentKind = srcType.componentType().kind();
                     if (srcType.componentType() == destType.componentType()) {
-                        if (componentKind == RiKind.Int) {
+                        if (componentKind == Kind.Int) {
                             snippetMethod = intArrayCopy;
-                        } else if (componentKind == RiKind.Char) {
+                        } else if (componentKind == Kind.Char) {
                             snippetMethod = charArrayCopy;
-                        } else if (componentKind == RiKind.Long) {
+                        } else if (componentKind == Kind.Long) {
                             snippetMethod = longArrayCopy;
-                        } else if (componentKind == RiKind.Byte) {
+                        } else if (componentKind == Kind.Byte) {
                             snippetMethod = byteArrayCopy;
-                        } else if (componentKind == RiKind.Short) {
+                        } else if (componentKind == Kind.Short) {
                             snippetMethod = shortArrayCopy;
-                        } else if (componentKind == RiKind.Float) {
+                        } else if (componentKind == Kind.Float) {
                             snippetMethod = floatArrayCopy;
-                        } else if (componentKind == RiKind.Double) {
+                        } else if (componentKind == Kind.Double) {
                             snippetMethod = doubleArrayCopy;
-                        } else if (componentKind == RiKind.Object) {
+                        } else if (componentKind == Kind.Object) {
                             snippetMethod = objectArrayCopy;
                         }
-                    } else if (componentKind == RiKind.Object
+                    } else if (componentKind == Kind.Object
                                     && srcType.componentType().isSubtypeOf(destType.componentType())) {
                         snippetMethod = objectArrayCopy;
                     }

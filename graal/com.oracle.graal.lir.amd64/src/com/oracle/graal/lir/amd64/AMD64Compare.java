@@ -63,12 +63,12 @@ public enum AMD64Compare {
             Value y = input(1);
 
             super.verify();
-            assert (name().startsWith("I") && x.kind == RiKind.Int && y.kind.stackKind() == RiKind.Int)
-                || (name().startsWith("I") && x.kind == RiKind.Jsr && y.kind == RiKind.Jsr)
-                || (name().startsWith("L") && x.kind == RiKind.Long && y.kind == RiKind.Long)
-                || (name().startsWith("A") && x.kind == RiKind.Object && y.kind == RiKind.Object)
-                || (name().startsWith("F") && x.kind == RiKind.Float && y.kind == RiKind.Float)
-                || (name().startsWith("D") && x.kind == RiKind.Double && y.kind == RiKind.Double);
+            assert (name().startsWith("I") && x.kind == Kind.Int && y.kind.stackKind() == Kind.Int)
+                || (name().startsWith("I") && x.kind == Kind.Jsr && y.kind == Kind.Jsr)
+                || (name().startsWith("L") && x.kind == Kind.Long && y.kind == Kind.Long)
+                || (name().startsWith("A") && x.kind == Kind.Object && y.kind == Kind.Object)
+                || (name().startsWith("F") && x.kind == Kind.Float && y.kind == Kind.Float)
+                || (name().startsWith("D") && x.kind == Kind.Double && y.kind == Kind.Double);
         }
     }
 

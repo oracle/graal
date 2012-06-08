@@ -183,7 +183,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
             stateSplit.setStateAfter(state);
         }
         if (node == null) {
-            assert kind() == RiKind.Void && usages().isEmpty();
+            assert kind() == Kind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeSplit(this, NORMAL_EDGE);
         } else if (node instanceof DeoptimizeNode) {
             this.replaceAtPredecessor(node);

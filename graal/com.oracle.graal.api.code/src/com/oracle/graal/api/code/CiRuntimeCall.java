@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.RiKind.*;
+import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -48,10 +48,10 @@ public enum CiRuntimeCall {
     ArithmeticSin(Double, Double),
     GenericCallback(Object, Object, Object);
 
-    public final RiKind resultKind;
-    public final RiKind[] arguments;
+    public final Kind resultKind;
+    public final Kind[] arguments;
 
-    private CiRuntimeCall(RiKind resultKind, RiKind... args) {
+    private CiRuntimeCall(Kind resultKind, Kind... args) {
         this.resultKind = resultKind;
         this.arguments = args;
     }

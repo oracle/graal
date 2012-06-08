@@ -63,14 +63,14 @@ public class HotSpotCompiledMethod extends CompilerObject implements InstalledCo
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) {
         assert method.signature().argumentCount(!Modifier.isStatic(method.accessFlags())) == 3;
-        assert method.signature().argumentKindAt(0) == RiKind.Object;
-        assert method.signature().argumentKindAt(1) == RiKind.Object;
-        assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2) == RiKind.Object;
+        assert method.signature().argumentKindAt(0) == Kind.Object;
+        assert method.signature().argumentKindAt(1) == Kind.Object;
+        assert !Modifier.isStatic(method.accessFlags()) || method.signature().argumentKindAt(2) == Kind.Object;
         return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(this, arg1, arg2, arg3);
     }
 
     private boolean checkArgs(Object... args) {
-        RiKind[] sig = CiUtil.signatureToKinds(method);
+        Kind[] sig = CiUtil.signatureToKinds(method);
         assert args.length == sig.length : CiUtil.format("%H.%n(%p): expected ", method) + sig.length + " args, got " + args.length;
         for (int i = 0; i < sig.length; i++) {
             Object arg = args[i];

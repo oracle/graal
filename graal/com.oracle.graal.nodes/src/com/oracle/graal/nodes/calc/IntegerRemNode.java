@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "%")
 public final class IntegerRemNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
-    public IntegerRemNode(RiKind kind, ValueNode x, ValueNode y) {
+    public IntegerRemNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -41,10 +41,10 @@ public final class IntegerRemNode extends IntegerArithmeticNode implements Canon
             if (yConst == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            if (kind() == RiKind.Int) {
+            if (kind() == Kind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() % (int) yConst, graph());
             } else {
-                assert kind() == RiKind.Long;
+                assert kind() == Kind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() % yConst, graph());
             }
         } else if (y().isConstant()) {

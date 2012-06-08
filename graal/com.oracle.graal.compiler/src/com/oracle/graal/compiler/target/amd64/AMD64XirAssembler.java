@@ -80,11 +80,11 @@ public class AMD64XirAssembler extends CiXirAssembler {
                     XirOperand xOp = i.x();
                     if (i.op == XirOp.Div || i.op == XirOp.Mod) {
                         if (fixedRDX == null) {
-                            fixedRDX = createRegisterTemp("divModTemp", RiKind.Int, AMD64.rdx);
+                            fixedRDX = createRegisterTemp("divModTemp", Kind.Int, AMD64.rdx);
                         }
                         // Special treatment to make sure that the left input of % and / is in RAX
                         if (fixedRAX == null) {
-                            fixedRAX = createRegisterTemp("divModLeftInput", RiKind.Int, AMD64.rax);
+                            fixedRAX = createRegisterTemp("divModLeftInput", Kind.Int, AMD64.rax);
                         }
                         currentList.add(new XirInstruction(i.x().kind, XirOp.Mov, fixedRAX, i.x()));
                         xOp = fixedRAX;
@@ -142,7 +142,7 @@ public class AMD64XirAssembler extends CiXirAssembler {
                     currentList.add(new XirInstruction(target.wordKind, XirOp.Mov, fixedRSI, i.x()));
                     currentList.add(new XirInstruction(target.wordKind, XirOp.Mov, fixedRDI, i.y()));
                     currentList.add(new XirInstruction(target.wordKind, XirOp.Mov, fixedRCX, i.z()));
-                    currentList.add(new XirInstruction(RiKind.Illegal, i.op, i.result, fixedRSI, fixedRDI, fixedRCX));
+                    currentList.add(new XirInstruction(Kind.Illegal, i.op, i.result, fixedRSI, fixedRDI, fixedRCX));
                     appended = true;
                     break;
 

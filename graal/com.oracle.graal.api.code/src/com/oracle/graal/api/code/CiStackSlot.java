@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.RiKind.*;
+import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -45,7 +45,7 @@ public final class CiStackSlot extends Value {
      * @param inCallerFrame Specifies if the offset is relative to the stack pointer,
      *        or the beginning of the frame (stack pointer + total frame size).
      */
-    public static CiStackSlot get(RiKind kind, int offset, boolean addFrameSize) {
+    public static CiStackSlot get(Kind kind, int offset, boolean addFrameSize) {
         assert kind.stackKind() == kind;
         assert addFrameSize || offset >= 0;
 
@@ -73,7 +73,7 @@ public final class CiStackSlot extends Value {
     /**
      * Private constructor to enforce use of {@link #get()} so that a cache can be used.
      */
-    private CiStackSlot(RiKind kind, int offset, boolean addFrameSize) {
+    private CiStackSlot(Kind kind, int offset, boolean addFrameSize) {
         super(kind);
         this.offset = offset;
         this.addFrameSize = addFrameSize;
@@ -162,8 +162,8 @@ public final class CiStackSlot extends Value {
     private static final CiStackSlot[][] OUT_CACHE = makeCache(PARAM_CACHE_PER_KIND_SIZE, 1, false);
 
     private static CiStackSlot[][] makeCache(int cachePerKindSize, int sign, boolean addFrameSize) {
-        CiStackSlot[][] cache = new CiStackSlot[RiKind.VALUES.length][];
-        for (RiKind kind : new RiKind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
+        CiStackSlot[][] cache = new CiStackSlot[Kind.VALUES.length][];
+        for (Kind kind : new Kind[] {Illegal, Int, Long, Float, Double, Object, Jsr}) {
             CiStackSlot[] slots = new CiStackSlot[cachePerKindSize];
             for (int i = 0; i < cachePerKindSize; i++) {
                 slots[i] = new CiStackSlot(kind, sign * i * CACHE_GRANULARITY, addFrameSize);

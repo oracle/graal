@@ -92,7 +92,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native RiType RiType_leastCommonAncestor(HotSpotTypeResolved thisType, HotSpotTypeResolved otherType);
 
     @Override
-    public native RiType getPrimitiveArrayType(RiKind kind);
+    public native RiType getPrimitiveArrayType(Kind kind);
 
     @Override
     public native RiType RiType_arrayOf(HotSpotTypeResolved klass);

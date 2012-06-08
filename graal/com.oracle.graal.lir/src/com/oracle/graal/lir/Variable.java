@@ -47,7 +47,7 @@ public final class Variable extends Value {
      * @param kind
      * @param index
      */
-    public Variable(RiKind kind, int index, CiRegister.RegisterFlag flag) {
+    public Variable(Kind kind, int index, CiRegister.RegisterFlag flag) {
         super(kind);
         assert kind == kind.stackKind() : "Variables can be only created for stack kinds";
         assert index >= 0;

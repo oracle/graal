@@ -55,7 +55,7 @@ public class CiTarget {
     /**
      * The CiKind to be used for representing raw pointers and CPU registers.
      */
-    public final RiKind wordKind;
+    public final Kind wordKind;
 
     /**
      * The stack alignment requirement of the platform. For example,
@@ -110,9 +110,9 @@ public class CiTarget {
         this.isMP = isMP;
         this.wordSize = arch.wordSize;
         if (wordSize == 8) {
-            this.wordKind = RiKind.Long;
+            this.wordKind = Kind.Long;
         } else {
-            this.wordKind = RiKind.Int;
+            this.wordKind = Kind.Int;
         }
         this.stackAlignment = stackAlignment;
         this.stackBias = 0; // TODO: configure with param once SPARC port exists
@@ -128,7 +128,7 @@ public class CiTarget {
      * @param kind the kind for which to get the size
      * @return the size in bytes of {@code kind}
      */
-    public int sizeInBytes(RiKind kind) {
+    public int sizeInBytes(Kind kind) {
         // Checkstyle: stop
         switch (kind) {
             case Boolean: return 1;

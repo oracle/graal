@@ -38,8 +38,8 @@ public final class IntegerLessThanNode extends CompareNode {
      */
     public IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert !x.kind().isFloatOrDouble() && x.kind() != RiKind.Object;
-        assert !y.kind().isFloatOrDouble() && y.kind() != RiKind.Object;
+        assert !x.kind().isFloatOrDouble() && x.kind() != Kind.Object;
+        assert !y.kind().isFloatOrDouble() && y.kind() != Kind.Object;
     }
 
     @Override
@@ -55,7 +55,7 @@ public final class IntegerLessThanNode extends CompareNode {
     @Override
     protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         assert condition() == Condition.LT;
-        if (constant.kind == RiKind.Int && constant.asInt() == 0) {
+        if (constant.kind == Kind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
 

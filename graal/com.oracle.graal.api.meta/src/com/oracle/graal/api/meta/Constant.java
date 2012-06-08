@@ -33,27 +33,27 @@ public final class Constant extends Value {
     private static final Constant[] INT_CONSTANT_CACHE = new Constant[100];
     static {
         for (int i = 0; i < INT_CONSTANT_CACHE.length; ++i) {
-            INT_CONSTANT_CACHE[i] = new Constant(RiKind.Int, i);
+            INT_CONSTANT_CACHE[i] = new Constant(Kind.Int, i);
         }
     }
 
-    public static final Constant NULL_OBJECT = new Constant(RiKind.Object, null);
-    public static final Constant INT_MINUS_1 = new Constant(RiKind.Int, -1);
+    public static final Constant NULL_OBJECT = new Constant(Kind.Object, null);
+    public static final Constant INT_MINUS_1 = new Constant(Kind.Int, -1);
     public static final Constant INT_0 = forInt(0);
     public static final Constant INT_1 = forInt(1);
     public static final Constant INT_2 = forInt(2);
     public static final Constant INT_3 = forInt(3);
     public static final Constant INT_4 = forInt(4);
     public static final Constant INT_5 = forInt(5);
-    public static final Constant LONG_0 = new Constant(RiKind.Long, 0L);
-    public static final Constant LONG_1 = new Constant(RiKind.Long, 1L);
-    public static final Constant FLOAT_0 = new Constant(RiKind.Float, Float.floatToRawIntBits(0.0F));
-    public static final Constant FLOAT_1 = new Constant(RiKind.Float, Float.floatToRawIntBits(1.0F));
-    public static final Constant FLOAT_2 = new Constant(RiKind.Float, Float.floatToRawIntBits(2.0F));
-    public static final Constant DOUBLE_0 = new Constant(RiKind.Double, Double.doubleToRawLongBits(0.0D));
-    public static final Constant DOUBLE_1 = new Constant(RiKind.Double, Double.doubleToRawLongBits(1.0D));
-    public static final Constant TRUE = new Constant(RiKind.Boolean, 1L);
-    public static final Constant FALSE = new Constant(RiKind.Boolean, 0L);
+    public static final Constant LONG_0 = new Constant(Kind.Long, 0L);
+    public static final Constant LONG_1 = new Constant(Kind.Long, 1L);
+    public static final Constant FLOAT_0 = new Constant(Kind.Float, Float.floatToRawIntBits(0.0F));
+    public static final Constant FLOAT_1 = new Constant(Kind.Float, Float.floatToRawIntBits(1.0F));
+    public static final Constant FLOAT_2 = new Constant(Kind.Float, Float.floatToRawIntBits(2.0F));
+    public static final Constant DOUBLE_0 = new Constant(Kind.Double, Double.doubleToRawLongBits(0.0D));
+    public static final Constant DOUBLE_1 = new Constant(Kind.Double, Double.doubleToRawLongBits(1.0D));
+    public static final Constant TRUE = new Constant(Kind.Boolean, 1L);
+    public static final Constant FALSE = new Constant(Kind.Boolean, 0L);
 
     static {
         assert NULL_OBJECT.isDefaultValue();
@@ -91,7 +91,7 @@ public final class Constant extends Value {
      * @param kind the type of this constant
      * @param object the value of this constant
      */
-    private Constant(RiKind kind, Object object) {
+    private Constant(Kind kind, Object object) {
         super(kind);
         this.object = object;
         this.primitive = 0L;
@@ -103,7 +103,7 @@ public final class Constant extends Value {
      * @param kind the type of this constant
      * @param primitive the value of this constant
      */
-    public Constant(RiKind kind, long primitive) {
+    public Constant(Kind kind, long primitive) {
         super(kind);
         this.object = null;
         this.primitive = primitive;
@@ -127,7 +127,7 @@ public final class Constant extends Value {
 
     @Override
     public String toString() {
-        return kind.javaName + "[" + kind.format(boxedValue()) + (kind != RiKind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
+        return kind.javaName + "[" + kind.format(boxedValue()) + (kind != Kind.Object ? "|0x" + Long.toHexString(primitive) : "") + "]";
     }
 
     /**
@@ -202,7 +202,7 @@ public final class Constant extends Value {
      * @return the boolean value of this constant
      */
     public boolean asBoolean() {
-        if (kind == RiKind.Boolean) {
+        if (kind == Kind.Boolean) {
             return primitive != 0L;
         }
         throw new Error("Constant is not boolean: " + this);
@@ -335,9 +335,9 @@ public final class Constant extends Value {
     /**
      * Gets the default value for a given kind.
      *
-     * @return the default value for {@code kind}'s {@linkplain RiKind#stackKind() stack kind}
+     * @return the default value for {@code kind}'s {@linkplain Kind#stackKind() stack kind}
      */
-    public static Constant defaultValue(RiKind kind) {
+    public static Constant defaultValue(Kind kind) {
         // Checkstyle: stop
         switch (kind.stackKind()) {
             case Int: return INT_0;
@@ -362,7 +362,7 @@ public final class Constant extends Value {
         if (Double.compare(d, 1.0D) == 0) {
             return DOUBLE_1;
         }
-        return new Constant(RiKind.Double, Double.doubleToRawLongBits(d));
+        return new Constant(Kind.Double, Double.doubleToRawLongBits(d));
     }
 
     /**
@@ -380,7 +380,7 @@ public final class Constant extends Value {
         if (Float.compare(f, 2.0F) == 0) {
             return FLOAT_2;
         }
-        return new Constant(RiKind.Float, Float.floatToRawIntBits(f));
+        return new Constant(Kind.Float, Float.floatToRawIntBits(f));
     }
 
     /**
@@ -389,7 +389,7 @@ public final class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forLong(long i) {
-        return i == 0 ? LONG_0 : i == 1 ? LONG_1 : new Constant(RiKind.Long, i);
+        return i == 0 ? LONG_0 : i == 1 ? LONG_1 : new Constant(Kind.Long, i);
     }
 
     /**
@@ -404,7 +404,7 @@ public final class Constant extends Value {
         if (i >= 0 && i < INT_CONSTANT_CACHE.length) {
             return INT_CONSTANT_CACHE[i];
         }
-        return new Constant(RiKind.Int, i);
+        return new Constant(Kind.Int, i);
     }
 
     /**
@@ -413,7 +413,7 @@ public final class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forByte(byte i) {
-        return new Constant(RiKind.Byte, i);
+        return new Constant(Kind.Byte, i);
     }
 
     /**
@@ -431,7 +431,7 @@ public final class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forChar(char i) {
-        return new Constant(RiKind.Char, i);
+        return new Constant(Kind.Char, i);
     }
 
     /**
@@ -440,7 +440,7 @@ public final class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forShort(short i) {
-        return new Constant(RiKind.Short, i);
+        return new Constant(Kind.Short, i);
     }
 
     /**
@@ -449,7 +449,7 @@ public final class Constant extends Value {
      * @return a boxed copy of {@code value}
      */
     public static Constant forJsr(int i) {
-        return new Constant(RiKind.Jsr, i);
+        return new Constant(Kind.Jsr, i);
     }
 
     /**
@@ -461,7 +461,7 @@ public final class Constant extends Value {
         if (o == null) {
             return NULL_OBJECT;
         }
-        return new Constant(RiKind.Object, o);
+        return new Constant(Kind.Object, o);
     }
 
     /**
@@ -471,7 +471,7 @@ public final class Constant extends Value {
      * @param value the Java boxed value: a Byte instance for CiKind Byte, etc.
      * @return the boxed copy of {@code value}
      */
-    public static Constant forBoxed(RiKind kind, Object value) {
+    public static Constant forBoxed(Kind kind, Object value) {
         switch (kind) {
             case Boolean:
                 return forBoolean((Boolean) value);

@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance of {@code
- * CiRegisterValue} for each ({@link CiRegister}, {@link RiKind}) pair. Use {@link CiRegister#asValue(RiKind)} to
+ * CiRegisterValue} for each ({@link CiRegister}, {@link Kind}) pair. Use {@link CiRegister#asValue(Kind)} to
  * retrieve the canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
  */
 public final class CiRegisterValue extends Value {
@@ -40,7 +40,7 @@ public final class CiRegisterValue extends Value {
     /**
      * Should only be called from {@link CiRegister#CiRegister} to ensure canonicalization.
      */
-    protected CiRegisterValue(RiKind kind, CiRegister register) {
+    protected CiRegisterValue(Kind kind, CiRegister register) {
         super(kind);
         this.reg = register;
     }

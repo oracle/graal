@@ -79,11 +79,11 @@ import com.oracle.graal.nodes.java.*;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    private static final CiRegisterValue RAX_I = AMD64.rax.asValue(RiKind.Int);
-    private static final CiRegisterValue RAX_L = AMD64.rax.asValue(RiKind.Long);
-    private static final CiRegisterValue RDX_I = AMD64.rdx.asValue(RiKind.Int);
-    private static final CiRegisterValue RDX_L = AMD64.rdx.asValue(RiKind.Long);
-    private static final CiRegisterValue RCX_I = AMD64.rcx.asValue(RiKind.Int);
+    private static final CiRegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
+    private static final CiRegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
+    private static final CiRegisterValue RDX_I = AMD64.rdx.asValue(Kind.Int);
+    private static final CiRegisterValue RDX_L = AMD64.rdx.asValue(Kind.Long);
+    private static final CiRegisterValue RCX_I = AMD64.rcx.asValue(Kind.Int);
 
     public static class AMD64SpillMoveFactory implements LIR.SpillMoveFactory {
         @Override
@@ -161,7 +161,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                     index = Value.IllegalValue;
                 } else {
                     // create a temporary variable for the index, the pointer load cannot handle a constant index
-                    Value newIndex = newVariable(RiKind.Long);
+                    Value newIndex = newVariable(Kind.Long);
                     emitMove(index, newIndex);
                     index = newIndex;
                 }
@@ -586,7 +586,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitCompareAndSwap(CompareAndSwapNode node) {
-        RiKind kind = node.newValue().kind();
+        Kind kind = node.newValue().kind();
         assert kind == node.expected().kind();
 
         Value expected = loadNonConst(operand(node.expected()));

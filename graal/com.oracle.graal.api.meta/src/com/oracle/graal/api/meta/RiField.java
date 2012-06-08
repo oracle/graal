@@ -44,7 +44,7 @@ public interface RiField {
      * Gets the kind of this field.
      * @return the kind
      */
-    RiKind kind();
+    Kind kind();
 
     /**
      * Gets the holder of this field as a compiler-runtime interface type.

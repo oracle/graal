@@ -190,8 +190,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * @return a new variable
      */
     @Override
-    public Variable newVariable(RiKind kind) {
-        RiKind stackKind = kind.stackKind();
+    public Variable newVariable(Kind kind) {
+        Kind stackKind = kind.stackKind();
         switch (stackKind) {
             case Jsr:
             case Int:
@@ -235,11 +235,11 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         return value;
     }
 
-    public Value loadForStore(Value value, RiKind storeKind) {
+    public Value loadForStore(Value value, Kind storeKind) {
         if (isConstant(value) && canStoreConstant((Constant) value)) {
             return value;
         }
-        if (storeKind == RiKind.Byte || storeKind == RiKind.Boolean) {
+        if (storeKind == Kind.Byte || storeKind == Kind.Boolean) {
             Variable tempVar = new Variable(value.kind, lir.nextVariable(), CiRegister.RegisterFlag.Byte);
             emitMove(value, tempVar);
             return tempVar;
@@ -279,8 +279,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * @param kind the kind of value being returned
      * @return the operand representing the ABI defined location used return a value of kind {@code kind}
      */
-    public Value resultOperandFor(RiKind kind) {
-        if (kind == RiKind.Void) {
+    public Value resultOperandFor(Kind kind) {
+        if (kind == Kind.Void) {
             return IllegalValue;
         }
         return frameMap.registerConfig.getReturnRegister(kind).asValue(kind);
@@ -593,7 +593,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     @Override
     public void visitNewObjectArray(NewObjectArrayNode x) {
         XirArgument length = toXirArgument(x.length());
-        XirSnippet snippet = xir.genNewArray(site(x), length, RiKind.Object, x.elementType(), x.elementType().arrayOf());
+        XirSnippet snippet = xir.genNewArray(site(x), length, Kind.Object, x.elementType(), x.elementType().arrayOf());
         emitXir(snippet, x, state(), true);
     }
 
@@ -827,7 +827,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
             if (stackIndex == 0 && !isStatic) {
                 // Current argument is receiver.
-                stackIndex += stackSlots(RiKind.Object);
+                stackIndex += stackSlots(Kind.Object);
             } else {
                 stackIndex += stackSlots(signature.argumentKindAt(argumentIndex));
                 argumentIndex++;
@@ -837,13 +837,13 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
 
-    public static int stackSlots(RiKind kind) {
+    public static int stackSlots(Kind kind) {
         return isTwoSlot(kind) ? 2 : 1;
     }
 
-    public static boolean isTwoSlot(RiKind kind) {
-        assert kind != RiKind.Void && kind != RiKind.Illegal;
-        return kind == RiKind.Long || kind == RiKind.Double;
+    public static boolean isTwoSlot(Kind kind) {
+        assert kind != Kind.Void && kind != Kind.Illegal;
+        return kind == Kind.Long || kind == Kind.Double;
     }
 
     @Override
@@ -862,12 +862,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 snippet = xir.genInvokeSpecial(site(x.node(), callTarget.receiver()), receiver, targetMethod);
                 break;
             case Virtual:
-                assert callTarget.receiver().kind() == RiKind.Object : callTarget + ": " + callTarget.targetMethod().toString();
+                assert callTarget.receiver().kind() == Kind.Object : callTarget + ": " + callTarget.targetMethod().toString();
                 receiver = toXirArgument(callTarget.receiver());
                 snippet = xir.genInvokeVirtual(site(x.node(), callTarget.receiver()), receiver, targetMethod, x.isMegamorphic());
                 break;
             case Interface:
-                assert callTarget.receiver().kind() == RiKind.Object : callTarget;
+                assert callTarget.receiver().kind() == Kind.Object : callTarget;
                 receiver = toXirArgument(callTarget.receiver());
                 snippet = xir.genInvokeInterface(site(x.node(), callTarget.receiver()), receiver, targetMethod);
                 break;
@@ -883,7 +883,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
         Value resultOperand = resultOperandFor(x.node().kind());
 
-        RiKind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
+        Kind[] signature = CiUtil.signatureToKinds(callTarget.targetMethod().signature(), callTarget.isStatic() ? null : callTarget.targetMethod().holder().kind());
         CiCallingConvention cc = frameMap.registerConfig.getCallingConvention(JavaCall, signature, target(), false);
         frameMap.callsMethod(cc, JavaCall);
         List<Value> argList = visitInvokeArguments(cc, callTarget.arguments());
@@ -940,7 +940,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     protected abstract LabelRef createDeoptStub(CiDeoptAction action, RiDeoptReason reason, LIRDebugInfo info, Object deoptInfo);
 
     @Override
-    public Variable emitCall(@SuppressWarnings("hiding") Object target, RiKind result, RiKind[] arguments, boolean canTrap, Value... args) {
+    public Variable emitCall(@SuppressWarnings("hiding") Object target, Kind result, Kind[] arguments, boolean canTrap, Value... args) {
         LIRDebugInfo info = canTrap ? state() : null;
 
         Value physReg = resultOperandFor(result);
@@ -1155,7 +1155,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             return value;
         }
         Variable variable = load(value);
-        if (var.kind == RiKind.Byte || var.kind == RiKind.Boolean) {
+        if (var.kind == Kind.Byte || var.kind == Kind.Boolean) {
             Variable tempVar = new Variable(value.kind, lir.nextVariable(), CiRegister.RegisterFlag.Byte);
             emitMove(variable, tempVar);
             variable = tempVar;
@@ -1182,7 +1182,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             Value outputOperand = IllegalValue;
             // This snippet has a result that must be separately allocated
             // Otherwise it is assumed that the result is part of the inputs
-            if (resultOperand.kind != RiKind.Void && resultOperand.kind != RiKind.Illegal) {
+            if (resultOperand.kind != Kind.Void && resultOperand.kind != Kind.Illegal) {
                 if (setInstructionResult) {
                     outputOperand = newVariable(instruction.kind());
                 } else {
@@ -1279,8 +1279,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected final Value callRuntime(CiRuntimeCall runtimeCall, LIRDebugInfo info, Value... args) {
         // get a result register
-        RiKind result = runtimeCall.resultKind;
-        RiKind[] arguments = runtimeCall.arguments;
+        Kind result = runtimeCall.resultKind;
+        Kind[] arguments = runtimeCall.arguments;
 
         Value physReg = result.isVoid() ? IllegalValue : resultOperandFor(result);
 

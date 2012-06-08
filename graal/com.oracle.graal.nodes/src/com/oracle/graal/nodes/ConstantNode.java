@@ -66,7 +66,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
     }
 
     public static ConstantNode forCiConstant(Constant constant, RiRuntime runtime, Graph graph) {
-        if (constant.kind == RiKind.Object) {
+        if (constant.kind == Kind.Object) {
             return graph.unique(new ConstantNode(constant, runtime));
         } else {
             return graph.unique(new ConstantNode(constant));
@@ -173,7 +173,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         return graph.unique(new ConstantNode(Constant.forObject(o), runtime));
     }
 
-    public static ConstantNode forIntegerKind(RiKind kind, long value, Graph graph) {
+    public static ConstantNode forIntegerKind(Kind kind, long value, Graph graph) {
         switch (kind) {
             case Byte:
             case Short:
@@ -186,7 +186,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         }
     }
 
-    public static ConstantNode forFloatingKind(RiKind kind, double value, Graph graph) {
+    public static ConstantNode forFloatingKind(Kind kind, double value, Graph graph) {
         switch (kind) {
             case Float:
                 return ConstantNode.forFloat((float) value, graph);
@@ -197,7 +197,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         }
     }
 
-    public static ConstantNode defaultForKind(RiKind kind, Graph graph) {
+    public static ConstantNode defaultForKind(Kind kind, Graph graph) {
         switch(kind) {
             case Boolean:
                 return ConstantNode.forBoolean(false, graph);

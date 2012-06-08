@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = ">>")
 public final class RightShiftNode extends ShiftNode implements Canonicalizable, LIRLowerable {
 
-    public RightShiftNode(RiKind kind, ValueNode x, ValueNode y) {
+    public RightShiftNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -40,18 +40,18 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable, 
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
             int mask;
-            if (kind() == RiKind.Int) {
+            if (kind() == Kind.Int) {
                 mask = 0x1f;
             } else {
-                assert kind() == RiKind.Long;
+                assert kind() == Kind.Long;
                 mask = 0x3f;
             }
             amount &= mask;
             if (x().isConstant()) {
-                if (kind() == RiKind.Int) {
+                if (kind() == Kind.Int) {
                     return ConstantNode.forInt(x().asConstant().asInt() >> amount, graph());
                 } else {
-                    assert kind() == RiKind.Long;
+                    assert kind() == Kind.Long;
                     return ConstantNode.forLong(x().asConstant().asLong() >> amount, graph());
                 }
             }

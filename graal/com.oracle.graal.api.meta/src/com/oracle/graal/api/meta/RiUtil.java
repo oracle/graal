@@ -84,8 +84,8 @@ public class RiUtil {
      * @return the Java name corresponding to {@code riType}
      */
     public static String toJavaName(RiType riType, boolean qualified) {
-        RiKind kind = riType.kind();
-        if (kind.isPrimitive() || kind == RiKind.Void) {
+        Kind kind = riType.kind();
+        if (kind.isPrimitive() || kind == Kind.Void) {
             return kind.javaName;
         }
         return internalNameToJava(riType.name(), qualified);
@@ -127,7 +127,7 @@ public class RiUtil {
                 if (name.length() != 1) {
                     throw new IllegalArgumentException("Illegal internal name: " + name);
                 }
-                return RiKind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).javaName;
+                return Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0)).javaName;
         }
     }
 }

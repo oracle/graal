@@ -37,7 +37,7 @@ public final class CiAddress extends Value {
     /**
      * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
      */
-    public static final CiAddress Placeholder = new CiAddress(RiKind.Illegal, Value.IllegalValue);
+    public static final CiAddress Placeholder = new CiAddress(Kind.Illegal, Value.IllegalValue);
 
     /**
      * Base register that defines the start of the address computation.
@@ -66,7 +66,7 @@ public final class CiAddress extends Value {
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public CiAddress(RiKind kind, Value base) {
+    public CiAddress(Kind kind, Value base) {
         this(kind, base, IllegalValue, Scale.Times1, 0);
     }
 
@@ -76,7 +76,7 @@ public final class CiAddress extends Value {
      * @param base the base register
      * @param displacement the displacement
      */
-    public CiAddress(RiKind kind, Value base, int displacement) {
+    public CiAddress(Kind kind, Value base, int displacement) {
         this(kind, base, IllegalValue, Scale.Times1, displacement);
     }
 
@@ -89,7 +89,7 @@ public final class CiAddress extends Value {
      * @param scale the scaling factor
      * @param displacement the displacement
      */
-    public CiAddress(RiKind kind, Value base, Value index, Scale scale, int displacement) {
+    public CiAddress(Kind kind, Value base, Value index, Scale scale, int displacement) {
         super(kind);
         this.base = base;
         this.index = index;

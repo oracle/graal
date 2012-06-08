@@ -214,7 +214,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     /**
      * Calls a Java method via reflection.
      */
-    private static Constant callMethod(RiKind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
+    private static Constant callMethod(Kind returnKind, Class< ? > holder, String name, Class< ? >[] parameterTypes, Object receiver, Object[] arguments) {
         Method method;
         try {
             method = holder.getDeclaredMethod(name, parameterTypes);
@@ -234,7 +234,7 @@ public class SnippetIntrinsificationPhase extends Phase {
     }
 
     public void cleanUpReturnCheckCast(Node newInstance) {
-        if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != RiKind.Object) {
+        if (newInstance instanceof ValueNode && ((ValueNode) newInstance).kind() != Kind.Object) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
                 for (ValueProxyNode vpn : checkCastNode.usages().filter(ValueProxyNode.class).snapshot()) {

@@ -220,7 +220,7 @@ public class TargetMethodAssembler {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.kind.stackKind() == RiKind.Int || value.kind == RiKind.Jsr || value.kind == RiKind.Long) && isConstant(value);
+        assert (value.kind.stackKind() == Kind.Int || value.kind == Kind.Jsr || value.kind == Kind.Long) && isConstant(value);
         long c = ((Constant) value).asLong();
         if (!(NumUtil.isInt(c))) {
             throw GraalInternalError.shouldNotReachHere();
@@ -236,7 +236,7 @@ public class TargetMethodAssembler {
     }
 
     public CiAddress asFloatConstRef(Value value, int alignment) {
-        assert value.kind == RiKind.Float && isConstant(value);
+        assert value.kind == Kind.Float && isConstant(value);
         return recordDataReferenceInCode((Constant) value, alignment);
     }
 
@@ -248,7 +248,7 @@ public class TargetMethodAssembler {
     }
 
     public CiAddress asDoubleConstRef(Value value, int alignment) {
-        assert value.kind == RiKind.Double && isConstant(value);
+        assert value.kind == Kind.Double && isConstant(value);
         return recordDataReferenceInCode((Constant) value, alignment);
     }
 
@@ -256,32 +256,32 @@ public class TargetMethodAssembler {
      * Returns the address of a long constant that is embedded as a data references into the code.
      */
     public CiAddress asLongConstRef(Value value) {
-        assert value.kind == RiKind.Long && isConstant(value);
+        assert value.kind == Kind.Long && isConstant(value);
         return recordDataReferenceInCode((Constant) value, 8);
     }
 
     public CiAddress asIntAddr(Value value) {
-        assert value.kind == RiKind.Int;
+        assert value.kind == Kind.Int;
         return asAddress(value);
     }
 
     public CiAddress asLongAddr(Value value) {
-        assert value.kind == RiKind.Long;
+        assert value.kind == Kind.Long;
         return asAddress(value);
     }
 
     public CiAddress asObjectAddr(Value value) {
-        assert value.kind == RiKind.Object;
+        assert value.kind == Kind.Object;
         return asAddress(value);
     }
 
     public CiAddress asFloatAddr(Value value) {
-        assert value.kind == RiKind.Float;
+        assert value.kind == Kind.Float;
         return asAddress(value);
     }
 
     public CiAddress asDoubleAddr(Value value) {
-        assert value.kind == RiKind.Double;
+        assert value.kind == Kind.Double;
         return asAddress(value);
     }
 

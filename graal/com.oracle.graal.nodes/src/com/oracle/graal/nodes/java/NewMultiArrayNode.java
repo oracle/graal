@@ -73,7 +73,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements LIRLow
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
         for (ValueNode length : dimensions) {
-            assert length.kind() == RiKind.Int;
+            assert length.kind() == Kind.Int;
             tool.addScalar(length).constantBound(Condition.GE, Constant.INT_0);
         }
     }

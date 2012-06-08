@@ -155,7 +155,7 @@ public class CheckCastSnippets implements SnippetsInterface {
 
     //This is used instead of a Java array read to avoid the array bounds check.
     static Object loadNonNullObjectElement(Object array, int index) {
-        return UnsafeLoadNode.loadObject(array, arrayBaseOffset(RiKind.Object), index * arrayIndexScale(RiKind.Object), true);
+        return UnsafeLoadNode.loadObject(array, arrayBaseOffset(Kind.Object), index * arrayIndexScale(Kind.Object), true);
     }
 
     static boolean checkSecondarySubType(Object t, Object s) {
@@ -187,7 +187,7 @@ public class CheckCastSnippets implements SnippetsInterface {
 
     static boolean checkUnknownSubType(Object t, Object s) {
         // int off = T.offset
-        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), RiKind.Int);
+        int superCheckOffset = UnsafeLoadNode.load(t, 0, superCheckOffsetOffset(), Kind.Int);
         boolean primary = superCheckOffset != secondarySuperCacheOffset();
 
         // if (T = S[off]) return true

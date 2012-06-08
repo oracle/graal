@@ -61,7 +61,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
      * @param elementKind the element type
      * @param value the value to store into the array
      */
-    public StoreIndexedNode(ValueNode array, ValueNode index, RiKind elementKind, ValueNode value, long leafGraphId) {
+    public StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value, long leafGraphId) {
         super(StampFactory.forVoid(), array, index, elementKind, leafGraphId);
         this.value = value;
     }

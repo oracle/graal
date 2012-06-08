@@ -145,7 +145,7 @@ public final class LinearScan {
 
     /**
      * The {@linkplain #operandNumber(Value) number} of the first variable operand
-     * {@linkplain #newVariable(RiKind) allocated} from this pool.
+     * {@linkplain #newVariable(Kind) allocated} from this pool.
      */
     private final int firstVariableNumber;
 
@@ -231,7 +231,7 @@ public final class LinearScan {
     static final IntervalPredicate IS_OOP_INTERVAL = new IntervalPredicate() {
         @Override
         public boolean apply(Interval i) {
-            return !isRegister(i.operand) && i.kind()  == RiKind.Object;
+            return !isRegister(i.operand) && i.kind()  == Kind.Object;
         }
     };
 
@@ -910,7 +910,7 @@ public final class LinearScan {
         TTY.println(blockData.get(block).liveOut.toString());
     }
 
-    void addUse(Value operand, int from, int to, RegisterPriority registerPriority, RiKind kind) {
+    void addUse(Value operand, int from, int to, RegisterPriority registerPriority, Kind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -923,7 +923,7 @@ public final class LinearScan {
             interval = createInterval(operand);
         }
 
-        if (kind != RiKind.Illegal) {
+        if (kind != Kind.Illegal) {
             interval.setKind(kind);
         }
 
@@ -933,7 +933,7 @@ public final class LinearScan {
         interval.addUsePos(to & ~1, registerPriority);
     }
 
-    void addTemp(Value operand, int tempPos, RegisterPriority registerPriority, RiKind kind) {
+    void addTemp(Value operand, int tempPos, RegisterPriority registerPriority, Kind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -945,7 +945,7 @@ public final class LinearScan {
             interval = createInterval(operand);
         }
 
-        if (kind != RiKind.Illegal) {
+        if (kind != Kind.Illegal) {
             interval.setKind(kind);
         }
 
@@ -957,7 +957,7 @@ public final class LinearScan {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable;
     }
 
-    void addDef(Value operand, int defPos, RegisterPriority registerPriority, RiKind kind) {
+    void addDef(Value operand, int defPos, RegisterPriority registerPriority, Kind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -967,7 +967,7 @@ public final class LinearScan {
         Interval interval = intervalFor(operand);
         if (interval != null) {
 
-            if (kind != RiKind.Illegal) {
+            if (kind != Kind.Illegal) {
                 interval.setKind(kind);
             }
 
@@ -992,7 +992,7 @@ public final class LinearScan {
             // Dead value - make vacuous interval
             // also add register priority for dead intervals
             interval = createInterval(operand);
-            if (kind != RiKind.Illegal) {
+            if (kind != Kind.Illegal) {
                 interval.setKind(kind);
             }
 
@@ -1017,7 +1017,7 @@ public final class LinearScan {
     static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().kind != RiKind.Object) {
+            if (isStackSlot(move.getInput()) && move.getInput().kind != Kind.Object) {
                 // method argument (condition must be equal to handleMethodArguments)
                 return RegisterPriority.None;
             }
@@ -1047,7 +1047,7 @@ public final class LinearScan {
     void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (isStackSlot(move.getInput()) && move.getInput().kind != RiKind.Object) {
+            if (isStackSlot(move.getInput()) && move.getInput().kind != Kind.Object) {
                 CiStackSlot slot = (CiStackSlot) move.getInput();
                 if (GraalOptions.DetailedAsserts) {
                     assert op.id() > 0 : "invalid id";
@@ -1115,7 +1115,7 @@ public final class LinearScan {
                     TTY.println("live in %s to %d", operand, blockTo + 2);
                 }
 
-                addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, RiKind.Illegal);
+                addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, Kind.Illegal);
 
                 // add special use positions for loop-end blocks when the
                 // interval is used anywhere inside this loop. It's possible
@@ -1138,7 +1138,7 @@ public final class LinearScan {
                 if (op.hasCall()) {
                     for (CiRegister r : callerSaveRegs) {
                         if (attributes(r).isAllocatable) {
-                            addTemp(r.asValue(), opId, RegisterPriority.None, RiKind.Illegal);
+                            addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
                         }
                     }
                     if (GraalOptions.TraceLinearScanLevel >= 4) {
@@ -1550,7 +1550,7 @@ public final class LinearScan {
     // (includes computation of debug information and oop maps)
 
     boolean verifyAssignedLocation(Interval interval, Value location) {
-        RiKind kind = interval.kind();
+        Kind kind = interval.kind();
 
         assert isRegister(location) || isStackSlot(location);
 
@@ -1952,7 +1952,7 @@ public final class LinearScan {
                 throw new GraalInternalError("");
             }
 
-            if (isVariable(i1.operand) && i1.kind()  == RiKind.Illegal) {
+            if (isVariable(i1.operand) && i1.kind()  == Kind.Illegal) {
                 TTY.println("Interval %d has no type assigned", i1.operandNumber);
                 TTY.println(i1.logString(this));
                 throw new GraalInternalError("");

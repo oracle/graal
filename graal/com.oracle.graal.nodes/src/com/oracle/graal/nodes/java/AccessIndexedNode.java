@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public abstract class AccessIndexedNode extends AccessArrayNode implements TypeFeedbackProvider {
 
     @Input private ValueNode index;
-    private final RiKind elementType;
+    private final Kind elementType;
     private final long leafGraphId;
 
     public ValueNode index() {
@@ -49,7 +49,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * @param index the instruction producing the index
      * @param elementKind the type of the elements of the array
      */
-    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, RiKind elementKind, long leafGraphId) {
+    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, Kind elementKind, long leafGraphId) {
         super(stamp, array);
         this.index = index;
         this.elementType = elementKind;
@@ -60,7 +60,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
      * Gets the element type of the array.
      * @return the element type
      */
-    public RiKind elementKind() {
+    public Kind elementKind() {
         return elementType;
     }
 

@@ -39,7 +39,7 @@ public abstract class ArithmeticNode extends BinaryNode {
      * @param y the second input instruction
      * @param isStrictFP indicates this operation has strict rounding semantics
      */
-    public ArithmeticNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public ArithmeticNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y);
         this.isStrictFP = isStrictFP;
     }

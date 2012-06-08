@@ -29,9 +29,9 @@ import com.oracle.graal.nodes.*;
 
 public abstract class IntegerArithmeticNode extends ArithmeticNode {
 
-    public IntegerArithmeticNode(RiKind kind, ValueNode x, ValueNode y) {
+    public IntegerArithmeticNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y, false);
-        assert kind == RiKind.Int || kind == RiKind.Long;
+        assert kind == Kind.Int || kind == Kind.Long;
     }
 
     public static IntegerAddNode add(ValueNode v1, ValueNode v2) {
@@ -39,9 +39,9 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
         Graph graph = v1.graph();
         switch(v1.kind()) {
             case Int:
-                return graph.unique(new IntegerAddNode(RiKind.Int, v1, v2));
+                return graph.unique(new IntegerAddNode(Kind.Int, v1, v2));
             case Long:
-                return graph.unique(new IntegerAddNode(RiKind.Long, v1, v2));
+                return graph.unique(new IntegerAddNode(Kind.Long, v1, v2));
             default:
                 throw ValueUtil.shouldNotReachHere();
         }
@@ -52,9 +52,9 @@ public abstract class IntegerArithmeticNode extends ArithmeticNode {
         Graph graph = v1.graph();
         switch(v1.kind()) {
             case Int:
-                return graph.unique(new IntegerMulNode(RiKind.Int, v1, v2));
+                return graph.unique(new IntegerMulNode(Kind.Int, v1, v2));
             case Long:
-                return graph.unique(new IntegerMulNode(RiKind.Long, v1, v2));
+                return graph.unique(new IntegerMulNode(Kind.Long, v1, v2));
             default:
                 throw ValueUtil.shouldNotReachHere();
         }

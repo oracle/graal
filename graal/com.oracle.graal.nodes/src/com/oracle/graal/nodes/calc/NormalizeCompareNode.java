@@ -41,7 +41,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
      * @param isUnorderedLess true when an unordered floating point comparison is interpreted as less, false when greater.
      */
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        super(RiKind.Int, x, y);
+        super(Kind.Int, x, y);
         this.isUnorderedLess = isUnorderedLess;
     }
 

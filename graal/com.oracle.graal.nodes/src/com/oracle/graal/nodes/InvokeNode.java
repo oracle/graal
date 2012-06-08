@@ -142,7 +142,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
             stateSplit.setStateAfter(stateAfter);
         }
         if (node == null) {
-            assert kind() == RiKind.Void && usages().isEmpty();
+            assert kind() == Kind.Void && usages().isEmpty();
             ((StructuredGraph) graph()).removeFixed(this);
         } else {
             if (node instanceof FixedWithNextNode) {

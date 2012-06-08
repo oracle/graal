@@ -89,8 +89,8 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     }
 
     @Override
-    public RiKind kind() {
-        return RiKind.Object;
+    public Kind kind() {
+        return Kind.Object;
     }
 
     @Override
@@ -109,8 +109,8 @@ public class HotSpotTypeUnresolved extends HotSpotType {
     }
 
     @Override
-    public RiKind getRepresentationKind(RiType.Representation r) {
-        return RiKind.Object;
+    public Kind getRepresentationKind(RiType.Representation r) {
+        return Kind.Object;
     }
 
     @Override

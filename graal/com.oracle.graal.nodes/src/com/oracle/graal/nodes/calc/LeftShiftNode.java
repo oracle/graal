@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "<<")
 public final class LeftShiftNode extends ShiftNode implements Canonicalizable, LIRLowerable {
 
-    public LeftShiftNode(RiKind kind, ValueNode x, ValueNode y) {
+    public LeftShiftNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -40,18 +40,18 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable, L
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
             int mask;
-            if (kind() == RiKind.Int) {
+            if (kind() == Kind.Int) {
                 mask = 0x1f;
             } else {
-                assert kind() == RiKind.Long;
+                assert kind() == Kind.Long;
                 mask = 0x3f;
             }
             amount &= mask;
             if (x().isConstant()) {
-                if (kind() == RiKind.Int) {
+                if (kind() == Kind.Int) {
                     return ConstantNode.forInt(x().asConstant().asInt() << amount, graph());
                 } else {
-                    assert kind() == RiKind.Long;
+                    assert kind() == Kind.Long;
                     return ConstantNode.forLong(x().asConstant().asLong() << amount, graph());
                 }
             }
@@ -69,10 +69,10 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable, L
                         }
                         return graph().unique(new LeftShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
-                        if (kind() == RiKind.Long) {
+                        if (kind() == Kind.Long) {
                             return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forLong(-1L << amount, graph())));
                         } else {
-                            assert kind() == RiKind.Int;
+                            assert kind() == Kind.Int;
                             return graph().unique(new AndNode(kind(), other.x(), ConstantNode.forInt(-1 << amount, graph())));
                         }
                     }

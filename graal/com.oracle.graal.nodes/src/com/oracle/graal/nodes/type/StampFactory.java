@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.GenericStamp.GenericStampType;
 
 public class StampFactory {
 
-    private static final Stamp[] stampCache = new Stamp[RiKind.values().length];
+    private static final Stamp[] stampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true);
     private static final Stamp dependencyStamp = new GenericStamp(GenericStampType.Dependency);
@@ -43,28 +43,28 @@ public class StampFactory {
 
     private static final Stamp positiveInt = forInt(0, Integer.MAX_VALUE);
 
-    private static void setCache(RiKind kind, Stamp stamp) {
+    private static void setCache(Kind kind, Stamp stamp) {
         stampCache[kind.ordinal()] = stamp;
     }
 
     static {
-        setCache(RiKind.Boolean, new IntegerStamp(RiKind.Boolean));
-        setCache(RiKind.Byte, new IntegerStamp(RiKind.Byte));
-        setCache(RiKind.Short, new IntegerStamp(RiKind.Short));
-        setCache(RiKind.Char, new IntegerStamp(RiKind.Char));
-        setCache(RiKind.Int, new IntegerStamp(RiKind.Int));
-        setCache(RiKind.Long, new IntegerStamp(RiKind.Long));
+        setCache(Kind.Boolean, new IntegerStamp(Kind.Boolean));
+        setCache(Kind.Byte, new IntegerStamp(Kind.Byte));
+        setCache(Kind.Short, new IntegerStamp(Kind.Short));
+        setCache(Kind.Char, new IntegerStamp(Kind.Char));
+        setCache(Kind.Int, new IntegerStamp(Kind.Int));
+        setCache(Kind.Long, new IntegerStamp(Kind.Long));
 
-        setCache(RiKind.Float, new FloatStamp(RiKind.Float));
-        setCache(RiKind.Double, new FloatStamp(RiKind.Double));
+        setCache(Kind.Float, new FloatStamp(Kind.Float));
+        setCache(Kind.Double, new FloatStamp(Kind.Double));
 
-        setCache(RiKind.Jsr, new IntegerStamp(RiKind.Jsr));
+        setCache(Kind.Jsr, new IntegerStamp(Kind.Jsr));
 
-        setCache(RiKind.Object, objectStamp);
-        setCache(RiKind.Void, voidStamp);
+        setCache(Kind.Object, objectStamp);
+        setCache(Kind.Void, voidStamp);
     }
 
-    public static Stamp forKind(RiKind kind) {
+    public static Stamp forKind(Kind kind) {
         assert stampCache[kind.stackKind().ordinal()] != null : "unexpected forKind(" + kind + ")";
         return stampCache[kind.stackKind().ordinal()];
     }
@@ -74,7 +74,7 @@ public class StampFactory {
     }
 
     public static Stamp intValue() {
-        return forKind(RiKind.Int);
+        return forKind(Kind.Int);
     }
 
     public static Stamp dependency() {
@@ -98,21 +98,21 @@ public class StampFactory {
     }
 
     public static Stamp forInt(int lowerBound, int upperBound) {
-        return new IntegerStamp(RiKind.Int, lowerBound, upperBound);
+        return new IntegerStamp(Kind.Int, lowerBound, upperBound);
     }
 
     public static Stamp forLong(long lowerBound, long upperBound) {
-        return new IntegerStamp(RiKind.Long, lowerBound, upperBound);
+        return new IntegerStamp(Kind.Long, lowerBound, upperBound);
     }
 
     public static Stamp forConstant(Constant value) {
-        assert value.kind != RiKind.Object;
-        if (value.kind == RiKind.Object) {
+        assert value.kind != Kind.Object;
+        if (value.kind == Kind.Object) {
             throw new GraalInternalError("unexpected kind: %s", value.kind);
         } else {
-            if (value.kind == RiKind.Int) {
+            if (value.kind == Kind.Int) {
                 return forInt(value.asInt(), value.asInt());
-            } else if (value.kind == RiKind.Long) {
+            } else if (value.kind == Kind.Long) {
                 return forLong(value.asLong(), value.asLong());
             }
             return forKind(value.kind.stackKind());
@@ -120,8 +120,8 @@ public class StampFactory {
     }
 
     public static Stamp forConstant(Constant value, RiRuntime runtime) {
-        assert value.kind == RiKind.Object;
-        if (value.kind == RiKind.Object) {
+        assert value.kind == Kind.Object;
+        if (value.kind == Kind.Object) {
             RiResolvedType type = value.isNull() ? null : runtime.getTypeOf(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull());
         } else {
@@ -147,7 +147,7 @@ public class StampFactory {
 
     public static Stamp declared(RiResolvedType type, boolean nonNull) {
         assert type != null;
-        assert type.kind() == RiKind.Object;
+        assert type.kind() == Kind.Object;
         RiResolvedType exact = type.exactType();
         if (exact != null) {
             return new ObjectStamp(exact, true, nonNull);

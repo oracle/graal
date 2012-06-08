@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import static com.oracle.graal.api.meta.RiKind.*;
+import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
@@ -55,10 +55,10 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
         MOV_F2I(Float, Int),
         MOV_D2L(Double, Long);
 
-        public final RiKind from;
-        public final RiKind to;
+        public final Kind from;
+        public final Kind to;
 
-        private Op(RiKind from, RiKind to) {
+        private Op(Kind from, Kind to) {
             this.from = from;
             this.to = to;
         }

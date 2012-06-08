@@ -225,11 +225,11 @@ public final class GraphBuilderPhase extends Phase {
         return stream.currentBCI();
     }
 
-    private void loadLocal(int index, RiKind kind) {
+    private void loadLocal(int index, Kind kind) {
         frameState.push(kind, frameState.loadLocal(index));
     }
 
-    private void storeLocal(RiKind kind, int index) {
+    private void storeLocal(Kind kind, int index) {
         frameState.storeLocal(index, frameState.pop(kind));
     }
 
@@ -284,10 +284,10 @@ public final class GraphBuilderPhase extends Phase {
             // this is a load of class constant which might be unresolved
             RiType riType = (RiType) con;
             if (riType instanceof RiResolvedType) {
-                frameState.push(RiKind.Object, append(ConstantNode.forCiConstant(((RiResolvedType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
+                frameState.push(Kind.Object, append(ConstantNode.forCiConstant(((RiResolvedType) riType).getEncoding(Representation.JavaClass), runtime, currentGraph)));
             } else {
                 append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
-                frameState.push(RiKind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
+                frameState.push(Kind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
             }
         } else if (con instanceof Constant) {
             Constant constant = (Constant) con;
@@ -297,7 +297,7 @@ public final class GraphBuilderPhase extends Phase {
         }
     }
 
-    private void genLoadIndexed(RiKind kind) {
+    private void genLoadIndexed(Kind kind) {
         emitExplicitExceptions(frameState.peek(1), frameState.peek(0));
 
         ValueNode index = frameState.ipop();
@@ -306,7 +306,7 @@ public final class GraphBuilderPhase extends Phase {
         frameState.push(kind.stackKind(), v);
     }
 
-    private void genStoreIndexed(RiKind kind) {
+    private void genStoreIndexed(Kind kind) {
         emitExplicitExceptions(frameState.peek(2), frameState.peek(1));
 
         ValueNode value = frameState.pop(kind.stackKind());
@@ -397,7 +397,7 @@ public final class GraphBuilderPhase extends Phase {
 
     }
 
-    private void genArithmeticOp(RiKind result, int opcode, boolean canTrap) {
+    private void genArithmeticOp(Kind result, int opcode, boolean canTrap) {
         ValueNode y = frameState.pop(result);
         ValueNode x = frameState.pop(result);
         boolean isStrictFP = isStrict(method.accessFlags());
@@ -433,11 +433,11 @@ public final class GraphBuilderPhase extends Phase {
         frameState.push(result, result1);
     }
 
-    private void genNegateOp(RiKind kind) {
+    private void genNegateOp(Kind kind) {
         frameState.push(kind, append(currentGraph.unique(new NegateNode(frameState.pop(kind)))));
     }
 
-    private void genShiftOp(RiKind kind, int opcode) {
+    private void genShiftOp(Kind kind, int opcode) {
         ValueNode s = frameState.ipop();
         ValueNode x = frameState.pop(kind);
         ShiftNode v;
@@ -454,7 +454,7 @@ public final class GraphBuilderPhase extends Phase {
         frameState.push(kind, append(currentGraph.unique(v)));
     }
 
-    private void genLogicOp(RiKind kind, int opcode) {
+    private void genLogicOp(Kind kind, int opcode) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
         LogicNode v;
@@ -471,7 +471,7 @@ public final class GraphBuilderPhase extends Phase {
         frameState.push(kind, append(currentGraph.unique(v)));
     }
 
-    private void genCompareOp(RiKind kind, boolean isUnorderedLess) {
+    private void genCompareOp(Kind kind, boolean isUnorderedLess) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
         frameState.ipush(append(currentGraph.unique(new NormalizeCompareNode(x, y, isUnorderedLess))));
@@ -487,7 +487,7 @@ public final class GraphBuilderPhase extends Phase {
         int delta = stream().readIncrement();
         ValueNode x = frameState.loadLocal(index);
         ValueNode y = append(ConstantNode.forInt(delta, currentGraph));
-        frameState.storeLocal(index, append(currentGraph.unique(new IntegerAddNode(RiKind.Int, x, y))));
+        frameState.storeLocal(index, append(currentGraph.unique(new IntegerAddNode(Kind.Int, x, y))));
     }
 
     private void genGoto() {
@@ -526,13 +526,13 @@ public final class GraphBuilderPhase extends Phase {
         CompareNode condition;
         assert !a.kind().isFloatOrDouble();
         if (cond == Condition.EQ || cond == Condition.NE) {
-            if (a.kind() == RiKind.Object) {
+            if (a.kind() == Kind.Object) {
                 condition = new ObjectEqualsNode(a, b);
             } else {
                 condition = new IntegerEqualsNode(a, b);
             }
         } else {
-            assert a.kind() != RiKind.Object && !cond.isUnsigned();
+            assert a.kind() != Kind.Object && !cond.isUnsigned();
             condition = new IntegerLessThanNode(a, b);
         }
         condition = currentGraph.unique(condition);
@@ -556,7 +556,7 @@ public final class GraphBuilderPhase extends Phase {
         ifNode(x, cond, y);
     }
 
-    private void genIfSame(RiKind kind, Condition cond) {
+    private void genIfSame(Kind kind, Condition cond) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
         assert !x.isDeleted() && !y.isDeleted();
@@ -676,24 +676,24 @@ public final class GraphBuilderPhase extends Phase {
      * @param code the array type code
      * @return the kind from the array type code
      */
-    public static RiKind arrayTypeCodeToKind(int code) {
+    public static Kind arrayTypeCodeToKind(int code) {
         // Checkstyle: stop
         switch (code) {
-            case 4:  return RiKind.Boolean;
-            case 5:  return RiKind.Char;
-            case 6:  return RiKind.Float;
-            case 7:  return RiKind.Double;
-            case 8:  return RiKind.Byte;
-            case 9:  return RiKind.Short;
-            case 10: return RiKind.Int;
-            case 11: return RiKind.Long;
+            case 4:  return Kind.Boolean;
+            case 5:  return Kind.Char;
+            case 6:  return Kind.Float;
+            case 7:  return Kind.Double;
+            case 8:  return Kind.Byte;
+            case 9:  return Kind.Short;
+            case 10: return Kind.Int;
+            case 11: return Kind.Long;
             default: throw new IllegalArgumentException("unknown array type code: " + code);
         }
         // Checkstyle: resume
     }
 
     private void genNewTypeArray(int typeCode) {
-        RiKind kind = arrayTypeCodeToKind(typeCode);
+        Kind kind = arrayTypeCodeToKind(typeCode);
         RiResolvedType elementType = runtime.asRiType(kind);
         NewTypeArrayNode nta = currentGraph.add(new NewTypeArrayNode(frameState.ipop(), elementType));
         frameState.apush(append(nta));
@@ -731,7 +731,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genGetField(RiField field) {
         emitExplicitExceptions(frameState.peek(0), null);
 
-        RiKind kind = field.kind();
+        Kind kind = field.kind();
         ValueNode receiver = frameState.apop();
         if ((field instanceof RiResolvedField) && ((RiResolvedField) field).holder().isInitialized()) {
             LoadFieldNode load = currentGraph.add(new LoadFieldNode(receiver, (RiResolvedField) field, graphId));
@@ -829,7 +829,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.push(constantValue.kind.stackKind(), appendConstant(constantValue));
         } else {
             ValueNode container = genTypeOrDeopt(RiType.Representation.StaticFields, holder, isInitialized);
-            RiKind kind = field.kind();
+            Kind kind = field.kind();
             if (container != null) {
                 LoadFieldNode load = currentGraph.add(new LoadFieldNode(container, (RiResolvedField) field, graphId));
                 appendOptimizedLoadField(kind, load);
@@ -865,7 +865,7 @@ public final class GraphBuilderPhase extends Phase {
         append(store);
     }
 
-    private void appendOptimizedLoadField(RiKind kind, LoadFieldNode load) {
+    private void appendOptimizedLoadField(Kind kind, LoadFieldNode load) {
         // append the load to the instruction
         ValueNode optimized = append(load);
         frameState.push(kind.stackKind(), optimized);
@@ -919,8 +919,8 @@ public final class GraphBuilderPhase extends Phase {
     private void genInvokeDeopt(RiMethod unresolvedTarget, boolean withReceiver) {
         append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
         frameState.popArguments(unresolvedTarget.signature().argumentSlots(withReceiver), unresolvedTarget.signature().argumentCount(withReceiver));
-        RiKind kind = unresolvedTarget.signature().returnKind();
-        if (kind != RiKind.Void) {
+        Kind kind = unresolvedTarget.signature().returnKind();
+        if (kind != Kind.Void) {
             frameState.push(kind.stackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
         }
     }
@@ -955,7 +955,7 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void appendInvoke(InvokeKind invokeKind, RiResolvedMethod targetMethod, ValueNode[] args) {
-        RiKind resultType = targetMethod.signature().returnKind();
+        Kind resultType = targetMethod.signature().returnKind();
         if (GraalOptions.DeoptALot) {
             DeoptimizeNode deoptimize = currentGraph.add(new DeoptimizeNode(CiDeoptAction.None, RiDeoptReason.RuntimeConstraint, graphId));
             deoptimize.setMessage("invoke " + targetMethod.name());
@@ -1020,7 +1020,7 @@ public final class GraphBuilderPhase extends Phase {
         if (successor.jsrScope.nextReturnAddress() != stream().nextBCI()) {
             throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
         }
-        frameState.push(RiKind.Jsr, ConstantNode.forJsr(stream().nextBCI(), currentGraph));
+        frameState.push(Kind.Jsr, ConstantNode.forJsr(stream().nextBCI(), currentGraph));
         appendGoto(createTarget(successor, frameState));
     }
 
@@ -1345,8 +1345,8 @@ public final class GraphBuilderPhase extends Phase {
         if (method.isConstructor() && method.holder().superType() == null) {
             callRegisterFinalizer();
         }
-        RiKind returnKind = method.signature().returnKind().stackKind();
-        ValueNode x = returnKind == RiKind.Void ? null : frameState.pop(returnKind);
+        Kind returnKind = method.signature().returnKind().stackKind();
+        ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
         // TODO (gdub) remove this when FloatingRead can handle this case
@@ -1534,72 +1534,72 @@ public final class GraphBuilderPhase extends Phase {
             case LDC            : // fall through
             case LDC_W          : // fall through
             case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;
-            case ILOAD          : loadLocal(stream.readLocalIndex(), RiKind.Int); break;
-            case LLOAD          : loadLocal(stream.readLocalIndex(), RiKind.Long); break;
-            case FLOAD          : loadLocal(stream.readLocalIndex(), RiKind.Float); break;
-            case DLOAD          : loadLocal(stream.readLocalIndex(), RiKind.Double); break;
-            case ALOAD          : loadLocal(stream.readLocalIndex(), RiKind.Object); break;
+            case ILOAD          : loadLocal(stream.readLocalIndex(), Kind.Int); break;
+            case LLOAD          : loadLocal(stream.readLocalIndex(), Kind.Long); break;
+            case FLOAD          : loadLocal(stream.readLocalIndex(), Kind.Float); break;
+            case DLOAD          : loadLocal(stream.readLocalIndex(), Kind.Double); break;
+            case ALOAD          : loadLocal(stream.readLocalIndex(), Kind.Object); break;
             case ILOAD_0        : // fall through
             case ILOAD_1        : // fall through
             case ILOAD_2        : // fall through
-            case ILOAD_3        : loadLocal(opcode - ILOAD_0, RiKind.Int); break;
+            case ILOAD_3        : loadLocal(opcode - ILOAD_0, Kind.Int); break;
             case LLOAD_0        : // fall through
             case LLOAD_1        : // fall through
             case LLOAD_2        : // fall through
-            case LLOAD_3        : loadLocal(opcode - LLOAD_0, RiKind.Long); break;
+            case LLOAD_3        : loadLocal(opcode - LLOAD_0, Kind.Long); break;
             case FLOAD_0        : // fall through
             case FLOAD_1        : // fall through
             case FLOAD_2        : // fall through
-            case FLOAD_3        : loadLocal(opcode - FLOAD_0, RiKind.Float); break;
+            case FLOAD_3        : loadLocal(opcode - FLOAD_0, Kind.Float); break;
             case DLOAD_0        : // fall through
             case DLOAD_1        : // fall through
             case DLOAD_2        : // fall through
-            case DLOAD_3        : loadLocal(opcode - DLOAD_0, RiKind.Double); break;
+            case DLOAD_3        : loadLocal(opcode - DLOAD_0, Kind.Double); break;
             case ALOAD_0        : // fall through
             case ALOAD_1        : // fall through
             case ALOAD_2        : // fall through
-            case ALOAD_3        : loadLocal(opcode - ALOAD_0, RiKind.Object); break;
-            case IALOAD         : genLoadIndexed(RiKind.Int   ); break;
-            case LALOAD         : genLoadIndexed(RiKind.Long  ); break;
-            case FALOAD         : genLoadIndexed(RiKind.Float ); break;
-            case DALOAD         : genLoadIndexed(RiKind.Double); break;
-            case AALOAD         : genLoadIndexed(RiKind.Object); break;
-            case BALOAD         : genLoadIndexed(RiKind.Byte  ); break;
-            case CALOAD         : genLoadIndexed(RiKind.Char  ); break;
-            case SALOAD         : genLoadIndexed(RiKind.Short ); break;
-            case ISTORE         : storeLocal(RiKind.Int, stream.readLocalIndex()); break;
-            case LSTORE         : storeLocal(RiKind.Long, stream.readLocalIndex()); break;
-            case FSTORE         : storeLocal(RiKind.Float, stream.readLocalIndex()); break;
-            case DSTORE         : storeLocal(RiKind.Double, stream.readLocalIndex()); break;
-            case ASTORE         : storeLocal(RiKind.Object, stream.readLocalIndex()); break;
+            case ALOAD_3        : loadLocal(opcode - ALOAD_0, Kind.Object); break;
+            case IALOAD         : genLoadIndexed(Kind.Int   ); break;
+            case LALOAD         : genLoadIndexed(Kind.Long  ); break;
+            case FALOAD         : genLoadIndexed(Kind.Float ); break;
+            case DALOAD         : genLoadIndexed(Kind.Double); break;
+            case AALOAD         : genLoadIndexed(Kind.Object); break;
+            case BALOAD         : genLoadIndexed(Kind.Byte  ); break;
+            case CALOAD         : genLoadIndexed(Kind.Char  ); break;
+            case SALOAD         : genLoadIndexed(Kind.Short ); break;
+            case ISTORE         : storeLocal(Kind.Int, stream.readLocalIndex()); break;
+            case LSTORE         : storeLocal(Kind.Long, stream.readLocalIndex()); break;
+            case FSTORE         : storeLocal(Kind.Float, stream.readLocalIndex()); break;
+            case DSTORE         : storeLocal(Kind.Double, stream.readLocalIndex()); break;
+            case ASTORE         : storeLocal(Kind.Object, stream.readLocalIndex()); break;
             case ISTORE_0       : // fall through
             case ISTORE_1       : // fall through
             case ISTORE_2       : // fall through
-            case ISTORE_3       : storeLocal(RiKind.Int, opcode - ISTORE_0); break;
+            case ISTORE_3       : storeLocal(Kind.Int, opcode - ISTORE_0); break;
             case LSTORE_0       : // fall through
             case LSTORE_1       : // fall through
             case LSTORE_2       : // fall through
-            case LSTORE_3       : storeLocal(RiKind.Long, opcode - LSTORE_0); break;
+            case LSTORE_3       : storeLocal(Kind.Long, opcode - LSTORE_0); break;
             case FSTORE_0       : // fall through
             case FSTORE_1       : // fall through
             case FSTORE_2       : // fall through
-            case FSTORE_3       : storeLocal(RiKind.Float, opcode - FSTORE_0); break;
+            case FSTORE_3       : storeLocal(Kind.Float, opcode - FSTORE_0); break;
             case DSTORE_0       : // fall through
             case DSTORE_1       : // fall through
             case DSTORE_2       : // fall through
-            case DSTORE_3       : storeLocal(RiKind.Double, opcode - DSTORE_0); break;
+            case DSTORE_3       : storeLocal(Kind.Double, opcode - DSTORE_0); break;
             case ASTORE_0       : // fall through
             case ASTORE_1       : // fall through
             case ASTORE_2       : // fall through
-            case ASTORE_3       : storeLocal(RiKind.Object, opcode - ASTORE_0); break;
-            case IASTORE        : genStoreIndexed(RiKind.Int   ); break;
-            case LASTORE        : genStoreIndexed(RiKind.Long  ); break;
-            case FASTORE        : genStoreIndexed(RiKind.Float ); break;
-            case DASTORE        : genStoreIndexed(RiKind.Double); break;
-            case AASTORE        : genStoreIndexed(RiKind.Object); break;
-            case BASTORE        : genStoreIndexed(RiKind.Byte  ); break;
-            case CASTORE        : genStoreIndexed(RiKind.Char  ); break;
-            case SASTORE        : genStoreIndexed(RiKind.Short ); break;
+            case ASTORE_3       : storeLocal(Kind.Object, opcode - ASTORE_0); break;
+            case IASTORE        : genStoreIndexed(Kind.Int   ); break;
+            case LASTORE        : genStoreIndexed(Kind.Long  ); break;
+            case FASTORE        : genStoreIndexed(Kind.Float ); break;
+            case DASTORE        : genStoreIndexed(Kind.Double); break;
+            case AASTORE        : genStoreIndexed(Kind.Object); break;
+            case BASTORE        : genStoreIndexed(Kind.Byte  ); break;
+            case CASTORE        : genStoreIndexed(Kind.Char  ); break;
+            case SASTORE        : genStoreIndexed(Kind.Short ); break;
             case POP            : // fall through
             case POP2           : // fall through
             case DUP            : // fall through
@@ -1611,40 +1611,40 @@ public final class GraphBuilderPhase extends Phase {
             case SWAP           : stackOp(opcode); break;
             case IADD           : // fall through
             case ISUB           : // fall through
-            case IMUL           : genArithmeticOp(RiKind.Int, opcode, false); break;
+            case IMUL           : genArithmeticOp(Kind.Int, opcode, false); break;
             case IDIV           : // fall through
-            case IREM           : genArithmeticOp(RiKind.Int, opcode, true); break;
+            case IREM           : genArithmeticOp(Kind.Int, opcode, true); break;
             case LADD           : // fall through
             case LSUB           : // fall through
-            case LMUL           : genArithmeticOp(RiKind.Long, opcode, false); break;
+            case LMUL           : genArithmeticOp(Kind.Long, opcode, false); break;
             case LDIV           : // fall through
-            case LREM           : genArithmeticOp(RiKind.Long, opcode, true); break;
+            case LREM           : genArithmeticOp(Kind.Long, opcode, true); break;
             case FADD           : // fall through
             case FSUB           : // fall through
             case FMUL           : // fall through
             case FDIV           : // fall through
-            case FREM           : genArithmeticOp(RiKind.Float, opcode, false); break;
+            case FREM           : genArithmeticOp(Kind.Float, opcode, false); break;
             case DADD           : // fall through
             case DSUB           : // fall through
             case DMUL           : // fall through
             case DDIV           : // fall through
-            case DREM           : genArithmeticOp(RiKind.Double, opcode, false); break;
-            case INEG           : genNegateOp(RiKind.Int); break;
-            case LNEG           : genNegateOp(RiKind.Long); break;
-            case FNEG           : genNegateOp(RiKind.Float); break;
-            case DNEG           : genNegateOp(RiKind.Double); break;
+            case DREM           : genArithmeticOp(Kind.Double, opcode, false); break;
+            case INEG           : genNegateOp(Kind.Int); break;
+            case LNEG           : genNegateOp(Kind.Long); break;
+            case FNEG           : genNegateOp(Kind.Float); break;
+            case DNEG           : genNegateOp(Kind.Double); break;
             case ISHL           : // fall through
             case ISHR           : // fall through
-            case IUSHR          : genShiftOp(RiKind.Int, opcode); break;
+            case IUSHR          : genShiftOp(Kind.Int, opcode); break;
             case IAND           : // fall through
             case IOR            : // fall through
-            case IXOR           : genLogicOp(RiKind.Int, opcode); break;
+            case IXOR           : genLogicOp(Kind.Int, opcode); break;
             case LSHL           : // fall through
             case LSHR           : // fall through
-            case LUSHR          : genShiftOp(RiKind.Long, opcode); break;
+            case LUSHR          : genShiftOp(Kind.Long, opcode); break;
             case LAND           : // fall through
             case LOR            : // fall through
-            case LXOR           : genLogicOp(RiKind.Long, opcode); break;
+            case LXOR           : genLogicOp(Kind.Long, opcode); break;
             case IINC           : genIncrement(); break;
             case I2L            : genConvert(ConvertNode.Op.I2L); break;
             case I2F            : genConvert(ConvertNode.Op.I2F); break;
@@ -1661,25 +1661,25 @@ public final class GraphBuilderPhase extends Phase {
             case I2B            : genConvert(ConvertNode.Op.I2B); break;
             case I2C            : genConvert(ConvertNode.Op.I2C); break;
             case I2S            : genConvert(ConvertNode.Op.I2S); break;
-            case LCMP           : genCompareOp(RiKind.Long, false); break;
-            case FCMPL          : genCompareOp(RiKind.Float, true); break;
-            case FCMPG          : genCompareOp(RiKind.Float, false); break;
-            case DCMPL          : genCompareOp(RiKind.Double, true); break;
-            case DCMPG          : genCompareOp(RiKind.Double, false); break;
+            case LCMP           : genCompareOp(Kind.Long, false); break;
+            case FCMPL          : genCompareOp(Kind.Float, true); break;
+            case FCMPG          : genCompareOp(Kind.Float, false); break;
+            case DCMPL          : genCompareOp(Kind.Double, true); break;
+            case DCMPG          : genCompareOp(Kind.Double, false); break;
             case IFEQ           : genIfZero(Condition.EQ); break;
             case IFNE           : genIfZero(Condition.NE); break;
             case IFLT           : genIfZero(Condition.LT); break;
             case IFGE           : genIfZero(Condition.GE); break;
             case IFGT           : genIfZero(Condition.GT); break;
             case IFLE           : genIfZero(Condition.LE); break;
-            case IF_ICMPEQ      : genIfSame(RiKind.Int, Condition.EQ); break;
-            case IF_ICMPNE      : genIfSame(RiKind.Int, Condition.NE); break;
-            case IF_ICMPLT      : genIfSame(RiKind.Int, Condition.LT); break;
-            case IF_ICMPGE      : genIfSame(RiKind.Int, Condition.GE); break;
-            case IF_ICMPGT      : genIfSame(RiKind.Int, Condition.GT); break;
-            case IF_ICMPLE      : genIfSame(RiKind.Int, Condition.LE); break;
-            case IF_ACMPEQ      : genIfSame(RiKind.Object, Condition.EQ); break;
-            case IF_ACMPNE      : genIfSame(RiKind.Object, Condition.NE); break;
+            case IF_ICMPEQ      : genIfSame(Kind.Int, Condition.EQ); break;
+            case IF_ICMPNE      : genIfSame(Kind.Int, Condition.NE); break;
+            case IF_ICMPLT      : genIfSame(Kind.Int, Condition.LT); break;
+            case IF_ICMPGE      : genIfSame(Kind.Int, Condition.GE); break;
+            case IF_ICMPGT      : genIfSame(Kind.Int, Condition.GT); break;
+            case IF_ICMPLE      : genIfSame(Kind.Int, Condition.LE); break;
+            case IF_ACMPEQ      : genIfSame(Kind.Object, Condition.EQ); break;
+            case IF_ACMPNE      : genIfSame(Kind.Object, Condition.NE); break;
             case GOTO           : genGoto(); break;
             case JSR            : genJsr(stream.readBranchDest()); break;
             case RET            : genRet(stream.readLocalIndex()); break;

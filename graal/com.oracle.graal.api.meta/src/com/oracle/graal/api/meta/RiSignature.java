@@ -54,7 +54,7 @@ public interface RiSignature {
      * @param index the index into the parameters, with {@code 0} indicating the first parameter
      * @return the kind of the argument at the specified position
      */
-    RiKind argumentKindAt(int index);
+    Kind argumentKindAt(int index);
 
     /**
      * Gets the return type of this signature. This method will return a
@@ -72,7 +72,7 @@ public interface RiSignature {
      * Gets the return kind of this signature.
      * @return the return kind
      */
-    RiKind returnKind();
+    Kind returnKind();
 
     /**
      * Converts this signature to a string.

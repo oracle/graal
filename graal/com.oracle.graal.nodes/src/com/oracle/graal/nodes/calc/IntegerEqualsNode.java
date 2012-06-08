@@ -38,8 +38,8 @@ public final class IntegerEqualsNode extends CompareNode {
      */
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert !x.kind().isFloatOrDouble() && x.kind() != RiKind.Object;
-        assert !y.kind().isFloatOrDouble() && y.kind() != RiKind.Object;
+        assert !x.kind().isFloatOrDouble() && x.kind() != Kind.Object;
+        assert !y.kind().isFloatOrDouble() && y.kind() != Kind.Object;
     }
 
     @Override
@@ -54,7 +54,7 @@ public final class IntegerEqualsNode extends CompareNode {
 
     @Override
     protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
-        if (constant.kind == RiKind.Int && constant.asInt() == 0) {
+        if (constant.kind == Kind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.y() : normalizeNode.x();
             ValueNode b = mirrored ? normalizeNode.x() : normalizeNode.y();
 

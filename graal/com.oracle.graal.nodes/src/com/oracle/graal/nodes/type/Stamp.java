@@ -28,13 +28,13 @@ import com.oracle.graal.nodes.spi.types.*;
 
 public abstract class Stamp {
 
-    private final RiKind kind;
+    private final Kind kind;
 
-    protected Stamp(RiKind kind) {
+    protected Stamp(Kind kind) {
         this.kind = kind;
     }
 
-    public RiKind kind() {
+    public Kind kind() {
         return kind;
     }
 

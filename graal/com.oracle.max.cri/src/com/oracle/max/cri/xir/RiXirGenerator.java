@@ -44,7 +44,7 @@ public interface RiXirGenerator {
 
     XirSnippet genNewInstance(XirSite site, RiType type);
 
-    XirSnippet genNewArray(XirSite site, XirArgument length, RiKind elementKind, RiType componentType, RiType arrayType);
+    XirSnippet genNewArray(XirSite site, XirArgument length, Kind elementKind, RiType componentType, RiType arrayType);
 
     XirSnippet genNewMultiArray(XirSite site, XirArgument[] lengths, RiType type);
 

@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot;
 
 import java.io.*;
 
-import com.oracle.graal.api.meta.RiKind.*;
+import com.oracle.graal.api.meta.Kind.*;
 
 
 /**

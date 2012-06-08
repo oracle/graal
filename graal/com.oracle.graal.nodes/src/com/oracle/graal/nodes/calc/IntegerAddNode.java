@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.types.*;
 @NodeInfo(shortName = "+")
 public class IntegerAddNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable, TypeFeedbackProvider {
 
-    public IntegerAddNode(RiKind kind, ValueNode x, ValueNode y) {
+    public IntegerAddNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
     }
 
@@ -41,20 +41,20 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
             return graph().unique(new IntegerAddNode(kind(), y(), x()));
         }
         if (x().isConstant()) {
-            if (kind() == RiKind.Int) {
+            if (kind() == Kind.Int) {
                 return ConstantNode.forInt(x().asConstant().asInt() + y().asConstant().asInt(), graph());
             } else {
-                assert kind() == RiKind.Long;
+                assert kind() == Kind.Long;
                 return ConstantNode.forLong(x().asConstant().asLong() + y().asConstant().asLong(), graph());
             }
         } else if (y().isConstant()) {
-            if (kind() == RiKind.Int) {
+            if (kind() == Kind.Int) {
                 int c = y().asConstant().asInt();
                 if (c == 0) {
                     return x();
                 }
             } else {
-                assert kind() == RiKind.Long;
+                assert kind() == Kind.Long;
                 long c = y().asConstant().asLong();
                 if (c == 0) {
                     return x();
@@ -65,10 +65,10 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
                 IntegerAddNode other = (IntegerAddNode) x();
                 if (other.y().isConstant()) {
                     ConstantNode sum;
-                    if (kind() == RiKind.Int) {
+                    if (kind() == Kind.Int) {
                         sum = ConstantNode.forInt(y().asConstant().asInt() + other.y().asConstant().asInt(), graph());
                     } else {
-                        assert kind() == RiKind.Long;
+                        assert kind() == Kind.Long;
                         sum = ConstantNode.forLong(y().asConstant().asLong() + other.y().asConstant().asLong(), graph());
                     }
                     return graph().unique(new IntegerAddNode(kind(), other.x(), sum));
@@ -79,7 +79,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     public static boolean isIntegerAddition(ValueNode result, ValueNode a, ValueNode b) {
-        RiKind kind = result.kind();
+        Kind kind = result.kind();
         if (kind != a.kind() || kind != b.kind() || !(kind.isInt() || kind.isLong())) {
             return false;
         }

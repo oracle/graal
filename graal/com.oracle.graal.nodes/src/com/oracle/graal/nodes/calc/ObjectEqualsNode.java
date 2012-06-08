@@ -38,8 +38,8 @@ public final class ObjectEqualsNode extends CompareNode {
      */
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert x.kind() == RiKind.Object;
-        assert y.kind() == RiKind.Object;
+        assert x.kind() == Kind.Object;
+        assert y.kind() == Kind.Object;
     }
 
     @Override

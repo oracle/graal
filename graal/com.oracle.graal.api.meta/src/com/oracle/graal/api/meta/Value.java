@@ -25,13 +25,13 @@ package com.oracle.graal.api.meta;
 import java.io.*;
 
 /**
- * Abstract base class for values manipulated by the compiler. All values have a {@linkplain RiKind kind} and are immutable.
+ * Abstract base class for values manipulated by the compiler. All values have a {@linkplain Kind kind} and are immutable.
  */
 public abstract class Value implements Serializable {
     private static final long serialVersionUID = -6909397188697766469L;
 
     @SuppressWarnings("serial")
-    public static Value IllegalValue = new Value(RiKind.Illegal) {
+    public static Value IllegalValue = new Value(Kind.Illegal) {
         @Override
         public String toString() {
             return "-";
@@ -41,13 +41,13 @@ public abstract class Value implements Serializable {
     /**
      * The kind of this value.
      */
-    public final RiKind kind;
+    public final Kind kind;
 
     /**
      * Initializes a new value of the specified kind.
      * @param kind the kind
      */
-    protected Value(RiKind kind) {
+    protected Value(Kind kind) {
         this.kind = kind;
     }
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.meta;
 
-import static com.oracle.graal.api.meta.RiKind.Flags.*;
+import static com.oracle.graal.api.meta.Kind.Flags.*;
 
 import java.lang.reflect.*;
 
@@ -30,12 +30,12 @@ import sun.misc.*;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types,
- * for example, {@link RiKind#Int} for {@code int} and {@link RiKind#Object}
+ * for example, {@link Kind#Int} for {@code int} and {@link Kind#Object}
  * for all object types.
  * A kind has a single character short name, a Java name, and a set of flags
  * further describing its behavior.
  */
-public enum RiKind {
+public enum Kind {
     Boolean('z', "boolean", FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
     Byte   ('b', "byte",    FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
     Short  ('s', "short",   FIELD_TYPE | RETURN_TYPE | PRIMITIVE | STACK_INT),
@@ -51,10 +51,10 @@ public enum RiKind {
     /** The non-type. */
     Illegal('-', "illegal", 0);
 
-    public static final RiKind[] VALUES = values();
-    public static final RiKind[] JAVA_VALUES = new RiKind[] {RiKind.Boolean, RiKind.Byte, RiKind.Short, RiKind.Char, RiKind.Int, RiKind.Float, RiKind.Long, RiKind.Double, RiKind.Object};
+    public static final Kind[] VALUES = values();
+    public static final Kind[] JAVA_VALUES = new Kind[] {Kind.Boolean, Kind.Byte, Kind.Short, Kind.Char, Kind.Int, Kind.Float, Kind.Long, Kind.Double, Kind.Object};
 
-    RiKind(char ch, String name, int flags) {
+    Kind(char ch, String name, int flags) {
         this.typeChar = ch;
         this.javaName = name;
         this.flags = flags;
@@ -132,20 +132,20 @@ public enum RiKind {
      * Gets the kind that represents this kind when on the Java operand stack.
      * @return the kind used on the operand stack
      */
-    public RiKind stackKind() {
+    public Kind stackKind() {
         if (isInt()) {
             return Int;
         }
         return this;
     }
 
-    public static RiKind fromTypeString(String typeString) {
+    public static Kind fromTypeString(String typeString) {
         assert typeString.length() > 0;
         final char first = typeString.charAt(0);
         if (first == '[' || first == 'L') {
-            return RiKind.Object;
+            return Kind.Object;
         }
-        return RiKind.fromPrimitiveOrVoidTypeChar(first);
+        return Kind.fromPrimitiveOrVoidTypeChar(first);
     }
 
     /**
@@ -153,7 +153,7 @@ public enum RiKind {
      * @param ch the character
      * @return the kind
      */
-    public static RiKind fromPrimitiveOrVoidTypeChar(char ch) {
+    public static Kind fromPrimitiveOrVoidTypeChar(char ch) {
         // Checkstyle: stop
         switch (ch) {
             case 'Z': return Boolean;
@@ -209,7 +209,7 @@ public enum RiKind {
      * @return {@code true} if this type is void
      */
     public final boolean isVoid() {
-        return this == RiKind.Void;
+        return this == Kind.Void;
     }
 
     /**
@@ -217,7 +217,7 @@ public enum RiKind {
      * @return {@code true} if this type is long
      */
     public final boolean isLong() {
-        return this == RiKind.Long;
+        return this == Kind.Long;
     }
 
     /**
@@ -225,7 +225,7 @@ public enum RiKind {
      * @return {@code true} if this type is float
      */
     public final boolean isFloat() {
-        return this == RiKind.Float;
+        return this == Kind.Float;
     }
 
     /**
@@ -233,7 +233,7 @@ public enum RiKind {
      * @return {@code true} if this type is double
      */
     public final boolean isDouble() {
-        return this == RiKind.Double;
+        return this == Kind.Double;
     }
 
     /**
@@ -241,7 +241,7 @@ public enum RiKind {
      * @return {@code true} if this type is float or double
      */
     public final boolean isFloatOrDouble() {
-        return this == RiKind.Double || this == RiKind.Float;
+        return this == Kind.Double || this == Kind.Float;
     }
 
    /**
@@ -249,7 +249,7 @@ public enum RiKind {
      * @return {@code true} if this type is an object
      */
     public final boolean isObject() {
-        return this == RiKind.Object;
+        return this == Kind.Object;
     }
 
     /**
@@ -257,7 +257,7 @@ public enum RiKind {
      * @return {@code true} if this type is an address
      */
     public boolean isJsr() {
-        return this == RiKind.Jsr;
+        return this == Kind.Jsr;
     }
 
     /**
@@ -269,7 +269,7 @@ public enum RiKind {
     }
 
     /**
-     * Marker interface for types that should be {@linkplain RiKind#format(Object) formatted}
+     * Marker interface for types that should be {@linkplain Kind#format(Object) formatted}
      * with their {@link Object#toString()} value.
      */
     public interface FormatWithToString {}
@@ -326,7 +326,7 @@ public enum RiKind {
                 buf.append(Array.get(array, i));
             } else {
                 Object o = ((Object[]) array)[i];
-                buf.append(RiKind.Object.format(o));
+                buf.append(Kind.Object.format(o));
             }
             if (i != length - 1) {
                 buf.append(", ");

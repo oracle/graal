@@ -97,8 +97,8 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public RiKind argumentKindAt(int index) {
-        return RiKind.fromTypeString(arguments.get(index));
+    public Kind argumentKindAt(int index) {
+        return Kind.fromTypeString(arguments.get(index));
     }
 
     @Override
@@ -129,8 +129,8 @@ public class HotSpotSignature extends CompilerObject implements RiSignature {
     }
 
     @Override
-    public RiKind returnKind() {
-        return RiKind.fromTypeString(returnType);
+    public Kind returnKind() {
+        return Kind.fromTypeString(returnType);
     }
 
     @Override

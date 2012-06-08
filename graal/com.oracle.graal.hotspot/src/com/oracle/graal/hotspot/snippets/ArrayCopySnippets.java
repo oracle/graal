@@ -221,14 +221,14 @@ public class ArrayCopySnippets implements SnippetsInterface{
         if (srcPos < 0 || destPos < 0 || length < 0 || srcPos + length > src.length || destPos + length > dest.length) {
             throw new IndexOutOfBoundsException();
         }
-        final int scale = arrayIndexScale(RiKind.Object);
+        final int scale = arrayIndexScale(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
             copyObjectsDown(src, srcPos * scale, dest, destPos * scale, length);
         } else {
             copyObjectsUp(src, srcPos * scale, dest, destPos * scale, length);
         }
         if (length > 0) {
-            int header = arrayBaseOffset(RiKind.Object);
+            int header = arrayBaseOffset(Kind.Object);
             int cardShift = cardTableShift();
             long cardStart = cardTableStart();
             long dstAddr = GetObjectAddressNode.get(dest);
@@ -243,47 +243,47 @@ public class ArrayCopySnippets implements SnippetsInterface{
 
     @Snippet
     public static void copyBytesDown(Object src, int srcPos, Object dest, int destPos, int length)  {
-        int header = arrayBaseOffset(RiKind.Byte);
+        int header = arrayBaseOffset(Kind.Byte);
         for (long i = length - 1; i >= 0; i--) {
-            Byte a = UnsafeLoadNode.load(src, header, i + srcPos, RiKind.Byte);
-            UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), RiKind.Byte);
+            Byte a = UnsafeLoadNode.load(src, header, i + srcPos, Kind.Byte);
+            UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), Kind.Byte);
         }
     }
 
     @Snippet
     public static void copyShortsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Short);
+        int header = arrayBaseOffset(Kind.Short);
         for (long i = (length - 1) * 2; i >= 0; i -= 2) {
-            Character a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Short);
-            UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), RiKind.Short);
+            Character a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Short);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), Kind.Short);
         }
     }
 
     @Snippet
     public static void copyIntsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Int);
+        int header = arrayBaseOffset(Kind.Int);
         for (long i = (length - 1) * 4; i >= 0; i -= 4) {
-            Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Int);
-            UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), RiKind.Int);
+            Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Int);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), Kind.Int);
         }
     }
 
     @Snippet
     public static void copyLongsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Long);
+        int header = arrayBaseOffset(Kind.Long);
         for (long i = (length - 1) * 8; i >= 0; i -= 8) {
-            Long a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Long);
-            UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), RiKind.Long);
+            Long a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Long);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), Kind.Long);
         }
     }
 
     // Does NOT perform store checks
     @Snippet
     public static void copyObjectsDown(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Object);
-        final int scale = arrayIndexScale(RiKind.Object);
+        int header = arrayBaseOffset(Kind.Object);
+        final int scale = arrayIndexScale(Kind.Object);
         for (long i = (length - 1) * scale; i >= 0; i -= scale) {
-            Object a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Object);
+            Object a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Object);
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
     }
@@ -297,10 +297,10 @@ public class ArrayCopySnippets implements SnippetsInterface{
      */
     @Snippet
     public static void copyBytesUp(Object src, int srcPos, Object dest, int destPos, int length)  {
-        int header = arrayBaseOffset(RiKind.Byte);
+        int header = arrayBaseOffset(Kind.Byte);
         for (long i = 0; i < length; i++) {
-            Byte a = UnsafeLoadNode.load(src, header, i + srcPos, RiKind.Byte);
-            UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), RiKind.Byte);
+            Byte a = UnsafeLoadNode.load(src, header, i + srcPos, Kind.Byte);
+            UnsafeStoreNode.store(dest, header, i + destPos, a.byteValue(), Kind.Byte);
         }
     }
 
@@ -314,61 +314,61 @@ public class ArrayCopySnippets implements SnippetsInterface{
      */
     @Snippet
     public static void copyShortsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Short);
+        int header = arrayBaseOffset(Kind.Short);
         for (long i = 0; i < length * 2L; i += 2) {
-            Character a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Short);
-            UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), RiKind.Short);
+            Character a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Short);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.charValue(), Kind.Short);
         }
     }
 
     @Snippet
     public static void copyIntsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Int);
+        int header = arrayBaseOffset(Kind.Int);
         for (long i = 0; i < length * 4L; i += 4) {
-            Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Int);
-            UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), RiKind.Int);
+            Integer a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Int);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.intValue(), Kind.Int);
         }
     }
 
     @Snippet
     public static void copyLongsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Long);
+        int header = arrayBaseOffset(Kind.Long);
         for (long i = 0; i < length * 8L; i += 8) {
-            Long a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Long);
-            UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), RiKind.Long);
+            Long a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Long);
+            UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), Kind.Long);
         }
     }
 
     // Does NOT perform store checks
     @Snippet
     public static void copyObjectsUp(Object src, long srcOffset, Object dest, long destOffset, int length)  {
-        int header = arrayBaseOffset(RiKind.Object);
-        final int scale = arrayIndexScale(RiKind.Object);
+        int header = arrayBaseOffset(Kind.Object);
+        final int scale = arrayIndexScale(Kind.Object);
         for (long i = 0; i < length * scale; i += scale) {
-            Object a = UnsafeLoadNode.load(src, header, i + srcOffset, RiKind.Object);
+            Object a = UnsafeLoadNode.load(src, header, i + srcOffset, Kind.Object);
             DirectObjectStoreNode.store(dest, header, i + destOffset, a);
         }
     }
 
     @Fold
-    static int arrayBaseOffset(RiKind elementKind) {
+    static int arrayBaseOffset(Kind elementKind) {
         return elementKind.arrayBaseOffset();
     }
 
     @Fold
-    static int arrayIndexScale(RiKind elementKind) {
+    static int arrayIndexScale(Kind elementKind) {
         return elementKind.arrayIndexScale();
     }
 
     static {
-        assert arrayIndexScale(RiKind.Byte) == 1;
-        assert arrayIndexScale(RiKind.Boolean) == 1;
-        assert arrayIndexScale(RiKind.Char) == 2;
-        assert arrayIndexScale(RiKind.Short) == 2;
-        assert arrayIndexScale(RiKind.Int) == 4;
-        assert arrayIndexScale(RiKind.Long) == 8;
-        assert arrayIndexScale(RiKind.Float) == 4;
-        assert arrayIndexScale(RiKind.Double) == 8;
+        assert arrayIndexScale(Kind.Byte) == 1;
+        assert arrayIndexScale(Kind.Boolean) == 1;
+        assert arrayIndexScale(Kind.Char) == 2;
+        assert arrayIndexScale(Kind.Short) == 2;
+        assert arrayIndexScale(Kind.Int) == 4;
+        assert arrayIndexScale(Kind.Long) == 8;
+        assert arrayIndexScale(Kind.Float) == 4;
+        assert arrayIndexScale(Kind.Double) == 8;
     }
 
     @Fold

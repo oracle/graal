@@ -27,9 +27,9 @@ import com.oracle.graal.api.meta.*;
 
 public class FloatStamp extends Stamp {
 
-    protected FloatStamp(RiKind kind) {
+    protected FloatStamp(Kind kind) {
         super(kind);
-        assert kind == RiKind.Float || kind == RiKind.Double;
+        assert kind == Kind.Float || kind == Kind.Double;
     }
 
     @Override

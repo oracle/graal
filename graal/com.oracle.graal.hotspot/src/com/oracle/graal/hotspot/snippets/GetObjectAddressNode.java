@@ -37,7 +37,7 @@ class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode object;
 
     public GetObjectAddressNode(ValueNode obj) {
-        super(StampFactory.forKind(RiKind.Long));
+        super(StampFactory.forKind(Kind.Long));
         this.object = obj;
     }
 

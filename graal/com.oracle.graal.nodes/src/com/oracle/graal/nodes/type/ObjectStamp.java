@@ -32,7 +32,7 @@ public class ObjectStamp extends Stamp {
     private final boolean nonNull;
 
     public ObjectStamp(RiResolvedType type, boolean exactType, boolean nonNull) {
-        super(RiKind.Object);
+        super(Kind.Object);
         assert !exactType || type != null;
         this.type = type;
         this.exactType = exactType;

@@ -36,7 +36,7 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
     @Input private ValueNode object;
     @Input private ValueNode offset;
     private final int displacement;
-    private final RiKind loadKind;
+    private final Kind loadKind;
 
     public ValueNode object() {
         return object;
@@ -55,10 +55,10 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
         this.object = object;
         this.displacement = displacement;
         this.offset = offset;
-        this.loadKind = RiKind.Object;
+        this.loadKind = Kind.Object;
     }
 
-    public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, RiKind kind) {
+    public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, Kind kind) {
         super(StampFactory.forKind(kind.stackKind()));
         this.object = object;
         this.displacement = displacement;
@@ -66,7 +66,7 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
         this.loadKind = kind;
     }
 
-    public RiKind loadKind() {
+    public Kind loadKind() {
         return loadKind;
     }
 
@@ -77,7 +77,7 @@ public class UnsafeLoadNode extends FixedWithNextNode implements Lowerable {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter RiKind kind) {
+    public static <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind) {
         throw new UnsupportedOperationException("This method may only be compiled with the Graal compiler");
     }
 

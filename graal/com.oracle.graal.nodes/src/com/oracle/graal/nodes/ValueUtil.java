@@ -31,8 +31,8 @@ import com.oracle.graal.graph.Node.Verbosity;
 
 public class ValueUtil {
 
-    public static ValueNode assertKind(RiKind kind, ValueNode x) {
-        assert x != null && ((x.kind() == kind) || (x.kind() == RiKind.Jsr && kind == RiKind.Object)) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.kind());
+    public static ValueNode assertKind(Kind kind, ValueNode x) {
+        assert x != null && ((x.kind() == kind) || (x.kind() == Kind.Jsr && kind == Kind.Object)) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.kind());
         return x;
     }
 
@@ -45,32 +45,32 @@ public class ValueUtil {
     }
 
     public static ValueNode assertLong(ValueNode x) {
-        assert x != null && (x.kind() == RiKind.Long);
+        assert x != null && (x.kind() == Kind.Long);
         return x;
     }
 
     public static ValueNode assertJsr(ValueNode x) {
-        assert x != null && (x.kind() == RiKind.Jsr);
+        assert x != null && (x.kind() == Kind.Jsr);
         return x;
     }
 
     public static ValueNode assertInt(ValueNode x) {
-        assert x != null && (x.kind() == RiKind.Int);
+        assert x != null && (x.kind() == Kind.Int);
         return x;
     }
 
     public static ValueNode assertFloat(ValueNode x) {
-        assert x != null && (x.kind() == RiKind.Float);
+        assert x != null && (x.kind() == Kind.Float);
         return x;
     }
 
     public static ValueNode assertObject(ValueNode x) {
-        assert x != null && (x.kind() == RiKind.Object);
+        assert x != null && (x.kind() == Kind.Object);
         return x;
     }
 
     public static ValueNode assertDouble(ValueNode x) {
-        assert x != null && (x.kind() == RiKind.Double);
+        assert x != null && (x.kind() == Kind.Double);
         return x;
     }
 
@@ -96,7 +96,7 @@ public class ValueUtil {
 
     /**
      * Converts a given instruction to a value string. The representation of an node as
-     * a value is formed by concatenating the {@linkplain com.oracle.graal.api.meta.RiKind#typeChar character} denoting its
+     * a value is formed by concatenating the {@linkplain com.oracle.graal.api.meta.Kind#typeChar character} denoting its
      * {@linkplain ValueNode#kind kind} and its {@linkplain Node#id()}. For example, {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-" is returned.

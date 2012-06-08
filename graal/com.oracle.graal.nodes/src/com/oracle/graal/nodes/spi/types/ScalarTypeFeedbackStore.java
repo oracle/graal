@@ -40,7 +40,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
 
         @Override
         public boolean constantBound(Condition condition, Constant constant) {
-            if (constant.kind == RiKind.Int || constant.kind == RiKind.Long) {
+            if (constant.kind == Kind.Int || constant.kind == Kind.Long) {
                 switch (condition) {
                     case EQ:
                         return store.constantBounds.lowerBound == constant.asLong() && store.constantBounds.upperBound == constant.asLong();
@@ -117,7 +117,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         }
     }
 
-    private final RiKind kind;
+    private final Kind kind;
     private final ConstantBound constantBounds;
     private final TypeFeedbackChanged changed;
     private ValueNode dependency;
@@ -127,11 +127,11 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         dependency = changed.node;
     }
 
-    public ScalarTypeFeedbackStore(RiKind kind, TypeFeedbackChanged changed) {
+    public ScalarTypeFeedbackStore(Kind kind, TypeFeedbackChanged changed) {
         this.kind = kind;
-        if (kind == RiKind.Int) {
+        if (kind == Kind.Int) {
             constantBounds = new ConstantBound(Integer.MIN_VALUE, Integer.MAX_VALUE);
-        } else if (kind == RiKind.Long) {
+        } else if (kind == Kind.Long) {
             constantBounds = new ConstantBound(Long.MIN_VALUE, Long.MAX_VALUE);
         } else {
             constantBounds = null;
@@ -167,7 +167,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
 
     private static ConstantBound createBounds(Condition condition, Constant constant) {
         ConstantBound newBound;
-        if (constant.kind == RiKind.Int || constant.kind == RiKind.Long) {
+        if (constant.kind == Kind.Int || constant.kind == Kind.Long) {
             switch (condition) {
                 case EQ:
                     newBound = new ConstantBound(constant.asLong(), constant.asLong());
@@ -363,14 +363,14 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         assert other.kind == kind;
         long lower = other.constantBounds.lowerBound;
         long upper = other.constantBounds.upperBound;
-        if (kind == RiKind.Int) {
+        if (kind == Kind.Int) {
             int delta = deltaConstant.asInt();
             int newLower = (int) lower + delta;
             int newUpper = (int) upper + delta;
             if ((newLower <= lower && newUpper <= upper) || (newLower > lower && newUpper > upper)) {
                 constantBounds.join(new ConstantBound(newLower, newUpper));
             }
-        } else if (kind == RiKind.Long) {
+        } else if (kind == Kind.Long) {
             long delta = deltaConstant.asLong();
             long newLower = lower + delta;
             long newUpper = upper + delta;
@@ -386,20 +386,20 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         return constantBounds.lowerBound == minValue(kind) && constantBounds.upperBound == maxValue(kind) && (valueBounds == null || valueBounds.isEmpty());
     }
 
-    private static long minValue(RiKind kind) {
-        if (kind == RiKind.Int) {
+    private static long minValue(Kind kind) {
+        if (kind == Kind.Int) {
             return Integer.MIN_VALUE;
-        } else if (kind == RiKind.Long) {
+        } else if (kind == Kind.Long) {
             return Long.MIN_VALUE;
         } else {
             throw new UnsupportedOperationException();
         }
     }
 
-    private static long maxValue(RiKind kind) {
-        if (kind == RiKind.Int) {
+    private static long maxValue(Kind kind) {
+        if (kind == Kind.Int) {
             return Integer.MAX_VALUE;
-        } else if (kind == RiKind.Long) {
+        } else if (kind == Kind.Long) {
             return Long.MAX_VALUE;
         } else {
             throw new UnsupportedOperationException();

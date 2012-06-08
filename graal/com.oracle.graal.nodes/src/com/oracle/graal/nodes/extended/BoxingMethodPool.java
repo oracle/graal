@@ -31,9 +31,9 @@ public class BoxingMethodPool {
 
     private final Set<RiMethod> specialMethods = new HashSet<>();
     private final RiRuntime runtime;
-    private final RiResolvedMethod[] boxingMethods = new RiResolvedMethod[RiKind.values().length];
-    private final RiResolvedMethod[] unboxingMethods = new RiResolvedMethod[RiKind.values().length];
-    private final RiResolvedField[] boxFields = new RiResolvedField[RiKind.values().length];
+    private final RiResolvedMethod[] boxingMethods = new RiResolvedMethod[Kind.values().length];
+    private final RiResolvedMethod[] unboxingMethods = new RiResolvedMethod[Kind.values().length];
+    private final RiResolvedField[] boxFields = new RiResolvedField[Kind.values().length];
 
     public BoxingMethodPool(RiRuntime runtime) {
         this.runtime = runtime;
@@ -42,14 +42,14 @@ public class BoxingMethodPool {
 
     private void initialize() {
         try {
-            initialize(RiKind.Boolean, Boolean.class, "booleanValue");
-            initialize(RiKind.Byte, Byte.class, "byteValue");
-            initialize(RiKind.Char, Character.class, "charValue");
-            initialize(RiKind.Short, Short.class, "shortValue");
-            initialize(RiKind.Int, Integer.class, "intValue");
-            initialize(RiKind.Long, Long.class, "longValue");
-            initialize(RiKind.Float, Float.class, "floatValue");
-            initialize(RiKind.Double, Double.class, "doubleValue");
+            initialize(Kind.Boolean, Boolean.class, "booleanValue");
+            initialize(Kind.Byte, Byte.class, "byteValue");
+            initialize(Kind.Char, Character.class, "charValue");
+            initialize(Kind.Short, Short.class, "shortValue");
+            initialize(Kind.Int, Integer.class, "intValue");
+            initialize(Kind.Long, Long.class, "longValue");
+            initialize(Kind.Float, Float.class, "floatValue");
+            initialize(Kind.Double, Double.class, "doubleValue");
         } catch (SecurityException e) {
             throw new RuntimeException(e);
         } catch (NoSuchMethodException e) {
@@ -57,7 +57,7 @@ public class BoxingMethodPool {
         }
     }
 
-    private void initialize(RiKind kind, Class<?> type, String unboxMethod) throws SecurityException, NoSuchMethodException {
+    private void initialize(Kind kind, Class<?> type, String unboxMethod) throws SecurityException, NoSuchMethodException {
 
         // Get boxing method from runtime.
         RiResolvedMethod boxingMethod = runtime.getRiMethod(type.getDeclaredMethod("valueOf", kind.toJavaClass()));
@@ -81,22 +81,22 @@ public class BoxingMethodPool {
     }
 
     public boolean isBoxingMethod(RiResolvedMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind() == RiKind.Object;
+        return isSpecialMethod(method) && method.signature().returnKind() == Kind.Object;
     }
 
     public boolean isUnboxingMethod(RiResolvedMethod method) {
-        return isSpecialMethod(method) && method.signature().returnKind() != RiKind.Object;
+        return isSpecialMethod(method) && method.signature().returnKind() != Kind.Object;
     }
 
-    public RiResolvedMethod getBoxingMethod(RiKind kind) {
+    public RiResolvedMethod getBoxingMethod(Kind kind) {
         return boxingMethods[kind.ordinal()];
     }
 
-    public RiResolvedMethod getUnboxingMethod(RiKind kind) {
+    public RiResolvedMethod getUnboxingMethod(Kind kind) {
         return unboxingMethods[kind.ordinal()];
     }
 
-    public RiResolvedField getBoxField(RiKind kind) {
+    public RiResolvedField getBoxField(Kind kind) {
         return boxFields[kind.ordinal()];
     }
 }

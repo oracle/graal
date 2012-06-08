@@ -46,7 +46,7 @@ public final class IsTypeNode extends BooleanNode implements Canonicalizable, LI
      */
     public IsTypeNode(ValueNode objectClass, RiResolvedType type) {
         super(StampFactory.condition());
-        assert objectClass == null || objectClass.kind() == RiKind.Object;
+        assert objectClass == null || objectClass.kind() == Kind.Object;
         this.type = type;
         this.objectClass = objectClass;
     }

@@ -48,7 +48,7 @@ public class BaseUnresolvedField implements RiField {
         return type;
     }
 
-    public RiKind kind() {
+    public Kind kind() {
         return type.kind();
     }
 

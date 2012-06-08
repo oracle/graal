@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.*;
 
 public abstract class FloatArithmeticNode extends ArithmeticNode {
 
-    public FloatArithmeticNode(RiKind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
+    public FloatArithmeticNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
     }
 

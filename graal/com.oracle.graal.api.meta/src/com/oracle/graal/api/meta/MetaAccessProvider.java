@@ -31,7 +31,7 @@ public interface MetaAccessProvider {
     /**
      * Returns the RiType object representing the base type for the given kind.
      */
-    RiResolvedType asRiType(RiKind kind);
+    RiResolvedType asRiType(Kind kind);
 
     /**
      * Returns the type of the given constant object.
