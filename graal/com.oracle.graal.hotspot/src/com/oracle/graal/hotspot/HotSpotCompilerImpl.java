@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.cri.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.ri.*;
@@ -200,8 +201,12 @@ public final class HotSpotCompilerImpl implements GraalRuntime {
         return "HotSpotGraalRuntime";
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
+        if (clazz == ExtendedRiRuntime.class) {
+            return (T) getRuntime();
+        }
         return null;
     }
 }

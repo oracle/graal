@@ -27,6 +27,7 @@ import java.util.concurrent.*;
 
 import junit.framework.*;
 
+import com.oracle.graal.api.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -59,13 +60,11 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class GraphTest {
 
-    protected final GraalCompiler graalCompiler;
     protected final ExtendedRiRuntime runtime;
 
     public GraphTest() {
         Debug.enable();
-        this.graalCompiler = GraalAccess.getGraalCompiler();
-        this.runtime = graalCompiler.runtime;
+        this.runtime = Graal.getRuntime().getCapability(ExtendedRiRuntime.class);
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {
@@ -158,7 +157,7 @@ public abstract class GraphTest {
     }
 
     protected RiCompiledMethod addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
-        return Debug.scope("CodeInstall", new Object[] {graalCompiler, method}, new Callable<RiCompiledMethod>() {
+        return Debug.scope("CodeInstall", new Object[] {method}, new Callable<RiCompiledMethod>() {
             @Override
             public RiCompiledMethod call() throws Exception {
                 final RiCodeInfo[] info = Debug.isDumpEnabled() ? new RiCodeInfo[1] : null;
