@@ -160,7 +160,7 @@ public abstract class GraphTest {
         return Debug.scope("CodeInstall", new Object[] {method}, new Callable<RiCompiledMethod>() {
             @Override
             public RiCompiledMethod call() throws Exception {
-                final RiCodeInfo[] info = Debug.isDumpEnabled() ? new RiCodeInfo[1] : null;
+                final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
                 RiCompiledMethod installedMethod = runtime.addMethod(method, tm, info);
                 if (info != null) {
                     Debug.dump(info[0], "After code installation");

@@ -27,9 +27,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Implementation of {@link RiCodeInfo} for HotSpot.
+ * Implementation of {@link CodeInfo} for HotSpot.
  */
-public class HotSpotCodeInfo extends CompilerObject implements RiCodeInfo {
+public class HotSpotCodeInfo extends CompilerObject implements CodeInfo {
 
     private static final long serialVersionUID = -6766490427732498354L;
 

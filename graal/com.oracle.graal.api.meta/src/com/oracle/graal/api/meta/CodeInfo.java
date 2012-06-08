@@ -27,7 +27,7 @@ package com.oracle.graal.api.meta;
  * This encapsulated details are only for informational purposes.
  * At any time, the runtime may invalidate the underlying code (e.g. due to deopt etc).
  */
-public interface RiCodeInfo {
+public interface CodeInfo {
 
     /**
      * Gets the start address of this installed code.

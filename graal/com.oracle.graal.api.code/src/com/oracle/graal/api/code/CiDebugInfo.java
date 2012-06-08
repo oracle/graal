@@ -24,8 +24,6 @@ package com.oracle.graal.api.code;
 
 import java.io.*;
 
-import com.oracle.graal.api.meta.*;
-
 /**
  * Represents the debugging information for a particular place in the code,
  * which includes the code position, a reference map, and deoptimization information.

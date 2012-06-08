@@ -151,7 +151,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         Debug.scope("CodeInstall", new Object[] {new DebugDumpScope(String.valueOf(id), true), compiler.getCompiler(), method}, new Runnable() {
             @Override
             public void run() {
-                final RiCodeInfo[] info = Debug.isDumpEnabled() ? new RiCodeInfo[1] : null;
+                final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
                 compiler.getRuntime().installMethod(method, tm, info);
                 if (info != null) {
                     Debug.dump(info[0], "After code installation");

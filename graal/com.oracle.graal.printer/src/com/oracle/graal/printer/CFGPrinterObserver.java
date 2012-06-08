@@ -140,7 +140,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (object instanceof CiTargetMethod) {
             final CiTargetMethod tm = (CiTargetMethod) object;
             final byte[] code = Arrays.copyOf(tm.targetCode(), tm.targetCodeSize());
-            RiCodeInfo info = new RiCodeInfo() {
+            CodeInfo info = new CodeInfo() {
                 public RiResolvedMethod method() {
                     return null;
                 }
@@ -152,8 +152,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
             };
             cfgPrinter.printMachineCode(runtime.disassemble(info, tm), message);
-        } else if (object instanceof RiCodeInfo) {
-            cfgPrinter.printMachineCode(runtime.disassemble((RiCodeInfo) object, null), message);
+        } else if (object instanceof CodeInfo) {
+            cfgPrinter.printMachineCode(runtime.disassemble((CodeInfo) object, null), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 

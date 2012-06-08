@@ -81,7 +81,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
     }
 
     @Override
-    public String disassemble(RiCodeInfo info, CiTargetMethod tm) {
+    public String disassemble(CodeInfo info, CiTargetMethod tm) {
         byte[] code = info.code();
         CiTarget target = compiler.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, info.start(), target.arch.name, target.wordSize * 8);
@@ -465,7 +465,7 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return (RiResolvedMethod) compiler.getCompilerToVM().getRiMethod(reflectionMethod);
     }
 
-    private static HotSpotCodeInfo makeInfo(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+    private static HotSpotCodeInfo makeInfo(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = null;
         if (info != null && info.length > 0) {
             hsInfo = new HotSpotCodeInfo(code, (HotSpotMethodResolved) method);
@@ -474,13 +474,13 @@ public class HotSpotRuntime implements ExtendedRiRuntime {
         return hsInfo;
     }
 
-    public void installMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+    public void installMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), true, hsInfo);
     }
 
     @Override
-    public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info) {
+    public RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info) {
         HotSpotCodeInfo hsInfo = makeInfo(method, code, info);
         return compiler.getCompilerToVM().installMethod(new HotSpotTargetMethod((HotSpotMethodResolved) method, code), false, hsInfo);
     }

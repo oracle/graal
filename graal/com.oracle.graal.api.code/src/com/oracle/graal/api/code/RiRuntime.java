@@ -41,7 +41,7 @@ public interface RiRuntime extends MetaAccessProvider {
      * @param code the code that should be disassembled
      * @return a disassembly. This will be of length 0 if the runtime does not support disassembling.
      */
-    String disassemble(RiCodeInfo code, CiTargetMethod tm);
+    String disassemble(CodeInfo code, CiTargetMethod tm);
 
     /**
      * Returns the disassembly of the given method in a {@code javap}-like format.
@@ -92,7 +92,7 @@ public interface RiRuntime extends MetaAccessProvider {
      *        Ignored if null, otherwise the info is written to index 0 of this array.
      * @return a reference to the compiled and ready-to-run code
      */
-    RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, RiCodeInfo[] info);
+    RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.
