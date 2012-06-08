@@ -22,7 +22,41 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.lang.reflect.*;
+
 
 public interface MetaAccessProvider {
 
+
+    /**
+     * Returns the RiType object representing the base type for the given kind.
+     */
+    RiResolvedType asRiType(RiKind kind);
+
+    /**
+     * Returns the type of the given constant object.
+     *
+     * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
+     */
+    RiResolvedType getTypeOf(RiConstant constant);
+
+
+    RiResolvedType getType(Class<?> clazz);
+
+    /**
+     * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to the compiler.
+     *
+     * @return true if the two parameters represent the same runtime object, false otherwise
+     */
+    boolean areConstantObjectsEqual(RiConstant x, RiConstant y);
+
+    /**
+     * Provides the {@link RiMethod} for a {@link Method} obtained via reflection.
+     */
+    RiResolvedMethod getRiMethod(Method reflectionMethod);
+
+    /**
+     * Gets the length of the array that is wrapped in a CiConstant object.
+     */
+    int getArrayLength(RiConstant array);
 }

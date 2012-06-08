@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.api.code;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 
 /**
  * Encapsulates the main functionality of the runtime for the compiler, including access
  * to constant pools, OSR frames, inlining requirements, and runtime calls such as checkcast.
 s */
-public interface RiRuntime {
+public interface RiRuntime extends MetaAccessProvider {
 
     /**
      * Get the size in bytes for locking information on the stack.
@@ -52,28 +50,6 @@ public interface RiRuntime {
      * @return the disassembly. This will be of length 0 if the runtime does not support disassembling.
      */
     String disassemble(RiResolvedMethod method);
-
-    /**
-     * Returns the RiType object representing the base type for the given kind.
-     */
-    RiResolvedType asRiType(RiKind kind);
-
-    /**
-     * Returns the type of the given constant object.
-     *
-     * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
-     */
-    RiResolvedType getTypeOf(RiConstant constant);
-
-
-    RiResolvedType getType(Class<?> clazz);
-
-    /**
-     * Used by the canonicalizer to compare objects, since a given runtime might not want to expose the real objects to the compiler.
-     *
-     * @return true if the two parameters represent the same runtime object, false otherwise
-     */
-    boolean areConstantObjectsEqual(RiConstant x, RiConstant y);
 
     /**
      * Gets the register configuration to use when compiling a given method.
@@ -98,11 +74,6 @@ public interface RiRuntime {
     int getMinimumOutgoingSize();
 
     /**
-     * Gets the length of the array that is wrapped in a CiConstant object.
-     */
-    int getArrayLength(RiConstant array);
-
-    /**
      * Performs any runtime-specific conversion on the object used to describe the target of a call.
      */
     Object asCallTarget(Object target);
@@ -112,11 +83,6 @@ public interface RiRuntime {
      * when not known or not applicable. Intended for determining the required size of address/offset fields.
      */
     long getMaxCallTargetOffset(CiRuntimeCall rtcall);
-
-    /**
-     * Provides the {@link RiMethod} for a {@link Method} obtained via reflection.
-     */
-    RiResolvedMethod getRiMethod(Method reflectionMethod);
 
     /**
      * Adds the given machine code as an implementation of the given method without making it the default implementation.
