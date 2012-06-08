@@ -28,9 +28,9 @@ import com.oracle.graal.nodes.calc.*;
 
 public interface ScalarTypeFeedbackTool {
 
-    void constantBound(Condition condition, RiConstant constant);
+    void constantBound(Condition condition, Constant constant);
 
     void valueBound(Condition condition, ValueNode otherValue, ScalarTypeQuery type);
 
-    void setTranslated(RiConstant delta, ScalarTypeQuery old);
+    void setTranslated(Constant delta, ScalarTypeQuery old);
 }

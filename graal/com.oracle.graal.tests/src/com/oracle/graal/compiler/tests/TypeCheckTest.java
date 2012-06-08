@@ -37,7 +37,7 @@ public abstract class TypeCheckTest extends GraphTest {
 
     protected abstract void replaceProfile(StructuredGraph graph, RiTypeProfile profile);
 
-    private RiCompiledMethod compile(Method method, RiTypeProfile profile) {
+    private InstalledCode compile(Method method, RiTypeProfile profile) {
         final StructuredGraph graph = parse(method);
         replaceProfile(graph, profile);
         return compile(runtime.getRiMethod(method), graph);
@@ -66,7 +66,7 @@ public abstract class TypeCheckTest extends GraphTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        RiCompiledMethod compiledMethod = compile(method, profile);
+        InstalledCode compiledMethod = compile(method, profile);
         compiledMethod.method();
 
         if (exception != null) {

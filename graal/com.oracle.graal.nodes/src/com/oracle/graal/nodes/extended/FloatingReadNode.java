@@ -66,7 +66,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
                 Object value = object().asConstant().asObject();
                 long displacement = location().displacement();
                 RiKind kind = location().kind();
-                RiConstant constant = kind.readUnsafeConstant(value, displacement);
+                Constant constant = kind.readUnsafeConstant(value, displacement);
                 if (constant != null) {
                     return ConstantNode.forCiConstant(constant, runtime, graph());
                 }

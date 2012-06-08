@@ -109,7 +109,7 @@ public class CanonicalizerPhase extends Phase {
          * Determines if a given constant is an object/array whose current
          * fields/elements will never change.
          */
-        boolean apply(RiConstant constant);
+        boolean apply(Constant constant);
     }
 
     private void processWorkSet(StructuredGraph graph) {
@@ -269,7 +269,7 @@ public class CanonicalizerPhase extends Phase {
         }
 
         @Override
-        public boolean isImmutable(RiConstant objectConstant) {
+        public boolean isImmutable(Constant objectConstant) {
             return immutabilityPredicate != null && immutabilityPredicate.apply(objectConstant);
         }
     }

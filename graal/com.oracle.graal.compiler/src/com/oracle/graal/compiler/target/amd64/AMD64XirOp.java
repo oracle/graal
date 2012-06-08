@@ -195,7 +195,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiAddress src;
                     if (isConstant(index)) {
                         assert index.kind == RiKind.Int;
-                        RiConstant constantIndex = (RiConstant) index;
+                        Constant constantIndex = (Constant) index;
                         src = new CiAddress(inst.kind, pointer, constantIndex.asInt() * scale.value + displacement);
                     } else {
                         src = new CiAddress(inst.kind, pointer, index, scale, displacement);
@@ -239,7 +239,7 @@ public class AMD64XirOp extends LIRXirInstruction {
                     CiAddress dst;
                     if (isConstant(index)) {
                         assert index.kind == RiKind.Int;
-                        RiConstant constantIndex = (RiConstant) index;
+                        Constant constantIndex = (Constant) index;
                         dst = new CiAddress(inst.kind, pointer, IllegalValue, scale, constantIndex.asInt() * scale.value + displacement);
                     } else {
                         dst = new CiAddress(inst.kind, pointer, index, scale, displacement);
@@ -371,8 +371,8 @@ public class AMD64XirOp extends LIRXirInstruction {
                     RiValue offset = operands[inst.y().index];
                     RiValue bit = operands[inst.z().index];
                     assert isConstant(offset) && isConstant(bit);
-                    RiConstant constantOffset = (RiConstant) offset;
-                    RiConstant constantBit = (RiConstant) bit;
+                    Constant constantOffset = (Constant) offset;
+                    Constant constantBit = (Constant) bit;
                     CiAddress src = new CiAddress(inst.kind, pointer, constantOffset.asInt());
                     masm.btli(src, constantBit.asInt());
                     masm.jcc(ConditionFlag.aboveEqual, label);

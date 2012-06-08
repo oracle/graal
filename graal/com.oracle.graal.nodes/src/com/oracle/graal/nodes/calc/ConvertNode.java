@@ -89,7 +89,7 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (value instanceof ConstantNode) {
-            RiConstant c = ((ConstantNode) value).asConstant();
+            Constant c = ((ConstantNode) value).asConstant();
             switch (opcode) {
                 case I2L: return ConstantNode.forLong(c.asInt(), graph());
                 case L2I: return ConstantNode.forInt((int) c.asLong(), graph());

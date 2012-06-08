@@ -57,13 +57,13 @@ public interface VMToCompiler {
 
     RiType createRiTypeUnresolved(String name);
 
-    RiConstant createCiConstant(RiKind kind, long value);
+    Constant createCiConstant(RiKind kind, long value);
 
-    RiConstant createCiConstantFloat(float value);
+    Constant createCiConstantFloat(float value);
 
-    RiConstant createCiConstantDouble(double value);
+    Constant createCiConstantDouble(double value);
 
-    RiConstant createCiConstantObject(Object object);
+    Constant createCiConstantObject(Object object);
 
     PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts);
 }

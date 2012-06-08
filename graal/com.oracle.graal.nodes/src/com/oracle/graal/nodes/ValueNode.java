@@ -98,10 +98,10 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
 
     /**
      * Convert this value to a constant if it is a constant, otherwise return null.
-     * @return the {@link RiConstant} represented by this value if it is a constant; {@code null}
+     * @return the {@link Constant} represented by this value if it is a constant; {@code null}
      * otherwise
      */
-    public final RiConstant asConstant() {
+    public final Constant asConstant() {
         if (this instanceof ConstantNode) {
             return ((ConstantNode) this).value;
         }

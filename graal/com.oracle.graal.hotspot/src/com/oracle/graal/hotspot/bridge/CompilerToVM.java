@@ -87,11 +87,11 @@ public interface CompilerToVM {
 
     RiType RiType_superType(HotSpotTypeResolved klass);
 
-    int getArrayLength(RiConstant array);
+    int getArrayLength(Constant array);
 
-    boolean compareConstantObjects(RiConstant x, RiConstant y);
+    boolean compareConstantObjects(Constant x, Constant y);
 
-    RiType getRiType(RiConstant constant);
+    RiType getRiType(Constant constant);
 
     RiResolvedField[] RiType_fields(HotSpotTypeResolved klass);
 

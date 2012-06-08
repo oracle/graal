@@ -170,7 +170,7 @@ public class DebugInfoBuilder {
         } else if (value != null) {
             Debug.metric("StateVariables").increment();
             RiValue operand = nodeOperands.get(value);
-            assert operand != null && (operand instanceof Variable || operand instanceof RiConstant);
+            assert operand != null && (operand instanceof Variable || operand instanceof Constant);
             return operand;
 
         } else {

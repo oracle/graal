@@ -317,7 +317,7 @@ public final class FrameMap {
     /**
      * Marks the specified location as a reference in the reference map of the debug information.
      * The tracked location can be a {@link CiRegisterValue} or a {@link CiStackSlot}. Note that a
-     * {@link RiConstant} is automatically tracked.
+     * {@link Constant} is automatically tracked.
      *
      * @param location The location to be added to the reference map.
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
@@ -341,7 +341,7 @@ public final class FrameMap {
     /**
      * Clears the specified location as a reference in the reference map of the debug information.
      * The tracked location can be a {@link CiRegisterValue} or a {@link CiStackSlot}. Note that a
-     * {@link RiConstant} is automatically tracked.
+     * {@link Constant} is automatically tracked.
      *
      * @param location The location to be removed from the reference map.
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.

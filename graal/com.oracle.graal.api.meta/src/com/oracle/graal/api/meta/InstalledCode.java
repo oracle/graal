@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * Represents a compiled instance of a method. It may have been invalidated or removed in the meantime.
  */
-public interface RiCompiledMethod {
+public interface InstalledCode {
 
     public abstract class MethodInvalidatedException extends RuntimeException {
 

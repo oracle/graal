@@ -27,33 +27,33 @@ package com.oracle.graal.api.meta;
  * within the compiler and across the compiler/runtime interface. Exports a set of {@code CiConstant}
  * instances that represent frequently used constant values, such as {@link #ZERO}.
  */
-public final class RiConstant extends RiValue {
+public final class Constant extends RiValue {
     private static final long serialVersionUID = -6355452536852663986L;
 
-    private static final RiConstant[] INT_CONSTANT_CACHE = new RiConstant[100];
+    private static final Constant[] INT_CONSTANT_CACHE = new Constant[100];
     static {
         for (int i = 0; i < INT_CONSTANT_CACHE.length; ++i) {
-            INT_CONSTANT_CACHE[i] = new RiConstant(RiKind.Int, i);
+            INT_CONSTANT_CACHE[i] = new Constant(RiKind.Int, i);
         }
     }
 
-    public static final RiConstant NULL_OBJECT = new RiConstant(RiKind.Object, null);
-    public static final RiConstant INT_MINUS_1 = new RiConstant(RiKind.Int, -1);
-    public static final RiConstant INT_0 = forInt(0);
-    public static final RiConstant INT_1 = forInt(1);
-    public static final RiConstant INT_2 = forInt(2);
-    public static final RiConstant INT_3 = forInt(3);
-    public static final RiConstant INT_4 = forInt(4);
-    public static final RiConstant INT_5 = forInt(5);
-    public static final RiConstant LONG_0 = new RiConstant(RiKind.Long, 0L);
-    public static final RiConstant LONG_1 = new RiConstant(RiKind.Long, 1L);
-    public static final RiConstant FLOAT_0 = new RiConstant(RiKind.Float, Float.floatToRawIntBits(0.0F));
-    public static final RiConstant FLOAT_1 = new RiConstant(RiKind.Float, Float.floatToRawIntBits(1.0F));
-    public static final RiConstant FLOAT_2 = new RiConstant(RiKind.Float, Float.floatToRawIntBits(2.0F));
-    public static final RiConstant DOUBLE_0 = new RiConstant(RiKind.Double, Double.doubleToRawLongBits(0.0D));
-    public static final RiConstant DOUBLE_1 = new RiConstant(RiKind.Double, Double.doubleToRawLongBits(1.0D));
-    public static final RiConstant TRUE = new RiConstant(RiKind.Boolean, 1L);
-    public static final RiConstant FALSE = new RiConstant(RiKind.Boolean, 0L);
+    public static final Constant NULL_OBJECT = new Constant(RiKind.Object, null);
+    public static final Constant INT_MINUS_1 = new Constant(RiKind.Int, -1);
+    public static final Constant INT_0 = forInt(0);
+    public static final Constant INT_1 = forInt(1);
+    public static final Constant INT_2 = forInt(2);
+    public static final Constant INT_3 = forInt(3);
+    public static final Constant INT_4 = forInt(4);
+    public static final Constant INT_5 = forInt(5);
+    public static final Constant LONG_0 = new Constant(RiKind.Long, 0L);
+    public static final Constant LONG_1 = new Constant(RiKind.Long, 1L);
+    public static final Constant FLOAT_0 = new Constant(RiKind.Float, Float.floatToRawIntBits(0.0F));
+    public static final Constant FLOAT_1 = new Constant(RiKind.Float, Float.floatToRawIntBits(1.0F));
+    public static final Constant FLOAT_2 = new Constant(RiKind.Float, Float.floatToRawIntBits(2.0F));
+    public static final Constant DOUBLE_0 = new Constant(RiKind.Double, Double.doubleToRawLongBits(0.0D));
+    public static final Constant DOUBLE_1 = new Constant(RiKind.Double, Double.doubleToRawLongBits(1.0D));
+    public static final Constant TRUE = new Constant(RiKind.Boolean, 1L);
+    public static final Constant FALSE = new Constant(RiKind.Boolean, 0L);
 
     static {
         assert NULL_OBJECT.isDefaultValue();
@@ -91,7 +91,7 @@ public final class RiConstant extends RiValue {
      * @param kind the type of this constant
      * @param object the value of this constant
      */
-    private RiConstant(RiKind kind, Object object) {
+    private Constant(RiKind kind, Object object) {
         super(kind);
         this.object = object;
         this.primitive = 0L;
@@ -103,7 +103,7 @@ public final class RiConstant extends RiValue {
      * @param kind the type of this constant
      * @param primitive the value of this constant
      */
-    public RiConstant(RiKind kind, long primitive) {
+    public Constant(RiKind kind, long primitive) {
         super(kind);
         this.object = null;
         this.primitive = primitive;
@@ -175,7 +175,7 @@ public final class RiConstant extends RiValue {
         throw new IllegalArgumentException();
     }
 
-    private boolean valueEqual(RiConstant other, boolean ignoreKind) {
+    private boolean valueEqual(Constant other, boolean ignoreKind) {
         // must have equivalent kinds to be equal
         if (!ignoreKind && kind != other.kind) {
             return false;
@@ -303,7 +303,7 @@ public final class RiConstant extends RiValue {
      */
     @Override
     public boolean equals(Object o) {
-        return o == this || o instanceof RiConstant && valueEqual((RiConstant) o, false);
+        return o == this || o instanceof Constant && valueEqual((Constant) o, false);
     }
 
     /**
@@ -311,7 +311,7 @@ public final class RiConstant extends RiValue {
      * @param other the constant to compare for equality against this constant
      * @return {@code true} if this constant is equivalent to {@code other}
      */
-    public boolean equivalent(RiConstant other) {
+    public boolean equivalent(Constant other) {
         return other == this || valueEqual(other, false);
     }
 
@@ -337,7 +337,7 @@ public final class RiConstant extends RiValue {
      *
      * @return the default value for {@code kind}'s {@linkplain RiKind#stackKind() stack kind}
      */
-    public static RiConstant defaultValue(RiKind kind) {
+    public static Constant defaultValue(RiKind kind) {
         // Checkstyle: stop
         switch (kind.stackKind()) {
             case Int: return INT_0;
@@ -355,14 +355,14 @@ public final class RiConstant extends RiValue {
      * @param d the double value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forDouble(double d) {
+    public static Constant forDouble(double d) {
         if (Double.compare(0.0D, d) == 0) {
             return DOUBLE_0;
         }
         if (Double.compare(d, 1.0D) == 0) {
             return DOUBLE_1;
         }
-        return new RiConstant(RiKind.Double, Double.doubleToRawLongBits(d));
+        return new Constant(RiKind.Double, Double.doubleToRawLongBits(d));
     }
 
     /**
@@ -370,7 +370,7 @@ public final class RiConstant extends RiValue {
      * @param f the float value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forFloat(float f) {
+    public static Constant forFloat(float f) {
         if (Float.compare(f, 0.0F) == 0) {
             return FLOAT_0;
         }
@@ -380,7 +380,7 @@ public final class RiConstant extends RiValue {
         if (Float.compare(f, 2.0F) == 0) {
             return FLOAT_2;
         }
-        return new RiConstant(RiKind.Float, Float.floatToRawIntBits(f));
+        return new Constant(RiKind.Float, Float.floatToRawIntBits(f));
     }
 
     /**
@@ -388,8 +388,8 @@ public final class RiConstant extends RiValue {
      * @param i the long value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forLong(long i) {
-        return i == 0 ? LONG_0 : i == 1 ? LONG_1 : new RiConstant(RiKind.Long, i);
+    public static Constant forLong(long i) {
+        return i == 0 ? LONG_0 : i == 1 ? LONG_1 : new Constant(RiKind.Long, i);
     }
 
     /**
@@ -397,14 +397,14 @@ public final class RiConstant extends RiValue {
      * @param i the integer value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forInt(int i) {
+    public static Constant forInt(int i) {
         if (i == -1) {
             return INT_MINUS_1;
         }
         if (i >= 0 && i < INT_CONSTANT_CACHE.length) {
             return INT_CONSTANT_CACHE[i];
         }
-        return new RiConstant(RiKind.Int, i);
+        return new Constant(RiKind.Int, i);
     }
 
     /**
@@ -412,8 +412,8 @@ public final class RiConstant extends RiValue {
      * @param i the byte value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forByte(byte i) {
-        return new RiConstant(RiKind.Byte, i);
+    public static Constant forByte(byte i) {
+        return new Constant(RiKind.Byte, i);
     }
 
     /**
@@ -421,7 +421,7 @@ public final class RiConstant extends RiValue {
      * @param i the boolean value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forBoolean(boolean i) {
+    public static Constant forBoolean(boolean i) {
         return i ? TRUE : FALSE;
     }
 
@@ -430,8 +430,8 @@ public final class RiConstant extends RiValue {
      * @param i the char value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forChar(char i) {
-        return new RiConstant(RiKind.Char, i);
+    public static Constant forChar(char i) {
+        return new Constant(RiKind.Char, i);
     }
 
     /**
@@ -439,8 +439,8 @@ public final class RiConstant extends RiValue {
      * @param i the short value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forShort(short i) {
-        return new RiConstant(RiKind.Short, i);
+    public static Constant forShort(short i) {
+        return new Constant(RiKind.Short, i);
     }
 
     /**
@@ -448,8 +448,8 @@ public final class RiConstant extends RiValue {
      * @param i the address value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forJsr(int i) {
-        return new RiConstant(RiKind.Jsr, i);
+    public static Constant forJsr(int i) {
+        return new Constant(RiKind.Jsr, i);
     }
 
     /**
@@ -457,11 +457,11 @@ public final class RiConstant extends RiValue {
      * @param o the object value to box
      * @return a boxed copy of {@code value}
      */
-    public static RiConstant forObject(Object o) {
+    public static Constant forObject(Object o) {
         if (o == null) {
             return NULL_OBJECT;
         }
-        return new RiConstant(RiKind.Object, o);
+        return new Constant(RiKind.Object, o);
     }
 
     /**
@@ -471,7 +471,7 @@ public final class RiConstant extends RiValue {
      * @param value the Java boxed value: a Byte instance for CiKind Byte, etc.
      * @return the boxed copy of {@code value}
      */
-    public static RiConstant forBoxed(RiKind kind, Object value) {
+    public static Constant forBoxed(RiKind kind, Object value) {
         switch (kind) {
             case Boolean:
                 return forBoolean((Boolean) value);

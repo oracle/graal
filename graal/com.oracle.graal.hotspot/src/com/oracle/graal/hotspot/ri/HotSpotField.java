@@ -43,7 +43,7 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     private final RiType type;
     private final int offset;
     private final int accessFlags;
-    private RiConstant constant;                // Constant part only valid for static fields.
+    private Constant constant;                // Constant part only valid for static fields.
 
     public HotSpotField(RiResolvedType holder, String name, RiType type, int offset, int accessFlags) {
         this.holder = holder;
@@ -60,13 +60,13 @@ public class HotSpotField extends CompilerObject implements RiResolvedField {
     }
 
     @Override
-    public RiConstant constantValue(RiConstant receiver) {
+    public Constant constantValue(Constant receiver) {
         if (receiver == null) {
             assert Modifier.isStatic(accessFlags);
             if (constant == null) {
                 if (holder.isInitialized() && holder.toJava() != System.class) {
                     if (Modifier.isFinal(accessFlags()) || assumeStaticFieldsFinal(holder.toJava())) {
-                        RiConstant encoding = holder.getEncoding(Representation.StaticFields);
+                        Constant encoding = holder.getEncoding(Representation.StaticFields);
                         constant = this.kind().readUnsafeConstant(encoding.asObject(), offset);
                     }
                 }

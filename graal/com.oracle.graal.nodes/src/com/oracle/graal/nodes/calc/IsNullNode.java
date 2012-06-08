@@ -63,7 +63,7 @@ public final class IsNullNode extends BooleanNode implements Canonicalizable, LI
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        RiConstant constant = object().asConstant();
+        Constant constant = object().asConstant();
         if (constant != null) {
             assert constant.kind == RiKind.Object;
             return ConstantNode.forBoolean(constant.isNull(), graph());

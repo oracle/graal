@@ -166,8 +166,8 @@ public class ReplacingStreams {
             }
 
             // is the object a constant of object type?
-            if (obj.getClass() == RiConstant.class) {
-                RiConstant constant = (RiConstant) obj;
+            if (obj.getClass() == Constant.class) {
+                Constant constant = (Constant) obj;
                 if (constant.kind != RiKind.Object) {
                     return obj;
                 }
@@ -181,12 +181,12 @@ public class ReplacingStreams {
                 }
                 placeholder = objectMap.get(contents);
                 if (placeholder != null) {
-                    return RiConstant.forObject(placeholder);
+                    return Constant.forObject(placeholder);
                 }
                 if (contents instanceof Remote) {
-                    return RiConstant.forObject(createRemoteCallPlaceholder(contents));
+                    return Constant.forObject(createRemoteCallPlaceholder(contents));
                 }
-                return RiConstant.forObject(createDummyPlaceholder(contents));
+                return Constant.forObject(createDummyPlaceholder(contents));
             }
             return obj;
         }

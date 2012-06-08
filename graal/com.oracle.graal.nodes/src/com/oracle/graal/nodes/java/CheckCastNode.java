@@ -81,7 +81,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             }
         }
 
-        RiConstant constant = object().asConstant();
+        Constant constant = object().asConstant();
         if (constant != null) {
             assert constant.kind == RiKind.Object;
             if (constant.isNull()) {
@@ -101,7 +101,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     @Override
     public Result canonical(TypeFeedbackTool tool) {
         ObjectTypeQuery query = tool.queryObject(object());
-        if (query.constantBound(Condition.EQ, RiConstant.NULL_OBJECT)) {
+        if (query.constantBound(Condition.EQ, Constant.NULL_OBJECT)) {
             return new Result(object(), query);
         } else if (targetClass() != null) {
             if (query.declaredType(targetClass())) {

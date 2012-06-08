@@ -289,8 +289,8 @@ public final class GraphBuilderPhase extends Phase {
                 append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
                 frameState.push(RiKind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
             }
-        } else if (con instanceof RiConstant) {
-            RiConstant constant = (RiConstant) con;
+        } else if (con instanceof Constant) {
+            Constant constant = (Constant) con;
             frameState.push(constant.kind.stackKind(), appendConstant(constant));
         } else {
             throw new Error("lookupConstant returned an object of incorrect type");
@@ -545,13 +545,13 @@ public final class GraphBuilderPhase extends Phase {
     }
 
     private void genIfZero(Condition cond) {
-        ValueNode y = appendConstant(RiConstant.INT_0);
+        ValueNode y = appendConstant(Constant.INT_0);
         ValueNode x = frameState.ipop();
         ifNode(x, cond, y);
     }
 
     private void genIfNull(Condition cond) {
-        ValueNode y = appendConstant(RiConstant.NULL_OBJECT);
+        ValueNode y = appendConstant(Constant.NULL_OBJECT);
         ValueNode x = frameState.apop();
         ifNode(x, cond, y);
     }
@@ -636,7 +636,7 @@ public final class GraphBuilderPhase extends Phase {
         } else {
             ValueNode object = frameState.apop();
             append(currentGraph.add(new FixedGuardNode(currentGraph.unique(new IsNullNode(object)), RiDeoptReason.Unresolved, CiDeoptAction.InvalidateRecompile, graphId)));
-            frameState.apush(appendConstant(RiConstant.NULL_OBJECT));
+            frameState.apush(appendConstant(Constant.NULL_OBJECT));
         }
     }
 
@@ -655,7 +655,7 @@ public final class GraphBuilderPhase extends Phase {
             IfNode ifNode = currentGraph.add(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 0));
             append(ifNode);
             lastInstr = successor;
-            frameState.ipush(appendConstant(RiConstant.INT_0));
+            frameState.ipush(appendConstant(Constant.INT_0));
         }
     }
 
@@ -666,7 +666,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.apush(append(n));
         } else {
             append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
-            frameState.apush(appendConstant(RiConstant.NULL_OBJECT));
+            frameState.apush(appendConstant(Constant.NULL_OBJECT));
         }
     }
 
@@ -707,7 +707,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.apush(append(n));
         } else {
             append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
-            frameState.apush(appendConstant(RiConstant.NULL_OBJECT));
+            frameState.apush(appendConstant(Constant.NULL_OBJECT));
         }
 
     }
@@ -724,7 +724,7 @@ public final class GraphBuilderPhase extends Phase {
             frameState.apush(append(n));
         } else {
             append(currentGraph.add(new DeoptimizeNode(CiDeoptAction.InvalidateRecompile, RiDeoptReason.Unresolved, graphId)));
-            frameState.apush(appendConstant(RiConstant.NULL_OBJECT));
+            frameState.apush(appendConstant(Constant.NULL_OBJECT));
         }
     }
 
@@ -821,7 +821,7 @@ public final class GraphBuilderPhase extends Phase {
     private void genGetStatic(RiField field) {
         RiType holder = field.holder();
         boolean isInitialized = (field instanceof RiResolvedField) && ((RiResolvedType) holder).isInitialized();
-        RiConstant constantValue = null;
+        Constant constantValue = null;
         if (isInitialized) {
             constantValue = ((RiResolvedField) field).constantValue(null);
         }
@@ -1096,7 +1096,7 @@ public final class GraphBuilderPhase extends Phase {
         append(lookupSwitch);
     }
 
-    private ConstantNode appendConstant(RiConstant constant) {
+    private ConstantNode appendConstant(Constant constant) {
         return ConstantNode.forCiConstant(constant, runtime, currentGraph);
     }
 
@@ -1514,23 +1514,23 @@ public final class GraphBuilderPhase extends Phase {
         // Checkstyle: stop
         switch (opcode) {
             case NOP            : /* nothing to do */ break;
-            case ACONST_NULL    : frameState.apush(appendConstant(RiConstant.NULL_OBJECT)); break;
-            case ICONST_M1      : frameState.ipush(appendConstant(RiConstant.INT_MINUS_1)); break;
-            case ICONST_0       : frameState.ipush(appendConstant(RiConstant.INT_0)); break;
-            case ICONST_1       : frameState.ipush(appendConstant(RiConstant.INT_1)); break;
-            case ICONST_2       : frameState.ipush(appendConstant(RiConstant.INT_2)); break;
-            case ICONST_3       : frameState.ipush(appendConstant(RiConstant.INT_3)); break;
-            case ICONST_4       : frameState.ipush(appendConstant(RiConstant.INT_4)); break;
-            case ICONST_5       : frameState.ipush(appendConstant(RiConstant.INT_5)); break;
-            case LCONST_0       : frameState.lpush(appendConstant(RiConstant.LONG_0)); break;
-            case LCONST_1       : frameState.lpush(appendConstant(RiConstant.LONG_1)); break;
-            case FCONST_0       : frameState.fpush(appendConstant(RiConstant.FLOAT_0)); break;
-            case FCONST_1       : frameState.fpush(appendConstant(RiConstant.FLOAT_1)); break;
-            case FCONST_2       : frameState.fpush(appendConstant(RiConstant.FLOAT_2)); break;
-            case DCONST_0       : frameState.dpush(appendConstant(RiConstant.DOUBLE_0)); break;
-            case DCONST_1       : frameState.dpush(appendConstant(RiConstant.DOUBLE_1)); break;
-            case BIPUSH         : frameState.ipush(appendConstant(RiConstant.forInt(stream.readByte()))); break;
-            case SIPUSH         : frameState.ipush(appendConstant(RiConstant.forInt(stream.readShort()))); break;
+            case ACONST_NULL    : frameState.apush(appendConstant(Constant.NULL_OBJECT)); break;
+            case ICONST_M1      : frameState.ipush(appendConstant(Constant.INT_MINUS_1)); break;
+            case ICONST_0       : frameState.ipush(appendConstant(Constant.INT_0)); break;
+            case ICONST_1       : frameState.ipush(appendConstant(Constant.INT_1)); break;
+            case ICONST_2       : frameState.ipush(appendConstant(Constant.INT_2)); break;
+            case ICONST_3       : frameState.ipush(appendConstant(Constant.INT_3)); break;
+            case ICONST_4       : frameState.ipush(appendConstant(Constant.INT_4)); break;
+            case ICONST_5       : frameState.ipush(appendConstant(Constant.INT_5)); break;
+            case LCONST_0       : frameState.lpush(appendConstant(Constant.LONG_0)); break;
+            case LCONST_1       : frameState.lpush(appendConstant(Constant.LONG_1)); break;
+            case FCONST_0       : frameState.fpush(appendConstant(Constant.FLOAT_0)); break;
+            case FCONST_1       : frameState.fpush(appendConstant(Constant.FLOAT_1)); break;
+            case FCONST_2       : frameState.fpush(appendConstant(Constant.FLOAT_2)); break;
+            case DCONST_0       : frameState.dpush(appendConstant(Constant.DOUBLE_0)); break;
+            case DCONST_1       : frameState.dpush(appendConstant(Constant.DOUBLE_1)); break;
+            case BIPUSH         : frameState.ipush(appendConstant(Constant.forInt(stream.readByte()))); break;
+            case SIPUSH         : frameState.ipush(appendConstant(Constant.forInt(stream.readShort()))); break;
             case LDC            : // fall through
             case LDC_W          : // fall through
             case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;

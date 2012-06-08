@@ -58,7 +58,7 @@ public class AMD64DeoptimizationStub extends AMD64Code {
         if (GraalOptions.CreateDeoptInfo && deoptInfo != null) {
             masm.nop();
             keepAlive.add(deoptInfo.toString());
-            AMD64Move.move(tasm, masm, scratch.asValue(), RiConstant.forObject(deoptInfo));
+            AMD64Move.move(tasm, masm, scratch.asValue(), Constant.forObject(deoptInfo));
             // TODO Make this an explicit calling convention instead of using a scratch register
             AMD64Call.directCall(tasm, masm, CiRuntimeCall.SetDeoptInfo, info);
         }

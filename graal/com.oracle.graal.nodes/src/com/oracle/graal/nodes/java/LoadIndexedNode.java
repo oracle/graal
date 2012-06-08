@@ -64,7 +64,7 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Canonica
     public ValueNode canonical(CanonicalizerTool tool) {
         RiRuntime runtime = tool.runtime();
         if (runtime != null && index().isConstant() && array().isConstant() && !array().isNullConstant()) {
-            RiConstant arrayConst = array().asConstant();
+            Constant arrayConst = array().asConstant();
             if (tool.isImmutable(arrayConst)) {
                 int index = index().asConstant().asInt();
                 Object array = arrayConst.asObject();

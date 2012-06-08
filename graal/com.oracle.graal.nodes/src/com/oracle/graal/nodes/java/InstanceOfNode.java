@@ -104,7 +104,7 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
             }
         }
 
-        RiConstant constant = object().asConstant();
+        Constant constant = object().asConstant();
         if (constant != null) {
             assert constant.kind == RiKind.Object;
             if (constant.isNull()) {
@@ -124,13 +124,13 @@ public final class InstanceOfNode extends BooleanNode implements Canonicalizable
     @Override
     public Result canonical(TypeFeedbackTool tool) {
         ObjectTypeQuery query = tool.queryObject(object());
-        if (query.constantBound(Condition.EQ, RiConstant.NULL_OBJECT)) {
+        if (query.constantBound(Condition.EQ, Constant.NULL_OBJECT)) {
             return new Result(ConstantNode.forBoolean(false, graph()), query);
         } else if (targetClass() != null) {
             if (query.notDeclaredType(targetClass())) {
                 return new Result(ConstantNode.forBoolean(false, graph()), query);
             }
-            if (query.constantBound(Condition.NE, RiConstant.NULL_OBJECT)) {
+            if (query.constantBound(Condition.NE, Constant.NULL_OBJECT)) {
                 if (query.declaredType(targetClass())) {
                     return new Result(ConstantNode.forBoolean(true, graph()), query);
                 }

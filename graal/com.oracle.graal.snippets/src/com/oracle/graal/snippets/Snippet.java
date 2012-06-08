@@ -70,7 +70,7 @@ public @interface Snippet {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    public @interface Constant {
+    public @interface ConstantParameter {
         /**
          * The name of this constant.
          */

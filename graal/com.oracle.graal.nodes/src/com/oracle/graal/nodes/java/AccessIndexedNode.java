@@ -70,6 +70,6 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements TypeF
 
     @Override
     public void typeFeedback(TypeFeedbackTool tool) {
-        tool.addScalar(index()).constantBound(Condition.GE, RiConstant.INT_0);
+        tool.addScalar(index()).constantBound(Condition.GE, Constant.INT_0);
     }
 }

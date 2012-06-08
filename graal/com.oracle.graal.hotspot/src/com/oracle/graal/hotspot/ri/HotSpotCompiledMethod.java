@@ -34,7 +34,7 @@ import com.oracle.graal.hotspot.*;
  * The nmethod also stores a weak reference to the HotSpotCompiledMethod
  * instance which is necessary to keep the nmethod from being unloaded.
  */
-public class HotSpotCompiledMethod extends CompilerObject implements RiCompiledMethod {
+public class HotSpotCompiledMethod extends CompilerObject implements InstalledCode {
 
     private static final long serialVersionUID = 156632908220561612L;
 

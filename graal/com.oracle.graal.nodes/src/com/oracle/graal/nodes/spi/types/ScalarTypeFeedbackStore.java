@@ -39,7 +39,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         }
 
         @Override
-        public boolean constantBound(Condition condition, RiConstant constant) {
+        public boolean constantBound(Condition condition, Constant constant) {
             if (constant.kind == RiKind.Int || constant.kind == RiKind.Long) {
                 switch (condition) {
                     case EQ:
@@ -156,7 +156,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
     }
 
     @Override
-    public void constantBound(Condition condition, RiConstant constant) {
+    public void constantBound(Condition condition, Constant constant) {
         ConstantBound newBound = createBounds(condition, constant);
         if (newBound != null) {
             if (constantBounds.join(newBound)) {
@@ -165,7 +165,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
         }
     }
 
-    private static ConstantBound createBounds(Condition condition, RiConstant constant) {
+    private static ConstantBound createBounds(Condition condition, Constant constant) {
         ConstantBound newBound;
         if (constant.kind == RiKind.Int || constant.kind == RiKind.Long) {
             switch (condition) {
@@ -236,39 +236,39 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
             case LE:
             case LT:
                 simpleValueBound(condition, otherValue);
-                constantBound(condition, new RiConstant(kind, other.constantBounds.upperBound));
+                constantBound(condition, new Constant(kind, other.constantBounds.upperBound));
                 break;
             case GE:
             case GT:
                 simpleValueBound(condition, otherValue);
-                constantBound(condition, new RiConstant(kind, other.constantBounds.lowerBound));
+                constantBound(condition, new Constant(kind, other.constantBounds.lowerBound));
                 break;
             case BT:
                 if (other.constantBounds.lowerBound >= 0) {
                     simpleValueBound(Condition.LT, otherValue);
-                    constantBound(Condition.GE, new RiConstant(kind, 0));
-                    constantBound(Condition.LT, new RiConstant(kind, other.constantBounds.upperBound));
+                    constantBound(Condition.GE, new Constant(kind, 0));
+                    constantBound(Condition.LT, new Constant(kind, other.constantBounds.upperBound));
                 }
                 break;
             case BE:
                 if (other.constantBounds.lowerBound >= 0) {
                     simpleValueBound(Condition.LE, otherValue);
-                    constantBound(Condition.GE, new RiConstant(kind, 0));
-                    constantBound(Condition.LE, new RiConstant(kind, other.constantBounds.upperBound));
+                    constantBound(Condition.GE, new Constant(kind, 0));
+                    constantBound(Condition.LE, new Constant(kind, other.constantBounds.upperBound));
                 }
                 break;
             case AT:
                 if (other.constantBounds.upperBound < 0) {
                     simpleValueBound(Condition.GT, otherValue);
-                    constantBound(Condition.LT, new RiConstant(kind, 0));
-                    constantBound(Condition.GT, new RiConstant(kind, other.constantBounds.lowerBound));
+                    constantBound(Condition.LT, new Constant(kind, 0));
+                    constantBound(Condition.GT, new Constant(kind, other.constantBounds.lowerBound));
                 }
                 break;
             case AE:
                 if (other.constantBounds.upperBound < 0) {
                     simpleValueBound(Condition.GE, otherValue);
-                    constantBound(Condition.LT, new RiConstant(kind, 0));
-                    constantBound(Condition.GE, new RiConstant(kind, other.constantBounds.lowerBound));
+                    constantBound(Condition.LT, new Constant(kind, 0));
+                    constantBound(Condition.GE, new Constant(kind, other.constantBounds.lowerBound));
                 }
                 break;
         }
@@ -357,7 +357,7 @@ public class ScalarTypeFeedbackStore extends TypeFeedbackStore<ScalarTypeFeedbac
     }
 
     @Override
-    public void setTranslated(RiConstant deltaConstant, ScalarTypeQuery old) {
+    public void setTranslated(Constant deltaConstant, ScalarTypeQuery old) {
         assert deltaConstant.kind == kind;
         ScalarTypeFeedbackStore other = old.store();
         assert other.kind == kind;

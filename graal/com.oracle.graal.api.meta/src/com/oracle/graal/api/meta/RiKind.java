@@ -394,28 +394,28 @@ public enum RiKind {
         }
     }
 
-    public RiConstant readUnsafeConstant(Object value, long displacement) {
+    public Constant readUnsafeConstant(Object value, long displacement) {
         assert value != null;
         Unsafe u = Unsafe.getUnsafe();
         switch(this) {
             case Boolean:
-                return RiConstant.forBoolean(u.getBoolean(value, displacement));
+                return Constant.forBoolean(u.getBoolean(value, displacement));
             case Byte:
-                return RiConstant.forByte(u.getByte(value, displacement));
+                return Constant.forByte(u.getByte(value, displacement));
             case Char:
-                return RiConstant.forChar(u.getChar(value, displacement));
+                return Constant.forChar(u.getChar(value, displacement));
             case Short:
-                return RiConstant.forShort(u.getShort(value, displacement));
+                return Constant.forShort(u.getShort(value, displacement));
             case Int:
-                return RiConstant.forInt(u.getInt(value, displacement));
+                return Constant.forInt(u.getInt(value, displacement));
             case Long:
-                return RiConstant.forLong(u.getLong(value, displacement));
+                return Constant.forLong(u.getLong(value, displacement));
             case Float:
-                return RiConstant.forFloat(u.getFloat(value, displacement));
+                return Constant.forFloat(u.getFloat(value, displacement));
             case Double:
-                return RiConstant.forDouble(u.getDouble(value, displacement));
+                return Constant.forDouble(u.getDouble(value, displacement));
             case Object:
-                return RiConstant.forObject(u.getObject(value, displacement));
+                return Constant.forObject(u.getObject(value, displacement));
             default:
                 assert false : "unexpected kind: " + this;
                 return null;

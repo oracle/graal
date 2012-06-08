@@ -224,9 +224,9 @@ public abstract class CiXirAssembler {
     }
 
     public static class XirConstant extends XirOperand implements XirConstantOperand {
-        public final RiConstant value;
+        public final Constant value;
 
-        XirConstant(CiXirAssembler asm, RiConstant value) {
+        XirConstant(CiXirAssembler asm, Constant value) {
             super(asm, value, value.kind);
             this.value = value;
         }
@@ -820,7 +820,7 @@ public abstract class CiXirAssembler {
         return new XirConstantParameter(this, name, kind);
     }
 
-    public XirConstant createConstant(RiConstant constant) {
+    public XirConstant createConstant(Constant constant) {
         assert !finished;
         XirConstant temp = new XirConstant(this, constant);
         constants.add(temp);
@@ -868,19 +868,19 @@ public abstract class CiXirAssembler {
     }
 
     public XirConstant i(int v) {
-        return createConstant(RiConstant.forInt(v));
+        return createConstant(Constant.forInt(v));
     }
 
     public XirConstant l(long v) {
-        return createConstant(RiConstant.forLong(v));
+        return createConstant(Constant.forLong(v));
     }
 
     public XirConstant b(boolean v) {
-        return createConstant(RiConstant.forBoolean(v));
+        return createConstant(Constant.forBoolean(v));
     }
 
     public XirConstant o(Object obj) {
-        return createConstant(RiConstant.forObject(obj));
+        return createConstant(Constant.forObject(obj));
     }
 
     public void reserveOutgoingStack(int size) {

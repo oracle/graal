@@ -125,9 +125,9 @@ public final class CiVirtualObject extends RiValue {
         }
 
         public CiVirtualObject constantProxy(RiKind kind, RiValue objectValue, RiValue primitiveValue) {
-            RiConstant cKind = RiConstant.forObject(kind);
+            Constant cKind = Constant.forObject(kind);
             // TODO: here the ordering is hard coded... we should query RiType.fields() and act accordingly
-            return new CiVirtualObject(runtime.getType(RiConstant.class), new RiValue[] {cKind, primitiveValue, RiValue.IllegalValue, objectValue}, nextId++);
+            return new CiVirtualObject(runtime.getType(Constant.class), new RiValue[] {cKind, primitiveValue, RiValue.IllegalValue, objectValue}, nextId++);
         }
 
         public RiValue proxy(RiValue ciValue) {

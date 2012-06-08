@@ -27,7 +27,7 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.RiCompiledMethod.*;
+import com.oracle.graal.api.meta.InstalledCode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.graph.*;
@@ -67,7 +67,7 @@ public class CompiledMethodTest extends GraphTest {
         }
 
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        RiCompiledMethod compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = compile(riMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
             Assert.assertEquals("1-2-3", result);
@@ -81,7 +81,7 @@ public class CompiledMethodTest extends GraphTest {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        RiCompiledMethod compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = compile(riMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
             Assert.assertEquals("1 2 3", result);
@@ -95,7 +95,7 @@ public class CompiledMethodTest extends GraphTest {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
         final RiResolvedMethod riMethod = runtime.getRiMethod(method);
-        RiCompiledMethod compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = compile(riMethod, graph);
         try {
             f1 = "0";
             Object result = compiledMethod.executeVarargs(this, "1", "2", "3");
@@ -123,7 +123,7 @@ public class CompiledMethodTest extends GraphTest {
             }
         }
 
-        RiCompiledMethod compiledMethod = compile(riMethod, graph);
+        InstalledCode compiledMethod = compile(riMethod, graph);
         final CompilableObject compilableObject = new CompilableObjectImpl(0);
 
         Object result;
@@ -175,9 +175,9 @@ public class CompiledMethodTest extends GraphTest {
 
     private final class ObjectCompilerImpl implements ObjectCompiler {
 
-        private final RiCompiledMethod compiledMethod;
+        private final InstalledCode compiledMethod;
 
-        private ObjectCompilerImpl(RiCompiledMethod compiledMethod) {
+        private ObjectCompilerImpl(InstalledCode compiledMethod) {
             this.compiledMethod = compiledMethod;
         }
 

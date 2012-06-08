@@ -116,17 +116,17 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native RiType getType(Class<?> javaClass);
 
     @Override
-    public int getArrayLength(RiConstant array) {
+    public int getArrayLength(Constant array) {
         return Array.getLength(array.asObject());
     }
 
     @Override
-    public boolean compareConstantObjects(RiConstant x, RiConstant y) {
+    public boolean compareConstantObjects(Constant x, Constant y) {
         return x.asObject() == y.asObject();
     }
 
     @Override
-    public RiType getRiType(RiConstant constant) {
+    public RiType getRiType(Constant constant) {
         Object o = constant.asObject();
         if (o == null) {
             return null;

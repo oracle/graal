@@ -35,5 +35,5 @@ public interface CanonicalizerTool {
      * Determines if a given constant is an object/array whose current
      * fields/elements will never change.
      */
-    boolean isImmutable(RiConstant objectConstant);
+    boolean isImmutable(Constant objectConstant);
 }

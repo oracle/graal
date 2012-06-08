@@ -36,7 +36,7 @@
  * The compiler manipulates {@link com.oracle.graal.api.meta.RiValue} instances that have a {@link com.oracle.graal.api.meta.RiKind}, and are
  * immutable. A concrete {@link com.oracle.graal.api.meta.RiValue value} is one of the following subclasses:
  * <ul>
- * <li>{@link com.oracle.graal.api.meta.RiConstant}: a constant value.
+ * <li>{@link com.oracle.graal.api.meta.Constant}: a constant value.
  * <li>{@link com.oracle.graal.api.code.CiRegisterValue}: a value stored in a {@linkplain com.oracle.graal.api.code.CiRegister target machine register}.
  * <li>{@link com.oracle.graal.api.code.CiStackSlot}: a spill slot or an outgoing stack-based argument in a method's frame.
  * <li>{@link com.oracle.graal.api.code.CiAddress}: an address in target machine memory.

@@ -38,14 +38,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.snippets.Snippet.Constant;
+import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Multiple;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.nodes.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then
- * specialized by binding constants to the snippet's {@link Constant} parameters.
+ * specialized by binding constants to the snippet's {@link ConstantParameter} parameters.
  *
  * Snippet templates can be managed in a {@link Cache}.
  */
@@ -190,14 +190,14 @@ public class SnippetTemplate {
         Parameter[] parameterAnnotations = new Parameter[parameterCount];
         ConstantNode[] placeholders = new ConstantNode[parameterCount];
         for (int i = 0; i < parameterCount; i++) {
-            Constant c = CiUtil.getParameterAnnotation(Constant.class, i, method);
+            ConstantParameter c = CiUtil.getParameterAnnotation(ConstantParameter.class, i, method);
             if (c != null) {
                 String name = c.value();
                 Object arg = key.get(name);
                 assert arg != null : method + ": requires a constant named " + name;
                 RiKind kind = signature.argumentKindAt(i);
                 assert checkConstantArgument(method, signature, i, name, arg, kind);
-                replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(RiConstant.forBoxed(kind, arg), runtime, snippetCopy));
+                replacements.put(snippetGraph.getLocal(i), ConstantNode.forCiConstant(Constant.forBoxed(kind, arg), runtime, snippetCopy));
             } else {
                 Parameter p = CiUtil.getParameterAnnotation(Parameter.class, i, method);
                 assert p != null : method + ": parameter " + i + " must be annotated with either @Constant or @Parameter";
@@ -385,7 +385,7 @@ public class SnippetTemplate {
                     replacements.put((LocalNode) parameter, (ValueNode) argument);
                 } else {
                     RiKind kind = ((LocalNode) parameter).kind();
-                    RiConstant constant = RiConstant.forBoxed(kind, argument);
+                    Constant constant = Constant.forBoxed(kind, argument);
                     replacements.put((LocalNode) parameter, ConstantNode.forCiConstant(constant, runtime, replaceeGraph));
                 }
             } else {
@@ -398,7 +398,7 @@ public class SnippetTemplate {
                 for (int j = 0; j < length; j++) {
                     LocalNode local = locals[j];
                     assert local != null;
-                    RiConstant constant = RiConstant.forBoxed(local.kind(), Array.get(array, j));
+                    Constant constant = Constant.forBoxed(local.kind(), Array.get(array, j));
                     ConstantNode element = ConstantNode.forCiConstant(constant, runtime, replaceeGraph);
                     replacements.put(local, element);
                 }

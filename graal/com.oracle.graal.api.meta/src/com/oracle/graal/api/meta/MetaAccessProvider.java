@@ -38,7 +38,7 @@ public interface MetaAccessProvider {
      *
      * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
-    RiResolvedType getTypeOf(RiConstant constant);
+    RiResolvedType getTypeOf(Constant constant);
 
 
     RiResolvedType getType(Class<?> clazz);
@@ -48,7 +48,7 @@ public interface MetaAccessProvider {
      *
      * @return true if the two parameters represent the same runtime object, false otherwise
      */
-    boolean areConstantObjectsEqual(RiConstant x, RiConstant y);
+    boolean areConstantObjectsEqual(Constant x, Constant y);
 
     /**
      * Provides the {@link RiMethod} for a {@link Method} obtained via reflection.
@@ -58,5 +58,5 @@ public interface MetaAccessProvider {
     /**
      * Gets the length of the array that is wrapped in a CiConstant object.
      */
-    int getArrayLength(RiConstant array);
+    int getArrayLength(Constant array);
 }

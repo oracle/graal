@@ -49,7 +49,7 @@ public final class ReadNode extends AccessNode implements Node.IterableNodeType,
                 Object value = object().asConstant().asObject();
                 long displacement = location().displacement();
                 RiKind kind = location().kind();
-                RiConstant constant = kind.readUnsafeConstant(value, displacement);
+                Constant constant = kind.readUnsafeConstant(value, displacement);
                 if (constant != null) {
                     return ConstantNode.forCiConstant(constant, runtime, graph());
                 }

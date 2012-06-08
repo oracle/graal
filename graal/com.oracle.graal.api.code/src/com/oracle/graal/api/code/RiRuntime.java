@@ -92,7 +92,7 @@ public interface RiRuntime extends MetaAccessProvider {
      *        Ignored if null, otherwise the info is written to index 0 of this array.
      * @return a reference to the compiled and ready-to-run code
      */
-    RiCompiledMethod addMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info);
+    InstalledCode addMethod(RiResolvedMethod method, CiTargetMethod code, CodeInfo[] info);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

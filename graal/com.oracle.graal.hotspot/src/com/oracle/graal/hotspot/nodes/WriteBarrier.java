@@ -37,15 +37,15 @@ public abstract class WriteBarrier extends FixedWithNextNode {
 
     protected void generateBarrier(RiValue adr, LIRGeneratorTool gen) {
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
-        RiValue base = gen.emitUShr(adr, RiConstant.forInt(config.cardtableShift));
+        RiValue base = gen.emitUShr(adr, Constant.forInt(config.cardtableShift));
 
         long startAddress = config.cardtableStartAddress;
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
             displacement = (int) startAddress;
         } else {
-            base = gen.emitAdd(base, RiConstant.forLong(config.cardtableStartAddress));
+            base = gen.emitAdd(base, Constant.forLong(config.cardtableStartAddress));
         }
-        gen.emitStore(new CiAddress(RiKind.Boolean, base, displacement), RiConstant.FALSE, false);
+        gen.emitStore(new CiAddress(RiKind.Boolean, base, displacement), Constant.FALSE, false);
     }
 }

@@ -26,14 +26,14 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Represents an argument to an {@link XirSnippet}.
- * Currently, this is a <i>union </i> type; it is either a {@link RiConstant} or an {@code Object}.
+ * Currently, this is a <i>union </i> type; it is either a {@link Constant} or an {@code Object}.
  */
 public final class XirArgument {
 
-    public final RiConstant constant;
+    public final Constant constant;
     public final Object object;
 
-    private XirArgument(RiConstant value) {
+    private XirArgument(Constant value) {
         this.constant = value;
         this.object = null;
     }
@@ -48,15 +48,15 @@ public final class XirArgument {
     }
 
     public static XirArgument forInt(int x) {
-        return new XirArgument(RiConstant.forInt(x));
+        return new XirArgument(Constant.forInt(x));
     }
 
     public static XirArgument forLong(long x) {
-        return new XirArgument(RiConstant.forLong(x));
+        return new XirArgument(Constant.forLong(x));
     }
 
     public static XirArgument forObject(Object o) {
-        return new XirArgument(RiConstant.forObject(o));
+        return new XirArgument(Constant.forObject(o));
     }
 
     @Override

@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.calc.*;
 
 public interface ObjectTypeFeedbackTool {
 
-    void constantBound(Condition condition, RiConstant constant);
+    void constantBound(Condition condition, Constant constant);
 
     void valueBound(Condition condition, ValueNode otherValue);
 

@@ -229,14 +229,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     public RiValue loadNonConst(RiValue value) {
-        if (isConstant(value) && !canInlineConstant((RiConstant) value)) {
+        if (isConstant(value) && !canInlineConstant((Constant) value)) {
             return emitMove(value);
         }
         return value;
     }
 
     public RiValue loadForStore(RiValue value, RiKind storeKind) {
-        if (isConstant(value) && canStoreConstant((RiConstant) value)) {
+        if (isConstant(value) && canStoreConstant((Constant) value)) {
             return value;
         }
         if (storeKind == RiKind.Byte || storeKind == RiKind.Boolean) {
@@ -723,12 +723,12 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, LIRDebugInfo info) {
         if (falseSuccessor != null) {
-            emitBranch(operand(node.object()), RiConstant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
+            emitBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.NE, false, falseSuccessor, info);
             if (trueSuccessor != null) {
                 emitJump(trueSuccessor, null);
             }
         } else {
-            emitBranch(operand(node.object()), RiConstant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
+            emitBranch(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueSuccessor, info);
         }
     }
 
@@ -788,7 +788,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
     }
 
     private Variable emitNullCheckConditional(IsNullNode node, RiValue trueValue, RiValue falseValue) {
-        return emitCMove(operand(node.object()), RiConstant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
+        return emitCMove(operand(node.object()), Constant.NULL_OBJECT, Condition.EQ, false, trueValue, falseValue);
     }
 
     private Variable emitInstanceOfConditional(InstanceOfNode x, RiValue trueValue, RiValue falseValue) {
@@ -963,7 +963,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             argumentList = Collections.emptyList();
         }
 
-        emitCall(target, physReg, argumentList, RiConstant.forLong(0), info, null);
+        emitCall(target, physReg, argumentList, Constant.forLong(0), info, null);
 
         if (isLegal(physReg)) {
             return emitMove(physReg);
@@ -998,7 +998,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             info = stateFor(stateBeforeReturn, -1);
         }
 
-        emitCall(x.call(), resultOperand, argList, RiConstant.forLong(0), info, null);
+        emitCall(x.call(), resultOperand, argList, Constant.forLong(0), info, null);
 
         if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
@@ -1011,7 +1011,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         if (x.numberOfCases() == 0 || x.numberOfCases() < GraalOptions.SequentialSwitchLimit) {
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
-                emitBranch(tag, RiConstant.forInt(x.keyAt(i)), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
+                emitBranch(tag, Constant.forInt(x.keyAt(i)), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
             }
             emitJump(getLIRBlock(x.defaultSuccessor()), null);
         } else {
@@ -1027,7 +1027,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             int loKey = x.lowKey();
             int len = x.numberOfCases();
             for (int i = 0; i < len; i++) {
-                emitBranch(value, RiConstant.forInt(i + loKey), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
+                emitBranch(value, Constant.forInt(i + loKey), Condition.EQ, false, getLIRBlock(x.blockSuccessor(i)), null);
             }
             emitJump(getLIRBlock(x.defaultSuccessor()), null);
         } else {
@@ -1101,14 +1101,14 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             int highKey = oneRange.highKey;
             LabelRef dest = oneRange.sux;
             if (lowKey == highKey) {
-                emitBranch(value, RiConstant.forInt(lowKey), Condition.EQ, false, dest, null);
+                emitBranch(value, Constant.forInt(lowKey), Condition.EQ, false, dest, null);
             } else if (highKey - lowKey == 1) {
-                emitBranch(value, RiConstant.forInt(lowKey), Condition.EQ, false, dest, null);
-                emitBranch(value, RiConstant.forInt(highKey), Condition.EQ, false, dest, null);
+                emitBranch(value, Constant.forInt(lowKey), Condition.EQ, false, dest, null);
+                emitBranch(value, Constant.forInt(highKey), Condition.EQ, false, dest, null);
             } else {
                 Label l = new Label();
-                emitBranch(value, RiConstant.forInt(lowKey), Condition.LT, false, LabelRef.forLabel(l), null);
-                emitBranch(value, RiConstant.forInt(highKey), Condition.LE, false, dest, null);
+                emitBranch(value, Constant.forInt(lowKey), Condition.LT, false, LabelRef.forLabel(l), null);
+                emitBranch(value, Constant.forInt(highKey), Condition.LE, false, dest, null);
                 emitLabel(l, false);
             }
         }
@@ -1302,7 +1302,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
             argumentList = Util.uncheckedCast(Collections.emptyList());
         }
 
-        emitCall(runtimeCall, physReg, argumentList, RiConstant.forLong(0), info, null);
+        emitCall(runtimeCall, physReg, argumentList, Constant.forLong(0), info, null);
 
         return physReg;
     }

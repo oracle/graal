@@ -44,7 +44,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
 
         @Override
-        public boolean constantBound(Condition condition, final RiConstant constant) {
+        public boolean constantBound(Condition condition, final Constant constant) {
             assert condition == Condition.EQ || condition == Condition.NE;
             if (condition == Condition.EQ) {
                 return store.prove(Equals.class, new BooleanPredicate<Equals>() {
@@ -149,9 +149,9 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     private static final class Equals extends Info {
-        public final RiConstant constant;
+        public final Constant constant;
 
-        public Equals(RiConstant constant) {
+        public Equals(Constant constant) {
             this.constant = constant;
         }
 
@@ -162,9 +162,9 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     private static final class NotEquals extends Info {
-        public final RiConstant constant;
+        public final Constant constant;
 
-        public NotEquals(RiConstant constant) {
+        public NotEquals(Constant constant) {
             this.constant = constant;
         }
 
@@ -290,7 +290,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
     }
 
     @Override
-    public void constantBound(Condition condition, RiConstant constant) {
+    public void constantBound(Condition condition, Constant constant) {
         assert condition == Condition.EQ || condition == Condition.NE;
 
         if (condition == Condition.EQ) {
@@ -357,7 +357,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 if (typeInfo.type == type && index == 0) {
                     if (index == 0) {
                         if (nonNull) {
-                            constantBound(Condition.NE, RiConstant.NULL_OBJECT);
+                            constantBound(Condition.NE, Constant.NULL_OBJECT);
                         }
                         return;
                     } else {
@@ -369,7 +369,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         infos.add(new ObjectTypeDeclared(type));
         updateDependency();
         if (nonNull) {
-            constantBound(Condition.NE, RiConstant.NULL_OBJECT);
+            constantBound(Condition.NE, Constant.NULL_OBJECT);
         }
     }
 
@@ -384,7 +384,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
                 ObjectTypeExact typeInfo = (ObjectTypeExact) info;
                 if (typeInfo.type == type && index == 0) {
                     if (index == 0) {
-                        constantBound(Condition.NE, RiConstant.NULL_OBJECT);
+                        constantBound(Condition.NE, Constant.NULL_OBJECT);
                         return;
                     } else {
                         iter.remove();
@@ -394,7 +394,7 @@ public class ObjectTypeFeedbackStore extends TypeFeedbackStore<ObjectTypeFeedbac
         }
         infos.add(new ObjectTypeExact(type));
         updateDependency();
-        constantBound(Condition.NE, RiConstant.NULL_OBJECT);
+        constantBound(Condition.NE, Constant.NULL_OBJECT);
     }
 
     @Override

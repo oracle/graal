@@ -147,21 +147,21 @@ public abstract class GraphTest {
 
     private static int compilationId = 0;
 
-    protected RiCompiledMethod compile(final RiResolvedMethod method, final StructuredGraph graph) {
-        return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<RiCompiledMethod>() {
-            public RiCompiledMethod call() throws Exception {
+    protected InstalledCode compile(final RiResolvedMethod method, final StructuredGraph graph) {
+        return Debug.scope("Compiling", new DebugDumpScope(String.valueOf(compilationId++), true), new Callable<InstalledCode>() {
+            public InstalledCode call() throws Exception {
                 CiTargetMethod targetMethod = runtime.compile(method, graph);
                 return addMethod(method, targetMethod);
             }
         });
     }
 
-    protected RiCompiledMethod addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
-        return Debug.scope("CodeInstall", new Object[] {method}, new Callable<RiCompiledMethod>() {
+    protected InstalledCode addMethod(final RiResolvedMethod method, final CiTargetMethod tm) {
+        return Debug.scope("CodeInstall", new Object[] {method}, new Callable<InstalledCode>() {
             @Override
-            public RiCompiledMethod call() throws Exception {
+            public InstalledCode call() throws Exception {
                 final CodeInfo[] info = Debug.isDumpEnabled() ? new CodeInfo[1] : null;
-                RiCompiledMethod installedMethod = runtime.addMethod(method, tm, info);
+                InstalledCode installedMethod = runtime.addMethod(method, tm, info);
                 if (info != null) {
                     Debug.dump(info[0], "After code installation");
                 }

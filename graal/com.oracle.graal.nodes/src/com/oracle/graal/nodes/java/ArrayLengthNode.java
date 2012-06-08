@@ -54,7 +54,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         }
         RiRuntime runtime = tool.runtime();
         if (runtime != null && array().isConstant() && !array().isNullConstant()) {
-            RiConstant constantValue = array().asConstant();
+            Constant constantValue = array().asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
                 return ConstantNode.forInt(runtime.getArrayLength(constantValue), graph());
             }

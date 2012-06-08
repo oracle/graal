@@ -45,7 +45,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.snippets.*;
-import com.oracle.graal.snippets.Snippet.Constant;
+import com.oracle.graal.snippets.Snippet.ConstantParameter;
 import com.oracle.graal.snippets.Snippet.Parameter;
 import com.oracle.graal.snippets.SnippetTemplate.Arguments;
 import com.oracle.graal.snippets.SnippetTemplate.Cache;
@@ -66,7 +66,7 @@ public class CheckCastSnippets implements SnippetsInterface {
      * Type test used when the type being tested against is a final type.
      */
     @Snippet
-    public static Object checkcastExact(@Parameter("object") Object object, @Parameter("exactHub") Object exactHub, @Constant("checkNull") boolean checkNull) {
+    public static Object checkcastExact(@Parameter("object") Object object, @Parameter("exactHub") Object exactHub, @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -88,7 +88,7 @@ public class CheckCastSnippets implements SnippetsInterface {
      * first.
      */
     @Snippet
-    public static Object checkcastPrimary(@Parameter("hub") Object hub, @Parameter("object") Object object, @Constant("checkNull") boolean checkNull, @Constant("superCheckOffset") int superCheckOffset) {
+    public static Object checkcastPrimary(@Parameter("hub") Object hub, @Parameter("object") Object object, @ConstantParameter("checkNull") boolean checkNull, @ConstantParameter("superCheckOffset") int superCheckOffset) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -106,7 +106,7 @@ public class CheckCastSnippets implements SnippetsInterface {
      * Type test used when the type being tested against is a restricted secondary type.
      */
     @Snippet
-    public static Object checkcastSecondary(@Parameter("hub") Object hub, @Parameter("object") Object object, @Parameter(value = "hints", multiple = true) Object[] hints, @Constant("checkNull") boolean checkNull) {
+    public static Object checkcastSecondary(@Parameter("hub") Object hub, @Parameter("object") Object object, @Parameter(value = "hints", multiple = true) Object[] hints, @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;
@@ -132,7 +132,7 @@ public class CheckCastSnippets implements SnippetsInterface {
      * in an object array store check).
      */
     @Snippet
-    public static Object checkcastUnknown(@Parameter("hub") Object hub, @Parameter("object") Object object, @Parameter(value = "hints", multiple = true) Object[] hints, @Constant("checkNull") boolean checkNull) {
+    public static Object checkcastUnknown(@Parameter("hub") Object hub, @Parameter("object") Object object, @Parameter(value = "hints", multiple = true) Object[] hints, @ConstantParameter("checkNull") boolean checkNull) {
         if (checkNull && object == null) {
             isNull.inc();
             return object;

@@ -36,9 +36,9 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "Const")
 public class ConstantNode extends BooleanNode implements LIRLowerable {
 
-    public final RiConstant value;
+    public final Constant value;
 
-    protected ConstantNode(RiConstant value) {
+    protected ConstantNode(Constant value) {
         super(StampFactory.forConstant(value));
         this.value = value;
     }
@@ -47,7 +47,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * Constructs a new ConstantNode representing the specified constant.
      * @param value the constant
      */
-    protected ConstantNode(RiConstant value, RiRuntime runtime) {
+    protected ConstantNode(Constant value, RiRuntime runtime) {
         super(StampFactory.forConstant(value, runtime));
         this.value = value;
     }
@@ -65,7 +65,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
         return usages().filter(NodePredicates.isNotA(FrameState.class)).isEmpty();
     }
 
-    public static ConstantNode forCiConstant(RiConstant constant, RiRuntime runtime, Graph graph) {
+    public static ConstantNode forCiConstant(Constant constant, RiRuntime runtime, Graph graph) {
         if (constant.kind == RiKind.Object) {
             return graph.unique(new ConstantNode(constant, runtime));
         } else {
@@ -80,7 +80,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node for a double constant
      */
     public static ConstantNode forDouble(double d, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forDouble(d)));
+        return graph.unique(new ConstantNode(Constant.forDouble(d)));
     }
 
     /**
@@ -90,7 +90,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node for a float constant
      */
     public static ConstantNode forFloat(float f, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forFloat(f)));
+        return graph.unique(new ConstantNode(Constant.forFloat(f)));
     }
 
     /**
@@ -100,7 +100,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node for an long constant
      */
     public static ConstantNode forLong(long i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forLong(i)));
+        return graph.unique(new ConstantNode(Constant.forLong(i)));
     }
 
     /**
@@ -110,7 +110,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node for an integer constant
      */
     public static ConstantNode forInt(int i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forInt(i)));
+        return graph.unique(new ConstantNode(Constant.forInt(i)));
     }
 
     /**
@@ -120,7 +120,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static ConstantNode forBoolean(boolean i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forBoolean(i)));
+        return graph.unique(new ConstantNode(Constant.forBoolean(i)));
     }
 
     /**
@@ -130,7 +130,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the byte
      */
     public static ConstantNode forByte(byte i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forByte(i)));
+        return graph.unique(new ConstantNode(Constant.forByte(i)));
     }
 
     /**
@@ -140,7 +140,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the char
      */
     public static ConstantNode forChar(char i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forChar(i)));
+        return graph.unique(new ConstantNode(Constant.forChar(i)));
     }
 
     /**
@@ -150,7 +150,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the short
      */
     public static ConstantNode forShort(short i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forShort(i)));
+        return graph.unique(new ConstantNode(Constant.forShort(i)));
     }
 
     /**
@@ -160,7 +160,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the address
      */
     public static ConstantNode forJsr(int i, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forJsr(i)));
+        return graph.unique(new ConstantNode(Constant.forJsr(i)));
     }
 
     /**
@@ -170,7 +170,7 @@ public class ConstantNode extends BooleanNode implements LIRLowerable {
      * @return a node representing the object
      */
     public static ConstantNode forObject(Object o, RiRuntime runtime, Graph graph) {
-        return graph.unique(new ConstantNode(RiConstant.forObject(o), runtime));
+        return graph.unique(new ConstantNode(Constant.forObject(o), runtime));
     }
 
     public static ConstantNode forIntegerKind(RiKind kind, long value, Graph graph) {

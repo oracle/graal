@@ -113,7 +113,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(RiConstant c) {
+    public boolean canStoreConstant(Constant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.kind) {
             case Long:   return Util.isInt(c.asLong());
@@ -124,7 +124,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canInlineConstant(RiConstant c) {
+    public boolean canInlineConstant(Constant c) {
         switch (c.kind) {
             case Long:   return NumUtil.isInt(c.asLong());
             case Object: return c.isNull();
@@ -286,8 +286,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         switch (input.kind) {
             case Int:    append(new Op1Stack(INEG, result, input)); break;
             case Long:   append(new Op1Stack(LNEG, result, input)); break;
-            case Float:  append(new Op2Reg(FXOR, result, input, RiConstant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
-            case Double: append(new Op2Reg(DXOR, result, input, RiConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
+            case Float:  append(new Op2Reg(FXOR, result, input, Constant.forFloat(Float.intBitsToFloat(0x80000000)))); break;
+            case Double: append(new Op2Reg(DXOR, result, input, Constant.forDouble(Double.longBitsToDouble(0x8000000000000000L)))); break;
             default: throw GraalInternalError.shouldNotReachHere();
         }
         return result;
@@ -607,7 +607,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(new CompareAndSwapOp(rax, address, rax, newValue));
 
         Variable result = newVariable(node.kind());
-        append(new CondMoveOp(result, Condition.EQ, load(RiConstant.TRUE), RiConstant.FALSE));
+        append(new CondMoveOp(result, Condition.EQ, load(Constant.TRUE), Constant.FALSE));
         setResult(node, result);
     }
 }

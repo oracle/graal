@@ -134,10 +134,10 @@ public class CiTargetMethod implements Serializable {
      */
     public static final class DataPatch extends Site {
         private static final long serialVersionUID = 5771730331604867476L;
-        public final RiConstant constant;
+        public final Constant constant;
         public final int alignment;
 
-        DataPatch(int pcOffset, RiConstant data, int alignment) {
+        DataPatch(int pcOffset, Constant data, int alignment) {
             super(pcOffset);
             this.constant = data;
             this.alignment = alignment;
@@ -394,7 +394,7 @@ public class CiTargetMethod implements Serializable {
      * @param data the data that is referenced
      * @param alignment the alignment requirement of the data or 0 if there is no alignment requirement
      */
-    public void recordDataReference(int codePos, RiConstant data, int alignment) {
+    public void recordDataReference(int codePos, Constant data, int alignment) {
         assert codePos >= 0 && data != null;
         dataReferences.add(new DataPatch(codePos, data, alignment));
     }
