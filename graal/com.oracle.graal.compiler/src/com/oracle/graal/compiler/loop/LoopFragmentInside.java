@@ -87,7 +87,12 @@ public class LoopFragmentInside extends LoopFragment {
 
         mergeEarlyExits();
 
-        FixedNode entry = getDuplicatedNode(this.loop().loopBegin());
+        BeginNode entry = getDuplicatedNode(this.loop().loopBegin());
+        FrameState state = entry.stateAfter();
+        if (state != null) {
+            entry.setStateAfter(null);
+            GraphUtil.killWithUnusedFloatingInputs(state);
+        }
         loop.entryPoint().replaceAtPredecessor(entry);
         end.setNext(loop.entryPoint());
     }
@@ -98,11 +103,8 @@ public class LoopFragmentInside extends LoopFragment {
             LoopFragmentWhole whole = loop().whole();
             whole.nodes(); // init nodes bitmap in whole
             nodes = whole.nodes.copy();
-            // remove the loop begin, its FS and the phis
-            LoopBeginNode loopBegin = loop().loopBegin();
-            //nodes.clear(loopBegin);
-            nodes.clear(loopBegin.stateAfter());
-            for (PhiNode phi : loopBegin.phis()) {
+            // remove the phis
+            for (PhiNode phi : loop().loopBegin().phis()) {
                 nodes.clear(phi);
             }
         }
@@ -222,8 +224,12 @@ public class LoopFragmentInside extends LoopFragment {
             assert endsToMerge.size() > 1;
             MergeNode newExitMerge = graph.add(new MergeNode());
             newExit = newExitMerge;
-            FrameState duplicateState = loopBegin.stateAfter().duplicate();
-            newExitMerge.setStateAfter(duplicateState);
+            FrameState state = loopBegin.stateAfter();
+            FrameState duplicateState = null;
+            if (state != null) {
+                duplicateState = state.duplicate();
+                newExitMerge.setStateAfter(duplicateState);
+            }
             for (EndNode end : endsToMerge) {
                 newExitMerge.addForwardEnd(end);
             }
@@ -237,7 +243,9 @@ public class LoopFragmentInside extends LoopFragment {
                     firstPhi.addInput(prim);
                 }
                 ValueNode initializer = firstPhi;
-                duplicateState.replaceFirstInput(phi, firstPhi); // fix the merge's state after
+                if (duplicateState != null) {
+                    duplicateState.replaceFirstInput(phi, firstPhi); // fix the merge's state after
+                }
                 if (phi.type() == PhiType.Virtual) {
                     initializer = GraphUtil.mergeVirtualChain(graph, firstPhi, newExitMerge);
                 }

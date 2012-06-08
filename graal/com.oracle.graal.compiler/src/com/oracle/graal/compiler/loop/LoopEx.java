@@ -98,4 +98,9 @@ public class LoopEx {
     public int size() {
         return whole().nodes().count();
     }
+
+    @Override
+    public String toString() {
+        return isCounted() ? "Counted" : "" + "Loop (depth=" + lirLoop().depth + ") " + loopBegin();
+    }
 }
